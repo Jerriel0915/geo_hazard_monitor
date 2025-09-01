@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+          <groupId>com.zwei</groupId>
+          <artifactId>zwei</artifactId>
+          <version>3.9.0</version>
+    </parent>
+
+    <artifactId>module-infra</artifactId>
+    <packaging>pom</packaging>
+    <description>
+        基础设施 - 支撑上层业务的技术服务
+        如：缓存、监控、定时任务、文件服务等
+    </description>
+
+    <modules>
+        <module>zwei-quartz</module>
+        <module>zwei-generator</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
+
+</project>
