@@ -243,6 +243,7 @@
 		<module>framework</module>
 		<module>module-infra</module>
 		<module>module-system</module>
+		<module>module-iot</module>
         <module>server</module>
     </modules>
     <packaging>pom</packaging>
