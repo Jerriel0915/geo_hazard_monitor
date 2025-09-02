@@ -1,9 +1,9 @@
 # 项目相关配置
 zwei:
   # 名称
-  name: RuoYi
+  name: 成理智源
   # 版本
-  version: 3.9.0
+  version: 0.0.1
   # 版权年份
   copyrightYear: 2025
   # 文件路径 示例（ Windows配置D:/zwei/uploadPath，Linux配置 /home/zwei/uploadPath）
