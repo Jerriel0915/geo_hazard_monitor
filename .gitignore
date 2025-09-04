@@ -48,3 +48,5 @@ nbdist/
 
 ### vue ###
 node_modules/
+
+.vscode
