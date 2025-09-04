@@ -53,6 +53,12 @@
             <artifactId>zwei-generator</artifactId>
         </dependency>
 
+        <!-- 物联网模块 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>iot-endpoint-mqtt</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
