@@ -5,22 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
           <groupId>com.zwei</groupId>
-          <artifactId>zwei</artifactId>
+          <artifactId>module-iot</artifactId>
           <version>3.9.0</version>
     </parent>
 
-    <artifactId>module-iot</artifactId>
+    <groupId>com.zwei</groupId>
+    <artifactId>module-iot-endpoint</artifactId>
     <packaging>pom</packaging>
     <description>
-        物联网模块
+        各类接入协议的接入点服务
     </description>
 
     <modules>
-        <module>module-iot-device</module>
-        <module>module-iot-endpoint</module>
-        <module>module-iot-storage</module>
-        <module>module-iot-storage/iot-storage-common</module>
-        <module>module-iot-core</module>
+        <module>iot-endpoint-mqtt</module>
     </modules>
 
     <properties>
