@@ -256,6 +256,26 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>module-iot-core</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>module-iot-storage</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
+
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>iot-storage-common</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>com.zwei</groupId>
                 <artifactId>iot-endpoint-mqtt</artifactId>

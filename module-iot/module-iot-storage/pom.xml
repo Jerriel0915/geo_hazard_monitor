@@ -4,28 +4,23 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-          <groupId>com.zwei</groupId>
-          <artifactId>zwei</artifactId>
-          <version>3.9.0</version>
+        <groupId>com.zwei</groupId>
+        <artifactId>module-iot</artifactId>
+        <version>3.9.0</version>
     </parent>
 
-    <artifactId>module-iot</artifactId>
+    <artifactId>module-iot-storage</artifactId>
     <packaging>pom</packaging>
-    <description>
-        物联网模块
-    </description>
 
+    <description>物联网存储模块，提供不同数据源的存储适配</description>
     <modules>
-        <module>module-iot-device</module>
-        <module>module-iot-endpoint</module>
-        <module>module-iot-storage</module>
-        <module>module-iot-storage/iot-storage-common</module>
-        <module>module-iot-core</module>
+        <module>iot-storage-mysql</module>
     </modules>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
 </project>
