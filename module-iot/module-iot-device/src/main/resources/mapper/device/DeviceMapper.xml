@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.module.iot.device.mapper.DeviceMapper">
+    
+    <resultMap type="Device" id="DeviceResult">
+        <result property="id"    column="id"    />
+        <result property="sn"    column="sn"    />
+        <result property="name"    column="name"    />
+        <result property="type"    column="type"    />
+        <result property="productId"    column="product_id"    />
+        <result property="commProtocol"    column="comm_protocol"    />
+        <result property="longitude"    column="longitude"    />
+        <result property="latitude"    column="latitude"    />
+        <result property="powerSupply"    column="power_supply"    />
+        <result property="manufacturer"    column="manufacturer"    />
+        <result property="suppierTel"    column="suppier_tel"    />
+        <result property="installData"    column="install_data"    />
+        <result property="warrantyEnd"    column="warranty_end"    />
+        <result property="maintenanceName"    column="maintenance_name"    />
+        <result property="maintenanceTel"    column="maintenance_tel"    />
+        <result property="inspectionCycle"    column="inspection_cycle"    />
+        <result property="parentId"    column="parent_id"    />
+        <result property="gatewayIp"    column="gateway_ip"    />
+        <result property="gatewayPort"    column="gateway_port"    />
+        <result property="user"    column="user"    />
+        <result property="password"    column="password"    />
+        <result property="location"    column="location"    />
+        <result property="installAttach"    column="install_attach"    />
+    </resultMap>
+
+    <sql id="selectDeviceVo">
+        select id, sn, name, type, product_id, comm_protocol, longitude, latitude, power_supply, manufacturer, suppier_tel, install_data, warranty_end, maintenance_name, maintenance_tel, inspection_cycle, parent_id, gateway_ip, gateway_port, user, password, location, install_attach from zw_device
+    </sql>
+
+    <select id="selectDeviceList" parameterType="Device" resultMap="DeviceResult">
+        <include refid="selectDeviceVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="type != null  and type != ''"> and type = #{type}</if>
+            <if test="productId != null "> and product_id like concat('%', #{productId}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectDeviceById" parameterType="Long" resultMap="DeviceResult">
+        <include refid="selectDeviceVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertDevice" parameterType="Device" useGeneratedKeys="true" keyProperty="id">
+        insert into zw_device
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="sn != null and sn != ''">sn,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="type != null and type != ''">type,</if>
+            <if test="productId != null">product_id,</if>
+            <if test="commProtocol != null">comm_protocol,</if>
+            <if test="longitude != null">longitude,</if>
+            <if test="latitude != null">latitude,</if>
+            <if test="powerSupply != null">power_supply,</if>
+            <if test="manufacturer != null">manufacturer,</if>
+            <if test="suppierTel != null">suppier_tel,</if>
+            <if test="installData != null">install_data,</if>
+            <if test="warrantyEnd != null">warranty_end,</if>
+            <if test="maintenanceName != null">maintenance_name,</if>
+            <if test="maintenanceTel != null">maintenance_tel,</if>
+            <if test="inspectionCycle != null">inspection_cycle,</if>
+            <if test="parentId != null">parent_id,</if>
+            <if test="gatewayIp != null">gateway_ip,</if>
+            <if test="gatewayPort != null">gateway_port,</if>
+            <if test="user != null">user,</if>
+            <if test="password != null">password,</if>
+            <if test="location != null">location,</if>
+            <if test="installAttach != null">install_attach,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="sn != null and sn != ''">#{sn},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="type != null and type != ''">#{type},</if>
+            <if test="productId != null">#{productId},</if>
+            <if test="commProtocol != null">#{commProtocol},</if>
+            <if test="longitude != null">#{longitude},</if>
+            <if test="latitude != null">#{latitude},</if>
+            <if test="powerSupply != null">#{powerSupply},</if>
+            <if test="manufacturer != null">#{manufacturer},</if>
+            <if test="suppierTel != null">#{suppierTel},</if>
+            <if test="installData != null">#{installData},</if>
+            <if test="warrantyEnd != null">#{warrantyEnd},</if>
+            <if test="maintenanceName != null">#{maintenanceName},</if>
+            <if test="maintenanceTel != null">#{maintenanceTel},</if>
+            <if test="inspectionCycle != null">#{inspectionCycle},</if>
+            <if test="parentId != null">#{parentId},</if>
+            <if test="gatewayIp != null">#{gatewayIp},</if>
+            <if test="gatewayPort != null">#{gatewayPort},</if>
+            <if test="user != null">#{user},</if>
+            <if test="password != null">#{password},</if>
+            <if test="location != null">#{location},</if>
+            <if test="installAttach != null">#{installAttach},</if>
+         </trim>
+    </insert>
+
+    <update id="updateDevice" parameterType="Device">
+        update zw_device
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="sn != null and sn != ''">sn = #{sn},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="type != null and type != ''">type = #{type},</if>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="commProtocol != null">comm_protocol = #{commProtocol},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="powerSupply != null">power_supply = #{powerSupply},</if>
+            <if test="manufacturer != null">manufacturer = #{manufacturer},</if>
+            <if test="suppierTel != null">suppier_tel = #{suppierTel},</if>
+            <if test="installData != null">install_data = #{installData},</if>
+            <if test="warrantyEnd != null">warranty_end = #{warrantyEnd},</if>
+            <if test="maintenanceName != null">maintenance_name = #{maintenanceName},</if>
+            <if test="maintenanceTel != null">maintenance_tel = #{maintenanceTel},</if>
+            <if test="inspectionCycle != null">inspection_cycle = #{inspectionCycle},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="gatewayIp != null">gateway_ip = #{gatewayIp},</if>
+            <if test="gatewayPort != null">gateway_port = #{gatewayPort},</if>
+            <if test="user != null">user = #{user},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="installAttach != null">install_attach = #{installAttach},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteDeviceById" parameterType="Long">
+        delete from zw_device where id = #{id}
+    </delete>
+
+    <delete id="deleteDeviceByIds" parameterType="String">
+        delete from zw_device where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

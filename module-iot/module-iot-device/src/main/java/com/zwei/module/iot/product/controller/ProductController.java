@@ -28,7 +28,7 @@ import com.zwei.common.core.page.TableDataInfo;
  * @date 2025-09-04
  */
 @RestController
-@RequestMapping("/device/product")
+@RequestMapping("/product/product")
 public class ProductController extends BaseController
 {
     @Autowired
@@ -37,7 +37,7 @@ public class ProductController extends BaseController
     /**
      * 查询产品管理列表
      */
-    @PreAuthorize("@ss.hasPermi('device:product:list')")
+    @PreAuthorize("@ss.hasPermi('product:product:list')")
     @GetMapping("/list")
     public TableDataInfo list(Product product)
     {
@@ -49,7 +49,7 @@ public class ProductController extends BaseController
     /**
      * 导出产品管理列表
      */
-    @PreAuthorize("@ss.hasPermi('device:product:export')")
+    @PreAuthorize("@ss.hasPermi('product:product:export')")
     @Log(title = "产品管理", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, Product product)
@@ -62,7 +62,7 @@ public class ProductController extends BaseController
     /**
      * 获取产品管理详细信息
      */
-    @PreAuthorize("@ss.hasPermi('device:product:query')")
+    @PreAuthorize("@ss.hasPermi('product:product:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -72,7 +72,7 @@ public class ProductController extends BaseController
     /**
      * 新增产品管理
      */
-    @PreAuthorize("@ss.hasPermi('device:product:add')")
+    @PreAuthorize("@ss.hasPermi('product:product:add')")
     @Log(title = "产品管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody Product product)
@@ -83,7 +83,7 @@ public class ProductController extends BaseController
     /**
      * 修改产品管理
      */
-    @PreAuthorize("@ss.hasPermi('device:product:edit')")
+    @PreAuthorize("@ss.hasPermi('product:product:edit')")
     @Log(title = "产品管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody Product product)
@@ -94,7 +94,7 @@ public class ProductController extends BaseController
     /**
      * 删除产品管理
      */
-    @PreAuthorize("@ss.hasPermi('device:product:remove')")
+    @PreAuthorize("@ss.hasPermi('product:product:remove')")
     @Log(title = "产品管理", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
