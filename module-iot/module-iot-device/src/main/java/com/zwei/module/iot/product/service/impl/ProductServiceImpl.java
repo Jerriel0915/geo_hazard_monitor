@@ -8,10 +8,10 @@ import com.zwei.module.iot.product.domain.Product;
 import com.zwei.module.iot.product.service.IProductService;
 
 /**
- * 产品管理Service业务层处理
+ * 产品Service业务层处理
  * 
- * @author zwei
- * @date 2025-09-04
+ * @author linx
+ * @date 2025-09-05
  */
 @Service
 public class ProductServiceImpl implements IProductService 
@@ -20,10 +20,10 @@ public class ProductServiceImpl implements IProductService
     private ProductMapper productMapper;
 
     /**
-     * 查询产品管理
+     * 查询产品
      * 
-     * @param id 产品管理主键
-     * @return 产品管理
+     * @param id 产品主键
+     * @return 产品
      */
     @Override
     public Product selectProductById(Long id)
@@ -32,10 +32,10 @@ public class ProductServiceImpl implements IProductService
     }
 
     /**
-     * 查询产品管理列表
+     * 查询产品列表
      * 
-     * @param product 产品管理
-     * @return 产品管理
+     * @param product 产品
+     * @return 产品
      */
     @Override
     public List<Product> selectProductList(Product product)
@@ -44,9 +44,9 @@ public class ProductServiceImpl implements IProductService
     }
 
     /**
-     * 新增产品管理
+     * 新增产品
      * 
-     * @param product 产品管理
+     * @param product 产品
      * @return 结果
      */
     @Override
@@ -56,9 +56,9 @@ public class ProductServiceImpl implements IProductService
     }
 
     /**
-     * 修改产品管理
+     * 修改产品
      * 
-     * @param product 产品管理
+     * @param product 产品
      * @return 结果
      */
     @Override
@@ -68,9 +68,9 @@ public class ProductServiceImpl implements IProductService
     }
 
     /**
-     * 批量删除产品管理
+     * 批量删除产品
      * 
-     * @param ids 需要删除的产品管理主键
+     * @param ids 需要删除的产品主键
      * @return 结果
      */
     @Override
@@ -80,9 +80,9 @@ public class ProductServiceImpl implements IProductService
     }
 
     /**
-     * 删除产品管理信息
+     * 删除产品信息
      * 
-     * @param id 产品管理主键
+     * @param id 产品主键
      * @return 结果
      */
     @Override

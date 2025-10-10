@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.module.iot.product.mapper.ProductTslMapper">
+    <resultMap type="com.zwei.module.iot.product.domain.ProductTsl" id="ProductTslResult">
+        <result property="productId" column="product_id" />
+        <result property="tsl" column="tsl" />
+    </resultMap>
+
+    <sql id="selectProductTslVo">
+        select product_id, tsl from zw_iot_product_tsl
+    </sql>
+
+    <select id="selectProductTslByProductId" parameterType="String" resultMap="ProductTslResult">
+        <include refid="selectProductTslVo" />
+        where product_id = #{productId}
+    </select>
+
+    <insert id="insertProductTsl" parameterType="com.zwei.module.iot.product.domain.ProductTsl">
+        insert into zw_iot_product_tsl (product_id, tsl)
+        values (#{productId}, #{tsl})
+        on duplicate key update tsl = #{tsl}
+    </insert>
+
+    <update id="updateProductTsl" parameterType="com.zwei.module.iot.product.domain.ProductTsl">
+        update zw_iot_product_tsl
+        set tsl = #{tsl}
+        where product_id = #{productId}
+    </update>
+
+    <delete id="deleteProductTslByProductId" parameterType="String">
+        delete from zw_iot_product_tsl where product_id = #{productId}
+    </delete>
+</mapper>

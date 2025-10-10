@@ -281,6 +281,13 @@
                 <artifactId>iot-endpoint-mqtt</artifactId>
                 <version>${zwei.version}</version>
             </dependency>
+
+            <!-- 设备管理 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>module-iot-device</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

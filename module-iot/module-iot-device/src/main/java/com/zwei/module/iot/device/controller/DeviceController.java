@@ -20,6 +20,9 @@ import com.zwei.module.iot.device.domain.Device;
 import com.zwei.module.iot.device.service.IDeviceService;
 import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.common.core.page.TableDataInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
 
 /**
  * 设备基本信息Controller
@@ -27,6 +30,7 @@ import com.zwei.common.core.page.TableDataInfo;
  * @author zwei
  * @date 2025-09-05
  */
+@Api(tags = "设备基本信息管理")
 @RestController
 @RequestMapping("/device/device")
 public class DeviceController extends BaseController
@@ -37,6 +41,7 @@ public class DeviceController extends BaseController
     /**
      * 查询设备基本信息列表
      */
+    @ApiOperation("获取设备基本信息列表")
     @PreAuthorize("@ss.hasPermi('device:device:list')")
     @GetMapping("/list")
     public TableDataInfo list(Device device)
@@ -49,6 +54,7 @@ public class DeviceController extends BaseController
     /**
      * 导出设备基本信息列表
      */
+    @ApiOperation("导出设备基本信息列表")
     @PreAuthorize("@ss.hasPermi('device:device:export')")
     @Log(title = "设备基本信息", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
@@ -62,6 +68,8 @@ public class DeviceController extends BaseController
     /**
      * 获取设备基本信息详细信息
      */
+    @ApiOperation("获取设备基本信息详细信息")
+    @ApiImplicitParam(name = "id", value = "设备ID", required = true, dataType = "Long", paramType = "path", dataTypeClass = Long.class)
     @PreAuthorize("@ss.hasPermi('device:device:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
@@ -72,6 +80,7 @@ public class DeviceController extends BaseController
     /**
      * 新增设备基本信息
      */
+    @ApiOperation("新增设备基本信息")
     @PreAuthorize("@ss.hasPermi('device:device:add')")
     @Log(title = "设备基本信息", businessType = BusinessType.INSERT)
     @PostMapping
@@ -83,6 +92,7 @@ public class DeviceController extends BaseController
     /**
      * 修改设备基本信息
      */
+    @ApiOperation("修改设备基本信息")
     @PreAuthorize("@ss.hasPermi('device:device:edit')")
     @Log(title = "设备基本信息", businessType = BusinessType.UPDATE)
     @PutMapping
@@ -94,6 +104,8 @@ public class DeviceController extends BaseController
     /**
      * 删除设备基本信息
      */
+    @ApiOperation("删除设备基本信息")
+    @ApiImplicitParam(name = "ids", value = "设备ID列表", required = true, dataType = "Long[]", paramType = "path", dataTypeClass = Long[].class)
     @PreAuthorize("@ss.hasPermi('device:device:remove')")
     @Log(title = "设备基本信息", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")

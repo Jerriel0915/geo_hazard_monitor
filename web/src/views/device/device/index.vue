@@ -91,27 +91,8 @@
       <el-table-column label="纬度" align="center" prop="latitude" />
       <el-table-column label="供电方式" align="center" prop="powerSupply" />
       <el-table-column label="生产厂商" align="center" prop="manufacturer" />
-      <el-table-column label="厂商电话" align="center" prop="suppierTel" />
-      <el-table-column label="安装日期" align="center" prop="installData" width="180">
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.installData, '{y}-{m}-{d}') }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="质保日期" align="center" prop="warrantyEnd" width="180">
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.warrantyEnd, '{y}-{m}-{d}') }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="维保人姓名" align="center" prop="maintenanceName" />
-      <el-table-column label="维保人电话" align="center" prop="maintenanceTel" />
-      <el-table-column label="巡检频率" align="center" prop="inspectionCycle" />
-      <el-table-column label="父设备id" align="center" prop="parentId" />
-      <el-table-column label="接入地址" align="center" prop="gatewayIp" />
-      <el-table-column label="端口号" align="center" prop="gatewayPort" />
-      <el-table-column label="账号" align="center" prop="user" />
-      <el-table-column label="密码" align="center" prop="password" />
-      <el-table-column label="安装位置" align="center" prop="location" />
-      <el-table-column label="设备安装附件" align="center" prop="installAttach" />
+      <el-table-column label="设备密钥" align="center" prop="deviceKey" />
+      <el-table-column label="设备密码" align="center" prop="deviceSecret" />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['device:device:edit']">修改</el-button>
@@ -154,10 +135,10 @@
           <el-input v-model="form.commProtocol" placeholder="请输入通信协议" />
         </el-form-item>
         <el-form-item label="经度" prop="longitude">
-          <el-input v-model="form.longitude" placeholder="请输入经度" />
+          <el-input v-model.number="form.longitude" placeholder="请输入经度（数值类型）" />
         </el-form-item>
         <el-form-item label="纬度" prop="latitude">
-          <el-input v-model="form.latitude" placeholder="请输入纬度" />
+          <el-input v-model.number="form.latitude" placeholder="请输入纬度（数值类型）" />
         </el-form-item>
         <el-form-item label="供电方式" prop="powerSupply">
           <el-input v-model="form.powerSupply" placeholder="请输入供电方式" />
@@ -165,54 +146,11 @@
         <el-form-item label="生产厂商" prop="manufacturer">
           <el-input v-model="form.manufacturer" placeholder="请输入生产厂商" />
         </el-form-item>
-        <el-form-item label="厂商电话" prop="suppierTel">
-          <el-input v-model="form.suppierTel" placeholder="请输入厂商电话" />
+        <el-form-item label="设备密钥" prop="deviceKey">
+          <el-input v-model="form.deviceKey" placeholder="请输入设备密钥" />
         </el-form-item>
-        <el-form-item label="安装日期" prop="installData">
-          <el-date-picker clearable
-            v-model="form.installData"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="请选择安装日期">
-          </el-date-picker>
-        </el-form-item>
-        <el-form-item label="质保日期" prop="warrantyEnd">
-          <el-date-picker clearable
-            v-model="form.warrantyEnd"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="请选择质保日期">
-          </el-date-picker>
-        </el-form-item>
-        <el-form-item label="维保人姓名" prop="maintenanceName">
-          <el-input v-model="form.maintenanceName" placeholder="请输入维保人姓名" />
-        </el-form-item>
-        <el-form-item label="维保人电话" prop="maintenanceTel">
-          <el-input v-model="form.maintenanceTel" placeholder="请输入维保人电话" />
-        </el-form-item>
-        <el-form-item label="巡检频率" prop="inspectionCycle">
-          <el-input v-model="form.inspectionCycle" placeholder="请输入巡检频率" />
-        </el-form-item>
-        <el-form-item label="父设备id" prop="parentId">
-          <el-input v-model="form.parentId" placeholder="请输入父设备id" />
-        </el-form-item>
-        <el-form-item label="接入地址" prop="gatewayIp">
-          <el-input v-model="form.gatewayIp" placeholder="请输入接入地址" />
-        </el-form-item>
-        <el-form-item label="端口号" prop="gatewayPort">
-          <el-input v-model="form.gatewayPort" placeholder="请输入端口号" />
-        </el-form-item>
-        <el-form-item label="账号" prop="user">
-          <el-input v-model="form.user" placeholder="请输入账号" />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" placeholder="请输入密码" />
-        </el-form-item>
-        <el-form-item label="安装位置" prop="location">
-          <el-input v-model="form.location" placeholder="请输入安装位置" />
-        </el-form-item>
-        <el-form-item label="设备安装附件" prop="installAttach">
-          <el-input v-model="form.installAttach" type="textarea" placeholder="请输入内容" />
+        <el-form-item label="设备密码" prop="deviceSecret">
+          <el-input v-model="form.deviceSecret" placeholder="请输入设备密码" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -242,32 +180,34 @@ const total = ref(0)
 const title = ref("")
 
 const data = reactive({
-  form: {},
-  queryParams: {
-    pageNum: 1,
-    pageSize: 10,
-    name: null,
-    type: null,
-    productId: null,
-  },
-  rules: {
-    sn: [
-      { required: true, message: "设备编号不能为空", trigger: "blur" }
-    ],
-    name: [
-      { required: true, message: "设备名称不能为空", trigger: "blur" }
-    ],
-    type: [
-      { required: true, message: "设备类型不能为空", trigger: "change" }
-    ],
-    longitude: [
-      { required: true, message: "经度不能为空", trigger: "blur" }
-    ],
-    latitude: [
-      { required: true, message: "纬度不能为空", trigger: "blur" }
-    ],
-  }
-})
+    form: {},
+    queryParams: {
+      pageNum: 1,
+      pageSize: 10,
+      name: null,
+      type: null,
+      productId: null,
+    },
+    rules: {
+      sn: [
+        { required: true, message: "设备编号不能为空", trigger: "blur" }
+      ],
+      name: [
+        { required: true, message: "设备名称不能为空", trigger: "blur" }
+      ],
+      type: [
+        { required: true, message: "设备类型不能为空", trigger: "change" }
+      ],
+      longitude: [
+        { required: true, message: "经度不能为空", trigger: "blur" },
+        { type: 'number', message: "经度必须为数字类型", trigger: "blur" }
+      ],
+      latitude: [
+        { required: true, message: "纬度不能为空", trigger: "blur" },
+        { type: 'number', message: "纬度必须为数字类型", trigger: "blur" }
+      ],
+    }
+  })
 
 const { queryParams, form, rules } = toRefs(data)
 
@@ -300,19 +240,8 @@ function reset() {
     latitude: null,
     powerSupply: null,
     manufacturer: null,
-    suppierTel: null,
-    installData: null,
-    warrantyEnd: null,
-    maintenanceName: null,
-    maintenanceTel: null,
-    inspectionCycle: null,
-    parentId: null,
-    gatewayIp: null,
-    gatewayPort: null,
-    user: null,
-    password: null,
-    location: null,
-    installAttach: null
+    deviceKey: null,
+    deviceSecret: null
   }
   proxy.resetForm("deviceRef")
 }

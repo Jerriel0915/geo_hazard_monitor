@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.module.iot.device.mapper.DeviceStatusMapper">
+    
+    <resultMap type="DeviceStatus" id="DeviceStatusResult">
+        <result property="deviceId"    column="device_id"    />
+        <result property="status"    column="status"    />
+        <result property="lastReportTime"    column="last_report_time"    />
+        <result property="lastConnectTime"    column="last_connect_time"    />
+        <result property="lastOfflineTime"    column="last_offline_time"    />
+    </resultMap>
+
+    <sql id="selectDeviceStatusVo">
+        select device_id, status, last_report_time, last_connect_time, last_offline_time from zw_iot_device_status
+    </sql>
+
+    <select id="selectDeviceStatusList" parameterType="DeviceStatus" resultMap="DeviceStatusResult">
+        <include refid="selectDeviceStatusVo"/>
+        <where>  
+            <if test="deviceId != null and deviceId != ''"> and device_id = #{deviceId}</if>
+            <if test="status != null "> and status = #{status}</if>
+            <if test="lastReportTime != null "> and last_report_time = #{lastReportTime}</if>
+            <if test="lastConnectTime != null "> and last_connect_time = #{lastConnectTime}</if>
+            <if test="lastOfflineTime != null "> and last_offline_time = #{lastOfflineTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectDeviceStatusByDeviceId" parameterType="String" resultMap="DeviceStatusResult">
+        <include refid="selectDeviceStatusVo"/>
+        where device_id = #{deviceId}
+    </select>
+
+    <insert id="insertDeviceStatus" parameterType="DeviceStatus">
+        insert into zw_iot_device_status
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null and deviceId != ''">device_id,</if>
+            <if test="status != null">status,</if>
+            <if test="lastReportTime != null">last_report_time,</if>
+            <if test="lastConnectTime != null">last_connect_time,</if>
+            <if test="lastOfflineTime != null">last_offline_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null and deviceId != ''">#{deviceId},</if>
+            <if test="status != null">#{status},</if>
+            <if test="lastReportTime != null">#{lastReportTime},</if>
+            <if test="lastConnectTime != null">#{lastConnectTime},</if>
+            <if test="lastOfflineTime != null">#{lastOfflineTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateDeviceStatus" parameterType="DeviceStatus">
+        update zw_iot_device_status
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="status != null">status = #{status},</if>
+            <if test="lastReportTime != null">last_report_time = #{lastReportTime},</if>
+            <if test="lastConnectTime != null">last_connect_time = #{lastConnectTime},</if>
+            <if test="lastOfflineTime != null">last_offline_time = #{lastOfflineTime},</if>
+        </trim>
+        where device_id = #{deviceId}
+    </update>
+
+    <delete id="deleteDeviceStatusByDeviceId" parameterType="String">
+        delete from zw_iot_device_status where device_id = #{deviceId}
+    </delete>
+
+    <delete id="deleteDeviceStatusByDeviceIds" parameterType="String">
+        delete from zw_iot_device_status where device_id in 
+        <foreach item="deviceId" collection="array" open="(" separator="," close=")">
+            #{deviceId}
+        </foreach>
+    </delete>
+</mapper>

@@ -3,70 +3,80 @@
 PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zwei.module.iot.product.mapper.ProductMapper">
-    
-    <resultMap type="Product" id="ProductResult">
-        <result property="id"    column="id"    />
-        <result property="sn"    column="sn"    />
-        <result property="content"    column="content"    />
-        <result property="type"    column="type"    />
-        <result property="fields"    column="fields"    />
-        <result property="comment"    column="comment"    />
+    <resultMap type="com.zwei.module.iot.product.domain.Product" id="ProductResult">
+        <id property="id" column="id" />
+        <result property="productKey" column="product_key" />
+        <result property="name" column="name" />
+        <result property="nodeType" column="node_type" />
+        <result property="remarks" column="remarks" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
     </resultMap>
 
     <sql id="selectProductVo">
-        select id, sn, content, type, fields, comment from zw_product
+        select id, product_key, name, node_type, remarks, create_by, create_time, update_by, update_time from zw_iot_product
     </sql>
 
-    <select id="selectProductList" parameterType="Product" resultMap="ProductResult">
-        <include refid="selectProductVo"/>
-        <where>  
-            <if test="sn != null  and sn != ''"> and sn = #{sn}</if>
-            <if test="content != null  and content != ''"> and content = #{content}</if>
-            <if test="type != null  and type != ''"> and type = #{type}</if>
-        </where>
-    </select>
-    
     <select id="selectProductById" parameterType="Long" resultMap="ProductResult">
-        <include refid="selectProductVo"/>
+        <include refid="selectProductVo" />
         where id = #{id}
     </select>
 
-    <insert id="insertProduct" parameterType="Product" useGeneratedKeys="true" keyProperty="id">
-        insert into zw_product
+    <select id="selectProductList" parameterType="com.zwei.module.iot.product.domain.Product" resultMap="ProductResult">
+        <include refid="selectProductVo" />
+        <where>
+            <if test="productKey != null  and productKey != ''"> and product_key = #{productKey}</if>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="nodeType != null"> and node_type = #{nodeType}</if>
+            <if test="remarks != null  and remarks != ''"> and remarks = #{remarks}</if>
+        </where>
+    </select>
+
+    <insert id="insertProduct" parameterType="com.zwei.module.iot.product.domain.Product" useGeneratedKeys="true" keyProperty="id">
+        insert into zw_iot_product
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="sn != null and sn != ''">sn,</if>
-            <if test="content != null and content != ''">content,</if>
-            <if test="type != null and type != ''">type,</if>
-            <if test="fields != null">fields,</if>
-            <if test="comment != null">comment,</if>
+            <if test="productKey != null  and productKey != ''">product_key,</if>
+            <if test="name != null  and name != ''">name,</if>
+            <if test="nodeType != null">node_type,</if>
+            <if test="remarks != null  and remarks != ''">remarks,</if>
+            <if test="createBy != null  and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null  and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="sn != null and sn != ''">#{sn},</if>
-            <if test="content != null and content != ''">#{content},</if>
-            <if test="type != null and type != ''">#{type},</if>
-            <if test="fields != null">#{fields},</if>
-            <if test="comment != null">#{comment},</if>
+            <if test="productKey != null  and productKey != ''">#{productKey},</if>
+            <if test="name != null  and name != ''">#{name},</if>
+            <if test="nodeType != null">#{nodeType},</if>
+            <if test="remarks != null  and remarks != ''">#{remarks},</if>
+            <if test="createBy != null  and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null  and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
          </trim>
     </insert>
 
-    <update id="updateProduct" parameterType="Product">
-        update zw_product
-        <trim prefix="SET" suffixOverrides=",">
-            <if test="sn != null and sn != ''">sn = #{sn},</if>
-            <if test="content != null and content != ''">content = #{content},</if>
-            <if test="type != null and type != ''">type = #{type},</if>
-            <if test="fields != null">fields = #{fields},</if>
-            <if test="comment != null">comment = #{comment},</if>
-        </trim>
+    <update id="updateProduct" parameterType="com.zwei.module.iot.product.domain.Product">
+        update zw_iot_product
+        <set>
+            <if test="productKey != null  and productKey != ''">product_key = #{productKey},</if>
+            <if test="name != null  and name != ''">name = #{name},</if>
+            <if test="nodeType != null">node_type = #{nodeType},</if>
+            <if test="remarks != null  and remarks != ''">remarks = #{remarks},</if>
+            <if test="updateBy != null  and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
         where id = #{id}
     </update>
 
     <delete id="deleteProductById" parameterType="Long">
-        delete from zw_product where id = #{id}
+        delete from zw_iot_product where id = #{id}
     </delete>
 
-    <delete id="deleteProductByIds" parameterType="String">
-        delete from zw_product where id in 
+    <delete id="deleteProductByIds" parameterType="Long[]">
+        delete from zw_iot_product where id in 
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>

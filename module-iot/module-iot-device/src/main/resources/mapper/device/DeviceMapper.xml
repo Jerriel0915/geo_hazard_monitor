@@ -15,31 +15,30 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="latitude"    column="latitude"    />
         <result property="powerSupply"    column="power_supply"    />
         <result property="manufacturer"    column="manufacturer"    />
-        <result property="suppierTel"    column="suppier_tel"    />
-        <result property="installData"    column="install_data"    />
-        <result property="warrantyEnd"    column="warranty_end"    />
-        <result property="maintenanceName"    column="maintenance_name"    />
-        <result property="maintenanceTel"    column="maintenance_tel"    />
-        <result property="inspectionCycle"    column="inspection_cycle"    />
         <result property="parentId"    column="parent_id"    />
-        <result property="gatewayIp"    column="gateway_ip"    />
-        <result property="gatewayPort"    column="gateway_port"    />
-        <result property="user"    column="user"    />
-        <result property="password"    column="password"    />
-        <result property="location"    column="location"    />
-        <result property="installAttach"    column="install_attach"    />
+        <result property="deviceKey"    column="device_key"    />
+        <result property="deviceSecret"    column="device_secret"    />
     </resultMap>
 
     <sql id="selectDeviceVo">
-        select id, sn, name, type, product_id, comm_protocol, longitude, latitude, power_supply, manufacturer, suppier_tel, install_data, warranty_end, maintenance_name, maintenance_tel, inspection_cycle, parent_id, gateway_ip, gateway_port, user, password, location, install_attach from zw_device
+        select id, sn, name, type, product_id, comm_protocol, longitude, latitude, power_supply, manufacturer, parent_id, device_key, device_secret from zw_iot_device
     </sql>
 
     <select id="selectDeviceList" parameterType="Device" resultMap="DeviceResult">
         <include refid="selectDeviceVo"/>
-        <where>  
-            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
-            <if test="type != null  and type != ''"> and type = #{type}</if>
-            <if test="productId != null "> and product_id like concat('%', #{productId}, '%')</if>
+        <where>
+            <if test="sn != null and sn != ''"> and sn = #{sn}</if>
+            <if test="name != null and name != ''"> and name = #{name}</if>
+            <if test="type != null and type != ''"> and type = #{type}</if>
+            <if test="productId != null"> and product_id = #{productId}</if>
+            <if test="commProtocol != null"> and comm_protocol = #{commProtocol}</if>
+            <if test="longitude != null"> and longitude = #{longitude}</if>
+            <if test="latitude != null"> and latitude = #{latitude}</if>
+            <if test="powerSupply != null"> and power_supply = #{powerSupply}</if>
+            <if test="manufacturer != null"> and manufacturer = #{manufacturer}</if>
+            <if test="parentId != null"> and parent_id = #{parentId}</if>
+            <if test="deviceKey != null"> and device_key = #{deviceKey}</if>
+            <if test="deviceSecret != null"> and device_secret = #{deviceSecret}</if>
         </where>
     </select>
     
@@ -49,7 +48,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <insert id="insertDevice" parameterType="Device" useGeneratedKeys="true" keyProperty="id">
-        insert into zw_device
+        insert into zw_iot_device
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="sn != null and sn != ''">sn,</if>
             <if test="name != null and name != ''">name,</if>
@@ -60,19 +59,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="latitude != null">latitude,</if>
             <if test="powerSupply != null">power_supply,</if>
             <if test="manufacturer != null">manufacturer,</if>
-            <if test="suppierTel != null">suppier_tel,</if>
-            <if test="installData != null">install_data,</if>
-            <if test="warrantyEnd != null">warranty_end,</if>
-            <if test="maintenanceName != null">maintenance_name,</if>
-            <if test="maintenanceTel != null">maintenance_tel,</if>
-            <if test="inspectionCycle != null">inspection_cycle,</if>
             <if test="parentId != null">parent_id,</if>
-            <if test="gatewayIp != null">gateway_ip,</if>
-            <if test="gatewayPort != null">gateway_port,</if>
-            <if test="user != null">user,</if>
-            <if test="password != null">password,</if>
-            <if test="location != null">location,</if>
-            <if test="installAttach != null">install_attach,</if>
+            <if test="deviceKey != null">device_key,</if>
+            <if test="deviceSecret != null">device_secret,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="sn != null and sn != ''">#{sn},</if>
@@ -84,24 +73,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="latitude != null">#{latitude},</if>
             <if test="powerSupply != null">#{powerSupply},</if>
             <if test="manufacturer != null">#{manufacturer},</if>
-            <if test="suppierTel != null">#{suppierTel},</if>
-            <if test="installData != null">#{installData},</if>
-            <if test="warrantyEnd != null">#{warrantyEnd},</if>
-            <if test="maintenanceName != null">#{maintenanceName},</if>
-            <if test="maintenanceTel != null">#{maintenanceTel},</if>
-            <if test="inspectionCycle != null">#{inspectionCycle},</if>
             <if test="parentId != null">#{parentId},</if>
-            <if test="gatewayIp != null">#{gatewayIp},</if>
-            <if test="gatewayPort != null">#{gatewayPort},</if>
-            <if test="user != null">#{user},</if>
-            <if test="password != null">#{password},</if>
-            <if test="location != null">#{location},</if>
-            <if test="installAttach != null">#{installAttach},</if>
+            <if test="deviceKey != null">#{deviceKey},</if>
+            <if test="deviceSecret != null">#{deviceSecret},</if>
          </trim>
     </insert>
 
     <update id="updateDevice" parameterType="Device">
-        update zw_device
+        update zw_iot_device
         <trim prefix="SET" suffixOverrides=",">
             <if test="sn != null and sn != ''">sn = #{sn},</if>
             <if test="name != null and name != ''">name = #{name},</if>
@@ -112,29 +91,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="latitude != null">latitude = #{latitude},</if>
             <if test="powerSupply != null">power_supply = #{powerSupply},</if>
             <if test="manufacturer != null">manufacturer = #{manufacturer},</if>
-            <if test="suppierTel != null">suppier_tel = #{suppierTel},</if>
-            <if test="installData != null">install_data = #{installData},</if>
-            <if test="warrantyEnd != null">warranty_end = #{warrantyEnd},</if>
-            <if test="maintenanceName != null">maintenance_name = #{maintenanceName},</if>
-            <if test="maintenanceTel != null">maintenance_tel = #{maintenanceTel},</if>
-            <if test="inspectionCycle != null">inspection_cycle = #{inspectionCycle},</if>
             <if test="parentId != null">parent_id = #{parentId},</if>
-            <if test="gatewayIp != null">gateway_ip = #{gatewayIp},</if>
-            <if test="gatewayPort != null">gateway_port = #{gatewayPort},</if>
-            <if test="user != null">user = #{user},</if>
-            <if test="password != null">password = #{password},</if>
-            <if test="location != null">location = #{location},</if>
-            <if test="installAttach != null">install_attach = #{installAttach},</if>
+            <if test="deviceKey != null">device_key = #{deviceKey},</if>
+            <if test="deviceSecret != null">device_secret = #{deviceSecret},</if>
         </trim>
         where id = #{id}
     </update>
 
     <delete id="deleteDeviceById" parameterType="Long">
-        delete from zw_device where id = #{id}
+        delete from zw_iot_device where id = #{id}
     </delete>
 
     <delete id="deleteDeviceByIds" parameterType="String">
-        delete from zw_device where id in 
+        delete from zw_iot_device where id in 
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>

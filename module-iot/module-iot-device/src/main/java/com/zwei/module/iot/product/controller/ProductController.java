@@ -21,23 +21,28 @@ import com.zwei.module.iot.product.service.IProductService;
 import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.common.core.page.TableDataInfo;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+
 /**
- * 产品管理Controller
+ * 产品Controller
  * 
- * @author zwei
- * @date 2025-09-04
+ * @author linx
+ * @date 2025-09-05
  */
+@Api(tags = "产品管理")
 @RestController
-@RequestMapping("/product/product")
+@RequestMapping("/iot/product/product")
 public class ProductController extends BaseController
 {
     @Autowired
     private IProductService productService;
 
     /**
-     * 查询产品管理列表
+     * 查询产品列表
      */
-    @PreAuthorize("@ss.hasPermi('product:product:list')")
+    @ApiOperation("查询产品列表")
+    @PreAuthorize("@ss.hasPermi('iot:product:list')")
     @GetMapping("/list")
     public TableDataInfo list(Product product)
     {
@@ -47,33 +52,36 @@ public class ProductController extends BaseController
     }
 
     /**
-     * 导出产品管理列表
+     * 导出产品列表
      */
-    @PreAuthorize("@ss.hasPermi('product:product:export')")
-    @Log(title = "产品管理", businessType = BusinessType.EXPORT)
-    @PostMapping("/export")
-    public void export(HttpServletResponse response, Product product)
+    @ApiOperation("导出产品列表")
+    @PreAuthorize("@ss.hasPermi('iot:product:export')")
+    @Log(title = "产品", businessType = BusinessType.EXPORT)
+    @GetMapping("/export")
+    public AjaxResult export(Product product)
     {
         List<Product> list = productService.selectProductList(product);
         ExcelUtil<Product> util = new ExcelUtil<Product>(Product.class);
-        util.exportExcel(response, list, "产品管理数据");
+        return util.exportExcel(list, "产品数据");
     }
 
     /**
-     * 获取产品管理详细信息
+     * 获取产品详细信息
      */
-    @PreAuthorize("@ss.hasPermi('product:product:query')")
-    @GetMapping(value = "/{id}")
+    @ApiOperation("获取产品详细信息")
+    @PreAuthorize("@ss.hasPermi('iot:product:query')")
+    @GetMapping(value = "{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
-        return success(productService.selectProductById(id));
+        return AjaxResult.success(productService.selectProductById(id));
     }
 
     /**
-     * 新增产品管理
+     * 新增产品
      */
-    @PreAuthorize("@ss.hasPermi('product:product:add')")
-    @Log(title = "产品管理", businessType = BusinessType.INSERT)
+    @ApiOperation("新增产品")
+    @PreAuthorize("@ss.hasPermi('iot:product:add')")
+    @Log(title = "产品", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody Product product)
     {
@@ -81,10 +89,11 @@ public class ProductController extends BaseController
     }
 
     /**
-     * 修改产品管理
+     * 修改产品
      */
-    @PreAuthorize("@ss.hasPermi('product:product:edit')")
-    @Log(title = "产品管理", businessType = BusinessType.UPDATE)
+    @ApiOperation("修改产品")
+    @PreAuthorize("@ss.hasPermi('iot:product:edit')")
+    @Log(title = "产品", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody Product product)
     {
@@ -92,11 +101,12 @@ public class ProductController extends BaseController
     }
 
     /**
-     * 删除产品管理
+     * 删除产品
      */
-    @PreAuthorize("@ss.hasPermi('product:product:remove')")
-    @Log(title = "产品管理", businessType = BusinessType.DELETE)
-	@DeleteMapping("/{ids}")
+    @ApiOperation("删除产品")
+    @PreAuthorize("@ss.hasPermi('iot:product:remove')")
+    @Log(title = "产品", businessType = BusinessType.DELETE)
+	@DeleteMapping("{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {
         return toAjax(productService.deleteProductByIds(ids));

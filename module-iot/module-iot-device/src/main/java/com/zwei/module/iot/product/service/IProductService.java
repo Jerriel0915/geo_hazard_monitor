@@ -4,57 +4,57 @@ import java.util.List;
 import com.zwei.module.iot.product.domain.Product;
 
 /**
- * 产品管理Service接口
+ * 产品Service接口
  * 
- * @author zwei
- * @date 2025-09-04
+ * @author linx
+ * @date 2025-09-05
  */
 public interface IProductService 
 {
     /**
-     * 查询产品管理
+     * 查询产品
      * 
-     * @param id 产品管理主键
-     * @return 产品管理
+     * @param id 产品主键
+     * @return 产品
      */
     public Product selectProductById(Long id);
 
     /**
-     * 查询产品管理列表
+     * 查询产品列表
      * 
-     * @param product 产品管理
-     * @return 产品管理集合
+     * @param product 产品
+     * @return 产品集合
      */
     public List<Product> selectProductList(Product product);
 
     /**
-     * 新增产品管理
+     * 新增产品
      * 
-     * @param product 产品管理
+     * @param product 产品
      * @return 结果
      */
     public int insertProduct(Product product);
 
     /**
-     * 修改产品管理
+     * 修改产品
      * 
-     * @param product 产品管理
+     * @param product 产品
      * @return 结果
      */
     public int updateProduct(Product product);
 
     /**
-     * 批量删除产品管理
+     * 批量删除产品
      * 
-     * @param ids 需要删除的产品管理主键集合
+     * @param ids 需要删除的产品主键集合
      * @return 结果
      */
     public int deleteProductByIds(Long[] ids);
 
     /**
-     * 删除产品管理信息
+     * 删除产品信息
      * 
-     * @param id 产品管理主键
+     * @param id 产品主键
      * @return 结果
      */
     public int deleteProductById(Long id);

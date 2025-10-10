@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.module.iot.device.mapper.DeviceAliveLogMapper">
+    
+    <resultMap type="DeviceAliveLog" id="DeviceAliveLogResult">
+        <result property="id"    column="id"    />
+        <result property="deviceId"    column="device_id"    />
+        <result property="lastConnectTime"    column="last_connect_time"    />
+        <result property="lastDisconnectTime"    column="last_disconnect_time"    />
+    </resultMap>
+
+    <sql id="selectDeviceAliveLogVo">
+        select id, device_id, last_connect_time, last_disconnect_time from zw_iot_device_alive_log
+    </sql>
+
+    <select id="selectDeviceAliveLogList" parameterType="DeviceAliveLog" resultMap="DeviceAliveLogResult">
+        <include refid="selectDeviceAliveLogVo"/>
+        <where>  
+            <if test="deviceId != null "> and device_id = #{deviceId}</if>
+            <if test="lastConnectTime != null "> and last_connect_time = #{lastConnectTime}</if>
+            <if test="lastDisconnectTime != null "> and last_disconnect_time = #{lastDisconnectTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectDeviceAliveLogById" parameterType="Long" resultMap="DeviceAliveLogResult">
+        <include refid="selectDeviceAliveLogVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertDeviceAliveLog" parameterType="DeviceAliveLog" useGeneratedKeys="true" keyProperty="id">
+        insert into zw_iot_device_alive_log
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null">device_id,</if>
+            <if test="lastConnectTime != null">last_connect_time,</if>
+            <if test="lastDisconnectTime != null">last_disconnect_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null">#{deviceId},</if>
+            <if test="lastConnectTime != null">#{lastConnectTime},</if>
+            <if test="lastDisconnectTime != null">#{lastDisconnectTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateDeviceAliveLog" parameterType="DeviceAliveLog">
+        update zw_iot_device_alive_log
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deviceId != null">device_id = #{deviceId},</if>
+            <if test="lastConnectTime != null">last_connect_time = #{lastConnectTime},</if>
+            <if test="lastDisconnectTime != null">last_disconnect_time = #{lastDisconnectTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteDeviceAliveLogById" parameterType="Long">
+        delete from zw_iot_device_alive_log where id = #{id}
+    </delete>
+
+    <delete id="deleteDeviceAliveLogByIds" parameterType="String">
+        delete from zw_iot_device_alive_log where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

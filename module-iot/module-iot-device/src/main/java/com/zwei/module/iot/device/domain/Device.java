@@ -1,114 +1,86 @@
 package com.zwei.module.iot.device.domain;
 
-import java.util.Date;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.zwei.common.annotation.Excel;
 import com.zwei.common.core.domain.BaseEntity;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
 
 /**
- * 设备基本信息对象 zw_device
+ * 设备基本信息对象 zw_iot_device
  * 
- * @author zwei
+ * @author linx
  * @date 2025-09-05
  */
+@ApiModel("设备基本信息对象")
 public class Device extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
 
     /** 数据ID（表主键，自增） */
+    @ApiModelProperty("数据ID（表主键，自增）")
     private Long id;
 
-    /** 设备编号 */
+    /** 设备编号;clientId */
     @Excel(name = "设备编号")
+    @ApiModelProperty("设备编号;clientId")
     private String sn;
 
     /** 设备名称 */
     @Excel(name = "设备名称")
+    @ApiModelProperty("设备名称")
     private String name;
 
-    /** 设备类型 */
+    /** 设备类型;直连设备/网关设备/网关子设备 */
     @Excel(name = "设备类型")
+    @ApiModelProperty("设备类型;直连设备/网关设备/网关子设备")
     private String type;
 
     /** 所属产品id */
     @Excel(name = "所属产品id")
+    @ApiModelProperty("所属产品id")
     private Long productId;
 
     /** 通信协议 */
     @Excel(name = "通信协议")
+    @ApiModelProperty("通信协议")
     private String commProtocol;
 
     /** 经度 */
     @Excel(name = "经度")
-    private Long longitude;
+    @ApiModelProperty("经度")
+    private Double longitude;
 
     /** 纬度 */
     @Excel(name = "纬度")
-    private Long latitude;
+    @ApiModelProperty("纬度")
+    private Double latitude;
 
     /** 供电方式 */
     @Excel(name = "供电方式")
+    @ApiModelProperty("供电方式")
     private String powerSupply;
 
     /** 生产厂商 */
     @Excel(name = "生产厂商")
+    @ApiModelProperty("生产厂商")
     private String manufacturer;
-
-    /** 厂商电话 */
-    @Excel(name = "厂商电话")
-    private String suppierTel;
-
-    /** 安装日期 */
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    @Excel(name = "安装日期", width = 30, dateFormat = "yyyy-MM-dd")
-    private Date installData;
-
-    /** 质保日期 */
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    @Excel(name = "质保日期", width = 30, dateFormat = "yyyy-MM-dd")
-    private Date warrantyEnd;
-
-    /** 维保人姓名 */
-    @Excel(name = "维保人姓名")
-    private String maintenanceName;
-
-    /** 维保人电话 */
-    @Excel(name = "维保人电话")
-    private String maintenanceTel;
-
-    /** 巡检频率 */
-    @Excel(name = "巡检频率")
-    private String inspectionCycle;
 
     /** 父设备id */
     @Excel(name = "父设备id")
+    @ApiModelProperty("父设备id")
     private Long parentId;
-
-    /** 接入地址 */
-    @Excel(name = "接入地址")
-    private String gatewayIp;
-
-    /** 端口号 */
-    @Excel(name = "端口号")
-    private Long gatewayPort;
-
-    /** 账号 */
-    @Excel(name = "账号")
-    private String user;
-
-    /** 密码 */
-    @Excel(name = "密码")
-    private String password;
-
-    /** 安装位置 */
-    @Excel(name = "安装位置")
-    private String location;
-
-    /** 设备安装附件 */
-    @Excel(name = "设备安装附件")
-    private String installAttach;
+    
+    /** deviceKey */
+    @Excel(name = "设备密钥")
+    @ApiModelProperty("deviceKey")
+    private String deviceKey;
+    
+    /** deviceSecret */
+    @Excel(name = "设备密钥")
+    @ApiModelProperty("deviceSecret")
+    private String deviceSecret;
 
     public void setId(Long id) 
     {
@@ -170,22 +142,22 @@ public class Device extends BaseEntity
         return commProtocol;
     }
 
-    public void setLongitude(Long longitude) 
+    public void setLongitude(Double longitude) 
     {
         this.longitude = longitude;
     }
 
-    public Long getLongitude() 
+    public Double getLongitude() 
     {
         return longitude;
     }
 
-    public void setLatitude(Long latitude) 
+    public void setLatitude(Double latitude) 
     {
         this.latitude = latitude;
     }
 
-    public Long getLatitude() 
+    public Double getLatitude() 
     {
         return latitude;
     }
@@ -210,66 +182,6 @@ public class Device extends BaseEntity
         return manufacturer;
     }
 
-    public void setSuppierTel(String suppierTel) 
-    {
-        this.suppierTel = suppierTel;
-    }
-
-    public String getSuppierTel() 
-    {
-        return suppierTel;
-    }
-
-    public void setInstallData(Date installData) 
-    {
-        this.installData = installData;
-    }
-
-    public Date getInstallData() 
-    {
-        return installData;
-    }
-
-    public void setWarrantyEnd(Date warrantyEnd) 
-    {
-        this.warrantyEnd = warrantyEnd;
-    }
-
-    public Date getWarrantyEnd() 
-    {
-        return warrantyEnd;
-    }
-
-    public void setMaintenanceName(String maintenanceName) 
-    {
-        this.maintenanceName = maintenanceName;
-    }
-
-    public String getMaintenanceName() 
-    {
-        return maintenanceName;
-    }
-
-    public void setMaintenanceTel(String maintenanceTel) 
-    {
-        this.maintenanceTel = maintenanceTel;
-    }
-
-    public String getMaintenanceTel() 
-    {
-        return maintenanceTel;
-    }
-
-    public void setInspectionCycle(String inspectionCycle) 
-    {
-        this.inspectionCycle = inspectionCycle;
-    }
-
-    public String getInspectionCycle() 
-    {
-        return inspectionCycle;
-    }
-
     public void setParentId(Long parentId) 
     {
         this.parentId = parentId;
@@ -279,65 +191,25 @@ public class Device extends BaseEntity
     {
         return parentId;
     }
-
-    public void setGatewayIp(String gatewayIp) 
+    
+    public void setDeviceKey(String deviceKey) 
     {
-        this.gatewayIp = gatewayIp;
+        this.deviceKey = deviceKey;
     }
 
-    public String getGatewayIp() 
+    public String getDeviceKey() 
     {
-        return gatewayIp;
+        return deviceKey;
+    }
+    
+    public void setDeviceSecret(String deviceSecret) 
+    {
+        this.deviceSecret = deviceSecret;
     }
 
-    public void setGatewayPort(Long gatewayPort) 
+    public String getDeviceSecret() 
     {
-        this.gatewayPort = gatewayPort;
-    }
-
-    public Long getGatewayPort() 
-    {
-        return gatewayPort;
-    }
-
-    public void setUser(String user) 
-    {
-        this.user = user;
-    }
-
-    public String getUser() 
-    {
-        return user;
-    }
-
-    public void setPassword(String password) 
-    {
-        this.password = password;
-    }
-
-    public String getPassword() 
-    {
-        return password;
-    }
-
-    public void setLocation(String location) 
-    {
-        this.location = location;
-    }
-
-    public String getLocation() 
-    {
-        return location;
-    }
-
-    public void setInstallAttach(String installAttach) 
-    {
-        this.installAttach = installAttach;
-    }
-
-    public String getInstallAttach() 
-    {
-        return installAttach;
+        return deviceSecret;
     }
 
     @Override
@@ -353,19 +225,9 @@ public class Device extends BaseEntity
             .append("latitude", getLatitude())
             .append("powerSupply", getPowerSupply())
             .append("manufacturer", getManufacturer())
-            .append("suppierTel", getSuppierTel())
-            .append("installData", getInstallData())
-            .append("warrantyEnd", getWarrantyEnd())
-            .append("maintenanceName", getMaintenanceName())
-            .append("maintenanceTel", getMaintenanceTel())
-            .append("inspectionCycle", getInspectionCycle())
             .append("parentId", getParentId())
-            .append("gatewayIp", getGatewayIp())
-            .append("gatewayPort", getGatewayPort())
-            .append("user", getUser())
-            .append("password", getPassword())
-            .append("location", getLocation())
-            .append("installAttach", getInstallAttach())
+            .append("deviceKey", getDeviceKey())
+            .append("deviceSecret", getDeviceSecret())
             .toString();
     }
 }
