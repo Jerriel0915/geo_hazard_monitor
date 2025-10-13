@@ -65,6 +65,12 @@
             <artifactId>module-iot-device</artifactId>
         </dependency>
 
+        <!--设备数据存储实现 请选择使用的数据库-->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>iot-storage-mysql</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

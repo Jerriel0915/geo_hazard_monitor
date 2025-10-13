@@ -288,6 +288,13 @@
                 <artifactId>module-iot-device</artifactId>
                 <version>${zwei.version}</version>
             </dependency>
+
+            <!-- 物联网存储mysql实现 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>iot-storage-mysql</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

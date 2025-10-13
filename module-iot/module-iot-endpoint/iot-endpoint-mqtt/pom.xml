@@ -40,6 +40,20 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
+        
+        <!-- 添加对device模块的依赖，用于设备认证 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>module-iot-device</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        
+        <!-- 添加对core模块的依赖，用于引用认证接口 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>module-iot-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

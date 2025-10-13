@@ -9,14 +9,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="name" column="name" />
         <result property="nodeType" column="node_type" />
         <result property="remarks" column="remarks" />
-        <result property="createBy" column="create_by" />
-        <result property="createTime" column="create_time" />
-        <result property="updateBy" column="update_by" />
-        <result property="updateTime" column="update_time" />
     </resultMap>
 
     <sql id="selectProductVo">
-        select id, product_key, name, node_type, remarks, create_by, create_time, update_by, update_time from zw_iot_product
+        select id, product_key, name, node_type, remarks from zw_iot_product
     </sql>
 
     <select id="selectProductById" parameterType="Long" resultMap="ProductResult">
@@ -41,20 +37,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="name != null  and name != ''">name,</if>
             <if test="nodeType != null">node_type,</if>
             <if test="remarks != null  and remarks != ''">remarks,</if>
-            <if test="createBy != null  and createBy != ''">create_by,</if>
-            <if test="createTime != null">create_time,</if>
-            <if test="updateBy != null  and updateBy != ''">update_by,</if>
-            <if test="updateTime != null">update_time,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="productKey != null  and productKey != ''">#{productKey},</if>
             <if test="name != null  and name != ''">#{name},</if>
             <if test="nodeType != null">#{nodeType},</if>
             <if test="remarks != null  and remarks != ''">#{remarks},</if>
-            <if test="createBy != null  and createBy != ''">#{createBy},</if>
-            <if test="createTime != null">#{createTime},</if>
-            <if test="updateBy != null  and updateBy != ''">#{updateBy},</if>
-            <if test="updateTime != null">#{updateTime},</if>
          </trim>
     </insert>
 
@@ -65,8 +53,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="name != null  and name != ''">name = #{name},</if>
             <if test="nodeType != null">node_type = #{nodeType},</if>
             <if test="remarks != null  and remarks != ''">remarks = #{remarks},</if>
-            <if test="updateBy != null  and updateBy != ''">update_by = #{updateBy},</if>
-            <if test="updateTime != null">update_time = #{updateTime},</if>
         </set>
         where id = #{id}
     </update>

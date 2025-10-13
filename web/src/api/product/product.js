@@ -3,7 +3,7 @@ import request from '@/utils/request'
 // 查询产品管理列表
 export function listProduct(query) {
   return request({
-    url: '/product/product/list',
+    url: '/iot/product/product/list',
     method: 'get',
     params: query
   })
@@ -12,7 +12,7 @@ export function listProduct(query) {
 // 查询产品管理详细
 export function getProduct(id) {
   return request({
-    url: '/product/product/' + id,
+    url: '/iot/product/product/' + id,
     method: 'get'
   })
 }
@@ -20,7 +20,7 @@ export function getProduct(id) {
 // 新增产品管理
 export function addProduct(data) {
   return request({
-    url: '/product/product',
+    url: '/iot/product/product',
     method: 'post',
     data: data
   })
@@ -29,16 +29,16 @@ export function addProduct(data) {
 // 修改产品管理
 export function updateProduct(data) {
   return request({
-    url: '/product/product',
+    url: '/iot/product/product',
     method: 'put',
     data: data
   })
 }
 
 // 删除产品管理
-export function delProduct(id) {
+export function delProduct(ids) {
   return request({
-    url: '/product/product/' + id,
+    url: '/iot/product/product/' + ids,
     method: 'delete'
   })
 }

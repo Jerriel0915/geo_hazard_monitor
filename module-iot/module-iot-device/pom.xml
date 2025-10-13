@@ -24,6 +24,26 @@
             <groupId>com.zwei</groupId>
             <artifactId>zwei-common</artifactId>
         </dependency>
+        
+        <!-- 添加IoT存储MySQL实现模块依赖 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>iot-storage-mysql</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        
+        <!-- 添加iot-core模块依赖，因为需要使用ThingModel类 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>module-iot-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        
+        <!-- 添加jackson-databind依赖，用于JSON处理 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

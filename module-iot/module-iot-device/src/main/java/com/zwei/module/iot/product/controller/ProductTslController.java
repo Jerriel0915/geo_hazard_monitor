@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,10 +38,10 @@ public class ProductTslController extends BaseController
      */
     @ApiOperation("获取产品物模型定义详细信息")
     @PreAuthorize("@ss.hasPermi('iot:productTsl:query')")
-    @GetMapping(value = "{productId}")
-    public AjaxResult getInfo(@PathVariable("productId") String productId)
+    @GetMapping(value = "{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id)
     {
-        return AjaxResult.success(productTslService.selectProductTslByProductId(productId));
+        return AjaxResult.success(productTslService.selectProductTslByProductId(id));
     }
 
     /**
@@ -67,17 +66,5 @@ public class ProductTslController extends BaseController
     public AjaxResult edit(@RequestBody ProductTsl productTsl)
     {
         return toAjax(productTslService.updateProductTsl(productTsl));
-    }
-
-    /**
-     * 删除产品物模型定义
-     */
-    @ApiOperation("删除产品物模型定义")
-    @PreAuthorize("@ss.hasPermi('iot:productTsl:remove')")
-    @Log(title = "产品物模型定义", businessType = BusinessType.DELETE)
-	@DeleteMapping("{productId}")
-    public AjaxResult remove(@PathVariable String productId)
-    {
-        return toAjax(productTslService.deleteProductTslByProductId(productId));
     }
 }

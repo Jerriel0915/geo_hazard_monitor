@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.module.iot.product.mapper.ProductChangeLogMapper">
+    <resultMap type="com.zwei.module.iot.product.domain.ProductChangeLog" id="ProductChangeLogResult">
+        <result property="id" column="id"/>
+        <result property="productId" column="product_id"/>
+        <result property="productKey" column="product_key"/>
+        <result property="operationType" column="operation_type"/>
+        <result property="status" column="status"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="tslContent" column="tsl_content"/>
+        <result property="createTime" column="create_time"/>
+        <result property="executeTime" column="execute_time"/>
+    </resultMap>
+
+    <sql id="selectProductChangeLogVo">
+        select id, product_id, product_key, operation_type, status, error_message, tsl_content, create_time, execute_time 
+        from product_change_log
+    </sql>
+
+    <insert id="insertProductChangeLog" parameterType="com.zwei.module.iot.product.domain.ProductChangeLog">
+        insert into product_change_log
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="productId != null">product_id,</if>
+            <if test="productKey != null">product_key,</if>
+            <if test="operationType != null">operation_type,</if>
+            <if test="status != null">status,</if>
+            <if test="errorMessage != null">error_message,</if>
+            <if test="tslContent != null">tsl_content,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="executeTime != null">execute_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="productId != null">#{productId},</if>
+            <if test="productKey != null">#{productKey},</if>
+            <if test="operationType != null">#{operationType},</if>
+            <if test="status != null">#{status},</if>
+            <if test="errorMessage != null">#{errorMessage},</if>
+            <if test="tslContent != null">#{tslContent},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="executeTime != null">#{executeTime},</if>
+        </trim>
+    </insert>
+
+    <update id="updateProductChangeLog" parameterType="com.zwei.module.iot.product.domain.ProductChangeLog">
+        update product_change_log
+        <trim prefix="set" suffixOverrides=",">
+            <if test="productKey != null">product_key = #{productKey},</if>
+            <if test="operationType != null">operation_type = #{operationType},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="errorMessage != null">error_message = #{errorMessage},</if>
+            <if test="tslContent != null">tsl_content = #{tslContent},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="executeTime != null">execute_time = #{executeTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <select id="selectProductChangeLogList" parameterType="com.zwei.module.iot.product.domain.ProductChangeLog" resultMap="ProductChangeLogResult">
+        <include refid="selectProductChangeLogVo"/>
+        <where>
+            <if test="productId != null and productId != ''">
+                and product_id = #{productId}
+            </if>
+            <if test="productKey != null and productKey != ''">
+                and product_key = #{productKey}
+            </if>
+            <if test="operationType != null">
+                and operation_type = #{operationType}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="createTime != null">
+                and create_time >= #{createTime}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectProductChangeLogsByProductId" parameterType="String" resultMap="ProductChangeLogResult">
+        <include refid="selectProductChangeLogVo"/>
+        where product_id = #{productId}
+        order by create_time desc
+    </select>
+</mapper>

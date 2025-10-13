@@ -27,6 +27,11 @@
             <groupId>com.zwei</groupId>
             <artifactId>module-iot-core</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-common</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

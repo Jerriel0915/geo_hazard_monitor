@@ -16,7 +16,7 @@ public interface IProductTslService
      * @param productId 产品ID
      * @return 产品物模型定义
      */
-    public ProductTsl selectProductTslByProductId(String productId);
+    public ProductTsl selectProductTslByProductId(Long productId);
 
     /**
      * 新增产品物模型定义

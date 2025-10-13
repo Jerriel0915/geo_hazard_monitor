@@ -1,11 +1,15 @@
 package com.zwei.module.iot.product.service.impl;
 
-import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zwei.iot.core.ThingModel;
+import com.zwei.iot.storage.core.IDbStructureData;
+import com.zwei.module.iot.product.domain.Product;
+import com.zwei.module.iot.product.mapper.ProductMapper;
+import com.zwei.module.iot.product.service.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.zwei.module.iot.product.mapper.ProductMapper;
-import com.zwei.module.iot.product.domain.Product;
-import com.zwei.module.iot.product.service.IProductService;
+
+import java.util.List;
 
 /**
  * 产品Service业务层处理
@@ -18,6 +22,11 @@ public class ProductServiceImpl implements IProductService
 {
     @Autowired
     private ProductMapper productMapper;
+    
+    @Autowired
+    private IDbStructureData dbStructureData;
+    
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 查询产品
@@ -52,7 +61,12 @@ public class ProductServiceImpl implements IProductService
     @Override
     public int insertProduct(Product product)
     {
-        return productMapper.insertProduct(product);
+        int result = productMapper.insertProduct(product);
+        
+        // 初始化产品的数据表结构
+        initProductTables(product);
+        
+        return result;
     }
 
     /**
@@ -64,7 +78,12 @@ public class ProductServiceImpl implements IProductService
     @Override
     public int updateProduct(Product product)
     {
-        return productMapper.updateProduct(product);
+        int result = productMapper.updateProduct(product);
+        
+        // 更新产品的数据表结构
+        initProductTables(product);
+        
+        return result;
     }
 
     /**
@@ -88,6 +107,27 @@ public class ProductServiceImpl implements IProductService
     @Override
     public int deleteProductById(Long id)
     {
+        // 这里可以添加删除相关数据表的逻辑
+        // 注意：删除数据表需要谨慎操作
+        
         return productMapper.deleteProductById(id);
+    }
+    
+    /**
+     * 初始化产品的数据表结构
+     */
+    private void initProductTables(Product product) {
+        try {
+            // 创建基础的物模型对象
+            ThingModel thingModel = new ThingModel(product.getProductKey());
+            
+            // 调用数据库结构服务创建表
+            dbStructureData.defineThingModel(thingModel);
+            
+            System.out.println("成功为产品 " + product.getProductKey() + " 创建数据表结构");
+        } catch (Exception e) {
+            System.err.println("为产品创建数据表结构失败: " + e.getMessage());
+            // 记录异常但不影响产品的创建/更新流程
+        }
     }
 }

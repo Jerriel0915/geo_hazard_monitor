@@ -21,19 +21,19 @@ public class ProductTsl extends BaseEntity
     /** 所属产品ID */
     @Excel(name = "所属产品ID")
     @ApiModelProperty("所属产品ID")
-    private String productId;
+    private Long productId;
 
     /** 物模型定义;TSL JSON */
     @Excel(name = "物模型定义")
     @ApiModelProperty("物模型定义;TSL JSON")
     private String tsl;
 
-    public void setProductId(String productId)
+    public void setProductId(Long productId)
     {
         this.productId = productId;
     }
 
-    public String getProductId()
+    public Long getProductId()
     {
         return productId;
     }

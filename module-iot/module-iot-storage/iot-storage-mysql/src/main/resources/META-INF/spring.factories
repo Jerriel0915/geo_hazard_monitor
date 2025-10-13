@@ -1,0 +1,1 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.zwei.iot.storage.mysql.config.MySQLStorageConfig
