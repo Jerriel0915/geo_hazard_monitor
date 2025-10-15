@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.monitor.mapper.MonitoringPointMapper">
+    <resultMap type="com.zwei.monitor.domain.MonitoringPoint" id="MonitoringPointResult">
+        <id     property="id"               column="id"                />
+        <result property="objectId"         column="object_id"         />
+        <result property="name"             column="name"              />
+        <result property="code"             column="code"              />
+        <result property="pointType"        column="point_type"        />
+        <result property="unit"             column="unit"              />
+        <result property="minValue"         column="min_value"         />
+        <result property="maxValue"         column="max_value"         />
+        <result property="warningThreshold" column="warning_threshold" />
+        <result property="alarmThreshold"   column="alarm_threshold"   />
+        <result property="description"      column="description"       />
+        <result property="status"           column="status"            />
+        <result property="createBy"         column="create_by"         />
+        <result property="createTime"       column="create_time"       />
+        <result property="updateBy"         column="update_by"         />
+        <result property="updateTime"       column="update_time"       />
+    </resultMap>
+
+    <sql id="selectMonitoringPointVo">
+        select id, object_id, name, code, point_type, unit, min_value, max_value, 
+               warning_threshold, alarm_threshold, description, status, 
+               create_by, create_time, update_by, update_time 
+        from zw_biz_monitoring_point
+    </sql>
+
+    <select id="selectMonitoringPointById" parameterType="Long" resultMap="MonitoringPointResult">
+        <include refid="selectMonitoringPointVo" />
+        where id = #{id}
+    </select>
+
+    <select id="selectMonitoringPointList" parameterType="com.zwei.monitor.domain.MonitoringPoint" resultMap="MonitoringPointResult">
+        <include refid="selectMonitoringPointVo" />
+        <where>
+            <if test="objectId != null">
+                AND object_id = #{objectId}
+            </if>
+            <if test="name != null and name != ''">
+                AND name like concat('%', #{name}, '%')
+            </if>
+            <if test="code != null and code != ''">
+                AND code like concat('%', #{code}, '%')
+            </if>
+            <if test="pointType != null">
+                AND point_type = #{pointType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectMonitoringPointByObjectId" parameterType="Long" resultMap="MonitoringPointResult">
+        <include refid="selectMonitoringPointVo" />
+        where object_id = #{objectId}
+    </select>
+
+    <insert id="insertMonitoringPoint" parameterType="com.zwei.monitor.domain.MonitoringPoint" useGeneratedKeys="true" keyProperty="id">
+        insert into zw_biz_monitoring_point
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="objectId != null">object_id,</if>
+            <if test="name != null">name,</if>
+            <if test="code != null">code,</if>
+            <if test="pointType != null">point_type,</if>
+            <if test="unit != null">unit,</if>
+            <if test="minValue != null">min_value,</if>
+            <if test="maxValue != null">max_value,</if>
+            <if test="warningThreshold != null">warning_threshold,</if>
+            <if test="alarmThreshold != null">alarm_threshold,</if>
+            <if test="description != null">description,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="updateBy != null">update_by,</if>
+            update_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="objectId != null">#{objectId},</if>
+            <if test="name != null">#{name},</if>
+            <if test="code != null">#{code},</if>
+            <if test="pointType != null">#{pointType},</if>
+            <if test="unit != null">#{unit},</if>
+            <if test="minValue != null">#{minValue},</if>
+            <if test="maxValue != null">#{maxValue},</if>
+            <if test="warningThreshold != null">#{warningThreshold},</if>
+            <if test="alarmThreshold != null">#{alarmThreshold},</if>
+            <if test="description != null">#{description},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="updateBy != null">#{updateBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMonitoringPoint" parameterType="com.zwei.monitor.domain.MonitoringPoint">
+        update zw_biz_monitoring_point
+        <set>
+            <if test="objectId != null">object_id = #{objectId},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="code != null">code = #{code},</if>
+            <if test="pointType != null">point_type = #{pointType},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="minValue != null">min_value = #{minValue},</if>
+            <if test="maxValue != null">max_value = #{maxValue},</if>
+            <if test="warningThreshold != null">warning_threshold = #{warningThreshold},</if>
+            <if test="alarmThreshold != null">alarm_threshold = #{alarmThreshold},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMonitoringPointById" parameterType="Long">
+        delete from zw_biz_monitoring_point where id = #{id}
+    </delete>
+
+    <delete id="deleteMonitoringPointByIds" parameterType="Long">
+        delete from zw_biz_monitoring_point where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteMonitoringPointByObjectIds" parameterType="Long">
+        delete from zw_biz_monitoring_point where object_id in 
+        <foreach item="objectId" collection="array" open="(" separator="," close=")">
+            #{objectId}
+        </foreach>
+    </delete>
+</mapper>

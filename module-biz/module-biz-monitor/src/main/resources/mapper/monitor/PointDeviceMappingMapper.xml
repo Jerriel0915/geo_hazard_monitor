@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.monitor.mapper.PointDeviceMappingMapper">
+    <resultMap type="com.zwei.monitor.domain.PointDeviceMapping" id="PointDeviceMappingResult">
+        <result property="deviceId"     column="device_id"     />
+        <result property="pointId"      column="point_id"      />
+    </resultMap>
+    
+    <resultMap type="com.zwei.monitor.domain.PointDevice" id="PointDeviceResult">
+        <result property="id"           column="id"            />
+        <result property="sn"           column="sn"            />
+        <result property="name"         column="name"          />
+        <result property="type"         column="type"          />
+        <result property="productId"    column="product_id"    />
+        <result property="commProtocol" column="comm_protocol" />
+        <result property="longitude"    column="longitude"     />
+        <result property="latitude"     column="latitude"      />
+        <result property="powerSupply"  column="power_supply"  />
+        <result property="manufacturer" column="manufacturer"  />
+        <result property="parentId"     column="parent_id"     />
+        <result property="deviceKey"    column="device_key"    />
+        <result property="deviceSecret" column="device_secret" />
+        <result property="pointId"      column="point_id"      />
+        <result property="pointName"    column="point_name"    />
+        <result property="pointCode"    column="point_code"    />
+        <result property="status"       column="mapping_status"/>
+        <result property="remark"       column="description"   />
+    </resultMap>
+
+    <sql id="selectPointDeviceMappingVo">
+        select id, device_id, point_id, device_code, point_code, mapping_type, 
+               description, status, create_by, create_time, update_by, update_time 
+        from zw_biz_point_device_mapping
+    </sql>
+
+    <select id="selectPointDeviceMappingByPointId" parameterType="Long" resultMap="PointDeviceMappingResult">
+        <include refid="selectPointDeviceMappingVo" />
+        where point_id = #{pointId}
+    </select>
+    
+    <select id="selectByPointId" parameterType="Long" resultMap="PointDeviceResult">
+        select d.id, d.sn, d.name, d.type, d.product_id, d.comm_protocol, 
+               d.longitude, d.latitude, d.power_supply, d.manufacturer, 
+               d.parent_id, d.device_key, d.device_secret,
+               pdm.point_id, mp.point_code as point_code, mp.point_name as point_name,
+               pdm.status as mapping_status, pdm.description
+        from zw_biz_point_device_mapping pdm
+        left join zw_iot_device d on pdm.device_id = d.id
+        left join zw_biz_monitoring_point mp on pdm.point_id = mp.id
+        where pdm.point_id = #{pointId}
+        and pdm.status = '0'
+    </select>
+    
+    <select id="selectByDeviceId" parameterType="Long" resultMap="PointDeviceMappingResult">
+        <include refid="selectPointDeviceMappingVo" />
+        where device_id = #{deviceId}
+    </select>
+    
+    <select id="selectPointDeviceMappingList" parameterType="com.zwei.monitor.domain.PointDeviceMapping" resultMap="PointDeviceMappingResult">
+        <include refid="selectPointDeviceMappingVo" />
+        <where>
+            <if test="deviceId != null">
+                AND device_id = #{deviceId}
+            </if>
+            <if test="pointId != null">
+                AND point_id = #{pointId}
+            </if>
+            <if test="deviceCode != null and deviceCode != ''">
+                AND device_code like concat('%', #{deviceCode}, '%')
+            </if>
+            <if test="pointCode != null and pointCode != ''">
+                AND point_code like concat('%', #{pointCode}, '%')
+            </if>
+            <if test="mappingType != null">
+                AND mapping_type = #{mappingType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+    
+    <insert id="insertPointDeviceMapping" parameterType="com.zwei.monitor.domain.PointDeviceMapping" useGeneratedKeys="true" keyProperty="id">
+        insert into zw_biz_point_device_mapping
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null">device_id,</if>
+            <if test="pointId != null">point_id,</if>
+            <if test="deviceCode != null">device_code,</if>
+            <if test="pointCode != null">point_code,</if>
+            <if test="mappingType != null">mapping_type,</if>
+            <if test="description != null">description,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="updateBy != null">update_by,</if>
+            update_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deviceId != null">#{deviceId},</if>
+            <if test="pointId != null">#{pointId},</if>
+            <if test="deviceCode != null">#{deviceCode},</if>
+            <if test="pointCode != null">#{pointCode},</if>
+            <if test="mappingType != null">#{mappingType},</if>
+            <if test="description != null">#{description},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="updateBy != null">#{updateBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+    
+    <insert id="batchInsertPointDeviceMapping" parameterType="java.util.List">
+        insert into zw_biz_point_device_mapping (device_id, point_id, device_code, point_code, mapping_type, 
+               description, status, create_by, create_time, update_by, update_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.deviceId}, #{item.pointId}, #{item.deviceCode}, #{item.pointCode}, #{item.mappingType}, 
+            #{item.description}, #{item.status}, #{item.createBy}, sysdate(), #{item.updateBy}, sysdate())
+        </foreach>
+    </insert>
+    
+    <delete id="deletePointDeviceMapping">
+        delete from zw_biz_point_device_mapping
+        where point_id = #{pointId} and device_id = #{deviceId}
+    </delete>
+    
+    <delete id="deleteByPointId" parameterType="Long">
+        delete from zw_biz_point_device_mapping
+        where point_id = #{pointId}
+    </delete>
+    
+    <delete id="deleteByDeviceId" parameterType="Long">
+        delete from zw_biz_point_device_mapping
+        where device_id = #{deviceId}
+    </delete>
+    
+    <delete id="deleteByPointIds" parameterType="Long">
+        delete from zw_biz_point_device_mapping
+        where point_id in
+        <foreach item="pointId" collection="array" open="(" separator="," close=")">
+            #{pointId}
+        </foreach>
+    </delete>
+</mapper>

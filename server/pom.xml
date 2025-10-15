@@ -70,6 +70,12 @@
             <groupId>com.zwei</groupId>
             <artifactId>iot-storage-mysql</artifactId>
         </dependency>
+        
+        <!-- 监测业务模块 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>module-biz-monitor</artifactId>
+        </dependency>
 
     </dependencies>
 

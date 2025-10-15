@@ -295,6 +295,18 @@
                 <artifactId>iot-storage-mysql</artifactId>
                 <version>${zwei.version}</version>
             </dependency>
+
+            <!-- 监测业务模块 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>module-biz</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>module-biz-monitor</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -303,6 +315,7 @@
 		<module>module-infra</module>
 		<module>module-system</module>
 		<module>module-iot</module>
+        <module>module-biz</module>
         <module>server</module>
     </modules>
     <packaging>pom</packaging>

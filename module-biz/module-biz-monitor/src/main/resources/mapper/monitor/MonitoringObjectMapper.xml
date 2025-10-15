@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.monitor.mapper.MonitoringObjectMapper">
+    <resultMap type="com.zwei.monitor.domain.MonitoringObject" id="MonitoringObjectResult">
+        <id     property="id"              column="id"               />
+        <result property="name"            column="name"             />
+        <result property="code"            column="code"             />
+        <result property="type"            column="type"             />
+        <result property="centerLng"       column="center_lng"       />
+        <result property="centerLat"       column="center_lat"       />
+        <result property="monitorPolygon"  column="monitor_polygon"  />
+        <result property="administraRegion" column="administra_region" />
+        <result property="address"         column="address"          />
+        <result property="description"     column="description"      />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateBy"        column="update_by"        />
+        <result property="updateTime"      column="update_time"      />
+    </resultMap>
+
+    <sql id="selectMonitoringObjectVo">
+        select id, name, code, type, center_lng, center_lat, monitor_polygon, administra_region, address, description, create_by, create_time, update_by, update_time 
+        from zw_biz_monitoring_object
+    </sql>
+
+    <select id="selectMonitoringObjectById" parameterType="Long" resultMap="MonitoringObjectResult">
+        <include refid="selectMonitoringObjectVo" />
+        where id = #{id}
+    </select>
+
+    <select id="selectMonitoringObjectList" parameterType="com.zwei.monitor.domain.MonitoringObject" resultMap="MonitoringObjectResult">
+        <include refid="selectMonitoringObjectVo" />
+        <where>
+            <if test="name != null and name != ''">
+                AND name like concat('%', #{name}, '%')
+            </if>
+            <if test="code != null and code != ''">
+                AND code like concat('%', #{code}, '%')
+            </if>
+            <if test="type != null">
+                AND type = #{type}
+            </if>
+            <if test="centerLng != null">
+                AND center_lng = #{centerLng}
+            </if>
+            <if test="centerLat != null">
+                AND center_lat = #{centerLat}
+            </if>
+            <if test="administraRegion != null and administraRegion != ''">
+                AND administra_region = #{administraRegion}
+            </if>
+        </where>
+    </select>
+
+    <insert id="insertMonitoringObject" parameterType="com.zwei.monitor.domain.MonitoringObject" useGeneratedKeys="true" keyProperty="id">
+        insert into zw_biz_monitoring_object
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null">name,</if>
+            <if test="code != null">code,</if>
+            <if test="type != null">type,</if>
+            <if test="address != null">address,</if>
+            <if test="description != null">description,</if>
+            <if test="centerLng != null">center_lng,</if>
+            <if test="centerLat != null">center_lat,</if>
+            <if test="monitorPolygon != null">monitor_polygon,</if>
+            <if test="administraRegion != null">administra_region,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="updateBy != null">update_by,</if>
+            update_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null">#{name},</if>
+            <if test="code != null">#{code},</if>
+            <if test="type != null">#{type},</if>
+            <if test="address != null">#{address},</if>
+            <if test="description != null">#{description},</if>
+            <if test="centerLng != null">#{centerLng},</if>
+            <if test="centerLat != null">#{centerLat},</if>
+            <if test="monitorPolygon != null">#{monitorPolygon},</if>
+            <if test="administraRegion != null">#{administraRegion},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="updateBy != null">#{updateBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMonitoringObject" parameterType="com.zwei.monitor.domain.MonitoringObject">
+        update zw_biz_monitoring_object
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="code != null">code = #{code},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="centerLng != null">center_lng = #{centerLng},</if>
+            <if test="centerLat != null">center_lat = #{centerLat},</if>
+            <if test="monitorPolygon != null">monitor_polygon = #{monitorPolygon},</if>
+            <if test="administraRegion != null">administra_region = #{administraRegion},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMonitoringObjectById" parameterType="Long">
+        delete from zw_biz_monitoring_object where id = #{id}
+    </delete>
+
+    <delete id="deleteMonitoringObjectByIds" parameterType="Long">
+        delete from zw_biz_monitoring_object where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

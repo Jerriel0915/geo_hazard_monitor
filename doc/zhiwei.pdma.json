@@ -3203,7 +3203,238 @@
       "status": "EDIT",
       "allow": "W",
       "setting": {
-        "physicEntityPresetFields": [],
+        "physicEntityPresetFields": [
+          {
+            "id": "EE2C8F96-9FCF-4477-A781-26BEA137438D",
+            "defKey": "create_time",
+            "defName": "创建时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "C235C4C0-EA8B-41F4-B788-35E067DDC9F3",
+            "defKey": "update_time",
+            "defName": "更新时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "6A862D3B-CE6F-479A-9144-08335CA007F5",
+            "defKey": "create_by",
+            "defName": "创建者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "BABA27ED-644D-4FBC-BD3E-52FB6F32253E",
+            "defKey": "update_by",
+            "defName": "更新者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "DF84DF01-F500-4652-9097-C85606F354C5",
+            "defKey": "remark",
+            "defName": "备注",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 250,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          }
+        ],
         "physicEntityAttr": {
           "attr1": {
             "enable": 0,
@@ -3974,6 +4205,11 @@
             "refObjectId": "7BB77FDA-A9A8-43D0-B06A-32110DBA013B",
             "refObjectType": "P",
             "orderValue": 12
+          },
+          {
+            "refObjectId": "8EA7A649-BE6E-4EE5-8184-C64105DE02D2",
+            "refObjectType": "P",
+            "orderValue": 13
           }
         ],
         "diagramRefs": [
@@ -4172,6 +4408,11 @@
           "refObjectId": "7BB77FDA-A9A8-43D0-B06A-32110DBA013B",
           "refObjectType": "P",
           "orderValue": 37
+        },
+        {
+          "refObjectId": "8EA7A649-BE6E-4EE5-8184-C64105DE02D2",
+          "refObjectType": "P",
+          "orderValue": 38
         }
       ],
       "diagramRefs": [
@@ -4197,13 +4438,13 @@
             "defKey": "id",
             "defName": "",
             "intro": "",
-            "baseDataType": "",
+            "baseDataType": "BIGINT",
             "bizDomainType": "",
-            "dataLen": 32,
+            "dataLen": "",
             "numScale": "",
             "primaryKey": 1,
             "notNull": 1,
-            "autoIncrement": 0,
+            "autoIncrement": 1,
             "defaultValue": "",
             "stndDictId": "",
             "stndDictKey": "",
@@ -4229,14 +4470,15 @@
             "attr18": "PDManer",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
+            "origin": "IMPORT",
+            "dbDataType": "BIGINT"
           },
           {
             "id": "45D42045-B828-4A8F-BF34-823C4287E89A",
             "defKey": "name",
             "defName": "监测对象名称",
             "intro": "",
-            "baseDataType": "",
+            "baseDataType": "VARCHAR",
             "bizDomainType": "",
             "dataLen": 120,
             "numScale": "",
@@ -4268,14 +4510,15 @@
             "attr18": "PDManer",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
+            "origin": "IMPORT",
+            "dbDataType": "VARCHAR"
           },
           {
             "id": "C01E0D61-21F1-4D79-AF3C-BD94E6C35CA9",
             "defKey": "code",
             "defName": "监测对象编号",
             "intro": "",
-            "baseDataType": "",
+            "baseDataType": "VARCHAR",
             "bizDomainType": "",
             "dataLen": 120,
             "numScale": "",
@@ -4307,7 +4550,8 @@
             "attr18": "PDManer",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
+            "origin": "IMPORT",
+            "dbDataType": "VARCHAR"
           },
           {
             "id": "47E30B24-1175-4AC2-8BED-44094CB352DD",
@@ -4352,15 +4596,15 @@
           },
           {
             "id": "076613E0-EFE0-42E4-AC6B-59931583DE64",
-            "defKey": "center_longitude",
+            "defKey": "center_lng",
             "defName": "中心位置经度",
             "intro": "",
-            "baseDataType": "",
+            "baseDataType": "FLOAT",
             "bizDomainType": "",
-            "dataLen": 255,
+            "dataLen": "",
             "numScale": "",
             "primaryKey": 0,
-            "notNull": 1,
+            "notNull": 0,
             "autoIncrement": 0,
             "defaultValue": "",
             "stndDictId": "",
@@ -4387,16 +4631,17 @@
             "attr18": "PDManer",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
+            "origin": "IMPORT",
+            "dbDataType": "FLOAT"
           },
           {
             "id": "BC2D7AD3-F0CA-40E1-BFAF-F73B48FC6077",
-            "defKey": "center_latitude",
+            "defKey": "center_lat",
             "defName": "中心位置纬度",
             "intro": "",
-            "baseDataType": "",
+            "baseDataType": "FLOAT",
             "bizDomainType": "",
-            "dbDataType": "",
+            "dbDataType": "FLOAT",
             "dataLen": "",
             "numScale": "",
             "primaryKey": 0,
@@ -4429,129 +4674,12 @@
           },
           {
             "id": "80C09BBF-E1D4-4EED-A57A-7577FD4DB17E",
-            "defKey": "monitor_area",
-            "defName": "监测范围",
+            "defKey": "monitor_polygon",
+            "defName": "对象范围",
             "intro": "经纬坐标围成的多边形",
-            "baseDataType": "",
+            "baseDataType": "TEXT",
             "bizDomainType": "",
-            "dataLen": 1024,
-            "numScale": "",
-            "primaryKey": 0,
-            "notNull": 1,
-            "autoIncrement": 0,
-            "defaultValue": "",
-            "stndDictId": "",
-            "stndDictKey": "",
-            "stndFieldId": "",
-            "stndFieldKey": "",
-            "attr1": "",
-            "attr2": "",
-            "attr3": "",
-            "attr4": "",
-            "attr5": "",
-            "attr6": "",
-            "attr7": "",
-            "attr8": "",
-            "attr9": "",
-            "attr10": "",
-            "attr11": "",
-            "attr12": "",
-            "attr13": "",
-            "attr14": "",
-            "attr15": "",
-            "attr16": "",
-            "attr17": "",
-            "attr18": "PDManer",
-            "attr19": "",
-            "attr20": "",
-            "origin": "IMPORT"
-          },
-          {
-            "id": "788A2F8C-84B8-4139-A867-870C5139C4A5",
-            "defKey": "leader_name",
-            "defName": "负责人姓名",
-            "intro": "",
-            "baseDataType": "",
-            "bizDomainType": "",
-            "dataLen": 30,
-            "numScale": "",
-            "primaryKey": 0,
-            "notNull": 1,
-            "autoIncrement": 0,
-            "defaultValue": "",
-            "stndDictId": "",
-            "stndDictKey": "",
-            "stndFieldId": "",
-            "stndFieldKey": "",
-            "attr1": "",
-            "attr2": "",
-            "attr3": "",
-            "attr4": "",
-            "attr5": "",
-            "attr6": "",
-            "attr7": "",
-            "attr8": "",
-            "attr9": "",
-            "attr10": "",
-            "attr11": "",
-            "attr12": "",
-            "attr13": "",
-            "attr14": "",
-            "attr15": "",
-            "attr16": "",
-            "attr17": "",
-            "attr18": "PDManer",
-            "attr19": "",
-            "attr20": "",
-            "origin": "IMPORT"
-          },
-          {
-            "id": "53C7404E-1225-49B3-9A4F-0A2FF3149CCB",
-            "defKey": "leader_phone",
-            "defName": "负责人电话",
-            "intro": "",
-            "baseDataType": "",
-            "bizDomainType": "",
-            "dataLen": 15,
-            "numScale": "",
-            "primaryKey": 0,
-            "notNull": 1,
-            "autoIncrement": 0,
-            "defaultValue": "",
-            "stndDictId": "",
-            "stndDictKey": "",
-            "stndFieldId": "",
-            "stndFieldKey": "",
-            "attr1": "",
-            "attr2": "",
-            "attr3": "",
-            "attr4": "",
-            "attr5": "",
-            "attr6": "",
-            "attr7": "",
-            "attr8": "",
-            "attr9": "",
-            "attr10": "",
-            "attr11": "",
-            "attr12": "",
-            "attr13": "",
-            "attr14": "",
-            "attr15": "",
-            "attr16": "",
-            "attr17": "",
-            "attr18": "PDManer",
-            "attr19": "",
-            "attr20": "",
-            "origin": "IMPORT"
-          },
-          {
-            "id": "C02065AE-F21C-41FE-8D39-A7961E74E306",
-            "defKey": "monitor_name",
-            "defName": "监测人姓名",
-            "intro": "",
-            "baseDataType": "",
-            "bizDomainType": "",
-            "dataLen": 30,
+            "dataLen": "",
             "numScale": "",
             "primaryKey": 0,
             "notNull": 0,
@@ -4581,53 +4709,15 @@
             "attr18": "PDManer",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
-          },
-          {
-            "id": "98B0546F-617D-4CFE-886B-5F75202AB95C",
-            "defKey": "monitor_phone",
-            "defName": "监测人电话",
-            "intro": "",
-            "baseDataType": "",
-            "bizDomainType": "",
-            "dataLen": 15,
-            "numScale": "",
-            "primaryKey": 0,
-            "notNull": 0,
-            "autoIncrement": 0,
-            "defaultValue": "",
-            "stndDictId": "",
-            "stndDictKey": "",
-            "stndFieldId": "",
-            "stndFieldKey": "",
-            "attr1": "",
-            "attr2": "",
-            "attr3": "",
-            "attr4": "",
-            "attr5": "",
-            "attr6": "",
-            "attr7": "",
-            "attr8": "",
-            "attr9": "",
-            "attr10": "",
-            "attr11": "",
-            "attr12": "",
-            "attr13": "",
-            "attr14": "",
-            "attr15": "",
-            "attr16": "",
-            "attr17": "",
-            "attr18": "PDManer",
-            "attr19": "",
-            "attr20": "",
-            "origin": "IMPORT"
+            "origin": "IMPORT",
+            "dbDataType": "TEXT"
           },
           {
             "id": "172EEB72-64E7-4ADC-A2B3-C13C284E613E",
             "defKey": "administra_region",
             "defName": "行政区划",
             "intro": "存储一个行政区划的编码，例如510183001002",
-            "baseDataType": "",
+            "baseDataType": "VARCHAR",
             "bizDomainType": "",
             "dataLen": 12,
             "numScale": "",
@@ -4659,7 +4749,8 @@
             "attr18": "PDManer",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
+            "origin": "IMPORT",
+            "dbDataType": "VARCHAR"
           },
           {
             "id": "2E882DF1-4770-46FC-AD4F-0B94166FE6D9",
@@ -4672,7 +4763,7 @@
             "dataLen": 255,
             "numScale": "",
             "primaryKey": 0,
-            "notNull": 1,
+            "notNull": 0,
             "autoIncrement": 0,
             "defaultValue": "",
             "stndDictId": "",
@@ -4707,7 +4798,7 @@
             "defKey": "description",
             "defName": "概况",
             "intro": "",
-            "baseDataType": "",
+            "baseDataType": "VARCHAR",
             "bizDomainType": "",
             "dataLen": 255,
             "numScale": "",
@@ -4739,25 +4830,33 @@
             "attr18": "PDManer",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
+            "origin": "IMPORT",
+            "dbDataType": "VARCHAR"
           },
           {
-            "id": "978D801B-6392-4F7A-91EC-115C154495BA",
-            "defKey": "attachment",
-            "defName": "附件",
+            "id": "45470228-6015-448F-8911-1BC7EDC49123",
+            "defKey": "create_time",
+            "defName": "创建时间",
             "intro": "",
-            "baseDataType": "",
+            "baseDataType": "DATETIME",
             "bizDomainType": "",
-            "dataLen": 120,
+            "dbDataType": "DATETIME",
+            "dataLen": "",
             "numScale": "",
             "primaryKey": 0,
             "notNull": 0,
             "autoIncrement": 0,
             "defaultValue": "",
             "stndDictId": "",
-            "stndDictKey": "",
             "stndFieldId": "",
+            "stndDictKey": "",
             "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
             "attr1": "",
             "attr2": "",
             "attr3": "",
@@ -4775,14 +4874,199 @@
             "attr15": "",
             "attr16": "",
             "attr17": "",
-            "attr18": "PDManer",
+            "attr18": "",
             "attr19": "",
             "attr20": "",
-            "origin": "IMPORT"
+            "origin": "PASTE"
+          },
+          {
+            "id": "3CD15E48-C2ED-4A42-B4A9-5A233A8BE8DD",
+            "defKey": "update_time",
+            "defName": "更新时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "26B195DC-36FF-49B3-97E3-AA0BEBD17679",
+            "defKey": "create_by",
+            "defName": "创建者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "AF94F14A-4904-4661-AE6D-8BA7F14CC7C2",
+            "defKey": "update_by",
+            "defName": "更新者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "E7483078-AA0D-42CE-A26A-E9C8CEEECE5C",
+            "defKey": "remark",
+            "defName": "备注",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 250,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
           }
         ],
         "indexes": [],
-        "origin": "PASTE"
+        "origin": "PASTE",
+        "refers": []
       },
       {
         "id": "D9E54FDB-DB98-46AF-B0D7-B9667FF20EC3",
@@ -5077,11 +5361,242 @@
             "createdUserId": null,
             "tblDefKey": "ms_monitor_type",
             "schemaName": "ms"
+          },
+          {
+            "id": "580D79EE-610E-4B00-BFB5-8CA5105E5705",
+            "defKey": "create_time",
+            "defName": "创建时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "EDB0BF90-1BC6-4934-824F-4656A1C1F1D7",
+            "defKey": "update_time",
+            "defName": "更新时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "7323E0A4-2DD3-4FB7-9FA9-75F2769A5A28",
+            "defKey": "create_by",
+            "defName": "创建者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "9C84D69D-85C1-45DC-9D94-1FE3F0AFDDC2",
+            "defKey": "update_by",
+            "defName": "更新者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "4720D54E-6CFF-4F56-A081-A741F19B71EA",
+            "defKey": "remark",
+            "defName": "备注",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 250,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
           }
         ],
         "correlations": null,
         "indexes": [],
-        "origin": "PASTE"
+        "origin": "PASTE",
+        "refers": []
       },
       {
         "id": "ECCB6CAD-CE12-4098-A29E-2F6C473604D7",
@@ -5677,6 +6192,236 @@
             "attr19": "",
             "attr20": "",
             "origin": "UI"
+          },
+          {
+            "id": "52334C78-46E8-4372-82E0-A70C5969C384",
+            "defKey": "create_time",
+            "defName": "创建时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "53D16FDC-EF93-416C-8F0E-7A22712BA51F",
+            "defKey": "update_time",
+            "defName": "更新时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "B45D8207-2772-4744-BD35-70DC8B7A1CA3",
+            "defKey": "create_by",
+            "defName": "创建者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "19246165-CE8C-46DC-A5C4-20C2B28DA69D",
+            "defKey": "update_by",
+            "defName": "更新者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "97B274FF-EA31-4662-B897-D26997F6B64C",
+            "defKey": "remark",
+            "defName": "备注",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 250,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
           }
         ],
         "correlations": null,
@@ -5703,7 +6448,31 @@
             "schemaName": "ms"
           }
         ],
-        "origin": "PASTE"
+        "origin": "PASTE",
+        "refers": [
+          {
+            "type": "many-to-one",
+            "defKey": "",
+            "defName": "",
+            "intro": "",
+            "myFieldKey": "id",
+            "refSchemaName": null,
+            "refEntityKey": "zw_iot_device_alive_log",
+            "refFieldKey": "device_id",
+            "orderValue": 1
+          },
+          {
+            "type": "many-to-one",
+            "defKey": "",
+            "defName": "",
+            "intro": "",
+            "myFieldKey": "product_id",
+            "refSchemaName": null,
+            "refEntityKey": "zw_iot_product",
+            "refFieldKey": "id",
+            "orderValue": 1
+          }
+        ]
       },
       {
         "id": "170E8E3D-19FF-4CC1-8513-2F5E72530191",
@@ -5885,7 +6654,8 @@
             "fields": []
           }
         ],
-        "origin": "PASTE"
+        "origin": "PASTE",
+        "refers": []
       },
       {
         "id": "FEF4ED83-130D-4E20-9B95-041CB3ED1552",
@@ -6655,7 +7425,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "BBA474DE-1F09-4B8B-A87F-E3FE31A41E2B",
@@ -7896,7 +8667,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "8BA089E5-F115-477F-9C95-580582A9BFFB",
@@ -8344,7 +9116,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "B2E5BFBF-1E78-4559-85F9-3002154D08C1",
@@ -8654,7 +9427,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "7EC299EB-DCDE-44C1-AAF7-871A80E1AAB5",
@@ -9355,7 +10129,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "1DD112E6-620A-49D2-A925-0410D7C6CF3C",
@@ -9481,7 +10256,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "22D39754-51CF-429E-BDF2-C034EB7DCD6E",
@@ -9791,7 +10567,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "9C0CB142-3851-417E-BD91-EFD4CAB186EE",
@@ -10285,7 +11062,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "37D0DD5A-771C-42A8-9F90-3BA9BF00F61F",
@@ -10411,7 +11189,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "AB3C643A-EC30-493B-84AA-97762F5668E2",
@@ -11319,7 +12098,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "07FB8376-E64E-4400-9F5E-CB0493F68BFA",
@@ -11951,7 +12731,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "D173CFC4-B953-418D-A66E-769AED013E9F",
@@ -12537,7 +13318,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "AA45B43D-56FE-42C7-9900-716E0895E7B0",
@@ -13192,7 +13974,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "706244AA-DF96-47D9-9A92-E21FC4E278E5",
@@ -13824,7 +14607,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "13D12E35-7A7A-4B64-AFCD-6A51FE5B7EAE",
@@ -14364,7 +15148,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "6A6783AC-D630-49B3-8AE2-99507BB74EEB",
@@ -15088,7 +15873,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "078E94C8-B7EE-4C5B-9BFC-0B43DD162433",
@@ -15720,7 +16506,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "C52DB307-A9A9-436D-9B33-3BEA9ADC8594",
@@ -16490,7 +17277,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "8958E278-5216-423D-BDF2-0DA7BFCDABDA",
@@ -17030,7 +17818,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "9BD50631-CE6B-4B50-8C5F-04AE169B1C5C",
@@ -17340,7 +18129,8 @@
           }
         ],
         "correlations": null,
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "2E0F3E39-58C9-4EB0-99C6-0B3BC2C88A06",
@@ -17999,7 +18789,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "5A72AA9E-CBFA-4DD7-AAE0-9B957F38010E",
@@ -18464,7 +19255,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "7A0954E2-4F89-4925-B0F6-7C4C41F9D42F",
@@ -18797,7 +19589,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "B5374F6D-E76A-4DEF-A642-782FA27A27D5",
@@ -19504,7 +20297,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "B8F3A37F-20A9-479D-A4D1-CD4CC20A03E2",
@@ -20257,7 +21051,8 @@
               }
             ]
           }
-        ]
+        ],
+        "refers": []
       },
       {
         "id": "6015F591-06F4-4D90-802C-5D8C21BB8C51",
@@ -20360,7 +21155,20 @@
             "origin": "UI"
           }
         ],
-        "indexes": []
+        "indexes": [],
+        "refers": [
+          {
+            "type": "many-to-one",
+            "defKey": "",
+            "defName": "",
+            "intro": "",
+            "myFieldKey": "product_id",
+            "refSchemaName": null,
+            "refEntityKey": "zw_iot_product",
+            "refFieldKey": "id",
+            "orderValue": 1
+          }
+        ]
       },
       {
         "id": "2D925167-FF1D-450F-A659-F23D5BE2F926",
@@ -20370,7 +21178,8 @@
         "intro": "存储告警的事件",
         "type": "P",
         "fields": [],
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "9FFAB624-42E5-4DA2-B182-AC1A0564B7F3",
@@ -20379,8 +21188,528 @@
         "defName": "监测点位(测站点)",
         "intro": "",
         "type": "P",
-        "fields": [],
-        "indexes": []
+        "fields": [
+          {
+            "id": "F443DC22-9DFE-4DA4-857E-DF2D423367EA",
+            "defKey": "id",
+            "defName": "",
+            "intro": "",
+            "baseDataType": "BIGINT",
+            "bizDomainType": "",
+            "dbDataType": "BIGINT",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 1,
+            "notNull": 1,
+            "autoIncrement": 1,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "769208B9-723D-4941-8571-50DCA30B4994",
+            "defKey": "object_id",
+            "defName": "所属对象",
+            "intro": "",
+            "baseDataType": "BIGINT",
+            "bizDomainType": "",
+            "dbDataType": "BIGINT",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 1,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "C0478D3B-E4D4-4B2B-9F45-9ADC00E45F11",
+            "defKey": "no",
+            "defName": "编号",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "B6F785C2-23EC-4087-94A5-4FB2413CD141",
+            "defKey": "name",
+            "defName": "名称",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 200,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "1F8BEEED-93F0-4524-B4F1-D6CE61AA009E",
+            "defKey": "lng",
+            "defName": "经度",
+            "intro": "",
+            "baseDataType": "FLOAT",
+            "bizDomainType": "",
+            "dbDataType": "FLOAT",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "AF332FAD-C764-41F9-8E0A-0CD03968188F",
+            "defKey": "lat",
+            "defName": "纬度",
+            "intro": "",
+            "baseDataType": "FLOAT",
+            "bizDomainType": "",
+            "dbDataType": "FLOAT",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "52E5A346-3483-4013-960F-CFD250EC0195",
+            "defKey": "create_time",
+            "defName": "创建时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "C276C444-3826-4C3C-9686-2EA5B7639E9C",
+            "defKey": "update_time",
+            "defName": "更新时间",
+            "intro": "",
+            "baseDataType": "DATETIME",
+            "bizDomainType": "",
+            "dbDataType": "DATETIME",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "7197BD96-4FC7-479F-9FBF-6F360F041E38",
+            "defKey": "create_by",
+            "defName": "创建者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "FD392636-F1C2-4CEC-BA13-53C9E9ED47DC",
+            "defKey": "update_by",
+            "defName": "更新者",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 64,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          },
+          {
+            "id": "F690CD7B-A972-48A5-ADED-67D3D2CC9D29",
+            "defKey": "remark",
+            "defName": "备注",
+            "intro": "",
+            "baseDataType": "VARCHAR",
+            "bizDomainType": "",
+            "dbDataType": "VARCHAR",
+            "dataLen": 250,
+            "numScale": "",
+            "primaryKey": 0,
+            "notNull": 0,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "PASTE"
+          }
+        ],
+        "indexes": [],
+        "refers": [
+          {
+            "type": "many-to-one",
+            "defKey": "",
+            "defName": "",
+            "intro": "",
+            "myFieldKey": "object_id",
+            "refSchemaName": null,
+            "refEntityKey": "zw_biz_monitoring_object",
+            "refFieldKey": "id",
+            "orderValue": 1
+          }
+        ]
       },
       {
         "id": "E7F178E3-4520-4B5A-AF78-DA141CB6A1B6",
@@ -20390,7 +21719,8 @@
         "intro": "本地服务已安装的算法服务",
         "type": "P",
         "fields": [],
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "17ECDCB2-F215-4FAA-B874-F357FC71DBDE",
@@ -20400,7 +21730,8 @@
         "intro": "",
         "type": "P",
         "fields": [],
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "124165FF-7902-48D1-A92F-F90BBDA28B83",
@@ -20410,7 +21741,8 @@
         "intro": "",
         "type": "P",
         "fields": [],
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "2D61B335-1044-46E4-9752-B7FDCD2D4342",
@@ -20420,7 +21752,8 @@
         "intro": "",
         "type": "P",
         "fields": [],
-        "indexes": []
+        "indexes": [],
+        "refers": []
       },
       {
         "id": "7BB77FDA-A9A8-43D0-B06A-32110DBA013B",
@@ -20661,7 +21994,135 @@
             "origin": "UI"
           }
         ],
-        "indexes": []
+        "indexes": [],
+        "refers": []
+      },
+      {
+        "id": "8EA7A649-BE6E-4EE5-8184-C64105DE02D2",
+        "schemaName": null,
+        "defKey": "zw_biz_point_device_mapping",
+        "defName": "测点与设备关联关系",
+        "intro": "",
+        "type": "P",
+        "fields": [
+          {
+            "id": "9734101F-82E8-41A0-A0B3-94591AF0024D",
+            "defKey": "point_id",
+            "defName": "",
+            "intro": "",
+            "baseDataType": "BIGINT",
+            "bizDomainType": "",
+            "dbDataType": "BIGINT",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 1,
+            "notNull": 1,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          },
+          {
+            "id": "A340DC7F-D522-48AA-9C5A-D80C302F6A2D",
+            "defKey": "device_id",
+            "defName": "",
+            "intro": "",
+            "baseDataType": "BIGINT",
+            "bizDomainType": "",
+            "dbDataType": "BIGINT",
+            "dataLen": "",
+            "numScale": "",
+            "primaryKey": 1,
+            "notNull": 1,
+            "autoIncrement": 0,
+            "defaultValue": "",
+            "stndDictId": "",
+            "stndFieldId": "",
+            "stndDictKey": "",
+            "stndFieldKey": "",
+            "stndComplianceLevel": "",
+            "stndComplianceType": "",
+            "dictFrom": "",
+            "dictItems": null,
+            "fieldTier": "",
+            "mark": null,
+            "attr1": "",
+            "attr2": "",
+            "attr3": "",
+            "attr4": "",
+            "attr5": "",
+            "attr6": "",
+            "attr7": "",
+            "attr8": "",
+            "attr9": "",
+            "attr10": "",
+            "attr11": "",
+            "attr12": "",
+            "attr13": "",
+            "attr14": "",
+            "attr15": "",
+            "attr16": "",
+            "attr17": "",
+            "attr18": "",
+            "attr19": "",
+            "attr20": "",
+            "origin": "UI"
+          }
+        ],
+        "indexes": [],
+        "refers": [
+          {
+            "type": "many-to-one",
+            "defKey": "",
+            "defName": "",
+            "intro": "",
+            "myFieldKey": "point_id",
+            "refSchemaName": null,
+            "refEntityKey": "zw_biz_monitoring_point",
+            "refFieldKey": "id",
+            "orderValue": 1
+          },
+          {
+            "type": "many-to-one",
+            "defKey": "",
+            "defName": "",
+            "intro": "",
+            "myFieldKey": "device_id",
+            "refSchemaName": null,
+            "refEntityKey": "zw_iot_device",
+            "refFieldKey": "id",
+            "orderValue": 1
+          }
+        ]
       }
     ],
     "diagrams": [
@@ -21070,8 +22531,8 @@
           },
           {
             "position": {
-              "x": -240,
-              "y": 430
+              "x": -470,
+              "y": 880
             },
             "size": {
               "width": 500,
@@ -21733,8 +23194,8 @@
           },
           {
             "position": {
-              "x": 370,
-              "y": 390
+              "x": 730,
+              "y": 370
             },
             "size": {
               "width": 500,
@@ -23465,6 +24926,534 @@
               "cell": "3ff74798-799c-4d02-bb99-05605cd32941",
               "port": "BA2C1B43-6B15-450B-A6BB-CBACF4086A54_in"
             }
+          },
+          {
+            "position": {
+              "x": 100,
+              "y": 480
+            },
+            "size": {
+              "width": 500,
+              "height": 310
+            },
+            "view": "react-shape-view",
+            "attrs": {
+              "body": {
+                "rx": 5
+              }
+            },
+            "shape": "physical-entity-node",
+            "id": "cf016342-730c-43dc-8278-3606d1a1b72d",
+            "cellType": "physical-entity-node",
+            "originData": {
+              "id": "8EA7A649-BE6E-4EE5-8184-C64105DE02D2"
+            },
+            "autoSize": false,
+            "entityRelationRank": "F",
+            "entityDisplay": {
+              "showFields": [
+                "defKey",
+                "defName",
+                "dbDataType",
+                "dataLen",
+                "numScale"
+              ],
+              "logicModelCompactShow": "N",
+              "logicModelCompactDelimiter": ","
+            },
+            "entitySetting": {
+              "titleText": {
+                "customValue": "{defKey}[{defName}]",
+                "optionValue": "A"
+              },
+              "titleStyle": {
+                "body": {
+                  "fill": "rgb(159, 193, 255)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "rgb(0, 0, 0)",
+                  "fontSize": "12",
+                  "font-style": "",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "contentStyle": {
+                "body": {
+                  "fill": "#ffffff",
+                  "fill-opacity": 0.9
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "italic",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "primaryKeyStyle": {
+                "body": {
+                  "fill": "rgb(183，185，189)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "underline",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "foreignKeyStyle": {
+                "body": {
+                  "fill": "rgb(183，185，189)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "italic",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": null,
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "fieldStyle": {
+                "body": {
+                  "fill": "rgb(183，185，189)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "defaultSize": {
+                "width": 500,
+                "height": 310,
+                "optionValue": "C"
+              },
+              "borderStyle": {
+                "body": {
+                  "stroke": "rgb(179, 179, 179)",
+                  "stroke-width": 1,
+                  "stroke-opacity": 0.78695652173913,
+                  "stroke-dasharray": "0"
+                }
+              },
+              "divideLineStyle": {
+                "body": {
+                  "stroke": "rgb(214, 214, 214)",
+                  "stroke-width": 1,
+                  "stroke-opacity": 0.78695652173913,
+                  "stroke-dasharray": "0"
+                }
+              }
+            },
+            "tools": {
+              "items": [
+                "node-size",
+                "highlight-node",
+                "link-node"
+              ]
+            },
+            "ports": {
+              "groups": {
+                "in": {
+                  "position": "absolute",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "out": {
+                  "position": "absolute",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": []
+            },
+            "zIndex": 8
+          },
+          {
+            "position": {
+              "x": 130,
+              "y": 940
+            },
+            "size": {
+              "width": 500,
+              "height": 310
+            },
+            "view": "react-shape-view",
+            "attrs": {
+              "body": {
+                "rx": 5
+              }
+            },
+            "shape": "physical-entity-node",
+            "id": "7d58809e-0799-4cb5-93d5-61069ac90321",
+            "cellType": "physical-entity-node",
+            "originData": {
+              "id": "9FFAB624-42E5-4DA2-B182-AC1A0564B7F3"
+            },
+            "autoSize": false,
+            "entityRelationRank": "F",
+            "entityDisplay": {
+              "showFields": [
+                "defKey",
+                "defName",
+                "dbDataType",
+                "dataLen",
+                "numScale"
+              ],
+              "logicModelCompactShow": "N",
+              "logicModelCompactDelimiter": ","
+            },
+            "entitySetting": {
+              "titleText": {
+                "customValue": "{defKey}[{defName}]",
+                "optionValue": "A"
+              },
+              "titleStyle": {
+                "body": {
+                  "fill": "rgb(159, 193, 255)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "rgb(0, 0, 0)",
+                  "fontSize": "12",
+                  "font-style": "",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "contentStyle": {
+                "body": {
+                  "fill": "#ffffff",
+                  "fill-opacity": 0.9
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "italic",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "primaryKeyStyle": {
+                "body": {
+                  "fill": "rgb(183，185，189)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "underline",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "foreignKeyStyle": {
+                "body": {
+                  "fill": "rgb(183，185，189)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "italic",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": null,
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "fieldStyle": {
+                "body": {
+                  "fill": "rgb(183，185，189)",
+                  "fill-opacity": 1
+                },
+                "text": {
+                  "fill": "",
+                  "fontSize": "12",
+                  "font-style": "",
+                  "fontFamily": "Arial",
+                  "textAnchor": "middle",
+                  "font-weight": "bold",
+                  "text-decoration": "",
+                  "textVerticalAnchor": "middle"
+                }
+              },
+              "defaultSize": {
+                "width": 500,
+                "height": 310,
+                "optionValue": "C"
+              },
+              "borderStyle": {
+                "body": {
+                  "stroke": "rgb(179, 179, 179)",
+                  "stroke-width": 1,
+                  "stroke-opacity": 0.78695652173913,
+                  "stroke-dasharray": "0"
+                }
+              },
+              "divideLineStyle": {
+                "body": {
+                  "stroke": "rgb(214, 214, 214)",
+                  "stroke-width": 1,
+                  "stroke-opacity": 0.78695652173913,
+                  "stroke-dasharray": "0"
+                }
+              }
+            },
+            "tools": {
+              "items": [
+                "node-size",
+                "highlight-node",
+                "link-node"
+              ]
+            },
+            "ports": {
+              "groups": {
+                "in": {
+                  "position": "absolute",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "out": {
+                  "position": "absolute",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": []
+            },
+            "zIndex": 9
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "rgb(122, 167, 250)",
+                "targetMarker": {
+                  "name": "er-n",
+                  "strokeWidth": 1
+                },
+                "fill-opacity": 1,
+                "stroke-width": 1,
+                "stroke-opacity": 0.78695652173913,
+                "stroke-dasharray": "0",
+                "sourceMarker": {
+                  "name": "er-1",
+                  "strokeWidth": 1
+                }
+              },
+              "text": {
+                "textAnchor": "middle",
+                "textVerticalAnchor": "middle",
+                "fill": "#000000",
+                "fontSize": 14,
+                "font-weight": "normal",
+                "font-style": "normal",
+                "text-decoration": "none"
+              }
+            },
+            "id": "E80899FB-7A4C-4230-AF18-200B3001AFFF",
+            "connector": {
+              "name": "rounded"
+            },
+            "router": {
+              "name": "manhattan",
+              "padding": 30
+            },
+            "cellType": "edge",
+            "zIndex": 0,
+            "tools": {
+              "items": []
+            },
+            "source": {
+              "cell": "7d58809e-0799-4cb5-93d5-61069ac90321",
+              "port": "F443DC22-9DFE-4DA4-857E-DF2D423367EA_out"
+            },
+            "target": {
+              "cell": "cf016342-730c-43dc-8278-3606d1a1b72d",
+              "port": "9734101F-82E8-41A0-A0B3-94591AF0024D_in"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "rgb(122, 167, 250)",
+                "targetMarker": {
+                  "name": "er-n",
+                  "strokeWidth": 1
+                },
+                "fill-opacity": 1,
+                "stroke-width": 1,
+                "stroke-opacity": 0.78695652173913,
+                "stroke-dasharray": "0",
+                "sourceMarker": {
+                  "name": "er-1",
+                  "strokeWidth": 1
+                }
+              },
+              "text": {
+                "textAnchor": "middle",
+                "textVerticalAnchor": "middle",
+                "fill": "#000000",
+                "fontSize": 14,
+                "font-weight": "normal",
+                "font-style": "normal",
+                "text-decoration": "none"
+              }
+            },
+            "id": "612EEA0C-4F68-4EB3-BA5F-E0A6A1BDA4E7",
+            "connector": {
+              "name": "rounded"
+            },
+            "router": {
+              "name": "manhattan",
+              "padding": 30
+            },
+            "cellType": "edge",
+            "zIndex": 0,
+            "tools": {
+              "items": []
+            },
+            "source": {
+              "cell": "1e5f53e6-3381-4a07-bdc7-785fe58a7bd5",
+              "port": "676EAC41-2FE0-4281-92D6-786CF751EE54_out"
+            },
+            "target": {
+              "cell": "7d58809e-0799-4cb5-93d5-61069ac90321",
+              "port": "769208B9-723D-4941-8571-50DCA30B4994_in"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "lines": {
+                "connection": true,
+                "strokeLinejoin": "round"
+              },
+              "wrap": {
+                "strokeWidth": 10
+              },
+              "line": {
+                "stroke": "rgb(122, 167, 250)",
+                "strokeWidth": 2,
+                "targetMarker": {
+                  "name": "er-n",
+                  "strokeWidth": 1
+                },
+                "fill-opacity": 1,
+                "stroke-width": 1,
+                "stroke-opacity": 0.78695652173913,
+                "stroke-dasharray": "0",
+                "sourceMarker": {
+                  "name": "er-1",
+                  "strokeWidth": 1
+                }
+              },
+              "text": {
+                "textAnchor": "middle",
+                "textVerticalAnchor": "middle",
+                "fill": "#000000",
+                "fontSize": 14,
+                "font-weight": "normal",
+                "font-style": "normal",
+                "text-decoration": "none"
+              }
+            },
+            "id": "1229CFE9-CFAC-4870-A281-BA4EA219D151",
+            "connector": {
+              "name": "rounded"
+            },
+            "router": {
+              "name": "manhattan",
+              "padding": 30
+            },
+            "cellType": "edge",
+            "zIndex": 0,
+            "tools": {
+              "items": []
+            },
+            "source": {
+              "cell": "9e13d63e-a521-4cef-be88-3fff58bad3b1",
+              "port": "1480A206-6DF4-4152-BFCC-FBA3968ABE6B_in"
+            },
+            "target": {
+              "cell": "cf016342-730c-43dc-8278-3606d1a1b72d",
+              "port": "A340DC7F-D522-48AA-9C5A-D80C302F6A2D_out"
+            }
           }
         ]
       }
@@ -23472,7 +25461,7 @@
     "readonly": false,
     "allowWs": false
   },
-  "updateTime": 1760106822275,
-  "signature": "2ee29257baab25a88b717232c32fd11a",
+  "updateTime": 1760535402561,
+  "signature": "42214d0be41efeafb7cab70fa862586f",
   "branchId": "1111"
 }
