@@ -74,7 +74,7 @@ public class DeviceStatusController extends BaseController
     @GetMapping(value = "/{deviceId}")
     public AjaxResult getInfo(@PathVariable("deviceId") Long deviceId)
     {
-        return success(deviceStatusService.selectDeviceStatusByDeviceId(deviceId));
+        return success(deviceStatusService.selectDeviceStatusByDeviceId(deviceId.toString()));
     }
 
     /**

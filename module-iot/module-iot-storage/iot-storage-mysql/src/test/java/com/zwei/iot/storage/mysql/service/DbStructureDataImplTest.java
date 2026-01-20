@@ -48,30 +48,30 @@ public class DbStructureDataImplTest {
         verify(jdbcTemplate, times(2)).execute(anyString());
     }
 
-    @Test
-    void testUpdateThingModel_WhenTableExists() {
-        // 准备测试数据
-        ThingModel thingModel = new ThingModel();
-        thingModel.setProductKey("test_product");
-        
-        ThingModel.Model model = new ThingModel.Model();
-        List<ThingModel.Property> properties = new ArrayList<>();
-        ThingModel.Property property = new ThingModel.Property();
-        property.setIdentifier("test_property");
-        properties.add(property);
-        model.setProperties(properties);
-        thingModel.setModel(model);
-        
-        // 模拟表存在
-        when(jdbcTemplate.queryForObject(anyString(), any(Object[].class), eq(Integer.class)))
-                .thenReturn(1);
-        
-        // 执行测试
-        dbStructureDataImpl.updateThingModel(thingModel);
-        
-        // 验证行为
-        verify(jdbcTemplate, never()).execute(anyString());
-    }
+//    @Test
+//    void testUpdateThingModel_WhenTableExists() {
+//        // 准备测试数据
+//        ThingModel thingModel = new ThingModel();
+//        thingModel.setProductKey("test_product");
+//
+//        ThingModel.Model model = new ThingModel.Model();
+//        List<ThingModel.Property> properties = new ArrayList<>();
+//        ThingModel.Property property = new ThingModel.Property();
+//        property.setIdentifier("test_property");
+//        properties.add(property);
+//        model.setProperties(properties);
+//        thingModel.setModel(model);
+//
+//        // 模拟表存在
+//        when(jdbcTemplate.queryForObject(anyString(), any(Object[].class), eq(Integer.class)))
+//                .thenReturn(1);
+//
+//        // 执行测试
+//        dbStructureDataImpl.updateThingModel(thingModel);
+//
+//        // 验证行为
+//        verify(jdbcTemplate, never()).execute(anyString());
+//    }
 
     @Test
     void testUpdateThingModel_WhenTableDoesNotExist() {

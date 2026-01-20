@@ -26,7 +26,7 @@ public class DeviceStatusServiceImpl implements IDeviceStatusService
      * @return 设备实时状态
      */
     @Override
-    public DeviceStatus selectDeviceStatusByDeviceId(Long deviceId)
+    public DeviceStatus selectDeviceStatusByDeviceId(String deviceId)
     {
         return deviceStatusMapper.selectDeviceStatusByDeviceId(deviceId);
     }

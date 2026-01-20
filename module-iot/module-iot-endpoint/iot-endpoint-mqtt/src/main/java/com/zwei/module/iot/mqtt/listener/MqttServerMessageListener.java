@@ -1,4 +1,4 @@
-package com.zwei.module.iot.mqtt;
+package com.zwei.module.iot.mqtt.listener;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.mica.mqtt.codec.MqttPublishMessage;

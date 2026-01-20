@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 /**
  * MySQL数据源的物模型定义实现
@@ -16,7 +17,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author linx
  */
-
+@Component
 public class DbStructureDataImpl implements IDbStructureData {
 
     private JdbcTemplate jdbcTemplate;
