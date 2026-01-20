@@ -9,7 +9,7 @@
 	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
 			<pattern>${log.pattern}</pattern>
-            <charset>GBK</charset>
+            <charset>UTF-8</charset>
 		</encoder>
 	</appender>
 	

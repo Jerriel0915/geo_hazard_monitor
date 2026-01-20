@@ -23,6 +23,7 @@ public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
     /**
      * 设备认证
      * 使用deviceKey和deviceSecret进行认证
+     * 两个参数均不可为空
      */
     @Override
     public boolean authenticate(String deviceKey, String deviceSecret) {
