@@ -17,7 +17,7 @@ public interface DeviceStatusMapper
      * @param deviceId 设备实时状态主键
      * @return 设备实时状态
      */
-    public DeviceStatus selectDeviceStatusByDeviceId(Long deviceId);
+    public DeviceStatus selectDeviceStatusByDeviceId(String deviceId);
 
     /**
      * 查询设备实时状态列表
