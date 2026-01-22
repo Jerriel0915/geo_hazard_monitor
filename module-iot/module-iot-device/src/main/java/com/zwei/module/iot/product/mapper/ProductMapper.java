@@ -1,7 +1,9 @@
 package com.zwei.module.iot.product.mapper;
 
-import java.util.List;
 import com.zwei.module.iot.product.domain.Product;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
 
 /**
  * 产品Mapper接口
@@ -9,6 +11,7 @@ import com.zwei.module.iot.product.domain.Product;
  * @author linx
  * @date 2025-09-05
  */
+@Mapper
 public interface ProductMapper 
 {
     /**

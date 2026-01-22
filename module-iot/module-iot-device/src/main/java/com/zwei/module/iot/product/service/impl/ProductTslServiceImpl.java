@@ -1,8 +1,5 @@
 package com.zwei.module.iot.product.service.impl;
 
-import com.alibaba.fastjson2.JSONObject;
-import com.zwei.iot.core.ThingModel;
-import com.zwei.iot.core.ThingModel.Model;
 import com.zwei.iot.storage.core.IDbStructureData;
 import com.zwei.module.iot.product.domain.Product;
 import com.zwei.module.iot.product.domain.ProductTsl;
@@ -42,7 +39,7 @@ public class ProductTslServiceImpl implements IProductTslService {
      * @return 产品物模型定义
      */
     @Override
-    public ProductTsl selectProductTslByProductId(Long productId) {
+    public ProductTsl selectProductTslByProductId(String productId) {
         return productTslMapper.selectProductTslByProductId(productId);
     }
 
@@ -108,7 +105,7 @@ public class ProductTslServiceImpl implements IProductTslService {
 
                 // 检查是否已存在该产品的物模型，判断是新增还是更新操作
                 Integer operationType = 0; // 默认为新增操作
-                ProductTsl existingTsl = productTslMapper.selectProductTslByProductId(productTsl.getProductId());
+                ProductTsl existingTsl = productTslMapper.selectProductTslByProductId(productTsl.getProductId().toString());
                 if (existingTsl != null) {
                     operationType = 1; // 更新操作
                 }
