@@ -4,7 +4,9 @@ import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
+import com.zwei.common.utils.bean.BeanUtils;
 import com.zwei.module.iot.product.domain.ProductTsl;
+import com.zwei.module.iot.product.domain.vo.ProductTslVO;
 import com.zwei.module.iot.product.service.IProductTslService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -28,13 +30,17 @@ public class ProductTslController extends BaseController
 
     /**
      * 获取产品物模型定义详细信息
+     * 通过 ProductTslVO 转换为JSON Object
      */
     @ApiOperation("获取产品物模型定义详细信息")
     @PreAuthorize("@ss.hasPermi('iot:productTsl:query')")
     @GetMapping(value = "{id}")
     public AjaxResult getInfo(@PathVariable("id") String id)
     {
-        return AjaxResult.success(productTslService.selectProductTslByProductId(id));
+        ProductTsl productTsl = productTslService.selectProductTslByProductId(id);
+        ProductTslVO productTslVO = new ProductTslVO();
+        BeanUtils.copyBeanProp(productTslVO, productTsl);
+        return AjaxResult.success(productTslVO);
     }
 
     /**
