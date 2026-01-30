@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * 产品物模型定义Service业务层处理
- * 
+ *
  * @author linx
  * @date 2025-09-05
  */
@@ -34,7 +34,7 @@ public class ProductTslServiceImpl implements IProductTslService {
 
     /**
      * 查询产品物模型定义
-     * 
+     *
      * @param productId 产品ID
      * @return 产品物模型定义
      */
@@ -45,7 +45,7 @@ public class ProductTslServiceImpl implements IProductTslService {
 
     /**
      * 新增产品物模型定义
-     * 
+     *
      * @param productTsl 产品物模型定义
      * @return 结果
      */
@@ -61,7 +61,7 @@ public class ProductTslServiceImpl implements IProductTslService {
 
     /**
      * 修改产品物模型定义
-     * 
+     *
      * @param productTsl 产品物模型定义
      * @return 结果
      */
@@ -77,7 +77,7 @@ public class ProductTslServiceImpl implements IProductTslService {
 
     /**
      * 删除产品物模型定义
-     * 
+     *
      * @param productId 产品ID
      * @return 结果
      */
@@ -91,7 +91,7 @@ public class ProductTslServiceImpl implements IProductTslService {
 
     /**
      * 根据物模型定义更新数据库表结构
-     * 
+     *
      * @param productTsl 产品物模型定义
      */
     private void updateDbStructureFromTsl(ProductTsl productTsl) {
@@ -110,16 +110,26 @@ public class ProductTslServiceImpl implements IProductTslService {
                     operationType = 1; // 更新操作
                 }
 
-                // 记录变更日志并异步执行表结构更新
-                productChangeLogService.recordTslChangeLog(
-                    productTsl.getProductId(),
-                    product.getProductKey(),
-                    productTsl.getTsl(),
-                    operationType
-                );
+//                // 记录变更日志并异步执行表结构更新
+//                productChangeLogService.recordTslChangeLog(
+//                    productTsl.getProductId(),
+//                    product.getProductKey(),
+//                    productTsl.getTsl(),
+//                    operationType
+//                );
 
-                log.info("已提交产品 {} 的物模型变更，正在异步执行表结构更新，请稍后查看产品变更日志确认执行结果", 
-                    productTsl.getProductId());
+                switch (operationType) {
+                    case 0:
+                        productTslMapper.insertProductTsl(productTsl);
+                        break;
+                    case 1:
+                        productTslMapper.updateProductTsl(productTsl);
+                        break;
+                }
+
+                log.info("已提交产品 {} 的物模型变更，内容为 {}",
+                        productTsl.getProductId(),
+                        productTsl.getTsl());
             }
         } catch (Exception e) {
             log.error("提交物模型变更失败: {}", e.getMessage());

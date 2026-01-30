@@ -4,9 +4,7 @@ import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
-import com.zwei.common.utils.bean.BeanUtils;
 import com.zwei.module.iot.product.domain.ProductTsl;
-import com.zwei.module.iot.product.domain.vo.ProductTslVO;
 import com.zwei.module.iot.product.service.IProductTslService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -37,10 +35,7 @@ public class ProductTslController extends BaseController
     @GetMapping(value = "{id}")
     public AjaxResult getInfo(@PathVariable("id") String id)
     {
-        ProductTsl productTsl = productTslService.selectProductTslByProductId(id);
-        ProductTslVO productTslVO = new ProductTslVO();
-        BeanUtils.copyBeanProp(productTslVO, productTsl);
-        return AjaxResult.success(productTslVO);
+        return AjaxResult.success(productTslService.selectProductTslByProductId(id));
     }
 
     /**
