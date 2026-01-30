@@ -1,6 +1,6 @@
 package com.zwei.iot.storage.mysql.service;
 
-import com.zwei.iot.core.ThingModel;
+import com.zwei.iot.core.thing.domain.ThingModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -9,7 +9,6 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -33,13 +32,10 @@ public class DbStructureDataImplTest {
     @Test
     void testDefineThingModel() {
         // 准备测试数据
-        ThingModel thingModel = new ThingModel();
-        thingModel.setProductKey("test_product");
-        
-        ThingModel.Model model = new ThingModel.Model();
-        model.setProperties(new ArrayList<>());
-        model.setEvents(new ArrayList<>());
-        thingModel.setModel(model);
+        ThingModel thingModel = new ThingModel("test_product");
+
+        thingModel.setProperties(new ArrayList<>());
+        thingModel.setEvents(new ArrayList<>());
         
         // 执行测试
         dbStructureDataImpl.defineThingModel(thingModel);
@@ -76,13 +72,10 @@ public class DbStructureDataImplTest {
     @Test
     void testUpdateThingModel_WhenTableDoesNotExist() {
         // 准备测试数据
-        ThingModel thingModel = new ThingModel();
-        thingModel.setProductKey("test_product");
-        
-        ThingModel.Model model = new ThingModel.Model();
-        model.setProperties(new ArrayList<>());
-        model.setEvents(new ArrayList<>());
-        thingModel.setModel(model);
+        ThingModel thingModel = new ThingModel("test_product");
+
+        thingModel.setProperties(new ArrayList<>());
+        thingModel.setEvents(new ArrayList<>());
         
         // 模拟表不存在
         when(jdbcTemplate.queryForObject(anyString(), any(Object[].class), eq(Integer.class)))

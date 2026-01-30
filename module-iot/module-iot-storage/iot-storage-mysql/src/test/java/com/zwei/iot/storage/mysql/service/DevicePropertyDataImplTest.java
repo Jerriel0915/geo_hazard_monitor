@@ -1,7 +1,7 @@
 package com.zwei.iot.storage.mysql.service;
 
-import com.zwei.iot.core.DeviceProperty;
-import com.zwei.iot.core.DevicePropertyCache;
+import com.zwei.iot.core.thing.domain.DeviceProperty;
+import com.zwei.iot.core.thing.domain.DevicePropertyCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -12,7 +12,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 

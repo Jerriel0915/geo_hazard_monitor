@@ -1,4 +1,4 @@
-package com.zwei.module.iot.thing.domain.enums;
+package com.zwei.iot.core.thing.domain.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;

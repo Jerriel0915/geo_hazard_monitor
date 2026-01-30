@@ -1,4 +1,4 @@
-package com.zwei.module.iot.thing.domain;
+package com.zwei.iot.core.thing.domain;
 
 import io.swagger.annotations.ApiModelProperty;
 
@@ -6,54 +6,69 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * TSL 模型事件定义
+ * TSL 模型服务定义
  *
  * @Author: Jerriel
  * @CreateTime: 2026-01-26
  */
-public class TslEvent implements Serializable {
-    private static final long serialVersionUID = 7947702601857972349L;
+public class TslService implements Serializable {
+    private static final long serialVersionUID = 658839295021228762L;
 
     /**
-     * 事件唯一标识符（物模型模块下唯一，其中post是默认生成的属性上报事件）
+     * 服务唯一标识符（物模型模块下唯一，其中set/get是根据属性的accessMode默认生成的服务)
      */
     @ApiModelProperty("事件唯一标识符")
     private String identifier;
 
     /**
-     * 事件名称
+     * 服务名称
      */
-    @ApiModelProperty("事件名称")
+    @ApiModelProperty("服务名称")
     private String name;
 
     /**
-     * 事件类型（info、alert、error）
+     * 服务描述
      */
-    @ApiModelProperty("事件类型")
-    private String type;
-
-    /**
-     * 事件描述
-     */
-    @ApiModelProperty("事件描述")
+    @ApiModelProperty("服务描述")
     private String desc;
 
     /**
-     * 是否是标准功能的必选事件：是（true），否（false）
+     * 是否是标准功能的必选服务：是（true），否（false）
      */
-    @ApiModelProperty("必选事件")
+    @ApiModelProperty("必选服务")
     private Boolean required;
 
     /**
-     * 输出数据列表
+     * 调用方式，async（异步调用）或sync（同步调用）
      */
+    @ApiModelProperty("调用方式")
+    private String callType;
+
+    /**
+     * 入参列表
+     */
+    @ApiModelProperty("入参列表")
+    private List<TslParameter> inputData;
+
+    /**
+     * 出参列表
+     */
+    @ApiModelProperty("出参列表")
     private List<TslParameter> outputData;
 
     /**
-     * 事件对应的方法名称（根据identifier生成）
+     * 服务对应的方法名称（根据identifier生成）
      */
     @ApiModelProperty("方法名称")
     private String method;
+
+    public String getCallType() {
+        return callType;
+    }
+
+    public void setCallType(String callType) {
+        this.callType = callType;
+    }
 
     public String getDesc() {
         return desc;
@@ -69,6 +84,14 @@ public class TslEvent implements Serializable {
 
     public void setIdentifier(String identifier) {
         this.identifier = identifier;
+    }
+
+    public List<TslParameter> getInputData() {
+        return inputData;
+    }
+
+    public void setInputData(List<TslParameter> inputData) {
+        this.inputData = inputData;
     }
 
     public String getMethod() {
@@ -103,22 +126,15 @@ public class TslEvent implements Serializable {
         this.required = required;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
     @Override
     public String toString() {
-        return "TslEvent{" +
-                "desc='" + desc + '\'' +
+        return "TslService{" +
+                "callType=" + callType +
                 ", identifier='" + identifier + '\'' +
                 ", name='" + name + '\'' +
-                ", type='" + type + '\'' +
+                ", desc='" + desc + '\'' +
                 ", required=" + required +
+                ", inputData=" + inputData +
                 ", outputData=" + outputData +
                 ", method='" + method + '\'' +
                 '}';

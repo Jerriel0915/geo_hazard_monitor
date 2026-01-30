@@ -1,4 +1,4 @@
-package com.zwei.iot.core;
+package com.zwei.iot.core.thing.domain;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

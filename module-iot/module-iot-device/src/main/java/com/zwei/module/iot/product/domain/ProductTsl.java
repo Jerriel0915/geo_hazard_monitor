@@ -2,7 +2,7 @@ package com.zwei.module.iot.product.domain;
 
 import com.zwei.common.annotation.Excel;
 import com.zwei.common.core.domain.BaseEntity;
-import com.zwei.module.iot.thing.domain.ThingModel;
+import com.zwei.iot.core.thing.domain.ThingModel;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 

@@ -1,7 +1,7 @@
-package com.zwei.module.iot.thing.domain;
+package com.zwei.iot.core.thing.domain;
 
 import com.alibaba.fastjson2.JSONObject;
-import com.zwei.module.iot.thing.domain.enums.TslDataTypeEnum;
+import com.zwei.iot.core.thing.domain.enums.TslDataTypeEnum;
 import io.swagger.annotations.ApiModelProperty;
 
 import java.io.Serializable;

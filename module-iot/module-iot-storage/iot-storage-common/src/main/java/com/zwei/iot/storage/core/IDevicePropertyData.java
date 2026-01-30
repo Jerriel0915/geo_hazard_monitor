@@ -1,9 +1,7 @@
 package com.zwei.iot.storage.core;
 
-
-
-import com.zwei.iot.core.DeviceProperty;
-import com.zwei.iot.core.DevicePropertyCache;
+import com.zwei.iot.core.thing.domain.DeviceProperty;
+import com.zwei.iot.core.thing.domain.DevicePropertyCache;
 
 import java.util.List;
 import java.util.Map;

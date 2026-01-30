@@ -1,8 +1,9 @@
-package com.zwei.module.iot.thing.domain;
+package com.zwei.iot.core.thing.domain;
 
 import io.swagger.annotations.ApiModelProperty;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -44,16 +45,27 @@ public class ThingModel implements Serializable {
     @ApiModelProperty("服务列表")
     private List<TslService> services;
 
+    public ThingModel(String productKey) {
+        this.profile = new Profile(productKey);
+        this.properties = new ArrayList<>();
+        this.events = new ArrayList<>();
+        this.services = new ArrayList<>();
+    }
 
     /**
      * 物模型相关配置信息，包含 productKey
      */
-    private static class Profile {
+    public static class Profile implements Serializable {
+        private static final long serialVersionUID = 3448301744949214292L;
         /**
          * 当前产品的ProductKey
          */
         @ApiModelProperty("当前产品的ProductKey")
         private String productKey;
+
+        public Profile(String productKey) {
+            this.productKey = productKey;
+        }
 
         public String getProductKey() {
             return productKey;
@@ -80,7 +92,7 @@ public class ThingModel implements Serializable {
     }
 
     public Profile getProfile() {
-        return profile;
+        return profile.productKey == null || profile.productKey.isEmpty() ? null : profile;
     }
 
     public void setProfile(Profile profile) {

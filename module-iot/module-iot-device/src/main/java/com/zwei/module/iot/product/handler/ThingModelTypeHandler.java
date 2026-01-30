@@ -1,7 +1,7 @@
 package com.zwei.module.iot.product.handler;
 
 import com.alibaba.fastjson2.JSON;
-import com.zwei.module.iot.thing.domain.ThingModel;
+import com.zwei.iot.core.thing.domain.ThingModel;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedJdbcTypes;

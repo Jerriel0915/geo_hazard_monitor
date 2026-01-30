@@ -1,7 +1,7 @@
 package com.zwei.module.iot.product.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zwei.iot.core.ThingModel;
+import com.zwei.iot.core.thing.domain.ThingModel;
 import com.zwei.iot.storage.core.IDbStructureData;
 import com.zwei.module.iot.product.domain.Product;
 import com.zwei.module.iot.product.mapper.ProductMapper;

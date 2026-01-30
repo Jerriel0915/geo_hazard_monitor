@@ -1,8 +1,8 @@
 package com.zwei.iot.storage.mysql.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zwei.iot.core.DeviceProperty;
-import com.zwei.iot.core.DevicePropertyCache;
+import com.zwei.iot.core.thing.domain.DeviceProperty;
+import com.zwei.iot.core.thing.domain.DevicePropertyCache;
 import com.zwei.iot.storage.core.IDevicePropertyData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;

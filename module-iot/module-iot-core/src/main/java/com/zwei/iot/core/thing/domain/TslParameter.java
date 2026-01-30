@@ -1,4 +1,4 @@
-package com.zwei.module.iot.thing.domain;
+package com.zwei.iot.core.thing.domain;
 
 import io.swagger.annotations.ApiModelProperty;
 

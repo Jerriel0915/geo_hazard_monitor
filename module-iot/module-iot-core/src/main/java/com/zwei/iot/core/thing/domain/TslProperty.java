@@ -1,6 +1,6 @@
-package com.zwei.module.iot.thing.domain;
+package com.zwei.iot.core.thing.domain;
 
-import com.zwei.module.iot.thing.domain.enums.TslAccessMode;
+import com.zwei.iot.core.thing.domain.enums.TslAccessMode;
 import io.swagger.annotations.ApiModelProperty;
 
 import java.io.Serializable;
