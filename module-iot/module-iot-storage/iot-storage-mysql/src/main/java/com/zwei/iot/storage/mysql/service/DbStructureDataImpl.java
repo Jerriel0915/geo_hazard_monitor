@@ -7,6 +7,7 @@ import com.zwei.iot.storage.core.IDbStructureData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
  * @author linx
  */
 @Component
+@Primary
 public class DbStructureDataImpl implements IDbStructureData {
 
     private final JdbcTemplate jdbcTemplate;
@@ -118,20 +120,19 @@ public class DbStructureDataImpl implements IDbStructureData {
      * 创建事件表
      */
     private void createEventTable(String tableName, List<TslEvent> events) {
-        StringBuilder sql = new StringBuilder();
-        sql.append("CREATE TABLE IF NOT EXISTS ").append(tableName).append(" ( ")
-                .append("id BIGINT AUTO_INCREMENT PRIMARY KEY, ")
-                .append("device_id VARCHAR(128) NOT NULL, ")
-                .append("event_name VARCHAR(128) NOT NULL, ")
-                .append("event_data TEXT, ")
-                .append("event_time BIGINT NOT NULL, ")
-                .append("create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, ")
-                .append("INDEX idx_device_id (device_id), ")
-                .append("INDEX idx_event_name (event_name), ")
-                .append("INDEX idx_event_time (event_time) ")
-                .append(") COMMENT '设备事件数据表';");
+        String sql = "CREATE TABLE IF NOT EXISTS " + tableName + " ( " +
+                "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                "device_id VARCHAR(128) NOT NULL, " +
+                "event_name VARCHAR(128) NOT NULL, " +
+                "event_data TEXT, " +
+                "event_time BIGINT NOT NULL, " +
+                "create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "INDEX idx_device_id (device_id), " +
+                "INDEX idx_event_name (event_name), " +
+                "INDEX idx_event_time (event_time) " +
+                ") COMMENT '设备事件数据表';";
 
-        jdbcTemplate.execute(sql.toString());
+        jdbcTemplate.execute(sql);
     }
 
     /**

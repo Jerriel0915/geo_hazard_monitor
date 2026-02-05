@@ -5,6 +5,7 @@ import com.zwei.iot.core.thing.domain.DeviceProperty;
 import com.zwei.iot.core.thing.domain.DevicePropertyCache;
 import com.zwei.iot.storage.core.IDevicePropertyData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.util.Map;
  * @author linx
  */
 @Component
+@Primary
 public class DevicePropertyDataImpl implements IDevicePropertyData {
 
     private final JdbcTemplate jdbcTemplate;

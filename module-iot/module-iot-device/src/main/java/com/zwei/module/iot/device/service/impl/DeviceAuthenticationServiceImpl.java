@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * 设备认证实现类
- * 
+ *
  * @author linx
  * @date 2025-09-05
  */
@@ -35,13 +35,13 @@ public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
             }
 
             // 创建查询条件
-            Device queryDevice = new Device();
-            queryDevice.setDeviceKey(deviceKey);
-            queryDevice.setDeviceSecret(deviceSecret);
+            Device queryDevice = Device.builder()
+                    .deviceKey(deviceKey)
+                    .deviceSecret(deviceSecret).build();
 
             // 查询设备
             Device device = deviceMapper.selectDeviceList(queryDevice).stream().findFirst().orElse(null);
-            
+
             if (device != null) {
                 log.info("Device authentication success: deviceKey={}", deviceKey);
                 return true;
@@ -57,7 +57,7 @@ public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
 
     /**
      * 检查设备是否有权限订阅主题
-     * 默认设备只能订阅自己的主题，格式如：/device/{deviceKey}/#
+     * 默认设备只能订阅对应产品下的设备的主题，格式如：/device/${productKey}/${deviceKey}/#
      */
     @Override
     public boolean checkSubscribePermission(String deviceKey, String topic) {
@@ -65,30 +65,38 @@ public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
             if (deviceKey == null || topic == null) {
                 return false;
             }
-            
+
             // 构建设备可访问的基础主题前缀
-            String allowedTopicPrefix = "/device/" + deviceKey + "/";
-            
-            // 检查主题是否以设备的专属前缀开头
-            boolean hasPermission = topic.startsWith(allowedTopicPrefix) || topic.equals("/device/" + deviceKey);
-            
-            if (!hasPermission) {
+            Device device = Device.builder().deviceKey(deviceKey).build();
+            String productKey = deviceMapper.selectDeviceList(device).stream().findFirst().map(Device::getDeviceKey).orElse(null);
+
+            if (productKey == null) {
                 log.warn("Subscribe permission denied: deviceKey={}, topic={}", deviceKey, topic);
-            } else {
-                log.debug("Subscribe permission granted: deviceKey={}, topic={}", deviceKey, topic);
+                return false;
             }
-            
+
+            String allowedTopicPrefix = "/device/" + productKey + "/" + deviceKey;
+
+            // 检查主题是否以设备的专属前缀开头
+            boolean hasPermission = topic.startsWith(allowedTopicPrefix + "/") || topic.equals(allowedTopicPrefix);
+
+            if (!hasPermission) {
+                log.warn("Subscribe permission denied: productKey={}, deviceKey={}, topic={}", productKey, deviceKey, topic);
+            } else {
+                log.debug("Subscribe permission granted: productKey={}, deviceKey={}, topic={}", productKey, deviceKey, topic);
+            }
+
             return hasPermission;
         } catch (Exception e) {
-            log.error("Check subscribe permission error: deviceKey={}, topic={}, error={}", 
-                      deviceKey, topic, e.getMessage(), e);
+            log.error("Check subscribe permission error: deviceKey={}, topic={}, error={}",
+                    deviceKey, topic, e.getMessage(), e);
             return false;
         }
     }
 
     /**
      * 检查设备是否有权限发布消息
-     * 默认设备只能发布到自己的主题，格式如：/device/{deviceKey}/#
+     * 默认设备只能发布到自己的主题，格式如：/device/${productKey}/${deviceKey}/#
      */
     @Override
     public boolean checkPublishPermission(String deviceKey, String topic) {
@@ -96,23 +104,31 @@ public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
             if (deviceKey == null || topic == null) {
                 return false;
             }
-            
+
             // 构建设备可访问的基础主题前缀
-            String allowedTopicPrefix = "/device/" + deviceKey + "/";
-            
-            // 检查主题是否以设备的专属前缀开头
-            boolean hasPermission = topic.startsWith(allowedTopicPrefix) || topic.equals("/device/" + deviceKey);
-            
-            if (!hasPermission) {
+            Device device = Device.builder().deviceKey(deviceKey).build();
+            String productKey = deviceMapper.selectDeviceList(device).stream().findFirst().map(Device::getDeviceKey).orElse(null);
+
+            if (productKey == null) {
                 log.warn("Publish permission denied: deviceKey={}, topic={}", deviceKey, topic);
-            } else {
-                log.debug("Publish permission granted: deviceKey={}, topic={}", deviceKey, topic);
+                return false;
             }
-            
+
+            String allowedTopicPrefix = "/device/" + productKey + "/" + deviceKey;
+
+            // 检查主题是否以设备的专属前缀开头
+            boolean hasPermission = topic.startsWith(allowedTopicPrefix + "/") || topic.equals(allowedTopicPrefix);
+
+            if (!hasPermission) {
+                log.warn("Publish permission denied: productKey={}, deviceKey={}, topic={}", productKey, deviceKey, topic);
+            } else {
+                log.debug("Publish permission granted: productKey={}, deviceKey={}, topic={}", productKey, deviceKey, topic);
+            }
+
             return hasPermission;
         } catch (Exception e) {
-            log.error("Check publish permission error: deviceKey={}, topic={}, error={}", 
-                      deviceKey, topic, e.getMessage(), e);
+            log.error("Check publish permission error: deviceKey={}, topic={}, error={}",
+                    deviceKey, topic, e.getMessage(), e);
             return false;
         }
     }

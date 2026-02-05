@@ -5,7 +5,6 @@ import com.zwei.module.iot.product.domain.Product;
 import com.zwei.module.iot.product.domain.ProductTsl;
 import com.zwei.module.iot.product.mapper.ProductMapper;
 import com.zwei.module.iot.product.mapper.ProductTslMapper;
-import com.zwei.module.iot.product.service.IProductChangeLogService;
 import com.zwei.module.iot.product.service.IProductTslService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,8 +28,8 @@ public class ProductTslServiceImpl implements IProductTslService {
     @Autowired
     private IDbStructureData dbStructureData;
 
-    @Autowired
-    private IProductChangeLogService productChangeLogService;
+//    @Autowired
+//    private IProductChangeLogService productChangeLogService;
 
     /**
      * 查询产品物模型定义
@@ -121,9 +120,11 @@ public class ProductTslServiceImpl implements IProductTslService {
                 switch (operationType) {
                     case 0:
                         productTslMapper.insertProductTsl(productTsl);
+                        dbStructureData.defineThingModel(productTsl.getTsl());
                         break;
                     case 1:
                         productTslMapper.updateProductTsl(productTsl);
+                        dbStructureData.updateThingModel(productTsl.getTsl());
                         break;
                 }
 

@@ -3,6 +3,11 @@ package com.zwei.iot.core.thing.domain.enums;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 /**
  * TSL 数据类型枚举
  *
@@ -23,6 +28,9 @@ public enum TslDataTypeEnum {
     private final String code;
     private final String desc;
 
+    private static final Map<String, TslDataTypeEnum> CODE_MAP = Arrays.stream(values())
+            .collect(Collectors.toMap(TslDataTypeEnum::getCode, Function.identity()));
+
     TslDataTypeEnum(String code, String desc) {
         this.code = code;
         this.desc = desc;
@@ -37,14 +45,20 @@ public enum TslDataTypeEnum {
         return desc;
     }
 
+    /**
+     * 传入类型名字符串，转化为枚举类型
+     *
+     * @param code 类型名字符串，有int, float, double, text, date, bool, enum, struct, array
+     * @return
+     */
     @JsonCreator
     public static TslDataTypeEnum fromCode(String code) {
-        for (TslDataTypeEnum type : values()) {
-            if (type.code.equals(code)) {
-                return type;
-            }
+        TslDataTypeEnum type = CODE_MAP.get(code);
+        // 无法找到对应数据类型时抛出 IllegalArgumentException，也可以默认设置类型为 text
+        if (type == null) {
+            throw new IllegalArgumentException("Unknown data type: " + code);
         }
-        throw new IllegalArgumentException("Unknown data type: " + code);
+        return type;
     }
 
     @Override

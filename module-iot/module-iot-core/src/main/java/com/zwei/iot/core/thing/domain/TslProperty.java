@@ -1,6 +1,7 @@
 package com.zwei.iot.core.thing.domain;
 
 import com.zwei.iot.core.thing.domain.enums.TslAccessMode;
+import com.zwei.iot.core.thing.domain.enums.TslDataTypeEnum;
 import io.swagger.annotations.ApiModelProperty;
 
 import java.io.Serializable;
@@ -24,25 +25,63 @@ public class TslProperty implements Serializable {
      * 属性名称
      */
     @ApiModelProperty("属性名称")
-    private String name;
+    private String name = "";
 
     /**
      * 属性读写权限
      */
     @ApiModelProperty("属性读写权限")
-    private TslAccessMode accessMode;
+    private TslAccessMode accessMode = TslAccessMode.READ_WRITE;
 
     /**
      * 是否是标准功能的必选属性
      */
     @ApiModelProperty("是否为必选属性")
-    private Boolean required;
+    private Boolean required = false;
 
     /**
      * 数据类型定义
      */
     @ApiModelProperty("数据类型定义")
     private TslDataType dataType;
+
+    public TslProperty() {
+    }
+
+    /**
+     * 只含标识符的构造函数，默认参数的类型为 text
+     *
+     * @param identifier 参数的唯一标识符
+     */
+    public TslProperty(String identifier) {
+        this.identifier = identifier;
+        this.dataType = new TslDataType();
+        dataType.setType(TslDataTypeEnum.TEXT);
+    }
+
+    /**
+     * 含参构造
+     *
+     * @param identifier 参数的唯一标识符
+     * @param code       参数数据类型:<br>int<br>float<br>double<br>text<br>date<br>bool<br>enum<br>struct<br>array<br>具体用法参考aliyun tsl规范
+     */
+    public TslProperty(String identifier, String code) {
+        this.identifier = identifier;
+        this.dataType = new TslDataType();
+        dataType.setType(TslDataTypeEnum.fromCode(code));
+    }
+
+    /**
+     * 含参构造
+     *
+     * @param identifier 参数的唯一标识符
+     * @param typeEnum   数据类型枚举类
+     */
+    public TslProperty(String identifier, TslDataTypeEnum typeEnum) {
+        this.identifier = identifier;
+        this.dataType = new TslDataType();
+        dataType.setType(typeEnum);
+    }
 
     public TslAccessMode getAccessMode() {
         return accessMode;

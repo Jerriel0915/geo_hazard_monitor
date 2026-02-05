@@ -1,11 +1,14 @@
 package com.zwei.module.iot.device.domain;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
 import com.zwei.common.annotation.Excel;
 import com.zwei.common.core.domain.BaseEntity;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 
 /**
  * 设备基本信息对象 zw_iot_device
@@ -13,6 +16,9 @@ import io.swagger.annotations.ApiModelProperty;
  * @author linx
  * @date 2025-09-05
  */
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @ApiModel("设备基本信息对象")
 public class Device extends BaseEntity
 {

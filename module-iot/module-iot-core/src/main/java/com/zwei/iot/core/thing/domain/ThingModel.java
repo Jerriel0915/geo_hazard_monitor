@@ -45,6 +45,9 @@ public class ThingModel implements Serializable {
     @ApiModelProperty("服务列表")
     private List<TslService> services;
 
+    public ThingModel() {
+    }
+
     public ThingModel(String productKey) {
         this.profile = new Profile(productKey);
         this.properties = new ArrayList<>();
@@ -62,6 +65,9 @@ public class ThingModel implements Serializable {
          */
         @ApiModelProperty("当前产品的ProductKey")
         private String productKey;
+
+        public Profile() {
+        }
 
         public Profile(String productKey) {
             this.productKey = productKey;
