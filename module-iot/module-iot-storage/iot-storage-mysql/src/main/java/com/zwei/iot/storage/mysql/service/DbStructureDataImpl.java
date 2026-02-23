@@ -4,6 +4,7 @@ import com.zwei.iot.core.thing.domain.ThingModel;
 import com.zwei.iot.core.thing.domain.TslEvent;
 import com.zwei.iot.core.thing.domain.TslProperty;
 import com.zwei.iot.storage.core.IDbStructureData;
+import com.zwei.iot.storage.mysql.TableMetaUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +62,7 @@ public class DbStructureDataImpl implements IDbStructureData {
         String tableName = "zw_ts_" + thingModel.getProfile().getProductKey();
 
         // 检查表是否存在
-        if (tableExists(tableName)) {
+        if (TableMetaUtils.tableExists(jdbcTemplate, tableName)) {
             // 更新表结构，根据新的物模型属性添加或修改字段
             updateProductTable(tableName, thingModel.getProperties());
         } else {
@@ -144,7 +145,13 @@ public class DbStructureDataImpl implements IDbStructureData {
         }
 
         // 获取现有表的所有列名
-        List<String> existingColumns = getTableColumns(tableName);
+        List<String> existingColumns;
+        try {
+            existingColumns = TableMetaUtils.getTableColumns(jdbcTemplate, tableName);
+        } catch (Exception e) {
+            log.warn(e.getMessage());
+            return;
+        }
 
         // 为每个属性添加列（如果不存在）
         for (TslProperty property : properties) {
@@ -162,19 +169,6 @@ public class DbStructureDataImpl implements IDbStructureData {
 
         System.out.println("Updated product table: " + tableName + ", properties: " +
                 properties.stream().map(TslProperty::getIdentifier).collect(Collectors.joining(", ")));
-    }
-
-    /**
-     * 获取表的所有列名
-     */
-    private List<String> getTableColumns(String tableName) {
-        try {
-            String sql = "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_NAME = ?";
-            return jdbcTemplate.queryForList(sql, new Object[] { tableName }, String.class);
-        } catch (Exception e) {
-            log.error("Error while fetching columns for table {}: {}", tableName, e.getMessage(), e);
-            return java.util.Collections.emptyList();
-        }
     }
 
     /**
@@ -208,19 +202,6 @@ public class DbStructureDataImpl implements IDbStructureData {
                 return "BIGINT";
             default:
                 return "VARCHAR(255)";
-        }
-    }
-
-    /**
-     * 检查表是否存在
-     */
-    private boolean tableExists(String tableName) {
-        try {
-            String sql = "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_NAME = ?";
-            Integer count = jdbcTemplate.queryForObject(sql, new Object[] { tableName }, Integer.class);
-            return count != null && count > 0;
-        } catch (Exception e) {
-            return false;
         }
     }
 }

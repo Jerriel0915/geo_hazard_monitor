@@ -3,9 +3,11 @@ package com.zwei.module.iot.device.service.impl;
 import com.zwei.iot.core.security.IDeviceAuthentication;
 import com.zwei.module.iot.device.domain.Device;
 import com.zwei.module.iot.device.mapper.DeviceMapper;
+import com.zwei.module.iot.product.mapper.ProductMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.tio.core.ChannelContext;
 
 /**
  * 设备认证实现类
@@ -17,16 +19,22 @@ import org.springframework.stereotype.Service;
 @Service
 public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
 
+    private final DeviceMapper deviceMapper;
+    private final ProductMapper productMapper;
+
     @Autowired
-    private DeviceMapper deviceMapper;
+    public DeviceAuthenticationServiceImpl(DeviceMapper deviceMapper, ProductMapper productMapper) {
+        this.deviceMapper = deviceMapper;
+        this.productMapper = productMapper;
+    }
 
     /**
      * 设备认证
-     * 使用deviceKey和deviceSecret进行认证
+     * 使用deviceKey和deviceSecret进行认证,认证成功后将设备信息存入上下文
      * 两个参数均不可为空
      */
     @Override
-    public boolean authenticate(String deviceKey, String deviceSecret) {
+    public boolean authenticate(ChannelContext context, String deviceKey, String deviceSecret) {
         try {
             // 参数校验
             if (deviceKey == null || deviceSecret == null || deviceKey.isEmpty() || deviceSecret.isEmpty()) {
@@ -44,6 +52,9 @@ public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
 
             if (device != null) {
                 log.info("Device authentication success: deviceKey={}", deviceKey);
+                // 存储设备信息
+                device.setDeviceSecret(null);
+                context.set("device", device);
                 return true;
             } else {
                 log.warn("Device authentication failed: device not found or invalid credentials, deviceKey={}", deviceKey);
@@ -107,7 +118,8 @@ public class DeviceAuthenticationServiceImpl implements IDeviceAuthentication {
 
             // 构建设备可访问的基础主题前缀
             Device device = Device.builder().deviceKey(deviceKey).build();
-            String productKey = deviceMapper.selectDeviceList(device).stream().findFirst().map(Device::getDeviceKey).orElse(null);
+            Long productId = deviceMapper.selectDeviceList(device).stream().findFirst().map(Device::getProductId).orElse(null);
+            String productKey = productMapper.selectProductById(productId).getProductKey();
 
             if (productKey == null) {
                 log.warn("Publish permission denied: deviceKey={}, topic={}", deviceKey, topic);
