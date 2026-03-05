@@ -1,0 +1,39 @@
+// 主色
+$primary-color: #1890FF;
+$success-color: #52c41a;
+$warning-color: #faad14;
+$error-color: #f5222d;
+
+// 间距
+$spacing-small: 8px;
+$spacing-medium: 16px;
+$spacing-large: 24px;
+
+// 字体
+$font-size-base: 14px;
+$font-size-large: 16px;
+$text-color-primary: #303133;
+$text-color-regular: #606266;
+$text-color-secondary: #909399;
+
+// 边框
+$border-radius-base: 4px;
+$border-color-base: #dcdfe6;
+
+// 阴影
+$box-shadow-base: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+
+// 混合宏
+@mixin flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@mixin card-hover {
+  transition: all 0.3s;
+  &:hover {
+    box-shadow: $box-shadow-base;
+    transform: translateY(-2px);
+  }
+}
