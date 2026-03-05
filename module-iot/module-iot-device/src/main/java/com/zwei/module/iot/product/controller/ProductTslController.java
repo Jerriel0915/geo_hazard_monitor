@@ -23,8 +23,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/iot/product/productTsl")
 public class ProductTslController extends BaseController
 {
+    private final IProductTslService productTslService;
+
     @Autowired
-    private IProductTslService productTslService;
+    ProductTslController(IProductTslService productTslService) {
+        this.productTslService = productTslService;
+    }
 
     /**
      * 获取产品物模型定义详细信息

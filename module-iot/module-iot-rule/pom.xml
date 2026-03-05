@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.zwei</groupId>
+        <artifactId>module-iot</artifactId>
+        <version>3.9.0</version>
+    </parent>
+
+    <artifactId>module-iot-rule</artifactId>
+    <packaging>jar</packaging>
+    <description>
+        IoT Rule Engine Module
+    </description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- AviatorScript Engine -->
+        <dependency>
+            <groupId>com.googlecode.aviator</groupId>
+            <artifactId>aviator</artifactId>
+            <version>5.4.1</version>
+        </dependency>
+
+        <!-- Module Dependencies -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>module-iot-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>module-iot-device</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Common Utilities -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -78,31 +78,44 @@
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
-    <el-table v-loading="loading" :data="productList" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="数据ID" align="center" prop="id" />
-      <el-table-column label="产品密钥" align="center" prop="productKey" />
-      <el-table-column label="产品名称" align="center" prop="name">
-        <template #default="scope">
-          <el-button link type="primary" @click="handleDetail(scope.row)">{{ scope.row.name }}</el-button>
-        </template>
-      </el-table-column>
-      <el-table-column label="设备类型" align="center" prop="nodeType">
-        <template #default="scope">
-          <el-tag v-if="scope.row.nodeType === 0">直连设备</el-tag>
-          <el-tag v-else-if="scope.row.nodeType === 1" type="success">网关</el-tag>
-          <el-tag v-else-if="scope.row.nodeType === 2" type="warning">传感器</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="描述" align="center" prop="remarks" />
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
-        <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['product:product:edit']">修改</el-button>
-          <el-button link type="primary" icon="Setting" @click="handleThingModel(scope.row)" v-hasPermi="['product:product:edit']">物模型设置</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['product:product:remove']">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+      <el-row :gutter="20" v-loading="loading">
+        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4" v-for="item in productList" :key="item.id" class="mb-4">
+          <el-card shadow="hover" class="product-card">
+            <template #header>
+              <div class="card-header">
+                <span class="product-name" @click="handleDetail(item)">{{ item.name }}</span>
+                <el-tag v-if="item.nodeType === 0" size="small">直连设备</el-tag>
+                <el-tag v-else-if="item.nodeType === 1" type="success" size="small">网关</el-tag>
+                <el-tag v-else-if="item.nodeType === 2" type="warning" size="small">传感器</el-tag>
+              </div>
+            </template>
+            <div class="card-content">
+              <div class="info-item">
+                <span class="label">产品密钥：</span>
+                <span class="value">{{ item.productKey }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">描述：</span>
+                <span class="value">{{ item.remarks || '暂无描述' }}</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <el-tooltip content="修改" placement="top">
+                <el-button link type="primary" icon="Edit" @click="handleUpdate(item)"
+                           v-hasPermi="['product:product:edit']"></el-button>
+              </el-tooltip>
+              <el-tooltip content="物模型设置" placement="top">
+                <el-button link type="primary" icon="Setting" @click="handleThingModel(item)"
+                           v-hasPermi="['product:product:edit']"></el-button>
+              </el-tooltip>
+              <el-tooltip content="删除" placement="top">
+                <el-button link type="danger" icon="Delete" @click="handleDelete(item)"
+                           v-hasPermi="['product:product:remove']"></el-button>
+              </el-tooltip>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
     
     <pagination
         v-show="total>0"
@@ -1665,5 +1678,64 @@ pre {
   font-size: 12px;
   max-height: 200px;
   overflow: auto;
+}
+
+.product-card {
+  transition: all 0.3s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.product-name {
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  color: #409EFF;
+}
+
+.card-content {
+  flex: 1;
+  margin: 15px 0;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #606266;
+  display: flex;
+  align-items: flex-start;
+}
+
+.info-item .label {
+  width: 80px;
+  flex-shrink: 0;
+  color: #909399;
+}
+
+.info-item .value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-footer {
+  border-top: 1px solid #EBEEF5;
+  padding-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

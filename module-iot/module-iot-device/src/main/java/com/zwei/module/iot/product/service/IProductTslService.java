@@ -1,6 +1,9 @@
 package com.zwei.module.iot.product.service;
 
+import com.zwei.iot.core.thing.domain.TslProperty;
 import com.zwei.module.iot.product.domain.ProductTsl;
+
+import java.util.List;
 
 /**
  * 产品物模型定义Service接口
@@ -17,6 +20,14 @@ public interface IProductTslService
      * @return 产品物模型定义
      */
     public ProductTsl selectProductTslByProductId(String productId);
+
+    /**
+     * 获取指定产品的所有属性字段
+     *
+     * @param productId 产品ID
+     * @return
+     */
+    public List<TslProperty> selectTslPropertyByProductId(String productId);
 
     /**
      * 新增产品物模型定义

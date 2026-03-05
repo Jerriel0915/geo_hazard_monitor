@@ -1,7 +1,8 @@
 package com.zwei.module.iot.device.service;
 
-import java.util.List;
 import com.zwei.module.iot.device.domain.DeviceAliveLog;
+
+import java.util.List;
 
 /**
  * 状态日志Service接口
@@ -49,6 +50,7 @@ public interface IDeviceAliveLogService
      * @param ids 需要删除的状态日志主键集合
      * @return 结果
      */
+    @Deprecated
     public int deleteDeviceAliveLogByIds(Long[] ids);
 
     /**
@@ -57,5 +59,6 @@ public interface IDeviceAliveLogService
      * @param id 状态日志主键
      * @return 结果
      */
+    @Deprecated
     public int deleteDeviceAliveLogById(Long id);
 }

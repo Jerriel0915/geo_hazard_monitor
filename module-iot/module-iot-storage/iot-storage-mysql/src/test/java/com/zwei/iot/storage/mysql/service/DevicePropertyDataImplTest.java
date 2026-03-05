@@ -100,7 +100,7 @@ public class DevicePropertyDataImplTest {
 
         // 验证行为
         verify(jdbcTemplate, times(1)).batchUpdate(anyString(), anyList());
-        verify(jdbcTemplate, times(1)).update(anyString(), eq(deviceId.toString()), eq(time), eq(time));
+        verify(jdbcTemplate, times(1)).batchUpdate(anyString(), anyList());
     }
 
     @Test

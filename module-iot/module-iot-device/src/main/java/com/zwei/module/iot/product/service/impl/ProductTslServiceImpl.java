@@ -1,5 +1,7 @@
 package com.zwei.module.iot.product.service.impl;
 
+import com.zwei.common.core.redis.RedisCache;
+import com.zwei.iot.core.thing.domain.TslProperty;
 import com.zwei.iot.storage.core.IDbStructureData;
 import com.zwei.module.iot.product.domain.Product;
 import com.zwei.module.iot.product.domain.ProductTsl;
@@ -9,6 +11,11 @@ import com.zwei.module.iot.product.service.IProductTslService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 产品物模型定义Service业务层处理
@@ -19,17 +26,23 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class ProductTslServiceImpl implements IProductTslService {
-    @Autowired
-    private ProductMapper productMapper;
+    private final ProductMapper productMapper;
+    private final ProductTslMapper productTslMapper;
+    private final IDbStructureData dbStructureData;
+    private final RedisCache redisCache;
 
-    @Autowired
-    private ProductTslMapper productTslMapper;
-
-    @Autowired
-    private IDbStructureData dbStructureData;
+    private static final String CACHE_KEY_PREFIX = "iot:product:tsl:";
 
 //    @Autowired
 //    private IProductChangeLogService productChangeLogService;
+
+    @Autowired
+    ProductTslServiceImpl(ProductMapper productMapper, ProductTslMapper productTslMapper, RedisCache redisCache, IDbStructureData dbStructureData) {
+        this.productMapper = productMapper;
+        this.productTslMapper = productTslMapper;
+        this.redisCache = redisCache;
+        this.dbStructureData = dbStructureData;
+    }
 
     /**
      * 查询产品物模型定义
@@ -39,7 +52,25 @@ public class ProductTslServiceImpl implements IProductTslService {
      */
     @Override
     public ProductTsl selectProductTslByProductId(String productId) {
-        return productTslMapper.selectProductTslByProductId(productId);
+        String cacheKey = CACHE_KEY_PREFIX + productId;
+        ProductTsl productTsl = redisCache.getCacheObject(cacheKey);
+        if (productTsl != null) {
+            return productTsl;
+        }
+        productTsl = productTslMapper.selectProductTslByProductId(productId);
+        if (productTsl != null) {
+            redisCache.setCacheObject(cacheKey, productTsl, 1, TimeUnit.HOURS);
+        }
+        return productTsl;
+    }
+
+    @Override
+    public List<TslProperty> selectTslPropertyByProductId(String productId) {
+        ProductTsl productTsl = selectProductTslByProductId(productId);
+        if (productTsl != null) {
+            return productTsl.getTsl().getProperties();
+        }
+        return Collections.emptyList();
     }
 
     /**
@@ -49,11 +80,16 @@ public class ProductTslServiceImpl implements IProductTslService {
      * @return 结果
      */
     @Override
+    @Transactional
     public int insertProductTsl(ProductTsl productTsl) {
         int result = productTslMapper.insertProductTsl(productTsl);
 
         // 根据物模型定义更新数据库表结构
         updateDbStructureFromTsl(productTsl);
+
+        if (result > 0 && productTsl.getProductId() != null) {
+            redisCache.deleteObject(CACHE_KEY_PREFIX + productTsl.getProductId());
+        }
 
         return result;
     }
@@ -65,11 +101,16 @@ public class ProductTslServiceImpl implements IProductTslService {
      * @return 结果
      */
     @Override
+    @Transactional
     public int updateProductTsl(ProductTsl productTsl) {
         int result = productTslMapper.updateProductTsl(productTsl);
 
         // 根据物模型定义更新数据库表结构
         updateDbStructureFromTsl(productTsl);
+
+        if (result > 0 && productTsl.getProductId() != null) {
+            redisCache.deleteObject(CACHE_KEY_PREFIX + productTsl.getProductId());
+        }
 
         return result;
     }
@@ -81,11 +122,16 @@ public class ProductTslServiceImpl implements IProductTslService {
      * @return 结果
      */
     @Override
+    @Transactional
     public int deleteProductTslByProductId(String productId) {
         // 这里可以添加清理相关数据表结构的逻辑
         // 注意：删除数据表需要谨慎操作
 
-        return productTslMapper.deleteProductTslByProductId(productId);
+        int result = productTslMapper.deleteProductTslByProductId(productId);
+        if (result > 0) {
+            redisCache.deleteObject(CACHE_KEY_PREFIX + productId);
+        }
+        return result;
     }
 
     /**

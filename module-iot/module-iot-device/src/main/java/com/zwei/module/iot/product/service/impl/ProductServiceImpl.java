@@ -1,6 +1,7 @@
 package com.zwei.module.iot.product.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zwei.common.core.redis.RedisCache;
 import com.zwei.iot.core.thing.domain.ThingModel;
 import com.zwei.iot.storage.core.IDbStructureData;
 import com.zwei.module.iot.product.domain.Product;
@@ -8,8 +9,10 @@ import com.zwei.module.iot.product.mapper.ProductMapper;
 import com.zwei.module.iot.product.service.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 产品Service业务层处理
@@ -20,13 +23,20 @@ import java.util.List;
 @Service
 public class ProductServiceImpl implements IProductService 
 {
-    @Autowired
-    private ProductMapper productMapper;
-    
-    @Autowired
-    private IDbStructureData dbStructureData;
-    
+    private final ProductMapper productMapper;
+    private final IDbStructureData dbStructureData;
+    private final RedisCache redisCache;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private static final String CACHE_KEY_PREFIX = "iot:product:id:";
+
+    @Autowired
+    ProductServiceImpl(ProductMapper productMapper, RedisCache redisCache, IDbStructureData dbStructureData) {
+        this.productMapper = productMapper;
+        this.redisCache = redisCache;
+        this.dbStructureData = dbStructureData;
+    }
 
     /**
      * 查询产品
@@ -37,7 +47,16 @@ public class ProductServiceImpl implements IProductService
     @Override
     public Product selectProductById(Long id)
     {
-        return productMapper.selectProductById(id);
+        String cacheKey = CACHE_KEY_PREFIX + id;
+        Product product = redisCache.getCacheObject(cacheKey);
+        if (product != null) {
+            return product;
+        }
+        product = productMapper.selectProductById(id);
+        if (product != null) {
+            redisCache.setCacheObject(cacheKey, product, 1, TimeUnit.HOURS);
+        }
+        return product;
     }
 
     /**
@@ -59,6 +78,7 @@ public class ProductServiceImpl implements IProductService
      * @return 结果
      */
     @Override
+    @Transactional
     public int insertProduct(Product product)
     {
         int result = productMapper.insertProduct(product);
@@ -76,9 +96,13 @@ public class ProductServiceImpl implements IProductService
      * @return 结果
      */
     @Override
+    @Transactional
     public int updateProduct(Product product)
     {
         int result = productMapper.updateProduct(product);
+        if (result > 0) {
+            redisCache.deleteObject(CACHE_KEY_PREFIX + product.getId());
+        }
         
         // 更新产品的数据表结构
         initProductTables(product);
@@ -93,9 +117,16 @@ public class ProductServiceImpl implements IProductService
      * @return 结果
      */
     @Override
+    @Transactional
     public int deleteProductByIds(Long[] ids)
     {
-        return productMapper.deleteProductByIds(ids);
+        int result = productMapper.deleteProductByIds(ids);
+        if (result > 0) {
+            for (Long id : ids) {
+                redisCache.deleteObject(CACHE_KEY_PREFIX + id);
+            }
+        }
+        return result;
     }
 
     /**
@@ -105,12 +136,17 @@ public class ProductServiceImpl implements IProductService
      * @return 结果
      */
     @Override
+    @Transactional
     public int deleteProductById(Long id)
     {
         // 这里可以添加删除相关数据表的逻辑
         // 注意：删除数据表需要谨慎操作
-        
-        return productMapper.deleteProductById(id);
+
+        int result = productMapper.deleteProductById(id);
+        if (result > 0) {
+            redisCache.deleteObject(CACHE_KEY_PREFIX + id);
+        }
+        return result;
     }
     
     /**

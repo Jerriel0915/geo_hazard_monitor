@@ -21,6 +21,7 @@
         <module>module-iot-storage</module>
         <module>module-iot-storage/iot-storage-common</module>
         <module>module-iot-core</module>
+        <module>module-iot-rule</module>
     </modules>
 
     <properties>

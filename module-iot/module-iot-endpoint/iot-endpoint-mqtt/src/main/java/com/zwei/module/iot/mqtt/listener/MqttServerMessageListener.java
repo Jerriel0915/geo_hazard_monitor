@@ -6,6 +6,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.zwei.iot.core.thing.domain.DevicePropertyCache;
 import com.zwei.iot.storage.core.IDevicePropertyData;
 import com.zwei.module.iot.device.domain.Device;
+import com.zwei.module.iot.rule.service.IotRuleEngine;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.mica.mqtt.codec.MqttPublishMessage;
 import org.dromara.mica.mqtt.spring.server.MqttServerFunction;
@@ -28,10 +29,12 @@ import java.util.Map;
 @Service
 public class MqttServerMessageListener {
     private final IDevicePropertyData devicePropertyData;
+    private final IotRuleEngine ruleEngine;
 
     @Autowired
-    public MqttServerMessageListener(IDevicePropertyData devicePropertyData) {
+    public MqttServerMessageListener(IDevicePropertyData devicePropertyData, IotRuleEngine ruleEngine) {
         this.devicePropertyData = devicePropertyData;
+        this.ruleEngine = ruleEngine;
     }
 
     /**
@@ -75,6 +78,19 @@ public class MqttServerMessageListener {
         });
 
         devicePropertyData.addProperties(deviceId, properties, time);
+
+        // 触发规则引擎
+        try {
+            // Topic格式: /device/${productKey}/${deviceKey}/thing/event/property/post
+            String[] parts = topic.split("/");
+            if (parts.length > 3) {
+                String productKey = parts[2];
+                String deviceKey = parts[3];
+                ruleEngine.match(productKey, deviceKey, object);
+            }
+        } catch (Exception e) {
+            log.error("Rule engine match failed", e);
+        }
 
     }
 
