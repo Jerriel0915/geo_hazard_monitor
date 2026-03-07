@@ -1,5 +1,7 @@
 package com.zwei.iot.core.security;
 
+import org.tio.core.ChannelContext;
+
 /**
  * 设备认证接口
  * 用于设备登录认证和订阅鉴权
@@ -11,12 +13,13 @@ public interface IDeviceAuthentication {
 
     /**
      * 设备认证
-     * 
+     *
+     * @param channelContext 上下文
      * @param deviceKey 设备id
      * @param deviceSecret 设备密钥
      * @return 是否认证成功
      */
-    boolean authenticate(String deviceKey, String deviceSecret);
+    boolean authenticate(ChannelContext channelContext, String deviceKey, String deviceSecret);
 
     /**
      * 检查设备是否有权限订阅主题

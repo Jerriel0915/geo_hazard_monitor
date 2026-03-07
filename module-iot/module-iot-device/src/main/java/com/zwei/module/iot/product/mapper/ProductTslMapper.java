@@ -1,6 +1,7 @@
 package com.zwei.module.iot.product.mapper;
 
 import com.zwei.module.iot.product.domain.ProductTsl;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * 产品物模型定义Mapper接口
@@ -8,6 +9,7 @@ import com.zwei.module.iot.product.domain.ProductTsl;
  * @author linx
  * @date 2025-09-05
  */
+@Mapper
 public interface ProductTslMapper 
 {
     /**
@@ -16,7 +18,7 @@ public interface ProductTslMapper
      * @param productId 产品ID
      * @return 产品物模型定义
      */
-    public ProductTsl selectProductTslByProductId(Long productId);
+    public ProductTsl selectProductTslByProductId(String productId);
 
     /**
      * 新增产品物模型定义

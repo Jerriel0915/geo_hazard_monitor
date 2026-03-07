@@ -75,31 +75,46 @@
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
-    <el-table v-loading="loading" :data="deviceList" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="数据ID" align="center" prop="id" />
-      <el-table-column label="设备编号" align="center" prop="sn" />
-      <el-table-column label="设备名称" align="center" prop="name" />
-      <el-table-column label="设备类型" align="center" prop="type">
-        <template #default="scope">
-          <dict-tag :options="dev_type" :value="scope.row.type"/>
-        </template>
-      </el-table-column>
-      <el-table-column label="所属产品id" align="center" prop="productId" />
-      <el-table-column label="通信协议" align="center" prop="commProtocol" />
-      <el-table-column label="经度" align="center" prop="longitude" />
-      <el-table-column label="纬度" align="center" prop="latitude" />
-      <el-table-column label="供电方式" align="center" prop="powerSupply" />
-      <el-table-column label="生产厂商" align="center" prop="manufacturer" />
-      <el-table-column label="设备密钥" align="center" prop="deviceKey" />
-      <el-table-column label="设备密码" align="center" prop="deviceSecret" />
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
-        <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['device:device:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['device:device:remove']">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-row :gutter="20" v-loading="loading">
+      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="4" v-for="item in deviceList" :key="item.id" class="mb-4">
+        <el-card shadow="hover" class="device-card">
+          <template #header>
+            <div class="card-header">
+              <span class="device-name">{{ item.name }}</span>
+              <dict-tag :options="dev_type" :value="item.type" size="small"/>
+            </div>
+          </template>
+          <div class="card-content">
+            <div class="info-item">
+              <span class="label">设备编号：</span>
+              <span class="value">{{ item.sn }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">产品ID：</span>
+              <span class="value">{{ item.productId }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">通信协议：</span>
+              <span class="value">{{ item.commProtocol || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">生产厂商：</span>
+              <span class="value">{{ item.manufacturer || '-' }}</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <el-tooltip content="修改" placement="top">
+              <el-button link type="primary" icon="Edit" @click="handleUpdate(item)"
+                         v-hasPermi="['device:device:edit']"></el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" placement="top">
+              <el-button link type="danger" icon="Delete" @click="handleDelete(item)"
+                         v-hasPermi="['device:device:remove']"></el-button>
+            </el-tooltip>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
     
     <pagination
       v-show="total>0"
@@ -118,6 +133,15 @@
         <el-form-item label="设备名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入设备名称" />
         </el-form-item>
+        <el-form-item label="所属产品" prop="productId">
+          <el-input v-model="form.productName" placeholder="请选择所属产品" readonly @click="openProductSelect">
+            <template #append>
+              <el-button icon="Search" @click="openProductSelect"/>
+            </template>
+          </el-input>
+          <!-- Hidden input for productId -->
+          <el-input v-model="form.productId" type="hidden" style="display:none"/>
+        </el-form-item>
         <el-form-item label="设备类型" prop="type">
           <el-select v-model="form.type" placeholder="请选择设备类型">
             <el-option
@@ -127,9 +151,6 @@
               :value="dict.value"
             ></el-option>
           </el-select>
-        </el-form-item>
-        <el-form-item label="所属产品id" prop="productId">
-          <el-input v-model="form.productId" placeholder="请输入所属产品id" />
         </el-form-item>
         <el-form-item label="通信协议" prop="commProtocol">
           <el-input v-model="form.commProtocol" placeholder="请输入通信协议" />
@@ -160,11 +181,15 @@
         </div>
       </template>
     </el-dialog>
+
+    <ProductSelect v-model="productSelectVisible" @confirm="handleProductSelect"/>
   </div>
 </template>
 
 <script setup name="Device">
-import { listDevice, getDevice, delDevice, addDevice, updateDevice } from "@/api/device/device"
+import {addDevice, delDevice, getDevice, listDevice, updateDevice} from "@/api/device/device"
+import {getProduct} from "@/api/product/product"
+import ProductSelect from "@/components/ProductSelect/index.vue"
 
 const { proxy } = getCurrentInstance()
 const { dev_type } = proxy.useDict('dev_type')
@@ -178,6 +203,7 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
 const title = ref("")
+const productSelectVisible = ref(false)
 
 const data = reactive({
     form: {},
@@ -197,6 +223,9 @@ const data = reactive({
       ],
       type: [
         { required: true, message: "设备类型不能为空", trigger: "change" }
+      ],
+      productId: [
+        {required: true, message: "所属产品不能为空", trigger: "change"}
       ],
       longitude: [
         { required: true, message: "经度不能为空", trigger: "blur" },
@@ -235,6 +264,7 @@ function reset() {
     name: null,
     type: null,
     productId: null,
+    productName: null,
     commProtocol: null,
     longitude: null,
     latitude: null,
@@ -278,6 +308,11 @@ function handleUpdate(row) {
   const _id = row.id || ids.value
   getDevice(_id).then(response => {
     form.value = response.data
+    if (form.value.productId) {
+      getProduct(form.value.productId).then(res => {
+        form.value.productName = res.data.name
+      })
+    }
     open.value = true
     title.value = "修改设备基本信息"
   })
@@ -322,5 +357,82 @@ function handleExport() {
   }, `device_${new Date().getTime()}.xlsx`)
 }
 
+function openProductSelect() {
+  productSelectVisible.value = true
+}
+
+function handleProductSelect(product) {
+  form.value.productId = product.id
+  form.value.productName = product.name
+  // Auto-fill other fields based on product
+  if (product.nodeType !== undefined) {
+    form.value.type = product.nodeType.toString() // Ensure type consistency (string/number)
+  }
+  // Fill manufacturer or other info if available in product
+
+  // Validate productId field to clear any error
+  proxy.$refs["deviceRef"].validateField("productId")
+}
+
 getList()
 </script>
+
+<style scoped>
+.device-card {
+  transition: all 0.3s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.device-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.device-name {
+  font-weight: bold;
+  font-size: 16px;
+  color: #303133;
+}
+
+.card-content {
+  flex: 1;
+  margin: 15px 0;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #606266;
+  display: flex;
+  align-items: flex-start;
+}
+
+.info-item .label {
+  width: 80px;
+  flex-shrink: 0;
+  color: #909399;
+}
+
+.info-item .value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-footer {
+  border-top: 1px solid #EBEEF5;
+  padding-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+</style>

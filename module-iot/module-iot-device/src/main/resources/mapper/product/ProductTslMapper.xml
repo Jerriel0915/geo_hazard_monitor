@@ -5,7 +5,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 <mapper namespace="com.zwei.module.iot.product.mapper.ProductTslMapper">
     <resultMap type="com.zwei.module.iot.product.domain.ProductTsl" id="ProductTslResult">
         <result property="productId" column="product_id" />
-        <result property="tsl" column="tsl" />
+        <result property="tsl" column="tsl" typeHandler="com.zwei.module.iot.product.handler.ThingModelTypeHandler"/>
     </resultMap>
 
     <sql id="selectProductTslVo">
@@ -19,13 +19,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <insert id="insertProductTsl" parameterType="com.zwei.module.iot.product.domain.ProductTsl">
         insert into zw_iot_product_tsl (product_id, tsl)
-        values (#{productId}, #{tsl})
-        on duplicate key update tsl = #{tsl}
+        values (#{productId}, #{tsl, typeHandler=com.zwei.module.iot.product.handler.ThingModelTypeHandler})
+        on duplicate key update tsl = #{tsl, typeHandler=com.zwei.module.iot.product.handler.ThingModelTypeHandler}
     </insert>
 
     <update id="updateProductTsl" parameterType="com.zwei.module.iot.product.domain.ProductTsl">
         update zw_iot_product_tsl
-        set tsl = #{tsl}
+        set tsl = #{tsl, typeHandler=com.zwei.module.iot.product.handler.ThingModelTypeHandler}
         where product_id = #{productId}
     </update>
 

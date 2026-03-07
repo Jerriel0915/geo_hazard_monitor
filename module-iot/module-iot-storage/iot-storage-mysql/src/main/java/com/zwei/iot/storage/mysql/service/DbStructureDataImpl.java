@@ -1,15 +1,19 @@
 package com.zwei.iot.storage.mysql.service;
 
-import com.zwei.iot.core.ThingModel;
+import com.zwei.iot.core.thing.domain.ThingModel;
+import com.zwei.iot.core.thing.domain.TslEvent;
+import com.zwei.iot.core.thing.domain.TslProperty;
 import com.zwei.iot.storage.core.IDbStructureData;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import java.util.List;
-import java.util.stream.Collectors;
-
+import com.zwei.iot.storage.mysql.TableMetaUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * MySQL数据源的物模型定义实现
@@ -18,9 +22,10 @@ import org.springframework.stereotype.Component;
  * @author linx
  */
 @Component
+@Primary
 public class DbStructureDataImpl implements IDbStructureData {
 
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
     private static final Logger log = LoggerFactory.getLogger(DbStructureDataImpl.class);
 
     /**
@@ -33,33 +38,33 @@ public class DbStructureDataImpl implements IDbStructureData {
 
     @Override
     public void defineThingModel(ThingModel thingModel) {
-        if (thingModel == null || thingModel.getModel() == null) {
+        if (thingModel == null || thingModel.getProfile() == null) {
             return;
         }
 
         // 按照要求使用新的表名规则：zw_ts_{产品key}
-        String tableName = "zw_ts_" + thingModel.getProductKey();
+        String tableName = "zw_ts_" + thingModel.getProfile().getProductKey();
 
         // 根据物模型属性创建产品表，属性作为表字段
-        createProductTable(tableName, thingModel.getModel().getProperties());
+        createProductTable(tableName, thingModel.getProperties());
 
         // 创建事件表（保持事件表功能）
-        createEventTable(tableName + "_event", thingModel.getModel().getEvents());
+        createEventTable(tableName + "_event", thingModel.getEvents());
     }
 
     @Override
     public void updateThingModel(ThingModel thingModel) {
-        if (thingModel == null || thingModel.getModel() == null) {
+        if (thingModel == null || thingModel.getProfile() == null) {
             return;
         }
 
         // 按照要求使用新的表名规则
-        String tableName = "zw_ts_" + thingModel.getProductKey();
+        String tableName = "zw_ts_" + thingModel.getProfile().getProductKey();
 
         // 检查表是否存在
-        if (tableExists(tableName)) {
+        if (TableMetaUtils.tableExists(jdbcTemplate, tableName)) {
             // 更新表结构，根据新的物模型属性添加或修改字段
-            updateProductTable(tableName, thingModel.getModel().getProperties());
+            updateProductTable(tableName, thingModel.getProperties());
         } else {
             // 如果表不存在，创建新表
             defineThingModel(thingModel);
@@ -86,7 +91,7 @@ public class DbStructureDataImpl implements IDbStructureData {
     /**
      * 创建产品表，将物模型属性作为表字段
      */
-    private void createProductTable(String tableName, List<ThingModel.Property> properties) {
+    private void createProductTable(String tableName, List<TslProperty> properties) {
         StringBuilder sql = new StringBuilder();
         sql.append("CREATE TABLE IF NOT EXISTS ").append(tableName).append(" ( ")
                 .append("id BIGINT AUTO_INCREMENT PRIMARY KEY, ")
@@ -96,9 +101,9 @@ public class DbStructureDataImpl implements IDbStructureData {
 
         // 添加物模型属性作为表字段
         if (properties != null && !properties.isEmpty()) {
-            for (ThingModel.Property property : properties) {
+            for (TslProperty property : properties) {
                 String fieldName = property.getIdentifier();
-                String fieldType = getMysqlDataType(property.getDataType().getType());
+                String fieldType = getMysqlDataType(property.getDataType().getType().getCode());
                 sql.append(fieldName).append(" ").append(fieldType).append(" COMMENT '").append(property.getName())
                         .append("', ");
             }
@@ -115,41 +120,46 @@ public class DbStructureDataImpl implements IDbStructureData {
     /**
      * 创建事件表
      */
-    private void createEventTable(String tableName, List<ThingModel.Event> events) {
-        StringBuilder sql = new StringBuilder();
-        sql.append("CREATE TABLE IF NOT EXISTS ").append(tableName).append(" ( ")
-                .append("id BIGINT AUTO_INCREMENT PRIMARY KEY, ")
-                .append("device_id VARCHAR(128) NOT NULL, ")
-                .append("event_name VARCHAR(128) NOT NULL, ")
-                .append("event_data TEXT, ")
-                .append("event_time BIGINT NOT NULL, ")
-                .append("create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, ")
-                .append("INDEX idx_device_id (device_id), ")
-                .append("INDEX idx_event_name (event_name), ")
-                .append("INDEX idx_event_time (event_time) ")
-                .append(") COMMENT '设备事件数据表';");
+    private void createEventTable(String tableName, List<TslEvent> events) {
+        String sql = "CREATE TABLE IF NOT EXISTS " + tableName + " ( " +
+                "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                "device_id VARCHAR(128) NOT NULL, " +
+                "event_name VARCHAR(128) NOT NULL, " +
+                "event_data TEXT, " +
+                "event_time BIGINT NOT NULL, " +
+                "create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "INDEX idx_device_id (device_id), " +
+                "INDEX idx_event_name (event_name), " +
+                "INDEX idx_event_time (event_time) " +
+                ") COMMENT '设备事件数据表';";
 
-        jdbcTemplate.execute(sql.toString());
+        jdbcTemplate.execute(sql);
     }
 
     /**
      * 更新产品表结构
      */
-    private void updateProductTable(String tableName, List<ThingModel.Property> properties) {
+    private void updateProductTable(String tableName, List<TslProperty> properties) {
         if (properties == null || properties.isEmpty()) {
             return;
         }
 
         // 获取现有表的所有列名
-        List<String> existingColumns = getTableColumns(tableName);
+        List<String> existingColumns;
+        try {
+            existingColumns = TableMetaUtils.getTableColumns(jdbcTemplate, tableName);
+        } catch (Exception e) {
+            log.warn(e.getMessage());
+            return;
+        }
 
         // 为每个属性添加列（如果不存在）
-        for (ThingModel.Property property : properties) {
+        for (TslProperty property : properties) {
             String fieldName = property.getIdentifier();
 
             // 跳过已经存在的列
             if (!existingColumns.contains(fieldName)) {
-                String fieldType = getMysqlDataType(property.getDataType().getType());
+                String fieldType = getMysqlDataType(property.getDataType().getType().getCode());
                 String addColumnSql = "ALTER TABLE " + tableName + " ADD COLUMN " +
                         fieldName + " " + fieldType + " COMMENT '" +
                         property.getName() + "';";
@@ -158,20 +168,7 @@ public class DbStructureDataImpl implements IDbStructureData {
         }
 
         System.out.println("Updated product table: " + tableName + ", properties: " +
-                properties.stream().map(p -> p.getIdentifier()).collect(Collectors.joining(", ")));
-    }
-
-    /**
-     * 获取表的所有列名
-     */
-    private List<String> getTableColumns(String tableName) {
-        try {
-            String sql = "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_NAME = ?";
-            return jdbcTemplate.queryForList(sql, new Object[] { tableName }, String.class);
-        } catch (Exception e) {
-            log.error("Error while fetching columns for table {}: {}", tableName, e.getMessage(), e);
-            return java.util.Collections.emptyList();
-        }
+                properties.stream().map(TslProperty::getIdentifier).collect(Collectors.joining(", ")));
     }
 
     /**
@@ -205,19 +202,6 @@ public class DbStructureDataImpl implements IDbStructureData {
                 return "BIGINT";
             default:
                 return "VARCHAR(255)";
-        }
-    }
-
-    /**
-     * 检查表是否存在
-     */
-    private boolean tableExists(String tableName) {
-        try {
-            String sql = "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_NAME = ?";
-            Integer count = jdbcTemplate.queryForObject(sql, new Object[] { tableName }, Integer.class);
-            return count != null && count > 0;
-        } catch (Exception e) {
-            return false;
         }
     }
 }

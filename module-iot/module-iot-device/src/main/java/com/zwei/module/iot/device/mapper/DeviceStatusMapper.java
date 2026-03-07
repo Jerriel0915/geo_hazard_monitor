@@ -1,7 +1,9 @@
 package com.zwei.module.iot.device.mapper;
 
-import java.util.List;
 import com.zwei.module.iot.device.domain.DeviceStatus;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
 
 /**
  * 设备实时状态Mapper接口
@@ -9,6 +11,7 @@ import com.zwei.module.iot.device.domain.DeviceStatus;
  * @author linx
  * @date 2025-09-05
  */
+@Mapper
 public interface DeviceStatusMapper 
 {
     /**
