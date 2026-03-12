@@ -48,13 +48,13 @@ public class DevicePropertyDataImplTest {
         List<Map<String, Object>> mockResult = new ArrayList<>();
         Map<String, Object> row1 = new HashMap<>();
         row1.put("id", "1");
-        row1.put("device_id", deviceId.toString());
+        row1.put("device_id", deviceId);
         row1.put("property_name", propertyName);
         row1.put("property_value", "25.5");
         row1.put("report_time", 1605000000000L);
         mockResult.add(row1);
 
-        when(jdbcTemplate.queryForList(anyString(), eq(deviceId.toString()), eq(propertyName),
+        when(jdbcTemplate.queryForList(anyString(), eq(deviceId), eq(propertyName),
                 eq(startTime), eq(endTime), eq(size))).thenReturn(mockResult);
 
         // 执行测试
@@ -63,7 +63,7 @@ public class DevicePropertyDataImplTest {
 
         // 验证结果
         assertEquals(1, result.size());
-        assertEquals(deviceId.toString(), result.get(0).getDeviceId());
+        assertEquals(deviceId, result.get(0).getDeviceId());
         assertEquals(propertyName, result.get(0).getName());
         assertEquals("25.5", result.get(0).getValue());
     }

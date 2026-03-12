@@ -1,6 +1,7 @@
 package com.zwei.module.iot.product.mapper;
 
 import com.zwei.module.iot.product.domain.ProductChangeLog;
+
 import java.util.List;
 
 /**
@@ -16,7 +17,7 @@ public interface ProductChangeLogMapper {
      * @param productChangeLog 产品变更日志
      * @return 结果
      */
-    public int insertProductChangeLog(ProductChangeLog productChangeLog);
+    int insertProductChangeLog(ProductChangeLog productChangeLog);
 
     /**
      * 更新产品变更日志
@@ -24,7 +25,7 @@ public interface ProductChangeLogMapper {
      * @param productChangeLog 产品变更日志
      * @return 结果
      */
-    public int updateProductChangeLog(ProductChangeLog productChangeLog);
+    int updateProductChangeLog(ProductChangeLog productChangeLog);
 
     /**
      * 查询产品变更日志列表
@@ -32,7 +33,7 @@ public interface ProductChangeLogMapper {
      * @param productChangeLog 产品变更日志
      * @return 产品变更日志集合
      */
-    public List<ProductChangeLog> selectProductChangeLogList(ProductChangeLog productChangeLog);
+    List<ProductChangeLog> selectProductChangeLogList(ProductChangeLog productChangeLog);
 
     /**
      * 根据产品ID查询变更日志
@@ -40,5 +41,5 @@ public interface ProductChangeLogMapper {
      * @param productId 产品ID
      * @return 变更日志列表
      */
-    public List<ProductChangeLog> selectProductChangeLogsByProductId(String productId);
+    List<ProductChangeLog> selectProductChangeLogsByProductId(String productId);
 }

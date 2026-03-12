@@ -30,7 +30,7 @@ public class MqttServerPublishValidator implements IMqttServerPublishPermission 
     @Override
     public boolean hasPermission(ChannelContext context, String clientId, String topic, MqttQoS qoS, boolean isRetain) {
          // 从上下文中获取deviceKey
-        Device device = (Device) context.get("device");
+        Device device = context.get("device");
         String deviceKey = device.getDeviceKey();
             
         try {

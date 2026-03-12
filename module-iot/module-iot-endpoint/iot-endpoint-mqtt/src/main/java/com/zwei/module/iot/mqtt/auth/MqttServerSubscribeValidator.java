@@ -30,7 +30,7 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
     @Override
     public boolean isValid(ChannelContext context, String clientId, String topicFilter, MqttQoS qoS) {
         // 从上下文中获取deviceKey
-        Device device = (Device) context.get("device");
+        Device device = context.get("device");
         String deviceKey = device.getDeviceKey();
         try {
             

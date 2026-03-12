@@ -1,7 +1,8 @@
 package com.zwei.system.service;
 
-import java.util.List;
 import com.zwei.system.domain.SysNotice;
+
+import java.util.List;
 
 /**
  * 公告 服务层
@@ -16,7 +17,7 @@ public interface ISysNoticeService
      * @param noticeId 公告ID
      * @return 公告信息
      */
-    public SysNotice selectNoticeById(Long noticeId);
+    SysNotice selectNoticeById(Long noticeId);
 
     /**
      * 查询公告列表
@@ -24,7 +25,7 @@ public interface ISysNoticeService
      * @param notice 公告信息
      * @return 公告集合
      */
-    public List<SysNotice> selectNoticeList(SysNotice notice);
+    List<SysNotice> selectNoticeList(SysNotice notice);
 
     /**
      * 新增公告
@@ -32,7 +33,7 @@ public interface ISysNoticeService
      * @param notice 公告信息
      * @return 结果
      */
-    public int insertNotice(SysNotice notice);
+    int insertNotice(SysNotice notice);
 
     /**
      * 修改公告
@@ -40,7 +41,7 @@ public interface ISysNoticeService
      * @param notice 公告信息
      * @return 结果
      */
-    public int updateNotice(SysNotice notice);
+    int updateNotice(SysNotice notice);
 
     /**
      * 删除公告信息
@@ -48,7 +49,7 @@ public interface ISysNoticeService
      * @param noticeId 公告ID
      * @return 结果
      */
-    public int deleteNoticeById(Long noticeId);
+    int deleteNoticeById(Long noticeId);
     
     /**
      * 批量删除公告信息
@@ -56,5 +57,5 @@ public interface ISysNoticeService
      * @param noticeIds 需要删除的公告ID
      * @return 结果
      */
-    public int deleteNoticeByIds(Long[] noticeIds);
+    int deleteNoticeByIds(Long[] noticeIds);
 }

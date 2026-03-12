@@ -24,6 +24,10 @@
             <groupId>com.zwei</groupId>
             <artifactId>zwei-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-system</artifactId>
+        </dependency>
         
         <!-- 添加IoT存储MySQL实现模块依赖 -->
         <dependency>

@@ -21,7 +21,7 @@ public interface IotRuleMapper {
      * @param ruleId 规则ID
      * @return 规则
      */
-    public IotRule selectIotRuleByRuleId(Long ruleId);
+    IotRule selectIotRuleByRuleId(Long ruleId);
 
     /**
      * 查询规则列表
@@ -29,7 +29,7 @@ public interface IotRuleMapper {
      * @param iotRule 规则
      * @return 规则集合
      */
-    public List<IotRule> selectIotRuleList(IotRule iotRule);
+    List<IotRule> selectIotRuleList(IotRule iotRule);
 
     /**
      * 根据产品Key查询启用的规则
@@ -45,7 +45,7 @@ public interface IotRuleMapper {
      * @param iotRule 规则
      * @return 结果
      */
-    public int insertIotRule(IotRule iotRule);
+    int insertIotRule(IotRule iotRule);
 
     /**
      * 修改规则
@@ -53,7 +53,7 @@ public interface IotRuleMapper {
      * @param iotRule 规则
      * @return 结果
      */
-    public int updateIotRule(IotRule iotRule);
+    int updateIotRule(IotRule iotRule);
 
     /**
      * 删除规则
@@ -61,7 +61,7 @@ public interface IotRuleMapper {
      * @param ruleId 规则ID
      * @return 结果
      */
-    public int deleteIotRuleByRuleId(Long ruleId);
+    int deleteIotRuleByRuleId(Long ruleId);
 
     /**
      * 批量删除规则
@@ -69,7 +69,7 @@ public interface IotRuleMapper {
      * @param ruleIds 需要删除的数据ID
      * @return 结果
      */
-    public int deleteIotRuleByRuleIds(Long[] ruleIds);
+    int deleteIotRuleByRuleIds(Long[] ruleIds);
 
     /**
      * 根据规则ID查询动作

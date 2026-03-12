@@ -1,6 +1,9 @@
 package com.zwei.module.iot.product.service.impl;
 
+import com.alibaba.fastjson2.JSONObject;
+import com.github.pagehelper.PageHelper;
 import com.zwei.common.core.redis.RedisCache;
+import com.zwei.framework.manager.CacheWarmupTask;
 import com.zwei.iot.core.thing.domain.TslProperty;
 import com.zwei.iot.storage.core.IDbStructureData;
 import com.zwei.module.iot.product.domain.Product;
@@ -10,11 +13,11 @@ import com.zwei.module.iot.product.mapper.ProductTslMapper;
 import com.zwei.module.iot.product.service.IProductTslService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -25,13 +28,16 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 @Slf4j
-public class ProductTslServiceImpl implements IProductTslService {
+public class ProductTslServiceImpl implements IProductTslService, CacheWarmupTask {
     private final ProductMapper productMapper;
     private final ProductTslMapper productTslMapper;
     private final IDbStructureData dbStructureData;
     private final RedisCache redisCache;
 
+    private final Random random = new Random();
+
     private static final String CACHE_KEY_PREFIX = "iot:product:tsl:";
+    private static final long EXPIRE_SECONDS = 60 * 60 * 12L;
 
 //    @Autowired
 //    private IProductChangeLogService productChangeLogService;
@@ -42,6 +48,51 @@ public class ProductTslServiceImpl implements IProductTslService {
         this.productTslMapper = productTslMapper;
         this.redisCache = redisCache;
         this.dbStructureData = dbStructureData;
+    }
+
+    @Override
+    public String getTaskName() {
+        return "ProductTslService";
+    }
+
+    @Override
+    public void warmup() throws InterruptedException {
+        int pageSize = 1_000;
+        int pageNo = 1;
+        long total = 0;
+
+        while (true) {
+            PageHelper.startPage(pageNo, pageSize);
+            List<ProductTsl> productTsls = productTslMapper.selectProductTslList(new ProductTsl());
+
+            if (productTsls == null || productTsls.isEmpty()) {
+                break;
+            }
+
+            redisCache.redisTemplate.executePipelined((RedisCallback<?>) connections -> {
+                productTsls.forEach(productTsl -> {
+                    if (productTsl == null || productTsl.getProductId() == null) {
+                        return;
+                    }
+
+                    byte[] key = (CACHE_KEY_PREFIX + productTsl.getProductId()).getBytes();
+                    byte[] value = JSONObject.toJSONString(productTsl).getBytes();
+                    long expire = EXPIRE_SECONDS + random.nextLong() % 7200;
+
+                    connections.setEx(key, expire, value);
+                });
+                return null;
+            });
+
+            total += productTsls.size();
+            pageNo++;
+
+            if (pageNo % 10 == 0) {
+                Thread.sleep(100);
+            }
+        }
+
+        log.info("产品物模型缓存预热结束，总量: {}", total);
     }
 
     /**
@@ -62,6 +113,69 @@ public class ProductTslServiceImpl implements IProductTslService {
             redisCache.setCacheObject(cacheKey, productTsl, 1, TimeUnit.HOURS);
         }
         return productTsl;
+    }
+
+    @Override
+    public List<ProductTsl> selectProductTslByProductIds(List<String> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> keys = new ArrayList<>(productIds.size());
+        for (String productId : productIds) {
+            keys.add(CACHE_KEY_PREFIX + productId);
+        }
+
+        List<Object> cachedValues = redisCache.redisTemplate.opsForValue().multiGet(keys);
+
+        Map<String, ProductTsl> resultMap = new HashMap<>();
+        Set<String> missIdSet = new LinkedHashSet<>();
+
+        for (int i = 0; i < productIds.size(); i++) {
+            Object cachedValue = (cachedValues == null || cachedValues.size() <= i) ? null : cachedValues.get(i);
+            if (cachedValue instanceof ProductTsl) {
+                resultMap.put(productIds.get(i), (ProductTsl) cachedValue);
+            } else {
+                missIdSet.add(productIds.get(i));
+            }
+        }
+
+        if (!missIdSet.isEmpty()) {
+            List<String> missIds = new ArrayList<>(missIdSet);
+            List<ProductTsl> dbValues = productTslMapper.selectProductTslByProductIds(missIds);
+
+            if (dbValues != null && !dbValues.isEmpty()) {
+                redisCache.redisTemplate.executePipelined((RedisCallback<?>) connections -> {
+                    dbValues.forEach(productTsl -> {
+                        if (productTsl == null || productTsl.getProductId() == null) {
+                            return;
+                        }
+
+                        byte[] key = (CACHE_KEY_PREFIX + productTsl.getProductId()).getBytes();
+                        byte[] value = redisCache.redisTemplate.getValueSerializer().serialize(productTsl);
+                        long expire = EXPIRE_SECONDS + random.nextInt(600);
+
+                        connections.setEx(key, expire, value);
+                    });
+                    return null;
+                });
+
+                for (ProductTsl productTsl : dbValues) {
+                    if (productTsl != null && productTsl.getProductId() != null) {
+                        resultMap.put(String.valueOf(productTsl.getProductId()), productTsl);
+                    }
+                }
+            }
+        }
+
+        List<ProductTsl> results = new ArrayList<>(productIds.size());
+        for (String productId : productIds) {
+            ProductTsl productTsl = resultMap.get(productId);
+            if (productTsl != null) {
+                results.add(productTsl);
+            }
+        }
+        return results;
     }
 
     @Override

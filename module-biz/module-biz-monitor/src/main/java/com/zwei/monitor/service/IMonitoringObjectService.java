@@ -1,7 +1,8 @@
 package com.zwei.monitor.service;
 
-import java.util.List;
 import com.zwei.monitor.domain.MonitoringObject;
+
+import java.util.List;
 
 /**
  * 监测对象基本信息表Service接口
@@ -17,7 +18,7 @@ public interface IMonitoringObjectService
      * @param id 监测对象基本信息表主键
      * @return 监测对象基本信息表
      */
-    public MonitoringObject selectMonitoringObjectById(Long id);
+    MonitoringObject selectMonitoringObjectById(Long id);
 
     /**
      * 查询监测对象基本信息表列表
@@ -25,7 +26,7 @@ public interface IMonitoringObjectService
      * @param monitoringObject 监测对象基本信息表
      * @return 监测对象基本信息表集合
      */
-    public List<MonitoringObject> selectMonitoringObjectList(MonitoringObject monitoringObject);
+    List<MonitoringObject> selectMonitoringObjectList(MonitoringObject monitoringObject);
 
     /**
      * 新增监测对象基本信息表
@@ -33,7 +34,7 @@ public interface IMonitoringObjectService
      * @param monitoringObject 监测对象基本信息表
      * @return 结果
      */
-    public int insertMonitoringObject(MonitoringObject monitoringObject);
+    int insertMonitoringObject(MonitoringObject monitoringObject);
 
     /**
      * 修改监测对象基本信息表
@@ -41,7 +42,7 @@ public interface IMonitoringObjectService
      * @param monitoringObject 监测对象基本信息表
      * @return 结果
      */
-    public int updateMonitoringObject(MonitoringObject monitoringObject);
+    int updateMonitoringObject(MonitoringObject monitoringObject);
 
     /**
      * 批量删除监测对象基本信息表
@@ -49,7 +50,7 @@ public interface IMonitoringObjectService
      * @param ids 需要删除的监测对象基本信息表主键集合
      * @return 结果
      */
-    public int deleteMonitoringObjectByIds(Long[] ids);
+    int deleteMonitoringObjectByIds(Long[] ids);
 
     /**
      * 删除监测对象基本信息表信息
@@ -57,5 +58,5 @@ public interface IMonitoringObjectService
      * @param id 监测对象基本信息表主键
      * @return 结果
      */
-    public int deleteMonitoringObjectById(Long id);
+    int deleteMonitoringObjectById(Long id);
 }

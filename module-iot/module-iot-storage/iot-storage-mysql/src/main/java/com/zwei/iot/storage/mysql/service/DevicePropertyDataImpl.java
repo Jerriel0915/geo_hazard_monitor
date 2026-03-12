@@ -93,7 +93,7 @@ public class DevicePropertyDataImpl implements IDevicePropertyData {
                     "ORDER BY report_time DESC LIMIT ?";
 
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql,
-                    deviceId.toString(), name, start, end, size);
+                    deviceId, name, start, end, size);
 
             // 转换结果
             for (Map<String, Object> row : rows) {
@@ -144,7 +144,7 @@ public class DevicePropertyDataImpl implements IDevicePropertyData {
                 // 将属性值转换为字符串存储
                 String propertyValue = convertToString(propertyCache.getValue());
 
-                batchArgs.add(new Object[]{deviceId.toString(), propertyName, propertyValue, time});
+                batchArgs.add(new Object[]{deviceId, propertyName, propertyValue, time});
             }
 
             if (!batchArgs.isEmpty()) {
@@ -167,10 +167,15 @@ public class DevicePropertyDataImpl implements IDevicePropertyData {
     private String getProductKeyFromDeviceId(String deviceId) {
         // 这里简化处理，实际应该从设备ID或设备表中获取对应的产品Key
         // 可以通过查询数据库或缓存来获取设备所属的产品Key
+
+
         String sql_1 = "SELECT product_id FROM zw_iot_device WHERE sn = ?";
         String productId = jdbcTemplate.queryForObject(sql_1, new Object[]{deviceId}, String.class);
         String sql_2 = "SELECT product_key FROM zw_iot_product WHERE id = ?";
-        return jdbcTemplate.queryForObject(sql_2, new Object[]{productId}, String.class);
+        String productKey = jdbcTemplate.queryForObject(sql_2, new Object[]{productId}, String.class);
+
+        return productKey;
+
     }
 
     /**

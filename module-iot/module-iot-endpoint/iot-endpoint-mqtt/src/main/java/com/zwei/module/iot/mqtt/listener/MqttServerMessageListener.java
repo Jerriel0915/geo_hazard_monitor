@@ -68,7 +68,7 @@ public class MqttServerMessageListener {
         }
 
         // 记录属性上报信息
-        Device device = (Device) context.get("device");
+        Device device = context.get("device");
         String deviceId = device.getSn();
         long time = Instant.now().toEpochMilli();
 

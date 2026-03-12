@@ -1,8 +1,9 @@
 package com.zwei.generator.domain;
 
-import javax.validation.constraints.NotBlank;
 import com.zwei.common.core.domain.BaseEntity;
 import com.zwei.common.utils.StringUtils;
+
+import javax.validation.constraints.NotBlank;
 
 /**
  * 代码生成业务字段表 gen_table_column
@@ -360,7 +361,7 @@ public class GenTableColumn extends BaseEntity
                 {
                     Object startStr = value.subSequence(0, 1);
                     String endStr = value.substring(1);
-                    sb.append("").append(startStr).append("=").append(endStr).append(",");
+                    sb.append(startStr).append("=").append(endStr).append(",");
                 }
             }
             return sb.deleteCharAt(sb.length() - 1).toString();

@@ -1,7 +1,8 @@
 package com.zwei.module.iot.product.service;
 
-import java.util.List;
 import com.zwei.module.iot.product.domain.Product;
+
+import java.util.List;
 
 /**
  * 产品Service接口
@@ -17,7 +18,7 @@ public interface IProductService
      * @param id 产品主键
      * @return 产品
      */
-    public Product selectProductById(Long id);
+    Product selectProductById(Long id);
 
     /**
      * 查询产品列表
@@ -25,7 +26,7 @@ public interface IProductService
      * @param product 产品
      * @return 产品集合
      */
-    public List<Product> selectProductList(Product product);
+    List<Product> selectProductList(Product product);
 
     /**
      * 新增产品
@@ -33,7 +34,7 @@ public interface IProductService
      * @param product 产品
      * @return 结果
      */
-    public int insertProduct(Product product);
+    int insertProduct(Product product);
 
     /**
      * 修改产品
@@ -41,7 +42,7 @@ public interface IProductService
      * @param product 产品
      * @return 结果
      */
-    public int updateProduct(Product product);
+    int updateProduct(Product product);
 
     /**
      * 批量删除产品
@@ -49,7 +50,7 @@ public interface IProductService
      * @param ids 需要删除的产品主键集合
      * @return 结果
      */
-    public int deleteProductByIds(Long[] ids);
+    int deleteProductByIds(Long[] ids);
 
     /**
      * 删除产品信息
@@ -57,5 +58,5 @@ public interface IProductService
      * @param id 产品主键
      * @return 结果
      */
-    public int deleteProductById(Long id);
+    int deleteProductById(Long id);
 }

@@ -1,28 +1,22 @@
 package com.zwei.module.iot.device.controller;
 
-import java.util.List;
-import javax.servlet.http.HttpServletResponse;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
+import com.zwei.common.core.page.TableDataInfo;
 import com.zwei.common.enums.BusinessType;
+import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.module.iot.device.domain.Device;
 import com.zwei.module.iot.device.service.IDeviceService;
-import com.zwei.common.utils.poi.ExcelUtil;
-import com.zwei.common.core.page.TableDataInfo;
 import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 
 /**
  * 设备基本信息Controller
@@ -35,8 +29,12 @@ import io.swagger.annotations.ApiImplicitParam;
 @RequestMapping("/device/device")
 public class DeviceController extends BaseController
 {
+    private final IDeviceService deviceService;
+
     @Autowired
-    private IDeviceService deviceService;
+    DeviceController(IDeviceService deviceService) {
+        this.deviceService = deviceService;
+    }
 
     /**
      * 查询设备基本信息列表

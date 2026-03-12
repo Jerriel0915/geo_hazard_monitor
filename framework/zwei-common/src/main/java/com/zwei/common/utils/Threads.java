@@ -1,12 +1,9 @@
 package com.zwei.common.utils;
 
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.*;
 
 /**
  * 线程相关工具类.
@@ -28,7 +25,6 @@ public class Threads
         }
         catch (InterruptedException e)
         {
-            return;
         }
     }
 

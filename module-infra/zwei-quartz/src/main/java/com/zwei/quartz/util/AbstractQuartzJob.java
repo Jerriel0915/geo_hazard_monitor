@@ -1,10 +1,5 @@
 package com.zwei.quartz.util;
 
-import java.util.Date;
-import org.quartz.Job;
-import org.quartz.JobExecutionContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.zwei.common.constant.Constants;
 import com.zwei.common.constant.ScheduleConstants;
 import com.zwei.common.utils.ExceptionUtil;
@@ -14,6 +9,12 @@ import com.zwei.common.utils.spring.SpringUtils;
 import com.zwei.quartz.domain.SysJob;
 import com.zwei.quartz.domain.SysJobLog;
 import com.zwei.quartz.service.ISysJobLogService;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Date;
 
 /**
  * 抽象quartz调用
@@ -27,7 +28,7 @@ public abstract class AbstractQuartzJob implements Job
     /**
      * 线程本地变量
      */
-    private static ThreadLocal<Date> threadLocal = new ThreadLocal<>();
+    private static final ThreadLocal<Date> threadLocal = new ThreadLocal<>();
 
     @Override
     public void execute(JobExecutionContext context)

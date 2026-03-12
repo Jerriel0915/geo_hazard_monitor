@@ -1,11 +1,5 @@
 package com.zwei.system.service.impl;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import com.zwei.common.annotation.DataScope;
 import com.zwei.common.constant.UserConstants;
 import com.zwei.common.core.domain.TreeSelect;
@@ -20,6 +14,13 @@ import com.zwei.common.utils.spring.SpringUtils;
 import com.zwei.system.mapper.SysDeptMapper;
 import com.zwei.system.mapper.SysRoleMapper;
 import com.zwei.system.service.ISysDeptService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 部门管理 服务实现
@@ -319,7 +320,7 @@ public class SysDeptServiceImpl implements ISysDeptService
         Iterator<SysDept> it = list.iterator();
         while (it.hasNext())
         {
-            SysDept n = (SysDept) it.next();
+            SysDept n = it.next();
             if (StringUtils.isNotNull(n.getParentId()) && n.getParentId().longValue() == t.getDeptId().longValue())
             {
                 tlist.add(n);

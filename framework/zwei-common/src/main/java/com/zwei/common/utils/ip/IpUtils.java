@@ -1,10 +1,11 @@
 package com.zwei.common.utils.ip;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import javax.servlet.http.HttpServletRequest;
 import com.zwei.common.utils.ServletUtils;
 import com.zwei.common.utils.StringUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * 获取IP方法
@@ -259,7 +260,7 @@ public class IpUtils
             final String[] ips = ip.trim().split(",");
             for (String subIp : ips)
             {
-                if (false == isUnknown(subIp))
+                if (!isUnknown(subIp))
                 {
                     ip = subIp;
                     break;

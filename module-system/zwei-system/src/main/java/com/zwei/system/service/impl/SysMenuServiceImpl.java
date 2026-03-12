@@ -1,15 +1,5 @@
 package com.zwei.system.service.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import com.zwei.common.constant.Constants;
 import com.zwei.common.constant.UserConstants;
 import com.zwei.common.core.domain.TreeSelect;
@@ -24,6 +14,11 @@ import com.zwei.system.mapper.SysMenuMapper;
 import com.zwei.system.mapper.SysRoleMapper;
 import com.zwei.system.mapper.SysRoleMenuMapper;
 import com.zwei.system.service.ISysMenuService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 菜单 业务层处理
@@ -226,7 +221,7 @@ public class SysMenuServiceImpl implements ISysMenuService
         List<Long> tempList = menus.stream().map(SysMenu::getMenuId).collect(Collectors.toList());
         for (Iterator<SysMenu> iterator = menus.iterator(); iterator.hasNext();)
         {
-            SysMenu menu = (SysMenu) iterator.next();
+            SysMenu menu = iterator.next();
             // 如果是顶级节点, 遍历该父节点的所有子节点
             if (!tempList.contains(menu.getParentId()))
             {
@@ -473,7 +468,7 @@ public class SysMenuServiceImpl implements ISysMenuService
         List<SysMenu> returnList = new ArrayList<SysMenu>();
         for (Iterator<SysMenu> iterator = list.iterator(); iterator.hasNext();)
         {
-            SysMenu t = (SysMenu) iterator.next();
+            SysMenu t = iterator.next();
             // 一、根据传入的某个父节点ID,遍历该父节点的所有子节点
             if (t.getParentId() == parentId)
             {
@@ -513,7 +508,7 @@ public class SysMenuServiceImpl implements ISysMenuService
         Iterator<SysMenu> it = list.iterator();
         while (it.hasNext())
         {
-            SysMenu n = (SysMenu) it.next();
+            SysMenu n = it.next();
             if (n.getParentId().longValue() == t.getMenuId().longValue())
             {
                 tlist.add(n);

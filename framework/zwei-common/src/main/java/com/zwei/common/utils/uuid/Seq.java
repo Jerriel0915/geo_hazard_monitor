@@ -1,8 +1,9 @@
 package com.zwei.common.utils.uuid;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import com.zwei.common.utils.DateUtils;
 import com.zwei.common.utils.StringUtils;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author zwei 序列生成类
@@ -16,10 +17,10 @@ public class Seq
     public static final String uploadSeqType = "UPLOAD";
 
     // 通用接口序列数
-    private static AtomicInteger commSeq = new AtomicInteger(1);
+    private static final AtomicInteger commSeq = new AtomicInteger(1);
 
     // 上传接口序列数
-    private static AtomicInteger uploadSeq = new AtomicInteger(1);
+    private static final AtomicInteger uploadSeq = new AtomicInteger(1);
 
     // 机器标识
     private static final String machineCode = "A";

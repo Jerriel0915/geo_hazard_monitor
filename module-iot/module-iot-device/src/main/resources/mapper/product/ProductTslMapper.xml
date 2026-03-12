@@ -17,6 +17,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where product_id = #{productId}
     </select>
 
+    <select id="selectProductTslByProductIds" parameterType="java.util.List" resultMap="ProductTslResult">
+        <include refid="selectProductTslVo"/>
+        <where>
+            <choose>
+                <when test="list != null and list.size() > 0">
+                    product_id in
+                    <foreach collection="list" item="productId" open="(" separator="," close=")">
+                        #{productId}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and 1 = 2
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <select id="selectProductTslList" parameterType="com.zwei.module.iot.product.domain.ProductTsl"
+            resultMap="ProductTslResult">
+        <include refid="selectProductTslVo"/>
+        <where>
+            <if test="productId != null">
+                and product_id = #{productId}
+            </if>
+        </where>
+    </select>
+
     <insert id="insertProductTsl" parameterType="com.zwei.module.iot.product.domain.ProductTsl">
         insert into zw_iot_product_tsl (product_id, tsl)
         values (#{productId}, #{tsl, typeHandler=com.zwei.module.iot.product.handler.ThingModelTypeHandler})
