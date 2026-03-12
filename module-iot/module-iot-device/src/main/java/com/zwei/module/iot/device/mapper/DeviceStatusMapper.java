@@ -1,7 +1,9 @@
 package com.zwei.module.iot.device.mapper;
 
-import java.util.List;
 import com.zwei.module.iot.device.domain.DeviceStatus;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
 
 /**
  * 设备实时状态Mapper接口
@@ -9,6 +11,7 @@ import com.zwei.module.iot.device.domain.DeviceStatus;
  * @author linx
  * @date 2025-09-05
  */
+@Mapper
 public interface DeviceStatusMapper 
 {
     /**
@@ -17,7 +20,7 @@ public interface DeviceStatusMapper
      * @param deviceId 设备实时状态主键
      * @return 设备实时状态
      */
-    public DeviceStatus selectDeviceStatusByDeviceId(Long deviceId);
+    DeviceStatus selectDeviceStatusByDeviceId(String deviceId);
 
     /**
      * 查询设备实时状态列表
@@ -25,7 +28,7 @@ public interface DeviceStatusMapper
      * @param deviceStatus 设备实时状态
      * @return 设备实时状态集合
      */
-    public List<DeviceStatus> selectDeviceStatusList(DeviceStatus deviceStatus);
+    List<DeviceStatus> selectDeviceStatusList(DeviceStatus deviceStatus);
 
     /**
      * 新增设备实时状态
@@ -33,7 +36,7 @@ public interface DeviceStatusMapper
      * @param deviceStatus 设备实时状态
      * @return 结果
      */
-    public int insertDeviceStatus(DeviceStatus deviceStatus);
+    int insertDeviceStatus(DeviceStatus deviceStatus);
 
     /**
      * 修改设备实时状态
@@ -41,7 +44,7 @@ public interface DeviceStatusMapper
      * @param deviceStatus 设备实时状态
      * @return 结果
      */
-    public int updateDeviceStatus(DeviceStatus deviceStatus);
+    int updateDeviceStatus(DeviceStatus deviceStatus);
 
     /**
      * 删除设备实时状态
@@ -49,7 +52,7 @@ public interface DeviceStatusMapper
      * @param deviceId 设备实时状态主键
      * @return 结果
      */
-    public int deleteDeviceStatusByDeviceId(Long deviceId);
+    int deleteDeviceStatusByDeviceId(Long deviceId);
 
     /**
      * 批量删除设备实时状态
@@ -57,5 +60,5 @@ public interface DeviceStatusMapper
      * @param deviceIds 需要删除的数据主键集合
      * @return 结果
      */
-    public int deleteDeviceStatusByDeviceIds(Long[] deviceIds);
+    int deleteDeviceStatusByDeviceIds(Long[] deviceIds);
 }

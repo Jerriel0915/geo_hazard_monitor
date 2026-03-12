@@ -1,7 +1,8 @@
 package com.zwei.module.iot.device.service;
 
-import java.util.List;
 import com.zwei.module.iot.device.domain.DeviceAliveLog;
+
+import java.util.List;
 
 /**
  * 状态日志Service接口
@@ -17,7 +18,7 @@ public interface IDeviceAliveLogService
      * @param id 状态日志主键
      * @return 状态日志
      */
-    public DeviceAliveLog selectDeviceAliveLogById(Long id);
+    DeviceAliveLog selectDeviceAliveLogById(Long id);
 
     /**
      * 查询状态日志列表
@@ -25,7 +26,7 @@ public interface IDeviceAliveLogService
      * @param deviceAliveLog 状态日志
      * @return 状态日志集合
      */
-    public List<DeviceAliveLog> selectDeviceAliveLogList(DeviceAliveLog deviceAliveLog);
+    List<DeviceAliveLog> selectDeviceAliveLogList(DeviceAliveLog deviceAliveLog);
 
     /**
      * 新增状态日志
@@ -33,7 +34,7 @@ public interface IDeviceAliveLogService
      * @param deviceAliveLog 状态日志
      * @return 结果
      */
-    public int insertDeviceAliveLog(DeviceAliveLog deviceAliveLog);
+    int insertDeviceAliveLog(DeviceAliveLog deviceAliveLog);
 
     /**
      * 修改状态日志
@@ -41,7 +42,7 @@ public interface IDeviceAliveLogService
      * @param deviceAliveLog 状态日志
      * @return 结果
      */
-    public int updateDeviceAliveLog(DeviceAliveLog deviceAliveLog);
+    int updateDeviceAliveLog(DeviceAliveLog deviceAliveLog);
 
     /**
      * 批量删除状态日志
@@ -49,7 +50,8 @@ public interface IDeviceAliveLogService
      * @param ids 需要删除的状态日志主键集合
      * @return 结果
      */
-    public int deleteDeviceAliveLogByIds(Long[] ids);
+    @Deprecated
+    int deleteDeviceAliveLogByIds(Long[] ids);
 
     /**
      * 删除状态日志信息
@@ -57,5 +59,6 @@ public interface IDeviceAliveLogService
      * @param id 状态日志主键
      * @return 结果
      */
-    public int deleteDeviceAliveLogById(Long id);
+    @Deprecated
+    int deleteDeviceAliveLogById(Long id);
 }

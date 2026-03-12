@@ -1,19 +1,15 @@
 package com.zwei.common.utils.reflect;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Date;
+import com.zwei.common.core.text.Convert;
+import com.zwei.common.utils.DateUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.zwei.common.core.text.Convert;
-import com.zwei.common.utils.DateUtils;
+
+import java.lang.reflect.*;
+import java.util.Date;
 
 /**
  * 反射工具类. 提供调用getter/setter方法, 访问私有变量, 调用私有方法, 获取泛型类型Class, 被AOP过的真实类等工具函数.
@@ -29,7 +25,7 @@ public class ReflectUtils
 
     private static final String CGLIB_CLASS_SEPARATOR = "$$";
 
-    private static Logger logger = LoggerFactory.getLogger(ReflectUtils.class);
+    private static final Logger logger = LoggerFactory.getLogger(ReflectUtils.class);
 
     /**
      * 调用Getter方法.
@@ -141,7 +137,7 @@ public class ReflectUtils
         }
         catch (Exception e)
         {
-            String msg = "method: " + method + ", obj: " + obj + ", args: " + args + "";
+            String msg = "method: " + method + ", obj: " + obj + ", args: " + args;
             throw convertReflectionExceptionToUnchecked(msg, e);
         }
     }
@@ -214,7 +210,7 @@ public class ReflectUtils
         }
         catch (Exception e)
         {
-            String msg = "method: " + method + ", obj: " + obj + ", args: " + args + "";
+            String msg = "method: " + method + ", obj: " + obj + ", args: " + args;
             throw convertReflectionExceptionToUnchecked(msg, e);
         }
     }

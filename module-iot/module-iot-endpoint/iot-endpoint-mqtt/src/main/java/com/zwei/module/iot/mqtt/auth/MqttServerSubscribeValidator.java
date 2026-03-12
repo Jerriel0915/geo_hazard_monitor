@@ -1,8 +1,8 @@
 package com.zwei.module.iot.mqtt.auth;
 
 import com.zwei.iot.core.security.IDeviceAuthentication;
+import com.zwei.module.iot.device.domain.Device;
 import lombok.extern.slf4j.Slf4j;
-
 import org.dromara.mica.mqtt.codec.MqttQoS;
 import org.dromara.mica.mqtt.core.server.auth.IMqttServerSubscribeValidator;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,8 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
     @Override
     public boolean isValid(ChannelContext context, String clientId, String topicFilter, MqttQoS qoS) {
         // 从上下文中获取deviceKey
-        String deviceKey = (String) context.get("deviceKey");
+        Device device = context.get("device");
+        String deviceKey = device.getDeviceKey();
         try {
             
             if (deviceKey == null) {

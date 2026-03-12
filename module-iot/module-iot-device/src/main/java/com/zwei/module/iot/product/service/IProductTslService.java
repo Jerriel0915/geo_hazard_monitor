@@ -1,6 +1,9 @@
 package com.zwei.module.iot.product.service;
 
+import com.zwei.iot.core.thing.domain.TslProperty;
 import com.zwei.module.iot.product.domain.ProductTsl;
+
+import java.util.List;
 
 /**
  * 产品物模型定义Service接口
@@ -16,7 +19,23 @@ public interface IProductTslService
      * @param productId 产品ID
      * @return 产品物模型定义
      */
-    public ProductTsl selectProductTslByProductId(Long productId);
+    ProductTsl selectProductTslByProductId(String productId);
+
+    /**
+     * 批量查询产品物模型定义
+     *
+     * @param productIds 产品ID集合
+     * @return 产品物模型定义列表
+     */
+    List<ProductTsl> selectProductTslByProductIds(List<String> productIds);
+
+    /**
+     * 获取指定产品的所有属性字段
+     *
+     * @param productId 产品ID
+     * @return
+     */
+    List<TslProperty> selectTslPropertyByProductId(String productId);
 
     /**
      * 新增产品物模型定义
@@ -24,7 +43,7 @@ public interface IProductTslService
      * @param productTsl 产品物模型定义
      * @return 结果
      */
-    public int insertProductTsl(ProductTsl productTsl);
+    int insertProductTsl(ProductTsl productTsl);
 
     /**
      * 修改产品物模型定义
@@ -32,7 +51,7 @@ public interface IProductTslService
      * @param productTsl 产品物模型定义
      * @return 结果
      */
-    public int updateProductTsl(ProductTsl productTsl);
+    int updateProductTsl(ProductTsl productTsl);
 
     /**
      * 删除产品物模型定义
@@ -40,5 +59,5 @@ public interface IProductTslService
      * @param productId 产品ID
      * @return 结果
      */
-    public int deleteProductTslByProductId(String productId);
+    int deleteProductTslByProductId(String productId);
 }

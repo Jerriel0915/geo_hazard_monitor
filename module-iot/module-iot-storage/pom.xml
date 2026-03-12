@@ -15,6 +15,7 @@
     <description>物联网存储模块，提供不同数据源的存储适配</description>
     <modules>
         <module>iot-storage-mysql</module>
+        <module>iot-storage-iotdb</module>
     </modules>
 
     <properties>

@@ -54,6 +54,13 @@
             <artifactId>module-iot-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- Rule Engine -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>module-iot-rule</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

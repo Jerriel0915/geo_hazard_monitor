@@ -1,12 +1,13 @@
 package com.zwei.quartz.util;
 
+import com.zwei.common.utils.StringUtils;
+import com.zwei.common.utils.spring.SpringUtils;
+import com.zwei.quartz.domain.SysJob;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.List;
-import com.zwei.common.utils.StringUtils;
-import com.zwei.common.utils.spring.SpringUtils;
-import com.zwei.quartz.domain.SysJob;
 
 /**
  * 任务执行工具
@@ -174,7 +175,7 @@ public class JobInvokeUtil
         int index = 0;
         for (Object[] os : methodParams)
         {
-            classs[index] = (Object) os[0];
+            classs[index] = os[0];
             index++;
         }
         return classs;

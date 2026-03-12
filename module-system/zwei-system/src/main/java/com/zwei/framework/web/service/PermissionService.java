@@ -1,14 +1,15 @@
 package com.zwei.framework.web.service;
 
-import java.util.Set;
-import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import com.zwei.common.constant.Constants;
 import com.zwei.common.core.domain.entity.SysRole;
 import com.zwei.common.core.domain.model.LoginUser;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.framework.security.context.PermissionContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+
+import java.util.Set;
 
 /**
  * RuoYi首创 自定义权限实现，ss取自SpringSecurity首字母
@@ -47,7 +48,7 @@ public class PermissionService
      */
     public boolean lacksPermi(String permission)
     {
-        return hasPermi(permission) != true;
+        return !hasPermi(permission);
     }
 
     /**
@@ -115,7 +116,7 @@ public class PermissionService
      */
     public boolean lacksRole(String role)
     {
-        return hasRole(role) != true;
+        return !hasRole(role);
     }
 
     /**

@@ -1,7 +1,8 @@
 package com.zwei.module.iot.device.service;
 
-import java.util.List;
 import com.zwei.module.iot.device.domain.Device;
+
+import java.util.List;
 
 /**
  * 设备基本信息Service接口
@@ -17,7 +18,7 @@ public interface IDeviceService
      * @param id 设备基本信息主键
      * @return 设备基本信息
      */
-    public Device selectDeviceById(Long id);
+    Device selectDeviceById(Long id);
 
     /**
      * 查询设备基本信息列表
@@ -25,7 +26,7 @@ public interface IDeviceService
      * @param device 设备基本信息
      * @return 设备基本信息集合
      */
-    public List<Device> selectDeviceList(Device device);
+    List<Device> selectDeviceList(Device device);
 
     /**
      * 新增设备基本信息
@@ -33,7 +34,7 @@ public interface IDeviceService
      * @param device 设备基本信息
      * @return 结果
      */
-    public int insertDevice(Device device);
+    int insertDevice(Device device);
 
     /**
      * 修改设备基本信息
@@ -41,7 +42,7 @@ public interface IDeviceService
      * @param device 设备基本信息
      * @return 结果
      */
-    public int updateDevice(Device device);
+    int updateDevice(Device device);
 
     /**
      * 批量删除设备基本信息
@@ -49,7 +50,7 @@ public interface IDeviceService
      * @param ids 需要删除的设备基本信息主键集合
      * @return 结果
      */
-    public int deleteDeviceByIds(Long[] ids);
+    int deleteDeviceByIds(Long[] ids);
 
     /**
      * 删除设备基本信息信息
@@ -57,5 +58,5 @@ public interface IDeviceService
      * @param id 设备基本信息主键
      * @return 结果
      */
-    public int deleteDeviceById(Long id);
+    int deleteDeviceById(Long id);
 }

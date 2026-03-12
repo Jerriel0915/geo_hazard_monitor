@@ -69,7 +69,6 @@ public class ${ClassName} extends ${Entity}
 
     public $column.javaType get${AttrName}() 
     {
-        return $column.javaField;
     }
 
 #end

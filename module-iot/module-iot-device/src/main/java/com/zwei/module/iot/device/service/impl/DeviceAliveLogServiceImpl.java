@@ -1,11 +1,14 @@
 package com.zwei.module.iot.device.service.impl;
 
-import java.util.List;
+import com.zwei.module.iot.device.domain.DeviceAliveLog;
+import com.zwei.module.iot.device.mapper.DeviceAliveLogMapper;
+import com.zwei.module.iot.device.service.IDeviceAliveLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.zwei.module.iot.device.mapper.DeviceAliveLogMapper;
-import com.zwei.module.iot.device.domain.DeviceAliveLog;
-import com.zwei.module.iot.device.service.IDeviceAliveLogService;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * 状态日志Service业务层处理
@@ -16,8 +19,12 @@ import com.zwei.module.iot.device.service.IDeviceAliveLogService;
 @Service
 public class DeviceAliveLogServiceImpl implements IDeviceAliveLogService 
 {
+    private final DeviceAliveLogMapper deviceAliveLogMapper;
+
     @Autowired
-    private DeviceAliveLogMapper deviceAliveLogMapper;
+    DeviceAliveLogServiceImpl(DeviceAliveLogMapper deviceAliveLogMapper) {
+        this.deviceAliveLogMapper = deviceAliveLogMapper;
+    }
 
     /**
      * 查询状态日志
@@ -50,6 +57,7 @@ public class DeviceAliveLogServiceImpl implements IDeviceAliveLogService
      * @return 结果
      */
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int insertDeviceAliveLog(DeviceAliveLog deviceAliveLog)
     {
         return deviceAliveLogMapper.insertDeviceAliveLog(deviceAliveLog);
@@ -62,6 +70,7 @@ public class DeviceAliveLogServiceImpl implements IDeviceAliveLogService
      * @return 结果
      */
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int updateDeviceAliveLog(DeviceAliveLog deviceAliveLog)
     {
         return deviceAliveLogMapper.updateDeviceAliveLog(deviceAliveLog);

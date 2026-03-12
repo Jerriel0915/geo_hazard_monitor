@@ -1,7 +1,6 @@
 package com.zwei.iot.storage.core;
 
-import com.zwei.iot.core.ThingModel;
-
+import com.zwei.iot.core.thing.domain.ThingModel;
 /**
  * 数据结构接口
  */

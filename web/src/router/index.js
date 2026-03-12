@@ -1,4 +1,4 @@
-import { createWebHistory, createRouter } from 'vue-router'
+import {createRouter, createWebHistory} from 'vue-router'
 /* Layout */
 import Layout from '@/layout'
 
@@ -162,7 +162,28 @@ export const dynamicRoutes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: constantRoutes,
+    routes: [
+        ...constantRoutes,
+        {
+            path: '/iot/rule',
+            component: Layout,
+            children: [
+                {
+                    path: 'list',
+                    component: () => import('@/views/rule/list/index.vue'),
+                    name: 'RuleList',
+                    meta: {title: '规则编辑器', icon: 'guide'}
+                },
+                {
+                    path: 'editor',
+                    component: () => import('@/views/rule/editor/index.vue'),
+                    name: 'RuleEditor',
+                    meta: {title: '规则配置', activeMenu: '/iot/rule/list'},
+                    hidden: true
+                }
+            ]
+        }
+    ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition

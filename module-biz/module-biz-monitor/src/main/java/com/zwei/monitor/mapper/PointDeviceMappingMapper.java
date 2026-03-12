@@ -1,8 +1,8 @@
 package com.zwei.monitor.mapper;
 
-import java.util.List;
-
 import com.zwei.monitor.domain.PointDevice;
+
+import java.util.List;
 
 /**
  * 监测点位(测站点)Mapper接口
@@ -13,9 +13,9 @@ import com.zwei.monitor.domain.PointDevice;
 public interface PointDeviceMappingMapper 
 {
 
-    public void deleteByPointIds(Long[]  id);
+    void deleteByPointIds(Long[] id);
 
-    public void deleteByPointId(Long id);
+    void deleteByPointId(Long id);
 
     /**
      * 根据监测点位ID查询关联的设备映射
@@ -23,5 +23,5 @@ public interface PointDeviceMappingMapper
      * @param pointId 监测点位ID
      * @return 关联的设备映射列表
      */
-    public List<PointDevice> selectByPointId(Long pointId);
+    List<PointDevice> selectByPointId(Long pointId);
 }
