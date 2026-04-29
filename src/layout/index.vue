@@ -469,16 +469,21 @@ const scrollTabs = (direction: 'left' | 'right') => {
 
 .nav-menu .el-menu-item {
   color: white;
-  height: 64px;
-  line-height: 64px;
+  height: 50px;
+  line-height: 50px;
   font-size: 14px;
   padding: 0 20px;
   transition: all 0.3s ease;
+  background-color: rgba(30, 136, 229, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .nav-menu .el-menu-item:hover,
 .nav-menu .el-menu-item.is-active {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(0, 60, 130, 0.85);
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
 }
 
 .nav-menu .el-sub-menu__title {
@@ -491,6 +496,7 @@ const scrollTabs = (direction: 'left' | 'right') => {
   font-size: 14px;
   padding: 0 20px;
   transition: all 0.3s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .menu-icon {
@@ -506,7 +512,9 @@ const scrollTabs = (direction: 'left' | 'right') => {
 
 .nav-menu .el-sub-menu__title:hover,
 .nav-menu .el-sub-menu.is-active .el-sub-menu__title {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(0, 60, 130, 0.5);
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .nav-menu .el-sub-menu.is-active .menu-icon :deep(svg) {
