@@ -141,7 +141,7 @@
                   class="alarm-item"
                   :class="'level-' + alarm.level"
                   @mouseenter="showAlarmBubble(alarm)"
-                  @mouseleave="hideAlarmBubble"
+                  @mouseleave="hideBubble"
                 >
                   <span class="alarm-icon" :class="'icon-' + alarm.level"></span>
                   <span class="alarm-name">{{ alarm.hazardName }}</span>
@@ -273,7 +273,7 @@
                   class="alarm-item"
                   :class="'level-' + alarm.level"
                   @mouseenter="showDeviceAlarmBubble(alarm)"
-                  @mouseleave="hideAlarmBubble"
+                  @mouseleave="hideBubble"
                 >
                   <span class="alarm-icon" :class="'icon-' + alarm.level"></span>
                   <span class="alarm-name">{{ alarm.deviceName }}</span>
@@ -593,7 +593,6 @@ const updateMarkers = () => {
 
 const showHazardBubble = (point: typeof hazardPoints[0]) => {
   if (!bubbleRef.value || !map) return
-  const containerRect = mapContainerRef.value!.getBoundingClientRect()
   const pointPos = map.latLngToContainerPoint([point.lat, point.lng])
 
   bubbleData.title = point.name

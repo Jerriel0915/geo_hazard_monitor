@@ -5,6 +5,53 @@
       <h1>地质灾害监测预警系统1.0</h1>
     </div>
     <div class="login-wrapper">
+      <div class="login-left">
+        <div class="qrcode-section">
+          <div class="qrcode-title">打开微信扫一扫</div>
+          <div class="qrcode-desc">手机轻松处理工作</div>
+          <div class="qrcode-img">
+            <svg viewBox="0 0 200 200" class="qrcode-svg">
+              <rect width="200" height="200" fill="white"/>
+              <rect x="30" y="30" width="30" height="30" fill="#333"/>
+              <rect x="30" y="140" width="30" height="30" fill="#333"/>
+              <rect x="140" y="30" width="30" height="30" fill="#333"/>
+              <rect x="155" y="155" width="15" height="15" fill="#333"/>
+              <rect x="140" y="155" width="15" height="15" fill="#333"/>
+              <rect x="155" y="140" width="15" height="15" fill="#333"/>
+              <rect x="70" y="70" width="60" height="60" fill="white"/>
+              <rect x="80" y="80" width="40" height="40" fill="#333"/>
+              <rect x="92" y="92" width="16" height="16" fill="white"/>
+              <rect x="30" y="70" width="20" height="20" fill="#333"/>
+              <rect x="50" y="30" width="20" height="20" fill="#333"/>
+              <rect x="50" y="50" width="20" height="20" fill="#333"/>
+              <rect x="30" y="110" width="20" height="20" fill="#333"/>
+              <rect x="30" y="130" width="20" height="20" fill="#333"/>
+              <rect x="50" y="150" width="20" height="20" fill="#333"/>
+              <rect x="150" y="70" width="20" height="20" fill="#333"/>
+              <rect x="170" y="30" width="20" height="20" fill="#333"/>
+              <rect x="170" y="50" width="20" height="20" fill="#333"/>
+              <rect x="150" y="110" width="20" height="20" fill="#333"/>
+              <rect x="150" y="130" width="20" height="20" fill="#333"/>
+              <rect x="170" y="150" width="20" height="20" fill="#333"/>
+              <rect x="70" y="30" width="20" height="20" fill="#333"/>
+              <rect x="90" y="30" width="20" height="20" fill="#333"/>
+              <rect x="110" y="30" width="20" height="20" fill="#333"/>
+              <rect x="130" y="30" width="20" height="20" fill="#333"/>
+              <rect x="70" y="170" width="20" height="20" fill="#333"/>
+              <rect x="90" y="170" width="20" height="20" fill="#333"/>
+              <rect x="110" y="170" width="20" height="20" fill="#333"/>
+              <rect x="130" y="170" width="20" height="20" fill="#333"/>
+              <rect x="30" y="70" width="20" height="20" fill="#333"/>
+              <rect x="30" y="90" width="20" height="20" fill="#333"/>
+              <rect x="30" y="110" width="20" height="20" fill="#333"/>
+              <rect x="170" y="70" width="20" height="20" fill="#333"/>
+              <rect x="170" y="90" width="20" height="20" fill="#333"/>
+              <rect x="170" y="110" width="20" height="20" fill="#333"/>
+            </svg>
+          </div>
+          <div class="qrcode-tip">扫码进入小程序登录</div>
+        </div>
+      </div>
       <div class="login-right">
         <div class="login-form">
           <h2>账号登录</h2>
@@ -25,18 +72,6 @@
                 prefix-icon="Lock"
                 class="login-input"
               />
-            </el-form-item>
-            <el-form-item>
-              <div class="captcha-row">
-                <el-input
-                  v-model="loginForm.captcha"
-                  placeholder="请输入验证码"
-                  class="captcha-input"
-                />
-                <div class="captcha-img" @click="refreshCaptcha">
-                  {{ captchaCode }}
-                </div>
-              </div>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleLogin" class="login-btn">
@@ -62,32 +97,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const captchaCode = ref('')
 const loginFormRef = ref()
 
 const loginForm = reactive({
   username: '',
-  password: '',
-  captcha: ''
+  password: ''
 })
-
-const generateCaptcha = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz0123456789'
-  let code = ''
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return code
-}
-
-const refreshCaptcha = () => {
-  captchaCode.value = generateCaptcha()
-}
 
 const handleLogin = () => {
   if (!loginForm.username) {
@@ -98,17 +118,9 @@ const handleLogin = () => {
     alert('请输入密码')
     return
   }
-  if (!loginForm.captcha) {
-    alert('请输入验证码')
-    return
-  }
   localStorage.setItem('token', 'mock-token')
   router.push('/dashboard')
 }
-
-onMounted(() => {
-  refreshCaptcha()
-})
 </script>
 
 <style scoped>
@@ -147,13 +159,61 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 40px;
   margin-top: 60px;
   z-index: 10;
 }
 
+.login-left {
+  width: 280px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.qrcode-section {
+  text-align: center;
+}
+
+.qrcode-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.qrcode-desc {
+  font-size: 14px;
+  color: #909399;
+  margin-bottom: 20px;
+}
+
+.qrcode-img {
+  width: 180px;
+  height: 180px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.qrcode-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.qrcode-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 15px;
+}
+
 .login-right {
   width: 380px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
   padding: 40px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -170,32 +230,6 @@ onMounted(() => {
   width: 100%;
   height: 42px;
   margin-bottom: 15px;
-}
-
-.captcha-row {
-  display: flex;
-  gap: 12px;
-}
-
-.captcha-input {
-  flex: 1;
-  height: 42px;
-}
-
-.captcha-img {
-  width: 100px;
-  height: 42px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: bold;
-  color: #606266;
-  letter-spacing: 4px;
-  cursor: pointer;
 }
 
 .login-btn {
