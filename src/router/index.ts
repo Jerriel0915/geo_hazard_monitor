@@ -29,7 +29,6 @@ const routes: RouteRecordRaw[] = [
       { path: '/report/query', name: 'Query', component: () => import('@/views/report/Query.vue') },
       { path: '/report/analysis', name: 'Analysis', component: () => import('@/views/report/Analysis.vue') },
       { path: '/report/screen', name: 'Screen', component: () => import('@/views/report/Screen.vue') },
-      { path: '/iot/access', name: 'DeviceAccess', component: () => import('@/views/iot/DeviceAccess.vue') },
       { path: '/iot/alarm-engine', name: 'AlarmEngine', component: () => import('@/views/iot/AlarmEngine.vue') },
       { path: '/iot/data-parse', name: 'DataParse', component: () => import('@/views/iot/DataParse.vue') },
       { path: '/system/organization', name: 'Organization', component: () => import('@/views/system/Organization.vue') },

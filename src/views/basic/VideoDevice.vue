@@ -43,6 +43,12 @@
         v-loading="loading"
         :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
       >
+        <el-table-column label="图标" width="80" align="center">
+          <template #default="{ row }">
+            <img v-if="row.iconPath" :src="row.iconPath" class="table-icon" alt="icon" />
+            <span v-else class="empty-text">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="code" label="编号" width="150" align="center" />
         <el-table-column prop="name" label="名称" min-width="180" align="center" />
         <el-table-column prop="protocolName" label="协议类型" width="120" align="center">
@@ -55,9 +61,11 @@
             <span class="stream-url">{{ row.streamUrl }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="hazardPointName" label="关联隐患点" width="150" align="center">
+        <el-table-column prop="hazardPointNames" label="关联隐患点" min-width="200" align="center">
           <template #default="{ row }">
-            <span v-if="row.hazardPointName" class="link-text" @click="handleViewHazardPoint(row)">{{ row.hazardPointName }}</span>
+            <span v-if="row.hazardPointNames" class="hazard-tags">
+              <el-tag v-for="hp in row.hazardPointNames.split(',')" :key="hp" size="small" class="hazard-tag">{{ hp }}</el-tag>
+            </span>
             <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
@@ -66,6 +74,12 @@
             <el-tag :type="getStatusType(row.status)" effect="plain">
               {{ getStatusLabel(row.status) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="lastOnlineTime" label="最近在线时间" width="180" align="center">
+          <template #default="{ row }">
+            <span v-if="row.lastOnlineTime">{{ row.lastOnlineTime }}</span>
+            <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="installTime" label="安装时间" width="180" align="center" />
@@ -114,6 +128,14 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="图标" prop="icon">
+              <div class="device-icon-selector" @click="handleSelectVideoIcon">
+                <img v-if="formData.iconPath" :src="formData.iconPath" class="device-icon-img" alt="icon" />
+                <span v-else class="device-icon-placeholder">点击选择图标</span>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="协议类型" prop="protocolCode">
               <el-select v-model="formData.protocolCode" placeholder="请选择协议类型">
                 <el-option label="RTMP" value="RTMP" />
@@ -122,39 +144,10 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="设备IP" prop="ipAddress">
-              <el-input v-model="formData.ipAddress" placeholder="请输入设备IP地址" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="端口" prop="port">
-              <el-input-number v-model="formData.port" :min="1" :max="65535" placeholder="端口号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="安装位置" prop="location">
-              <el-input v-model="formData.location" placeholder="请输入安装位置" />
-            </el-form-item>
-          </el-col>
         </el-row>
         <el-form-item label="视频流地址" prop="streamUrl">
           <el-input v-model="formData.streamUrl" placeholder="请输入视频流地址" type="textarea" :rows="3" />
         </el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="登录用户名" prop="username">
-              <el-input v-model="formData.username" placeholder="请输入登录用户名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="登录密码" prop="password">
-              <el-input v-model="formData.password" placeholder="请输入登录密码" type="password" />
-            </el-form-item>
-          </el-col>
-        </el-row>
       </el-form>
 
       <template #footer>
@@ -163,16 +156,17 @@
       </template>
     </el-dialog>
 
+    <!-- 关联隐患点弹窗 -->
     <el-dialog
       v-model="bindDialogVisible"
       title="关联隐患点"
-      width="500px"
+      width="600px"
       :close-on-click-modal="false"
       destroy-on-close
     >
-      <el-form ref="bindFormRef" :model="bindFormData" :rules="bindFormRules" label-width="100px">
-        <el-form-item label="隐患点" prop="hazardPointId">
-          <el-select v-model="bindFormData.hazardPointId" placeholder="请选择隐患点" filterable>
+      <el-form ref="bindFormRef" :model="bindFormData" label-width="100px">
+        <el-form-item label="隐患点" prop="hazardPointIds">
+          <el-select v-model="bindFormData.hazardPointIds" multiple placeholder="请选择隐患点" filterable style="width: 100%">
             <el-option
               v-for="hp in hazardPointList"
               :key="hp.id"
@@ -181,12 +175,56 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="bindFormData.hazardPointIds.length > 0">
+          <el-button type="primary" @click="handleOpenMap">在地图上指定安装位置</el-button>
+        </el-form-item>
       </el-form>
 
       <template #footer>
         <el-button @click="bindDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleBindSubmit">确定</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 地图弹窗：指定设备安装坐标 -->
+    <el-dialog
+      v-model="mapDialogVisible"
+      title="指定视频设备安装位置"
+      width="800px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div class="map-container">
+        <div id="video-device-map" ref="mapRef" style="width: 100%; height: 400px;"></div>
+      </div>
+      <div class="map-hazard-list">
+        <div v-for="hp in selectedHazardPoints" :key="hp.id" class="map-hazard-item">
+          <span class="hazard-name">{{ hp.name }}</span>
+          <span class="hazard-coords" v-if="hp.installLng && hp.installLat">
+            坐标: {{ hp.installLng.toFixed(6) }}, {{ hp.installLat.toFixed(6) }}
+          </span>
+          <span class="hazard-coords" v-else>点击地图设置坐标</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="mapDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleMapConfirm">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 视频图标选择弹窗 -->
+    <el-dialog v-model="videoIconDialogVisible" title="选择视频设备图标" width="500px">
+      <div class="icon-grid">
+        <div
+          v-for="item in videoIconList"
+          :key="item.code"
+          class="icon-item"
+          @click="handleVideoIconSelect(item)"
+        >
+          <img :src="item.path" class="icon-select-img" :alt="item.name" />
+          <span class="icon-name">{{ item.name }}</span>
+        </div>
+      </div>
     </el-dialog>
 
     <el-dialog
@@ -229,24 +267,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 interface VideoDeviceItem {
   id: string
   code: string
   name: string
+  icon: string
+  iconPath: string
   protocolCode: string
   protocolName: string
   streamUrl: string
-  hazardPointId?: string
-  hazardPointName: string
-  ipAddress: string
-  port?: number
-  username?: string
-  password?: string
+  hazardPointIds?: string
+  hazardPointNames: string
   status: number
-  location: string
   installTime: string
   lastOnlineTime?: string
 }
@@ -255,7 +292,22 @@ interface HazardPointItem {
   id: string
   code: string
   name: string
+  longitude?: number
+  latitude?: number
+  installLng?: number
+  installLat?: number
 }
+
+// 视频设备图标列表 vidio1~vidio10
+const videoIconList = Array.from({ length: 10 }, (_, i) => {
+  const num = i + 1
+  return {
+    code: `VIDIO${num}`,
+    name: `视频图标${num}`,
+    icon: `vidio${num}`,
+    path: `/jc-icon/green/vidio${num}_green.png`
+  }
+})
 
 const loading = ref(false)
 const tableData = ref<VideoDeviceItem[]>([])
@@ -273,11 +325,8 @@ const formRef = ref()
 const bindDialogVisible = ref(false)
 const bindFormRef = ref()
 const bindFormData = reactive({
-  hazardPointId: ''
+  hazardPointIds: [] as string[]
 })
-const bindFormRules = {
-  hazardPointId: [{ required: true, message: '请选择隐患点', trigger: 'blur' }]
-}
 
 const playDialogVisible = ref(false)
 const playUrl = ref('')
@@ -290,24 +339,30 @@ const isPlaying = ref(false)
 const hazardPointList = ref<HazardPointItem[]>([])
 const currentBindRow = ref<VideoDeviceItem | null>(null)
 
+const mapDialogVisible = ref(false)
+const mapRef = ref<HTMLDivElement | null>(null)
+let mapInstance: L.Map | null = null
+let currentMarker: L.Marker | null = null
+const selectedHazardPoints = ref<HazardPointItem[]>([])
+const currentHazardPointIndex = ref(0)
+
+const videoIconDialogVisible = ref(false)
+
 const formData = reactive<{
   id?: string
   code: string
   name: string
+  icon: string
+  iconPath: string
   protocolCode: string
   streamUrl: string
-  ipAddress: string
-  port?: number
-  username?: string
-  password?: string
-  location: string
 }>({
   code: '',
   name: '',
+  icon: '',
+  iconPath: '',
   protocolCode: '',
-  streamUrl: '',
-  ipAddress: '',
-  location: ''
+  streamUrl: ''
 })
 
 const formRules = {
@@ -352,16 +407,14 @@ const initTableData = () => {
         id: '1',
         code: 'VD001',
         name: '隐患点A-摄像头1',
+        icon: 'vidio1',
+        iconPath: '/jc-icon/green/vidio1_green.png',
         protocolCode: 'RTSP',
         protocolName: 'RTSP',
         streamUrl: 'rtsp://admin:123456@192.168.1.101:554/Streaming/Channels/101',
-        hazardPointId: '1',
-        hazardPointName: '隐患点A',
-        ipAddress: '192.168.1.101',
-        port: 554,
-        username: 'admin',
+        hazardPointIds: '1',
+        hazardPointNames: '隐患点A',
         status: 1,
-        location: '隐患点A区域',
         installTime: '2024-01-10 10:00:00',
         lastOnlineTime: '2024-01-20 14:30:00'
       },
@@ -369,15 +422,14 @@ const initTableData = () => {
         id: '2',
         code: 'VD002',
         name: '隐患点A-摄像头2',
+        icon: 'vidio2',
+        iconPath: '/jc-icon/green/vidio2_green.png',
         protocolCode: 'RTMP',
         protocolName: 'RTMP',
         streamUrl: 'rtmp://192.168.1.102:1935/live/stream001',
-        hazardPointId: '1',
-        hazardPointName: '隐患点A',
-        ipAddress: '192.168.1.102',
-        port: 1935,
+        hazardPointIds: '1,2',
+        hazardPointNames: '隐患点A,隐患点B',
         status: 1,
-        location: '隐患点A入口',
         installTime: '2024-01-10 11:00:00',
         lastOnlineTime: '2024-01-20 14:25:00'
       },
@@ -385,31 +437,30 @@ const initTableData = () => {
         id: '3',
         code: 'VD003',
         name: '隐患点B-摄像头1',
+        icon: 'vidio3',
+        iconPath: '/jc-icon/green/vidio3_green.png',
         protocolCode: 'ONVIF',
         protocolName: 'ONVIF',
         streamUrl: 'http://192.168.1.103:8080/onvif/media',
-        hazardPointId: '2',
-        hazardPointName: '隐患点B',
-        ipAddress: '192.168.1.103',
-        port: 8080,
+        hazardPointIds: '2',
+        hazardPointNames: '隐患点B',
         status: 2,
-        location: '隐患点B区域',
-        installTime: '2024-01-15 09:00:00'
+        installTime: '2024-01-15 09:00:00',
+        lastOnlineTime: '2024-01-19 10:00:00'
       },
       {
         id: '4',
         code: 'VD004',
         name: '隐患点C-摄像头1',
+        icon: 'vidio4',
+        iconPath: '/jc-icon/green/vidio4_green.png',
         protocolCode: 'RTSP',
         protocolName: 'RTSP',
         streamUrl: 'rtsp://admin:password@192.168.1.104:554/stream1',
-        hazardPointName: '',
-        ipAddress: '192.168.1.104',
-        port: 554,
-        username: 'admin',
+        hazardPointNames: '',
         status: 0,
-        location: '隐患点C边坡',
-        installTime: '2024-01-20 14:00:00'
+        installTime: '2024-01-20 14:00:00',
+        lastOnlineTime: ''
       }
     ]
     total.value = tableData.value.length
@@ -419,10 +470,10 @@ const initTableData = () => {
 
 const initHazardPointList = () => {
   hazardPointList.value = [
-    { id: '1', code: 'HP001', name: '隐患点A' },
-    { id: '2', code: 'HP002', name: '隐患点B' },
-    { id: '3', code: 'HP003', name: '隐患点C' },
-    { id: '4', code: 'HP004', name: '隐患点D' }
+    { id: '1', code: 'HP001', name: '隐患点A', longitude: 104.156789, latitude: 30.678901 },
+    { id: '2', code: 'HP002', name: '隐患点B', longitude: 103.589234, latitude: 30.891234 },
+    { id: '3', code: 'HP003', name: '隐患点C', longitude: 102.891234, latitude: 29.589234 },
+    { id: '4', code: 'HP004', name: '隐患点D', longitude: 103.334567, latitude: 29.556789 }
   ]
 }
 
@@ -446,13 +497,10 @@ const handleAdd = () => {
     id: undefined,
     code: '',
     name: '',
+    icon: '',
+    iconPath: '',
     protocolCode: '',
-    streamUrl: '',
-    ipAddress: '',
-    port: undefined,
-    username: '',
-    password: '',
-    location: ''
+    streamUrl: ''
   })
   dialogVisible.value = true
 }
@@ -464,20 +512,18 @@ const handleEdit = (row: VideoDeviceItem) => {
     id: row.id,
     code: row.code,
     name: row.name,
+    icon: row.icon || '',
+    iconPath: row.iconPath || '',
     protocolCode: row.protocolCode,
-    streamUrl: row.streamUrl,
-    ipAddress: row.ipAddress,
-    port: row.port,
-    username: row.username || '',
-    password: row.password || '',
-    location: row.location
+    streamUrl: row.streamUrl
   })
   dialogVisible.value = true
 }
 
 const handleBindHazardPoint = (row: VideoDeviceItem) => {
   currentBindRow.value = row
-  bindFormData.hazardPointId = row.hazardPointId || ''
+  const hpIds = row.hazardPointIds ? row.hazardPointIds.split(',') : []
+  bindFormData.hazardPointIds = hpIds
   bindDialogVisible.value = true
 }
 
@@ -514,17 +560,99 @@ const handleSubmit = () => {
 }
 
 const handleBindSubmit = () => {
-  bindFormRef.value.validate((valid: boolean) => {
-    if (valid && currentBindRow.value) {
-      const hp = hazardPointList.value.find(item => item.id === bindFormData.hazardPointId)
-      if (hp) {
-        currentBindRow.value.hazardPointId = hp.id
-        currentBindRow.value.hazardPointName = hp.name
-      }
-      ElMessage.success('关联成功')
-      bindDialogVisible.value = false
+  if (currentBindRow.value) {
+    const selectedNames = hazardPointList.value
+      .filter(hp => bindFormData.hazardPointIds.includes(hp.id))
+      .map(hp => hp.name)
+    currentBindRow.value.hazardPointIds = bindFormData.hazardPointIds.join(',')
+    currentBindRow.value.hazardPointNames = selectedNames.join(',')
+    ElMessage.success('关联成功')
+    bindDialogVisible.value = false
+  }
+}
+
+const handleSelectVideoIcon = () => {
+  videoIconDialogVisible.value = true
+}
+
+const handleVideoIconSelect = (item: { code: string; name: string; icon: string; path: string }) => {
+  formData.icon = item.icon
+  formData.iconPath = item.path
+  videoIconDialogVisible.value = false
+}
+
+const handleOpenMap = () => {
+  selectedHazardPoints.value = hazardPointList.value
+    .filter(hp => bindFormData.hazardPointIds.includes(hp.id))
+    .map(hp => ({ ...hp }))
+  mapDialogVisible.value = true
+  nextTick(() => {
+    initMap()
+  })
+}
+
+const initMap = () => {
+  if (!mapRef.value) return
+
+  if (mapInstance) {
+    mapInstance.remove()
+  }
+
+  mapInstance = L.map(mapRef.value).setView([30.67, 104.06], 10)
+
+  // 天地图矢量底图
+  L.tileLayer('https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
+    maxZoom: 18,
+    attribution: '天地图'
+  }).addTo(mapInstance)
+
+  // 天地图注记
+  L.tileLayer('https://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
+    maxZoom: 18
+  }).addTo(mapInstance)
+
+  // 添加隐患点标记
+  selectedHazardPoints.value.forEach((hp, index) => {
+    if (hp.longitude && hp.latitude) {
+      const marker = L.marker([hp.latitude, hp.longitude])
+        .addTo(mapInstance!)
+        .bindPopup(`${index + 1}. ${hp.name}`)
+      marker.openPopup()
     }
   })
+
+  // 点击地图设置设备安装坐标
+  mapInstance.on('click', (e: L.LeafletMouseEvent) => {
+    const hp = selectedHazardPoints.value[currentHazardPointIndex.value]
+    if (hp) {
+      hp.installLng = e.latlng.lng
+      hp.installLat = e.latlng.lat
+
+      if (currentMarker) {
+        mapInstance!.removeLayer(currentMarker)
+      }
+      currentMarker = L.marker([e.latlng.lat, e.latlng.lng], {
+        icon: L.divIcon({
+          className: 'device-marker',
+          html: `<div style="background:#409eff;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;">${hp.name}</div>`,
+          iconSize: [100, 30],
+          iconAnchor: [50, 15]
+        })
+      }).addTo(mapInstance!)
+
+      currentHazardPointIndex.value = (currentHazardPointIndex.value + 1) % selectedHazardPoints.value.length
+      ElMessage.info(`已设置 ${hp.name} 坐标，请设置下一个隐患点位置`)
+    }
+  })
+}
+
+const handleMapConfirm = () => {
+  mapDialogVisible.value = false
+  if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+  }
+  ElMessage.success('安装位置设置成功')
 }
 
 const handlePlay = (row: VideoDeviceItem) => {
@@ -578,10 +706,6 @@ const handleRefresh = () => {
     videoError.value = false
     videoRef.value.load()
   }
-}
-
-const handleViewHazardPoint = (row: VideoDeviceItem) => {
-  ElMessage.info(`查看隐患点: ${row.hazardPointName}`)
 }
 
 const onVideoLoaded = () => {
@@ -654,19 +778,26 @@ onMounted(() => {
   background: #fff;
 }
 
+.table-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.hazard-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.hazard-tag {
+  margin: 2px;
+}
+
 .stream-url {
   font-size: 12px;
   color: #606266;
   word-break: break-all;
-}
-
-.link-text {
-  color: #409eff;
-  cursor: pointer;
-}
-
-.link-text:hover {
-  text-decoration: underline;
 }
 
 .empty-text {
@@ -685,6 +816,108 @@ onMounted(() => {
 
 .danger-text:hover {
   color: #f56c6c !important;
+}
+
+/* 设备图标选择器 */
+.device-icon-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 42px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.device-icon-selector:hover {
+  border-color: #409eff;
+  background: #f0f7ff;
+}
+
+.device-icon-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.device-icon-placeholder {
+  color: #909399;
+  font-size: 12px;
+}
+
+/* 地图 */
+.map-container {
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.map-hazard-list {
+  margin-top: 15px;
+}
+
+.map-hazard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.hazard-name {
+  font-weight: bold;
+  color: #303133;
+}
+
+.hazard-coords {
+  color: #409eff;
+  font-size: 13px;
+}
+
+/* 图标选择弹窗 */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+  padding: 10px;
+}
+
+.icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.icon-item:hover {
+  border-color: #409eff;
+  background: #f0f7ff;
+}
+
+.icon-select-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.icon-name {
+  font-size: 12px;
+  color: #606266;
+  margin-top: 6px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .video-play-dialog :deep(.el-dialog__body) {

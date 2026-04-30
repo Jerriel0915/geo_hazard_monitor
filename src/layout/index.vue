@@ -207,7 +207,6 @@ const menuList = [
     label: '物联网',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
     children: [
-      { name: 'DeviceAccess', label: '设备接入' },
       { name: 'MonitorType', label: '监测类型' },
       { name: 'Device', label: '设备管理' },
       { name: 'VideoDevice', label: '视频设备管理' },
@@ -247,7 +246,6 @@ const menuRouteMap: Record<string, string> = {
   Query: '/report/query',
   Analysis: '/report/analysis',
   Screen: '/report/screen',
-  DeviceAccess: '/iot/access',
   AlarmEngine: '/iot/alarm-engine',
   DataParse: '/iot/data-parse',
   Organization: '/system/organization',
@@ -275,7 +273,6 @@ const menuLabelMap: Record<string, string> = {
   Query: '查询中心',
   Analysis: '数据分析',
   Screen: '运营大屏',
-  DeviceAccess: '设备接入',
   AlarmEngine: '告警引擎',
   DataParse: '数据解析',
   Organization: '组织管理',
