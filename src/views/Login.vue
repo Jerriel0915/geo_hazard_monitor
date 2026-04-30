@@ -5,80 +5,100 @@
       <h1>地质灾害监测预警系统1.0</h1>
     </div>
     <div class="login-wrapper">
-      <div class="login-left">
-        <div class="qrcode-section">
-          <div class="qrcode-title">打开微信扫一扫</div>
-          <div class="qrcode-desc">手机轻松处理工作</div>
-          <div class="qrcode-img">
-            <svg viewBox="0 0 200 200" class="qrcode-svg">
-              <rect width="200" height="200" fill="white"/>
-              <rect x="30" y="30" width="30" height="30" fill="#333"/>
-              <rect x="30" y="140" width="30" height="30" fill="#333"/>
-              <rect x="140" y="30" width="30" height="30" fill="#333"/>
-              <rect x="155" y="155" width="15" height="15" fill="#333"/>
-              <rect x="140" y="155" width="15" height="15" fill="#333"/>
-              <rect x="155" y="140" width="15" height="15" fill="#333"/>
-              <rect x="70" y="70" width="60" height="60" fill="white"/>
-              <rect x="80" y="80" width="40" height="40" fill="#333"/>
-              <rect x="92" y="92" width="16" height="16" fill="white"/>
-              <rect x="30" y="70" width="20" height="20" fill="#333"/>
-              <rect x="50" y="30" width="20" height="20" fill="#333"/>
-              <rect x="50" y="50" width="20" height="20" fill="#333"/>
-              <rect x="30" y="110" width="20" height="20" fill="#333"/>
-              <rect x="30" y="130" width="20" height="20" fill="#333"/>
-              <rect x="50" y="150" width="20" height="20" fill="#333"/>
-              <rect x="150" y="70" width="20" height="20" fill="#333"/>
-              <rect x="170" y="30" width="20" height="20" fill="#333"/>
-              <rect x="170" y="50" width="20" height="20" fill="#333"/>
-              <rect x="150" y="110" width="20" height="20" fill="#333"/>
-              <rect x="150" y="130" width="20" height="20" fill="#333"/>
-              <rect x="170" y="150" width="20" height="20" fill="#333"/>
-              <rect x="70" y="30" width="20" height="20" fill="#333"/>
-              <rect x="90" y="30" width="20" height="20" fill="#333"/>
-              <rect x="110" y="30" width="20" height="20" fill="#333"/>
-              <rect x="130" y="30" width="20" height="20" fill="#333"/>
-              <rect x="70" y="170" width="20" height="20" fill="#333"/>
-              <rect x="90" y="170" width="20" height="20" fill="#333"/>
-              <rect x="110" y="170" width="20" height="20" fill="#333"/>
-              <rect x="130" y="170" width="20" height="20" fill="#333"/>
-              <rect x="30" y="70" width="20" height="20" fill="#333"/>
-              <rect x="30" y="90" width="20" height="20" fill="#333"/>
-              <rect x="30" y="110" width="20" height="20" fill="#333"/>
-              <rect x="170" y="70" width="20" height="20" fill="#333"/>
-              <rect x="170" y="90" width="20" height="20" fill="#333"/>
-              <rect x="170" y="110" width="20" height="20" fill="#333"/>
-            </svg>
+      <div class="login-card">
+        <!-- 左侧：微信小程序入口 -->
+        <div class="login-left">
+          <div class="qrcode-section">
+            <div class="qrcode-title">打开微信扫一扫</div>
+            <div class="qrcode-desc">手机轻松处理工作</div>
+            <div class="qrcode-img">
+              <svg viewBox="0 0 200 200" class="qrcode-svg">
+                <rect width="200" height="200" fill="white"/>
+                <rect x="30" y="30" width="30" height="30" fill="#333"/>
+                <rect x="30" y="140" width="30" height="30" fill="#333"/>
+                <rect x="140" y="30" width="30" height="30" fill="#333"/>
+                <rect x="155" y="155" width="15" height="15" fill="#333"/>
+                <rect x="140" y="155" width="15" height="15" fill="#333"/>
+                <rect x="155" y="140" width="15" height="15" fill="#333"/>
+                <rect x="70" y="70" width="60" height="60" fill="white"/>
+                <rect x="80" y="80" width="40" height="40" fill="#333"/>
+                <rect x="92" y="92" width="16" height="16" fill="white"/>
+                <rect x="30" y="70" width="20" height="20" fill="#333"/>
+                <rect x="50" y="30" width="20" height="20" fill="#333"/>
+                <rect x="50" y="50" width="20" height="20" fill="#333"/>
+                <rect x="30" y="110" width="20" height="20" fill="#333"/>
+                <rect x="30" y="130" width="20" height="20" fill="#333"/>
+                <rect x="50" y="150" width="20" height="20" fill="#333"/>
+                <rect x="150" y="70" width="20" height="20" fill="#333"/>
+                <rect x="170" y="30" width="20" height="20" fill="#333"/>
+                <rect x="170" y="50" width="20" height="20" fill="#333"/>
+                <rect x="150" y="110" width="20" height="20" fill="#333"/>
+                <rect x="150" y="130" width="20" height="20" fill="#333"/>
+                <rect x="170" y="150" width="20" height="20" fill="#333"/>
+                <rect x="70" y="30" width="20" height="20" fill="#333"/>
+                <rect x="90" y="30" width="20" height="20" fill="#333"/>
+                <rect x="110" y="30" width="20" height="20" fill="#333"/>
+                <rect x="130" y="30" width="20" height="20" fill="#333"/>
+                <rect x="70" y="170" width="20" height="20" fill="#333"/>
+                <rect x="90" y="170" width="20" height="20" fill="#333"/>
+                <rect x="110" y="170" width="20" height="20" fill="#333"/>
+                <rect x="130" y="170" width="20" height="20" fill="#333"/>
+                <rect x="30" y="70" width="20" height="20" fill="#333"/>
+                <rect x="30" y="90" width="20" height="20" fill="#333"/>
+                <rect x="30" y="110" width="20" height="20" fill="#333"/>
+                <rect x="170" y="70" width="20" height="20" fill="#333"/>
+                <rect x="170" y="90" width="20" height="20" fill="#333"/>
+                <rect x="170" y="110" width="20" height="20" fill="#333"/>
+              </svg>
+            </div>
+            <div class="qrcode-tip">扫码进入小程序登录</div>
           </div>
-          <div class="qrcode-tip">扫码进入小程序登录</div>
         </div>
-      </div>
-      <div class="login-right">
-        <div class="login-form">
-          <h2>账号登录</h2>
-          <el-form :model="loginForm" ref="loginFormRef" label-width="0">
-            <el-form-item>
-              <el-input
-                v-model="loginForm.username"
-                placeholder="请输入账号"
-                prefix-icon="User"
-                class="login-input"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-input
-                v-model="loginForm.password"
-                type="password"
-                placeholder="请输入密码"
-                prefix-icon="Lock"
-                class="login-input"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="handleLogin" class="login-btn">
-                登 录
-              </el-button>
-            </el-form-item>
-          </el-form>
+        <!-- 右侧：账号登录 -->
+        <div class="login-right">
+          <div class="login-form">
+            <h2>账号登录</h2>
+            <el-form :model="loginForm" ref="loginFormRef" label-width="0">
+              <el-form-item>
+                <el-input
+                  v-model="loginForm.username"
+                  placeholder="请输入账号"
+                  prefix-icon="User"
+                  class="login-input"
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-input
+                  v-model="loginForm.password"
+                  type="password"
+                  placeholder="请输入密码"
+                  prefix-icon="Lock"
+                  class="login-input"
+                />
+              </el-form-item>
+              <!-- 算术验证码 -->
+              <el-form-item class="captcha-item">
+                <div class="captcha-wrapper">
+                  <el-input
+                    v-model="loginForm.captcha"
+                    placeholder="请输入验证码"
+                    prefix-icon="Grid"
+                    class="captcha-input"
+                    @keyup.enter="handleLogin"
+                  />
+                  <div class="captcha-code" @click="generateCaptcha">
+                    <span class="captcha-text">{{ captchaExpr }}</span>
+                    <span class="captcha-refresh" title="点击刷新">↻</span>
+                  </div>
+                </div>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleLogin" class="login-btn">
+                  登 录
+                </el-button>
+              </el-form-item>
+            </el-form>
+          </div>
         </div>
       </div>
     </div>
@@ -97,8 +117,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 
@@ -106,21 +127,78 @@ const loginFormRef = ref()
 
 const loginForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  captcha: ''
 })
+
+const captchaExpr = ref('')
+let captchaAnswer = 0
+
+const generateCaptcha = () => {
+  const operators = ['+', '-', '*']
+  const operator = operators[Math.floor(Math.random() * operators.length)]
+  let num1 = Math.floor(Math.random() * 20) + 1
+  let num2 = Math.floor(Math.random() * 20) + 1
+
+  // 确保减法结果不为负数
+  if (operator === '-' && num1 < num2) {
+    [num1, num2] = [num2, num1]
+  }
+
+  switch (operator) {
+    case '+':
+      captchaAnswer = num1 + num2
+      break
+    case '-':
+      captchaAnswer = num1 - num2
+      break
+    case '*':
+      // 乘法使用较小的数字
+      num1 = Math.floor(Math.random() * 9) + 1
+      num2 = Math.floor(Math.random() * 9) + 1
+      captchaAnswer = num1 * num2
+      break
+  }
+
+  const operatorMap: Record<string, string> = {
+    '+': '+',
+    '-': '-',
+    '*': '×'
+  }
+
+  captchaExpr.value = `${num1} ${operatorMap[operator]} ${num2} = ?`
+  loginForm.captcha = ''
+}
 
 const handleLogin = () => {
   if (!loginForm.username) {
-    alert('请输入账号')
+    ElMessage.warning('请输入账号')
     return
   }
   if (!loginForm.password) {
-    alert('请输入密码')
+    ElMessage.warning('请输入密码')
     return
   }
+  if (!loginForm.captcha) {
+    ElMessage.warning('请输入验证码')
+    return
+  }
+
+  const userAnswer = parseInt(loginForm.captcha)
+  if (isNaN(userAnswer) || userAnswer !== captchaAnswer) {
+    ElMessage.error('验证码错误，请重新输入')
+    generateCaptcha()
+    return
+  }
+
   localStorage.setItem('token', 'mock-token')
+  ElMessage.success('登录成功')
   router.push('/dashboard')
 }
+
+onMounted(() => {
+  generateCaptcha()
+})
 </script>
 
 <style scoped>
@@ -159,44 +237,55 @@ const handleLogin = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 40px;
   margin-top: 60px;
   z-index: 10;
 }
 
+/* 整体卡片容器 */
+.login-card {
+  display: flex;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  width: 720px;
+  min-height: 420px;
+}
+
+/* 左侧：微信小程序 */
 .login-left {
   width: 280px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
+  background: linear-gradient(180deg, #4a90d9 0%, #357abd 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 30px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .qrcode-section {
   text-align: center;
+  color: #fff;
 }
 
 .qrcode-title {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
   margin-bottom: 8px;
 }
 
 .qrcode-desc {
   font-size: 14px;
-  color: #909399;
+  opacity: 0.9;
   margin-bottom: 20px;
 }
 
 .qrcode-img {
-  width: 180px;
-  height: 180px;
+  width: 160px;
+  height: 160px;
   margin: 0 auto;
   background: #fff;
-  border: 1px solid #e4e7ed;
   border-radius: 8px;
-  padding: 10px;
+  padding: 8px;
   box-sizing: border-box;
 }
 
@@ -207,16 +296,21 @@ const handleLogin = () => {
 
 .qrcode-tip {
   font-size: 12px;
-  color: #909399;
+  opacity: 0.8;
   margin-top: 15px;
 }
 
+/* 右侧：账号登录 */
 .login-right {
-  width: 380px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
+  flex: 1;
   padding: 40px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-form {
+  width: 100%;
 }
 
 .login-form h2 {
@@ -229,7 +323,52 @@ const handleLogin = () => {
 .login-input {
   width: 100%;
   height: 42px;
+}
+
+/* 验证码样式 */
+.captcha-item {
   margin-bottom: 15px;
+}
+
+.captcha-wrapper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.captcha-input {
+  flex: 1;
+  height: 42px;
+}
+
+.captcha-code {
+  width: 120px;
+  height: 42px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.captcha-code:hover {
+  opacity: 0.9;
+}
+
+.captcha-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.captcha-refresh {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .login-btn {
