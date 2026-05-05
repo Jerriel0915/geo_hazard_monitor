@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="zwei-quartz" />
+        <module name="zwei-system" />
+        <module name="zwei-common" />
+        <module name="zwei-framework" />
+        <module name="zwei-generator" />
+        <module name="zwei-admin" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="geo_hazard_monitor-admin" target="17" />
+      <module name="geo_hazard_monitor-common" target="17" />
+      <module name="geo_hazard_monitor-common-bom" target="1.5" />
+      <module name="geo_hazard_monitor-common-core" target="17" />
+      <module name="geo_hazard_monitor-common-doc" target="17" />
+      <module name="geo_hazard_monitor-common-encrypt" target="17" />
+      <module name="geo_hazard_monitor-common-excel" target="17" />
+      <module name="geo_hazard_monitor-common-idempotent" target="17" />
+      <module name="geo_hazard_monitor-common-job" target="17" />
+      <module name="geo_hazard_monitor-common-json" target="17" />
+      <module name="geo_hazard_monitor-common-log" target="17" />
+      <module name="geo_hazard_monitor-common-mail" target="17" />
+      <module name="geo_hazard_monitor-common-mybatis" target="17" />
+      <module name="geo_hazard_monitor-common-oss" target="17" />
+      <module name="geo_hazard_monitor-common-ratelimiter" target="17" />
+      <module name="geo_hazard_monitor-common-redis" target="17" />
+      <module name="geo_hazard_monitor-common-satoken" target="17" />
+      <module name="geo_hazard_monitor-common-security" target="17" />
+      <module name="geo_hazard_monitor-common-sensitive" target="17" />
+      <module name="geo_hazard_monitor-common-sms" target="17" />
+      <module name="geo_hazard_monitor-common-social" target="17" />
+      <module name="geo_hazard_monitor-common-sse" target="17" />
+      <module name="geo_hazard_monitor-common-tenant" target="17" />
+      <module name="geo_hazard_monitor-common-translation" target="17" />
+      <module name="geo_hazard_monitor-common-web" target="17" />
+      <module name="geo_hazard_monitor-common-websocket" target="17" />
+      <module name="geo_hazard_monitor-demo" target="17" />
+      <module name="geo_hazard_monitor-extend" target="17" />
+      <module name="geo_hazard_monitor-generator" target="17" />
+      <module name="geo_hazard_monitor-job" target="17" />
+      <module name="geo_hazard_monitor-modules" target="17" />
+      <module name="geo_hazard_monitor-monitor-admin" target="17" />
+      <module name="geo_hazard_monitor-snailjob-server" target="17" />
+      <module name="geo_hazard_monitor-system" target="17" />
+      <module name="geo_hazard_monitor-workflow" target="17" />
+      <module name="ghm-admin" target="17" />
+      <module name="ghm-common" target="17" />
+      <module name="ghm-common-bom" target="1.5" />
+      <module name="ghm-common-core" target="17" />
+      <module name="ghm-common-doc" target="17" />
+      <module name="ghm-common-encrypt" target="17" />
+      <module name="ghm-common-excel" target="17" />
+      <module name="ghm-common-idempotent" target="17" />
+      <module name="ghm-common-job" target="17" />
+      <module name="ghm-common-json" target="17" />
+      <module name="ghm-common-log" target="17" />
+      <module name="ghm-common-mail" target="17" />
+      <module name="ghm-common-mybatis" target="17" />
+      <module name="ghm-common-oss" target="17" />
+      <module name="ghm-common-ratelimiter" target="17" />
+      <module name="ghm-common-redis" target="17" />
+      <module name="ghm-common-satoken" target="17" />
+      <module name="ghm-common-security" target="17" />
+      <module name="ghm-common-sensitive" target="17" />
+      <module name="ghm-common-sms" target="17" />
+      <module name="ghm-common-social" target="17" />
+      <module name="ghm-common-sse" target="17" />
+      <module name="ghm-common-tenant" target="17" />
+      <module name="ghm-common-translation" target="17" />
+      <module name="ghm-common-web" target="17" />
+      <module name="ghm-common-websocket" target="17" />
+      <module name="ghm-demo" target="17" />
+      <module name="ghm-extend" target="17" />
+      <module name="ghm-generator" target="17" />
+      <module name="ghm-job" target="17" />
+      <module name="ghm-modules" target="17" />
+      <module name="ghm-monitor-admin" target="17" />
+      <module name="ghm-snailjob-server" target="17" />
+      <module name="ghm-system" target="17" />
+      <module name="ghm-workflow" target="17" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="geo_hazard_monitor-admin" options="-parameters" />
+      <module name="geo_hazard_monitor-common" options="-parameters" />
+      <module name="geo_hazard_monitor-common-core" options="-parameters" />
+      <module name="geo_hazard_monitor-common-doc" options="-parameters" />
+      <module name="geo_hazard_monitor-common-encrypt" options="-parameters" />
+      <module name="geo_hazard_monitor-common-excel" options="-parameters" />
+      <module name="geo_hazard_monitor-common-idempotent" options="-parameters" />
+      <module name="geo_hazard_monitor-common-job" options="-parameters" />
+      <module name="geo_hazard_monitor-common-json" options="-parameters" />
+      <module name="geo_hazard_monitor-common-log" options="-parameters" />
+      <module name="geo_hazard_monitor-common-mail" options="-parameters" />
+      <module name="geo_hazard_monitor-common-mybatis" options="-parameters" />
+      <module name="geo_hazard_monitor-common-oss" options="-parameters" />
+      <module name="geo_hazard_monitor-common-ratelimiter" options="-parameters" />
+      <module name="geo_hazard_monitor-common-redis" options="-parameters" />
+      <module name="geo_hazard_monitor-common-satoken" options="-parameters" />
+      <module name="geo_hazard_monitor-common-security" options="-parameters" />
+      <module name="geo_hazard_monitor-common-sensitive" options="-parameters" />
+      <module name="geo_hazard_monitor-common-sms" options="-parameters" />
+      <module name="geo_hazard_monitor-common-social" options="-parameters" />
+      <module name="geo_hazard_monitor-common-sse" options="-parameters" />
+      <module name="geo_hazard_monitor-common-tenant" options="-parameters" />
+      <module name="geo_hazard_monitor-common-translation" options="-parameters" />
+      <module name="geo_hazard_monitor-common-web" options="-parameters" />
+      <module name="geo_hazard_monitor-common-websocket" options="-parameters" />
+      <module name="geo_hazard_monitor-demo" options="-parameters" />
+      <module name="geo_hazard_monitor-extend" options="-parameters" />
+      <module name="geo_hazard_monitor-generator" options="-parameters" />
+      <module name="geo_hazard_monitor-job" options="-parameters" />
+      <module name="geo_hazard_monitor-modules" options="-parameters" />
+      <module name="geo_hazard_monitor-monitor-admin" options="-parameters" />
+      <module name="geo_hazard_monitor-snailjob-server" options="-parameters" />
+      <module name="geo_hazard_monitor-system" options="-parameters" />
+      <module name="geo_hazard_monitor-vue-plus" options="-parameters" />
+      <module name="geo_hazard_monitor-workflow" options="-parameters" />
+      <module name="ghm-admin" options="-parameters" />
+      <module name="ghm-common" options="-parameters" />
+      <module name="ghm-common-core" options="-parameters" />
+      <module name="ghm-common-doc" options="-parameters" />
+      <module name="ghm-common-encrypt" options="-parameters" />
+      <module name="ghm-common-excel" options="-parameters" />
+      <module name="ghm-common-idempotent" options="-parameters" />
+      <module name="ghm-common-job" options="-parameters" />
+      <module name="ghm-common-json" options="-parameters" />
+      <module name="ghm-common-log" options="-parameters" />
+      <module name="ghm-common-mail" options="-parameters" />
+      <module name="ghm-common-mybatis" options="-parameters" />
+      <module name="ghm-common-oss" options="-parameters" />
+      <module name="ghm-common-ratelimiter" options="-parameters" />
+      <module name="ghm-common-redis" options="-parameters" />
+      <module name="ghm-common-satoken" options="-parameters" />
+      <module name="ghm-common-security" options="-parameters" />
+      <module name="ghm-common-sensitive" options="-parameters" />
+      <module name="ghm-common-sms" options="-parameters" />
+      <module name="ghm-common-social" options="-parameters" />
+      <module name="ghm-common-sse" options="-parameters" />
+      <module name="ghm-common-tenant" options="-parameters" />
+      <module name="ghm-common-translation" options="-parameters" />
+      <module name="ghm-common-web" options="-parameters" />
+      <module name="ghm-common-websocket" options="-parameters" />
+      <module name="ghm-demo" options="-parameters" />
+      <module name="ghm-extend" options="-parameters" />
+      <module name="ghm-generator" options="-parameters" />
+      <module name="ghm-job" options="-parameters" />
+      <module name="ghm-modules" options="-parameters" />
+      <module name="ghm-monitor-admin" options="-parameters" />
+      <module name="ghm-snailjob-server" options="-parameters" />
+      <module name="ghm-system" options="-parameters" />
+      <module name="ghm-workflow" options="-parameters" />
+      <module name="zwei-admin" options="-parameters" />
+      <module name="zwei-common" options="-parameters" />
+      <module name="zwei-framework" options="-parameters" />
+      <module name="zwei-generator" options="-parameters" />
+      <module name="zwei-quartz" options="-parameters" />
+      <module name="zwei-system" options="-parameters" />
+    </option>
+  </component>
+</project>
