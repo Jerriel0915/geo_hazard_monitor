@@ -45,12 +45,12 @@
               <el-table-column prop="createTime" label="创建时间" width="160" />
               <el-table-column label="操作" width="220" fixed="right">
                 <template #default="{ row }">
-                  <el-button link type="primary" size="small" @click="handleEditRole(row)">编辑</el-button>
-                  <el-button link type="primary" size="small" @click="handleConfigPermission(row)">权限配置</el-button>
-                  <el-button link :type="row.status === 1 ? 'warning' : 'success'" size="small" @click="handleToggleRoleStatus(row)">
+                  <span class="action-link" @click="handleEditRole(row)">编辑</span>
+                  <span class="action-link" @click="handleConfigPermission(row)">权限配置</span>
+                  <span :class="['action-link', row.status === 1 ? 'action-warning' : 'action-success']" @click="handleToggleRoleStatus(row)">
                     {{ row.status === 1 ? '禁用' : '启用' }}
-                  </el-button>
-                  <el-button v-if="row.id !== 1" link type="danger" size="small" @click="handleDeleteRole(row)">删除</el-button>
+                  </span>
+                  <span v-if="row.id !== 1" class="action-link action-danger" @click="handleDeleteRole(row)">删除</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -98,11 +98,10 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="180" fixed="right">
+              <el-table-column label="操作" width="150" fixed="right">
                 <template #default="{ row }">
-                  <el-button link type="primary" size="small" @click="handleEditMenu(row)">编辑</el-button>
-                  <el-button v-if="row.type === 'menu'" link type="primary" size="small" @click="handleAddSubMenu(row)">新增</el-button>
-                  <el-button v-if="row.id !== 1" link type="danger" size="small" @click="handleDeleteMenu(row)">删除</el-button>
+                  <span class="action-link" @click="handleEditMenu(row)">编辑</span>
+                  <span v-if="row.id !== 1" class="action-link action-danger" @click="handleDeleteMenu(row)">删除</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -443,29 +442,136 @@ const menuTreeData = ref<Menu[]>([
   {
     id: 2, name: '基础管理', parentId: 0, type: 'menu', path: '/basic', sort: 2, status: 1,
     children: [
-      { id: 21, name: '隐患点管理', parentId: 2, type: 'menu', path: '/basic/hazard-point', sort: 1, status: 1 },
-      { id: 22, name: '监测类型', parentId: 2, type: 'menu', path: '/basic/monitor-type', sort: 2, status: 1 },
-      { id: 23, name: '设备管理', parentId: 2, type: 'menu', path: '/basic/device', sort: 3, status: 1 },
-      { id: 24, name: '视频设备管理', parentId: 2, type: 'menu', path: '/basic/video-device', sort: 4, status: 1 }
+      {
+        id: 21, name: '隐患点管理', parentId: 2, type: 'menu', path: '/basic/hazard-point', sort: 1, status: 1,
+        children: [
+          { id: 211, name: '新增隐患点', parentId: 21, type: 'button', perms: 'basic:hazard:add', sort: 1, status: 1 },
+          { id: 212, name: '编辑隐患点', parentId: 21, type: 'button', perms: 'basic:hazard:edit', sort: 2, status: 1 },
+          { id: 213, name: '删除隐患点', parentId: 21, type: 'button', perms: 'basic:hazard:delete', sort: 3, status: 1 },
+          { id: 214, name: '查看隐患点', parentId: 21, type: 'button', perms: 'basic:hazard:view', sort: 4, status: 1 },
+          { id: 215, name: '批量停测', parentId: 21, type: 'button', perms: 'basic:hazard:pause', sort: 5, status: 1 },
+          { id: 216, name: '批量完结', parentId: 21, type: 'button', perms: 'basic:hazard:complete', sort: 6, status: 1 },
+          { id: 217, name: '导出隐患点', parentId: 21, type: 'button', perms: 'basic:hazard:export', sort: 7, status: 1 }
+        ]
+      },
+      {
+        id: 22, name: '监测类型', parentId: 2, type: 'menu', path: '/basic/monitor-type', sort: 2, status: 1,
+        children: [
+          { id: 221, name: '新增监测类型', parentId: 22, type: 'button', perms: 'basic:monitor:add', sort: 1, status: 1 },
+          { id: 222, name: '编辑监测类型', parentId: 22, type: 'button', perms: 'basic:monitor:edit', sort: 2, status: 1 },
+          { id: 223, name: '删除监测类型', parentId: 22, type: 'button', perms: 'basic:monitor:delete', sort: 3, status: 1 },
+          { id: 224, name: '导入监测类型', parentId: 22, type: 'button', perms: 'basic:monitor:import', sort: 4, status: 1 },
+          { id: 225, name: '导出监测类型', parentId: 22, type: 'button', perms: 'basic:monitor:export', sort: 5, status: 1 }
+        ]
+      },
+      {
+        id: 23, name: '设备管理', parentId: 2, type: 'menu', path: '/basic/device', sort: 3, status: 1,
+        children: [
+          { id: 231, name: '新增设备', parentId: 23, type: 'button', perms: 'basic:device:add', sort: 1, status: 1 },
+          { id: 232, name: '编辑设备', parentId: 23, type: 'button', perms: 'basic:device:edit', sort: 2, status: 1 },
+          { id: 233, name: '删除设备', parentId: 23, type: 'button', perms: 'basic:device:delete', sort: 3, status: 1 },
+          { id: 234, name: '导入设备', parentId: 23, type: 'button', perms: 'basic:device:import', sort: 4, status: 1 },
+          { id: 235, name: '导出设备', parentId: 23, type: 'button', perms: 'basic:device:export', sort: 5, status: 1 },
+          { id: 236, name: '绑定设备', parentId: 23, type: 'button', perms: 'basic:device:bind', sort: 6, status: 1 }
+        ]
+      },
+      {
+        id: 24, name: '视频设备管理', parentId: 2, type: 'menu', path: '/basic/video-device', sort: 4, status: 1,
+        children: [
+          { id: 241, name: '新增视频设备', parentId: 24, type: 'button', perms: 'basic:video:add', sort: 1, status: 1 },
+          { id: 242, name: '编辑视频设备', parentId: 24, type: 'button', perms: 'basic:video:edit', sort: 2, status: 1 },
+          { id: 243, name: '删除视频设备', parentId: 24, type: 'button', perms: 'basic:video:delete', sort: 3, status: 1 },
+          { id: 244, name: '导入视频设备', parentId: 24, type: 'button', perms: 'basic:video:import', sort: 4, status: 1 },
+          { id: 245, name: '导出视频设备', parentId: 24, type: 'button', perms: 'basic:video:export', sort: 5, status: 1 }
+        ]
+      }
     ]
   },
   {
     id: 3, name: '告警中心', parentId: 0, type: 'menu', path: '/alarm', sort: 3, status: 1,
     children: [
-      { id: 31, name: '实时告警', parentId: 3, type: 'menu', path: '/alarm/realtime', sort: 1, status: 1 },
-      { id: 32, name: '告警判据管理', parentId: 3, type: 'menu', path: '/alarm/criteria', sort: 2, status: 1 },
-      { id: 33, name: '告警查看和通知', parentId: 3, type: 'menu', path: '/alarm/notification', sort: 3, status: 1 },
-      { id: 34, name: '告警处置', parentId: 3, type: 'menu', path: '/alarm/disposal', sort: 4, status: 1 }
+      {
+        id: 31, name: '实时告警', parentId: 3, type: 'menu', path: '/alarm/realtime', sort: 1, status: 1,
+        children: [
+          { id: 311, name: '查看告警', parentId: 31, type: 'button', perms: 'alarm:realtime:view', sort: 1, status: 1 },
+          { id: 312, name: '确认告警', parentId: 31, type: 'button', perms: 'alarm:realtime:confirm', sort: 2, status: 1 },
+          { id: 313, name: '导出告警', parentId: 31, type: 'button', perms: 'alarm:realtime:export', sort: 3, status: 1 }
+        ]
+      },
+      {
+        id: 32, name: '告警判据管理', parentId: 3, type: 'menu', path: '/alarm/criteria', sort: 2, status: 1,
+        children: [
+          { id: 321, name: '新增判据', parentId: 32, type: 'button', perms: 'alarm:criteria:add', sort: 1, status: 1 },
+          { id: 322, name: '编辑判据', parentId: 32, type: 'button', perms: 'alarm:criteria:edit', sort: 2, status: 1 },
+          { id: 323, name: '删除判据', parentId: 32, type: 'button', perms: 'alarm:criteria:delete', sort: 3, status: 1 }
+        ]
+      },
+      {
+        id: 33, name: '告警查看和通知', parentId: 3, type: 'menu', path: '/alarm/notification', sort: 3, status: 1,
+        children: [
+          { id: 331, name: '查看通知', parentId: 33, type: 'button', perms: 'alarm:notification:view', sort: 1, status: 1 },
+          { id: 332, name: '配置通知', parentId: 33, type: 'button', perms: 'alarm:notification:config', sort: 2, status: 1 }
+        ]
+      },
+      {
+        id: 34, name: '告警处置', parentId: 3, type: 'menu', path: '/alarm/disposal', sort: 4, status: 1,
+        children: [
+          { id: 341, name: '处置告警', parentId: 34, type: 'button', perms: 'alarm:disposal:handle', sort: 1, status: 1 },
+          { id: 342, name: '查看处置记录', parentId: 34, type: 'button', perms: 'alarm:disposal:view', sort: 2, status: 1 }
+        ]
+      }
     ]
   },
   {
     id: 4, name: '系统管理', parentId: 0, type: 'menu', path: '/system', sort: 4, status: 1,
     children: [
-      { id: 41, name: '组织管理', parentId: 4, type: 'menu', path: '/system/organization', sort: 1, status: 1 },
-      { id: 42, name: '身份管理', parentId: 4, type: 'menu', path: '/system/identity', sort: 2, status: 1 },
-      { id: 43, name: '权限管理', parentId: 4, type: 'menu', path: '/system/permission', sort: 3, status: 1 },
-      { id: 44, name: '日志管理', parentId: 4, type: 'menu', path: '/system/log', sort: 4, status: 1 },
-      { id: 45, name: '系统设置', parentId: 4, type: 'menu', path: '/system/settings', sort: 5, status: 1 }
+      {
+        id: 41, name: '组织管理', parentId: 4, type: 'menu', path: '/system/organization', sort: 1, status: 1,
+        children: [
+          { id: 411, name: '新增组织', parentId: 41, type: 'button', perms: 'system:org:add', sort: 1, status: 1 },
+          { id: 412, name: '编辑组织', parentId: 41, type: 'button', perms: 'system:org:edit', sort: 2, status: 1 },
+          { id: 413, name: '删除组织', parentId: 41, type: 'button', perms: 'system:org:delete', sort: 3, status: 1 },
+          { id: 414, name: '调整层级', parentId: 41, type: 'button', perms: 'system:org:adjust', sort: 4, status: 1 }
+        ]
+      },
+      {
+        id: 42, name: '身份管理', parentId: 4, type: 'menu', path: '/system/identity', sort: 2, status: 1,
+        children: [
+          { id: 421, name: '新增用户', parentId: 42, type: 'button', perms: 'system:user:add', sort: 1, status: 1 },
+          { id: 422, name: '编辑用户', parentId: 42, type: 'button', perms: 'system:user:edit', sort: 2, status: 1 },
+          { id: 423, name: '删除用户', parentId: 42, type: 'button', perms: 'system:user:delete', sort: 3, status: 1 },
+          { id: 424, name: '重置密码', parentId: 42, type: 'button', perms: 'system:user:resetPwd', sort: 4, status: 1 },
+          { id: 425, name: '启用禁用', parentId: 42, type: 'button', perms: 'system:user:toggleStatus', sort: 5, status: 1 }
+        ]
+      },
+      {
+        id: 43, name: '权限管理', parentId: 4, type: 'menu', path: '/system/permission', sort: 3, status: 1,
+        children: [
+          { id: 431, name: '新增角色', parentId: 43, type: 'button', perms: 'system:role:add', sort: 1, status: 1 },
+          { id: 432, name: '编辑角色', parentId: 43, type: 'button', perms: 'system:role:edit', sort: 2, status: 1 },
+          { id: 433, name: '删除角色', parentId: 43, type: 'button', perms: 'system:role:delete', sort: 3, status: 1 },
+          { id: 434, name: '配置权限', parentId: 43, type: 'button', perms: 'system:role:config', sort: 4, status: 1 },
+          { id: 435, name: '新增菜单', parentId: 43, type: 'button', perms: 'system:menu:add', sort: 5, status: 1 },
+          { id: 436, name: '编辑菜单', parentId: 43, type: 'button', perms: 'system:menu:edit', sort: 6, status: 1 },
+          { id: 437, name: '删除菜单', parentId: 43, type: 'button', perms: 'system:menu:delete', sort: 7, status: 1 }
+        ]
+      },
+      {
+        id: 44, name: '日志管理', parentId: 4, type: 'menu', path: '/system/log', sort: 4, status: 1,
+        children: [
+          { id: 441, name: '查看日志', parentId: 44, type: 'button', perms: 'system:log:view', sort: 1, status: 1 },
+          { id: 442, name: '导出日志', parentId: 44, type: 'button', perms: 'system:log:export', sort: 2, status: 1 }
+        ]
+      },
+      {
+        id: 45, name: '系统设置', parentId: 4, type: 'menu', path: '/system/settings', sort: 5, status: 1,
+        children: [
+          { id: 451, name: '修改参数', parentId: 45, type: 'button', perms: 'system:setting:edit', sort: 1, status: 1 },
+          { id: 452, name: '配置告警分发', parentId: 45, type: 'button', perms: 'system:setting:alarm', sort: 2, status: 1 },
+          { id: 453, name: '导入告警规则', parentId: 45, type: 'button', perms: 'system:setting:import', sort: 3, status: 1 },
+          { id: 454, name: '导出告警规则', parentId: 45, type: 'button', perms: 'system:setting:export', sort: 4, status: 1 }
+        ]
+      }
     ]
   }
 ])
@@ -717,5 +823,141 @@ const handleMenuSubmit = async () => {
 :deep(.el-form--inline .el-form-item) {
   margin-right: 16px;
   margin-bottom: 10px;
+}
+
+:deep(.el-table .el-button--text) {
+  padding: 4px 8px;
+  margin: 0 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-table .el-button--text:hover) {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+:deep(.el-table .el-button--text:primary) {
+  color: #1890ff;
+}
+
+:deep(.el-table .el-button--text:primary:hover) {
+  background: #e6f7ff;
+}
+
+:deep(.el-table .el-button--text:warning) {
+  color: #faad14;
+}
+
+:deep(.el-table .el-button--text:warning:hover) {
+  background: #fff7e6;
+}
+
+:deep(.el-table .el-button--text:danger) {
+  color: #f5222d;
+}
+
+:deep(.el-table .el-button--text:danger:hover) {
+  background: #fff1f0;
+}
+
+:deep(.el-table .el-button--text:success) {
+  color: #52c41a;
+}
+
+:deep(.el-table .el-button--text:success:hover) {
+  background: #f6ffed;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.action-btn-primary {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.action-btn-primary:hover {
+  background: #91d5ff;
+  color: #096dd9;
+}
+
+.action-btn-warning {
+  background: #fff7e6;
+  color: #faad14;
+}
+
+.action-btn-warning:hover {
+  background: #ffe58f;
+  color: #d48806;
+}
+
+.action-btn-danger {
+  background: #fff1f0;
+  color: #f5222d;
+}
+
+.action-btn-danger:hover {
+  background: #ffccc7;
+  color: #cf1322;
+}
+
+.action-btn-success {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.action-btn-success:hover {
+  background: #b7eb8f;
+  color: #389e0d;
+}
+
+.action-link {
+  display: inline-block;
+  padding: 4px 10px;
+  margin: 0 4px;
+  color: #303133;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.action-link:hover {
+  color: #1890ff;
+}
+
+.action-link.action-warning {
+  color: #faad14;
+}
+
+.action-link.action-warning:hover {
+  color: #d48806;
+}
+
+.action-link.action-success {
+  color: #52c41a;
+}
+
+.action-link.action-success:hover {
+  color: #389e0d;
+}
+
+.action-link.action-danger {
+  color: #f5222d;
+}
+
+.action-link.action-danger:hover {
+  color: #cf1322;
 }
 </style>

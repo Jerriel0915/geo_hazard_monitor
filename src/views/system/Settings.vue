@@ -225,11 +225,11 @@
               <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
               <el-table-column label="操作" width="180" fixed="right">
                 <template #default="{ row }">
-                  <el-button link type="primary" size="small" @click="handleEditAlarmRule(row)">编辑</el-button>
-                  <el-button link :type="row.status === 1 ? 'warning' : 'success'" size="small" @click="handleToggleAlarmStatus(row)">
+                  <span class="action-link" @click="handleEditAlarmRule(row)">编辑</span>
+                  <span :class="['action-link', row.status === 1 ? 'action-warning' : 'action-success']" @click="handleToggleAlarmStatus(row)">
                     {{ row.status === 1 ? '禁用' : '启用' }}
-                  </el-button>
-                  <el-button link type="danger" size="small" @click="handleDeleteAlarmRule(row)">删除</el-button>
+                  </span>
+                  <span class="action-link action-danger" @click="handleDeleteAlarmRule(row)">删除</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -241,6 +241,9 @@
                 :page-sizes="[10, 20, 50, 100]"
                 :total="alarmPagination.total"
                 layout="total, sizes, prev, pager, next, jumper"
+                prev-text="上一页"
+                next-text="下一页"
+                :disabled="alarmPagination.total === 0"
                 @size-change="handleAlarmSizeChange"
                 @current-change="handleAlarmPageChange"
               />
@@ -1151,5 +1154,43 @@ const handleExportAlarm = () => {
 :deep(.el-form--inline .el-form-item) {
   margin-right: 16px;
   margin-bottom: 10px;
+}
+
+.action-link {
+  display: inline-block;
+  padding: 4px 10px;
+  margin: 0 4px;
+  color: #303133;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.action-link:hover {
+  color: #1890ff;
+}
+
+.action-link.action-warning {
+  color: #faad14;
+}
+
+.action-link.action-warning:hover {
+  color: #d48806;
+}
+
+.action-link.action-success {
+  color: #52c41a;
+}
+
+.action-link.action-success:hover {
+  color: #389e0d;
+}
+
+.action-link.action-danger {
+  color: #f5222d;
+}
+
+.action-link.action-danger:hover {
+  color: #cf1322;
 }
 </style>

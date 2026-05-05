@@ -59,12 +59,12 @@
         <el-table-column prop="createTime" label="创建时间" width="160" />
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="primary" size="small" @click="handleResetPwd(row)">重置密码</el-button>
-            <el-button link :type="row.status === 1 ? 'success' : 'warning'" size="small" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? '启用' : '禁用' }}
-            </el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <span class="action-link" @click="handleEdit(row)">编辑</span>
+            <span class="action-link" @click="handleResetPwd(row)">重置密码</span>
+            <span :class="['action-link', row.status === 1 ? 'action-warning' : 'action-success']" @click="handleToggleStatus(row)">
+              {{ row.status === 1 ? '禁用' : '启用' }}
+            </span>
+            <span class="action-link action-danger" @click="handleDelete(row)">删除</span>
           </template>
         </el-table-column>
       </el-table>
@@ -76,6 +76,9 @@
           :page-sizes="[10, 20, 50, 100]"
           :total="pagination.total"
           layout="total, sizes, prev, pager, next, jumper"
+          prev-text="上一页"
+          next-text="下一页"
+          :disabled="pagination.total === 0"
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
         />
@@ -695,5 +698,43 @@ const handlePageChange = (val: number) => {
 :deep(.el-form--inline .el-form-item) {
   margin-right: 16px;
   margin-bottom: 10px;
+}
+
+.action-link {
+  display: inline-block;
+  padding: 4px 10px;
+  margin: 0 4px;
+  color: #303133;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.action-link:hover {
+  color: #1890ff;
+}
+
+.action-link.action-warning {
+  color: #faad14;
+}
+
+.action-link.action-warning:hover {
+  color: #d48806;
+}
+
+.action-link.action-success {
+  color: #52c41a;
+}
+
+.action-link.action-success:hover {
+  color: #389e0d;
+}
+
+.action-link.action-danger {
+  color: #f5222d;
+}
+
+.action-link.action-danger:hover {
+  color: #cf1322;
 }
 </style>

@@ -71,6 +71,9 @@
                 :page-sizes="[10, 20, 50, 100]"
                 :total="opPagination.total"
                 layout="total, sizes, prev, pager, next, jumper"
+                prev-text="上一页"
+                next-text="下一页"
+                :disabled="opPagination.total === 0"
                 @size-change="handleOpSizeChange"
                 @current-change="handleOpPageChange"
               />
@@ -136,6 +139,9 @@
                 :page-sizes="[10, 20, 50, 100]"
                 :total="loginPagination.total"
                 layout="total, sizes, prev, pager, next, jumper"
+                prev-text="上一页"
+                next-text="下一页"
+                :disabled="loginPagination.total === 0"
                 @size-change="handleLoginSizeChange"
                 @current-change="handleLoginPageChange"
               />

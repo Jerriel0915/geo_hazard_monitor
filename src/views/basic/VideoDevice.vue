@@ -100,6 +100,9 @@
           :total="total"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
+          prev-text="上一页"
+          next-text="下一页"
+          :disabled="total === 0"
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
         />
