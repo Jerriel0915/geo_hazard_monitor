@@ -1256,7 +1256,7 @@ CREATE TABLE `monitor_data` (
   `creator` VARCHAR(64) DEFAULT NULL COMMENT '创建人',
   `updater` VARCHAR(64) DEFAULT NULL COMMENT '更新人',
   `del_flag` TINYINT DEFAULT 0 COMMENT '删除标记: 0-正常, 1-删除',
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`id`, `report_time`),
   KEY `idx_sensor_id` (`sensor_id`),
   KEY `idx_device_id` (`device_id`),
   KEY `idx_hazard_point_id` (`hazard_point_id`),
