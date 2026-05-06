@@ -23,11 +23,15 @@
     </div>
 
     <div class="dashboard-main">
+       <!--//TODO:这是总览层的卡片容器-->
       <div class="left-panel" v-if="viewMode === 'overview'">
-        <div class="stat-card">
+
+        <!-- //TODO:这是总览层的系统健康度卡片容器 -->
+        <div class="stat-card" style="height: 30%;">
           <div class="stat-header">
             <span class="stat-title">系统健康度</span>
           </div>
+          
           <div class="stat-body">
             <div class="health-ring">
               <div class="ring-chart" ref="healthRingRef"></div>
@@ -50,7 +54,8 @@
           </div>
         </div>
 
-        <div class="stat-card">
+        <!-- //TODO:这是总览层的隐患点监测统计卡片容器 -->
+        <div class="stat-card" style="height: 30%;">
           <div class="stat-header">
             <span class="stat-title">隐患点监测统计</span>
           </div>
@@ -76,7 +81,8 @@
           </div>
         </div>
 
-        <div class="stat-card">
+        <!-- //TODO:这是总览层的设备在线情况卡片容器 -->
+        <div class="stat-card" padding="7px" style="height: 25%;">
           <div class="stat-header">
             <span class="stat-title">设备在线情况</span>
           </div>
@@ -85,7 +91,7 @@
               <div class="online-rate">{{ deviceOnlineRate }}%</div>
               <div class="online-text">平均在线率</div>
             </div>
-            <div class="online-detail">
+            <!-- <div class="online-detail">
               <div class="online-stat">
                 <el-icon color="#52c41a"><CircleCheck /></el-icon>
                 <span>在线 {{ onlineDevices }}</span>
@@ -95,11 +101,12 @@
                 <span>离线 {{ offlineDevices }}</span>
               </div>
             </div>
-            <div class="online-total">共 {{ totalDevices }} 台设备</div>
+            <div class="online-total">共 {{ totalDevices }} 台设备</div> -->
           </div>
         </div>
 
-        <div class="stat-card alarm-card">
+        <!-- //TODO:这是总览层的告警态势卡片容器 -->
+        <div class="stat-card alarm-card" style="height: 40%;">
           <div class="stat-header">
             <span class="stat-title">告警态势</span>
           </div>
@@ -132,7 +139,7 @@
                 <span class="level-label">蓝色</span>
               </div>
             </div>
-            <div class="alarm-list">
+            <div class="alarm-list" style="height: 150%;">
               <div class="alarm-list-header">待办告警列表</div>
               <div class="alarm-list-body" ref="alarmListRef">
                 <div
@@ -153,8 +160,10 @@
         </div>
       </div>
 
+      <!-- //TODO:这是隐患点层的卡片容器 -->
       <div class="left-panel" v-else>
-        <div class="stat-card">
+        <!-- //TODO:这是隐患点层的隐患点资料卡片容器 -->
+        <div class="stat-card" style="height: 52%;">
           <div class="stat-header">
             <span class="stat-title">隐患点资料</span>
           </div>
@@ -208,7 +217,7 @@
           </div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" style="height: 40%;">
           <div class="stat-header">
             <span class="stat-title">设备在线情况</span>
           </div>
@@ -217,7 +226,7 @@
               <div class="online-rate">{{ hazardDeviceOnlineRate }}%</div>
               <div class="online-text">在线率</div>
             </div>
-            <div class="online-detail">
+            <!-- <div class="online-detail">
               <div class="online-stat">
                 <el-icon color="#52c41a"><CircleCheck /></el-icon>
                 <span>在线 {{ hazardOnlineDevices }}</span>
@@ -226,8 +235,8 @@
                 <el-icon color="#ff4d4f"><CircleClose /></el-icon>
                 <span>离线 {{ hazardOfflineDevices }}</span>
               </div>
-            </div>
-            <div class="online-total">共 {{ hazardTotalDevices }} 台设备</div>
+            </div> 
+            <div class="online-total">共 {{ hazardTotalDevices }} 台设备</div> -->
           </div>
         </div>
 
@@ -285,8 +294,9 @@
         </div>
       </div>
 
+      
       <div class="map-container" ref="mapContainerRef"></div>
-
+ 
       <div class="right-panel">
         <div class="layer-control">
           <div class="layer-title">图层管理</div>
@@ -334,6 +344,7 @@
       </div>
     </div>
 
+    <!--//TODO:这是地图图例卡片容器 -->
     <div class="map-legend" v-if="showLegend">
       <div class="legend-title">告警等级</div>
       <div class="legend-items">
@@ -356,6 +367,7 @@
       </div>
     </div>
 
+    <!--//TODO:这是鼠标悬停时的弹窗卡片容器 -->
     <div class="bubble-container" ref="bubbleRef" v-show="showBubble">
       <div class="bubble-content">
         <div class="bubble-title">{{ bubbleData.title }}</div>
@@ -815,7 +827,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f0f2f5;
+  background: #f0f2f5;  
   position: relative;
 }
 
@@ -841,10 +853,10 @@ onUnmounted(() => {
 .left-panel {
   width: 320px;
   padding: 12px;
-  overflow-y: auto;
-  background: #f5f7fa;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;            /*添加滚动条*/
+  background: #f5f7fa;        
+  display: flex;              
+   flex-direction: column;
   gap: 12px;
 }
 
@@ -856,12 +868,14 @@ onUnmounted(() => {
 }
 
 .stat-header {
+  height: 25px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
   border-bottom: 1px solid #f0f0f0;
-  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  /* background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%); */
+  background-color:greenyellow;
 }
 
 .stat-title {
@@ -876,7 +890,11 @@ onUnmounted(() => {
 }
 
 .stat-body {
-  padding: 16px;
+  padding: 5px;
+  height: 100%;
+  background-color: #d9e3c2;
+  overflow-y: auto;
+  padding-bottom: 40px;
 }
 
 .health-ring {
@@ -1062,6 +1080,7 @@ onUnmounted(() => {
 .alarm-list-body {
   max-height: 160px;
   overflow-y: auto;
+  padding-bottom: 15px;
 }
 
 .alarm-item {
