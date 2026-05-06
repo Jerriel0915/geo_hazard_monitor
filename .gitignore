@@ -1,9 +1,9 @@
 .vscode/
-node_modules/
-dist/
 .DS_Store
 *.log
 
 # web directory
 web/node_modules/
 web/dist/
+.idea/
+.trae/

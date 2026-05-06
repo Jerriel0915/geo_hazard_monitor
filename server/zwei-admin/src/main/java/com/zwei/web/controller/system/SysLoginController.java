@@ -1,8 +1,7 @@
 package com.zwei.web.controller.system;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.zwei.common.constant.Constants;
@@ -54,12 +53,15 @@ public class SysLoginController
     @PostMapping("/login")
     public AjaxResult login(@RequestBody LoginBody loginBody)
     {
-        AjaxResult ajax = AjaxResult.success();
+        Map<String, Object> data = new HashMap<>();
+        Integer expiresIN = loginBody.getRememberMe() ? 7 * 24 * 60 * 60 : 20 * 60;
         // 生成令牌
         String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(),
                 loginBody.getUuid(), loginBody.getRememberMe());
-        ajax.put(Constants.TOKEN, token);
-        return ajax;
+
+        data.put(Constants.TOKEN, token);
+        data.put(Constants.EXPIRES_IN, expiresIN);
+        return AjaxResult.success("登陆成功", data);
     }
 
     /**
