@@ -1,44 +1,43 @@
 package com.zwei.web.controller.system;
 
-import java.util.List;
-import java.util.stream.Collectors;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.commons.lang3.ArrayUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
+import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysDept;
 import com.zwei.common.core.domain.entity.SysRole;
 import com.zwei.common.core.domain.entity.SysUser;
-import com.zwei.common.core.page.TableDataInfo;
+import com.zwei.common.core.domain.model.SysUserResponse;
+import com.zwei.common.core.page.PageDomain;
+import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.poi.ExcelUtil;
+import com.zwei.system.domain.SysPost;
 import com.zwei.system.service.ISysDeptService;
 import com.zwei.system.service.ISysPostService;
 import com.zwei.system.service.ISysRoleService;
 import com.zwei.system.service.ISysUserService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.ArrayUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户信息
- * 
+ *
  * @author zwei
  */
 @RestController
-@RequestMapping("/system/user")
+@RequestMapping("/api/v1/users")
 public class SysUserController extends BaseController
 {
     @Autowired
@@ -54,15 +53,26 @@ public class SysUserController extends BaseController
     private ISysPostService postService;
 
     /**
-     * 获取用户列表
+     * 分页查询用户列表
+     * 注意：nickName映射为文档中的realName
      */
     @PreAuthorize("@ss.hasPermi('system:user:list')")
-    @GetMapping("/list")
-    public TableDataInfo list(SysUser user)
+    @GetMapping("/page")
+    public AjaxResult list(SysUser user)
     {
         startPage();
         List<SysUser> list = userService.selectUserList(user);
-        return getDataTable(list);
+        List<SysUserResponse> rspList = list.stream()
+                .map(SysUserResponse::fromEntity)
+                .collect(Collectors.toList());
+        PageDomain pageDomain = TableSupport.buildPageRequest();
+        long total = new PageInfo(list).getTotal();
+        HashMap<String, Object> data = new HashMap<>();
+        data.put("rows", rspList);
+        data.put("total", total);
+        data.put("pageNum", pageDomain.getPageNum());
+        data.put("pageSize", pageDomain.getPageSize());
+        return AjaxResult.success("成功", data);
     }
 
     @Log(title = "用户管理", businessType = BusinessType.EXPORT)
@@ -95,24 +105,44 @@ public class SysUserController extends BaseController
     }
 
     /**
-     * 根据用户编号获取详细信息
+     * 获取用户详情
+     * 注意：nickName映射为文档中的realName
      */
     @PreAuthorize("@ss.hasPermi('system:user:query')")
     @GetMapping(value = { "/", "/{userId}" })
-    public AjaxResult getInfo(@PathVariable(value = "userId", required = false) Long userId)
+    public AjaxResult getInfo(@PathVariable(required = false) Long userId)
     {
         AjaxResult ajax = AjaxResult.success();
         if (StringUtils.isNotNull(userId))
         {
             userService.checkUserDataScope(userId);
             SysUser sysUser = userService.selectUserById(userId);
-            ajax.put(AjaxResult.DATA_TAG, sysUser);
-            ajax.put("postIds", postService.selectPostListByUserId(userId));
-            ajax.put("roleIds", sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
+            SysUserResponse resp = SysUserResponse.fromEntity(sysUser);
+            resp.setPostIds(postService.selectPostListByUserId(userId));
+            resp.setRoleIds(sysUser.getRoles() == null ? null
+                    : sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
+            List<SysRole> roles = roleService.selectRoleAll();
+            List<SysRole> selectableRoles = SecurityUtils.isAdmin(userId) ? roles
+                    : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList());
+            List<SysUserResponse.SysRoleResponse> roleList = selectableRoles.stream().map(r -> {
+                SysUserResponse.SysRoleResponse rr = new SysUserResponse.SysRoleResponse();
+                rr.setRoleId(r.getRoleId());
+                rr.setRoleName(r.getRoleName());
+                rr.setRoleKey(r.getRoleKey());
+                return rr;
+            }).collect(Collectors.toList());
+            resp.setRoles(roleList);
+            List<SysPost> postList = postService.selectPostAll();
+            List<SysUserResponse.SysPostResponse> postRespList = postList.stream().map(p -> {
+                SysUserResponse.SysPostResponse pr = new SysUserResponse.SysPostResponse();
+                pr.setPostId(p.getPostId());
+                pr.setPostName(p.getPostName());
+                pr.setPostCode(p.getPostCode());
+                return pr;
+            }).collect(Collectors.toList());
+            resp.setPosts(postRespList);
+            ajax.put(AjaxResult.DATA_TAG, resp);
         }
-        List<SysRole> roles = roleService.selectRoleAll();
-        ajax.put("roles", SecurityUtils.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
-        ajax.put("posts", postService.selectPostAll());
         return ajax;
     }
 
@@ -216,7 +246,7 @@ public class SysUserController extends BaseController
     }
 
     /**
-     * 根据用户编号获取授权角色
+     * 获取角色授权信息
      */
     @PreAuthorize("@ss.hasPermi('system:user:query')")
     @GetMapping("/authRole/{userId}")
@@ -225,8 +255,9 @@ public class SysUserController extends BaseController
         AjaxResult ajax = AjaxResult.success();
         SysUser user = userService.selectUserById(userId);
         List<SysRole> roles = roleService.selectRolesByUserId(userId);
-        ajax.put("user", user);
-        ajax.put("roles", SecurityUtils.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
+        ajax.put("user", SysUserResponse.fromEntity(user));
+        List<SysRole> filterRoles = SecurityUtils.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList());
+        ajax.put("roles", filterRoles);
         return ajax;
     }
 

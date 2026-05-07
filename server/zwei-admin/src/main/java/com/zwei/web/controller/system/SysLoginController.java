@@ -1,9 +1,5 @@
 package com.zwei.web.controller.system;
 
-import java.util.*;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
 import com.zwei.common.constant.Constants;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysMenu;
@@ -19,6 +15,10 @@ import com.zwei.framework.web.service.SysPermissionService;
 import com.zwei.framework.web.service.TokenService;
 import com.zwei.system.service.ISysConfigService;
 import com.zwei.system.service.ISysMenuService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.*;
 
 /**
  * 登录验证
@@ -26,7 +26,7 @@ import com.zwei.system.service.ISysMenuService;
  * @author zwei
  */
 @RestController
-@RequestMapping("/api/v1/system/auth")
+@RequestMapping("/api/v1/auth")
 public class SysLoginController
 {
     @Autowired
