@@ -1,24 +1,36 @@
 <template>
   <div class="hazard-point-page">
     <div class="page-container">
-      <div class="group-panel" :style="{ width: groupPanelWidth + 'px' }">
+      <div class="group-panel-toggle" @click="toggleGroupPanel" :class="{ expanded: showGroupPanel }">
+        <span class="toggle-icon">{{ showGroupPanel ? '◀' : '▶' }}</span>
+      </div>
+      
+      <div class="group-panel" :class="{ hidden: !showGroupPanel }" :style="{ width: groupPanelWidth + 'px' }">
         <div class="panel-header">
           <span class="panel-title">分组列表</span>
+          <div class="panel-actions">
+            <el-button size="mini" @click="handleAddGroup">+ 新增</el-button>
+          </div>
         </div>
-        <div class="group-list">
+        <div class="group-list" @scroll="handleGroupListScroll">
           <div
-            v-for="group in groupList"
+            v-for="group in displayGroupList"
             :key="group.id"
             :class="['group-item', { active: selectedGroupId === group.id }]"
             @click="handleSelectGroup(group)"
           >
             <span class="group-name">{{ group.name }}</span>
             <span class="group-count">({{ group.count }})</span>
+            <div class="group-actions">
+              <span class="action-btn" @click.stop="handleEditGroup(group)">✎</span>
+              <span class="action-btn delete-btn" @click.stop="handleDeleteGroup(group)">✕</span>
+            </div>
           </div>
+          <div v-if="loadingGroups" class="loading-more">加载中...</div>
         </div>
       </div>
 
-      <div class="resize-handle" @mousedown="startResize"></div>
+      <div class="resize-handle" @mousedown="startResize" :class="{ hidden: !showGroupPanel }"></div>
 
       <div class="content-panel">
         <div class="page-header">
@@ -130,6 +142,31 @@
     </div>
 
     <el-dialog
+      v-model="groupDialogVisible"
+      :title="groupDialogTitle"
+      width="500px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-form ref="groupFormRef" :model="groupFormData" :rules="groupFormRules" label-width="100px">
+        <el-form-item label="分组名称" prop="name">
+          <el-input v-model="groupFormData.name" placeholder="请输入分组名称" />
+        </el-form-item>
+        <el-form-item label="分组描述" prop="description">
+          <el-input v-model="groupFormData.description" type="textarea" :rows="3" placeholder="请输入分组描述（可选）" />
+        </el-form-item>
+        <el-form-item label="排序序号" prop="sortOrder">
+          <el-input-number v-model="groupFormData.sortOrder" :min="0" :max="999" placeholder="排序序号" />
+          <span class="form-hint">数字越小越靠前</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="groupDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleGroupSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
       width="700px"
@@ -152,9 +189,20 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="分组" prop="groupId">
-              <el-select v-model="formData.groupId" placeholder="未分组">
-                <el-option v-for="g in groupOptions" :key="g.id" :label="g.name" :value="g.id" />
-              </el-select>
+              <div style="display: flex; align-items: center; width: 100%; gap: 5px;">
+                <el-select v-model="formData.groupId" placeholder="未分组" style="width: 85%;">
+                  <el-option v-for="g in groupOptions" :key="g.id" :value="g.id" :label="g.name">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                      <span>{{ g.name }}</span>
+                      <span v-if="g.id !== '1'" style="display: flex; gap: 5px;">
+                        <span class="group-action-btn" @click.stop="handleEditGroupFromSelect(g)" title="修改">✎</span>
+                        <span class="group-action-btn delete-btn" @click.stop="handleDeleteGroupFromSelect(g)" title="删除">×</span>
+                      </span>
+                    </div>
+                  </el-option>
+                </el-select>
+                <el-button type="primary" size="small" @click="handleAddGroupFromSelect" title="新增分组">+</el-button>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -301,7 +349,7 @@
             </div>
 
             <div class="config-section">
-              <h3 class="section-title">通知分发</h3>
+              <h3 class="section-title">告警分发</h3>
               <el-table :data="dispatchRules" border size="small">
                 <el-table-column prop="name" label="规则名称" width="150" align="center" />
                 <el-table-column prop="type" label="类型" width="100" align="center">
@@ -398,7 +446,7 @@
 
     <el-dialog
       v-model="alarmConfigDialogVisible"
-      title="告警配置"
+      :title="`告警配置[${currentRow?.name || ''}]`"
       width="1000px"
       :close-on-click-modal="false"
       destroy-on-close
@@ -435,36 +483,46 @@
         </div>
 
         <div class="config-section">
-          <h3 class="section-title">通知分发</h3>
+          <h3 class="section-title">告警分发</h3>
           <div class="dispatch-toolbar">
             <el-button type="primary" size="small" @click="handleAddDispatchRule">
               <span class="btn-icon">+</span> 添加规则
             </el-button>
           </div>
           <el-table :data="dispatchRules" border size="small">
-            <el-table-column prop="name" label="规则名称" width="150" align="center" />
-            <el-table-column prop="type" label="类型" width="100" align="center">
+            <el-table-column prop="type" label="类型" width="110" align="center">
               <template #default="{ row }">
-                <el-tag :type="row.type === 'ALARM' ? 'warning' : 'info'" size="small">
-                  {{ row.type === 'ALARM' ? '告警分发' : '状态通知' }}
+                <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
+                  {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="alarmLevel" label="告警等级" width="120" align="center">
+            <el-table-column label="告警等级/关联设备" min-width="200">
               <template #default="{ row }">
-                <span v-if="row.type === 'ALARM'">{{ row.alarmLevel }}</span>
+                <template v-if="row.type === 'alarm'">
+                  <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
+                </template>
+                <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
+                  <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+                </template>
                 <span v-else class="empty-text">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="recipientName" label="接收人" width="120" align="center" />
-            <el-table-column prop="channel" label="通知渠道" width="150" align="center">
+            <el-table-column label="通知人员" min-width="150">
               <template #default="{ row }">
-                <span v-for="ch in row.channel.split(',')" :key="ch" class="channel-tag">{{ getChannelLabel(ch) }}</span>
+                <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="isEnabled" label="状态" width="80" align="center">
+            <el-table-column prop="channels" label="通知渠道" width="150">
               <template #default="{ row }">
-                <el-switch v-model="row.isEnabled" />
+                <span v-for="(c, idx) in row.channels" :key="c">
+                  {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="80" align="center">
+              <template #default="{ row }">
+                <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)" />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="100" align="center">
@@ -484,7 +542,7 @@
 
     <el-dialog
       v-model="bindDeviceDialogVisible"
-      title="绑定设备"
+      :title="`绑定设备[${currentRow?.name || ''}]`"
       width="900px"
       :close-on-click-modal="false"
       destroy-on-close
@@ -579,7 +637,7 @@
 
     <el-dialog
       v-model="alarmDialogVisible"
-      :title="isEditAlarm ? '编辑告警判据' : '添加告警判据'"
+      :title="`${isEditAlarm ? '编辑告警判据' : '添加告警判据'}[${currentRow?.name || ''}]`"
       width="700px"
       :close-on-click-modal="false"
       destroy-on-close
@@ -674,54 +732,83 @@
 
     <el-dialog
       v-model="dispatchDialogVisible"
-      :title="isEditDispatch ? '编辑通知规则' : '添加通知规则'"
-      width="500px"
+      :title="`${isEditDispatch ? '编辑告警分发规则' : '添加告警分发规则'}[${currentRow?.name || ''}]`"
+      width="550px"
       :close-on-click-modal="false"
       destroy-on-close
     >
       <el-form ref="dispatchFormRef" :model="dispatchFormData" :rules="dispatchFormRules" label-width="100px">
-        <el-form-item label="规则名称" prop="name">
-          <el-input v-model="dispatchFormData.name" placeholder="请输入规则名称" />
+        <el-form-item label="隐患点">
+          <el-select v-model="dispatchFormData.hazardPointId" disabled style="width: 100%">
+            <el-option :value="currentRow?.id" :label="currentRow?.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="类型" prop="type">
-          <el-select v-model="dispatchFormData.type" placeholder="请选择类型">
-            <el-option label="告警分发" value="ALARM" />
-            <el-option label="状态通知" value="STATUS" />
+          <el-radio-group v-model="dispatchFormData.type">
+            <el-radio label="alarm">监测告警</el-radio>
+            <el-radio label="offline">设备离线通知</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="告警等级" prop="level" v-if="dispatchFormData.type === 'alarm'">
+          <el-select v-model="dispatchFormData.level" multiple placeholder="请选择告警等级（支持多选）" style="width: 100%">
+            <el-option label="四级(注意)" value="四级(注意)" />
+            <el-option label="三级(警示)" value="三级(警示)" />
+            <el-option label="二级(警戒)" value="二级(警戒)" />
+            <el-option label="一级(警报)" value="一级(警报)" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="dispatchFormData.type === 'ALARM'" label="告警等级" prop="alarmLevel">
-          <el-select v-model="dispatchFormData.alarmLevel" placeholder="请选择告警等级">
-            <el-option label="一级(蓝色)" value="一级(蓝色)" />
-            <el-option label="二级(黄色)" value="二级(黄色)" />
-            <el-option label="三级(橙色)" value="三级(橙色)" />
-            <el-option label="四级(红色)" value="四级(红色)" />
+        <el-form-item label="关联设备" prop="deviceIds" v-if="dispatchFormData.type === 'offline'">
+          <el-select v-model="dispatchFormData.deviceIds" multiple placeholder="请选择设备（支持多选）" style="width: 100%">
+            <el-option
+              v-for="d in boundDevices"
+              :key="d.deviceId"
+              :label="`${d.deviceCode} - ${d.deviceName}`"
+              :value="d.deviceId"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="dispatchFormData.type === 'STATUS'" label="设备" prop="deviceId">
-          <el-select v-model="dispatchFormData.deviceId" placeholder="请选择设备">
-            <el-option label="全部" value="ALL" />
-            <el-option v-for="d in boundDevices" :key="d.deviceId" :label="d.deviceName" :value="d.deviceId" />
+        <el-form-item label="执行时间" v-if="dispatchFormData.type === 'offline'">
+          <el-radio-group v-model="dispatchFormData.execType" class="exec-type-group">
+            <el-radio label="realtime">实时执行</el-radio>
+            <el-radio label="timed">定时</el-radio>
+          </el-radio-group>
+          <div v-if="dispatchFormData.execType === 'timed'" class="exec-time-config">
+            <span class="exec-label">每</span>
+            <el-input-number v-model="dispatchFormData.execFrequencyNum" :min="1" :max="99" style="width: 80px" />
+            <el-select v-model="dispatchFormData.execFrequencyUnit" style="width: 100px">
+              <el-option label="分钟" value="minute" />
+              <el-option label="小时" value="hour" />
+              <el-option label="天" value="day" />
+              <el-option label="周" value="week" />
+              <el-option label="月" value="month" />
+              <el-option label="年" value="year" />
+            </el-select>
+            <span class="exec-label">在</span>
+            <el-input v-model="dispatchFormData.execTimePoints" placeholder="多个时间点用逗号隔开" style="width: 150px" />
+            <span class="exec-label">执行</span>
+            <span class="form-hint">时间点示例：分钟填秒数(10,20)，小时填分钟数(10,50)，天填小时数(8,10)，周填星期(1-7)，月填日期(1,16)，年填天数(1,36)</span>
+          </div>
+        </el-form-item>
+        <el-form-item label="通知人员" prop="persons">
+          <el-select v-model="dispatchFormData.persons" multiple placeholder="请选择通知人员" style="width: 100%">
+            <el-option v-for="u in userList" :key="u.id" :label="u.name" :value="u.name" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="dispatchFormData.type === 'STATUS'" label="时间设置" prop="timeSetting">
-          <el-select v-model="dispatchFormData.timeSetting" placeholder="请选择时间类型">
-            <el-option label="每天定时" value="DAILY" />
-            <el-option label="设备离线" value="OFFLINE" />
-          </el-select>
-          <el-input v-if="dispatchFormData.timeSetting === 'DAILY'" v-model="dispatchFormData.timeValue" placeholder="例如: 9:30,16:00" style="margin-top: 10px; width: 100%" />
-        </el-form-item>
-        <el-form-item label="接收人" prop="recipientIds">
-          <el-select v-model="dispatchFormData.recipientIds" multiple placeholder="请选择接收人" style="width: 100%">
-            <el-option v-for="u in userList" :key="u.id" :label="u.name + '(' + u.phone + ')'" :value="u.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="通知渠道" prop="channel">
-          <el-checkbox-group v-model="dispatchFormData.channel">
-            <el-checkbox label="SYSTEM" border>系统消息</el-checkbox>
-            <el-checkbox label="SMS" border>短信通知</el-checkbox>
-            <el-checkbox label="WECHAT" border>微信通知</el-checkbox>
-            <el-checkbox label="EMAIL" border>电子邮件</el-checkbox>
+        <el-form-item label="通知渠道" prop="channels">
+          <el-checkbox-group v-model="dispatchFormData.channels">
+            <el-checkbox label="sms" border>短信</el-checkbox>
+            <el-checkbox label="email" border>邮件</el-checkbox>
+            <el-checkbox label="system" border>系统消息</el-checkbox>
           </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="dispatchFormData.status">
+            <el-radio :label="1">启用</el-radio>
+            <el-radio :label="0">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="dispatchFormData.remark" type="textarea" :rows="2" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -762,6 +849,8 @@ interface GroupItem {
   id: string
   name: string
   code: string
+  description: string
+  sortOrder: number
   count: number
 }
 
@@ -797,16 +886,15 @@ interface AlarmCriteria {
 
 interface DispatchRule {
   id: string
-  name: string
-  type: string
-  alarmLevel: string
-  deviceId?: string
-  recipientName: string
-  recipientIds: string[]
-  channel: string
-  timeSetting?: string
-  timeValue?: string
-  isEnabled: boolean
+  type: 'alarm' | 'offline'
+  level: string[]
+  deviceIds: string[]
+  deviceNames?: string[]
+  persons: string[]
+  channels: string[]
+  execTime: string
+  status: number
+  remark: string
 }
 
 interface TreeNode {
@@ -833,10 +921,49 @@ const groupPanelWidth = ref(200)
 const activeTab = ref('basic')
 const selectedRows = ref<HazardPointItem[]>([])
 
+// 分组面板相关
+const showGroupPanel = ref(true)
+const displayGroupList = ref<GroupItem[]>([])
+const loadingGroups = ref(false)
+const groupPageSize = ref(10)
+const groupCurrentPage = ref(1)
+
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const isEdit = ref(false)
 const formRef = ref()
+
+// 分组管理弹窗
+const groupDialogVisible = ref(false)
+const groupDialogTitle = ref('')
+const isEditGroup = ref(false)
+const groupFormRef = ref()
+const groupFormData = reactive({
+  id: '',
+  name: '',
+  description: '',
+  sortOrder: 0
+})
+
+const validateGroupName = (_rule: any, value: string, callback: any) => {
+  if (!value) {
+    callback()
+    return
+  }
+  const exists = groupList.value.some(g => g.name === value && g.id !== groupFormData.id)
+  if (exists) {
+    callback(new Error('分组名称已存在'))
+  } else {
+    callback()
+  }
+}
+
+const groupFormRules = {
+  name: [
+    { required: true, message: '请输入分组名称', trigger: 'blur' },
+    { validator: validateGroupName, trigger: 'blur' }
+  ]
+}
 
 const detailMapRef = ref<HTMLDivElement | null>(null)
 let detailMapInstance: L.Map | null = null
@@ -961,19 +1088,26 @@ const isEditDispatch = ref(false)
 const dispatchFormRef = ref()
 const dispatchFormData = reactive({
   id: '',
-  name: '',
-  type: 'ALARM',
-  alarmLevel: '',
-  deviceId: '',
-  recipientIds: [] as string[],
-  channel: [] as string[],
-  timeSetting: '',
-  timeValue: ''
+  hazardPointId: '',
+  type: 'alarm' as 'alarm' | 'offline',
+  level: [] as string[],
+  deviceIds: [] as string[],
+  persons: [] as string[],
+  channels: ['system'] as string[],
+  execTime: '',
+  execType: 'realtime' as 'realtime' | 'timed',
+  execFrequencyNum: 1,
+  execFrequencyUnit: 'hour' as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
+  execTimePoints: '',
+  status: 1 as 0 | 1,
+  remark: ''
 })
 const dispatchFormRules = {
-  name: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择类型', trigger: 'blur' }],
-  recipientIds: [{ required: true, message: '请选择接收人', trigger: 'blur' }]
+  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
+  level: [{ required: true, type: 'array', min: 1, message: '请选择告警等级', trigger: 'change' }],
+  deviceIds: [{ required: true, type: 'array', min: 1, message: '请选择设备', trigger: 'change' }],
+  persons: [{ required: true, type: 'array', min: 1, message: '请选择通知人员', trigger: 'change' }],
+  channels: [{ required: true, type: 'array', min: 1, message: '请选择通知渠道', trigger: 'change' }]
 }
 
 const userList = ref<{ id: string; name: string; phone: string }[]>([
@@ -1023,7 +1157,11 @@ const getAlarmLevelType = (level: string) => {
     '蓝色预警': 'primary',
     '黄色预警': 'warning',
     '橙色预警': 'warning',
-    '红色预警': 'danger'
+    '红色预警': 'danger',
+    '四级(注意)': 'primary',
+    '三级(警示)': 'warning',
+    '二级(警戒)': 'warning',
+    '一级(警报)': 'danger'
   }
   return types[level] || 'default'
 }
@@ -1033,9 +1171,51 @@ const getChannelLabel = (channel: string) => {
     'SYSTEM': '系统消息',
     'SMS': '短信',
     'WECHAT': '微信',
-    'EMAIL': '邮件'
+    'EMAIL': '邮件',
+    'system': '系统消息',
+    'sms': '短信',
+    'email': '邮件'
   }
   return labels[channel] || channel
+}
+
+const getExecDescription = (execTime: string) => {
+  if (!execTime) return '-'
+  const parts = execTime.split('|')
+  if (parts.length !== 2) return '-'
+  
+  const [frequency, timeStr] = parts
+  const freqLabels: Record<string, string> = {
+    'minute': '分钟',
+    'hour': '小时',
+    'day': '天',
+    'week': '周',
+    'month': '月',
+    'year': '年'
+  }
+  
+  const freqLabel = freqLabels[frequency] || frequency
+  const timeValues = timeStr.split(',').filter(t => t.trim())
+  
+  if (frequency === 'minute') {
+    return `每${freqLabel}第${timeValues.join('、')}秒执行`
+  } else if (frequency === 'hour') {
+    return `每${freqLabel}第${timeValues.join('、')}分钟执行`
+  } else if (frequency === 'day') {
+    return `每${freqLabel}第${timeValues.join('、')}小时执行`
+  } else if (frequency === 'week') {
+    return `每周${timeValues.join('、')}执行`
+  } else if (frequency === 'month') {
+    return `每月${timeValues.join('、')}日执行`
+  } else if (frequency === 'year') {
+    return `每年第${timeValues.join('、')}天执行`
+  }
+  
+  return `${freqLabel}: ${timeStr}`
+}
+
+const handleToggleDispatchStatus = (row: DispatchRule) => {
+  ElMessage.success(`规则${row.status === 1 ? '启用' : '禁用'}成功`)
 }
 
 const initTableData = () => {
@@ -1134,12 +1314,197 @@ const initTableData = () => {
 
 const initGroupList = () => {
   groupList.value = [
-    { id: 'all', name: '全部', code: 'ALL', count: 5 },
-    { id: '1', name: '未分组', code: 'DEFAULT', count: 1 },
-    { id: '2', name: '高风险区', code: 'HIGH_RISK', count: 1 },
-    { id: '3', name: '中风险区', code: 'MEDIUM_RISK', count: 1 },
-    { id: '4', name: '低风险区', code: 'LOW_RISK', count: 2 }
+    { id: 'all', name: '全部', code: 'ALL', description: '所有隐患点', sortOrder: 0, count: 5 },
+    { id: '1', name: '未分组', code: 'DEFAULT', description: '未分配到任何分组的隐患点', sortOrder: 1, count: 1 },
+    { id: '2', name: '高风险区', code: 'HIGH_RISK', description: '高风险隐患区域', sortOrder: 2, count: 1 },
+    { id: '3', name: '中风险区', code: 'MEDIUM_RISK', description: '中风险隐患区域', sortOrder: 3, count: 1 },
+    { id: '4', name: '低风险区', code: 'LOW_RISK', description: '低风险隐患区域', sortOrder: 4, count: 2 },
+    { id: '5', name: '重点监测区', code: 'KEY_AREA', description: '需要重点关注的监测区域', sortOrder: 5, count: 0 },
+    { id: '6', name: '待治理区', code: 'PENDING', description: '等待治理的隐患区域', sortOrder: 6, count: 0 },
+    { id: '7', name: '已治理区', code: 'TREATED', description: '已经完成治理的区域', sortOrder: 7, count: 0 },
+    { id: '8', name: '汛期重点区', code: 'FLOOD_SEASON', description: '汛期需要重点关注的区域', sortOrder: 8, count: 0 },
+    { id: '9', name: '地质灾害区', code: 'GEO_HAZARD', description: '地质灾害易发区域', sortOrder: 9, count: 0 },
+    { id: '10', name: '人为活动区', code: 'HUMAN_ACTIVITY', description: '人为活动频繁区域', sortOrder: 10, count: 0 },
+    { id: '11', name: '自然保护区', code: 'NATURE_RESERVE', description: '自然保护区内的隐患点', sortOrder: 11, count: 0 }
   ]
+  loadGroupPage(1)
+}
+
+const loadGroupPage = (page: number) => {
+  groupCurrentPage.value = page
+  const start = (page - 1) * groupPageSize.value
+  const end = start + groupPageSize.value
+  displayGroupList.value = [...groupList.value].sort((a, b) => a.sortOrder - b.sortOrder).slice(start, end)
+}
+
+const handleGroupListScroll = (e: Event) => {
+  const target = e.target as HTMLElement
+  if (target.scrollTop + target.clientHeight >= target.scrollHeight - 10 && !loadingGroups.value) {
+    loadingGroups.value = true
+    setTimeout(() => {
+      const nextPage = groupCurrentPage.value + 1
+      const totalPages = Math.ceil(groupList.value.length / groupPageSize.value)
+      if (nextPage <= totalPages) {
+        const start = (nextPage - 1) * groupPageSize.value
+        const end = start + groupPageSize.value
+        const newGroups = [...groupList.value].sort((a, b) => a.sortOrder - b.sortOrder).slice(start, end)
+        displayGroupList.value = [...displayGroupList.value, ...newGroups]
+        groupCurrentPage.value = nextPage
+      }
+      loadingGroups.value = false
+    }, 500)
+  }
+}
+
+const toggleGroupPanel = () => {
+  showGroupPanel.value = !showGroupPanel.value
+}
+
+const handleAddGroup = () => {
+  groupDialogTitle.value = '新增分组'
+  isEditGroup.value = false
+  Object.assign(groupFormData, {
+    id: '',
+    name: '',
+    description: '',
+    sortOrder: groupList.value.length
+  })
+  groupDialogVisible.value = true
+}
+
+const handleAddGroupFromSelect = () => {
+  groupDialogTitle.value = '新增分组'
+  isEditGroup.value = false
+  Object.assign(groupFormData, {
+    id: '',
+    name: '',
+    description: '',
+    sortOrder: groupList.value.length
+  })
+  groupDialogVisible.value = true
+}
+
+const handleEditGroupFromSelect = (option: any) => {
+  const group = groupList.value.find(g => g.id === option.id)
+  if (!group || group.id === 'all' || group.id === '1') {
+    ElMessage.warning('该分组不允许修改')
+    return
+  }
+  groupDialogTitle.value = '修改分组'
+  isEditGroup.value = true
+  Object.assign(groupFormData, {
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    sortOrder: group.sortOrder
+  })
+  groupDialogVisible.value = true
+}
+
+const handleDeleteGroupFromSelect = (option: any) => {
+  const group = groupList.value.find(g => g.id === option.id)
+  if (!group || group.id === 'all' || group.id === '1') {
+    ElMessage.warning('该分组不允许删除')
+    return
+  }
+  const confirmMsg = group.count > 0 
+    ? `该分组下有 ${group.count} 个隐患点，删除后这些隐患点将被迁移到"未分组"中。确定要删除分组"${group.name}"吗?`
+    : `确定要删除分组"${group.name}"吗?`
+  ElMessageBox.confirm(confirmMsg, '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    if (group.count > 0) {
+      tableData.value.forEach(item => {
+        if (item.groupId === group.id) {
+          item.groupId = '1'
+          item.groupName = '未分组'
+        }
+      })
+    }
+    const index = groupList.value.findIndex(g => g.id === group.id)
+    if (index > -1) {
+      groupList.value.splice(index, 1)
+      loadGroupPage(1)
+    }
+    ElMessage.success('删除成功')
+  }).catch(() => {})
+}
+
+const handleEditGroup = (group: GroupItem) => {
+  if (group.id === 'all' || group.id === '1') {
+    ElMessage.warning('该分组不允许修改')
+    return
+  }
+  groupDialogTitle.value = '编辑分组'
+  isEditGroup.value = true
+  Object.assign(groupFormData, {
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    sortOrder: group.sortOrder
+  })
+  groupDialogVisible.value = true
+}
+
+const handleDeleteGroup = (group: GroupItem) => {
+  if (group.id === 'all' || group.id === '1') {
+    ElMessage.warning('该分组不允许删除')
+    return
+  }
+  const confirmMsg = group.count > 0 
+    ? `该分组下有 ${group.count} 个隐患点，删除后这些隐患点将被迁移到"未分组"中。确定要删除分组"${group.name}"吗?`
+    : `确定要删除分组"${group.name}"吗?`
+  ElMessageBox.confirm(confirmMsg, '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    if (group.count > 0) {
+      tableData.value.forEach(item => {
+        if (item.groupId === group.id) {
+          item.groupId = '1'
+          item.groupName = '未分组'
+        }
+      })
+    }
+    const index = groupList.value.findIndex(g => g.id === group.id)
+    if (index > -1) {
+      groupList.value.splice(index, 1)
+      loadGroupPage(1)
+    }
+    ElMessage.success('删除成功')
+  }).catch(() => {})
+}
+
+const handleGroupSubmit = () => {
+  groupFormRef.value.validate((valid: boolean) => {
+    if (valid) {
+      if (isEditGroup.value) {
+        const group = groupList.value.find(g => g.id === groupFormData.id)
+        if (group) {
+          group.name = groupFormData.name
+          group.description = groupFormData.description
+          group.sortOrder = groupFormData.sortOrder
+        }
+        ElMessage.success('修改成功')
+      } else {
+        const newGroup: GroupItem = {
+          id: String(Date.now()),
+          name: groupFormData.name,
+          code: groupFormData.name.toUpperCase().replace(/\s+/g, '_'),
+          description: groupFormData.description,
+          sortOrder: groupFormData.sortOrder,
+          count: 0
+        }
+        groupList.value.push(newGroup)
+        ElMessage.success('新增成功')
+      }
+      loadGroupPage(1)
+      groupDialogVisible.value = false
+    }
+  })
 }
 
 const startResize = (e: MouseEvent) => {
@@ -1490,9 +1855,9 @@ const initAlarmCriteria = (hazardPointId: string) => {
 const initDispatchRules = (hazardPointId: string) => {
   if (hazardPointId === '1') {
     dispatchRules.value = [
-      { id: '1', name: '重大告警通知', type: 'ALARM', alarmLevel: '三级(橙色),四级(红色)', recipientName: '张三,李四', recipientIds: ['1', '2'], channel: 'SMS,WECHAT', isEnabled: true },
-      { id: '2', name: '一般告警通知', type: 'ALARM', alarmLevel: '一级(蓝色),二级(黄色)', recipientName: '王强', recipientIds: ['3'], channel: 'SYSTEM', isEnabled: true },
-      { id: '3', name: '设备离线通知', type: 'STATUS', alarmLevel: '', recipientName: '陈经理', recipientIds: ['4'], channel: 'SMS,EMAIL', timeSetting: 'OFFLINE', isEnabled: true }
+      { id: '1', type: 'alarm', level: ['三级(警示)', '二级(警戒)'], deviceIds: [], persons: ['张三', '李四'], channels: ['sms', 'system'], execTime: '', status: 1, remark: '重大告警通知' },
+      { id: '2', type: 'alarm', level: ['四级(注意)'], deviceIds: [], persons: ['王强'], channels: ['system'], execTime: '', status: 1, remark: '一般告警通知' },
+      { id: '3', type: 'offline', level: [], deviceIds: ['d1', 'd2'], deviceNames: ['雨量监测站-01', '位移监测站-01'], persons: ['陈经理'], channels: ['sms', 'email'], execTime: '09:00,14:00,18:00', status: 1, remark: '设备离线通知' }
     ]
   } else {
     dispatchRules.value = []
@@ -1713,30 +2078,51 @@ const handleAddDispatchRule = () => {
   isEditDispatch.value = false
   Object.assign(dispatchFormData, {
     id: '',
-    name: '',
-    type: 'ALARM',
-    alarmLevel: '',
-    deviceId: '',
-    recipientIds: [],
-    channel: [],
-    timeSetting: '',
-    timeValue: ''
+    hazardPointId: currentRow.value?.id || '',
+    type: 'alarm',
+    level: [],
+    deviceIds: [],
+    persons: [],
+    channels: ['system'],
+    execTime: '',
+    status: 1,
+    remark: ''
   })
   dispatchDialogVisible.value = true
 }
 
 const handleEditDispatchRule = (row: DispatchRule) => {
   isEditDispatch.value = true
+  const execTime = row.execTime || ''
+  let execType: 'realtime' | 'timed' = 'realtime'
+  let execFrequencyNum = 1
+  let execFrequencyUnit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' = 'hour'
+  let execTimePoints = ''
+  
+  if (execTime) {
+    const parts = execTime.split('|')
+    if (parts.length === 2) {
+      execType = 'timed'
+      execFrequencyUnit = parts[0] as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
+      execTimePoints = parts[1]
+    }
+  }
+  
   Object.assign(dispatchFormData, {
     id: row.id,
-    name: row.name,
+    hazardPointId: currentRow.value?.id || '',
     type: row.type,
-    alarmLevel: row.alarmLevel,
-    deviceId: row.deviceId || '',
-    recipientIds: row.recipientIds,
-    channel: row.channel.split(','),
-    timeSetting: row.timeSetting || '',
-    timeValue: row.timeValue || ''
+    level: row.level || [],
+    deviceIds: row.deviceIds || [],
+    persons: row.persons || [],
+    channels: row.channels || ['system'],
+    execTime: execTime,
+    execType,
+    execFrequencyNum,
+    execFrequencyUnit,
+    execTimePoints,
+    status: row.status || 1,
+    remark: row.remark || ''
   })
   dispatchDialogVisible.value = true
 }
@@ -1744,6 +2130,12 @@ const handleEditDispatchRule = (row: DispatchRule) => {
 const handleDispatchSubmit = () => {
   dispatchFormRef.value.validate((valid: boolean) => {
     if (valid) {
+      let execTimeValue = ''
+      if (dispatchFormData.execType === 'timed' && dispatchFormData.execTimePoints) {
+        execTimeValue = `${dispatchFormData.execFrequencyUnit}|${dispatchFormData.execTimePoints}`
+      }
+      dispatchFormData.execTime = execTimeValue
+      
       ElMessage.success(isEditDispatch.value ? '规则修改成功' : '规则添加成功')
       dispatchDialogVisible.value = false
       if (currentRow.value) {
@@ -1754,7 +2146,8 @@ const handleDispatchSubmit = () => {
 }
 
 const handleDeleteDispatchRule = (row: DispatchRule) => {
-  ElMessageBox.confirm(`确定要删除规则"${row.name}"吗?`, '删除确认', {
+  const ruleDesc = row.remark || (row.type === 'alarm' ? '监测告警规则' : '设备离线通知规则')
+  ElMessageBox.confirm(`确定要删除规则"${ruleDesc}"吗?`, '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -1863,16 +2256,145 @@ onMounted(() => {
   height: calc(100vh - 180px);
 }
 
+.group-panel-toggle {
+  width: 20px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-right: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px 0 0 4px;
+  transition: all 0.3s;
+}
+
+.group-panel-toggle:hover {
+  background: #e4e7ed;
+}
+
+.toggle-icon {
+  font-size: 12px;
+  color: #606266;
+}
+
 .group-panel {
   background: #fafafa;
   border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  transition: width 0.3s;
+}
+
+.group-panel.hidden {
+  width: 0 !important;
+  overflow: hidden;
+  border-right: none;
 }
 
 .panel-header {
   padding: 15px;
   border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.group-actions {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.group-item:hover .group-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  font-size: 12px;
+  color: #909399;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.action-btn:hover {
+  background: #e4e7ed;
+  color: #606266;
+}
+
+.action-btn.delete-btn:hover {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.loading-more {
+  text-align: center;
+  padding: 10px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.group-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.add-group-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.group-action-btn {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #67c23a;
+  transition: all 0.2s;
+}
+
+.group-action-btn:hover {
+  background-color: #f0f9eb;
+}
+
+.group-action-btn.delete-btn {
+  color: #f56c6c;
+}
+
+.group-action-btn.delete-btn:hover {
+  background-color: #fef0f0;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.exec-type-group {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 12px;
+}
+
+.exec-time-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exec-label {
+  font-size: 14px;
+  color: #606266;
 }
 
 .panel-title {
@@ -1915,13 +2437,32 @@ onMounted(() => {
 }
 
 .resize-handle {
-  width: 5px;
+  width: 6px;
+  height: 100%;
   cursor: col-resize;
   background: transparent;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .resize-handle:hover {
   background: #409eff;
+}
+
+.resize-handle:hover::before {
+  content: '';
+  width: 2px;
+  height: 40px;
+  background: #409eff;
+  border-radius: 1px;
+}
+
+.resize-handle.hidden {
+  width: 0;
+  cursor: default;
+  visibility: hidden;
 }
 
 .content-panel {

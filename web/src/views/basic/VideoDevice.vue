@@ -162,7 +162,7 @@
     <!-- 关联隐患点弹窗 -->
     <el-dialog
       v-model="bindDialogVisible"
-      title="关联隐患点"
+      :title="`关联隐患点[${currentBindRow?.name || ''}]`"
       width="600px"
       :close-on-click-modal="false"
       destroy-on-close

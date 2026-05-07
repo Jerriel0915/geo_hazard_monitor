@@ -227,7 +227,7 @@
     <!-- 传感器配置弹窗 -->
     <el-dialog
       v-model="sensorDialogVisible"
-      title="传感器配置"
+      :title="`传感器配置[${currentSensorDevice?.name || ''}]`"
       width="900px"
       :close-on-click-modal="false"
       destroy-on-close
