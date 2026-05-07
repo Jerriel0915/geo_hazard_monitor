@@ -27,6 +27,12 @@
         </el-menu>
       </nav>
       <div class="header-right">
+        <div class="message-icon-wrapper" @click="toggleMessagePanel">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="message-icon">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span v-if="unreadMessageCount > 0" class="message-badge">{{ unreadMessageCount }}</span>
+        </div>
         <el-dropdown @command="handleUserCommand">
           <div class="user-info">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="user-icon">
@@ -91,19 +97,30 @@
         </transition>
       </router-view>
     </main>
-    <el-dialog title="基本信息" :visible.sync="infoDialogVisible" width="400px">
-      <el-form :model="userInfo" label-width="80px">
+    <el-dialog title="基本信息" v-model="infoDialogVisible" width="450px">
+      <el-form :model="userInfo" label-width="100px">
         <el-form-item label="用户名">
           <el-input v-model="userInfo.username" disabled />
         </el-form-item>
         <el-form-item label="真实姓名">
           <el-input v-model="userInfo.realName" />
         </el-form-item>
+        <el-form-item label="联系电话">
+          <el-input v-model="userInfo.phone" />
+        </el-form-item>
         <el-form-item label="邮箱">
           <el-input v-model="userInfo.email" />
         </el-form-item>
-        <el-form-item label="电话">
-          <el-input v-model="userInfo.phone" />
+        <el-form-item label="所属组织">
+          <el-select v-model="userInfo.organization" style="width: 100%">
+            <el-option label="系统管理部" value="系统管理部" />
+            <el-option label="监测运维部" value="监测运维部" />
+            <el-option label="数据分析部" value="数据分析部" />
+            <el-option label="应急指挥中心" value="应急指挥中心" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="userInfo.remark" type="textarea" :rows="3" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -111,7 +128,7 @@
         <el-button type="primary" @click="saveUserInfo">保存</el-button>
       </template>
     </el-dialog>
-    <el-dialog title="修改密码" :visible.sync="pwdDialogVisible" width="400px">
+    <el-dialog title="修改密码" v-model="pwdDialogVisible" width="400px">
       <el-form :model="pwdForm" label-width="80px">
         <el-form-item label="原密码">
           <el-input type="password" v-model="pwdForm.oldPwd" />
@@ -128,13 +145,71 @@
         <el-button type="primary" @click="changePassword">确定</el-button>
       </template>
     </el-dialog>
+
+    <div class="message-panel" :class="{ visible: messagePanelVisible }">
+      <div class="message-panel-header">
+        <span class="message-panel-title">系统消息</span>
+        <div class="message-tabs">
+          <span :class="['tab', { active: messageTab === 'unread' }]" @click="messageTab = 'unread'">未读 ({{ unreadMessageCount }})</span>
+          <span :class="['tab', { active: messageTab === 'read' }]" @click="messageTab = 'read'">已读</span>
+        </div>
+        <span class="close-btn" @click="messagePanelVisible = false">×</span>
+      </div>
+      <div class="message-list">
+        <div
+          v-for="msg in filteredMessages"
+          :key="msg.id"
+          :class="['message-item', { unread: !msg.read }]"
+          @click="markMessageAsRead(msg)"
+        >
+          <div class="message-icon-wrapper">
+            <svg v-if="msg.type === 'alarm'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <svg v-else-if="msg.type === 'system'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1890ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <div class="message-content">
+            <div class="message-title">{{ msg.title }}</div>
+            <div class="message-desc">{{ msg.content }}</div>
+            <div class="message-time">{{ msg.time }}</div>
+          </div>
+        </div>
+        <div v-if="filteredMessages.length === 0" class="empty-message">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>暂无消息</span>
+        </div>
+      </div>
+      <div class="message-panel-footer" v-if="messages.length > 0">
+        <el-button size="small" @click="markAllAsRead">全部标为已读</el-button>
+      </div>
+    </div>
+    <div class="message-mask" v-if="messagePanelVisible" @click="messagePanelVisible = false"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
+
+interface Message {
+  id: number
+  type: 'alarm' | 'system' | 'other'
+  title: string
+  content: string
+  time: string
+  read: boolean
+}
 
 const router = useRouter()
 const tabsContainerRef = ref<HTMLElement | null>(null)
@@ -143,6 +218,27 @@ const activeTab = ref('Dashboard')
 const infoDialogVisible = ref(false)
 const pwdDialogVisible = ref(false)
 
+const messagePanelVisible = ref(false)
+const messageTab = ref<'unread' | 'read'>('unread')
+
+const messages = ref<Message[]>([
+  { id: 1, type: 'alarm', title: '一级警报', content: '龙潭寺滑坡隐患点监测数据异常，位移超过警戒值，请及时处理。', time: '2024-01-20 14:30', read: false },
+  { id: 2, type: 'system', title: '系统维护通知', content: '系统将于今晚22:00-24:00进行例行维护，届时将暂停服务，请提前做好准备。', time: '2024-01-20 10:00', read: false },
+  { id: 3, type: 'alarm', title: '设备离线告警', content: 'GNSS接收机-A1设备离线超过30分钟，请检查设备状态。', time: '2024-01-19 16:45', read: false },
+  { id: 4, type: 'other', title: '周报已生成', content: '本周监测数据周报已生成，包含各项监测指标统计分析。', time: '2024-01-19 09:00', read: true },
+  { id: 5, type: 'system', title: '权限变更通知', content: '您的系统管理员权限已更新，新增了数据导出权限。', time: '2024-01-18 15:30', read: true },
+  { id: 6, type: 'alarm', title: '雨量告警', content: 'ZZ水库坝体监测点24小时雨量达到警戒值，请注意防范。', time: '2024-01-18 08:20', read: true }
+])
+
+const unreadMessageCount = computed(() => messages.value.filter(m => !m.read).length)
+
+const filteredMessages = computed(() => {
+  if (messageTab.value === 'unread') {
+    return messages.value.filter(m => !m.read)
+  }
+  return messages.value.filter(m => m.read)
+})
+
 const currentUser = reactive({
   name: '管理员'
 })
@@ -150,8 +246,10 @@ const currentUser = reactive({
 const userInfo = reactive({
   username: 'admin',
   realName: '管理员',
+  phone: '13800138000',
   email: 'admin@example.com',
-  phone: '13800138000'
+  organization: '系统管理部',
+  remark: ''
 })
 
 const pwdForm = reactive({
@@ -346,6 +444,20 @@ const saveUserInfo = () => {
 const changePassword = () => {
   pwdDialogVisible.value = false
   alert('密码修改成功')
+}
+
+const toggleMessagePanel = () => {
+  messagePanelVisible.value = !messagePanelVisible.value
+}
+
+const markMessageAsRead = (msg: Message) => {
+  msg.read = true
+}
+
+const markAllAsRead = () => {
+  messages.value.forEach(msg => {
+    msg.read = true
+  })
 }
 
 onMounted(() => {
@@ -554,6 +666,214 @@ const scrollTabs = (direction: 'left' | 'right') => {
 
 .user-info:hover .arrow-icon {
   transform: rotate(180deg);
+}
+
+.message-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  border-radius: 50%;
+  margin-right: 12px;
+  transition: all 0.3s ease;
+}
+
+.message-icon-wrapper:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.message-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.message-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #f5222d;
+  border-radius: 9px;
+  font-size: 12px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(245, 34, 45, 0.3);
+}
+
+.message-panel {
+  position: fixed;
+  top: 64px;
+  right: -400px;
+  width: 380px;
+  max-height: 500px;
+  background: white;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  transition: right 0.3s ease;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-panel.visible {
+  right: 0;
+}
+
+.message-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+}
+
+.message-panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.message-tabs {
+  display: flex;
+  gap: 16px;
+}
+
+.message-tabs .tab {
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.message-tabs .tab:hover {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+.message-tabs .tab.active {
+  background: #1890ff;
+  color: white;
+}
+
+.close-btn {
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #666;
+}
+
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.message-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #fafafa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.message-item:hover {
+  background: #f0f5ff;
+  border-left-color: #1890ff;
+}
+
+.message-item.unread {
+  background: #fff7e6;
+  border-left-color: #faad14;
+}
+
+.message-item .message-icon-wrapper svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.message-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+}
+
+.message-panel-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.message-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: 999;
 }
 
 .page-tabs {
