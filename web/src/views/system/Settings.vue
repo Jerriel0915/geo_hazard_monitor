@@ -156,9 +156,9 @@
                   <el-input v-model="alarmSearchForm.hazardPoint" placeholder="请输入隐患点名称" clearable />
                 </el-form-item>
                 <el-form-item label="类型">
-                  <el-select v-model="alarmSearchForm.type" placeholder="全部类型" clearable style="width: 120px">
-                    <el-option label="告警" value="alarm" />
-                    <el-option label="离线" value="offline" />
+                  <el-select v-model="alarmSearchForm.type" placeholder="全部类型" clearable style="width: 150px">
+                    <el-option label="监测告警" value="alarm" />
+                    <el-option label="设备离线通知" value="offline" />
                   </el-select>
                 </el-form-item>
                 <el-form-item label="状态">
@@ -171,8 +171,7 @@
                   <el-select v-model="alarmSearchForm.channel" placeholder="全部渠道" clearable style="width: 120px">
                     <el-option label="短信" value="sms" />
                     <el-option label="邮件" value="email" />
-                    <el-option label="APP推送" value="push" />
-                    <el-option label="语音" value="voice" />
+                    <el-option label="系统消息" value="system" />
                   </el-select>
                 </el-form-item>
                 <el-form-item>
@@ -182,24 +181,39 @@
               </el-form>
               <div class="action-btns">
                 <el-button type="primary" @click="handleAddAlarmRule">新增规则</el-button>
+                <el-button type="success" @click="handleBatchEnableAlarm" :disabled="selectedAlarmRules.length === 0">批量启用</el-button>
+                <el-button type="warning" @click="handleBatchDisableAlarm" :disabled="selectedAlarmRules.length === 0">批量禁用</el-button>
                 <el-button type="success" @click="handleImportAlarm">导入</el-button>
                 <el-button type="warning" @click="handleExportAlarm">导出</el-button>
               </div>
             </div>
 
-            <el-table :data="alarmRuleList" border stripe v-loading="loading">
+            <el-table :data="alarmRuleList" border stripe v-loading="loading" @selection-change="handleAlarmSelectionChange">
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column prop="hazardPointName" label="隐患点" min-width="180" />
-              <el-table-column prop="type" label="类型" width="90" align="center">
+              <el-table-column label="隐患点" min-width="180">
+                <template #default="{ row }">
+                  <span v-for="(name, idx) in row.hazardPointNames" :key="idx">
+                    <el-tag size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="type" label="类型" width="110" align="center">
                 <template #default="{ row }">
                   <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
-                    {{ row.type === 'alarm' ? '告警' : '离线' }}
+                    {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="level" label="等级" width="100" align="center">
+              <el-table-column label="告警等级/关联设备" min-width="200">
                 <template #default="{ row }">
-                  <el-tag :type="getAlarmLevelType(row.level)" size="small">{{ row.level }}</el-tag>
+                  <template v-if="row.type === 'alarm'">
+                    <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
+                    <span v-if="!row.level || row.level.length === 0" class="text-gray">无</span>
+                  </template>
+                  <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
+                    <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+                  </template>
+                  <span v-else class="text-gray">无</span>
                 </template>
               </el-table-column>
               <el-table-column prop="persons" label="通知人员" min-width="150">
@@ -214,21 +228,19 @@
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="execTime" label="执行时间" width="120" />
-              <el-table-column prop="status" label="状态" width="80" align="center">
+              <el-table-column label="执行描述" width="200">
                 <template #default="{ row }">
-                  <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-                    {{ row.status === 1 ? '启用' : '禁用' }}
-                  </el-tag>
+                  {{ getExecDescription(row.execTime) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
-              <el-table-column label="操作" width="180" fixed="right">
+              <el-table-column prop="status" label="状态" width="80" align="center">
+                <template #default="{ row }">
+                  <el-switch v-model="row.status" @change="handleToggleAlarmStatus(row)" />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="100" fixed="right">
                 <template #default="{ row }">
                   <span class="action-link" @click="handleEditAlarmRule(row)">编辑</span>
-                  <span :class="['action-link', row.status === 1 ? 'action-warning' : 'action-success']" @click="handleToggleAlarmStatus(row)">
-                    {{ row.status === 1 ? '禁用' : '启用' }}
-                  </span>
                   <span class="action-link action-danger" @click="handleDeleteAlarmRule(row)">删除</span>
                 </template>
               </el-table-column>
@@ -334,8 +346,13 @@
         :rules="alarmFormRules"
         label-width="100px"
       >
-        <el-form-item label="隐患点" prop="hazardPointId">
-          <el-select v-model="alarmFormData.hazardPointId" placeholder="请选择隐患点" style="width: 100%">
+        <el-form-item label="隐患点" :prop="isEditAlarm ? 'hazardPointId' : 'hazardPointIds'">
+          <el-select
+            v-model="currentHazardPoints"
+            :multiple="!isEditAlarm"
+            placeholder="请选择隐患点"
+            style="width: 100%"
+          >
             <el-option
               v-for="hp in hazardPointList"
               :key="hp.id"
@@ -343,20 +360,32 @@
               :value="hp.id"
             />
           </el-select>
+          <span v-if="!isEditAlarm" class="form-hint">支持多选，确定后按隐患点列表循环保存</span>
         </el-form-item>
         <el-form-item label="类型" prop="type">
           <el-radio-group v-model="alarmFormData.type">
-            <el-radio label="alarm">告警</el-radio>
-            <el-radio label="offline">离线</el-radio>
+            <el-radio label="alarm">监测告警</el-radio>
+            <el-radio label="offline">设备离线通知</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="告警等级" prop="level">
-          <el-select v-model="alarmFormData.level" placeholder="请选择等级" style="width: 100%">
-            <el-option label="紧急" value="紧急" />
-            <el-option label="重要" value="重要" />
-            <el-option label="一般" value="一般" />
-            <el-option label="提示" value="提示" />
+        <el-form-item label="告警等级" prop="level" v-if="alarmFormData.type === 'alarm'">
+          <el-select v-model="alarmFormData.level" multiple placeholder="请选择告警等级（支持多选）" style="width: 100%">
+            <el-option label="四级(注意)" value="四级(注意)" />
+            <el-option label="三级(警示)" value="三级(警示)" />
+            <el-option label="二级(警戒)" value="二级(警戒)" />
+            <el-option label="一级(警报)" value="一级(警报)" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="关联设备" prop="deviceIds" v-if="alarmFormData.type === 'offline'">
+          <el-select v-model="alarmFormData.deviceIds" multiple placeholder="请选择设备" style="width: 100%">
+            <el-option
+              v-for="device in deviceList"
+              :key="device.id"
+              :label="`${device.deviceCode} - ${device.name}`"
+              :value="device.id"
+            />
+          </el-select>
+          <span class="form-hint">支持多选</span>
         </el-form-item>
         <el-form-item label="通知人员" prop="personIds">
           <el-select v-model="alarmFormData.personIds" multiple placeholder="请选择通知人员" style="width: 100%">
@@ -372,17 +401,31 @@
           <el-checkbox-group v-model="alarmFormData.channels">
             <el-checkbox label="sms">短信</el-checkbox>
             <el-checkbox label="email">邮件</el-checkbox>
-            <el-checkbox label="push">APP推送</el-checkbox>
-            <el-checkbox label="voice">语音</el-checkbox>
+            <el-checkbox label="system" checked>系统消息</el-checkbox>
           </el-checkbox-group>
+          <span class="form-hint">系统消息包括PC端和移动端的系统消息，默认勾选</span>
         </el-form-item>
-        <el-form-item label="执行时间" prop="execTime">
-          <el-time-picker
-            v-model="alarmFormData.execTime"
-            placeholder="请选择执行时间"
-            value-format="HH:mm:ss"
-            style="width: 100%"
-          />
+        <el-form-item label="执行时间" v-if="alarmFormData.type === 'offline'">
+          <el-radio-group v-model="alarmFormData.execType" class="exec-type-group">
+            <el-radio label="realtime">实时执行</el-radio>
+            <el-radio label="timed">定时</el-radio>
+          </el-radio-group>
+          <div v-if="alarmFormData.execType === 'timed'" class="exec-time-config">
+            <span class="exec-label">每</span>
+            <el-input-number v-model="alarmFormData.execFrequencyNum" :min="1" :max="99" style="width: 80px" />
+            <el-select v-model="alarmFormData.execFrequencyUnit" style="width: 100px">
+              <el-option label="分钟" value="minute" />
+              <el-option label="小时" value="hour" />
+              <el-option label="天" value="day" />
+              <el-option label="周" value="week" />
+              <el-option label="月" value="month" />
+              <el-option label="年" value="year" />
+            </el-select>
+            <span class="exec-label">在</span>
+            <el-input v-model="alarmFormData.execTimePoints" placeholder="多个时间点用逗号隔开" style="width: 150px" />
+            <span class="exec-label">执行</span>
+            <span class="form-hint">时间点示例：分钟填秒数(10,20)，小时填分钟数(10,50)，天填小时数(8,10)，周填星期(1-7)，月填日期(1,16)，年填天数(1,36)</span>
+          </div>
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="alarmFormData.status">
@@ -435,12 +478,14 @@ interface ParamItem {
 
 interface AlarmRule {
   id: number
-  hazardPointId: number
-  hazardPointName: string
+  hazardPointIds: number[]
+  hazardPointNames: string[]
   type: 'alarm' | 'offline'
-  level: string
+  level: string[]
   persons: string[]
   personIds: number[]
+  deviceIds: number[]
+  deviceNames: string[]
   channels: string[]
   execTime: string
   status: number
@@ -456,6 +501,12 @@ interface HazardPoint {
 interface User {
   id: number
   realName: string
+}
+
+interface Device {
+  id: number
+  name: string
+  deviceCode: string
 }
 
 const activeTab = ref('params')
@@ -765,20 +816,31 @@ const userList = ref<User[]>([
   { id: 5, realName: '赵六' }
 ])
 
+const deviceList = ref<Device[]>([
+  { id: 1, name: 'GNSS接收机-A1', deviceCode: 'GNSS-001' },
+  { id: 2, name: '裂缝计-B1', deviceCode: 'LF-001' },
+  { id: 3, name: '位移计-C1', deviceCode: 'WY-001' },
+  { id: 4, name: '雨量计-D1', deviceCode: 'YL-001' },
+  { id: 5, name: '水位计-E1', deviceCode: 'SW-001' },
+  { id: 6, name: 'GNSS接收机-A2', deviceCode: 'GNSS-002' },
+  { id: 7, name: '裂缝计-B2', deviceCode: 'LF-002' },
+  { id: 8, name: '视频监控-F1', deviceCode: 'VD-001' }
+])
+
 const allAlarmRules = ref<AlarmRule[]>([
-  { id: 1, hazardPointId: 1, hazardPointName: 'XX山区滑坡监测点', type: 'alarm', level: '紧急', persons: ['张三', '李四'], personIds: [2, 3], channels: ['sms', 'push'], execTime: '00:00:00', status: 1, remark: '滑坡位移超限立即通知', createTime: '2024-01-01 10:00:00' },
-  { id: 2, hazardPointId: 1, hazardPointName: 'XX山区滑坡监测点', type: 'offline', level: '重要', persons: ['张三'], personIds: [2], channels: ['sms', 'email'], execTime: '00:00:00', status: 1, remark: '设备离线通知', createTime: '2024-01-05 09:00:00' },
-  { id: 3, hazardPointId: 2, hazardPointName: 'YY矿区沉降监测点', type: 'alarm', level: '重要', persons: ['王五', '赵六'], personIds: [4, 5], channels: ['sms', 'voice'], execTime: '08:00:00', status: 1, remark: '矿区沉降监测告警', createTime: '2024-01-10 08:30:00' },
-  { id: 4, hazardPointId: 3, hazardPointName: 'ZZ水库坝体监测点', type: 'alarm', level: '紧急', persons: ['系统管理员', '张三'], personIds: [1, 2], channels: ['sms', 'push', 'voice'], execTime: '00:00:00', status: 0, remark: '水库坝体压力超限', createTime: '2024-01-12 10:00:00' },
-  { id: 5, hazardPointId: 4, hazardPointName: 'WW公路边坡监测点', type: 'offline', level: '一般', persons: ['李四'], personIds: [3], channels: ['email'], execTime: '09:00:00', status: 1, remark: '公路边坡设备状态', createTime: '2024-01-15 11:00:00' },
-  { id: 6, hazardPointId: 5, hazardPointName: 'QQ隧道口监测点', type: 'alarm', level: '重要', persons: ['王五'], personIds: [4], channels: ['sms', 'push'], execTime: '00:00:00', status: 1, remark: '隧道口变形监测', createTime: '2024-01-20 14:00:00' }
+  { id: 1, hazardPointIds: [1], hazardPointNames: ['XX山区滑坡监测点'], type: 'alarm', level: ['一级(警报)'], persons: ['张三', '李四'], personIds: [2, 3], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 1, remark: '滑坡位移超限立即通知', createTime: '2024-01-01 10:00:00' },
+  { id: 2, hazardPointIds: [1], hazardPointNames: ['XX山区滑坡监测点'], type: 'offline', level: [], persons: ['张三'], personIds: [2], deviceIds: [1, 2], deviceNames: ['GNSS-001 - GNSS接收机-A1', 'LF-001 - 裂缝计-B1'], channels: ['sms', 'email', 'system'], execTime: 'day|8,14,18', status: 1, remark: '设备离线通知', createTime: '2024-01-05 09:00:00' },
+  { id: 3, hazardPointIds: [2, 3], hazardPointNames: ['YY矿区沉降监测点', 'ZZ水库坝体监测点'], type: 'alarm', level: ['二级(警戒)', '一级(警报)'], persons: ['王五', '赵六'], personIds: [4, 5], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 1, remark: '矿区沉降监测告警', createTime: '2024-01-10 08:30:00' },
+  { id: 4, hazardPointIds: [3], hazardPointNames: ['ZZ水库坝体监测点'], type: 'alarm', level: ['一级(警报)'], persons: ['系统管理员', '张三'], personIds: [1, 2], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 0, remark: '水库坝体压力超限', createTime: '2024-01-12 10:00:00' },
+  { id: 5, hazardPointIds: [4], hazardPointNames: ['WW公路边坡监测点'], type: 'offline', level: [], persons: ['李四'], personIds: [3], deviceIds: [6, 7], deviceNames: ['GNSS-002 - GNSS接收机-A2', 'LF-002 - 裂缝计-B2'], channels: ['email', 'system'], execTime: 'hour|30', status: 1, remark: '公路边坡设备状态', createTime: '2024-01-15 11:00:00' },
+  { id: 6, hazardPointIds: [5], hazardPointNames: ['QQ隧道口监测点'], type: 'alarm', level: ['三级(警示)', '四级(注意)'], persons: ['王五'], personIds: [4], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 1, remark: '隧道口变形监测', createTime: '2024-01-20 14:00:00' }
 ])
 
 const alarmRuleList = computed(() => {
   let result = allAlarmRules.value
 
   if (alarmSearchForm.hazardPoint) {
-    result = result.filter(r => r.hazardPointName.includes(alarmSearchForm.hazardPoint))
+    result = result.filter(r => r.hazardPointNames.some(name => name.includes(alarmSearchForm.hazardPoint)))
   }
   if (alarmSearchForm.type) {
     result = result.filter(r => r.type === alarmSearchForm.type)
@@ -796,13 +858,50 @@ const alarmRuleList = computed(() => {
 })
 
 const getAlarmLevelType = (level: string) => {
-  const map: Record<string, string> = { '紧急': 'danger', '重要': 'warning', '一般': 'info', '提示': 'success' }
+  const map: Record<string, string> = { '一级(警报)': 'danger', '二级(警戒)': 'warning', '三级(警示)': 'info', '四级(注意)': 'success' }
   return map[level] || 'info'
 }
 
 const getChannelLabel = (channel: string) => {
-  const map: Record<string, string> = { sms: '短信', email: '邮件', push: 'APP推送', voice: '语音' }
+  const map: Record<string, string> = { sms: '短信', email: '邮件', system: '系统消息' }
   return map[channel] || channel
+}
+
+const getExecDescription = (execTime: string) => {
+  if (!execTime) return '-'
+  const parts = execTime.split('|')
+  if (parts.length !== 2) {
+    return execTime || '-'
+  }
+  
+  const [frequency, timeStr] = parts
+  const freqLabels: Record<string, string> = {
+    'minute': '分钟',
+    'hour': '小时',
+    'day': '天',
+    'week': '周',
+    'month': '月',
+    'year': '年'
+  }
+  
+  const freqLabel = freqLabels[frequency] || frequency
+  const timeValues = timeStr.split(',').filter(t => t.trim())
+  
+  if (frequency === 'minute') {
+    return `每${freqLabel}第${timeValues.join('、')}秒执行`
+  } else if (frequency === 'hour') {
+    return `每${freqLabel}第${timeValues.join('、')}分钟执行`
+  } else if (frequency === 'day') {
+    return `每${freqLabel}第${timeValues.join('、')}小时执行`
+  } else if (frequency === 'week') {
+    return `每周${timeValues.join('、')}执行`
+  } else if (frequency === 'month') {
+    return `每月${timeValues.join('、')}日执行`
+  } else if (frequency === 'year') {
+    return `每年第${timeValues.join('、')}天执行`
+  }
+  
+  return `${freqLabel}: ${timeStr}`
 }
 
 const handleAlarmSearch = () => { alarmPagination.page = 1 }
@@ -823,25 +922,52 @@ const alarmSubmitLoading = ref(false)
 const alarmFormRef = ref<FormInstance>()
 const isEditAlarm = ref(false)
 
+// 批量操作
+const selectedAlarmRules = ref<AlarmRule[]>([])
+
 const alarmFormData = reactive({
   id: 0,
   hazardPointId: undefined as number | undefined,
+  hazardPointIds: [] as number[],
   type: 'alarm' as 'alarm' | 'offline',
-  level: '一般',
+  level: ['四级(注意)'] as string[],
   personIds: [] as number[],
-  channels: [] as string[],
-  execTime: '00:00:00',
+  deviceIds: [] as number[],
+  channels: ['system'] as string[],
+  execTime: '',
+  execType: 'realtime' as 'realtime' | 'timed',
+  execFrequencyNum: 1,
+  execFrequencyUnit: 'hour' as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
+  execTimePoints: '',
   status: 1,
   remark: ''
 })
 
+const currentHazardPoints = computed({
+  get: () => {
+    if (isEditAlarm.value) {
+      return alarmFormData.hazardPointId
+    }
+    return alarmFormData.hazardPointIds
+  },
+  set: (val: number | number[]) => {
+    if (isEditAlarm.value) {
+      alarmFormData.hazardPointId = val as number
+    } else {
+      alarmFormData.hazardPointIds = val as number[]
+    }
+  }
+})
+
 const alarmFormRules: FormRules = {
   hazardPointId: [{ required: true, message: '请选择隐患点', trigger: 'change' }],
+  hazardPointIds: [{ required: true, message: '请选择隐患点', trigger: 'change', type: 'array' }],
   type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  level: [{ required: true, message: '请选择告警等级', trigger: 'change' }],
+  level: [{ required: true, message: '请选择告警等级', trigger: 'change', type: 'array' }],
   personIds: [{ required: true, message: '请选择通知人员', trigger: 'change', type: 'array' }],
+  deviceIds: [{ required: true, message: '请选择关联设备', trigger: 'change', type: 'array' }],
   channels: [{ required: true, message: '请选择通知渠道', trigger: 'change', type: 'array' }],
-  execTime: [{ required: true, message: '请选择执行时间', trigger: 'change' }]
+  execTime: [{ required: true, message: '请输入执行时间', trigger: 'change' }]
 }
 
 const handleAddAlarmRule = () => {
@@ -854,18 +980,82 @@ const handleAddAlarmRule = () => {
 const handleEditAlarmRule = (row: AlarmRule) => {
   isEditAlarm.value = true
   alarmDialogTitle.value = '编辑告警规则'
+  
+  const execTime = row.execTime || ''
+  let execType: 'realtime' | 'timed' = 'realtime'
+  let execFrequencyNum = 1
+  let execFrequencyUnit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' = 'hour'
+  let execTimePoints = ''
+  
+  if (execTime) {
+    const parts = execTime.split('|')
+    if (parts.length === 2) {
+      execType = 'timed'
+      execFrequencyUnit = parts[0] as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
+      execTimePoints = parts[1]
+    }
+  }
+  
   Object.assign(alarmFormData, {
     id: row.id,
-    hazardPointId: row.hazardPointId,
+    hazardPointId: row.hazardPointIds.length > 0 ? row.hazardPointIds[0] : undefined,
+    hazardPointIds: [...row.hazardPointIds],
     type: row.type,
-    level: row.level,
+    level: row.level || '四级(注意)',
     personIds: [...row.personIds],
+    deviceIds: [...row.deviceIds],
     channels: [...row.channels],
-    execTime: row.execTime,
+    execTime: execTime,
+    execType,
+    execFrequencyNum,
+    execFrequencyUnit,
+    execTimePoints,
     status: row.status,
     remark: row.remark
   })
   alarmDialogVisible.value = true
+}
+
+const handleAlarmSelectionChange = (val: AlarmRule[]) => {
+  selectedAlarmRules.value = val
+}
+
+const handleBatchEnableAlarm = () => {
+  if (selectedAlarmRules.value.length === 0) {
+    ElMessage.warning('请选择要启用的告警规则')
+    return
+  }
+  const count = selectedAlarmRules.value.length
+  ElMessageBox.confirm(`确定要批量启用选中的 ${count} 条告警规则吗？`, '系统提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    selectedAlarmRules.value.forEach(rule => {
+      rule.status = 1
+    })
+    selectedAlarmRules.value = []
+    ElMessage.success(`成功启用 ${count} 条告警规则`)
+  }).catch(() => {})
+}
+
+const handleBatchDisableAlarm = () => {
+  if (selectedAlarmRules.value.length === 0) {
+    ElMessage.warning('请选择要禁用的告警规则')
+    return
+  }
+  const count = selectedAlarmRules.value.length
+  ElMessageBox.confirm(`确定要批量禁用选中的 ${count} 条告警规则吗？`, '系统提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    selectedAlarmRules.value.forEach(rule => {
+      rule.status = 0
+    })
+    selectedAlarmRules.value = []
+    ElMessage.success(`成功禁用 ${count} 条告警规则`)
+  }).catch(() => {})
 }
 
 const handleDeleteAlarmRule = (row: AlarmRule) => {
@@ -888,11 +1078,13 @@ const handleToggleAlarmStatus = (row: AlarmRule) => {
 const resetAlarmForm = () => {
   alarmFormData.id = 0
   alarmFormData.hazardPointId = undefined
+  alarmFormData.hazardPointIds = []
   alarmFormData.type = 'alarm'
-  alarmFormData.level = '一般'
+  alarmFormData.level = ['四级(注意)']
   alarmFormData.personIds = []
-  alarmFormData.channels = []
-  alarmFormData.execTime = '00:00:00'
+  alarmFormData.deviceIds = []
+  alarmFormData.channels = ['system']
+  alarmFormData.execTime = ''
   alarmFormData.status = 1
   alarmFormData.remark = ''
 }
@@ -901,44 +1093,60 @@ const handleAlarmSubmit = async () => {
   if (!alarmFormRef.value) return
   await alarmFormRef.value.validate((valid) => {
     if (valid) {
+      let execTimeValue = ''
+      if (alarmFormData.type === 'offline' && alarmFormData.execType === 'timed' && alarmFormData.execTimePoints) {
+        execTimeValue = `${alarmFormData.execFrequencyUnit}|${alarmFormData.execTimePoints}`
+      }
+      
       alarmSubmitLoading.value = true
       setTimeout(() => {
-        const hp = hazardPointList.value.find(h => h.id === alarmFormData.hazardPointId)
         const persons = alarmFormData.personIds.map(id => userList.value.find(u => u.id === id)?.realName || '')
+        const devices = alarmFormData.deviceIds.map(id => {
+          const d = deviceList.value.find(dev => dev.id === id)
+          return d ? `${d.deviceCode} - ${d.name}` : ''
+        }).filter(Boolean)
 
         if (isEditAlarm.value) {
           const rule = allAlarmRules.value.find(r => r.id === alarmFormData.id)
           if (rule) {
+            const hp = hazardPointList.value.find(h => h.id === alarmFormData.hazardPointId)
             Object.assign(rule, {
-              hazardPointId: alarmFormData.hazardPointId,
-              hazardPointName: hp?.name || '',
+              hazardPointIds: alarmFormData.hazardPointId ? [alarmFormData.hazardPointId] : [],
+              hazardPointNames: hp ? [hp.name] : [],
               type: alarmFormData.type,
-              level: alarmFormData.level,
+              level: alarmFormData.type === 'alarm' ? [...alarmFormData.level] : [],
               personIds: [...alarmFormData.personIds],
               persons,
+              deviceIds: [...alarmFormData.deviceIds],
+              deviceNames: [...devices],
               channels: [...alarmFormData.channels],
-              execTime: alarmFormData.execTime,
+              execTime: execTimeValue,
               status: alarmFormData.status,
               remark: alarmFormData.remark
             })
           }
           ElMessage.success('修改成功')
         } else {
-          allAlarmRules.value.push({
-            id: allAlarmRules.value.length + 1,
-            hazardPointId: alarmFormData.hazardPointId!,
-            hazardPointName: hp?.name || '',
-            type: alarmFormData.type,
-            level: alarmFormData.level,
-            personIds: [...alarmFormData.personIds],
-            persons,
-            channels: [...alarmFormData.channels],
-            execTime: alarmFormData.execTime,
-            status: alarmFormData.status,
-            remark: alarmFormData.remark,
-            createTime: new Date().toLocaleString('zh-CN', { hour12: false })
+          const selectedHps = alarmFormData.hazardPointIds.map(id => hazardPointList.value.find(h => h.id === id)).filter((hp): hp is HazardPoint => hp !== undefined)
+          selectedHps.forEach(hp => {
+            allAlarmRules.value.push({
+              id: allAlarmRules.value.length + 1,
+              hazardPointIds: [hp.id],
+              hazardPointNames: [hp.name],
+              type: alarmFormData.type,
+              level: alarmFormData.type === 'alarm' ? [...alarmFormData.level] : [],
+              personIds: [...alarmFormData.personIds],
+              persons,
+              deviceIds: [...alarmFormData.deviceIds],
+              deviceNames: [...devices],
+              channels: [...alarmFormData.channels],
+              execTime: execTimeValue,
+              status: alarmFormData.status,
+              remark: alarmFormData.remark,
+              createTime: new Date().toLocaleString('zh-CN', { hour12: false })
+            })
           })
-          ElMessage.success('新增成功')
+          ElMessage.success(`新增成功，共创建 ${selectedHps.length} 条告警规则`)
         }
         alarmDialogVisible.value = false
         alarmSubmitLoading.value = false
@@ -1192,5 +1400,34 @@ const handleExportAlarm = () => {
 
 .action-link.action-danger:hover {
   color: #cf1322;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.exec-type-group {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 12px;
+}
+
+.exec-time-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exec-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+.text-gray {
+  color: #909399;
 }
 </style>

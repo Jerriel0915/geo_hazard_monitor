@@ -156,7 +156,7 @@
 
     <!-- 权限配置弹窗 -->
     <el-dialog
-      title="权限配置"
+      :title="`权限配置[${currentRole?.name || ''}]`"
       v-model="permDialogVisible"
       width="600px"
       :close-on-click-modal="false"

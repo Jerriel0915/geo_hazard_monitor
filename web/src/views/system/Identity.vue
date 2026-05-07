@@ -176,7 +176,7 @@
 
     <!-- 重置密码弹窗 -->
     <el-dialog
-      title="重置密码"
+      :title="`重置密码[${currentUser?.realName || ''}(${currentUser?.username || ''})]`"
       v-model="pwdDialogVisible"
       width="400px"
       :close-on-click-modal="false"
@@ -525,6 +525,7 @@ const pwdDialogVisible = ref(false)
 const pwdLoading = ref(false)
 const pwdFormRef = ref<FormInstance>()
 const currentUserId = ref(0)
+const currentUser = ref<User | null>(null)
 
 const pwdForm = reactive({
   newPwd: '',
@@ -553,6 +554,7 @@ const pwdRules: FormRules = {
 
 const handleResetPwd = (row: User) => {
   currentUserId.value = row.id
+  currentUser.value = row
   pwdForm.newPwd = ''
   pwdForm.confirmPwd = ''
   pwdDialogVisible.value = true
