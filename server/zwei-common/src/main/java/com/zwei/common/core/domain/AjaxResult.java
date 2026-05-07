@@ -1,9 +1,10 @@
 package com.zwei.common.core.domain;
 
-import java.util.HashMap;
-import java.util.Objects;
 import com.zwei.common.constant.HttpStatus;
 import com.zwei.common.utils.StringUtils;
+
+import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * 操作消息提醒
@@ -24,15 +25,20 @@ public class AjaxResult extends HashMap<String, Object>
     public static final String DATA_TAG = "data";
 
     /**
+     * 时间戳
+     */
+    public static final String TIMESTAMP_TAG = "timestamp";
+
+    /**
      * 初始化一个新创建的 AjaxResult 对象，使其表示一个空消息。
      */
-    public AjaxResult()
-    {
+    public AjaxResult() {
+        put(TIMESTAMP_TAG, System.currentTimeMillis());
     }
 
     /**
      * 初始化一个新创建的 AjaxResult 对象
-     * 
+     *
      * @param code 状态码
      * @param msg 返回内容
      */
@@ -40,11 +46,12 @@ public class AjaxResult extends HashMap<String, Object>
     {
         super.put(CODE_TAG, code);
         super.put(MSG_TAG, msg);
+        super.put(TIMESTAMP_TAG, System.currentTimeMillis());
     }
 
     /**
      * 初始化一个新创建的 AjaxResult 对象
-     * 
+     *
      * @param code 状态码
      * @param msg 返回内容
      * @param data 数据对象
@@ -53,6 +60,7 @@ public class AjaxResult extends HashMap<String, Object>
     {
         super.put(CODE_TAG, code);
         super.put(MSG_TAG, msg);
+        super.put(TIMESTAMP_TAG, System.currentTimeMillis());
         if (StringUtils.isNotNull(data))
         {
             super.put(DATA_TAG, data);
