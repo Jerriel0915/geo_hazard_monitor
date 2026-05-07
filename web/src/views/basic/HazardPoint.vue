@@ -1179,41 +1179,6 @@ const getChannelLabel = (channel: string) => {
   return labels[channel] || channel
 }
 
-const getExecDescription = (execTime: string) => {
-  if (!execTime) return '-'
-  const parts = execTime.split('|')
-  if (parts.length !== 2) return '-'
-  
-  const [frequency, timeStr] = parts
-  const freqLabels: Record<string, string> = {
-    'minute': '分钟',
-    'hour': '小时',
-    'day': '天',
-    'week': '周',
-    'month': '月',
-    'year': '年'
-  }
-  
-  const freqLabel = freqLabels[frequency] || frequency
-  const timeValues = timeStr.split(',').filter(t => t.trim())
-  
-  if (frequency === 'minute') {
-    return `每${freqLabel}第${timeValues.join('、')}秒执行`
-  } else if (frequency === 'hour') {
-    return `每${freqLabel}第${timeValues.join('、')}分钟执行`
-  } else if (frequency === 'day') {
-    return `每${freqLabel}第${timeValues.join('、')}小时执行`
-  } else if (frequency === 'week') {
-    return `每周${timeValues.join('、')}执行`
-  } else if (frequency === 'month') {
-    return `每月${timeValues.join('、')}日执行`
-  } else if (frequency === 'year') {
-    return `每年第${timeValues.join('、')}天执行`
-  }
-  
-  return `${freqLabel}: ${timeStr}`
-}
-
 const handleToggleDispatchStatus = (row: DispatchRule) => {
   ElMessage.success(`规则${row.status === 1 ? '启用' : '禁用'}成功`)
 }

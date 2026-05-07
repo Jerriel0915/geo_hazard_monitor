@@ -652,15 +652,6 @@ const handleAddMenu = () => {
   menuDialogVisible.value = true
 }
 
-const handleAddSubMenu = (row: Menu) => {
-  isEditMenu.value = false
-  menuDialogTitle.value = '新增子菜单'
-  resetMenuForm()
-  menuFormData.parentId = row.id
-  parentMenuName.value = row.name
-  menuDialogVisible.value = true
-}
-
 const handleEditMenu = (row: Menu) => {
   isEditMenu.value = true
   menuDialogTitle.value = '编辑菜单'
