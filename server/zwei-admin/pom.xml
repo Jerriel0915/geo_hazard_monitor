@@ -54,6 +54,12 @@
             <artifactId>zwei-generator</artifactId>
         </dependency>
 
+        <!-- IOT模块-->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-iot</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

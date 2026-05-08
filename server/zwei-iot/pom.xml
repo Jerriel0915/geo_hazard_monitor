@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>zwei</artifactId>
+        <groupId>com.zwei</groupId>
+        <version>3.9.2</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>zwei-iot</artifactId>
+
+    <description>
+        IOT物联网模块 - 隐患点管理、设备管理、监测数据等
+    </description>
+
+    <dependencies>
+
+        <!-- 通用工具-->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-common</artifactId>
+        </dependency>
+
+    </dependencies>
+
+</project>

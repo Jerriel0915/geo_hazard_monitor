@@ -163,6 +163,13 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+            <!-- IOT模块-->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-iot</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
             <!-- 通用工具-->
             <dependency>
                 <groupId>com.zwei</groupId>
@@ -180,6 +187,7 @@
         <module>zwei-quartz</module>
         <module>zwei-generator</module>
         <module>zwei-common</module>
+        <module>zwei-iot</module>
     </modules>
     <packaging>pom</packaging>
 
