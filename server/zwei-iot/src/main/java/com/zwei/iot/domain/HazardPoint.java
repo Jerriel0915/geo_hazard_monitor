@@ -4,6 +4,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.zwei.common.core.domain.BaseEntity;
 
@@ -213,5 +215,17 @@ public class HazardPoint extends BaseEntity
                 ", statusName='" + statusName + '\'' +
                 ", deviceCount=" + deviceCount +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        HazardPoint that = (HazardPoint) o;
+        return Objects.equals(getId(), that.getId()) && Objects.equals(getCode(), that.getCode()) && Objects.equals(getName(), that.getName()) && Objects.equals(getGroupId(), that.getGroupId()) && Objects.equals(getGroupName(), that.getGroupName()) && Objects.equals(getLongitude(), that.getLongitude()) && Objects.equals(getLatitude(), that.getLatitude()) && Objects.equals(getStrike(), that.getStrike()) && Objects.equals(getDescription(), that.getDescription()) && Objects.equals(getStatus(), that.getStatus()) && Objects.equals(getStatusName(), that.getStatusName()) && Objects.equals(getDeviceCount(), that.getDeviceCount()) && Objects.equals(getDelFlag(), that.getDelFlag());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getCode(), getName(), getGroupId(), getGroupName(), getLongitude(), getLatitude(), getStrike(), getDescription(), getStatus(), getStatusName(), getDeviceCount(), getDelFlag());
     }
 }
