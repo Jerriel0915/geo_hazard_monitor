@@ -12,6 +12,7 @@
             <div class="qrcode-title">打开微信扫一扫</div>
             <div class="qrcode-desc">手机轻松处理工作</div>
             <div class="qrcode-img">
+              <!--此处为二维码 -->
               <svg viewBox="0 0 200 200" class="qrcode-svg">
                 <rect width="200" height="200" fill="white"/>
                 <rect x="30" y="30" width="30" height="30" fill="#333"/>
@@ -77,23 +78,23 @@
                 />
               </el-form-item>
               <!-- 算术验证码 -->
-              <el-form-item class="captcha-item">
+              <el-form-item class="captcha-item" v-if="captchaEnabled">
                 <div class="captcha-wrapper">
                   <el-input
                     v-model="loginForm.captcha"
                     placeholder="请输入验证码"
                     prefix-icon="Grid"
                     class="captcha-input"
-                    @keyup.enter="handleLogin"
+                    @keyup.enter="login"
                   />
-                  <div class="captcha-code" @click="generateCaptcha">
-                    <span class="captcha-text">{{ captchaExpr }}</span>
+                  <div class="captcha-code" @click="getCaptcha">
+                    <img :src="captchaImage" alt="验证码" class="captcha-img" />
                     <span class="captcha-refresh" title="点击刷新">↻</span>
                   </div>
                 </div>
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" @click="handleLogin" class="login-btn">
+                <el-button type="primary" @click="login" class="login-btn">
                   登 录
                 </el-button>
               </el-form-item>
@@ -120,84 +121,77 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import axios from 'axios'
 
 const router = useRouter()
 
 const loginFormRef = ref()
 
+// 登录表单数据
 const loginForm = reactive({
-  username: '',
-  password: '',
-  captcha: ''
+  username: '',       //账号
+  password: '',       //密码
+  captcha: '',        //验证码
 })
 
-const captchaExpr = ref('')
-let captchaAnswer = 0
 
-const generateCaptcha = () => {
-  const operators = ['+', '-', '*']
-  const operator = operators[Math.floor(Math.random() * operators.length)]
-  let num1 = Math.floor(Math.random() * 20) + 1
-  let num2 = Math.floor(Math.random() * 20) + 1
+const captchaImage = ref('')        //验证码图片
+let captchaAnswer = 0               //验证码答案
+let captchaKey = ''                 //验证码key
+const captchaEnabled = ref(false)           //验证码是否启用，默认启用
 
-  // 确保减法结果不为负数
-  if (operator === '-' && num1 < num2) {
-    [num1, num2] = [num2, num1]
+//向后端获取验证码
+const getCaptcha = async () => {
+  try{
+
+    const res = await axios.get('/api/v1/system/auth/captcha')
+
+    //验证码key
+    captchaKey = res.data.data.captchaKey
+
+    //验证码图片
+    captchaImage.value = 'data:image/png;base64,' + res.data.data.captchaImage
+    //验证码是否启用，默认启用
+    captchaEnabled.value = res.data.data.captchaEnabled
+
+    //清空验证码输入框
+    loginForm.captcha = ''
+  }catch(err){
+    ElMessage.error('获取验证码失败')
   }
-
-  switch (operator) {
-    case '+':
-      captchaAnswer = num1 + num2
-      break
-    case '-':
-      captchaAnswer = num1 - num2
-      break
-    case '*':
-      // 乘法使用较小的数字
-      num1 = Math.floor(Math.random() * 9) + 1
-      num2 = Math.floor(Math.random() * 9) + 1
-      captchaAnswer = num1 * num2
-      break
-  }
-
-  const operatorMap: Record<string, string> = {
-    '+': '+',
-    '-': '-',
-    '*': '×'
-  }
-
-  captchaExpr.value = `${num1} ${operatorMap[operator]} ${num2} = ?`
-  loginForm.captcha = ''
 }
 
-const handleLogin = () => {
-  if (!loginForm.username) {
-    ElMessage.warning('请输入账号')
-    return
-  }
-  if (!loginForm.password) {
-    ElMessage.warning('请输入密码')
-    return
-  }
-  if (!loginForm.captcha) {
-    ElMessage.warning('请输入验证码')
-    return
-  }
+// 登录函数
+const login = async () => {
+  try {
+    // 1. 构建登录参数
+    const loginData: Record<string, any> = {
+      username: loginForm.username,
+      password: loginForm.password
+    }
 
-  const userAnswer = parseInt(loginForm.captcha)
-  if (isNaN(userAnswer) || userAnswer !== captchaAnswer) {
-    ElMessage.error('验证码错误，请重新输入')
-    generateCaptcha()
-    return
-  }
+    // 2. 开启验证码才携带
+    if (captchaEnabled.value) {
+      loginData.code = loginForm.captcha
+      loginData.uuid = captchaKey
+    }
 
-  localStorage.setItem('token', 'mock-token')
-  ElMessage.success('登录成功')
-  router.push('/dashboard')
+    // 3. 发送请求
+    const res = await axios.post('/api/v1/system/auth/login', loginData)
+
+    //4. 登录成功逻辑将token存储到本地存储
+    localStorage.setItem('token', res.data.data.token)
+    ElMessage.success('登录成功')
+    router.push('/dashboard')
+  } catch (error) {
+    // 请求异常
+    ElMessage.error('登录请求失败')
+    getCaptcha()
+  }
 }
 
 onMounted(() => {
-  generateCaptcha()
+  getCaptcha()
 })
 </script>
 
@@ -342,7 +336,7 @@ onMounted(() => {
 }
 
 .captcha-code {
-  width: 120px;
+  width: 140px;
   height: 42px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 4px;
@@ -369,6 +363,12 @@ onMounted(() => {
 .captcha-refresh {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.8);
+}
+
+.captcha-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   
 }
 
 .login-btn {
