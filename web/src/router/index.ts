@@ -35,7 +35,8 @@ const routes: RouteRecordRaw[] = [
       { path: '/system/identity', name: 'Identity', component: () => import('@/views/system/Identity.vue') },
       { path: '/system/permission', name: 'Permission', component: () => import('@/views/system/Permission.vue') },
       { path: '/system/log', name: 'Log', component: () => import('@/views/system/Log.vue') },
-      { path: '/system/settings', name: 'Settings', component: () => import('@/views/system/Settings.vue') }
+      { path: '/system/settings', name: 'Settings', component: () => import('@/views/system/Settings.vue') },
+      { path: '/user/profile', name: 'UserProfile', component: () => import('@/views/user/UserProfile.vue') }
     ]
   }
 ]

@@ -350,7 +350,8 @@ const menuRouteMap: Record<string, string> = {
   Identity: '/system/identity',
   Permission: '/system/permission',
   Log: '/system/log',
-  Settings: '/system/settings'
+  Settings: '/system/settings',
+  UserProfile: '/user/profile'
 }
 
 const menuLabelMap: Record<string, string> = {
@@ -377,7 +378,8 @@ const menuLabelMap: Record<string, string> = {
   Identity: '身份管理',
   Permission: '权限管理',
   Log: '日志管理',
-  Settings: '系统设置'
+  Settings: '系统设置',
+  UserProfile: '个人信息'
 }
 
 const handleMenuSelect = (key: string) => {
@@ -427,7 +429,7 @@ const handleTabAction = (command: string) => {
 
 const handleUserCommand = (command: string) => {
   if (command === 'info') {
-    infoDialogVisible.value = true
+    router.push('/user/profile')
   } else if (command === 'password') {
     pwdDialogVisible.value = true
   } else if (command === 'logout') {

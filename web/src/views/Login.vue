@@ -136,7 +136,6 @@ const loginForm = reactive({
 
 
 const captchaImage = ref('')        //验证码图片
-let captchaAnswer = 0               //验证码答案
 let captchaKey = ''                 //验证码key
 const captchaEnabled = ref(false)           //验证码是否启用，默认启用
 
@@ -144,7 +143,7 @@ const captchaEnabled = ref(false)           //验证码是否启用，默认启�
 const getCaptcha = async () => {
   try{
 
-    const res = await axios.get('/api/v1/system/auth/captcha')
+    const res = await axios.get('/api/v1/auth/captcha')
 
     //验证码key
     captchaKey = res.data.data.captchaKey
@@ -177,10 +176,26 @@ const login = async () => {
     }
 
     // 3. 发送请求
-    const res = await axios.post('/api/v1/system/auth/login', loginData)
+    const res = await axios.post('/api/v1/auth/login', loginData)
 
     //4. 登录成功逻辑将token存储到本地存储
     localStorage.setItem('token', res.data.data.token)
+
+    //5. 获取用户信息并存储
+    const userRes = await axios.get('/api/v1/auth/getInfo', {
+      headers: { Authorization: `Bearer ${res.data.data.token}` }
+    })
+    const user = userRes.data.data?.user
+    if (user) {
+      localStorage.setItem('userInfo', JSON.stringify({
+        id: user.userId,
+        username: user.username,
+        realName: user.nickName,
+        orgId: user.deptId,
+        orgName: user.deptName
+      }))
+    }
+
     ElMessage.success('登录成功')
     router.push('/dashboard')
   } catch (error) {
