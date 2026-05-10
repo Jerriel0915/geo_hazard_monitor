@@ -14,7 +14,6 @@ import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.poi.ExcelUtil;
-import com.zwei.system.domain.SysPost;
 import com.zwei.system.service.ISysDeptService;
 import com.zwei.system.service.ISysPostService;
 import com.zwei.system.service.ISysRoleService;
@@ -54,7 +53,6 @@ public class SysUserController extends BaseController
 
     /**
      * 分页查询用户列表
-     * 注意：nickName映射为文档中的realName
      */
     @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/page")
@@ -106,44 +104,22 @@ public class SysUserController extends BaseController
 
     /**
      * 获取用户详情
-     * 注意：nickName映射为文档中的realName
      */
     @PreAuthorize("@ss.hasPermi('system:user:query')")
     @GetMapping(value = { "/", "/{userId}" })
     public AjaxResult getInfo(@PathVariable(required = false) Long userId)
     {
-        AjaxResult ajax = AjaxResult.success();
-        if (StringUtils.isNotNull(userId))
+        if (StringUtils.isNull(userId))
         {
-            userService.checkUserDataScope(userId);
-            SysUser sysUser = userService.selectUserById(userId);
-            SysUserResponse resp = SysUserResponse.fromEntity(sysUser);
-            resp.setPostIds(postService.selectPostListByUserId(userId));
-            resp.setRoleIds(sysUser.getRoles() == null ? null
-                    : sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
-            List<SysRole> roles = roleService.selectRoleAll();
-            List<SysRole> selectableRoles = SecurityUtils.isAdmin(userId) ? roles
-                    : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList());
-            List<SysUserResponse.SysRoleResponse> roleList = selectableRoles.stream().map(r -> {
-                SysUserResponse.SysRoleResponse rr = new SysUserResponse.SysRoleResponse();
-                rr.setRoleId(r.getRoleId());
-                rr.setRoleName(r.getRoleName());
-                rr.setRoleKey(r.getRoleKey());
-                return rr;
-            }).collect(Collectors.toList());
-            resp.setRoles(roleList);
-            List<SysPost> postList = postService.selectPostAll();
-            List<SysUserResponse.SysPostResponse> postRespList = postList.stream().map(p -> {
-                SysUserResponse.SysPostResponse pr = new SysUserResponse.SysPostResponse();
-                pr.setPostId(p.getPostId());
-                pr.setPostName(p.getPostName());
-                pr.setPostCode(p.getPostCode());
-                return pr;
-            }).collect(Collectors.toList());
-            resp.setPosts(postRespList);
-            ajax.put(AjaxResult.DATA_TAG, resp);
+            return AjaxResult.success();
         }
-        return ajax;
+        userService.checkUserDataScope(userId);
+        SysUser sysUser = userService.selectUserById(userId);
+        SysUserResponse resp = SysUserResponse.fromEntity(sysUser);
+        resp.setPostIds(postService.selectPostListByUserId(userId));
+        resp.setRoleIds(sysUser.getRoles() == null ? null
+                : sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
+        return AjaxResult.success("成功", resp);
     }
 
     /**

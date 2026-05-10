@@ -51,14 +51,18 @@ public class SysUserResponse
     /** 创建时间 */
     private Date createTime;
 
-    /** 创建者（映射为文档中的creator） */
-    private String creator;
+    /**
+     * 创建者
+     */
+    private String createBy;
 
     /** 更新时间 */
     private Date updateTime;
 
-    /** 更新者（映射为文档中的updater） */
-    private String updater;
+    /**
+     * 更新者
+     */
+    private String updateBy;
 
     /** 备注 */
     private String remark;
@@ -185,14 +189,12 @@ public class SysUserResponse
         this.createTime = createTime;
     }
 
-    public String getCreator()
-    {
-        return creator;
+    public String getCreateBy() {
+        return createBy;
     }
 
-    public void setCreator(String creator)
-    {
-        this.creator = creator;
+    public void setCreateBy(String createBy) {
+        this.createBy = createBy;
     }
 
     public Date getUpdateTime()
@@ -205,14 +207,12 @@ public class SysUserResponse
         this.updateTime = updateTime;
     }
 
-    public String getUpdater()
-    {
-        return updater;
+    public String getUpdateBy() {
+        return updateBy;
     }
 
-    public void setUpdater(String updater)
-    {
-        this.updater = updater;
+    public void setUpdateBy(String updateBy) {
+        this.updateBy = updateBy;
     }
 
     public String getRemark()
@@ -308,7 +308,7 @@ public class SysUserResponse
     /**
      * 从SysUser实体映射为响应DTO
      * 注意：nickName映射为realName，userId映射为id，userName映射为username
-     * deptId映射为orgId，loginDate映射为lastLoginTime，createBy映射为creator，updateBy映射为updater
+     * deptId映射为orgId，loginDate映射为lastLoginTime
      */
     public static SysUserResponse fromEntity(com.zwei.common.core.domain.entity.SysUser user)
     {
@@ -335,9 +335,9 @@ public class SysUserResponse
         }
         resp.setLastLoginTime(user.getLoginDate());
         resp.setCreateTime(user.getCreateTime());
-        resp.setCreator(user.getCreateBy());
+        resp.setCreateBy(user.getCreateBy());
         resp.setUpdateTime(user.getUpdateTime());
-        resp.setUpdater(user.getUpdateBy());
+        resp.setUpdateBy(user.getUpdateBy());
         resp.setRemark(user.getRemark());
         return resp;
     }
