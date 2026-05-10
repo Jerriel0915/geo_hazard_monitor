@@ -50,32 +50,36 @@
             <el-button @click="handleBatchComplete" :disabled="selectedRows.length === 0" type="warning">
               <span class="btn-icon">✓</span> 完结
             </el-button>
-            <el-button @click="handleExport">
+            <el-button @click="handleExportData">
               <span class="btn-icon">↓</span> 导出
             </el-button>
           </div>
         </div>
 
         <div class="search-bar">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索编号或名称"
-            class="search-input"
-            clearable
-            @clear="handleSearch"
-            @keyup.enter="handleSearch"
-          >
-            <template #prefix>
-              <span class="search-icon">🔍</span>
-            </template>
-          </el-input>
-          <el-select v-model="searchStatus" placeholder="状态" clearable class="status-select">
-            <el-option label="监测中" value="MONITORING" />
-            <el-option label="停测中" value="PAUSED" />
-            <el-option label="已完结" value="COMPLETED" />
-          </el-select>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-        </div>
+  <el-select v-model="searchType" placeholder="搜索方式" class="search-type-select">
+    <el-option label="按名称" value="name" />
+    <el-option label="按编号" value="code" />
+  </el-select>
+  <el-input
+    v-model="searchKeyword"
+    :placeholder="searchType === 'name' ? '搜索名称' : '搜索编号'"
+    class="search-input"
+    clearable
+    @clear="handleSearch"
+    @keyup.enter="handleSearch"
+  >
+    <template #prefix>
+      <span class="search-icon">🔍</span>
+    </template>
+  </el-input>
+  <el-select v-model="searchStatus" placeholder="状态" clearable class="status-select">
+    <el-option label="监测中" value="MONITORING" />
+    <el-option label="停测中" value="PAUSED" />
+    <el-option label="已完结" value="COMPLETED" />
+  </el-select>
+  <el-button type="primary" @click="handleSearch">搜索</el-button>
+</div>
 
         <div class="table-container">
           <el-table
@@ -824,6 +828,7 @@ import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox, ElTree } from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import axios from 'axios'
 
 interface HazardPointItem {
   id: string
@@ -920,6 +925,7 @@ const searchStatus = ref('')
 const groupPanelWidth = ref(200)
 const activeTab = ref('basic')
 const selectedRows = ref<HazardPointItem[]>([])
+const searchType = ref('name')  // 默认按名称搜索
 
 // 分组面板相关
 const showGroupPanel = ref(true)
@@ -941,10 +947,12 @@ const groupFormRef = ref()
 const groupFormData = reactive({
   id: '',
   name: '',
+  code: '',
   description: '',
   sortOrder: 0
 })
 
+//#region 分组名称校验
 const validateGroupName = (_rule: any, value: string, callback: any) => {
   if (!value) {
     callback()
@@ -1029,8 +1037,12 @@ const alarmFormRules = {
   monitorTypeId: [{ required: true, message: '请选择监测类型', trigger: 'blur' }],
   monitorContentCode: [{ required: true, message: '请选择监测内容', trigger: 'blur' }]
 }
+
+//#region 告警等级类型
 const currentEditingAlarmLevel = ref('')
 
+
+//#region 监测类型
 const monitorTypeList = ref<{ id: string; name: string; code: string; contents: { value: string; label: string; unit: string }[] }[]>([
   { id: '1', name: '地表位移监测', code: 'DISPLACEMENT', contents: [
     { value: 'displacement_x', label: 'X方向位移', unit: 'mm' },
@@ -1152,6 +1164,7 @@ const getStatusTagType = (status: string) => {
   return types[status] || 'default'
 }
 
+//#region 告警等级类型
 const getAlarmLevelType = (level: string) => {
   const types: Record<string, string> = {
     '蓝色预警': 'primary',
@@ -1166,6 +1179,7 @@ const getAlarmLevelType = (level: string) => {
   return types[level] || 'default'
 }
 
+// 通知渠道标签
 const getChannelLabel = (channel: string) => {
   const labels: Record<string, string> = {
     'SYSTEM': '系统消息',
@@ -1183,116 +1197,120 @@ const handleToggleDispatchStatus = (row: DispatchRule) => {
   ElMessage.success(`规则${row.status === 1 ? '启用' : '禁用'}成功`)
 }
 
-const initTableData = () => {
+// ==================== 加载隐患点列表 ====================
+// 用途：分页查询隐患点，支持编号/名称搜索、状态筛选、分组筛选
+const loadTableData = async () => {
   loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      {
-        id: '1',
-        code: 'HP001',
-        name: '龙潭寺滑坡隐患点',
-        groupId: '1',
-        groupName: '未分组',
-        status: 'MONITORING',
-        statusName: '监测中',
-        statusColor: '#67C23A',
-        longitude: 104.156789,
-        latitude: 30.678901,
-        strike: 45,
-        description: '该区域存在滑坡风险，需要重点监测',
-        deviceCount: 2,
-        createTime: '2024-01-15 10:30:00',
-        creator: '张三',
-        updater: '李四',
-        updateTime: '2024-01-20 14:00:00'
-      },
-      {
-        id: '2',
-        code: 'HP002',
-        name: '青城山崩塌隐患点',
-        groupId: '2',
-        groupName: '高风险区',
-        status: 'MONITORING',
-        statusName: '监测中',
-        statusColor: '#67C23A',
-        longitude: 103.589234,
-        latitude: 30.891234,
-        strike: 90,
-        description: '岩石崩塌风险较高',
-        deviceCount: 1,
-        createTime: '2024-01-16 14:20:00',
-        creator: '李四',
-        updater: '张三',
-        updateTime: '2024-01-18 10:30:00'
-      },
-      {
-        id: '3',
-        code: 'HP003',
-        name: '瓦屋山泥石流隐患点',
-        groupId: '',
-        groupName: '',
-        status: 'MONITORING',
-        statusName: '监测中',
-        statusColor: '#67C23A',
-        longitude: 102.891234,
-        latitude: 29.589234,
-        description: '雨季可能出现泥石流',
-        deviceCount: 1,
-        createTime: '2024-01-17 09:15:00'
-      },
-      {
-        id: '4',
-        code: 'HP004',
-        name: '峨眉山边坡隐患点',
-        groupId: '4',
-        groupName: '低风险区',
-        status: 'PAUSED',
-        statusName: '停测中',
-        statusColor: '#E6A23C',
-        longitude: 103.334567,
-        latitude: 29.556789,
-        strike: 180,
-        description: '边坡稳定性较差',
-        deviceCount: 0,
-        createTime: '2024-01-18 11:00:00'
-      },
-      {
-        id: '5',
-        code: 'HP005',
-        name: '都江堰裂缝隐患点',
-        groupId: '3',
-        groupName: '中风险区',
-        status: 'COMPLETED',
-        statusName: '已完结',
-        statusColor: '#909399',
-        longitude: 103.654321,
-        latitude: 30.987654,
-        description: '已完成治理，监测结束',
-        deviceCount: 0,
-        createTime: '2024-01-19 10:00:00'
+  try {
+    const token = localStorage.getItem('token')
+    
+    const params: any = {
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    }
+    
+    // 搜索关键词：根据选择的搜索方式传参
+    if (searchKeyword.value) {
+      if (searchType.value === 'name') {
+        params.name = searchKeyword.value
+      } else {
+        params.code = searchKeyword.value
       }
-    ]
-    total.value = tableData.value.length
+    }
+    
+    // 状态筛选
+    if (searchStatus.value) {
+      const statusMap: Record<string, number> = {
+        'MONITORING': 1,
+        'PAUSED': 2,
+        'COMPLETED': 3
+      }
+      params.status = statusMap[searchStatus.value]
+    }
+    
+    // 分组筛选
+    if (selectedGroupId.value) {
+      params.groupId = parseInt(selectedGroupId.value)
+    }
+    
+    const response = await axios.get('/api/v1/hazard-points/page', {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    if (response.data.code === 200) {
+      const data = response.data.data
+      tableData.value = data.rows.map((item: any) => ({
+        id: String(item.id),
+        code: item.code,
+        name: item.name,
+        groupId: item.groupId ? String(item.groupId) : '',
+        groupName: item.groupName || '',
+        status: item.status === 1 ? 'MONITORING' : item.status === 2 ? 'PAUSED' : 'COMPLETED',
+        statusName: item.statusName,
+        longitude: item.longitude,
+        latitude: item.latitude,
+        strike: item.strike,
+        description: item.description,
+        deviceCount: item.deviceCount,
+        createTime: item.createTime,
+        updateTime: item.updateTime
+      }))
+      total.value = data.total
+    } else {
+      ElMessage.error(response.data.msg || '获取数据失败')
+    }
+  } catch (error) {
+    console.error('请求失败:', error)
+    ElMessage.error('网络请求失败')
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
-const initGroupList = () => {
-  groupList.value = [
-    { id: 'all', name: '全部', code: 'ALL', description: '所有隐患点', sortOrder: 0, count: 5 },
-    { id: '1', name: '未分组', code: 'DEFAULT', description: '未分配到任何分组的隐患点', sortOrder: 1, count: 1 },
-    { id: '2', name: '高风险区', code: 'HIGH_RISK', description: '高风险隐患区域', sortOrder: 2, count: 1 },
-    { id: '3', name: '中风险区', code: 'MEDIUM_RISK', description: '中风险隐患区域', sortOrder: 3, count: 1 },
-    { id: '4', name: '低风险区', code: 'LOW_RISK', description: '低风险隐患区域', sortOrder: 4, count: 2 },
-    { id: '5', name: '重点监测区', code: 'KEY_AREA', description: '需要重点关注的监测区域', sortOrder: 5, count: 0 },
-    { id: '6', name: '待治理区', code: 'PENDING', description: '等待治理的隐患区域', sortOrder: 6, count: 0 },
-    { id: '7', name: '已治理区', code: 'TREATED', description: '已经完成治理的区域', sortOrder: 7, count: 0 },
-    { id: '8', name: '汛期重点区', code: 'FLOOD_SEASON', description: '汛期需要重点关注的区域', sortOrder: 8, count: 0 },
-    { id: '9', name: '地质灾害区', code: 'GEO_HAZARD', description: '地质灾害易发区域', sortOrder: 9, count: 0 },
-    { id: '10', name: '人为活动区', code: 'HUMAN_ACTIVITY', description: '人为活动频繁区域', sortOrder: 10, count: 0 },
-    { id: '11', name: '自然保护区', code: 'NATURE_RESERVE', description: '自然保护区内的隐患点', sortOrder: 11, count: 0 }
-  ]
-  loadGroupPage(1)
+// ==================== 加载分组列表 ====================
+// 用途：从后端获取分组列表，并添加"全部"选项
+const LoadGroupList = async () => {
+  loadingGroups.value = true
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get('/api/v1/hazard-point-groups', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    if (response.data.code === 200) {
+      const groups = response.data.data.map((item: any) => ({
+        id: String(item.id),
+        name: item.name,
+        code: item.code,
+        description: item.description,
+        sortOrder: item.sortOrder,
+        count: item.count
+      }))
+      
+      // 添加"全部"选项
+      groupList.value = [
+        {
+          id: 'all',
+          name: '全部',
+          code: 'ALL',
+          description: '所有隐患点',
+          sortOrder: -1,
+          count: total.value
+        },
+        ...groups
+      ]
+      
+      loadGroupPage(1) // 加载第一页分组（用于左侧列表分页）
+    } else {
+      ElMessage.error(response.data.msg || '获取分组失败')
+    }
+  } catch (error) {
+    console.error('获取分组失败:', error)
+    ElMessage.error('网络请求失败')
+  } finally {
+    loadingGroups.value = false
+  }
 }
 
 const loadGroupPage = (page: number) => {
@@ -1366,6 +1384,8 @@ const handleEditGroupFromSelect = (option: any) => {
   groupDialogVisible.value = true
 }
 
+// ==================== 删除分组 ====================
+// 用途：根据分组ID删除分组
 const handleDeleteGroupFromSelect = (option: any) => {
   const group = groupList.value.find(g => g.id === option.id)
   if (!group || group.id === 'all' || group.id === '1') {
@@ -1397,15 +1417,18 @@ const handleDeleteGroupFromSelect = (option: any) => {
   }).catch(() => {})
 }
 
+// ==================== 打开编辑分组弹窗 ====================
+// 用途：把选中分组的数据填入表单，打开编辑对话框
 const handleEditGroup = (group: GroupItem) => {
-  if (group.id === 'all' || group.id === '1') {
-    ElMessage.warning('该分组不允许修改')
+  if (group.id === 'all') {
+    ElMessage.warning('"全部"分组不允许修改')
     return
   }
   groupDialogTitle.value = '编辑分组'
   isEditGroup.value = true
   Object.assign(groupFormData, {
     id: group.id,
+    code: group.code,
     name: group.name,
     description: group.description,
     sortOrder: group.sortOrder
@@ -1413,61 +1436,92 @@ const handleEditGroup = (group: GroupItem) => {
   groupDialogVisible.value = true
 }
 
+// ==================== 删除分组 ====================
+// 用途：调用删除接口，删除选中的分组
 const handleDeleteGroup = (group: GroupItem) => {
-  if (group.id === 'all' || group.id === '1') {
-    ElMessage.warning('该分组不允许删除')
+  if (group.id === 'all') {
+    ElMessage.warning('"全部"分组不允许删除')
     return
   }
+  
   const confirmMsg = group.count > 0 
     ? `该分组下有 ${group.count} 个隐患点，删除后这些隐患点将被迁移到"未分组"中。确定要删除分组"${group.name}"吗?`
     : `确定要删除分组"${group.name}"吗?`
+    
   ElMessageBox.confirm(confirmMsg, '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    if (group.count > 0) {
-      tableData.value.forEach(item => {
-        if (item.groupId === group.id) {
-          item.groupId = '1'
-          item.groupName = '未分组'
-        }
+  }).then(async () => {
+    loading.value = true
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.delete(`/api/v1/hazard-point-groups/${group.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
+      
+      if (res.data.code === 200) {
+        ElMessage.success('删除成功')
+        LoadGroupList()  // 刷新分组列表
+      } else {
+        ElMessage.error(res.data.msg || '删除失败')
+      }
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('网络请求失败')
+    } finally {
+      loading.value = false
     }
-    const index = groupList.value.findIndex(g => g.id === group.id)
-    if (index > -1) {
-      groupList.value.splice(index, 1)
-      loadGroupPage(1)
-    }
-    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
-const handleGroupSubmit = () => {
-  groupFormRef.value.validate((valid: boolean) => {
+// ==================== 提交分组（新增/编辑） ====================
+// 用途：调用新增或编辑分组接口
+const handleGroupSubmit = async () => {
+  groupFormRef.value.validate(async (valid: boolean) => {
     if (valid) {
-      if (isEditGroup.value) {
-        const group = groupList.value.find(g => g.id === groupFormData.id)
-        if (group) {
-          group.name = groupFormData.name
-          group.description = groupFormData.description
-          group.sortOrder = groupFormData.sortOrder
+      loading.value = true
+      try {
+        const token = localStorage.getItem('token')
+        let res
+        
+        if (isEditGroup.value) {
+          // 编辑分组：调用 PUT 接口
+          res = await axios.put(`/api/v1/hazard-point-groups/${groupFormData.id}`, {
+            name: groupFormData.name,
+            description: groupFormData.description,
+            sortOrder: groupFormData.sortOrder,
+            status: 1
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        } else {
+          // 新增分组：生成唯一编码
+          const code = `G${Date.now()}`
+          res = await axios.post('/api/v1/hazard-point-groups', {
+            code: code,
+            name: groupFormData.name,
+            description: groupFormData.description,
+            sortOrder: groupFormData.sortOrder,
+            status: 1
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
         }
-        ElMessage.success('修改成功')
-      } else {
-        const newGroup: GroupItem = {
-          id: String(Date.now()),
-          name: groupFormData.name,
-          code: groupFormData.name.toUpperCase().replace(/\s+/g, '_'),
-          description: groupFormData.description,
-          sortOrder: groupFormData.sortOrder,
-          count: 0
+        
+        if (res.data.code === 200) {
+          ElMessage.success(isEditGroup.value ? '修改成功' : '新增成功')
+          groupDialogVisible.value = false
+          LoadGroupList()  // 刷新分组列表
+        } else {
+          ElMessage.error(res.data.msg || '操作失败')
         }
-        groupList.value.push(newGroup)
-        ElMessage.success('新增成功')
+      } catch (error) {
+        console.error('提交失败:', error)
+        ElMessage.error('网络请求失败')
+      } finally {
+        loading.value = false
       }
-      loadGroupPage(1)
-      groupDialogVisible.value = false
     }
   })
 }
@@ -1490,28 +1544,38 @@ const startResize = (e: MouseEvent) => {
   document.addEventListener('mouseup', onMouseUp)
 }
 
+// ==================== 选择分组 ====================
+// 用途：点击左侧分组，触发筛选
 const handleSelectGroup = (group: GroupItem) => {
   selectedGroupId.value = group.id === 'all' ? null : group.id
   handleSearch()
 }
 
+// ==================== 搜索隐患点 ====================
+// 用途：根据分组ID和搜索关键词查询隐患点
 const handleSearch = () => {
   currentPage.value = 1
-  initTableData()
+  loadTableData()
 }
 
+// ==================== 分页 ====================
+// 用途：根据当前页码和每页数量查询隐患点
 const handleSizeChange = () => {
-  initTableData()
+  loadTableData()
 }
 
+// ==================== 分页 ====================
+// 用途：根据当前页码和每页数量查询隐患点
 const handlePageChange = () => {
-  initTableData()
+  loadTableData()
 }
 
 const handleSelectionChange = (val: HazardPointItem[]) => {
   selectedRows.value = val
 }
 
+// ==================== 打开新增弹窗 ====================
+// 用途：清空表单，打开新增对话框
 const handleAdd = () => {
   dialogTitle.value = '新增隐患点'
   isEdit.value = false
@@ -1530,7 +1594,10 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
+// ==================== 打开编辑弹窗 ====================
+// 用途：把选中行的数据填入表单，打开编辑对话框
 const handleEdit = (row: HazardPointItem) => {
+  currentRow.value = row  // 保存当前行，用于修改接口
   dialogTitle.value = '编辑隐患点'
   isEdit.value = true
   Object.assign(formData, {
@@ -1542,9 +1609,6 @@ const handleEdit = (row: HazardPointItem) => {
     strike: row.strike || 0,
     description: row.description || ''
   })
-  polygonCoords.value = []
-  strikeCoords.value = []
-  strikeAngle.value = 0
   dialogVisible.value = true
 }
 
@@ -1602,34 +1666,88 @@ const initDetailMap = () => {
   }
 }
 
-const handleDelete = (row: HazardPointItem) => {
-  ElMessageBox.confirm(`确定要删除隐患点"${row.name}"吗?`, '删除确认', {
+// ==================== 删除隐患点 ====================
+// 用途：调用删除接口，删除选中的隐患点
+const handleDelete = async (row: any) => {
+  ElMessageBox.confirm(`确定要删除隐患点"${row.name}"吗？`, '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const index = tableData.value.findIndex(item => item.id === row.id)
-    if (index > -1) {
-      tableData.value.splice(index, 1)
-      total.value--
+  }).then(async () => {
+    loading.value = true
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.delete(`/api/v1/hazard-points/${row.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (res.data.code === 200) {
+        ElMessage.success('删除成功')
+        loadTableData() // 刷新列表
+        LoadGroupList() // 刷新分组列表
+      } else {
+        ElMessage.error(res.data.msg || '删除失败')
+      }
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('网络请求失败')
+    } finally {
+      loading.value = false
     }
-    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
-const handleExport = () => {
-  ElMessage.info('正在导出...')
-  setTimeout(() => {
-    ElMessage.success('导出成功')
-  }, 1000)
-}
-
-const handleSubmit = () => {
-  formRef.value.validate((valid: boolean) => {
+// ==================== 新增/编辑隐患点 ====================
+// 用途：提交表单，调用新增或修改接口
+const handleSubmit = async () => {
+  formRef.value.validate(async (valid: boolean) => {
     if (valid) {
-      ElMessage.success('保存成功')
-      dialogVisible.value = false
-      initTableData()
+      loading.value = true
+      try {
+        const token = localStorage.getItem('token')
+        let res
+        
+        if (isEdit.value) {
+          // 编辑模式：调用修改接口 PUT /api/v1/hazard-points/{id}
+          res = await axios.put(`/api/v1/hazard-points/${currentRow.value?.id}`, {
+            name: formData.name,
+            groupId: formData.groupId ? Number(formData.groupId) : null,
+            longitude: formData.longitude,
+            latitude: formData.latitude,
+            strike: formData.strike || 0,
+            description: formData.description
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        } else {
+          // 新增模式：调用新增接口 POST /api/v1/hazard-points
+          res = await axios.post('/api/v1/hazard-points', {
+            code: formData.code,
+            name: formData.name,
+            groupId: formData.groupId ? Number(formData.groupId) : null,
+            longitude: formData.longitude,
+            latitude: formData.latitude,
+            strike: formData.strike || 0,
+            description: formData.description
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        }
+        
+        if (res.data.code === 200) {
+          ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
+          dialogVisible.value = false
+          loadTableData() // 刷新列表
+          LoadGroupList() // 刷新分组列表
+        } else {
+          ElMessage.error(res.data.msg || '操作失败')
+        }
+      } catch (error) {
+        console.error('提交失败:', error)
+        ElMessage.error('网络请求失败')
+      } finally {
+        loading.value = false
+      }
     }
   })
 }
@@ -2203,8 +2321,8 @@ const handleBatchComplete = () => {
 }
 
 onMounted(() => {
-  initTableData()
-  initGroupList()
+  loadTableData()
+  LoadGroupList()
 })
 </script>
 
@@ -2829,5 +2947,9 @@ onMounted(() => {
   background-color: #f5f5f5;
   color: #757575;
   border: 1px solid #e0e0e0;
+}
+
+.search-type-select {
+  width: 100px;
 }
 </style>
