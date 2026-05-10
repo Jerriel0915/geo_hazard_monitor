@@ -1,10 +1,5 @@
 package com.zwei.common.core.domain.entity;
 
-import java.util.Date;
-import java.util.List;
-import jakarta.validation.constraints.*;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.zwei.common.annotation.Excel;
@@ -14,6 +9,14 @@ import com.zwei.common.annotation.Excels;
 import com.zwei.common.core.domain.BaseEntity;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.xss.Xss;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+import java.util.Date;
+import java.util.List;
 
 /**
  * 用户对象 sys_user
@@ -57,6 +60,18 @@ public class SysUser extends BaseEntity
 
     /** 密码 */
     private String password;
+
+    /**
+     * 旧密码（非持久化字段，仅用于密码修改）
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String oldPassword;
+
+    /**
+     * 新密码（非持久化字段，仅用于密码修改）
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String newPassword;
 
     /** 账号状态（0正常 1停用） */
     @Excel(name = "账号状态", readConverterExp = "0=正常,1=停用")
@@ -208,6 +223,22 @@ public class SysUser extends BaseEntity
     public void setPassword(String password)
     {
         this.password = password;
+    }
+
+    public String getOldPassword() {
+        return oldPassword;
+    }
+
+    public void setOldPassword(String oldPassword) {
+        this.oldPassword = oldPassword;
+    }
+
+    public String getNewPassword() {
+        return newPassword;
+    }
+
+    public void setNewPassword(String newPassword) {
+        this.newPassword = newPassword;
     }
 
     public String getStatus()

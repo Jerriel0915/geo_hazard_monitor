@@ -106,17 +106,13 @@ public class SysUserController extends BaseController
      * 获取用户详情
      */
     @PreAuthorize("@ss.hasPermi('system:user:query')")
-    @GetMapping(value = { "/", "/{userId}" })
-    public AjaxResult getInfo(@PathVariable(required = false) Long userId)
+    @GetMapping("/{id}")
+    public AjaxResult getInfo(@PathVariable Long id)
     {
-        if (StringUtils.isNull(userId))
-        {
-            return AjaxResult.success();
-        }
-        userService.checkUserDataScope(userId);
-        SysUser sysUser = userService.selectUserById(userId);
+        userService.checkUserDataScope(id);
+        SysUser sysUser = userService.selectUserById(id);
         SysUserResponse resp = SysUserResponse.fromEntity(sysUser);
-        resp.setPostIds(postService.selectPostListByUserId(userId));
+        resp.setPostIds(postService.selectPostListByUserId(id));
         resp.setRoleIds(sysUser.getRoles() == null ? null
                 : sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
         return AjaxResult.success("成功", resp);
@@ -146,7 +142,10 @@ public class SysUserController extends BaseController
         }
         user.setCreateBy(getUsername());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
-        return toAjax(userService.insertUser(user));
+        userService.insertUser(user);
+        return AjaxResult.success("新增成功", new HashMap<String, Long>() {{
+            put("id", user.getUserId());
+        }});
     }
 
     /**
@@ -154,8 +153,8 @@ public class SysUserController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:user:edit')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
-    @PutMapping
-    public AjaxResult edit(@Validated @RequestBody SysUser user)
+    @PutMapping("/{id}")
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SysUser user)
     {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
@@ -173,6 +172,7 @@ public class SysUserController extends BaseController
         {
             return error("修改用户'" + user.getUserName() + "'失败，邮箱账号已存在");
         }
+        user.setUserId(id);
         user.setUpdateBy(getUsername());
         return toAjax(userService.updateUser(user));
     }
@@ -182,27 +182,44 @@ public class SysUserController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:user:remove')")
     @Log(title = "用户管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{userIds}")
-    public AjaxResult remove(@PathVariable Long[] userIds)
-    {
-        if (ArrayUtils.contains(userIds, getUserId()))
-        {
+    @DeleteMapping("/{id}")
+    public AjaxResult remove(@PathVariable Long id) {
+        if (id.equals(getUserId())) {
             return error("当前用户不能删除");
         }
-        return toAjax(userService.deleteUserByIds(userIds));
+        return toAjax(userService.deleteUserByIds(new Long[]{id}));
     }
 
     /**
-     * 重置密码
+     * 批量删除用户
+     */
+    @PreAuthorize("@ss.hasPermi('system:user:remove')")
+    @Log(title = "用户管理", businessType = BusinessType.DELETE)
+    @DeleteMapping("/batch")
+    public AjaxResult batchRemove(@RequestBody Long[] ids)
+    {
+        if (ArrayUtils.contains(ids, getUserId()))
+        {
+            return error("当前用户不能删除");
+        }
+        return toAjax(userService.deleteUserByIds(ids));
+    }
+
+    /**
+     * 修改密码
      */
     @PreAuthorize("@ss.hasPermi('system:user:resetPwd')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
-    @PutMapping("/resetPwd")
-    public AjaxResult resetPwd(@RequestBody SysUser user)
+    @PutMapping("/{id}/password")
+    public AjaxResult changePassword(@PathVariable Long id, @RequestBody SysUser user)
     {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
-        user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
+        if (!SecurityUtils.matchesPassword(user.getOldPassword(), userService.selectUserById(id).getPassword())) {
+            return error("旧密码不正确");
+        }
+        user.setUserId(id);
+        user.setPassword(SecurityUtils.encryptPassword(user.getNewPassword()));
         user.setUpdateBy(getUsername());
         return toAjax(userService.resetPwd(user));
     }
