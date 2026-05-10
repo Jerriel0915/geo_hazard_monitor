@@ -21,6 +21,7 @@ const routes: RouteRecordRaw[] = [
       { path: '/basic/monitor-type', name: 'MonitorType', component: () => import('@/views/basic/MonitorType.vue') },
       { path: '/basic/device', name: 'Device', component: () => import('@/views/basic/Device.vue') },
       { path: '/basic/video-device', name: 'VideoDevice', component: () => import('@/views/basic/VideoDevice.vue') },
+      { path: '/basic/test', name: 'test', component: () => import('@/views/basic/test.vue')},
       { path: '/alarm/realtime', name: 'RealtimeAlarm', component: () => import('@/views/alarm/RealtimeAlarm.vue') },
       { path: '/alarm/criteria', name: 'AlarmCriteria', component: () => import('@/views/alarm/AlarmCriteria.vue') },
       { path: '/alarm/notification', name: 'AlarmNotification', component: () => import('@/views/alarm/AlarmNotification.vue') },
