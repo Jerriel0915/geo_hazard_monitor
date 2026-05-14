@@ -168,7 +168,7 @@ public class HazardPointController extends BaseController
     public AjaxResult batchOperate(@RequestBody HashMap<String, Object> params)
     {
         @SuppressWarnings("unchecked")
-        List<Long> idList = (List<Long>) params.get("ids");
+        List<Integer> idList = (List<Integer>) params.get("ids");
         String operation = (String) params.get("operation");
 
         if (idList == null || idList.isEmpty())
@@ -180,7 +180,8 @@ public class HazardPointController extends BaseController
             return error("操作类型不能为空");
         }
 
-        Long[] ids = idList.toArray(new Long[0]);
+        // JSON反序列化时ids为Integer数组，需转换为Long[]
+        Long[] ids = idList.stream().map(Integer::longValue).toArray(Long[]::new);
         return toAjax(hazardPointService.batchOperateHazardPoint(ids, operation));
     }
 }

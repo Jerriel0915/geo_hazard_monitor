@@ -136,7 +136,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         UPDATE hazard_point
         SET status = #{status}, update_time = NOW()
         WHERE id IN
-        <foreach item="id" collection="list" open="(" separator="," close=")">
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
             #{id}
         </foreach>
     </update>

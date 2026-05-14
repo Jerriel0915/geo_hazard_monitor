@@ -825,7 +825,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick, computed } from 'vue'
-import { ElMessage, ElMessageBox, ElTree } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import axios from 'axios'
@@ -1270,7 +1270,7 @@ const loadTableData = async () => {
 
 // ==================== 加载分组列表 ====================
 // 用途：从后端获取分组列表，并添加"全部"选项
-const LoadGroupList = async () => {
+const loadGroupList = async () => {
   loadingGroups.value = true
   try {
     const token = localStorage.getItem('token')
@@ -1356,15 +1356,7 @@ const handleAddGroup = () => {
 }
 
 const handleAddGroupFromSelect = () => {
-  groupDialogTitle.value = '新增分组'
-  isEditGroup.value = false
-  Object.assign(groupFormData, {
-    id: '',
-    name: '',
-    description: '',
-    sortOrder: groupList.value.length
-  })
-  groupDialogVisible.value = true
+  handleAddGroup()
 }
 
 const handleEditGroupFromSelect = (option: any) => {
@@ -1384,37 +1376,13 @@ const handleEditGroupFromSelect = (option: any) => {
   groupDialogVisible.value = true
 }
 
-// ==================== 删除分组 ====================
-// 用途：根据分组ID删除分组
+// ==================== 删除分组（从下拉选择框）====================
+// 用途：复用 handleDeleteGroup 的逻辑
 const handleDeleteGroupFromSelect = (option: any) => {
   const group = groupList.value.find(g => g.id === option.id)
-  if (!group || group.id === 'all' || group.id === '1') {
-    ElMessage.warning('该分组不允许删除')
-    return
+  if (group) {
+    handleDeleteGroup(group)
   }
-  const confirmMsg = group.count > 0 
-    ? `该分组下有 ${group.count} 个隐患点，删除后这些隐患点将被迁移到"未分组"中。确定要删除分组"${group.name}"吗?`
-    : `确定要删除分组"${group.name}"吗?`
-  ElMessageBox.confirm(confirmMsg, '删除确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    if (group.count > 0) {
-      tableData.value.forEach(item => {
-        if (item.groupId === group.id) {
-          item.groupId = '1'
-          item.groupName = '未分组'
-        }
-      })
-    }
-    const index = groupList.value.findIndex(g => g.id === group.id)
-    if (index > -1) {
-      groupList.value.splice(index, 1)
-      loadGroupPage(1)
-    }
-    ElMessage.success('删除成功')
-  }).catch(() => {})
 }
 
 // ==================== 打开编辑分组弹窗 ====================
@@ -1462,7 +1430,7 @@ const handleDeleteGroup = (group: GroupItem) => {
       
       if (res.data.code === 200) {
         ElMessage.success('删除成功')
-        LoadGroupList()  // 刷新分组列表
+        loadGroupList()  // 刷新分组列表
       } else {
         ElMessage.error(res.data.msg || '删除失败')
       }
@@ -1512,7 +1480,7 @@ const handleGroupSubmit = async () => {
         if (res.data.code === 200) {
           ElMessage.success(isEditGroup.value ? '修改成功' : '新增成功')
           groupDialogVisible.value = false
-          LoadGroupList()  // 刷新分组列表
+          loadGroupList()  // 刷新分组列表
         } else {
           ElMessage.error(res.data.msg || '操作失败')
         }
@@ -1684,7 +1652,7 @@ const handleDelete = async (row: any) => {
       if (res.data.code === 200) {
         ElMessage.success('删除成功')
         loadTableData() // 刷新列表
-        LoadGroupList() // 刷新分组列表
+        loadGroupList() // 刷新分组列表
       } else {
         ElMessage.error(res.data.msg || '删除失败')
       }
@@ -1738,7 +1706,7 @@ const handleSubmit = async () => {
           ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
           dialogVisible.value = false
           loadTableData() // 刷新列表
-          LoadGroupList() // 刷新分组列表
+          loadGroupList() // 刷新分组列表
         } else {
           ElMessage.error(res.data.msg || '操作失败')
         }
@@ -2275,54 +2243,105 @@ const handleExportData = () => {
   }, 1000)
 }
 
-const handleBatchPause = () => {
+const handleBatchPause = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要停测的隐患点')
+    return
+  }
   ElMessageBox.confirm('确定要暂停选中的隐患点监测吗？', '批量停测确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    selectedRows.value.forEach(row => {
-      row.status = 'PAUSED'
-      row.statusName = '停测中'
-    })
-    ElMessage.success('批量停测成功')
-    selectedRows.value = []
+  }).then(async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const ids = selectedRows.value.map(row => parseInt(row.id))
+      const res = await axios.put('/api/v1/hazard-points/batch/operate', {
+        ids,
+        operation: 'pause'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.data.code === 200) {
+        ElMessage.success('批量停测成功')
+        loadTableData()
+      } else {
+        ElMessage.error(res.data.msg || '批量停测失败')
+      }
+    } catch (error) {
+      console.error('批量停测失败:', error)
+      ElMessage.error('网络请求失败')
+    }
   }).catch(() => {})
 }
 
-const handleBatchResume = () => {
+const handleBatchResume = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要恢复的隐患点')
+    return
+  }
   ElMessageBox.confirm('确定要恢复选中的隐患点监测吗？', '批量恢复确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
-  }).then(() => {
-    selectedRows.value.forEach(row => {
-      row.status = 'MONITORING'
-      row.statusName = '监测中'
-    })
-    ElMessage.success('批量恢复成功')
-    selectedRows.value = []
+  }).then(async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const ids = selectedRows.value.map(row => parseInt(row.id))
+      const res = await axios.put('/api/v1/hazard-points/batch/operate', {
+        ids,
+        operation: 'resume'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.data.code === 200) {
+        ElMessage.success('批量恢复成功')
+        loadTableData()
+      } else {
+        ElMessage.error(res.data.msg || '批量恢复失败')
+      }
+    } catch (error) {
+      console.error('批量恢复失败:', error)
+      ElMessage.error('网络请求失败')
+    }
   }).catch(() => {})
 }
 
-const handleBatchComplete = () => {
+const handleBatchComplete = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要完结的隐患点')
+    return
+  }
   ElMessageBox.confirm('确定要完结选中的隐患点吗？完结后将停止监测。', '批量完结确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    selectedRows.value.forEach(row => {
-      row.status = 'COMPLETED'
-      row.statusName = '已完结'
-    })
-    ElMessage.success('批量完结成功')
-    selectedRows.value = []
+  }).then(async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const ids = selectedRows.value.map(row => parseInt(row.id))
+      const res = await axios.put('/api/v1/hazard-points/batch/operate', {
+        ids,
+        operation: 'complete'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.data.code === 200) {
+        ElMessage.success('批量完结成功')
+        loadTableData()
+      } else {
+        ElMessage.error(res.data.msg || '批量完结失败')
+      }
+    } catch (error) {
+      console.error('批量完结失败:', error)
+      ElMessage.error('网络请求失败')
+    }
   }).catch(() => {})
 }
 
 onMounted(() => {
   loadTableData()
-  LoadGroupList()
+  loadGroupList()
 })
 </script>
 
