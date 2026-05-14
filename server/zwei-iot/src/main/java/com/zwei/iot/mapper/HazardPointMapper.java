@@ -79,11 +79,20 @@ public interface HazardPointMapper
     public HazardPoint checkHazardPointCodeUnique(String code);
 
     /**
-     * 更新隐患点状态
+     * 批量更新隐患点状态
+     *
+     * @param ids 隐患点ID列表
+     * @param status 状态
+     * @return 结果
+     */
+    int batchUpdateHazardPointStatus(@Param("ids") List<Long> ids, @Param("status") Integer status);
+
+    /**
+     * 更新隐患点状态（单条）
      *
      * @param id 隐患点ID
      * @param status 状态
      * @return 结果
      */
-    public int updateHazardPointStatus(@Param("id") Long id, @Param("status") Integer status);
+    int updateHazardPointStatus(@Param("id") Long id, @Param("status") Integer status);
 }

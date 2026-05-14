@@ -82,7 +82,7 @@
     </select>
 
     <!-- 校验监测类型编码是否唯一 -->
-    <select id="checkMonitorTypeCodeUnique" parameterType="String" resultMap="MonitorTypeResult">
+    <select id="checkMonitorTypeCodeUnique" resultMap="MonitorTypeResult">
         <include refid="selectMonitorTypeVo"/>
         WHERE code = #{code} AND del_flag = 0 AND id != #{id} LIMIT 1
     </select>

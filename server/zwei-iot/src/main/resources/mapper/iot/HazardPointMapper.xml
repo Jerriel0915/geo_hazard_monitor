@@ -124,11 +124,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="checkHazardPointCodeUnique" parameterType="String" resultMap="HazardPointResult">
         <include refid="selectHazardPointVo"/>
-        AND h.code = #{code}
+        WHERE h.del_flag = 0 AND h.code = #{code}
     </select>
 
     <update id="updateHazardPointStatus">
         UPDATE hazard_point SET status = #{status}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <!-- 批量更新隐患点状态 -->
+    <update id="batchUpdateHazardPointStatus">
+        UPDATE hazard_point
+        SET status = #{status}, update_time = NOW()
+        WHERE id IN
+        <foreach item="id" collection="list" open="(" separator="," close=")">
+            #{id}
+        </foreach>
     </update>
 
 </mapper>

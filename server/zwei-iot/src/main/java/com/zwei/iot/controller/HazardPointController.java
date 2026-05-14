@@ -19,7 +19,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 隐患点管理控制器
+ * 隐患点管理
  *
  * @author zwei
  */

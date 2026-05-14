@@ -42,7 +42,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectHazardPointGroupById" parameterType="Long" resultMap="HazardPointGroupResult">
         <include refid="selectHazardPointGroupVo"/>
-        where id = #{id}
+        where id = #{id} AND del_flag = 0
     </select>
 
     <select id="selectHazardPointGroupByCode" parameterType="String" resultMap="HazardPointGroupResult">

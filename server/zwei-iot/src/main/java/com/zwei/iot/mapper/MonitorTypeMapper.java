@@ -2,6 +2,7 @@ package com.zwei.iot.mapper;
 
 import com.zwei.iot.domain.MonitorType;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -82,7 +83,8 @@ public interface MonitorTypeMapper {
      * 校验监测类型编码是否唯一
      *
      * @param code 监测类型编码
+     * @param id 排除的监测类型ID（更新时使用）
      * @return 监测类型信息（null表示唯一）
      */
-    MonitorType checkMonitorTypeCodeUnique(String code);
+    MonitorType checkMonitorTypeCodeUnique(@Param("code") String code, @Param("id") Long id);
 }

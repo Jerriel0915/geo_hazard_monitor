@@ -125,7 +125,7 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     @Override
     public boolean checkMonitorTypeCodeUnique(MonitorType monitorType) {
         Long id = monitorType.getId() == null ? 0L : monitorType.getId();
-        MonitorType exist = monitorTypeMapper.checkMonitorTypeCodeUnique(monitorType.getCode());
-        return exist == null || exist.getId().equals(id);
+        MonitorType exist = monitorTypeMapper.checkMonitorTypeCodeUnique(monitorType.getCode(), id);
+        return exist == null;
     }
 }

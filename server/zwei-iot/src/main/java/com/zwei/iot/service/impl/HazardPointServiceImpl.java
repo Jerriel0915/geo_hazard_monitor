@@ -186,11 +186,6 @@ public class HazardPointServiceImpl implements IHazardPointService
             throw new ServiceException("无效的操作类型");
         }
 
-        int count = 0;
-        for (Long id : ids)
-        {
-            count += hazardPointMapper.updateHazardPointStatus(id, newStatus);
-        }
-        return count;
+        return hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), newStatus);
     }
 }

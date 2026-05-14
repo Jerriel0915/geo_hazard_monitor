@@ -301,20 +301,19 @@ class HazardPointServiceImplTest {
         @DisplayName("pauses multiple hazard points")
         void pausesMultipleHazardPoints() {
             Long[] ids = {1L, 2L};
-            when(hazardPointMapper.updateHazardPointStatus(1L, IotConstants.HAZARD_POINT_STATUS_PAUSED)).thenReturn(1);
-            when(hazardPointMapper.updateHazardPointStatus(2L, IotConstants.HAZARD_POINT_STATUS_PAUSED)).thenReturn(1);
+            when(hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), IotConstants.HAZARD_POINT_STATUS_PAUSED)).thenReturn(2);
 
             int result = hazardPointService.batchOperateHazardPoint(ids, IotConstants.OPERATION_PAUSE);
 
             assertThat(result).isEqualTo(2);
-            verify(hazardPointMapper, times(2)).updateHazardPointStatus(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.eq(IotConstants.HAZARD_POINT_STATUS_PAUSED));
+            verify(hazardPointMapper).batchUpdateHazardPointStatus(Arrays.asList(ids), IotConstants.HAZARD_POINT_STATUS_PAUSED);
         }
 
         @Test
         @DisplayName("resumes multiple hazard points")
         void resumesMultipleHazardPoints() {
             Long[] ids = {1L, 2L, 3L};
-            when(hazardPointMapper.updateHazardPointStatus(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.eq(IotConstants.HAZARD_POINT_STATUS_MONITORING))).thenReturn(1);
+            when(hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), IotConstants.HAZARD_POINT_STATUS_MONITORING)).thenReturn(3);
 
             int result = hazardPointService.batchOperateHazardPoint(ids, IotConstants.OPERATION_RESUME);
 
@@ -325,7 +324,7 @@ class HazardPointServiceImplTest {
         @DisplayName("completes multiple hazard points")
         void completesMultipleHazardPoints() {
             Long[] ids = {1L};
-            when(hazardPointMapper.updateHazardPointStatus(1L, IotConstants.HAZARD_POINT_STATUS_COMPLETED)).thenReturn(1);
+            when(hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), IotConstants.HAZARD_POINT_STATUS_COMPLETED)).thenReturn(1);
 
             int result = hazardPointService.batchOperateHazardPoint(ids, IotConstants.OPERATION_COMPLETE);
 
