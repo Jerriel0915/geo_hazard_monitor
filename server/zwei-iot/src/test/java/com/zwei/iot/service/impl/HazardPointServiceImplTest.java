@@ -1,7 +1,11 @@
 package com.zwei.iot.service.impl;
 
-import java.util.Arrays;
-import java.util.List;
+import com.zwei.common.constant.IotConstants;
+import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.config.CacheWarmupTaskRegistry;
+import com.zwei.iot.domain.HazardPoint;
+import com.zwei.iot.mapper.HazardPointMapper;
+import com.zwei.iot.service.IotCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,15 +13,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Arrays;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
-import com.zwei.iot.domain.HazardPoint;
-import com.zwei.iot.mapper.HazardPointMapper;
-import com.zwei.common.constant.IotConstants;
-import com.zwei.common.exception.ServiceException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("HazardPointServiceImpl Tests")
@@ -26,11 +29,17 @@ class HazardPointServiceImplTest {
     @Mock
     private HazardPointMapper hazardPointMapper;
 
+    @Mock
+    private IotCacheService cacheService;
+
+    @Mock
+    private CacheWarmupTaskRegistry registry;
+
     private HazardPointServiceImpl hazardPointService;
 
     @BeforeEach
     void setUp() {
-        hazardPointService = new HazardPointServiceImpl(hazardPointMapper);
+        hazardPointService = new HazardPointServiceImpl(hazardPointMapper, cacheService, registry);
     }
 
     @Nested
@@ -243,6 +252,7 @@ class HazardPointServiceImplTest {
 
             assertThat(result).isEqualTo(1);
             verify(hazardPointMapper).updateHazardPointStatus(1L, IotConstants.HAZARD_POINT_STATUS_PAUSED);
+            verify(cacheService).evictHazardPoint(1L);
         }
 
         @Test
@@ -254,6 +264,7 @@ class HazardPointServiceImplTest {
 
             assertThat(result).isEqualTo(1);
             verify(hazardPointMapper).updateHazardPointStatus(1L, IotConstants.HAZARD_POINT_STATUS_MONITORING);
+            verify(cacheService).evictHazardPoint(1L);
         }
     }
 
@@ -270,6 +281,7 @@ class HazardPointServiceImplTest {
 
             assertThat(result).isEqualTo(1);
             verify(hazardPointMapper).updateHazardPointStatus(1L, IotConstants.HAZARD_POINT_STATUS_COMPLETED);
+            verify(cacheService).evictHazardPoint(1L);
         }
     }
 
@@ -307,6 +319,7 @@ class HazardPointServiceImplTest {
 
             assertThat(result).isEqualTo(2);
             verify(hazardPointMapper).batchUpdateHazardPointStatus(Arrays.asList(ids), IotConstants.HAZARD_POINT_STATUS_PAUSED);
+            verify(cacheService).evictHazardPointList(ids);
         }
 
         @Test
@@ -318,6 +331,7 @@ class HazardPointServiceImplTest {
             int result = hazardPointService.batchOperateHazardPoint(ids, IotConstants.OPERATION_RESUME);
 
             assertThat(result).isEqualTo(3);
+            verify(cacheService).evictHazardPointList(ids);
         }
 
         @Test
@@ -329,6 +343,7 @@ class HazardPointServiceImplTest {
             int result = hazardPointService.batchOperateHazardPoint(ids, IotConstants.OPERATION_COMPLETE);
 
             assertThat(result).isEqualTo(1);
+            verify(cacheService).evictHazardPointList(ids);
         }
     }
 }

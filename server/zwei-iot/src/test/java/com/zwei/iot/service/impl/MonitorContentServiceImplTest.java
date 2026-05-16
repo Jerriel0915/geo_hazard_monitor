@@ -1,7 +1,9 @@
 package com.zwei.iot.service.impl;
 
+import com.zwei.iot.config.CacheWarmupTaskRegistry;
 import com.zwei.iot.domain.MonitorContent;
 import com.zwei.iot.mapper.MonitorContentMapper;
+import com.zwei.iot.service.IotCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,11 +40,17 @@ class MonitorContentServiceImplTest {
     @Mock
     private MonitorContentMapper monitorContentMapper;
 
+    @Mock
+    private IotCacheService cacheService;
+
+    @Mock
+    private CacheWarmupTaskRegistry registry;
+
     private MonitorContentServiceImpl monitorContentService;
 
     @BeforeEach
     void setUp() {
-        monitorContentService = new MonitorContentServiceImpl(monitorContentMapper);
+        monitorContentService = new MonitorContentServiceImpl(monitorContentMapper, cacheService, registry);
     }
 
     // ==================== selectMonitorContentList Tests ====================

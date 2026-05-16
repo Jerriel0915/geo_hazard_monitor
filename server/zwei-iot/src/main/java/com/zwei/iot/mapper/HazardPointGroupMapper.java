@@ -1,9 +1,12 @@
 package com.zwei.iot.mapper;
 
+import com.zwei.iot.domain.HazardPointGroup;
+import org.apache.ibatis.annotations.Mapper;
+
 import java.util.List;
 import java.util.Map;
-import com.zwei.iot.domain.HazardPointGroup;
 
+@Mapper
 public interface HazardPointGroupMapper
 {
     List<HazardPointGroup> selectHazardPointGroupList(HazardPointGroup group);

@@ -1,15 +1,20 @@
 package com.zwei.iot.service.impl;
 
-import java.util.Arrays;
-import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+import com.zwei.common.constant.IotConstants;
+import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.config.CacheWarmupTaskRegistry;
 import com.zwei.iot.domain.HazardPoint;
 import com.zwei.iot.mapper.HazardPointMapper;
 import com.zwei.iot.service.IHazardPointService;
-import com.zwei.common.constant.IotConstants;
-import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.service.IotCacheService;
+import com.zwei.iot.warmup.HazardPointWarmupTask;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 隐患点Service实现
@@ -20,10 +25,20 @@ import com.zwei.common.exception.ServiceException;
 public class HazardPointServiceImpl implements IHazardPointService
 {
     private final HazardPointMapper hazardPointMapper;
+    private final IotCacheService cacheService;
+    private final CacheWarmupTaskRegistry registry;
 
     @Autowired
-    public HazardPointServiceImpl(HazardPointMapper hazardPointMapper) {
+    public HazardPointServiceImpl(HazardPointMapper hazardPointMapper, IotCacheService cacheService,
+                                  CacheWarmupTaskRegistry registry) {
         this.hazardPointMapper = hazardPointMapper;
+        this.cacheService = cacheService;
+        this.registry = registry;
+    }
+
+    @PostConstruct
+    public void init() {
+        registry.registerTask(new HazardPointWarmupTask(this, cacheService));
     }
 
     /**
@@ -47,7 +62,17 @@ public class HazardPointServiceImpl implements IHazardPointService
     @Override
     public HazardPoint selectHazardPointById(Long id)
     {
-        return hazardPointMapper.selectHazardPointById(id);
+        // 先尝试从缓存获取
+        HazardPoint cached = cacheService.getHazardPoint(id);
+        if (cached != null) {
+            return cached;
+        }
+        // 缓存未命中，查询数据库并缓存
+        HazardPoint point = hazardPointMapper.selectHazardPointById(id);
+        if (point != null) {
+            cacheService.cacheHazardPoint(point);
+        }
+        return point;
     }
 
     /**
@@ -69,7 +94,12 @@ public class HazardPointServiceImpl implements IHazardPointService
         {
             hazardPoint.setStatus(IotConstants.HAZARD_POINT_STATUS_MONITORING);
         }
-        return hazardPointMapper.insertHazardPoint(hazardPoint);
+        int result = hazardPointMapper.insertHazardPoint(hazardPoint);
+        // 缓存新增的隐患点
+        if (result > 0 && hazardPoint.getId() != null) {
+            cacheService.cacheHazardPoint(hazardPoint);
+        }
+        return result;
     }
 
     /**
@@ -81,7 +111,12 @@ public class HazardPointServiceImpl implements IHazardPointService
     @Override
     public int updateHazardPoint(HazardPoint hazardPoint)
     {
-        return hazardPointMapper.updateHazardPoint(hazardPoint);
+        int result = hazardPointMapper.updateHazardPoint(hazardPoint);
+        // 更新缓存
+        if (result > 0 && hazardPoint.getId() != null) {
+            cacheService.evictHazardPoint(hazardPoint.getId());
+        }
+        return result;
     }
 
     /**
@@ -93,7 +128,12 @@ public class HazardPointServiceImpl implements IHazardPointService
     @Override
     public int deleteHazardPointById(Long id)
     {
-        return hazardPointMapper.deleteHazardPointById(id);
+        int result = hazardPointMapper.deleteHazardPointById(id);
+        // 删除缓存
+        if (result > 0) {
+            cacheService.evictHazardPoint(id);
+        }
+        return result;
     }
 
     /**
@@ -105,7 +145,12 @@ public class HazardPointServiceImpl implements IHazardPointService
     @Override
     public int deleteHazardPointByIds(Long[] ids)
     {
-        return hazardPointMapper.deleteHazardPointByIds(ids);
+        int result = hazardPointMapper.deleteHazardPointByIds(ids);
+        // 批量删除缓存
+        if (result > 0) {
+            cacheService.evictHazardPointList(ids);
+        }
+        return result;
     }
 
     /**
@@ -137,7 +182,11 @@ public class HazardPointServiceImpl implements IHazardPointService
     {
         // 停测: 状态变为2, 恢复: 状态变为1
         Integer newStatus = pause ? IotConstants.HAZARD_POINT_STATUS_PAUSED : IotConstants.HAZARD_POINT_STATUS_MONITORING;
-        return hazardPointMapper.updateHazardPointStatus(id, newStatus);
+        int result = hazardPointMapper.updateHazardPointStatus(id, newStatus);
+        if (result > 0) {
+            cacheService.evictHazardPoint(id);
+        }
+        return result;
     }
 
     /**
@@ -150,7 +199,11 @@ public class HazardPointServiceImpl implements IHazardPointService
     public int completeHazardPoint(Long id)
     {
         // 完结: 状态变为3
-        return hazardPointMapper.updateHazardPointStatus(id, IotConstants.HAZARD_POINT_STATUS_COMPLETED);
+        int result = hazardPointMapper.updateHazardPointStatus(id, IotConstants.HAZARD_POINT_STATUS_COMPLETED);
+        if (result > 0) {
+            cacheService.evictHazardPoint(id);
+        }
+        return result;
     }
 
     /**
@@ -186,6 +239,10 @@ public class HazardPointServiceImpl implements IHazardPointService
             throw new ServiceException("无效的操作类型");
         }
 
-        return hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), newStatus);
+        int result = hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), newStatus);
+        if (result > 0) {
+            cacheService.evictHazardPointList(ids);
+        }
+        return result;
     }
 }

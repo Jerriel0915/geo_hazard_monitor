@@ -1,8 +1,12 @@
 package com.zwei.iot.service.impl;
 
+import com.zwei.iot.config.CacheWarmupTaskRegistry;
 import com.zwei.iot.domain.MonitorContent;
 import com.zwei.iot.mapper.MonitorContentMapper;
 import com.zwei.iot.service.IMonitorContentService;
+import com.zwei.iot.service.IotCacheService;
+import com.zwei.iot.warmup.MonitorContentWarmupTask;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,10 +26,20 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      * 注入监测内容Mapper
      */
     private final MonitorContentMapper monitorContentMapper;
+    private final IotCacheService cacheService;
+    private final CacheWarmupTaskRegistry registry;
 
     @Autowired
-    public MonitorContentServiceImpl(MonitorContentMapper monitorContentMapper) {
+    public MonitorContentServiceImpl(MonitorContentMapper monitorContentMapper, IotCacheService cacheService,
+                                     CacheWarmupTaskRegistry registry) {
         this.monitorContentMapper = monitorContentMapper;
+        this.cacheService = cacheService;
+        this.registry = registry;
+    }
+
+    @PostConstruct
+    public void init() {
+        registry.registerTask(new MonitorContentWarmupTask(this, cacheService));
     }
 
     /**
@@ -58,7 +72,17 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      */
     @Override
     public MonitorContent selectMonitorContentById(Long id) {
-        return monitorContentMapper.selectMonitorContentById(id);
+        // 先尝试从缓存获取
+        MonitorContent cached = cacheService.getMonitorContent(id);
+        if (cached != null) {
+            return cached;
+        }
+        // 缓存未命中，查询数据库并缓存
+        MonitorContent content = monitorContentMapper.selectMonitorContentById(id);
+        if (content != null) {
+            cacheService.cacheMonitorContent(content);
+        }
+        return content;
     }
 
     /**
@@ -80,7 +104,11 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      */
     @Override
     public int insertMonitorContent(MonitorContent monitorContent) {
-        return monitorContentMapper.insertMonitorContent(monitorContent);
+        int result = monitorContentMapper.insertMonitorContent(monitorContent);
+        if (result > 0 && monitorContent.getId() != null) {
+            cacheService.cacheMonitorContent(monitorContent);
+        }
+        return result;
     }
 
     /**
@@ -91,7 +119,11 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      */
     @Override
     public int updateMonitorContent(MonitorContent monitorContent) {
-        return monitorContentMapper.updateMonitorContent(monitorContent);
+        int result = monitorContentMapper.updateMonitorContent(monitorContent);
+        if (result > 0 && monitorContent.getId() != null) {
+            cacheService.evictMonitorContent(monitorContent.getId());
+        }
+        return result;
     }
 
     /**
@@ -102,7 +134,11 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      */
     @Override
     public int deleteMonitorContentById(Long id) {
-        return monitorContentMapper.deleteMonitorContentById(id);
+        int result = monitorContentMapper.deleteMonitorContentById(id);
+        if (result > 0) {
+            cacheService.evictMonitorContent(id);
+        }
+        return result;
     }
 
     /**
@@ -113,7 +149,11 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      */
     @Override
     public int deleteMonitorContentByIds(Long[] ids) {
-        return monitorContentMapper.deleteMonitorContentByIds(ids);
+        int result = monitorContentMapper.deleteMonitorContentByIds(ids);
+        if (result > 0) {
+            cacheService.evictMonitorContentList(ids);
+        }
+        return result;
     }
 
     /**

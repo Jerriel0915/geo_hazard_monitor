@@ -1,7 +1,9 @@
 package com.zwei.iot.service.impl;
 
+import com.zwei.iot.config.CacheWarmupTaskRegistry;
 import com.zwei.iot.domain.MonitorType;
 import com.zwei.iot.mapper.MonitorTypeMapper;
+import com.zwei.iot.service.IotCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,11 +41,17 @@ class MonitorTypeServiceImplTest {
     @Mock
     private MonitorTypeMapper monitorTypeMapper;
 
+    @Mock
+    private IotCacheService cacheService;
+
+    @Mock
+    private CacheWarmupTaskRegistry registry;
+
     private MonitorTypeServiceImpl monitorTypeService;
 
     @BeforeEach
     void setUp() {
-        monitorTypeService = new MonitorTypeServiceImpl(monitorTypeMapper);
+        monitorTypeService = new MonitorTypeServiceImpl(monitorTypeMapper, cacheService, registry);
     }
 
     @Nested

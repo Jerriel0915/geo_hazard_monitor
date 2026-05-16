@@ -1,8 +1,12 @@
 package com.zwei.iot.service.impl;
 
+import com.zwei.iot.config.CacheWarmupTaskRegistry;
 import com.zwei.iot.domain.MonitorType;
 import com.zwei.iot.mapper.MonitorTypeMapper;
 import com.zwei.iot.service.IMonitorTypeService;
+import com.zwei.iot.service.IotCacheService;
+import com.zwei.iot.warmup.MonitorTypeWarmupTask;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,10 +25,20 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      * 注入监测类型Mapper
      */
     private final MonitorTypeMapper monitorTypeMapper;
+    private final IotCacheService cacheService;
+    private final CacheWarmupTaskRegistry registry;
 
     @Autowired
-    public MonitorTypeServiceImpl(MonitorTypeMapper monitorTypeMapper) {
+    public MonitorTypeServiceImpl(MonitorTypeMapper monitorTypeMapper, IotCacheService cacheService,
+                                  CacheWarmupTaskRegistry registry) {
         this.monitorTypeMapper = monitorTypeMapper;
+        this.cacheService = cacheService;
+        this.registry = registry;
+    }
+
+    @PostConstruct
+    public void init() {
+        registry.registerTask(new MonitorTypeWarmupTask(this, cacheService));
     }
 
     /**
@@ -58,7 +72,17 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      */
     @Override
     public MonitorType selectMonitorTypeById(Long id) {
-        return monitorTypeMapper.selectMonitorTypeById(id);
+        // 先尝试从缓存获取
+        MonitorType cached = cacheService.getMonitorType(id);
+        if (cached != null) {
+            return cached;
+        }
+        // 缓存未命中，查询数据库并缓存
+        MonitorType monitorType = monitorTypeMapper.selectMonitorTypeById(id);
+        if (monitorType != null) {
+            cacheService.cacheMonitorType(monitorType);
+        }
+        return monitorType;
     }
 
     /**
@@ -80,7 +104,11 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      */
     @Override
     public int insertMonitorType(MonitorType monitorType) {
-        return monitorTypeMapper.insertMonitorType(monitorType);
+        int result = monitorTypeMapper.insertMonitorType(monitorType);
+        if (result > 0 && monitorType.getId() != null) {
+            cacheService.cacheMonitorType(monitorType);
+        }
+        return result;
     }
 
     /**
@@ -91,7 +119,11 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      */
     @Override
     public int updateMonitorType(MonitorType monitorType) {
-        return monitorTypeMapper.updateMonitorType(monitorType);
+        int result = monitorTypeMapper.updateMonitorType(monitorType);
+        if (result > 0 && monitorType.getId() != null) {
+            cacheService.evictMonitorType(monitorType.getId());
+        }
+        return result;
     }
 
     /**
@@ -102,7 +134,11 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      */
     @Override
     public int deleteMonitorTypeById(Long id) {
-        return monitorTypeMapper.deleteMonitorTypeById(id);
+        int result = monitorTypeMapper.deleteMonitorTypeById(id);
+        if (result > 0) {
+            cacheService.evictMonitorType(id);
+        }
+        return result;
     }
 
     /**
@@ -113,7 +149,11 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      */
     @Override
     public int deleteMonitorTypeByIds(Long[] ids) {
-        return monitorTypeMapper.deleteMonitorTypeByIds(ids);
+        int result = monitorTypeMapper.deleteMonitorTypeByIds(ids);
+        if (result > 0) {
+            cacheService.evictMonitorTypeList(ids);
+        }
+        return result;
     }
 
     /**
