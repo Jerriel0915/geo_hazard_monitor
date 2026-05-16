@@ -261,7 +261,7 @@ class MonitorTypeServiceImplTest {
         void returnsTrueWhenCodeIsNew() {
             MonitorType monitorType = new MonitorType();
             monitorType.setCode("NEW001");
-            when(monitorTypeMapper.checkMonitorTypeCodeUnique("NEW001")).thenReturn(null);
+            when(monitorTypeMapper.checkMonitorTypeCodeUnique("NEW001", 0L)).thenReturn(null);
 
             boolean result = monitorTypeService.checkMonitorTypeCodeUnique(monitorType);
 
@@ -271,13 +271,15 @@ class MonitorTypeServiceImplTest {
         @Test
         @DisplayName("returns true when code belongs to same monitor type (id matches)")
         void returnsTrueWhenCodeBelongsToSameMonitorType() {
+            // When id matches, SQL's "id != #{id}" excludes that record
+            // So no duplicate found, returns null -> service returns true (unique)
             MonitorType monitorType = new MonitorType();
             monitorType.setId(1L);
             monitorType.setCode("MT001");
             MonitorType existing = new MonitorType();
             existing.setId(1L);
             existing.setCode("MT001");
-            when(monitorTypeMapper.checkMonitorTypeCodeUnique("MT001")).thenReturn(existing);
+            when(monitorTypeMapper.checkMonitorTypeCodeUnique("MT001", 1L)).thenReturn(null);
 
             boolean result = monitorTypeService.checkMonitorTypeCodeUnique(monitorType);
 
@@ -293,7 +295,7 @@ class MonitorTypeServiceImplTest {
             MonitorType existing = new MonitorType();
             existing.setId(2L);
             existing.setCode("MT001");
-            when(monitorTypeMapper.checkMonitorTypeCodeUnique("MT001")).thenReturn(existing);
+            when(monitorTypeMapper.checkMonitorTypeCodeUnique("MT001", 1L)).thenReturn(existing);
 
             boolean result = monitorTypeService.checkMonitorTypeCodeUnique(monitorType);
 
@@ -306,7 +308,7 @@ class MonitorTypeServiceImplTest {
             MonitorType monitorType = new MonitorType();
             monitorType.setId(null);
             monitorType.setCode("MT001");
-            when(monitorTypeMapper.checkMonitorTypeCodeUnique("MT001")).thenReturn(null);
+            when(monitorTypeMapper.checkMonitorTypeCodeUnique("MT001", 0L)).thenReturn(null);
 
             boolean result = monitorTypeService.checkMonitorTypeCodeUnique(monitorType);
 
