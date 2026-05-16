@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.mapper.DeviceSensorMapper">
+
+    <!-- ==================== 结果映射 ==================== -->
+    <resultMap type="com.zwei.iot.domain.DeviceSensor" id="DeviceSensorResult">
+        <id property="id" column="id"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="deviceCode" column="device_code"/>
+        <result property="sensorCode" column="sensor_code"/>
+        <result property="sensorName" column="sensor_name"/>
+        <result property="monitorTypeId" column="monitor_type_id"/>
+        <result property="monitorTypeCode" column="monitor_type_code"/>
+        <result property="monitorTypeName" column="monitor_type_name"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!-- ==================== SQL片段 ==================== -->
+    <sql id="selectSensorVo">
+        SELECT ds.id,
+               ds.device_id,
+               ds.device_code,
+               ds.sensor_code,
+               ds.sensor_name,
+               ds.monitor_type_id,
+               ds.monitor_type_code,
+               ds.monitor_type_name,
+               ds.status,
+               ds.del_flag,
+               ds.create_by,
+               ds.create_time,
+               ds.update_by,
+               ds.update_time
+        FROM device_sensor ds
+    </sql>
+
+    <!-- ==================== 查询操作 ==================== -->
+
+    <!-- 查询设备下的传感器列表 -->
+    <select id="selectSensorListByDeviceId" parameterType="Long" resultMap="DeviceSensorResult">
+        <include refid="selectSensorVo"/>
+        WHERE ds.device_id = #{deviceId} AND ds.del_flag = 0
+        ORDER BY ds.id ASC
+    </select>
+
+    <!-- 根据ID查询传感器详情 -->
+    <select id="selectSensorById" parameterType="Long" resultMap="DeviceSensorResult">
+        <include refid="selectSensorVo"/>
+        WHERE ds.id = #{id} AND ds.del_flag = 0
+    </select>
+
+    <!-- 根据编码查询传感器 -->
+    <select id="selectSensorByCode" parameterType="String" resultMap="DeviceSensorResult">
+        <include refid="selectSensorVo"/>
+        WHERE ds.sensor_code = #{sensorCode} AND ds.del_flag = 0
+    </select>
+
+    <!-- 校验传感器编码是否唯一 -->
+    <select id="checkSensorCodeUnique" resultMap="DeviceSensorResult">
+        <include refid="selectSensorVo"/>
+        WHERE ds.sensor_code = #{sensorCode} AND ds.del_flag = 0 AND ds.id != #{id} LIMIT 1
+    </select>
+
+    <!-- ==================== 新增操作 ==================== -->
+
+    <!-- 新增传感器 -->
+    <insert id="insertSensor" parameterType="com.zwei.iot.domain.DeviceSensor" useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO device_sensor(
+        <if test="deviceId != null">device_id,</if>
+        <if test="deviceCode != null">device_code,</if>
+        <if test="sensorCode != null and sensorCode != ''">sensor_code,</if>
+        <if test="sensorName != null and sensorName != ''">sensor_name,</if>
+        <if test="monitorTypeId != null">monitor_type_id,</if>
+        <if test="monitorTypeCode != null">monitor_type_code,</if>
+        <if test="monitorTypeName != null">monitor_type_name,</if>
+        <if test="status != null">status,</if>
+        <if test="createBy != null and createBy != ''">create_by,</if>
+        create_time
+        ) VALUES (
+        <if test="deviceId != null">#{deviceId},</if>
+        <if test="deviceCode != null">#{deviceCode},</if>
+        <if test="sensorCode != null and sensorCode != ''">#{sensorCode},</if>
+        <if test="sensorName != null and sensorName != ''">#{sensorName},</if>
+        <if test="monitorTypeId != null">#{monitorTypeId},</if>
+        <if test="monitorTypeCode != null">#{monitorTypeCode},</if>
+        <if test="monitorTypeName != null">#{monitorTypeName},</if>
+        <if test="status != null">#{status},</if>
+        <if test="createBy != null and createBy != ''">#{createBy},</if>
+        SYSDATE()
+        )
+    </insert>
+
+    <!-- ==================== 修改操作 ==================== -->
+
+    <!-- 修改传感器 -->
+    <update id="updateSensor" parameterType="com.zwei.iot.domain.DeviceSensor">
+        UPDATE device_sensor
+        <set>
+            <if test="sensorName != null and sensorName != ''">sensor_name = #{sensorName},</if>
+            <if test="monitorTypeId != null">monitor_type_id = #{monitorTypeId},</if>
+            <if test="monitorTypeCode != null">monitor_type_code = #{monitorTypeCode},</if>
+            <if test="monitorTypeName != null">monitor_type_name = #{monitorTypeName},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = SYSDATE()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== 删除操作 ==================== -->
+
+    <!-- 删除传感器（逻辑删除） -->
+    <delete id="deleteSensorById" parameterType="Long">
+        UPDATE device_sensor
+        SET del_flag = 1
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 根据设备ID删除传感器（逻辑删除） -->
+    <delete id="deleteSensorByDeviceId" parameterType="Long">
+        UPDATE device_sensor
+        SET del_flag = 1
+        WHERE device_id = #{deviceId}
+    </delete>
+
+</mapper>
