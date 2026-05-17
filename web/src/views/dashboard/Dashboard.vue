@@ -2,10 +2,27 @@
   <div class="dashboard-container">
     <div class="dashboard-header">
       <div class="header-left">
-        <el-radio-group v-model="viewMode" size="default">
-          <el-radio-button label="overview">总览层</el-radio-button>
-          <el-radio-button label="hazard">隐患点层</el-radio-button>
-        </el-radio-group>
+        <div class="layer-tabs">
+          <span
+            :class="['layer-tab', { active: viewMode === 'overview' }]"
+            @click="switchToOverview"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>总览层</span>
+          </span>
+          <span
+            v-if="viewMode === 'hazard'"
+            :class="['layer-tab', { active: viewMode === 'hazard' }]"
+            @click="switchToOverview"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+            <span>返回总览</span>
+          </span>
+        </div>
       </div>
       <div class="header-right">
         <el-input
@@ -26,135 +43,90 @@
        <!--//TODO:这是总览层的卡片容器-->
       <div class="left-panel" v-if="viewMode === 'overview'">
 
-        <!-- //TODO:这是总览层的系统健康度卡片容器 -->
-        <div class="stat-card" style="height: 30%;">
+        <!-- 系统健康度 -->
+        <div class="stat-card health-card">
           <div class="stat-header">
             <span class="stat-title">系统健康度</span>
+            <el-tooltip content="健康度算法说明" placement="top">
+              <el-icon class="help-icon"><QuestionFilled /></el-icon>
+            </el-tooltip>
           </div>
-          
           <div class="stat-body">
-            <div class="health-ring">
-              <div class="ring-chart" ref="healthRingRef"></div>
-              <div class="ring-value">{{ healthScore }}%</div>
+            <div class="health-main">
+              <div class="health-ring">
+                <div class="ring-chart" ref="healthRingRef"></div>
+                <div class="ring-value">{{ healthScore }}%</div>
+              </div>
             </div>
             <div class="health-detail">
               <div class="detail-item">
-                <span class="label">隐患点完整度</span>
-                <el-progress :percentage="hazardIntegrity" :stroke-width="6" />
-              </div>
-              <div class="detail-item">
-                <span class="label">设备完整度</span>
+                <span class="label">设备资料登记率</span>
                 <el-progress :percentage="deviceIntegrity" :stroke-width="6" />
               </div>
               <div class="detail-item">
-                <span class="label">关联完成度</span>
-                <el-progress :percentage="relationComplete" :stroke-width="6" />
+                <span class="label">隐患点资料完善率</span>
+                <el-progress :percentage="hazardIntegrity" :stroke-width="6" />
+              </div>
+              <div class="detail-item">
+                <span class="label">隐患点设备在线率</span>
+                <el-progress :percentage="deviceOnlineRate" :stroke-width="6" />
+              </div>
+              <div class="detail-item">
+                <span class="label">设备状态正常率</span>
+                <el-progress :percentage="88" :stroke-width="6" />
+              </div>
+              <div class="detail-item">
+                <span class="label">告警事件及时响应率</span>
+                <el-progress :percentage="92" :stroke-width="6" />
+              </div>
+              <div class="detail-item">
+                <span class="label">边坡稳定率</span>
+                <el-progress :percentage="85" :stroke-width="6" />
               </div>
             </div>
           </div>
         </div>
 
-        <!-- //TODO:这是总览层的隐患点监测统计卡片容器 -->
-        <div class="stat-card" style="height: 30%;">
+        <!-- 资源情况 -->
+        <div class="stat-card resource-card">
           <div class="stat-header">
-            <span class="stat-title">隐患点监测统计</span>
+            <span class="stat-title">资源情况</span>
           </div>
           <div class="stat-body">
-            <div class="pie-chart" ref="hazardPieRef"></div>
-            <div class="pie-legend">
-              <div class="legend-item">
+            <div class="resource-item">
+              <span class="resource-label">资源总数</span>
+              <span class="resource-value">{{ totalDevices + hazardStats.monitoring + hazardStats.paused + hazardStats.completed }}</span>
+            </div>
+            <div class="resource-divider"></div>
+            <div class="resource-item">
+              <span class="resource-label">设备总数</span>
+              <span class="resource-value">{{ totalDevices }}</span>
+            </div>
+            <div class="device-types">
+              <div class="device-type-item">
                 <span class="dot monitoring"></span>
-                <span class="text">监测中</span>
-                <span class="value">{{ hazardStats.monitoring }}</span>
+                <span>位移监测</span>
+                <span class="count">45</span>
               </div>
-              <div class="legend-item">
+              <div class="device-type-item">
                 <span class="dot paused"></span>
-                <span class="text">停测</span>
-                <span class="value">{{ hazardStats.paused }}</span>
+                <span>雨量监测</span>
+                <span class="count">32</span>
               </div>
-              <div class="legend-item">
+              <div class="device-type-item">
                 <span class="dot completed"></span>
-                <span class="text">完结</span>
-                <span class="value">{{ hazardStats.completed }}</span>
+                <span>视频监控</span>
+                <span class="count">89</span>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- //TODO:这是总览层的设备在线情况卡片容器 -->
-        <div class="stat-card" padding="7px" style="height: 25%;">
-          <div class="stat-header">
-            <span class="stat-title">设备在线情况</span>
-          </div>
-          <div class="stat-body">
-            <div class="device-online">
-              <div class="online-rate">{{ deviceOnlineRate }}%</div>
-              <div class="online-text">平均在线率</div>
+            <div class="resource-divider"></div>
+            <div class="resource-item">
+              <span class="resource-label">隐患点总数</span>
+              <span class="resource-value">{{ hazardStats.monitoring + hazardStats.paused + hazardStats.completed }}</span>
             </div>
-            <!-- <div class="online-detail">
-              <div class="online-stat">
-                <el-icon color="#52c41a"><CircleCheck /></el-icon>
-                <span>在线 {{ onlineDevices }}</span>
-              </div>
-              <div class="online-stat">
-                <el-icon color="#ff4d4f"><CircleClose /></el-icon>
-                <span>离线 {{ offlineDevices }}</span>
-              </div>
-            </div>
-            <div class="online-total">共 {{ totalDevices }} 台设备</div> -->
-          </div>
-        </div>
-
-        <!-- //TODO:这是总览层的告警态势卡片容器 -->
-        <div class="stat-card alarm-card" style="height: 40%;">
-          <div class="stat-header">
-            <span class="stat-title">告警态势</span>
-          </div>
-          <div class="stat-body">
-            <div class="alarm-summary">
-              <div class="alarm-stat">
-                <span class="alarm-num pending">{{ pendingAlarms }}</span>
-                <span class="alarm-label">待办告警</span>
-              </div>
-              <div class="alarm-stat">
-                <span class="alarm-num history">{{ historyAlarms }}</span>
-                <span class="alarm-label">历史告警</span>
-              </div>
-            </div>
-            <div class="alarm-levels">
-              <div class="level-item level-red">
-                <span class="level-count">{{ alarmLevels.red }}</span>
-                <span class="level-label">红色</span>
-              </div>
-              <div class="level-item level-orange">
-                <span class="level-count">{{ alarmLevels.orange }}</span>
-                <span class="level-label">橙色</span>
-              </div>
-              <div class="level-item level-yellow">
-                <span class="level-count">{{ alarmLevels.yellow }}</span>
-                <span class="level-label">黄色</span>
-              </div>
-              <div class="level-item level-blue">
-                <span class="level-count">{{ alarmLevels.blue }}</span>
-                <span class="level-label">蓝色</span>
-              </div>
-            </div>
-            <div class="alarm-list" style="height: 150%;">
-              <div class="alarm-list-header">待办告警列表</div>
-              <div class="alarm-list-body" ref="alarmListRef">
-                <div
-                  v-for="alarm in alarmList"
-                  :key="alarm.id"
-                  class="alarm-item"
-                  :class="'level-' + alarm.level"
-                  @mouseenter="showAlarmBubble(alarm)"
-                  @mouseleave="hideBubble"
-                >
-                  <span class="alarm-icon" :class="'icon-' + alarm.level"></span>
-                  <span class="alarm-name">{{ alarm.hazardName }}</span>
-                  <span class="alarm-time">{{ alarm.time }}</span>
-                </div>
-              </div>
+            <div class="resource-sub">
+              <span class="sub-label">监测中</span>
+              <span class="sub-value">{{ hazardStats.monitoring }}</span>
             </div>
           </div>
         </div>
@@ -298,49 +270,208 @@
       <div class="map-container" ref="mapContainerRef"></div>
  
       <div class="right-panel">
-        <div class="layer-control">
-          <div class="layer-title">图层管理</div>
-          <div class="layer-list">
-            <div class="layer-item">
-              <el-switch v-model="layers.hazard" size="small" />
-              <span>隐患点图层</span>
+        <!-- 设备在线状态 - 占一小部分 -->
+        <div class="stat-card device-online-card" v-if="viewMode === 'overview'">
+          <div class="stat-header">
+            <span class="stat-title">设备在线状态</span>
+          </div>
+          <div class="stat-body device-online-body">
+            <div class="online-rate-display">
+              <div class="online-rate-value">{{ deviceOnlineRate }}%</div>
+              <div class="online-rate-label">设备总在线率</div>
             </div>
-            <div class="layer-item">
-              <el-switch v-model="layers.device" size="small" />
-              <span>设备图层</span>
+            <div class="online-counts-compact">
+              <div class="count-line">
+                <span class="count-dot online"></span>
+                <span class="count-text">在线设备</span>
+                <span class="count-number">{{ onlineDevices }}</span>
+              </div>
+              <div class="count-line">
+                <span class="count-dot total"></span>
+                <span class="count-text">设备总数</span>
+                <span class="count-number">{{ totalDevices }}</span>
+              </div>
             </div>
-            <div class="layer-item">
-              <el-switch v-model="layers.video" size="small" />
-              <span>视频设备图层</span>
+            <div class="online-types-mini">
+              <div class="type-item-mini">
+                <span class="type-name">位移</span>
+                <div class="type-bar-mini">
+                  <div class="type-fill" style="width: 95%"></div>
+                </div>
+                <span class="type-num">43/45</span>
+              </div>
+              <div class="type-item-mini">
+                <span class="type-name">雨量</span>
+                <div class="type-bar-mini">
+                  <div class="type-fill" style="width: 90%"></div>
+                </div>
+                <span class="type-num">29/32</span>
+              </div>
+              <div class="type-item-mini">
+                <span class="type-name">视频</span>
+                <div class="type-bar-mini">
+                  <div class="type-fill" style="width: 96%"></div>
+                </div>
+                <span class="type-num">85/89</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="map-tools">
-          <div class="tools-title">地图工具</div>
-          <div class="tools-list">
-            <el-tooltip content="缩放" placement="left">
-              <div class="tool-btn" @click="toggleZoom">
-                <el-icon><ZoomIn /></el-icon>
+        <!-- 告警态势 - 占大部分 -->
+        <div class="stat-card alarm-card-main" v-if="viewMode === 'overview'">
+          <div class="stat-header">
+            <span class="stat-title">告警态势</span>
+          </div>
+          <div class="stat-body alarm-body-main">
+            <div class="alarm-stats-row">
+              <div class="alarm-stat-box pending">
+                <span class="stat-number">{{ pendingAlarms }}</span>
+                <span class="stat-text">待办告警</span>
               </div>
-            </el-tooltip>
-            <el-tooltip content="定位" placement="left">
-              <div class="tool-btn" @click="toggleLocate">
-                <el-icon><Aim /></el-icon>
+              <div class="alarm-stat-box history">
+                <span class="stat-number">{{ historyAlarms }}</span>
+                <span class="stat-text">历史告警</span>
               </div>
-            </el-tooltip>
-            <el-tooltip content="测量" placement="left">
-              <div class="tool-btn" @click="toggleMeasure">
-                <el-icon><FullScreen /></el-icon>
+            </div>
+            <div class="alarm-levels-row">
+              <div class="level-box level-red">
+                <span class="level-indicator"></span>
+                <span class="level-num">{{ alarmLevels.red }}</span>
+                <span class="level-name">红色</span>
               </div>
-            </el-tooltip>
-            <el-tooltip content="图例" placement="left">
-              <div class="tool-btn" @click="toggleLegend">
-                <el-icon><List /></el-icon>
+              <div class="level-box level-orange">
+                <span class="level-indicator"></span>
+                <span class="level-num">{{ alarmLevels.orange }}</span>
+                <span class="level-name">橙色</span>
               </div>
-            </el-tooltip>
+              <div class="level-box level-yellow">
+                <span class="level-indicator"></span>
+                <span class="level-num">{{ alarmLevels.yellow }}</span>
+                <span class="level-name">黄色</span>
+              </div>
+              <div class="level-box level-blue">
+                <span class="level-indicator"></span>
+                <span class="level-num">{{ alarmLevels.blue }}</span>
+                <span class="level-name">蓝色</span>
+              </div>
+            </div>
+            <div class="alarm-list-panel">
+              <div class="list-header">实时告警列表</div>
+              <div class="list-content">
+                <div
+                  v-for="alarm in alarmList"
+                  :key="alarm.id"
+                  class="alarm-entry"
+                  :class="'level-' + alarm.level"
+                  @mouseenter="showAlarmBubble(alarm)"
+                  @mouseleave="hideBubble"
+                >
+                  <span class="entry-icon" :class="'icon-' + alarm.level"></span>
+                  <div class="entry-info">
+                    <span class="entry-name">{{ alarm.hazardName }}</span>
+                    <span class="entry-desc">发生告警事件</span>
+                  </div>
+                  <span class="entry-time">{{ alarm.time }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- 图层管理和地图工具（总览层显示） -->
+        <template v-if="viewMode === 'overview'">
+          <div class="layer-control">
+            <div class="layer-title">图层管理</div>
+            <div class="layer-list">
+              <div class="layer-item">
+                <el-switch v-model="layers.hazard" size="small" />
+                <span>隐患点图层</span>
+              </div>
+              <div class="layer-item">
+                <el-switch v-model="layers.device" size="small" />
+                <span>设备图层</span>
+              </div>
+              <div class="layer-item">
+                <el-switch v-model="layers.video" size="small" />
+                <span>视频设备图层</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-tools">
+            <div class="tools-title">地图工具</div>
+            <div class="tools-list">
+              <el-tooltip content="缩放" placement="left">
+                <div class="tool-btn" @click="toggleZoom">
+                  <el-icon><ZoomIn /></el-icon>
+                </div>
+              </el-tooltip>
+              <el-tooltip content="定位" placement="left">
+                <div class="tool-btn" @click="toggleLocate">
+                  <el-icon><Aim /></el-icon>
+                </div>
+              </el-tooltip>
+              <el-tooltip content="测量" placement="left">
+                <div class="tool-btn" @click="toggleMeasure">
+                  <el-icon><FullScreen /></el-icon>
+                </div>
+              </el-tooltip>
+              <el-tooltip content="图例" placement="left">
+                <div class="tool-btn" @click="toggleLegend">
+                  <el-icon><List /></el-icon>
+                </div>
+              </el-tooltip>
+            </div>
+          </div>
+        </template>
+
+        <!-- 隐患点层的图层管理和地图工具 -->
+        <template v-else>
+          <div class="layer-control">
+            <div class="layer-title">图层管理</div>
+            <div class="layer-list">
+              <div class="layer-item">
+                <el-switch v-model="layers.hazard" size="small" />
+                <span>隐患点图层</span>
+              </div>
+              <div class="layer-item">
+                <el-switch v-model="layers.device" size="small" />
+                <span>设备图层</span>
+              </div>
+              <div class="layer-item">
+                <el-switch v-model="layers.video" size="small" />
+                <span>视频设备图层</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="map-tools">
+            <div class="tools-title">地图工具</div>
+            <div class="tools-list">
+              <el-tooltip content="缩放" placement="left">
+                <div class="tool-btn" @click="toggleZoom">
+                  <el-icon><ZoomIn /></el-icon>
+                </div>
+              </el-tooltip>
+              <el-tooltip content="定位" placement="left">
+                <div class="tool-btn" @click="toggleLocate">
+                  <el-icon><Aim /></el-icon>
+                </div>
+              </el-tooltip>
+              <el-tooltip content="测量" placement="left">
+                <div class="tool-btn" @click="toggleMeasure">
+                  <el-icon><FullScreen /></el-icon>
+                </div>
+              </el-tooltip>
+              <el-tooltip content="图例" placement="left">
+                <div class="tool-btn" @click="toggleLegend">
+                  <el-icon><List /></el-icon>
+                </div>
+              </el-tooltip>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -382,7 +513,7 @@ import { ref, reactive, onMounted, onUnmounted, computed, watch, nextTick } from
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import * as echarts from 'echarts'
-import { Search, ZoomIn, Aim, FullScreen, List, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import { Search, ZoomIn, Aim, FullScreen, List, QuestionFilled } from '@element-plus/icons-vue'
 
 const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
@@ -714,6 +845,11 @@ const handleSearch = () => {
   console.log('Search:', searchKeyword.value)
 }
 
+const switchToOverview = () => {
+  viewMode.value = 'overview'
+  map?.setView([30.65, 104.10], 12)
+}
+
 const toggleLegend = () => {
   showLegend.value = !showLegend.value
 }
@@ -836,8 +972,39 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background: rgba(10, 20, 40, 0.95);
+  border-bottom: 1px solid rgba(79, 172, 254, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.layer-tabs {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.layer-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.layer-tab:hover {
+  background: rgba(79, 172, 254, 0.3);
+  color: #fff;
+}
+
+.layer-tab.active {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: #fff;
 }
 
 .search-input {
@@ -861,40 +1028,457 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: rgba(10, 20, 40, 0.9);
+  border: 1px solid rgba(79, 172, 254, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .stat-header {
-  height: 25px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  /* background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%); */
-  background-color:greenyellow;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(79, 172, 254, 0.3);
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.2) 0%, rgba(0, 242, 254, 0.1) 100%);
+}
+
+.help-icon {
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.help-icon:hover {
+  color: #4facfe;
 }
 
 .stat-title {
   font-size: 14px;
   font-weight: 600;
-  color: #1f1f1f;
+  color: #fff;
 }
 
 .stat-count {
   font-size: 12px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .stat-body {
-  padding: 5px;
+  padding: 12px 16px;
   height: 100%;
-  background-color: #d9e3c2;
+  background: rgba(10, 20, 40, 0.8);
   overflow-y: auto;
-  padding-bottom: 40px;
+}
+
+/* 系统健康度卡片 */
+.health-card {
+  flex: 0 0 auto;
+}
+
+.health-main {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.health-ring {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 资源情况卡片 */
+.resource-card {
+  flex: 0 0 auto;
+}
+
+.resource-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.resource-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.resource-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #4facfe;
+}
+
+.resource-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 0;
+}
+
+.device-types {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.device-type-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.device-type-item .count {
+  margin-left: auto;
+  font-weight: 600;
+  color: #fff;
+}
+
+.resource-sub {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.sub-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sub-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #52c41a;
+}
+
+/* 右侧面板样式 */
+.right-panel {
+  width: 280px !important;
+  right: 12px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 设备在线状态卡片 - 紧凑版 */
+.device-online-card {
+  flex: 0 0 auto;
+}
+
+.device-online-body {
+  padding: 12px;
+}
+
+.online-rate-display {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.online-rate-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #52c41a;
+  line-height: 1.1;
+}
+
+.online-rate-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+}
+
+.online-counts-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.count-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.count-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.count-dot.online {
+  background: #52c41a;
+}
+
+.count-dot.total {
+  background: #1890ff;
+}
+
+.count-text {
+  color: rgba(255, 255, 255, 0.7);
+  flex: 1;
+}
+
+.count-number {
+  font-weight: 600;
+  color: #fff;
+}
+
+.online-types-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.type-item-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.type-name {
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 28px;
+}
+
+.type-bar-mini {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.type-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #52c41a 0%, #4facfe 100%);
+  border-radius: 2px;
+}
+
+.type-num {
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 40px;
+  text-align: right;
+  font-size: 11px;
+}
+
+/* 告警态势卡片 - 主区域 */
+.alarm-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.alarm-body-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+}
+
+.alarm-stats-row {
+  display: flex;
+  gap: 12px;
+}
+
+.alarm-stat-box {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.alarm-stat-box.pending {
+  background: rgba(245, 34, 45, 0.15);
+  border: 1px solid rgba(245, 34, 45, 0.3);
+}
+
+.stat-number {
+  display: block;
+  font-size: 24px;
+  font-weight: bold;
+  color: #f5222d;
+}
+
+.alarm-stat-box.history .stat-number {
+  color: #666;
+}
+
+.stat-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+  display: block;
+}
+
+.alarm-levels-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.level-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 4px;
+}
+
+.level-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.level-box.level-red {
+  background: rgba(245, 34, 45, 0.1);
+}
+.level-box.level-red .level-indicator {
+  background: #f5222d;
+}
+
+.level-box.level-orange {
+  background: rgba(250, 140, 22, 0.1);
+}
+.level-box.level-orange .level-indicator {
+  background: #fa8c16;
+}
+
+.level-box.level-yellow {
+  background: rgba(250, 219, 20, 0.1);
+}
+.level-box.level-yellow .level-indicator {
+  background: #fadb14;
+}
+
+.level-box.level-blue {
+  background: rgba(24, 144, 255, 0.1);
+}
+.level-box.level-blue .level-indicator {
+  background: #1890ff;
+}
+
+.level-num {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.level-box.level-red .level-num { color: #f5222d; }
+.level-box.level-orange .level-num { color: #fa8c16; }
+.level-box.level-yellow .level-num { color: #fadb14; }
+.level-box.level-blue .level-num { color: #1890ff; }
+
+.level-name {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.alarm-list-panel {
+  flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.list-header {
+  padding: 8px 12px;
+  background: rgba(79, 172, 254, 0.15);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.list-content {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+.alarm-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.alarm-entry:hover {
+  background: rgba(79, 172, 254, 0.15);
+}
+
+.alarm-entry:last-child {
+  border-bottom: none;
+}
+
+.entry-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.entry-icon.icon-red { background: #f5222d; }
+.entry-icon.icon-orange { background: #fa8c16; }
+.entry-icon.icon-yellow { background: #fadb14; }
+.entry-icon.icon-blue { background: #1890ff; }
+
+.entry-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.entry-name {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.entry-time {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+/* 图例文本颜色修正 */
+.legend-item {
+  color: #333;
 }
 
 .health-ring {
@@ -930,7 +1514,7 @@ onUnmounted(() => {
 
 .detail-item .label {
   font-size: 12px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .pie-chart {
@@ -950,7 +1534,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .dot {
@@ -996,13 +1580,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .online-total {
   text-align: center;
   font-size: 12px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .alarm-card .stat-body {
@@ -1030,7 +1614,7 @@ onUnmounted(() => {
 
 .alarm-label {
   font-size: 12px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .alarm-levels {
@@ -1070,11 +1654,11 @@ onUnmounted(() => {
 
 .alarm-list-header {
   padding: 8px 12px;
-  background: #fafafa;
+  background: rgba(79, 172, 254, 0.1);
   font-size: 12px;
   font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #f0f0f0;
+  color: #fff;
+  border-bottom: 1px solid rgba(79, 172, 254, 0.2);
 }
 
 .alarm-list-body {
@@ -1088,7 +1672,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -1098,7 +1682,7 @@ onUnmounted(() => {
 }
 
 .alarm-item:hover {
-  background: #f5f7fa;
+  background: rgba(79, 172, 254, 0.15);
 }
 
 .alarm-icon {
@@ -1115,7 +1699,7 @@ onUnmounted(() => {
 .alarm-name {
   flex: 1;
   font-size: 12px;
-  color: #333;
+  color: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1123,7 +1707,7 @@ onUnmounted(() => {
 
 .alarm-time {
   font-size: 11px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .hazard-info {
@@ -1139,11 +1723,11 @@ onUnmounted(() => {
 }
 
 .info-row .label {
-  color: #999;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .info-row .value {
-  color: #333;
+  color: #fff;
 }
 
 .status-tag {
@@ -1187,14 +1771,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: #fafafa;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .device-item:hover {
-  background: #e6f7ff;
+  background: rgba(79, 172, 254, 0.2);
   transform: translateX(4px);
 }
 
@@ -1206,13 +1790,13 @@ onUnmounted(() => {
 
 .device-name {
   font-size: 13px;
-  color: #333;
+  color: #fff;
   font-weight: 500;
 }
 
 .device-type {
   font-size: 11px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .device-status {
@@ -1334,7 +1918,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .legend-color {
