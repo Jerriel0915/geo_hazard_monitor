@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.device.mapper.SensorAttributeMapper">
+
+    <!-- ==================== 结果映射 ==================== -->
+    <resultMap type="com.zwei.iot.device.domain.SensorAttribute" id="SensorAttributeResult">
+        <id property="id" column="id"/>
+        <result property="sensorId" column="sensor_id"/>
+        <result property="attrCode" column="attr_code"/>
+        <result property="attrName" column="attr_name"/>
+        <result property="indicatorType" column="indicator_type"/>
+        <result property="indicatorTypeName" column="indicator_type_name"/>
+        <result property="initialValue" column="initial_value"/>
+        <result property="unit" column="unit"/>
+        <result property="rangeMin" column="range_min"/>
+        <result property="rangeMax" column="range_max"/>
+    </resultMap>
+
+    <!-- ==================== SQL片段 ==================== -->
+    <sql id="selectAttributeVo">
+        SELECT sa.id,
+               sa.sensor_id,
+               sa.attr_code,
+               sa.attr_name,
+               sa.indicator_type,
+               sa.indicator_type_name,
+               sa.initial_value,
+               sa.unit,
+               sa.range_min,
+               sa.range_max
+        FROM sensor_attribute sa
+    </sql>
+
+    <!-- ==================== 查询操作 ==================== -->
+
+    <!-- 查询传感器属性列表 -->
+    <select id="selectAttributeListBySensorId" parameterType="Long" resultMap="SensorAttributeResult">
+        <include refid="selectAttributeVo"/>
+        WHERE sa.sensor_id = #{sensorId}
+        ORDER BY sa.id ASC
+    </select>
+
+    <!-- 根据ID查询属性详情 -->
+    <select id="selectAttributeById" parameterType="Long" resultMap="SensorAttributeResult">
+        <include refid="selectAttributeVo"/>
+        WHERE sa.id = #{id}
+    </select>
+
+    <!-- 校验属性编码是否唯一 -->
+    <select id="checkAttributeCodeUnique" resultMap="SensorAttributeResult">
+        <include refid="selectAttributeVo"/>
+        WHERE sa.attr_code = #{attrCode} AND sa.sensor_id = #{sensorId} AND sa.id != #{id} LIMIT 1
+    </select>
+
+    <!-- ==================== 新增操作 ==================== -->
+
+    <!-- 新增传感器属性 -->
+    <insert id="insertAttribute" parameterType="com.zwei.iot.device.domain.SensorAttribute" useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO sensor_attribute(
+        <if test="sensorId != null">sensor_id,</if>
+        <if test="attrCode != null and attrCode != ''">attr_code,</if>
+        <if test="attrName != null and attrName != ''">attr_name,</if>
+        <if test="indicatorType != null">indicator_type,</if>
+        <if test="indicatorTypeName != null">indicator_type_name,</if>
+        <if test="initialValue != null">initial_value,</if>
+        <if test="unit != null">unit,</if>
+        <if test="rangeMin != null">range_min,</if>
+        <if test="rangeMax != null">range_max,</if>
+        create_time
+        ) VALUES (
+        <if test="sensorId != null">#{sensorId},</if>
+        <if test="attrCode != null and attrCode != ''">#{attrCode},</if>
+        <if test="attrName != null and attrName != ''">#{attrName},</if>
+        <if test="indicatorType != null">#{indicatorType},</if>
+        <if test="indicatorTypeName != null">#{indicatorTypeName},</if>
+        <if test="initialValue != null">#{initialValue},</if>
+        <if test="unit != null">#{unit},</if>
+        <if test="rangeMin != null">#{rangeMin},</if>
+        <if test="rangeMax != null">#{rangeMax},</if>
+        SYSDATE()
+        )
+    </insert>
+
+    <!-- 批量新增传感器属性 -->
+    <insert id="batchInsertAttribute" parameterType="java.util.List">
+        INSERT INTO sensor_attribute(
+        sensor_id,
+        attr_code,
+        attr_name,
+        indicator_type,
+        indicator_type_name,
+        initial_value,
+        unit,
+        range_min,
+        range_max,
+        create_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.sensorId},
+            #{item.attrCode},
+            #{item.attrName},
+            #{item.indicatorType},
+            #{item.indicatorTypeName},
+            #{item.initialValue},
+            #{item.unit},
+            #{item.rangeMin},
+            #{item.rangeMax},
+            SYSDATE()
+            )
+        </foreach>
+    </insert>
+
+    <!-- ==================== 修改操作 ==================== -->
+
+    <!-- 修改传感器属性 -->
+    <update id="updateAttribute" parameterType="com.zwei.iot.device.domain.SensorAttribute">
+        UPDATE sensor_attribute
+        <set>
+            <if test="attrName != null and attrName != ''">attr_name = #{attrName},</if>
+            <if test="indicatorType != null">indicator_type = #{indicatorType},</if>
+            <if test="indicatorTypeName != null">indicator_type_name = #{indicatorTypeName},</if>
+            <if test="initialValue != null">initial_value = #{initialValue},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="rangeMin != null">range_min = #{rangeMin},</if>
+            <if test="rangeMax != null">range_max = #{rangeMax},</if>
+            update_time = SYSDATE()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== 删除操作 ==================== -->
+
+    <!-- 删除传感器属性 -->
+    <delete id="deleteAttributeById" parameterType="Long">
+        DELETE
+        FROM sensor_attribute
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 根据传感器ID删除属性 -->
+    <delete id="deleteAttributeBySensorId" parameterType="Long">
+        DELETE
+        FROM sensor_attribute
+        WHERE sensor_id = #{sensorId}
+    </delete>
+
+</mapper>
