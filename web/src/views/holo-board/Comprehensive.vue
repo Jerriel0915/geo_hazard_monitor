@@ -151,7 +151,7 @@
 
       <div class="monitor-chart-panel" v-if="selectedPoint">
         <div class="chart-header">
-          <span class="chart-title">{{ selectedPoint.name }} - 监测曲线</span>
+          <span class="chart-title">{{ selectedPoint.name }} - 监测数据</span>
           <button class="close-chart" @click="selectedPoint = null">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <path d="M18 6L6 18M6 6l12 12"/>
@@ -159,60 +159,106 @@
           </button>
         </div>
         <div class="chart-body">
-          <div class="chart-tabs">
-            <span
-              v-for="tab in chartTabs"
-              :key="tab.key"
-              :class="['chart-tab', { active: activeChartTab === tab.key }]"
-              @click="activeChartTab = tab.key"
-            >{{ tab.label }}</span>
+          <div class="data-filters">
+            <el-select v-model="dataFilter.deviceId" placeholder="选择设备" clearable style="width: 150px">
+              <el-option v-for="d in selectedPointDevices" :key="d.id" :label="d.name" :value="d.id" />
+            </el-select>
+            <el-select v-model="dataFilter.sensorId" placeholder="选择传感器" clearable style="width: 150px">
+              <el-option v-for="s in currentSensors" :key="s.id" :label="s.name" :value="s.id" />
+            </el-select>
+            <el-select v-model="dataFilter.valueType" placeholder="值类型" clearable style="width: 130px">
+              <el-option label="采集值" value="current" />
+              <el-option label="小时变化" value="hour" />
+              <el-option label="24小时变化" value="day" />
+              <el-option label="72小时变化" value="week" />
+            </el-select>
+            <el-select v-model="dataFilter.direction" placeholder="方向" clearable style="width: 80px">
+              <el-option label="X" value="x" />
+              <el-option label="Y" value="y" />
+              <el-option label="Z" value="z" />
+            </el-select>
+            <el-date-picker
+              v-model="dataFilter.startTime"
+              type="datetime"
+              placeholder="开始时间"
+              style="width: 160px"
+            />
+            <el-date-picker
+              v-model="dataFilter.endTime"
+              type="datetime"
+              placeholder="结束时间"
+              style="width: 160px"
+            />
+            <el-button type="primary" size="small" @click="handleQueryData">查询</el-button>
           </div>
-          <div class="chart-content">
-            <div class="line-chart">
-              <div class="chart-y-axis">
-                <span v-for="label in chartYLabels" :key="label">{{ label }}</span>
+
+          <div class="data-toolbar">
+            <el-button-group>
+              <el-button :type="dataDisplayMode === 'chart' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'chart'">图表展示</el-button>
+              <el-button :type="dataDisplayMode === 'table' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'table'">表格展示</el-button>
+            </el-button-group>
+          </div>
+
+          <div class="data-content">
+            <div v-if="dataDisplayMode === 'chart'" class="chart-container">
+              <div class="chart-area-wrapper">
+                <div class="chart-y-axis">
+                  <span v-for="label in currentChartYLabels" :key="label">{{ label }}</span>
+                </div>
+                <div class="chart-main-area">
+                  <svg class="chart-svg" viewBox="0 0 500 180" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient :id="'chartGradient-' + activeChartTab" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="rgba(79, 172, 254, 0.3)"/>
+                        <stop offset="100%" stop-color="rgba(79, 172, 254, 0)"/>
+                      </linearGradient>
+                    </defs>
+                    <path :d="monitorChartAreaPath" :fill="'url(#chartGradient-' + activeChartTab + ')'" />
+                    <path :d="monitorChartLinePath" fill="none" stroke="#4facfe" stroke-width="2"/>
+                    <circle
+                      v-for="(point, index) in monitorDataPoints"
+                      :key="index"
+                      :cx="point.x"
+                      :cy="point.y"
+                      r="4"
+                      fill="#4facfe"
+                      stroke="#fff"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  <div class="chart-x-axis">
+                    <span v-for="label in currentChartXLabels" :key="label">{{ label }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="chart-area">
-                <svg class="chart-svg" viewBox="0 0 400 150" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stop-color="rgba(79, 172, 254, 0.3)"/>
-                      <stop offset="100%" stop-color="rgba(79, 172, 254, 0)"/>
-                    </linearGradient>
-                  </defs>
-                  <path :d="chartAreaPath" fill="url(#chartGradient)"/>
-                  <path :d="chartLinePath" fill="none" stroke="#4facfe" stroke-width="2"/>
-                  <circle
-                    v-for="(point, index) in chartDataPoints"
-                    :key="index"
-                    :cx="point.x"
-                    :cy="point.y"
-                    r="3"
-                    fill="#4facfe"
-                  />
-                </svg>
-                <div class="chart-x-axis">
-                  <span v-for="label in chartXLabels" :key="label">{{ label }}</span>
+              <div class="chart-stats">
+                <div class="stat-item">
+                  <span class="stat-label">当前值</span>
+                  <span class="stat-value current">{{ monitorStats.current }} {{ currentUnit }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">最大值</span>
+                  <span class="stat-value max">{{ monitorStats.max }} {{ currentUnit }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">最小值</span>
+                  <span class="stat-value min">{{ monitorStats.min }} {{ currentUnit }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">平均值</span>
+                  <span class="stat-value avg">{{ monitorStats.avg }} {{ currentUnit }}</span>
                 </div>
               </div>
             </div>
-            <div class="chart-summary">
-              <div class="summary-item">
-                <span class="summary-label">当前值</span>
-                <span class="summary-value">{{ selectedPoint.displacement }}mm</span>
-              </div>
-              <div class="summary-item">
-                <span class="summary-label">最大值</span>
-                <span class="summary-value">25.3mm</span>
-              </div>
-              <div class="summary-item">
-                <span class="summary-label">最小值</span>
-                <span class="summary-value">8.1mm</span>
-              </div>
-              <div class="summary-item">
-                <span class="summary-label">平均值</span>
-                <span class="summary-value">15.6mm</span>
-              </div>
+            <div v-else class="table-container">
+              <el-table :data="monitorDataTable" border size="small">
+                <el-table-column prop="time" label="时间" width="180" align="center" />
+                <el-table-column prop="deviceName" label="设备" width="150" align="center" />
+                <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
+                <el-table-column prop="value" label="数值" width="100" align="center" />
+                <el-table-column prop="unit" label="单位" width="80" align="center" />
+                <el-table-column prop="direction" label="方向" width="80" align="center" />
+              </el-table>
             </div>
           </div>
         </div>
@@ -362,6 +408,11 @@ import 'leaflet/dist/leaflet.css'
 
 const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
+interface DeviceInfo {
+  name: string
+  status: 'online' | 'offline' | 'warning'
+}
+
 interface HazardPoint {
   id: number
   name: string
@@ -376,12 +427,103 @@ interface HazardPoint {
   rainfall: number
   waterLevel: number
   inclination: number
+  deviceCount: number
+  devices: DeviceInfo[]
 }
 
 const showAlgorithmDesc = ref(false)
 const selectedPoint = ref<HazardPoint | null>(null)
 const activeChartTab = ref('displacement')
 const activeSegment = ref<number | null>(null)
+const dataDisplayMode = ref<'chart' | 'table'>('chart')
+
+interface SensorInfo {
+  id: string
+  name: string
+  type: string
+}
+
+interface DeviceOption {
+  id: string
+  name: string
+}
+
+const dataFilter = ref({
+  deviceId: '',
+  sensorId: '',
+  valueType: '',
+  direction: '',
+  startTime: null as Date | null,
+  endTime: null as Date | null
+})
+
+const selectedPointDevices = computed<DeviceOption[]>(() => {
+  if (!selectedPoint.value) return []
+  return selectedPoint.value.devices.map((d, idx) => ({
+    id: `device-${idx + 1}`,
+    name: d.name
+  }))
+})
+
+const currentSensors = computed<SensorInfo[]>(() => {
+  const sensors: SensorInfo[] = [
+    { id: 'node1', name: '节点1', type: 'displacement' },
+    { id: 'node2', name: '节点2', type: 'displacement' },
+    { id: 'node3', name: '节点3', type: 'displacement' },
+    { id: 'battery', name: '电量', type: 'power' }
+  ]
+  return sensors
+})
+
+const currentUnit = computed(() => {
+  return 'mm'
+})
+
+const monitorStats = ref({
+  current: '15.6',
+  max: '25.3',
+  min: '8.1',
+  avg: '15.6'
+})
+
+const monitorDataPoints = computed(() => {
+  const data = [12, 15, 18, 22, 19, 16, 20, 18, 22, 25, 21, 18]
+  return data.map((value, index) => ({
+    x: index * 45 + 25,
+    y: 180 - (value / 30) * 180
+  }))
+})
+
+const monitorChartLinePath = computed(() => {
+  const points = monitorDataPoints.value
+  if (points.length === 0) return ''
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+})
+
+const monitorChartAreaPath = computed(() => {
+  const linePath = monitorChartLinePath.value
+  if (!linePath) return ''
+  const points = monitorDataPoints.value
+  const lastX = points[points.length - 1]?.x || 500
+  return `${linePath} L ${lastX} 180 L 25 180 Z`
+})
+
+const currentChartYLabels = computed(() => ['30', '25', '20', '15', '10', '5', '0'])
+
+const currentChartXLabels = computed(() => ['0时', '4时', '8时', '12时', '16时', '20时'])
+
+const monitorDataTable = ref([
+  { time: '2024-01-15 00:00:00', deviceName: 'GNSS接收机-A1', sensorName: '节点1', value: '12.3', unit: 'mm', direction: 'X' },
+  { time: '2024-01-15 04:00:00', deviceName: 'GNSS接收机-A1', sensorName: '节点1', value: '15.1', unit: 'mm', direction: 'X' },
+  { time: '2024-01-15 08:00:00', deviceName: 'GNSS接收机-A1', sensorName: '节点1', value: '18.2', unit: 'mm', direction: 'X' },
+  { time: '2024-01-15 12:00:00', deviceName: 'GNSS接收机-A1', sensorName: '节点1', value: '22.0', unit: 'mm', direction: 'X' },
+  { time: '2024-01-15 16:00:00', deviceName: 'GNSS接收机-A1', sensorName: '节点1', value: '19.5', unit: 'mm', direction: 'X' },
+  { time: '2024-01-15 20:00:00', deviceName: 'GNSS接收机-A1', sensorName: '节点1', value: '16.8', unit: 'mm', direction: 'X' }
+])
+
+const handleQueryData = () => {
+  console.log('查询监测数据:', dataFilter.value)
+}
 const nextRefreshTime = ref('')
 const mapContainer = ref<HTMLElement | null>(null)
 let map: L.Map | null = null
@@ -425,20 +567,65 @@ const initMap = () => {
 
   hazardPoints.value.forEach(point => {
     const color = point.hasAlarm ? '#f5222d' : '#52c41a'
-    const marker = L.circleMarker([point.y / 100 * 0.1 + 30.55, point.x / 100 * 0.2 + 104.0], {
-      radius: 8,
-      fillColor: color,
-      color: '#fff',
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8
+    
+    const iconHtml = `
+      <div class="hazard-marker-container" style="position: relative;">
+        <div class="hazard-icon" style="width: 24px; height: 24px; border-radius: 50%; background: ${color}; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="14" height="14">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        ${point.hasAlarm ? '<div class="alarm-ring"></div>' : ''}
+        <div class="device-count-badge" style="position: absolute; top: -8px; right: -8px; background: #1890ff; color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+          ${point.deviceCount}
+        </div>
+      </div>
+    `
+    
+    const customIcon = L.divIcon({
+      html: iconHtml,
+      className: 'custom-hazard-marker',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    })
+    
+    const marker = L.marker([point.y / 100 * 0.1 + 30.55, point.x / 100 * 0.2 + 104.0], {
+      icon: customIcon
     }).addTo(map)
     
-    if (point.hasAlarm) {
-      marker.bindPopup(`<div style="color: #333;">${point.name}<br/>状态: 待办告警</div>`)
-    } else {
-      marker.bindPopup(`<div style="color: #333;">${point.name}<br/>状态: 正常监测</div>`)
-    }
+    const statusText = point.hasAlarm ? '待办告警' : '正常监测'
+    const devicesHtml = point.devices.map(device => {
+      const statusColor = device.status === 'online' ? '#52c41a' : device.status === 'warning' ? '#faad14' : '#f5222d'
+      const statusText = device.status === 'online' ? '在线' : device.status === 'warning' ? '异常' : '离线'
+      return `
+        <div class="device-item">
+          <span class="device-name">${device.name}</span>
+          <span class="device-status" style="color: ${statusColor};">${statusText}</span>
+        </div>
+      `
+    }).join('')
+    
+    const popupContent = `
+      <div class="hazard-popup">
+        <div class="popup-header">
+          <span class="popup-title">${point.name}</span>
+          <span class="popup-status" style="color: ${color};">${statusText}</span>
+        </div>
+        <div class="popup-device-info">
+          <span class="device-count-label">设备总数：</span>
+          <span class="device-count-value">${point.deviceCount}台（含视频设备）</span>
+        </div>
+        <div class="popup-device-list">
+          <div class="list-header">设备清单</div>
+          ${devicesHtml}
+        </div>
+      </div>
+    `
+    
+    marker.bindPopup(popupContent, {
+      maxWidth: 280,
+      className: 'hazard-popup-container'
+    })
     
     marker.on('click', () => {
       selectedPoint.value = point
@@ -559,12 +746,12 @@ const alarmStats = ref({
 })
 
 const hazardPoints = ref<HazardPoint[]>([
-  { id: 1, name: '龙潭寺滑坡点', code: 'HZ-001', type: '滑坡', location: '龙潭寺镇西北侧', level: 'high', x: 35, y: 28, hasAlarm: true, displacement: 15.6, rainfall: 128.5, waterLevel: 2.3, inclination: 12.5 },
-  { id: 2, name: '大坝监测点', code: 'HZ-002', type: '坝体', location: 'ZZ水库大坝', level: 'medium', x: 65, y: 45, hasAlarm: false, displacement: 5.2, rainfall: 98.3, waterLevel: 15.8, inclination: 3.2 },
-  { id: 3, name: '边坡监测点', code: 'HZ-003', type: '边坡', location: '高速公路K120段', level: 'low', x: 45, y: 68, hasAlarm: false, displacement: 2.1, rainfall: 76.2, waterLevel: 0, inclination: 1.8 },
-  { id: 4, name: '泥石流隐患点', code: 'HZ-004', type: '泥石流', location: '山区公路沿线', level: 'high', x: 78, y: 35, hasAlarm: true, displacement: 28.5, rainfall: 156.8, waterLevel: 1.2, inclination: 8.5 },
-  { id: 5, name: '地面沉降点', code: 'HZ-005', type: '沉降', location: '工业园区A区', level: 'medium', x: 22, y: 55, hasAlarm: false, displacement: 8.3, rainfall: 65.4, waterLevel: 4.5, inclination: 0.5 },
-  { id: 6, name: '桥梁监测点', code: 'HZ-006', type: '桥梁', location: 'XX大桥', level: 'low', x: 55, y: 35, hasAlarm: false, displacement: 1.2, rainfall: 88.6, waterLevel: 0, inclination: 0.3 }
+  { id: 1, name: '龙潭寺滑坡点', code: 'HZ-001', type: '滑坡', location: '龙潭寺镇西北侧', level: 'high', x: 35, y: 28, hasAlarm: true, displacement: 15.6, rainfall: 128.5, waterLevel: 2.3, inclination: 12.5, deviceCount: 5, devices: [{ name: 'GNSS接收机-A1', status: 'online' }, { name: '位移计-B1', status: 'online' }, { name: '雨量计-C1', status: 'online' }, { name: '视频监控-D1', status: 'online' }, { name: '裂缝计-E1', status: 'warning' }] },
+  { id: 2, name: '大坝监测点', code: 'HZ-002', type: '坝体', location: 'ZZ水库大坝', level: 'medium', x: 65, y: 45, hasAlarm: false, displacement: 5.2, rainfall: 98.3, waterLevel: 15.8, inclination: 3.2, deviceCount: 4, devices: [{ name: '渗压计-A2', status: 'online' }, { name: '水位计-B2', status: 'online' }, { name: '应变计-C2', status: 'online' }, { name: '视频监控-D2', status: 'online' }] },
+  { id: 3, name: '边坡监测点', code: 'HZ-003', type: '边坡', location: '高速公路K120段', level: 'low', x: 45, y: 68, hasAlarm: false, displacement: 2.1, rainfall: 76.2, waterLevel: 0, inclination: 1.8, deviceCount: 3, devices: [{ name: 'GNSS接收机-A3', status: 'online' }, { name: '倾角仪-B3', status: 'online' }, { name: '视频监控-C3', status: 'offline' }] },
+  { id: 4, name: '泥石流隐患点', code: 'HZ-004', type: '泥石流', location: '山区公路沿线', level: 'high', x: 78, y: 35, hasAlarm: true, displacement: 28.5, rainfall: 156.8, waterLevel: 1.2, inclination: 8.5, deviceCount: 6, devices: [{ name: '雨量计-A4', status: 'online' }, { name: '地声传感器-B4', status: 'online' }, { name: '位移计-C4', status: 'online' }, { name: '视频监控-D4', status: 'online' }, { name: '振动传感器-E4', status: 'warning' }, { name: '裂缝计-F4', status: 'online' }] },
+  { id: 5, name: '地面沉降点', code: 'HZ-005', type: '沉降', location: '工业园区A区', level: 'medium', x: 22, y: 55, hasAlarm: false, displacement: 8.3, rainfall: 65.4, waterLevel: 4.5, inclination: 0.5, deviceCount: 3, devices: [{ name: '沉降计-A5', status: 'online' }, { name: '水位计-B5', status: 'online' }, { name: '视频监控-C5', status: 'online' }] },
+  { id: 6, name: '桥梁监测点', code: 'HZ-006', type: '桥梁', location: 'XX大桥', level: 'low', x: 55, y: 35, hasAlarm: false, displacement: 1.2, rainfall: 88.6, waterLevel: 0, inclination: 0.3, deviceCount: 4, devices: [{ name: '应变计-A6', status: 'online' }, { name: '位移计-B6', status: 'online' }, { name: '倾角仪-C6', status: 'online' }, { name: '视频监控-D6', status: 'online' }] }
 ])
 
 const chartYLabels = ['30', '25', '20', '15', '10', '5', '0']
@@ -1313,10 +1500,12 @@ const trendAreaPath = computed(() => {
 }
 
 .monitor-chart-panel {
-  height: 200px;
+  height: 320px;
   background: #ffffff;
   border-top: 1px solid rgba(79, 172, 254, 0.3);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-header {
@@ -1354,8 +1543,100 @@ const trendAreaPath = computed(() => {
 }
 
 .chart-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 12px 20px;
-  height: calc(100% - 48px);
+  overflow: hidden;
+}
+
+.data-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  flex-wrap: wrap;
+}
+
+.data-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.data-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.chart-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-area-wrapper {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  min-height: 120px;
+}
+
+.chart-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-stats {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.stat-value.current {
+  color: #3b82f6;
+}
+
+.stat-value.max {
+  color: #ef4444;
+}
+
+.stat-value.min {
+  color: #10b981;
+}
+
+.stat-value.avg {
+  color: #6b7280;
+}
+
+.table-container {
+  height: 100%;
+  overflow: auto;
 }
 
 .chart-tabs {
@@ -1376,11 +1657,6 @@ const trendAreaPath = computed(() => {
 .chart-tab.active {
   background: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
-}
-
-.chart-content {
-  display: flex;
-  height: calc(100% - 32px);
 }
 
 .line-chart {
@@ -1870,5 +2146,151 @@ const trendAreaPath = computed(() => {
 
 .modal-body li strong {
   color: #3b82f6;
+}
+
+/* 隐患点标记样式 */
+.custom-hazard-marker {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.custom-hazard-marker:hover {
+  transform: scale(1.1);
+}
+
+.hazard-marker-container {
+  position: relative;
+}
+
+.hazard-icon {
+  transition: transform 0.2s ease;
+}
+
+.hazard-marker-container:hover .hazard-icon {
+  transform: scale(1.1);
+}
+
+.alarm-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #f5222d;
+  border-radius: 50%;
+  animation: alarm-pulse 1.5s infinite;
+}
+
+@keyframes alarm-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+.device-count-badge {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.device-count-badge:hover {
+  transform: scale(1.1);
+  background: #0ea5e9;
+}
+
+/* 隐患点弹窗样式 */
+.hazard-popup-container .leaflet-popup-content-wrapper {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(79, 172, 254, 0.2);
+  padding: 0;
+  overflow: hidden;
+}
+
+.hazard-popup-container .leaflet-popup-tip {
+  background: #ffffff;
+  border-color: rgba(79, 172, 254, 0.2);
+}
+
+.hazard-popup {
+  padding: 16px;
+  min-width: 260px;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.popup-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.popup-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.popup-device-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.device-count-label {
+  color: #6b7280;
+}
+
+.device-count-value {
+  color: #374151;
+  font-weight: 500;
+}
+
+.popup-device-list {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.popup-device-list .list-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.device-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.device-name {
+  color: #4b5563;
+}
+
+.device-status {
+  font-weight: 500;
+  font-size: 11px;
 }
 </style>

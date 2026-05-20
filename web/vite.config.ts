@@ -11,9 +11,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://172.27.74.162:8080',  // 后端地址
+        target: 'http://localhost:8080',  // 后端地址
         changeOrigin: true,
       }
     }
