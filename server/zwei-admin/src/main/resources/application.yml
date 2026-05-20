@@ -101,6 +101,15 @@ token:
   # 令牌有效期（默认30分钟）
   expireTime: 30
 
+# IoT缓存预热配置
+iot:
+  cache:
+    warmup:
+      # 是否启用缓存预热（默认true）
+      enabled: true
+      # 预热线程池大小（默认4）
+      thread-size: 4
+
 # MyBatis配置
 mybatis:
   # 搜索指定包别名

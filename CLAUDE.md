@@ -60,7 +60,8 @@ server/
 │       ├── mapper/           # MyBatis mappers
 │       └── service/         # Service interfaces & implementations
 ├── zwei-quartz/              # Scheduled tasks
-└── zwei-generator/           # Code generation
+├── zwei-generator/           # Code generation
+└── zwei-iot/                 # IoT device management (alarm-engine, data-parse)
 ```
 
 ### API Conventions
@@ -111,13 +112,12 @@ cd server
 # Build all modules
 mvn clean package
 
+# Build specific module with dependencies
+mvn clean install -pl zwei-admin -am
+
 # Run (from zwei-admin directory)
 cd zwei-admin
 mvn spring-boot:run
-# Or with: java -jar zwei-admin/target/zwei-admin.jar
-
-# Build specific module
-mvn clean install -pl zwei-admin -am
 ```
 
 ### Frontend (web/)
@@ -127,7 +127,7 @@ cd web
 
 npm install          # Install dependencies
 npm run dev          # Start dev server
-npm run build        # Build for production (runs vue-tsc type check)
+npm run build        # Type check + production build
 npm run preview      # Preview production build
 ```
 

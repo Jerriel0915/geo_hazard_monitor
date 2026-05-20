@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.hazardpoint.mapper.HazardPointMapper">
+
+    <resultMap type="com.zwei.iot.hazardpoint.domain.HazardPoint" id="HazardPointResult">
+        <id property="id" column="id"/>
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="groupId" column="group_id"/>
+        <result property="groupName" column="group_name"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
+        <result property="strike" column="strike"/>
+        <result property="description" column="description"/>
+        <result property="status" column="status"/>
+        <result property="statusName" column="status_name"/>
+        <result property="deviceCount" column="device_count"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectHazardPointVo">
+        select id, code, name, group_id, group_name, status, longitude, latitude, 
+               altitude, location, address, boundary, strike, strike_arrow, 
+               description, risk_level, del_flag, create_by, create_time, update_by, update_time
+        from hazard_point
+    </sql>
+
+    <select id="selectHazardPointList" parameterType="com.zwei.iot.hazardpoint.domain.HazardPoint"
+            resultMap="HazardPointResult">
+        <include refid="selectHazardPointVo"/>
+        <where>
+            del_flag = 0
+            <if test="code != null and code != ''">AND code like concat('%', #{code}, '%')</if>
+            <if test="name != null and name != ''">AND name like concat('%', #{name}, '%')</if>
+            <if test="groupId != null">AND group_id = #{groupId}</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="riskLevel != null">AND risk_level = #{riskLevel}</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectHazardPointById" parameterType="Long" resultMap="HazardPointResult">
+        <include refid="selectHazardPointVo"/>
+        where id = #{id} and del_flag = 0
+    </select>
+
+    <select id="selectHazardPointByCode" parameterType="String" resultMap="HazardPointResult">
+        <include refid="selectHazardPointVo"/>
+        where code = #{code} and del_flag = 0
+    </select>
+
+    <select id="checkHazardPointCodeUnique" parameterType="String" resultMap="HazardPointResult">
+        <include refid="selectHazardPointVo"/>
+        where code = #{code} and del_flag = 0 limit 1
+    </select>
+
+    <insert id="insertHazardPoint" parameterType="com.zwei.iot.hazardpoint.domain.HazardPoint" useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO hazard_point (
+            <if test="code != null and code != ''">code,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="groupId != null">group_id,</if>
+            <if test="groupName != null">group_name,</if>
+            <if test="status != null">status,</if>
+            <if test="longitude != null">longitude,</if>
+            <if test="latitude != null">latitude,</if>
+            <if test="altitude != null">altitude,</if>
+            <if test="location != null">location,</if>
+            <if test="address != null">address,</if>
+            <if test="boundary != null">boundary,</if>
+            <if test="strike != null">strike,</if>
+            <if test="strikeArrow != null">strike_arrow,</if>
+            <if test="description != null">description,</if>
+            <if test="riskLevel != null">risk_level,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        )values(
+            <if test="code != null and code != ''">#{code},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="groupId != null">#{groupId},</if>
+            <if test="groupName != null">#{groupName},</if>
+            <if test="status != null">#{status},</if>
+            <if test="longitude != null">#{longitude},</if>
+            <if test="latitude != null">#{latitude},</if>
+            <if test="altitude != null">#{altitude},</if>
+            <if test="location != null">#{location},</if>
+            <if test="address != null">#{address},</if>
+            <if test="boundary != null">#{boundary},</if>
+            <if test="strike != null">#{strike},</if>
+            <if test="strikeArrow != null">#{strikeArrow},</if>
+            <if test="description != null">#{description},</if>
+            <if test="riskLevel != null">#{riskLevel},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateHazardPoint" parameterType="com.zwei.iot.hazardpoint.domain.HazardPoint">
+        UPDATE hazard_point
+        <set>
+            <if test="code != null and code != ''">code = #{code},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="groupId != null">group_id = #{groupId},</if>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="altitude != null">altitude = #{altitude},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="boundary != null">boundary = #{boundary},</if>
+            <if test="strike != null">strike = #{strike},</if>
+            <if test="strikeArrow != null">strike_arrow = #{strikeArrow},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="riskLevel != null">risk_level = #{riskLevel},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteHazardPointById" parameterType="Long">
+        UPDATE hazard_point SET del_flag = '2' WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteHazardPointByIds" parameterType="Long">
+        UPDATE hazard_point SET del_flag = '2' WHERE id IN
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="checkHazardPointCodeUnique" parameterType="String" resultMap="HazardPointResult">
+        <include refid="selectHazardPointVo"/>
+        WHERE h.del_flag = 0 AND h.code = #{code}
+    </select>
+
+    <update id="updateHazardPointStatus">
+        UPDATE hazard_point SET status = #{status}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <!-- 批量更新隐患点状态 -->
+    <update id="batchUpdateHazardPointStatus">
+        UPDATE hazard_point
+        SET status = #{status}, update_time = NOW()
+        WHERE id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.video.mapper.VideoDeviceMapper">
+
+    <resultMap type="com.zwei.iot.video.domain.VideoDevice" id="VideoDeviceResult">
+        <id property="id" column="id"/>
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="icon" column="icon"/>
+        <result property="iconPath" column="icon_path"/>
+        <result property="protocolCode" column="protocol_code"/>
+        <result property="protocolName" column="protocol_name"/>
+        <result property="streamUrl" column="stream_url"/>
+        <result property="status" column="status"/>
+        <result property="lastOnlineTime" column="last_online_time"/>
+        <result property="installTime" column="install_time"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectVideoDeviceVo">
+        SELECT id,
+               code,
+               name,
+               icon,
+               icon_path,
+               protocol_code,
+               protocol_name,
+               stream_url,
+               status,
+               last_online_time,
+               install_time,
+               create_by,
+               create_time,
+               update_by,
+               update_time,
+               del_flag
+        FROM video_device
+    </sql>
+
+    <select id="selectVideoDeviceList" parameterType="com.zwei.iot.video.domain.VideoDevice"
+            resultMap="VideoDeviceResult">
+        <include refid="selectVideoDeviceVo"/>
+        WHERE del_flag = 0
+        <if test="code != null and code != ''">
+            AND code LIKE CONCAT('%', #{code}, '%')
+        </if>
+        <if test="name != null and name != ''">
+            AND name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="protocolCode != null and protocolCode != ''">
+            AND protocol_code = #{protocolCode}
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectVideoDeviceAll" resultMap="VideoDeviceResult">
+        <include refid="selectVideoDeviceVo"/>
+        WHERE del_flag = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectVideoDeviceById" parameterType="Long" resultMap="VideoDeviceResult">
+        <include refid="selectVideoDeviceVo"/>
+        WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <insert id="insertVideoDevice" parameterType="com.zwei.iot.video.domain.VideoDevice" useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO video_device
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="code != null and code != ''">code,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="icon != null">icon,</if>
+            <if test="iconPath != null">icon_path,</if>
+            <if test="protocolCode != null">protocol_code,</if>
+            <if test="protocolName != null">protocol_name,</if>
+            <if test="streamUrl != null">stream_url,</if>
+            <if test="status != null">status,</if>
+            <if test="installTime != null">install_time,</if>
+            <if test="createBy != null">create_by,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="code != null and code != ''">#{code},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="icon != null">#{icon},</if>
+            <if test="iconPath != null">#{iconPath},</if>
+            <if test="protocolCode != null">#{protocolCode},</if>
+            <if test="protocolName != null">#{protocolName},</if>
+            <if test="streamUrl != null">#{streamUrl},</if>
+            <if test="status != null">#{status},</if>
+            <if test="installTime != null">#{installTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+        </trim>
+    </insert>
+
+    <update id="updateVideoDevice" parameterType="com.zwei.iot.video.domain.VideoDevice">
+        UPDATE video_device
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="iconPath != null">icon_path = #{iconPath},</if>
+            <if test="protocolCode != null">protocol_code = #{protocolCode},</if>
+            <if test="protocolName != null">protocol_name = #{protocolName},</if>
+            <if test="streamUrl != null">stream_url = #{streamUrl},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="lastOnlineTime != null">last_online_time = #{lastOnlineTime},</if>
+            <if test="installTime != null">install_time = #{installTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+        </trim>
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteVideoDeviceById" parameterType="Long">
+        UPDATE video_device
+        SET del_flag = 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteVideoDeviceByIds" parameterType="Long">
+        UPDATE video_device SET del_flag = 1 WHERE id IN
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <select id="checkVideoDeviceCodeUnique" resultMap="VideoDeviceResult">
+        SELECT id, code, name, del_flag FROM video_device
+        WHERE del_flag = 0 AND code = #{code}
+        <if test="id != null">
+            AND id != #{id}
+        </if>
+        LIMIT 1
+    </select>
+
+</mapper>
