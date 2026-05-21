@@ -25,7 +25,7 @@ Geo-disaster Monitor (地质灾害监测预警系统) - A Vue 3 + Java Spring Bo
 - **Framework**: Spring Boot 4.0.3 (RuoYi v3.9.2)
 - **Build**: Maven multi-module
 - **Database**: MySQL with Druid connection pool
-- **Cache**: Redis
+- **Cache**: Redis + Spring Boot `@Cacheable`注解
 - **ORM**: MyBatis + PageHelper
 - **Auth**: JWT (jjwt 0.9.1)
 - **Java Version**: 17
@@ -42,63 +42,120 @@ server/
 │   └── src/main/java/com/zwei/
 │       ├── RuoYiApplication.java
 │       └── web/controller/
-│           ├── common/        # Upload, captcha
-│           ├── monitor/       # Cache, Server, Logs, Online users
-│           ├── system/        # SysIndex, SysUser, SysRole, SysMenu, etc.
-│           └── tool/          # Test tools
+│           ├── common/        # Upload, captcha, LogSseController
+│           ├── monitor/        # Cache, Server, Logs, Online users
+│           ├── system/         # SysIndex, SysUser, SysRole, SysMenu, etc.
+│           └── tool/           # Test tools
 ├── zwei-common/               # Shared utilities & base classes
 │   └── src/main/java/com/zwei/common/
-│       ├── annotation/       # @Log, @RateLimiter, @DataScope, @Sensitive
-│       ├── constant/          # CacheConstants, Constants, UserConstants
-│       ├── core/              # BaseController, AjaxResult, R, TableDataInfo
-│       ├── enums/             # BusinessType, UserStatus, HttpMethod
-│       ├── exception/         # GlobalException, ServiceException, user/*
-│       ├── filter/            # XssFilter, RepeatableFilter
-│       └── utils/             # DateUtils, BeanUtils, DesensitizedUtil
+│       ├── annotation/        # @Log, @RateLimiter, @DataScope, @Sensitive
+│       ├── config/             # RuoYiConfig, LogSseConfig
+│       ├── constant/           # CacheConstants, Constants, UserConstants
+│       ├── core/               # BaseController, AjaxResult, R, TableDataInfo
+│       ├── enums/              # BusinessType, UserStatus, HttpMethod
+│       ├── event/              # OperLogEvent (SSE日志事件)
+│       ├── exception/          # GlobalException, ServiceException, user/*
+│       ├── filter/             # XssFilter, RepeatableFilter
+│       └── utils/              # DateUtils, BeanUtils, DesensitizedUtil
 ├── zwei-framework/            # Core framework components
 │   └── src/main/java/com/zwei/framework/
 │       ├── aspectj/           # DataScopeAspect, LogAspect, RateLimiterAspect
 │       ├── config/            # DruidConfig, RedisConfig, SecurityConfig, MyBatisConfig
 │       ├── datasource/        # DynamicDataSource
+│       ├── event/             # OperLogEvent, OperLogEventListener (SSE推送)
 │       ├── interceptor/       # RepeatSubmitInterceptor
-│       ├── manager/           # AsyncManager, AsyncFactory
-│       ├── security/          # JwtAuthenticationTokenFilter, AuthenticationEntryPointImpl
-│       └── web/               # TokenService, SysLoginService, GlobalExceptionHandler
+│       ├── manager/            # AsyncManager, AsyncFactory
+│       ├── security/           # JwtAuthenticationTokenFilter, AuthenticationEntryPointImpl
+│       └── web/                # TokenService, SysLoginService, GlobalExceptionHandler
 ├── zwei-system/               # System management (users, roles, menus, depts)
 ├── zwei-quartz/               # Scheduled tasks
-├── zwei-generator/            # Code generation
-└── zwei-iot/                  # IoT business logic (device, hazardPoint, monitor, video, cache)
+├── zwei-generator/             # Code generation
+└── zwei-iot/                   # IoT business logic (device, hazardPoint, monitor, video, broker)
 ```
 
 ### zwei-iot Module Structure
 
 ```
 zwei-iot/src/main/java/com/zwei/iot/
-├── device/                    # Device & sensor management
-│   ├── controller/            # DeviceController, SensorController
-│   ├── domain/                # Device, DeviceSensor, SensorAttribute
-│   ├── mapper/                # MyBatis mappers
-│   └── service/              # IDeviceService, IDeviceSensorService
-├── hazardpoint/               # Hazard point & group management
-│   ├── controller/            # HazardPointController, HazardPointGroupController
-│   ├── domain/                # HazardPoint, HazardPointGroup
+├── device/                     # Device & sensor management
+│   ├── controller/             # DeviceController, SensorController
+│   ├── domain/                 # Device, DeviceSensor, SensorAttribute
+│   ├── mapper/                 # MyBatis mappers
+│   └── service/                # IDeviceService, IDeviceSensorService
+├── hazardpoint/                 # Hazard point & group management
+│   ├── controller/             # HazardPointController, HazardPointGroupController
+│   ├── domain/                 # HazardPoint, HazardPointGroup
+│   ├── mapper/
+│   ├── service/
+│   └── warmup/                 # (预留，预热任务目录)
+├── monitor/                     # Monitor types & content
+│   ├── controller/             # MonitorTypeController, MonitorContentController
+│   ├── domain/                 # MonitorType, MonitorContent
+│   ├── mapper/
+│   ├── service/
+│   └── warmup/                 # (预留，预热任务目录)
+├── video/                       # Video device management
+│   ├── controller/             # VideoDeviceController
+│   ├── domain/                 # VideoDevice
 │   ├── mapper/
 │   └── service/
-├── monitor/                   # Monitor types & content
-│   ├── controller/            # MonitorTypeController, MonitorContentController
-│   ├── domain/                # MonitorType, MonitorContent
-│   ├── mapper/
-│   └── service/
-├── video/                     # Video device management
-│   ├── controller/            # VideoDeviceController
-│   ├── domain/                # VideoDevice
-│   ├── mapper/
-│   └── service/
-└── cache/                     # Cache warmup on startup
-    ├── config/                # CacheWarmupRunner, CacheWarmupTaskRegistry
-    ├── service/               # IotCacheService
-    └── warmup/                # HazardPointWarmupTask, MonitorTypeWarmupTask, etc.
+└── broker/                      # Mica-MQTT broker integration
+    ├── handler/                # MqttServerAuthHandler
+    ├── component/              # MqttServerSubscribeValidator
+    └── service/                 # MqttServerMessageListener, MqttSessionListener, MqttConnectStatusListener
 ```
+
+## Cache Mechanism (缓存机制)
+
+系统使用 **Spring Boot `@Cacheable` 注解** 实现缓存，替代了旧的自定义缓存预热方案。
+
+### 缓存注解使用
+
+```java
+// 读取缓存
+@Cacheable(value = "hazardPoint", key = "#id")
+public HazardPoint selectHazardPointById(Long id)
+
+// 新增/修改时清除缓存
+@Caching(evict = {
+        @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id"),
+        @CacheEvict(value = "hazardPointList", allEntries = true)
+})
+public int insertHazardPoint(HazardPoint hazardPoint)
+```
+
+### 缓存配置
+
+- **配置类**: `RedisConfig.java` (zwei-framework)
+- **缓存名**: `hazardPoint`, `hazardPointList`, `monitorType`, `monitorTypeList`, `hazardPointGroup`, `device`,
+  `deviceSensor`
+- **过期时间**: 通过 `spring.cache.redis.time-to-live` 配置
+
+## SSE Log Streaming (SSE日志推送)
+
+日志模块新增实时推送功能，通过SSE (Server-Sent Events) 推送到前端。
+
+### 核心组件
+
+| 组件                     | 位置                              | 说明                                 |
+|------------------------|---------------------------------|------------------------------------|
+| `OperLogEvent`         | `zwei-framework/event/`         | 日志事件，包含 SysOperLog                 |
+| `OperLogEventListener` | `zwei-framework/event/`         | 事件监听，维护SSE连接池，广播日志                 |
+| `LogSseController`     | `zwei-admin/controller/common/` | SSE端点 `/api/v1/common/logs/stream` |
+| `LogSseConfig`         | `zwei-common/config/`           | 可配置节流策略                            |
+
+### 配置项 (application.yml)
+
+```yaml
+log-sse:
+  enabled: true        # 是否启用
+  rate-limit: 10      # 最大推送条数/秒 (0=不限制)
+  timeout: 300        # 连接超时时间(秒)
+```
+
+### 使用方式
+
+前端通过 `EventSource` 连接 `/api/v1/common/logs/stream` 接收实时日志。
 
 ## Frontend Structure
 
@@ -114,7 +171,7 @@ web/src/
 │   ├── alarm/                 # RealtimeAlarm, AlarmCriteria, etc.
 │   ├── report/                # Report, Query, Analysis, Screen
 │   ├── iot/                   # AlarmEngine, DataParse
-│   ├── system/               # Organization, Identity, Permission, Log
+│   ├── system/                # Organization, Identity, Permission, Log
 │   └── user/
 ├── layout/index.vue
 └── utils/userApi.ts           # Axios instance with auth interceptors
@@ -140,7 +197,7 @@ All backend APIs follow REST conventions (see `db/api_20260505.md` for full docs
 | `/api/v1/reports/`   | Reports & analysis                                               |
 | `/api/v1/dashboard/` | Dashboard overview                                               |
 | `/api/v1/iot/`       | IoT management (alarm-engine, data-parse)                        |
-| `/api/v1/common/`    | Common (file upload)                                             |
+| `/api/v1/common/`    | Common (file upload, logs/stream)                                |
 
 ## Key Backend Patterns
 
@@ -152,9 +209,9 @@ All backend APIs follow REST conventions (see `db/api_20260505.md` for full docs
 - Standard response wrapper with `success()`, `error()`, `warn()` static factories
 
 **Service Layer**
-
 - Interface + Implementation pattern in `zwei-iot/*/service/`
 - Constructor injection (not field injection)
+- 使用 `@Cacheable` / `@CacheEvict` 注解实现缓存
 
 **DataScope** (`@DataScope` annotation + `DataScopeAspect`)
 - Row-level data permission filtering based on org hierarchy
@@ -193,7 +250,8 @@ npm run preview      # Preview production build
 ## Configuration
 
 Backend configuration is in `zwei-admin/src/main/resources/`:
-- `application.yml` - Main Spring Boot config
+
+- `application.yml` - Main Spring Boot config (包含 `log-sse` SSE日志推送配置)
 - `application-druid.yml` - Database connection pool settings
 - `logback.xml` - Logging configuration
 
