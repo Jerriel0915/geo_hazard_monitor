@@ -30,7 +30,17 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+        </dependency>
+
+        <!-- mica-mqtt -->
+        <dependency>
+            <groupId>org.dromara.mica-mqtt</groupId>
+            <artifactId>mica-mqtt-server-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.44</version>
         </dependency>
 
     </dependencies>
