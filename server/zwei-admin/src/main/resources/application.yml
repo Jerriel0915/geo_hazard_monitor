@@ -110,6 +110,17 @@ iot:
       # 预热线程池大小（默认4）
       thread-size: 4
 
+# SSE日志推送配置
+log-sse:
+  # 是否启用SSE日志推送（默认true）
+  enabled: true
+  # 推送队列容量（默认100）
+  queue-size: 100
+  # 最大推送条数/秒 (0=不限制，默认10)
+  rate-limit: 10
+  # 连接超时时间(秒，默认300)
+  timeout: 300
+
 # MyBatis配置
 mybatis:
   # 搜索指定包别名
