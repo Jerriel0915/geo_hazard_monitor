@@ -8,17 +8,17 @@ name: Build & Deploy
 on:
   push:
     branches:
-      - develop
-      - main
+  #      - develop
+  #      - main
   pull_request:
     branches:
-      - develop
-      - main
+#      - develop
+#      - main
 
-# 环境变量（可被 secrets 覆盖）
+# 环境变量
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  REPO_LOWER: jerriel0915/geo_hazard_monitor
 
 jobs:
   # ---------- Job 1: 代码检查 ----------
@@ -34,12 +34,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          working-directory: ./web
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Install frontend dependencies
         working-directory: ./web
-        run: npm ci
+        run: npm install
 
       - name: Frontend type check
         working-directory: ./web
@@ -50,7 +56,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'eclipse-temurin'
+          distribution: 'temurin'
 
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -81,7 +87,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
       # 构建后端镜像
       - name: Build Backend Image
@@ -90,8 +96,8 @@ jobs:
           context: ./server
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop
-            ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LOWER }}/spring-boot:develop
+            ghcr.io/${{ env.REPO_LOWER }}/spring-boot:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -102,8 +108,8 @@ jobs:
           context: ./web
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop
-            ${{ env.REGISTRY }}/${{ github.repository }}/nginx:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LOWER }}/nginx:develop
+            ghcr.io/${{ env.REPO_LOWER }}/nginx:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -147,74 +153,24 @@ jobs:
           port: ${{ secrets.SERVER_SSH_PORT || 22 }}
           envs: MYSQL_PASSWORD, REDIS_PASSWORD, JWT_SECRET
           script: |
-            # 进入部署目录
             cd /app/geo_hazard_monitor
 
-            # 写入环境变量文件
-            cat > .env << 'EOF'
-            MYSQL_HOST=124.221.142.86
-            MYSQL_PORT=3306
-            MYSQL_DATABASE=geo_hazard_monitor
-            MYSQL_USER=root
-            MYSQL_PASSWORD=$MYSQL_PASSWORD
-            REDIS_HOST=124.221.142.86
-            REDIS_PORT=6379
-            REDIS_PASSWORD=$REDIS_PASSWORD
-            JWT_SECRET=$JWT_SECRET
-            SPRING_PROFILES_ACTIVE=prod
-            DOMAIN=124.221.142.86
-            EOF
+            # 写入环境变量
+            printf 'MYSQL_HOST=124.221.142.86\nMYSQL_PORT=3306\nMYSQL_DATABASE=geo_hazard_monitor\nMYSQL_USER=root\nMYSQL_PASSWORD=%s\nREDIS_HOST=124.221.142.86\nREDIS_PORT=6379\nREDIS_PASSWORD=%s\nJWT_SECRET=%s\nSPRING_PROFILES_ACTIVE=prod\nDOMAIN=124.221.142.86\n' "$MYSQL_PASSWORD" "$REDIS_PASSWORD" "$JWT_SECRET" > .env
 
             # 登录 registry 拉取镜像
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # 拉取最新镜像
-            docker pull ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop
-            docker pull ${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop
+            docker pull ghcr.io/${{ env.REPO_LOWER }}/spring-boot:develop
+            docker pull ghcr.io/${{ env.REPO_LOWER }}/nginx:develop
 
-            # 停止旧容器
             docker-compose -f docker-compose.yml down || true
-
-            # 启动新容器
             docker-compose -f docker-compose.yml up -d
 
-            # 清理旧镜像
             docker image prune -f
-
-            # 查看运行状态
             docker-compose -f docker-compose.yml ps
 
-  # ---------- Job 4: 清理旧镜像 ----------
-  cleanup:
-    name: Cleanup Old Images
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push'
-    steps:
-      - name: Cleanup old package versions
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // ghcr.io 免费额度：500MB 存储 + 1GB 带宽/月
-            // 通过删除旧 tag 控制存储
-            const imageName = 'ghcr.io/${{ github.repository }}';
-            console.log('Image cleanup for:', imageName);
-            console.log('ghcr.io has automatic cleanup after 30+ days for untagged manifests');
-
-      - name: Delete old workflow runs
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const maxRuns = 10;
-            const workflowRuns = await github.rest.actions.listWorkflowRuns({
-              owner: github.context.repo.owner,
-              repo: github.context.repo.repo,
-              workflow_id: 'deploy.yml',
-              per_page: maxRuns
-            });
-            console.log(`Found ${workflowRuns.data.workflow_runs.length} recent runs`);
-
-  # ---------- Job 5: 部署后验证 ----------
+  # ---------- Job 4: 部署后验证 ----------
   verify:
     name: Verify Deployment
     runs-on: ubuntu-latest
