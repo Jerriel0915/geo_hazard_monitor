@@ -9,8 +9,8 @@ WORKDIR /app
 # 复制依赖文件
 COPY package.json package-lock.json* ./
 
-# 安装依赖（利用 Docker 缓存层）
-RUN npm ci --prefer-offline
+# 安装依赖
+RUN npm install
 
 # 复制源码
 COPY . .
