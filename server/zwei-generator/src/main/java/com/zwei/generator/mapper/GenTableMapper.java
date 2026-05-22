@@ -1,13 +1,16 @@
 package com.zwei.generator.mapper;
 
-import java.util.List;
 import com.zwei.generator.domain.GenTable;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
 
 /**
  * 业务 数据层
  * 
  * @author zwei
  */
+@Mapper
 public interface GenTableMapper
 {
     /**

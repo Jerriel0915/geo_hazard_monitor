@@ -1,11 +1,12 @@
 package com.zwei.quartz.service.impl;
 
-import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import com.zwei.quartz.domain.SysJobLog;
 import com.zwei.quartz.mapper.SysJobLogMapper;
 import com.zwei.quartz.service.ISysJobLogService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * 定时任务调度日志信息 服务层
@@ -15,8 +16,12 @@ import com.zwei.quartz.service.ISysJobLogService;
 @Service
 public class SysJobLogServiceImpl implements ISysJobLogService
 {
+    private final SysJobLogMapper jobLogMapper;
+
     @Autowired
-    private SysJobLogMapper jobLogMapper;
+    public SysJobLogServiceImpl(SysJobLogMapper jobLogMapper) {
+        this.jobLogMapper = jobLogMapper;
+    }
 
     /**
      * 获取quartz调度器日志的计划任务
