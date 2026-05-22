@@ -156,7 +156,7 @@ jobs:
             cd /app/geo_hazard_monitor
 
             # 写入环境变量
-            cat > .env << 'EOF'
+            cat > .env << EOF
             MYSQL_HOST=124.221.142.86
             MYSQL_PORT=3306
             MYSQL_DATABASE=geo_hazard_monitor
