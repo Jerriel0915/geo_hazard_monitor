@@ -32,6 +32,8 @@ import com.zwei.common.utils.ip.IpUtils;
 import com.zwei.framework.manager.AsyncManager;
 import com.zwei.framework.manager.factory.AsyncFactory;
 import com.zwei.system.domain.SysOperLog;
+import org.springframework.context.ApplicationEventPublisher;
+import com.zwei.framework.event.OperLogEvent;
 
 /**
  * 操作日志记录处理
@@ -52,6 +54,9 @@ public class LogAspect
 
     /** 参数最大长度限制 */
     private static final int PARAM_MAX_LENGTH = 2000;
+
+    /** 事件发布器 */
+    private ApplicationEventPublisher eventPublisher;
 
     /**
      * 处理请求前执行
@@ -126,12 +131,13 @@ public class LogAspect
             operLog.setCostTime(System.currentTimeMillis() - TIME_THREADLOCAL.get());
             // 保存数据库
             AsyncManager.me().execute(AsyncFactory.recordOper(operLog));
+            // 发布事件用于SSE推送
+            publishEvent(operLog);
         }
         catch (Exception exp)
         {
             // 记录本地异常日志
-            log.error("异常信息:{}", exp.getMessage());
-            exp.printStackTrace();
+            log.error("操作日志记录异常: {}", exp.getMessage(), exp);
         }
         finally
         {
@@ -260,5 +266,21 @@ public class LogAspect
         }
         return o instanceof MultipartFile || o instanceof HttpServletRequest || o instanceof HttpServletResponse
                 || o instanceof BindingResult;
+    }
+
+    /**
+     * 设置事件发布器
+     */
+    public void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * 发布日志事件
+     */
+    private void publishEvent(SysOperLog operLog) {
+        if (eventPublisher != null && operLog != null) {
+            eventPublisher.publishEvent(new OperLogEvent(operLog));
+        }
     }
 }

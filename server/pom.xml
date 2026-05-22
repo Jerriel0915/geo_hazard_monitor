@@ -31,6 +31,7 @@
         <jwt.version>0.9.1</jwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>3.0.2</springdoc.version>
+        <mica-mqtt.version>2.6.3</mica-mqtt.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -168,6 +169,14 @@
                 <groupId>com.zwei</groupId>
                 <artifactId>zwei-iot</artifactId>
                 <version>${zwei.version}</version>
+            </dependency>
+
+            <!-- Source: https://mvnrepository.com/artifact/org.dromara.mica-mqtt/mica-mqtt-server-spring-boot-starter -->
+            <dependency>
+                <groupId>org.dromara.mica-mqtt</groupId>
+                <artifactId>mica-mqtt-server-spring-boot-starter</artifactId>
+                <version>${mica-mqtt.version}</version>
+                <scope>compile</scope>
             </dependency>
 
             <!-- 通用工具-->
