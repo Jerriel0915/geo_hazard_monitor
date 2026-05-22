@@ -1,18 +1,330 @@
 <template>
   <div class="login-container">
-    <div class="login-bg"></div>
-    <div class="login-header">
-      <h1>地质灾害监测预警系统1.0</h1>
+    <!-- Background Layer -->
+    <div class="login-bg">
+      <!-- Geometric glass shapes -->
+      <div class="geo-shape shape-1"></div>
+      <div class="geo-shape shape-2"></div>
+      <div class="geo-shape shape-3"></div>
+      <div class="geo-shape shape-4"></div>
     </div>
-    <div class="login-wrapper">
-      <div class="login-card">
-        <!-- 左侧：微信小程序入口 -->
-        <div class="login-left">
-          <div class="qrcode-section">
-            <div class="qrcode-title">打开微信扫一扫</div>
-            <div class="qrcode-desc">手机轻松处理工作</div>
-            <div class="qrcode-img">
-              <!--此处为二维码 -->
+
+    <!-- Main Content -->
+    <div class="login-main">
+      <!-- Left Panel - Branding -->
+      <div class="login-left">
+        <div class="brand-content">
+          <div class="brand-logo">
+            <div class="logo-icon">
+              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M40 5L70 25V55L40 75L10 55V25L40 5Z" fill="url(#logoGrad)" opacity="0.9"/>
+                <path d="M40 15L60 30V50L40 65L20 50V30L40 15Z" fill="white" opacity="0.3"/>
+                <path d="M40 25L50 32V48L40 55L30 48V32L40 25Z" fill="white" opacity="0.5"/>
+                <circle cx="40" cy="40" r="8" fill="white" opacity="0.8"/>
+                <defs>
+                  <linearGradient id="logoGrad" x1="10" y1="5" x2="70" y2="75" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#FF7043"/>
+                    <stop offset="1" stop-color="#FF5722"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div class="logo-text">
+              <span class="logo-title">地质环境监测</span>
+              <span class="logo-subtitle">智能预警系统</span>
+            </div>
+          </div>
+          <h1 class="brand-slogan">守护自然安全<br/>构建智慧监测</h1>
+          <p class="brand-desc">基于物联网与大数据的智能化地质灾害监测预警平台，实现实时监测、风险评估与应急指挥的全链路服务</p>
+          <div class="brand-features">
+            <div class="feature-item">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </div>
+              <span>实时监测</span>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <span>智能预警</span>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                </svg>
+              </div>
+              <span>数据洞察</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel - Login Card -->
+      <div class="login-right">
+        <div class="login-card">
+          <!-- Card Header -->
+          <div class="card-header">
+            <div class="header-text">
+              <h2>欢迎回来</h2>
+              <p>请登录您的账户继续</p>
+            </div>
+            <!-- QR Code Button -->
+            <div class="qr-trigger" title="扫码登录" @click="showQR = !showQR">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Login Tabs -->
+          <div class="login-tabs">
+            <button
+              class="tab-btn"
+              :class="{ active: loginMethod === 'account' }"
+              @click="loginMethod = 'account'"
+            >
+              账号登录
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: loginMethod === 'sms' }"
+              @click="loginMethod = 'sms'"
+            >
+              短信登录
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: loginMethod === 'wechat' }"
+              @click="loginMethod = 'wechat'"
+            >
+              微信登录
+            </button>
+          </div>
+
+          <!-- Account Login Form -->
+          <div v-show="loginMethod === 'account'" class="form-section">
+            <el-form :model="loginForm" ref="loginFormRef" label-width="0">
+              <div class="input-group">
+                <div class="input-wrapper">
+                  <span class="input-prefix">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </span>
+                  <input
+                    v-model="loginForm.username"
+                    type="text"
+                    placeholder="请输入用户名"
+                    class="form-input"
+                  />
+                </div>
+              </div>
+
+              <div class="input-group">
+                <div class="input-wrapper">
+                  <span class="input-prefix">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0110 0v4"/>
+                    </svg>
+                  </span>
+                  <input
+                    v-model="loginForm.password"
+                    type="text"
+                    :class="['form-input', { 'password-hidden': !showPassword }]"
+                    placeholder="请输入密码"
+                  />
+                  <span class="input-suffix" @click="showPassword = !showPassword">
+                    <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Captcha -->
+              <div class="input-group captcha-group" v-if="captchaEnabled">
+                <div class="input-wrapper captcha-wrapper">
+                  <span class="input-prefix">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <path d="M9 9h.01M15 9h.01M9 15h.01M15 15h.01"/>
+                    </svg>
+                  </span>
+                  <input
+                    v-model="loginForm.captcha"
+                    type="text"
+                    placeholder="请输入验证码"
+                    class="form-input"
+                    @keyup.enter="login"
+                  />
+                  <div class="captcha-img" @click="getCaptcha" title="点击刷新">
+                    <img :src="captchaImage" alt="验证码" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Remember & Forgot -->
+              <div class="form-options">
+                <el-checkbox v-model="rememberMe">记住我</el-checkbox>
+                <a href="#" class="forgot-link">忘记密码？</a>
+              </div>
+
+              <!-- Login Button -->
+              <button type="button" class="login-btn" @click="login">
+                登 录
+              </button>
+            </el-form>
+          </div>
+
+          <!-- SMS Login Form -->
+          <div v-show="loginMethod === 'sms'" class="form-section">
+            <div class="input-group">
+              <div class="input-wrapper">
+                <span class="input-prefix">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                  </svg>
+                </span>
+                <input
+                  v-model="loginForm.phone"
+                  type="text"
+                  placeholder="请输入手机号"
+                  class="form-input"
+                />
+              </div>
+            </div>
+
+            <div class="input-group captcha-group">
+              <div class="input-wrapper captcha-wrapper">
+                <span class="input-prefix">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <path d="M9 9h.01M15 9h.01M9 15h.01M15 15h.01"/>
+                  </svg>
+                </span>
+                <input
+                  v-model="loginForm.smsCode"
+                  type="text"
+                  placeholder="请输入短信验证码"
+                  class="form-input"
+                  @keyup.enter="login"
+                />
+                <button class="sms-btn" :disabled="smsCooldown > 0" @click="sendSms">
+                  {{ smsCooldown > 0 ? `${smsCooldown}s` : '获取验证码' }}
+                </button>
+              </div>
+            </div>
+
+            <el-checkbox v-model="rememberMe">记住我</el-checkbox>
+
+            <button type="button" class="login-btn" @click="login">
+              登 录
+            </button>
+          </div>
+
+          <!-- WeChat Login Form -->
+          <div v-show="loginMethod === 'wechat'" class="form-section wechat-section">
+            <div class="wechat-content">
+              <div class="wechat-qr">
+                <svg viewBox="0 0 200 200" class="qrcode-svg">
+                  <rect width="200" height="200" fill="white"/>
+                  <rect x="30" y="30" width="30" height="30" fill="#333"/>
+                  <rect x="30" y="140" width="30" height="30" fill="#333"/>
+                  <rect x="140" y="30" width="30" height="30" fill="#333"/>
+                  <rect x="155" y="155" width="15" height="15" fill="#333"/>
+                  <rect x="140" y="155" width="15" height="15" fill="#333"/>
+                  <rect x="155" y="140" width="15" height="15" fill="#333"/>
+                  <rect x="70" y="70" width="60" height="60" fill="white"/>
+                  <rect x="80" y="80" width="40" height="40" fill="#333"/>
+                  <rect x="92" y="92" width="16" height="16" fill="white"/>
+                  <rect x="30" y="70" width="20" height="20" fill="#333"/>
+                  <rect x="50" y="30" width="20" height="20" fill="#333"/>
+                  <rect x="50" y="50" width="20" height="20" fill="#333"/>
+                  <rect x="30" y="110" width="20" height="20" fill="#333"/>
+                  <rect x="30" y="130" width="20" height="20" fill="#333"/>
+                  <rect x="50" y="150" width="20" height="20" fill="#333"/>
+                  <rect x="150" y="70" width="20" height="20" fill="#333"/>
+                  <rect x="170" y="30" width="20" height="20" fill="#333"/>
+                  <rect x="170" y="50" width="20" height="20" fill="#333"/>
+                  <rect x="150" y="110" width="20" height="20" fill="#333"/>
+                  <rect x="150" y="130" width="20" height="20" fill="#333"/>
+                  <rect x="170" y="150" width="20" height="20" fill="#333"/>
+                  <rect x="70" y="30" width="20" height="20" fill="#333"/>
+                  <rect x="90" y="30" width="20" height="20" fill="#333"/>
+                  <rect x="110" y="30" width="20" height="20" fill="#333"/>
+                  <rect x="130" y="30" width="20" height="20" fill="#333"/>
+                  <rect x="70" y="170" width="20" height="20" fill="#333"/>
+                  <rect x="90" y="170" width="20" height="20" fill="#333"/>
+                  <rect x="110" y="170" width="20" height="20" fill="#333"/>
+                  <rect x="130" y="170" width="20" height="20" fill="#333"/>
+                  <rect x="30" y="70" width="20" height="20" fill="#333"/>
+                  <rect x="30" y="90" width="20" height="20" fill="#333"/>
+                  <rect x="30" y="110" width="20" height="20" fill="#333"/>
+                  <rect x="170" y="70" width="20" height="20" fill="#333"/>
+                  <rect x="170" y="90" width="20" height="20" fill="#333"/>
+                  <rect x="170" y="110" width="20" height="20" fill="#333"/>
+                </svg>
+              </div>
+              <p class="wechat-tip">打开微信扫一扫登录</p>
+              <p class="wechat-desc">手机轻松处理工作</p>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="divider" v-if="loginMethod !== 'wechat'">
+            <span>或</span>
+          </div>
+
+          <!-- Enterprise SSO -->
+          <button class="sso-btn" v-if="loginMethod !== 'wechat'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <path d="M12 8v8M8 12h8"/>
+            </svg>
+            企业账号登录
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <p>Copyright © 2024 地质灾害监测预警系统 All Rights Reserved</p>
+    </div>
+
+    <!-- QR Modal -->
+    <div class="qr-modal" v-if="showQR" @click.self="showQR = false">
+      <div class="qr-modal-content">
+        <div class="qr-modal-header">
+          <span>微信扫码登录</span>
+          <button class="qr-close" @click="showQR = false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="qr-modal-body">
+          <div class="qr-display">
+            <div class="qr-placeholder">
               <svg viewBox="0 0 200 200" class="qrcode-svg">
                 <rect width="200" height="200" fill="white"/>
                 <rect x="30" y="30" width="30" height="30" fill="#333"/>
@@ -24,101 +336,18 @@
                 <rect x="70" y="70" width="60" height="60" fill="white"/>
                 <rect x="80" y="80" width="40" height="40" fill="#333"/>
                 <rect x="92" y="92" width="16" height="16" fill="white"/>
-                <rect x="30" y="70" width="20" height="20" fill="#333"/>
-                <rect x="50" y="30" width="20" height="20" fill="#333"/>
-                <rect x="50" y="50" width="20" height="20" fill="#333"/>
-                <rect x="30" y="110" width="20" height="20" fill="#333"/>
-                <rect x="30" y="130" width="20" height="20" fill="#333"/>
-                <rect x="50" y="150" width="20" height="20" fill="#333"/>
-                <rect x="150" y="70" width="20" height="20" fill="#333"/>
-                <rect x="170" y="30" width="20" height="20" fill="#333"/>
-                <rect x="170" y="50" width="20" height="20" fill="#333"/>
-                <rect x="150" y="110" width="20" height="20" fill="#333"/>
-                <rect x="150" y="130" width="20" height="20" fill="#333"/>
-                <rect x="170" y="150" width="20" height="20" fill="#333"/>
-                <rect x="70" y="30" width="20" height="20" fill="#333"/>
-                <rect x="90" y="30" width="20" height="20" fill="#333"/>
-                <rect x="110" y="30" width="20" height="20" fill="#333"/>
-                <rect x="130" y="30" width="20" height="20" fill="#333"/>
-                <rect x="70" y="170" width="20" height="20" fill="#333"/>
-                <rect x="90" y="170" width="20" height="20" fill="#333"/>
-                <rect x="110" y="170" width="20" height="20" fill="#333"/>
-                <rect x="130" y="170" width="20" height="20" fill="#333"/>
-                <rect x="30" y="70" width="20" height="20" fill="#333"/>
-                <rect x="30" y="90" width="20" height="20" fill="#333"/>
-                <rect x="30" y="110" width="20" height="20" fill="#333"/>
-                <rect x="170" y="70" width="20" height="20" fill="#333"/>
-                <rect x="170" y="90" width="20" height="20" fill="#333"/>
-                <rect x="170" y="110" width="20" height="20" fill="#333"/>
               </svg>
             </div>
-            <div class="qrcode-tip">扫码进入小程序登录</div>
           </div>
+          <p class="qr-tip">打开微信扫一扫登录</p>
         </div>
-        <!-- 右侧：账号登录 -->
-        <div class="login-right">
-          <div class="login-form">
-            <h2>账号登录</h2>
-            <el-form :model="loginForm" ref="loginFormRef" label-width="0">
-              <el-form-item>
-                <el-input
-                  v-model="loginForm.username"
-                  placeholder="请输入账号"
-                  prefix-icon="User"
-                  class="login-input"
-                />
-              </el-form-item>
-              <el-form-item>
-                <el-input
-                  v-model="loginForm.password"
-                  type="password"
-                  placeholder="请输入密码"
-                  prefix-icon="Lock"
-                  class="login-input"
-                />
-              </el-form-item>
-              <!-- 算术验证码 -->
-              <el-form-item class="captcha-item" v-if="captchaEnabled">
-                <div class="captcha-wrapper">
-                  <el-input
-                    v-model="loginForm.captcha"
-                    placeholder="请输入验证码"
-                    prefix-icon="Grid"
-                    class="captcha-input"
-                    @keyup.enter="login"
-                  />
-                  <div class="captcha-code" @click="getCaptcha">
-                    <img :src="captchaImage" alt="验证码" class="captcha-img" />
-                    <span class="captcha-refresh" title="点击刷新">↻</span>
-                  </div>
-                </div>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="login" class="login-btn">
-                  登 录
-                </el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="login-footer">
-      <div class="footer-info">
-        <span>ljstar-版权所有</span>
-        <span>|</span>
-        <span>单位地址：四川成都成华区龙潭寺</span>
-        <span>|</span>
-        <span>川ICP备12012345号</span>
-        <span>|</span>
-        <span>电话：028-87654321</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
@@ -126,62 +355,85 @@ import axios from 'axios'
 const router = useRouter()
 
 const loginFormRef = ref()
+const loginMethod = ref('account')
+const showQR = ref(false)
+const showPassword = ref(false)
 
 // 登录表单数据
 const loginForm = reactive({
-  username: '',       //账号
-  password: '',       //密码
-  captcha: '',        //验证码
+  username: '',
+  password: '',
+  captcha: '',
+  phone: '',
+  smsCode: '',
 })
 
-
-const captchaImage = ref('')        //验证码图片
-let captchaKey = ''                 //验证码key
-const captchaEnabled = ref(false)           //验证码是否启用，默认启用
+const captchaImage = ref('')
+let captchaKey = ''
+const captchaEnabled = ref(false)
+const rememberMe = ref(false)
+const smsCooldown = ref(0)
+let smsTimer: ReturnType<typeof setInterval> | null = null
 
 //向后端获取验证码
 const getCaptcha = async () => {
-  try{
-
+  try {
     const res = await axios.get('/api/v1/auth/captcha')
-
-    //验证码key
     captchaKey = res.data.data.captchaKey
-
-    //验证码图片
     captchaImage.value = 'data:image/png;base64,' + res.data.data.captchaImage
-    //验证码是否启用，默认启用
     captchaEnabled.value = res.data.data.captchaEnabled
-
-    //清空验证码输入框
     loginForm.captcha = ''
-  }catch(err){
+  } catch (err) {
     ElMessage.error('获取验证码失败')
+  }
+}
+
+// 发送短信验证码
+const sendSms = async () => {
+  if (!loginForm.phone) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  if (smsCooldown.value > 0) return
+
+  try {
+    await axios.post('/api/v1/auth/sms', { phone: loginForm.phone })
+    ElMessage.success('短信验证码已发送')
+    smsCooldown.value = 60
+    smsTimer = setInterval(() => {
+      smsCooldown.value--
+      if (smsCooldown.value <= 0 && smsTimer) {
+        clearInterval(smsTimer)
+        smsTimer = null
+      }
+    }, 1000)
+  } catch (err) {
+    ElMessage.error('发送失败')
   }
 }
 
 // 登录函数
 const login = async () => {
   try {
-    // 1. 构建登录参数
     const loginData: Record<string, any> = {
-      username: loginForm.username,
-      password: loginForm.password
+      rememberMe: rememberMe.value
     }
 
-    // 2. 开启验证码才携带
-    if (captchaEnabled.value) {
-      loginData.code = loginForm.captcha
-      loginData.uuid = captchaKey
+    if (loginMethod.value === 'account') {
+      loginData.username = loginForm.username
+      loginData.password = loginForm.password
+      if (captchaEnabled.value) {
+        loginData.code = loginForm.captcha
+        loginData.uuid = captchaKey
+      }
+    } else {
+      loginData.phone = loginForm.phone
+      loginData.smsCode = loginForm.smsCode
     }
 
-    // 3. 发送请求
     const res = await axios.post('/api/v1/auth/login', loginData)
-
-    //4. 登录成功逻辑将token存储到本地存储
     localStorage.setItem('token', res.data.data.token)
 
-    //5. 获取用户信息并存储
     const userRes = await axios.get('/api/v1/auth/getInfo', {
       headers: { Authorization: `Bearer ${res.data.data.token}` }
     })
@@ -199,103 +451,656 @@ const login = async () => {
     ElMessage.success('登录成功')
     router.push('/dashboard')
   } catch (error) {
-    // 请求异常
-    ElMessage.error('登录请求失败')
-    getCaptcha()
+    ElMessage.error('登录失败')
+    if (captchaEnabled.value) getCaptcha()
   }
 }
 
 onMounted(() => {
   getCaptcha()
 })
+
+onUnmounted(() => {
+  if (smsTimer) clearInterval(smsTimer)
+})
 </script>
 
 <style scoped>
-.login-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+/* CSS Variables */
+:root {
+  --primary: #FF7043;
+  --primary-dark: #FF5722;
+  --primary-light: #FFAB91;
+  --bg-light: #FAFAFA;
+  --text-dark: #1a1a2e;
+  --text-muted: #6B7280;
+  --border-light: #E5E7EB;
+  --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --transition: 0.3s ease;
 }
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.login-container {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Background */
 .login-bg {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #FF7043 100%);
+  overflow: hidden;
+}
+
+.geo-shape {
+  position: absolute;
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  animation: float 20s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 400px;
+  height: 400px;
+  top: -100px;
+  left: -100px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+  transform: rotate(15deg);
+}
+
+.shape-2 {
+  width: 300px;
+  height: 300px;
+  top: 50%;
+  left: 10%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03));
+  animation-delay: -5s;
+}
+
+.shape-3 {
+  width: 250px;
+  height: 250px;
+  bottom: -50px;
+  right: 20%;
+  background: linear-gradient(135deg, rgba(255,112,67,0.2), rgba(255,112,67,0.05));
+  animation-delay: -10s;
+}
+
+.shape-4 {
+  width: 180px;
+  height: 180px;
+  top: 30%;
+  right: 5%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+  animation-delay: -15s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-20px) rotate(5deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(20px) rotate(-5deg); }
+}
+
+/* Main Layout */
+.login-main {
+  position: relative;
+  display: flex;
   width: 100%;
   height: 100%;
-  background: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop') center/cover no-repeat;
-  filter: brightness(0.8);
-}
-
-.login-header {
-  position: relative;
-  text-align: center;
-  padding-top: 80px;
   z-index: 10;
 }
 
-.login-header h1 {
-  font-size: 32px;
-  color: #fff;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.login-wrapper {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 60px;
-  z-index: 10;
-}
-
-/* 整体卡片容器 */
-.login-card {
-  display: flex;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  width: 720px;
-  min-height: 420px;
-}
-
-/* 左侧：微信小程序 */
+/* Left Panel */
 .login-left {
-  width: 280px;
-  background: linear-gradient(180deg, #4a90d9 0%, #357abd 100%);
+  flex: 1.2;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 30px;
+  padding: 40px;
 }
 
-.qrcode-section {
-  text-align: center;
-  color: #fff;
+.brand-content {
+  max-width: 520px;
+  color: white;
+  animation: fadeInUp 0.8s ease;
 }
 
-.qrcode-title {
-  font-size: 18px;
-  font-weight: 600;
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.logo-icon {
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.2));
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.logo-subtitle {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+.brand-slogan {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 24px;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.brand-desc {
+  font-size: 16px;
+  line-height: 1.8;
+  opacity: 0.9;
+  margin-bottom: 40px;
+  max-width: 450px;
+}
+
+.brand-features {
+  display: flex;
+  gap: 32px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.feature-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.feature-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Right Panel */
+.login-right {
+  flex: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #F1F5F9;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  animation: fadeInUp 0.8s ease 0.2s both;
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.header-text h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-dark);
   margin-bottom: 8px;
 }
 
-.qrcode-desc {
+.header-text p {
   font-size: 14px;
-  opacity: 0.9;
+  color: var(--text-muted);
+}
+
+.qr-trigger {
+  width: 44px;
+  height: 44px;
+  background: var(--bg-light);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.qr-trigger:hover {
+  background: var(--primary);
+}
+
+.qr-trigger:hover svg {
+  stroke: white;
+}
+
+.qr-trigger svg {
+  width: 22px;
+  height: 22px;
+  stroke: var(--text-dark);
+}
+
+/* Login Tabs */
+.login-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  background: var(--bg-light);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+.tab-btn.active {
+  background: white;
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Form */
+.form-section {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.input-group {
   margin-bottom: 20px;
 }
 
-.qrcode-img {
-  width: 160px;
-  height: 160px;
-  margin: 0 auto;
-  background: #fff;
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #FFFFFF;
+  border-radius: 12px;
+  transition: var(--transition);
+  border: 2px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(255, 112, 67, 0.15), 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.input-prefix {
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.input-prefix svg {
+  width: 20px;
+  height: 20px;
+}
+
+.form-input {
+  flex: 1;
+  padding: 14px 0;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--text-dark);
+  outline: none;
+}
+
+.form-input::placeholder {
+  color: #9CA3AF;
+}
+
+.form-input.password-hidden {
+  -webkit-text-security: disc;
+  font-family: sans-serif;
+}
+
+.input-suffix {
+  padding-right: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.input-suffix svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Captcha */
+.captcha-wrapper .form-input {
+  padding-right: 8px;
+}
+
+.captcha-img {
+  width: 100px;
+  height: 42px;
+  margin-right: 4px;
   border-radius: 8px;
-  padding: 8px;
-  box-sizing: border-box;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.captcha-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* SMS Button */
+.sms-btn {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.sms-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.sms-btn:disabled {
+  background: #D1D5DB;
+  cursor: not-allowed;
+}
+
+/* Options */
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.forgot-link {
+  font-size: 14px;
+  color: var(--primary);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.forgot-link:hover {
+  color: var(--primary-dark);
+}
+
+/* Login Button */
+.login-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #FF7043 0%, #E64A19 50%, #FF5722 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 87, 34, 0.4), 0 2px 6px rgba(0,0,0,0.1);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 87, 34, 0.5), 0 4px 10px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #FF8A65 0%, #FF7043 50%, #E64A19 100%);
+}
+
+.login-btn:hover::before {
+  left: 100%;
+}
+
+.login-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
+}
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 28px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+
+.divider span {
+  padding: 0 16px;
+}
+
+/* WeChat Login */
+.wechat-section {
+  padding: 20px 0;
+}
+
+.wechat-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.wechat-qr {
+  width: 180px;
+  height: 180px;
+  background: white;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.wechat-qr .qrcode-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.wechat-tip {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.wechat-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* SSO Button */
+.sso-btn {
+  width: 100%;
+  padding: 14px;
+  background: white;
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dark);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: var(--transition);
+}
+
+.sso-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: #FFF5F2;
+}
+
+.sso-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Footer */
+.login-footer {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 10;
+}
+
+.login-footer p {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+
+/* QR Modal */
+.qr-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.3s ease;
+}
+
+.qr-modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 360px;
+  box-shadow: var(--card-shadow);
+}
+
+.qr-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.qr-close {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-light);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.qr-close:hover {
+  background: #FEE2E2;
+}
+
+.qr-close svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--text-muted);
+}
+
+.qr-display {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.qr-placeholder {
+  width: 200px;
+  height: 200px;
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .qrcode-svg {
@@ -303,124 +1108,39 @@ onMounted(() => {
   height: 100%;
 }
 
-.qrcode-tip {
-  font-size: 12px;
-  opacity: 0.8;
-  margin-top: 15px;
-}
-
-/* 右侧：账号登录 */
-.login-right {
-  flex: 1;
-  padding: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.login-form {
-  width: 100%;
-}
-
-.login-form h2 {
+.qr-tip {
   text-align: center;
-  margin-bottom: 30px;
-  color: #303133;
-  font-size: 24px;
-}
-
-.login-input {
-  width: 100%;
-  height: 42px;
-}
-
-/* 验证码样式 */
-.captcha-item {
-  margin-bottom: 15px;
-}
-
-.captcha-wrapper {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.captcha-input {
-  flex: 1;
-  height: 42px;
-}
-
-.captcha-code {
-  width: 140px;
-  height: 42px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  transition: opacity 0.2s;
-}
-
-.captcha-code:hover {
-  opacity: 0.9;
-}
-
-.captcha-text {
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-  letter-spacing: 1px;
-}
-
-.captcha-refresh {
+  color: var(--text-muted);
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
 }
 
-.captcha-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;   
+/* Responsive */
+@media (max-width: 900px) {
+  .login-left {
+    display: none;
+  }
+
+  .login-right {
+    flex: 1;
+  }
 }
 
-.login-btn {
-  width: 100%;
-  height: 42px;
-  font-size: 16px;
-  margin-top: 10px;
-}
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 20px;
+    border-radius: 20px;
+  }
 
-.login-footer {
-  position: absolute;
-  bottom: 30px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  z-index: 10;
-}
+  .brand-slogan {
+    font-size: 36px;
+  }
 
-.footer-info {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 10px 20px;
-  border-radius: 20px;
-  display: inline-flex;
-}
+  .header-text h2 {
+    font-size: 24px;
+  }
 
-.footer-info span {
-  display: flex;
-  align-items: center;
-}
-
-.footer-info span:nth-child(odd) {
-  white-space: nowrap;
+  .login-tabs {
+    margin-bottom: 20px;
+  }
 }
 </style>
