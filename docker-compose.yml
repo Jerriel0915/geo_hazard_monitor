@@ -16,6 +16,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-geo_hazard_monitor}
+
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       TZ: Asia/Shanghai
     volumes:
@@ -75,7 +76,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       MQTT_USERNAME: ${MQTT_USERNAME:-mica}
       MQTT_PASSWORD: ${MQTT_PASSWORD:-mica}
+
       JAVA_OPTS: ${JAVA_OPTS:--Xmx512m -Xms256m -Djava.awt.headless=true -Dfork=true}
+
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs

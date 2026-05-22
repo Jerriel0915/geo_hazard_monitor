@@ -30,6 +30,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
 && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
 && rm -rf /var/lib/apt/lists/*
 
+
 WORKDIR /app
 
 # 从构建阶段复制 JAR 文件
