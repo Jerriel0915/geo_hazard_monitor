@@ -41,7 +41,7 @@
         <el-table-column prop="code" label="编号" width="150" align="center" />
         <el-table-column label="图标" width="80" align="center">
           <template #default="{ row }">
-            <img v-if="row.iconPath" :src="row.iconPath" class="table-icon" alt="icon" />
+            <img v-if="row.icon" :src="row.icon" class="table-icon" alt="icon" />
             <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
@@ -61,7 +61,6 @@
             <el-tag type="info" effect="plain">{{ row.sensorCount || 0 }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createDept" label="创建部门" width="150" align="center" />
         <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -121,7 +120,7 @@
           <el-col :span="12">
             <el-form-item label="图标" prop="icon">
               <div class="type-icon-selector" @click="!isView && handleSelectTypeIcon()">
-                <img v-if="formData.iconPath" :src="formData.iconPath" class="type-icon-img" alt="icon" />
+                <img v-if="formData.icon" :src="formData.icon" class="type-icon-img" alt="icon" />
                 <span v-else class="type-icon-placeholder">点击选择图标</span>
               </div>
             </el-form-item>
@@ -137,11 +136,6 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="创建部门" prop="createDept">
-              <el-input v-model="formData.createDept" placeholder="请输入创建部门" :disabled="isView" />
-            </el-form-item>
-          </el-col>
           <el-col :span="12">
             <el-form-item label="创建人员" prop="createUser">
               <el-input v-model="formData.createUser" placeholder="请输入创建人员" :disabled="isView" />
@@ -245,6 +239,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios'
+
+
+// 获取token
+const getToken = () => localStorage.getItem('token')
 
 // 指标类型规范
 const IndicatorTypeEnum = {
@@ -299,6 +298,7 @@ const indicatorTypeOptions = Object.values(IndicatorTypeEnum).map(item => ({
   unitName: item.unitName
 }))
 
+
 const typeIconList = Object.values(MonitorContentIconEnum).map(item => ({
   code: item.code,
   name: item.name,
@@ -320,10 +320,8 @@ interface MonitorTypeItem {
   code: string
   name: string
   icon: string
-  iconPath: string
   deviceType: string
   deviceTypeName: string
-  createDept: string
   createUser: string
   createTime: string
   updateDept: string
@@ -345,6 +343,7 @@ const searchKeyword = ref('')
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const isView = ref(false)
+const isEdit = ref(false)
 const formRef = ref()
 const typeIconDialogVisible = ref(false)
 
@@ -353,19 +352,19 @@ const formData = reactive<{
   code: string
   name: string
   icon: string
-  iconPath: string
   deviceType: string
-  createDept: string
   createUser: string
+  description: string,
+  sortOrder: number,
   modelAttrs: ModelAttrItem[]
 }>({
   code: '',
   name: '',
   icon: '',
-  iconPath: '',
   deviceType: '',
-  createDept: '',
   createUser: '',
+  description: '',
+  sortOrder: 0,
   modelAttrs: []
 })
 
@@ -374,165 +373,160 @@ const formRules = {
   name: [{ required: true, message: '请输入名称', trigger: 'blur' }]
 }
 
-const initTableData = () => {
+// 分页查询监测类型
+const loadTableData = async () => {
   loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      {
-        id: '1',
-        code: 'JCLX001',
-        name: '雨量监测',
-        icon: 'jy',
-        iconPath: '/jc-icon/green/jy_green.png',
-        createDept: '技术部',
-        createUser: '张三',
-        createTime: '2024-01-15 10:30:00',
-        updateDept: '技术部',
-        updateUser: '张三',
-        updateTime: '2024-01-15 10:30:00',
-        isDeleted: false,
-        deleteTime: '',
-        deviceType: 'SENSOR',
-        deviceTypeName: '传感器',
-        modelAttrs: [
-          { attrCode: 'rainfall', attrName: '降雨量', indicatorType: 'wy', rangeMin: 0, rangeMax: 500, unit: 'mm' }
-        ],
-        modelSummary: '降雨量(位移): 0~500mm',
-        sensorCount: 128
+  try {
+    const token = getToken()
+    const response = await axios.get('/api/v1/monitor-types/page', {
+      params: {
+        pageNum: currentPage.value,
+        pageSize: pageSize.value,
+        code: searchKeyword.value || undefined,
+        name: searchKeyword.value || undefined
       },
-      {
-        id: '2',
-        code: 'JCLX002',
-        name: '位移监测',
-        icon: 'bsw',
-        iconPath: '/jc-icon/green/bsw_green.png',
-        deviceType: 'SENSOR',
-        deviceTypeName: '传感器',
-        createDept: '技术部',
-        createUser: '李四',
-        createTime: '2024-01-16 14:20:00',
-        updateDept: '技术部',
-        updateUser: '李四',
-        updateTime: '2024-01-16 14:20:00',
-        isDeleted: false,
-        deleteTime: '',
-        modelAttrs: [
-          { attrCode: 'displacement_x', attrName: 'X轴位移', indicatorType: 'wy', rangeMin: -100, rangeMax: 100, unit: 'mm' },
-          { attrCode: 'displacement_y', attrName: 'Y轴位移', indicatorType: 'wy', rangeMin: -100, rangeMax: 100, unit: 'mm' }
-        ],
-        modelSummary: 'X轴位移(位移): -100~100mm; Y轴位移(位移): -100~100mm',
-        sensorCount: 64
-      },
-      {
-        id: '3',
-        code: 'JCLX003',
-        name: '温湿度监测',
-        icon: 'wd',
-        iconPath: '/jc-icon/green/wd_green.png',
-        deviceType: 'RTU',
-        deviceTypeName: 'RTU',
-        createDept: '运维部',
-        createUser: '王五',
-        createTime: '2024-01-17 09:15:00',
-        updateDept: '运维部',
-        updateUser: '王五',
-        updateTime: '2024-01-17 09:15:00',
-        isDeleted: false,
-        deleteTime: '',
-        modelAttrs: [
-          { attrCode: 'temperature', attrName: '温度', indicatorType: 'wd', rangeMin: -40, rangeMax: 80, unit: '℃' },
-          { attrCode: 'humidity', attrName: '含水率', indicatorType: 'hsl', rangeMin: 0, rangeMax: 100, unit: '%' }
-        ],
-        modelSummary: '温度(温度): -40~80℃; 含水率(含水率): 0~100%',
-        sensorCount: 256
-      },
-      {
-        id: '4',
-        code: 'JCLX004',
-        name: '地表位移监测',
-        icon: 'gnss',
-        iconPath: '/jc-icon/green/gnss_green.png',
-        deviceType: 'DIRECT',
-        deviceTypeName: '直连设备',
-        createDept: '技术部',
-        createUser: '赵六',
-        createTime: '2024-01-18 11:00:00',
-        updateDept: '技术部',
-        updateUser: '赵六',
-        updateTime: '2024-01-18 11:00:00',
-        isDeleted: true,
-        deleteTime: '2024-02-01 16:30:00',
-        modelAttrs: [
-          { attrCode: 'displacement_x', attrName: 'X轴位移', indicatorType: 'wy', rangeMin: -500, rangeMax: 500, unit: 'mm' },
-          { attrCode: 'displacement_y', attrName: 'Y轴位移', indicatorType: 'wy', rangeMin: -500, rangeMax: 500, unit: 'mm' },
-          { attrCode: 'displacement_z', attrName: 'Z轴位移', indicatorType: 'wy', rangeMin: -500, rangeMax: 500, unit: 'mm' }
-        ],
-        modelSummary: 'X轴位移(位移): -500~500mm; Y轴位移(位移): -500~500mm; Z轴位移(位移): -500~500mm',
-        sensorCount: 0
-      }
-    ]
-    total.value = tableData.value.length
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      const data = response.data.data
+       tableData.value = (data.rows || []).map((item: any) => ({
+        ...item,
+        deviceTypeName: item.deviceType === 1 ? '直连设备' : item.deviceType === 2 ? '传感器' : item.deviceType === 3 ? 'RTU' : '-'
+      }))
+      total.value = data.total || 0
+    } else {
+      ElMessage.error(response.data.msg || '获取数据失败')
+    }
+  } catch (error) {
+    console.error('请求失败:', error)
+    ElMessage.error('网络请求失败')
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const handleSearch = () => {
   currentPage.value = 1
-  initTableData()
+  loadTableData()
 }
 
 const handleSizeChange = () => {
-  initTableData()
+  loadTableData()
 }
 
 const handlePageChange = () => {
-  initTableData()
+  loadTableData()
 }
 
+// 新增监测类型
 const handleAdd = () => {
   dialogTitle.value = '新增监测类型'
   isView.value = false
+  isEdit.value = false
   Object.assign(formData, {
     id: undefined,
     code: '',
     name: '',
     icon: '',
-    iconPath: '',
     deviceType: '',
-    createDept: '',
     createUser: '',
+    description: '',
+    sortOrder: 0,
     modelAttrs: []
   })
   dialogVisible.value = true
 }
 
-const handleEdit = (row: MonitorTypeItem) => {
+// 获取监测类型详情
+const fetchDetail = async (id: string) => {
+  loading.value = true
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`/api/v1/monitor-types/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      const data = response.data.data
+      
+      // 转换设备类型：后端返回的数字转成前端的字符串
+      let deviceType = ''
+      if (data.deviceType === 1) deviceType = 'DIRECT'
+      else if (data.deviceType === 2) deviceType = 'SENSOR'
+      else if (data.deviceType === 3) deviceType = 'RTU'
+      
+      // 转换监测内容：后端的 contents 转成前端的 modelAttrs
+      const modelAttrs = (data.contents || []).map((c: any) => ({
+        attrCode: c.code,
+        attrName: c.name,
+        indicatorType: c.indicatorType || '',
+        rangeMin: 0,
+        rangeMax: 100,
+        unit: c.unit || ''
+      }))
+      
+      Object.assign(formData, {
+        id: String(data.id),
+        code: data.code,
+        name: data.name,
+        deviceType: deviceType,
+        icon: data.icon || '',
+        description: data.description || '',
+        sortOrder: data.sortOrder || 0,
+        createUser: data.createBy || '',   
+        modelAttrs: modelAttrs
+      })
+
+      console.log('回填后的 formData:', JSON.parse(JSON.stringify(formData)))
+    } else {
+      ElMessage.error(response.data.msg || '获取详情失败')
+    }
+  } catch (error) {
+    console.error('获取详情失败:', error)
+    ElMessage.error('网络请求失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleEdit = async (row: MonitorTypeItem) => {
   dialogTitle.value = '编辑监测类型'
   isView.value = false
-  Object.assign(formData, JSON.parse(JSON.stringify(row)))
+  isEdit.value = true
+  await fetchDetail(row.id)
   dialogVisible.value = true
 }
 
-const handleView = (row: MonitorTypeItem) => {
+const handleView = async (row: MonitorTypeItem) => {
   dialogTitle.value = '查看监测类型'
   isView.value = true
-  Object.assign(formData, JSON.parse(JSON.stringify(row)))
+  isEdit.value = false
+  await fetchDetail(row.id)
   dialogVisible.value = true
 }
 
 const handleDelete = (row: MonitorTypeItem) => {
-  const action = row.isDeleted ? '启用' : '作废'
-  const confirmText = row.isDeleted
-    ? `确定要启用监测类型"${row.name}"吗?`
-    : `确定要作废监测类型"${row.name}"吗?`
-  ElMessageBox.confirm(confirmText, `${action}确认`, {
+  ElMessageBox.confirm(`确定要删除监测类型"${row.name}"吗？`, '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    row.isDeleted = !row.isDeleted
-    row.deleteTime = row.isDeleted ? new Date().toLocaleString() : ''
-    ElMessage.success(`${action}成功`)
+  }).then(async () => {
+    try {
+      const token = getToken()
+      const response = await axios.delete(`/api/v1/monitor-types/${row.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.data.code === 200) {
+        ElMessage.success('删除成功')
+        loadTableData()
+      } else {
+        ElMessage.error(response.data.msg || '删除失败')
+      }
+    } catch (error) {
+      ElMessage.error('网络请求失败')
+    }
   }).catch(() => {})
 }
 
@@ -543,16 +537,49 @@ const handleExport = () => {
   }, 1000)
 }
 
-const handleSubmit = () => {
-  formRef.value.validate((valid: boolean) => {
+const handleSubmit = async () => {
+  formRef.value.validate(async (valid: boolean) => {
     if (valid) {
-      if (formData.modelAttrs.length === 0) {
-        ElMessage.warning('请至少添加一个监测模型属性')
-        return
+      try {
+        const token = localStorage.getItem('token')
+        let response
+
+        if (formData.id) {
+          response = await axios.put(`/api/v1/monitor-types/${formData.id}`, {
+            name: formData.name,
+            deviceType: formData.deviceType === 'SENSOR' ? 2 : formData.deviceType === 'RTU' ? 3 : 1,
+            icon: formData.icon,
+            description: formData.description,
+            sortOrder: formData.sortOrder,
+            status: 1
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        } else {
+          response = await axios.post('/api/v1/monitor-types', {
+            code: formData.code,
+            name: formData.name,
+            deviceType: formData.deviceType === 'SENSOR' ? 2 : formData.deviceType === 'RTU' ? 3 : 1,
+            icon: formData.icon,
+            description: formData.description,
+            sortOrder: formData.sortOrder,
+            status: 1
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        }
+        
+        if (response.data.code === 200) {
+          ElMessage.success(formData.id ? '修改成功' : '新增成功')
+          dialogVisible.value = false
+          loadTableData()
+        } else {
+          ElMessage.error(response.data.msg || '操作失败')
+        }
+      } catch (error) {
+        console.error('提交失败:', error)
+        ElMessage.error('网络请求失败')
       }
-      ElMessage.success('保存成功')
-      dialogVisible.value = false
-      initTableData()
     }
   })
 }
@@ -584,13 +611,12 @@ const handleSelectTypeIcon = () => {
 }
 
 const handleTypeIconSelect = (item: { code: string; name: string; icon: string; path: string }) => {
-  formData.icon = item.icon
-  formData.iconPath = item.path
+  formData.icon = item.path
   typeIconDialogVisible.value = false
 }
 
 onMounted(() => {
-  initTableData()
+  loadTableData()
 })
 </script>
 

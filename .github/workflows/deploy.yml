@@ -35,11 +35,11 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          working-directory: ./web
 
       - name: Install frontend dependencies
         working-directory: ./web
-        run: npm ci --prefer-offline
+        run: npm ci
 
       - name: Frontend type check
         working-directory: ./web
@@ -69,9 +69,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     if: github.event_name == 'push'
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -91,7 +88,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./server
-          push: false
+          push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop
             ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:${{ github.sha }}
@@ -103,7 +100,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./web
-          push: false
+          push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop
             ${{ env.REGISTRY }}/${{ github.repository }}/nginx:${{ github.sha }}
@@ -126,18 +123,19 @@ jobs:
 
       - name: Configure environment file
         run: |
-          cp .env.example .env
-          sed -i 's/MYSQL_PASSWORD=.*/MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}/' .env
-          sed -i 's/REDIS_PASSWORD=.*/REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}/' .env
-          sed -i 's/JWT_SECRET=.*/JWT_SECRET=${{ secrets.JWT_SECRET }}/' .env
-          echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-        shell: bash
-
-      - name: Check Docker images exist
-        run: |
-          echo "Images to deploy:"
-          echo "${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop"
-          echo "${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop"
+          cat > .env << 'ENVEOF'
+          MYSQL_HOST=124.221.142.86
+          MYSQL_PORT=3306
+          MYSQL_DATABASE=geo_hazard_monitor
+          MYSQL_USER=root
+          MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+          REDIS_HOST=124.221.142.86
+          REDIS_PORT=6379
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          SPRING_PROFILES_ACTIVE=prod
+          DOMAIN=124.221.142.86
+          ENVEOF
         shell: bash
 
       - name: Deploy via SSH
@@ -152,16 +150,32 @@ jobs:
             # 进入部署目录
             cd /app/geo_hazard_monitor
 
-            # 拉取最新代码
-            git fetch origin
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+            # 写入环境变量文件
+            cat > .env << 'EOF'
+            MYSQL_HOST=124.221.142.86
+            MYSQL_PORT=3306
+            MYSQL_DATABASE=geo_hazard_monitor
+            MYSQL_USER=root
+            MYSQL_PASSWORD=$MYSQL_PASSWORD
+            REDIS_HOST=124.221.142.86
+            REDIS_PORT=6379
+            REDIS_PASSWORD=$REDIS_PASSWORD
+            JWT_SECRET=$JWT_SECRET
+            SPRING_PROFILES_ACTIVE=prod
+            DOMAIN=124.221.142.86
+            EOF
+
+            # 登录 registry 拉取镜像
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+            # 拉取最新镜像
+            docker pull ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop
+            docker pull ${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop
 
             # 停止旧容器
             docker-compose -f docker-compose.yml down || true
 
-            # 构建并启动新容器
-            docker-compose -f docker-compose.yml build --no-cache
+            # 启动新容器
             docker-compose -f docker-compose.yml up -d
 
             # 清理旧镜像
@@ -170,7 +184,37 @@ jobs:
             # 查看运行状态
             docker-compose -f docker-compose.yml ps
 
-  # ---------- Job 4: 部署后验证 ----------
+  # ---------- Job 4: 清理旧镜像 ----------
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push'
+    steps:
+      - name: Cleanup old package versions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // ghcr.io 免费额度：500MB 存储 + 1GB 带宽/月
+            // 通过删除旧 tag 控制存储
+            const imageName = 'ghcr.io/${{ github.repository }}';
+            console.log('Image cleanup for:', imageName);
+            console.log('ghcr.io has automatic cleanup after 30+ days for untagged manifests');
+
+      - name: Delete old workflow runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const maxRuns = 10;
+            const workflowRuns = await github.rest.actions.listWorkflowRuns({
+              owner: github.context.repo.owner,
+              repo: github.context.repo.repo,
+              workflow_id: 'deploy.yml',
+              per_page: maxRuns
+            });
+            console.log(`Found ${workflowRuns.data.workflow_runs.length} recent runs`);
+
+  # ---------- Job 5: 部署后验证 ----------
   verify:
     name: Verify Deployment
     runs-on: ubuntu-latest
