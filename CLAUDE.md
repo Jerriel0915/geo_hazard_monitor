@@ -257,7 +257,7 @@ Backend configuration is in `zwei-admin/src/main/resources/`:
 
 Frontend config: `web/vite.config.ts` and `web/tsconfig.json`
 
-## Database Schema (db/geo_hazard_monitor_v1.1.sql)
+## Database Schema (db/geo_hazard_monitor_v1.2.sql)
 
 ### Database Upgrades (db/upgrade/)
 Database schema upgrades are stored in numbered scripts:
