@@ -23,10 +23,13 @@ COPY . .
 RUN mvn clean package -DskipTests -B
 
 # ---- 运行阶段 ----
-FROM openjdk:17-slim
+FROM eclipse-temurin:17-jre
 
 # 安装必要工具（用于健康检查）
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
+&& sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
+&& rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 

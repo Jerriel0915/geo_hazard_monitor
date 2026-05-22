@@ -118,7 +118,8 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     environment:
       name: production
-      url: https://${{ secrets.DEPLOY_DOMAIN || 'your-domain.com' }}
+
+      url: https://124.221.142.86
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -194,4 +195,5 @@ jobs:
           port: ${{ secrets.SERVER_SSH_PORT || 22 }}
           script: |
             docker-compose -f /app/geo_hazard_monitor/docker-compose.yml ps
+
             docker-compose -f /app/geo_hazard_monitor/docker-compose.yml logs --tail=20
