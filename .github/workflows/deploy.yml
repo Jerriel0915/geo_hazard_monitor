@@ -8,12 +8,12 @@ name: Build & Deploy
 on:
   push:
     branches:
-      - develop
-      - main
+  #      - develop
+  #      - main
   pull_request:
     branches:
-      - develop
-      - main
+#      - develop
+#      - main
 
 # 环境变量
 env:
