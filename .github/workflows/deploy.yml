@@ -118,7 +118,7 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     environment:
       name: production
-      url: https://${{ secrets.DEPLOY_DOMAIN || 'your-domain.com' }}
+      url: https://${{ vars.DEPLOY_DOMAIN || 'your-domain.com' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
