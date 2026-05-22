@@ -156,19 +156,7 @@ jobs:
             cd /app/geo_hazard_monitor
 
             # 写入环境变量
-            cat > .env << EOF
-            MYSQL_HOST=124.221.142.86
-            MYSQL_PORT=3306
-            MYSQL_DATABASE=geo_hazard_monitor
-            MYSQL_USER=root
-            MYSQL_PASSWORD=$MYSQL_PASSWORD
-            REDIS_HOST=124.221.142.86
-            REDIS_PORT=6379
-            REDIS_PASSWORD=$REDIS_PASSWORD
-            JWT_SECRET=$JWT_SECRET
-            SPRING_PROFILES_ACTIVE=prod
-            DOMAIN=124.221.142.86
-            EOF
+            printf 'MYSQL_HOST=124.221.142.86\nMYSQL_PORT=3306\nMYSQL_DATABASE=geo_hazard_monitor\nMYSQL_USER=root\nMYSQL_PASSWORD=%s\nREDIS_HOST=124.221.142.86\nREDIS_PORT=6379\nREDIS_PASSWORD=%s\nJWT_SECRET=%s\nSPRING_PROFILES_ACTIVE=prod\nDOMAIN=124.221.142.86\n' "$MYSQL_PASSWORD" "$REDIS_PASSWORD" "$JWT_SECRET" > .env
 
             # 登录 registry 拉取镜像
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
