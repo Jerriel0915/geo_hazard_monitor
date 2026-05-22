@@ -1,0 +1,30 @@
+# 日志和临时文件
+*.log
+*.log.*
+logs/
+
+# IDE
+.idea
+.vscode
+*.iml
+*.iws
+
+# 环境文件
+.env
+.env.*
+!.env.example
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+*.md
+
+# 其他
+*.bak
+*.swp
+*~
+node_modules/

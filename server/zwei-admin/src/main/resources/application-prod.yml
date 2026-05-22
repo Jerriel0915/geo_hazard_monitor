@@ -1,0 +1,164 @@
+# 生产环境配置
+# 使用环境变量注入敏感信息，勿在此文件硬编码
+
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      master:
+        url: jdbc:mysql://${MYSQL_HOST:mysql}:3306/${MYSQL_DATABASE:geo_hazard_monitor}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+        username: ${MYSQL_USER:root}
+        password: ${MYSQL_PASSWORD}
+      slave:
+        enabled: false
+      initialSize: 5
+      minIdle: 10
+      maxActive: 20
+      maxWait: 60000
+      connectTimeout: 30000
+      socketTimeout: 60000
+      timeBetweenEvictionRunsMillis: 60000
+      minEvictableIdleTimeMillis: 300000
+      maxEvictableIdleTimeMillis: 900000
+      validationQuery: SELECT 1 FROM DUAL
+      testWhileIdle: true
+      testOnBorrow: false
+      testOnReturn: false
+      webStatFilter:
+        enabled: false
+      statViewServlet:
+        enabled: false
+      filter:
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: 3000
+          merge-sql: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      database: 0
+      password: ${REDIS_PASSWORD:}
+      timeout: 10s
+      lettuce:
+        pool:
+          min-idle: 0
+          max-idle: 8
+          max-active: 8
+          max-wait: -1ms
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+
+# 日志配置（生产环境降低级别）
+logging:
+  level:
+    com.zwei: info
+    org.springframework: warn
+  file:
+    name: /app/logs/spring-boot.log
+    max-size: 100MB
+    max-history: 30
+
+# 项目相关配置
+zwei:
+  name: GeoHazardMonitor
+  version: 3.9.2
+  copyrightYear: 2026
+  profile: /app/uploads
+  addressEnabled: false
+  captchaType: math
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  tomcat:
+    uri-encoding: UTF-8
+    accept-count: 1000
+    threads:
+      max: 800
+      min-spare: 100
+
+# Token 配置
+token:
+  header: Authorization
+  secret: ${JWT_SECRET:pleaseChangeThisSecretInProduction123456}
+  expireTime: 30
+
+# IoT 缓存预热配置
+iot:
+  cache:
+    warmup:
+      enabled: true
+      thread-size: 4
+
+# SSE 日志推送配置
+log-sse:
+  enabled: true
+  queue-size: 100
+  rate-limit: 10
+  timeout: 300
+
+# MQTT 配置
+mqtt:
+  server:
+    enabled: true
+    heartbeat-timeout: 120000
+    read-buffer-size: 8KB
+    max-bytes-in-message: 10MB
+    auth:
+      enable: false
+    debug: false
+    stat-enable: true
+    mqtt-listener:
+      enable: true
+      port: 1883
+    ws-listener:
+      enable: true
+      port: 8083
+    http-listener:
+      enable: true
+      port: 18083
+      basic-auth:
+        enable: true
+        username: ${MQTT_USERNAME:mica}
+        password: ${MQTT_PASSWORD:mica}
+    mcp-server:
+      enable: true
+
+# PageHelper
+pagehelper:
+  helperDialect: mysql
+  supportMethodsArguments: true
+  params: count=countSql
+
+# Springdoc（生产环境关闭）
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: false
+
+# XSS 过滤
+xss:
+  enabled: true
+
+# Actuator 健康检查端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
