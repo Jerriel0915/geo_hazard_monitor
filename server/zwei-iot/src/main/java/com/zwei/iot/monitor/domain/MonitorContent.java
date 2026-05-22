@@ -1,6 +1,8 @@
 package com.zwei.iot.monitor.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 
@@ -13,6 +15,11 @@ import java.io.Serial;
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 public class MonitorContent extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -56,70 +63,6 @@ public class MonitorContent extends BaseEntity {
      * 图标路径
      */
     private String icon;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getMonitorTypeId() {
-        return monitorTypeId;
-    }
-
-    public void setMonitorTypeId(Long monitorTypeId) {
-        this.monitorTypeId = monitorTypeId;
-    }
-
-    public String getMonitorTypeName() {
-        return monitorTypeName;
-    }
-
-    public void setMonitorTypeName(String monitorTypeName) {
-        this.monitorTypeName = monitorTypeName;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getUnit() {
-        return unit;
-    }
-
-    public void setUnit(String unit) {
-        this.unit = unit;
-    }
-
-    public String getIndicatorType() {
-        return indicatorType;
-    }
-
-    public void setIndicatorType(String indicatorType) {
-        this.indicatorType = indicatorType;
-    }
-
-    public String getIcon() {
-        return icon;
-    }
-
-    public void setIcon(String icon) {
-        this.icon = icon;
-    }
 
     @Override
     public String toString() {

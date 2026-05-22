@@ -1,6 +1,10 @@
 package com.zwei.iot.hazardpoint.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 import java.math.BigDecimal;
@@ -11,6 +15,9 @@ import java.util.Objects;
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
 public class HazardPoint extends BaseEntity
 {
     @Serial
@@ -63,136 +70,6 @@ public class HazardPoint extends BaseEntity
     public HazardPoint(Long id)
     {
         this.id = id;
-    }
-
-    public Long getId()
-    {
-        return id;
-    }
-
-    public void setId(Long id)
-    {
-        this.id = id;
-    }
-
-    public String getCode()
-    {
-        return code;
-    }
-
-    public void setCode(String code)
-    {
-        this.code = code;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public void setName(String name)
-    {
-        this.name = name;
-    }
-
-    public Long getGroupId()
-    {
-        return groupId;
-    }
-
-    public void setGroupId(Long groupId)
-    {
-        this.groupId = groupId;
-    }
-
-    public String getGroupName()
-    {
-        return groupName;
-    }
-
-    public void setGroupName(String groupName)
-    {
-        this.groupName = groupName;
-    }
-
-    public BigDecimal getLongitude()
-    {
-        return longitude;
-    }
-
-    public void setLongitude(BigDecimal longitude)
-    {
-        this.longitude = longitude;
-    }
-
-    public BigDecimal getLatitude()
-    {
-        return latitude;
-    }
-
-    public void setLatitude(BigDecimal latitude)
-    {
-        this.latitude = latitude;
-    }
-
-    public BigDecimal getStrike()
-    {
-        return strike;
-    }
-
-    public void setStrike(BigDecimal strike)
-    {
-        this.strike = strike;
-    }
-
-    public String getDescription()
-    {
-        return description;
-    }
-
-    public void setDescription(String description)
-    {
-        this.description = description;
-    }
-
-    public Integer getStatus()
-    {
-        return status;
-    }
-
-    public void setStatus(Integer status)
-    {
-        this.status = status;
-    }
-
-    public String getStatusName()
-    {
-        return statusName;
-    }
-
-    public void setStatusName(String statusName)
-    {
-        this.statusName = statusName;
-    }
-
-    public Integer getDeviceCount()
-    {
-        return deviceCount;
-    }
-
-    public void setDeviceCount(Integer deviceCount)
-    {
-        this.deviceCount = deviceCount;
-    }
-
-    public String getDelFlag()
-    {
-        return delFlag;
-    }
-
-    public void setDelFlag(String delFlag)
-    {
-        this.delFlag = delFlag;
     }
 
     @Override

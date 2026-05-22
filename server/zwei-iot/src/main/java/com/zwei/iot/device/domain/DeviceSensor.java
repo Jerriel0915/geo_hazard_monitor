@@ -1,6 +1,11 @@
 package com.zwei.iot.device.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 import java.util.List;
@@ -10,6 +15,11 @@ import java.util.List;
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 public class DeviceSensor extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -68,94 +78,6 @@ public class DeviceSensor extends BaseEntity {
      * 属性列表（查询详情时返回）
      */
     private List<SensorAttribute> attrList;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getDeviceId() {
-        return deviceId;
-    }
-
-    public void setDeviceId(Long deviceId) {
-        this.deviceId = deviceId;
-    }
-
-    public String getDeviceCode() {
-        return deviceCode;
-    }
-
-    public void setDeviceCode(String deviceCode) {
-        this.deviceCode = deviceCode;
-    }
-
-    public String getSensorCode() {
-        return sensorCode;
-    }
-
-    public void setSensorCode(String sensorCode) {
-        this.sensorCode = sensorCode;
-    }
-
-    public String getSensorName() {
-        return sensorName;
-    }
-
-    public void setSensorName(String sensorName) {
-        this.sensorName = sensorName;
-    }
-
-    public Long getMonitorTypeId() {
-        return monitorTypeId;
-    }
-
-    public void setMonitorTypeId(Long monitorTypeId) {
-        this.monitorTypeId = monitorTypeId;
-    }
-
-    public String getMonitorTypeCode() {
-        return monitorTypeCode;
-    }
-
-    public void setMonitorTypeCode(String monitorTypeCode) {
-        this.monitorTypeCode = monitorTypeCode;
-    }
-
-    public String getMonitorTypeName() {
-        return monitorTypeName;
-    }
-
-    public void setMonitorTypeName(String monitorTypeName) {
-        this.monitorTypeName = monitorTypeName;
-    }
-
-    public Integer getStatus() {
-        return status;
-    }
-
-    public void setStatus(Integer status) {
-        this.status = status;
-    }
-
-    public Integer getDelFlag() {
-        return delFlag;
-    }
-
-    public void setDelFlag(Integer delFlag) {
-        this.delFlag = delFlag;
-    }
-
-    public List<SensorAttribute> getAttrList() {
-        return attrList;
-    }
-
-    public void setAttrList(List<SensorAttribute> attrList) {
-        this.attrList = attrList;
-    }
 
     @Override
     public String toString() {

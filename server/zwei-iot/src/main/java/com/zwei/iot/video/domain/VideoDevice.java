@@ -1,6 +1,11 @@
 package com.zwei.iot.video.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 
@@ -9,6 +14,11 @@ import java.io.Serial;
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 public class VideoDevice extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -72,102 +82,6 @@ public class VideoDevice extends BaseEntity {
      * 删除标记: 0-正常, 1-删除
      */
     private Integer delFlag;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getIcon() {
-        return icon;
-    }
-
-    public void setIcon(String icon) {
-        this.icon = icon;
-    }
-
-    public String getIconPath() {
-        return iconPath;
-    }
-
-    public void setIconPath(String iconPath) {
-        this.iconPath = iconPath;
-    }
-
-    public String getProtocolCode() {
-        return protocolCode;
-    }
-
-    public void setProtocolCode(String protocolCode) {
-        this.protocolCode = protocolCode;
-    }
-
-    public String getProtocolName() {
-        return protocolName;
-    }
-
-    public void setProtocolName(String protocolName) {
-        this.protocolName = protocolName;
-    }
-
-    public String getStreamUrl() {
-        return streamUrl;
-    }
-
-    public void setStreamUrl(String streamUrl) {
-        this.streamUrl = streamUrl;
-    }
-
-    public Integer getStatus() {
-        return status;
-    }
-
-    public void setStatus(Integer status) {
-        this.status = status;
-    }
-
-    public String getLastOnlineTime() {
-        return lastOnlineTime;
-    }
-
-    public void setLastOnlineTime(String lastOnlineTime) {
-        this.lastOnlineTime = lastOnlineTime;
-    }
-
-    public String getInstallTime() {
-        return installTime;
-    }
-
-    public void setInstallTime(String installTime) {
-        this.installTime = installTime;
-    }
-
-    public Integer getDelFlag() {
-        return delFlag;
-    }
-
-    public void setDelFlag(Integer delFlag) {
-        this.delFlag = delFlag;
-    }
 
     @Override
     public String toString() {

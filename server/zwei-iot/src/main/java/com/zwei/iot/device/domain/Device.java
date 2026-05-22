@@ -1,6 +1,8 @@
 package com.zwei.iot.device.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 
@@ -9,6 +11,11 @@ import java.io.Serial;
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Device extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -72,102 +79,6 @@ public class Device extends BaseEntity {
      * 传感器列表（查询详情时返回）
      */
     private Object sensors;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getIcon() {
-        return icon;
-    }
-
-    public void setIcon(String icon) {
-        this.icon = icon;
-    }
-
-    public String getIconPath() {
-        return iconPath;
-    }
-
-    public void setIconPath(String iconPath) {
-        this.iconPath = iconPath;
-    }
-
-    public Integer getStatus() {
-        return status;
-    }
-
-    public void setStatus(Integer status) {
-        this.status = status;
-    }
-
-    public String getStatusName() {
-        return statusName;
-    }
-
-    public void setStatusName(String statusName) {
-        this.statusName = statusName;
-    }
-
-    public Integer getRunStatus() {
-        return runStatus;
-    }
-
-    public void setRunStatus(Integer runStatus) {
-        this.runStatus = runStatus;
-    }
-
-    public String getRunStatusName() {
-        return runStatusName;
-    }
-
-    public void setRunStatusName(String runStatusName) {
-        this.runStatusName = runStatusName;
-    }
-
-    public String getLastReportTime() {
-        return lastReportTime;
-    }
-
-    public void setLastReportTime(String lastReportTime) {
-        this.lastReportTime = lastReportTime;
-    }
-
-    public Integer getDelFlag() {
-        return delFlag;
-    }
-
-    public void setDelFlag(Integer delFlag) {
-        this.delFlag = delFlag;
-    }
-
-    public Object getSensors() {
-        return sensors;
-    }
-
-    public void setSensors(Object sensors) {
-        this.sensors = sensors;
-    }
 
     @Override
     public String toString() {

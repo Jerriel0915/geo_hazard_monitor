@@ -84,10 +84,10 @@ zwei-iot/src/main/java/com/zwei/iot/
 │   └── service/                # IDeviceService, IDeviceSensorService
 ├── hazardpoint/                 # Hazard point & group management
 │   ├── controller/             # HazardPointController, HazardPointGroupController
-│   ├── domain/                 # HazardPoint, HazardPointGroup
+│   ├── domain/                 # HazardPoint, HazardPointGroup, DeviceHazardPoint
+│   ├── domain/dto/             # BoundDeviceVO, UnboundDeviceVO, BindDeviceRequest
 │   ├── mapper/
-│   ├── service/
-│   └── warmup/                 # (预留，预热任务目录)
+│   └── service/                # IHazardPointService, IDeviceHazardPointService
 ├── monitor/                     # Monitor types & content
 │   ├── controller/             # MonitorTypeController, MonitorContentController
 │   ├── domain/                 # MonitorType, MonitorContent
@@ -259,6 +259,10 @@ Frontend config: `web/vite.config.ts` and `web/tsconfig.json`
 
 ## Database Schema (db/geo_hazard_monitor_v1.1.sql)
 
+### Database Upgrades (db/upgrade/)
+Database schema upgrades are stored in numbered scripts:
+- `db/upgrade/v1.2_sensor_attribute_icon.sql` - Adds `icon` field to `sensor_attribute` table
+
 ### Key Business Tables
 
 | Table                       | Description                                                                                          |
@@ -270,7 +274,7 @@ Frontend config: `web/vite.config.ts` and `web/tsconfig.json`
 | `monitor_content`           | Monitor content metrics (id, monitor_type_id, code, name, unit, indicator_type)                      |
 | `device`                    | Physical devices (id, code, name, icon, status, run_status, last_report_time)                        |
 | `device_sensor`             | Device sensors (id, device_id, sensor_code, sensor_name, monitor_type_id)                            |
-| `sensor_attribute`          | Sensor attributes/ranges (id, sensor_id, attr_code, attr_name, unit, range_min, range_max)           |
+| `sensor_attribute`          | Sensor attributes/ranges (id, sensor_id, attr_code, attr_name, unit, range_min, range_max, **icon**) |
 | `video_device`              | Video devices with stream URLs (id, code, name, protocol_code, stream_url, status)                   |
 | `device_hazard_point`       | Device-to-hazard binding (device_id, hazard_point_id, install_longitude/latitude)                    |
 | `video_device_hazard_point` | Video device-to-hazard binding                                                                       |
