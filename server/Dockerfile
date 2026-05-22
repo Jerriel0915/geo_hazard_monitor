@@ -1,0 +1,48 @@
+# ==================== 阶段一：后端构建 ====================
+# 多阶段构建：减少最终镜像体积
+
+# ---- 构建阶段 ----
+FROM maven:3.9-eclipse-temurin-17 AS builder
+
+WORKDIR /app
+
+# 复制依赖文件，先下载依赖（利用 Docker 缓存层）
+COPY pom.xml .
+COPY zwei-common/pom.xml zwei-common/
+COPY zwei-framework/pom.xml zwei-framework/
+COPY zwei-system/pom.xml zwei-system/
+COPY zwei-quartz/pom.xml zwei-quartz/
+COPY zwei-generator/pom.xml zwei-generator/
+COPY zwei-iot/pom.xml zwei-iot/
+COPY zwei-admin/pom.xml zwei-admin/
+
+RUN mvn dependency:go-offline -B
+
+# 复制源码并构建
+COPY . .
+RUN mvn clean package -DskipTests -B
+
+# ---- 运行阶段 ----
+FROM openjdk:17-slim
+
+# 安装必要工具（用于健康检查）
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 从构建阶段复制 JAR 文件
+COPY --from=builder /app/zwei-admin/target/*.jar app.jar
+
+# 创建上传目录
+RUN mkdir -p /app/uploads
+
+# 环境变量（可在 docker-compose 或 K8s 中覆盖）
+ENV JAVA_OPTS="-Xmx512m -Xms256m"
+
+EXPOSE 8080
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

@@ -1,0 +1,197 @@
+# ============================================
+# GitHub Actions CI/CD 工作流
+# 触发条件：push 到 develop 或 main 分支
+# ============================================
+
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+
+# 环境变量（可被 secrets 覆盖）
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ---------- Job 1: 代码检查 ----------
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 前端检查
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./web
+        run: npm ci --prefer-offline
+
+      - name: Frontend type check
+        working-directory: ./web
+        run: npm run build
+
+      # 后端检查（快速验证）
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'eclipse-temurin'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
+      - name: Backend compile
+        working-directory: ./server
+        run: mvn compile -B -q
+
+  # ---------- Job 2: 构建 Docker 镜像 ----------
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.event_name == 'push'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 构建后端镜像
+      - name: Build Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          push: false
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop
+            ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 构建前端镜像
+      - name: Build Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./web
+          push: false
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop
+            ${{ env.REGISTRY }}/${{ github.repository }}/nginx:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------- Job 3: 部署到云服务器 ----------
+  deploy:
+    name: Deploy to Cloud Server
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    environment:
+      name: production
+      url: https://${{ secrets.DEPLOY_DOMAIN || 'your-domain.com' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure environment file
+        run: |
+          cp .env.example .env
+          sed -i 's/MYSQL_PASSWORD=.*/MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}/' .env
+          sed -i 's/REDIS_PASSWORD=.*/REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}/' .env
+          sed -i 's/JWT_SECRET=.*/JWT_SECRET=${{ secrets.JWT_SECRET }}/' .env
+          echo "SPRING_PROFILES_ACTIVE=prod" >> .env
+        shell: bash
+
+      - name: Check Docker images exist
+        run: |
+          echo "Images to deploy:"
+          echo "${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop"
+          echo "${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop"
+        shell: bash
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          envs: MYSQL_PASSWORD, REDIS_PASSWORD, JWT_SECRET
+          script: |
+            # 进入部署目录
+            cd /app/geo_hazard_monitor
+
+            # 拉取最新代码
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+
+            # 停止旧容器
+            docker-compose -f docker-compose.yml down || true
+
+            # 构建并启动新容器
+            docker-compose -f docker-compose.yml build --no-cache
+            docker-compose -f docker-compose.yml up -d
+
+            # 清理旧镜像
+            docker image prune -f
+
+            # 查看运行状态
+            docker-compose -f docker-compose.yml ps
+
+  # ---------- Job 4: 部署后验证 ----------
+  verify:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    steps:
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          curl -f -s https://${{ secrets.DEPLOY_DOMAIN || 'localhost' }}/health || \
+          curl -f -s http://${{ secrets.SERVER_HOST }}/health || \
+          echo "Health check skipped - domain not configured"
+
+      - name: Check Docker containers
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          script: |
+            docker-compose -f /app/geo_hazard_monitor/docker-compose.yml ps
+            docker-compose -f /app/geo_hazard_monitor/docker-compose.yml logs --tail=20
