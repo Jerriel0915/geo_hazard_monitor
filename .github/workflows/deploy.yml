@@ -34,12 +34,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Install frontend dependencies
         working-directory: ./web
-        run: npm ci --prefer-offline
+        run: npm ci
 
       - name: Frontend type check
         working-directory: ./web
@@ -91,7 +97,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./server
-          push: false
+          push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop
             ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:${{ github.sha }}
@@ -103,7 +109,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./web
-          push: false
+          push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop
             ${{ env.REGISTRY }}/${{ github.repository }}/nginx:${{ github.sha }}
@@ -126,18 +132,19 @@ jobs:
 
       - name: Configure environment file
         run: |
-          cp .env.example .env
-          sed -i 's/MYSQL_PASSWORD=.*/MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}/' .env
-          sed -i 's/REDIS_PASSWORD=.*/REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}/' .env
-          sed -i 's/JWT_SECRET=.*/JWT_SECRET=${{ secrets.JWT_SECRET }}/' .env
-          echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-        shell: bash
-
-      - name: Check Docker images exist
-        run: |
-          echo "Images to deploy:"
-          echo "${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop"
-          echo "${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop"
+          cat > .env << 'ENVEOF'
+          MYSQL_HOST=124.221.142.86
+          MYSQL_PORT=3306
+          MYSQL_DATABASE=geo_hazard_monitor
+          MYSQL_USER=root
+          MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+          REDIS_HOST=124.221.142.86
+          REDIS_PORT=6379
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          SPRING_PROFILES_ACTIVE=prod
+          DOMAIN=124.221.142.86
+          ENVEOF
         shell: bash
 
       - name: Deploy via SSH
@@ -149,25 +156,33 @@ jobs:
           port: ${{ secrets.SERVER_SSH_PORT || 22 }}
           envs: MYSQL_PASSWORD, REDIS_PASSWORD, JWT_SECRET
           script: |
-            # 进入部署目录
             cd /app/geo_hazard_monitor
 
-            # 拉取最新代码
-            git fetch origin
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+            # 写入环境变量
+            cat > .env << 'EOF'
+            MYSQL_HOST=124.221.142.86
+            MYSQL_PORT=3306
+            MYSQL_DATABASE=geo_hazard_monitor
+            MYSQL_USER=root
+            MYSQL_PASSWORD=$MYSQL_PASSWORD
+            REDIS_HOST=124.221.142.86
+            REDIS_PORT=6379
+            REDIS_PASSWORD=$REDIS_PASSWORD
+            JWT_SECRET=$JWT_SECRET
+            SPRING_PROFILES_ACTIVE=prod
+            DOMAIN=124.221.142.86
+            EOF
 
-            # 停止旧容器
+            # 登录 registry 拉取镜像
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+            docker pull ${{ env.REGISTRY }}/${{ github.repository }}/spring-boot:develop
+            docker pull ${{ env.REGISTRY }}/${{ github.repository }}/nginx:develop
+
             docker-compose -f docker-compose.yml down || true
-
-            # 构建并启动新容器
-            docker-compose -f docker-compose.yml build --no-cache
             docker-compose -f docker-compose.yml up -d
 
-            # 清理旧镜像
             docker image prune -f
-
-            # 查看运行状态
             docker-compose -f docker-compose.yml ps
 
   # ---------- Job 4: 部署后验证 ----------
