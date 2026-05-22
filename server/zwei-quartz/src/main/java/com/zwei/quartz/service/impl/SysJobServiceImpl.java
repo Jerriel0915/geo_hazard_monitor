@@ -1,6 +1,12 @@
 package com.zwei.quartz.service.impl;
 
-import java.util.List;
+import com.zwei.common.constant.ScheduleConstants;
+import com.zwei.common.exception.job.TaskException;
+import com.zwei.quartz.domain.SysJob;
+import com.zwei.quartz.mapper.SysJobMapper;
+import com.zwei.quartz.service.ISysJobService;
+import com.zwei.quartz.util.CronUtils;
+import com.zwei.quartz.util.ScheduleUtils;
 import jakarta.annotation.PostConstruct;
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
@@ -9,13 +15,8 @@ import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.zwei.common.constant.ScheduleConstants;
-import com.zwei.common.exception.job.TaskException;
-import com.zwei.quartz.domain.SysJob;
-import com.zwei.quartz.mapper.SysJobMapper;
-import com.zwei.quartz.service.ISysJobService;
-import com.zwei.quartz.util.CronUtils;
-import com.zwei.quartz.util.ScheduleUtils;
+
+import java.util.List;
 
 /**
  * 定时任务调度信息 服务层
@@ -25,11 +26,15 @@ import com.zwei.quartz.util.ScheduleUtils;
 @Service
 public class SysJobServiceImpl implements ISysJobService
 {
-    @Autowired
-    private Scheduler scheduler;
+    private final Scheduler scheduler;
+
+    private final SysJobMapper jobMapper;
 
     @Autowired
-    private SysJobMapper jobMapper;
+    public SysJobServiceImpl(SysJobMapper jobMapper, Scheduler scheduler) {
+        this.jobMapper = jobMapper;
+        this.scheduler = scheduler;
+    }
 
     /**
      * 项目启动时，初始化定时器 主要是防止手动修改数据库导致未同步到定时任务处理（注：不能手动修改数据库ID和任务组名，否则会导致脏数据）

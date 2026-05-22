@@ -1,11 +1,12 @@
 package com.zwei.generator.service;
 
-import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import com.zwei.common.core.text.Convert;
 import com.zwei.generator.domain.GenTableColumn;
 import com.zwei.generator.mapper.GenTableColumnMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * 业务字段 服务层实现
@@ -15,8 +16,12 @@ import com.zwei.generator.mapper.GenTableColumnMapper;
 @Service
 public class GenTableColumnServiceImpl implements IGenTableColumnService 
 {
+	private final GenTableColumnMapper genTableColumnMapper;
+
 	@Autowired
-	private GenTableColumnMapper genTableColumnMapper;
+	public GenTableColumnServiceImpl(GenTableColumnMapper genTableColumnMapper) {
+		this.genTableColumnMapper = genTableColumnMapper;
+	}
 
 	/**
      * 查询业务字段列表

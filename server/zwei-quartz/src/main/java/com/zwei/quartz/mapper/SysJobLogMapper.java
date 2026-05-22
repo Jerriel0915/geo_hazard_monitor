@@ -1,13 +1,16 @@
 package com.zwei.quartz.mapper;
 
-import java.util.List;
 import com.zwei.quartz.domain.SysJobLog;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
 
 /**
  * 调度任务日志信息 数据层
  * 
  * @author zwei
  */
+@Mapper
 public interface SysJobLogMapper
 {
     /**
