@@ -135,7 +135,7 @@
     <select id="selectSensorList" parameterType="com.zwei.iot.device.domain.DeviceSensor" resultMap="DeviceSensorResult">
         <include refid="selectSensorVo"/>
         <where>
-            <if test="deviceId != null">AND ds.device_id = #{deviceId}</if>
+            <if test="deviceId != null">ds.device_id = #{deviceId}</if>
             <if test="deviceCode != null and deviceCode != ''">AND ds.device_code = #{deviceCode}</if>
             <if test="sensorCode != null and sensorCode != ''">AND ds.sensor_code = #{sensorCode}</if>
             <if test="sensorName != null and sensorName != ''">AND ds.sensor_name LIKE CONCAT('%', #{sensorName}, '%')</if>
