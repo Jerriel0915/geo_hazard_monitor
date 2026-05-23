@@ -76,6 +76,13 @@ zwei:
   profile: /app/uploads
   addressEnabled: false
   captchaType: math
+  log:
+    # 生产环境仅持久化 WARN / ERROR 级运行日志
+    runtime-levels:
+      - WARN
+      - ERROR
+    # 兼容旧开关：生产环境显式关闭 INFO 级持久化
+    runtime-info-enabled: false
 
 # 服务器配置
 server:

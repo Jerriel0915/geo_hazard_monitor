@@ -21,7 +21,7 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./db/geo_hazard_monitor_v1.2.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/geo_hazard_monitor_v1.3.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./db/upgrade:/docker-entrypoint-initdb.d/upgrade:ro
     command:
       - --character-set-server=utf8mb4

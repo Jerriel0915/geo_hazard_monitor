@@ -41,6 +41,9 @@ RUN mkdir -p /app/uploads
 
 # 环境变量（可在 docker-compose 或 K8s 中覆盖）
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
+ENV SPRING_PROFILES_ACTIVE="prod"
+ENV ZWEI_LOG_RUNTIME_LEVELS="WARN,ERROR"
+ENV ZWEI_LOG_RUNTIME_INFO_ENABLED="false"
 
 EXPOSE 8080
 
@@ -48,4 +51,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILES_ACTIVE -Dzwei.log.runtime-levels=$ZWEI_LOG_RUNTIME_LEVELS -Dzwei.log.runtime-info-enabled=$ZWEI_LOG_RUNTIME_INFO_ENABLED -jar app.jar"]
