@@ -126,7 +126,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="checkHazardPointCodeUnique" parameterType="String" resultMap="HazardPointResult">
         <include refid="selectHazardPointVo"/>
-        WHERE h.del_flag = 0 AND h.code = #{code}
+        <where>
+            <if test="_parameter != null">h.del_flag = 0</if>
+            <if test="_parameter != null and _parameter != ''">AND h.code = #{code}</if>
+        </where>
     </select>
 
     <update id="updateHazardPointStatus">

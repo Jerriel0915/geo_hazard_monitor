@@ -93,7 +93,12 @@
     <!-- 校验设备编码是否唯一 -->
     <select id="checkDeviceCodeUnique" resultMap="DeviceResult">
         <include refid="selectDeviceVo"/>
-        WHERE d.code = #{code} AND d.del_flag = 0 AND d.id != #{id} LIMIT 1
+        <where>
+            <if test="code != null and code != ''">d.code = #{code}</if>
+            <if test="code != null and code != ''">AND d.del_flag = 0</if>
+            <if test="id != null">AND d.id != #{id}</if>
+        </where>
+        LIMIT 1
     </select>
 
     <!-- ==================== 新增操作 ==================== -->
