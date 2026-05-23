@@ -158,6 +158,13 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+            <!-- 日志模块-->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-log</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
             <!-- 系统模块-->
             <dependency>
                 <groupId>com.zwei</groupId>
@@ -201,6 +208,7 @@
     <modules>
         <module>zwei-admin</module>
         <module>zwei-framework</module>
+        <module>zwei-log</module>
         <module>zwei-system</module>
         <module>zwei-quartz</module>
         <module>zwei-generator</module>

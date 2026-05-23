@@ -12,6 +12,17 @@ zwei:
   addressEnabled: false
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
+  log:
+    # 运行日志持久化级别，支持按需配置 INFO/WARN/ERROR
+    runtime-levels:
+      - WARN
+      - ERROR
+    # 兼容旧开关：开启后会额外采集 INFO 级运行日志
+    runtime-info-enabled: false
+    # SSE连接超时时间
+    sse-timeout-ms: 300000
+    # SSE重连建议时间
+    sse-retry-ms: 3000
 
 # 开发环境配置
 server:
@@ -109,17 +120,6 @@ iot:
       enabled: true
       # 预热线程池大小（默认4）
       thread-size: 4
-
-# SSE日志推送配置
-log-sse:
-  # 是否启用SSE日志推送（默认true）
-  enabled: true
-  # 推送队列容量（默认100）
-  queue-size: 100
-  # 最大推送条数/秒 (0=不限制，默认10)
-  rate-limit: 10
-  # 连接超时时间(秒，默认300)
-  timeout: 300
 
 # MyBatis配置
 mybatis:

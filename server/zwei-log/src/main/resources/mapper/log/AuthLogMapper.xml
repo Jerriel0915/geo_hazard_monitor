@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.log.infrastructure.persistence.mysql.AuthLogMapper">
+
+    <insert id="insert" parameterType="com.zwei.log.domain.model.LogAuthRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into log_auth_record
+        (event_id, trace_id, request_id, user_id, username, auth_event_type, auth_channel, request_uri, request_method,
+         client_ip, client_location, user_agent, device_type, http_status, result_status, failure_code,
+         failure_message, token_id, occurred_at, created_at)
+        values
+        (#{eventId}, #{traceId}, #{requestId}, #{userId}, #{username}, #{authEventType}, #{authChannel},
+         #{requestUri}, #{requestMethod}, #{clientIp}, #{clientLocation}, #{userAgent}, #{deviceType},
+         #{httpStatus}, #{resultStatus}, #{failureCode}, #{failureMessage}, #{tokenId}, #{occurredAt}, now(3))
+    </insert>
+
+    <select id="selectPage" resultType="com.zwei.log.domain.model.LogAuthRecord">
+        select id, event_id as eventId, trace_id as traceId, request_id as requestId, user_id as userId, username,
+               auth_event_type as authEventType, auth_channel as authChannel, request_uri as requestUri,
+               request_method as requestMethod, client_ip as clientIp, client_location as clientLocation,
+               user_agent as userAgent, device_type as deviceType, http_status as httpStatus,
+               result_status as resultStatus, failure_code as failureCode, failure_message as failureMessage,
+               token_id as tokenId, occurred_at as occurredAt
+        from log_auth_record
+        <where>
+            <if test="username != null and username != ''">
+                and username like concat('%', #{username}, '%')
+            </if>
+            <if test="authEventType != null and authEventType != ''">
+                and auth_event_type = #{authEventType}
+            </if>
+            <if test="resultStatus != null and resultStatus != ''">
+                and result_status = #{resultStatus}
+            </if>
+            <if test="startTime != null">
+                and occurred_at <![CDATA[>=]]> #{startTime}
+            </if>
+            <if test="endTime != null">
+                and occurred_at <![CDATA[<=]]> #{endTime}
+            </if>
+        </where>
+        order by occurred_at desc
+    </select>
+
+    <select id="selectAfterEventId" resultType="com.zwei.log.domain.model.LogAuthRecord">
+        select id, event_id as eventId, trace_id as traceId, request_id as requestId, user_id as userId, username,
+               auth_event_type as authEventType, auth_channel as authChannel, request_uri as requestUri,
+               request_method as requestMethod, client_ip as clientIp, client_location as clientLocation,
+               user_agent as userAgent, device_type as deviceType, http_status as httpStatus,
+               result_status as resultStatus, failure_code as failureCode, failure_message as failureMessage,
+               token_id as tokenId, occurred_at as occurredAt
+        from log_auth_record
+        where event_id <![CDATA[>]]> #{eventId}
+        order by event_id asc
+        limit #{limit}
+    </select>
+</mapper>

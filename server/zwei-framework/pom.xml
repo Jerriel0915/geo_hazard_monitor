@@ -59,6 +59,12 @@
             <artifactId>zwei-system</artifactId>
         </dependency>
 
+        <!-- 日志模块 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-log</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>

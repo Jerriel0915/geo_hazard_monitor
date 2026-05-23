@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.log.infrastructure.persistence.mysql.RuntimeLogMapper">
+
+    <insert id="insert" parameterType="com.zwei.log.domain.model.LogRuntimeRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into log_runtime_record
+        (event_id, trace_id, request_id, level, logger_name, thread_name, biz_module, source_app, host_name,
+         environment, message, message_digest, exception_class, stack_trace, occurred_at, created_at)
+        values
+        (#{eventId}, #{traceId}, #{requestId}, #{level}, #{loggerName}, #{threadName}, #{bizModule}, #{sourceApp},
+         #{hostName}, #{environment}, #{message}, #{messageDigest}, #{exceptionClass}, #{stackTrace}, #{occurredAt}, now(3))
+    </insert>
+
+    <select id="selectPage" resultType="com.zwei.log.domain.model.LogRuntimeRecord">
+        select id, event_id as eventId, trace_id as traceId, request_id as requestId, level, logger_name as loggerName,
+               thread_name as threadName, biz_module as bizModule, source_app as sourceApp, host_name as hostName,
+               environment, message, message_digest as messageDigest, exception_class as exceptionClass,
+               stack_trace as stackTrace, occurred_at as occurredAt
+        from log_runtime_record
+        <where>
+            <if test="level != null and level != ''">
+                and level = #{level}
+            </if>
+            <if test="loggerName != null and loggerName != ''">
+                and logger_name like concat('%', #{loggerName}, '%')
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (message like concat('%', #{keyword}, '%')
+                or message_digest like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="startTime != null">
+                and occurred_at <![CDATA[>=]]> #{startTime}
+            </if>
+            <if test="endTime != null">
+                and occurred_at <![CDATA[<=]]> #{endTime}
+            </if>
+        </where>
+        order by occurred_at desc
+    </select>
+
+    <select id="selectAfterEventId" resultType="com.zwei.log.domain.model.LogRuntimeRecord">
+        select id, event_id as eventId, trace_id as traceId, request_id as requestId, level, logger_name as loggerName,
+               thread_name as threadName, biz_module as bizModule, source_app as sourceApp, host_name as hostName,
+               environment, message, message_digest as messageDigest, exception_class as exceptionClass,
+               stack_trace as stackTrace, occurred_at as occurredAt
+        from log_runtime_record
+        where event_id <![CDATA[>]]> #{eventId}
+        order by event_id asc
+        limit #{limit}
+    </select>
+</mapper>

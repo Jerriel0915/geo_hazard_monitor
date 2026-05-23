@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.log.infrastructure.persistence.mysql.OperationLogMapper">
+
+    <insert id="insert" parameterType="com.zwei.log.domain.model.LogOperationRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into log_operation_record
+        (event_id, trace_id, request_id, user_id, username, dept_name, title, business_type, api_path, request_method,
+         controller_method, client_ip, client_location, user_agent, request_params, response_body, http_status,
+         exec_status, error_message, cost_time_ms, occurred_at, created_at)
+        values
+        (#{eventId}, #{traceId}, #{requestId}, #{userId}, #{username}, #{deptName}, #{title}, #{businessType}, #{apiPath},
+         #{requestMethod}, #{controllerMethod}, #{clientIp}, #{clientLocation}, #{userAgent}, #{requestParams},
+         #{responseBody}, #{httpStatus}, #{execStatus}, #{errorMessage}, #{costTimeMs}, #{occurredAt}, now(3))
+    </insert>
+
+    <select id="selectPage" resultType="com.zwei.log.domain.model.LogOperationRecord">
+        select id, event_id as eventId, trace_id as traceId, request_id as requestId, user_id as userId, username,
+               dept_name as deptName, title, business_type as businessType, api_path as apiPath,
+               request_method as requestMethod, controller_method as controllerMethod, client_ip as clientIp,
+               client_location as clientLocation, user_agent as userAgent, request_params as requestParams,
+               response_body as responseBody, http_status as httpStatus, exec_status as execStatus,
+               error_message as errorMessage, cost_time_ms as costTimeMs, occurred_at as occurredAt
+        from log_operation_record
+        <where>
+            <if test="username != null and username != ''">
+                and username like concat('%', #{username}, '%')
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (title like concat('%', #{keyword}, '%')
+                or api_path like concat('%', #{keyword}, '%')
+                or controller_method like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="execStatus != null and execStatus != ''">
+                and exec_status = #{execStatus}
+            </if>
+            <if test="startTime != null">
+                and occurred_at <![CDATA[>=]]> #{startTime}
+            </if>
+            <if test="endTime != null">
+                and occurred_at <![CDATA[<=]]> #{endTime}
+            </if>
+        </where>
+        order by occurred_at desc
+    </select>
+
+    <select id="selectAfterEventId" resultType="com.zwei.log.domain.model.LogOperationRecord">
+        select id, event_id as eventId, trace_id as traceId, request_id as requestId, user_id as userId, username,
+               dept_name as deptName, title, business_type as businessType, api_path as apiPath,
+               request_method as requestMethod, controller_method as controllerMethod, client_ip as clientIp,
+               client_location as clientLocation, user_agent as userAgent, request_params as requestParams,
+               response_body as responseBody, http_status as httpStatus, exec_status as execStatus,
+               error_message as errorMessage, cost_time_ms as costTimeMs, occurred_at as occurredAt
+        from log_operation_record
+        where event_id <![CDATA[>]]> #{eventId}
+        order by event_id asc
+        limit #{limit}
+    </select>
+</mapper>
