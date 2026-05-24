@@ -423,7 +423,7 @@ Frontend config:
 
 Current main schema file:
 
-- `db/geo_hazard_monitor_v1.3.sql`
+- `db/geo_hazard_monitor_v1.4.sql`
 
 Important upgrade scripts:
 
