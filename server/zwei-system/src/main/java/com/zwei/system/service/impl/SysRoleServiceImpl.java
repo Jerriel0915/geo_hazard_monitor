@@ -293,6 +293,10 @@ public class SysRoleServiceImpl implements ISysRoleService
     public int insertRoleMenu(SysRole role)
     {
         int rows = 1;
+        if (role.getMenuIds() == null || role.getMenuIds().length == 0)
+        {
+            return rows;
+        }
         // 新增用户与角色管理
         List<SysRoleMenu> list = new ArrayList<SysRoleMenu>();
         for (Long menuId : role.getMenuIds())
@@ -317,6 +321,10 @@ public class SysRoleServiceImpl implements ISysRoleService
     public int insertRoleDept(SysRole role)
     {
         int rows = 1;
+        if (role.getDeptIds() == null || role.getDeptIds().length == 0)
+        {
+            return rows;
+        }
         // 新增角色与部门（数据权限）管理
         List<SysRoleDept> list = new ArrayList<SysRoleDept>();
         for (Long deptId : role.getDeptIds())

@@ -14,8 +14,6 @@
             <el-select v-model="searchForm.status" placeholder="全部状态" clearable>
               <el-option label="正常" :value="0" />
               <el-option label="禁用" :value="1" />
-              <el-option label="锁定" :value="2" />
-              <el-option label="过期" :value="3" />
             </el-select>
           </el-form-item>
           <el-form-item label="所属组织">
@@ -45,11 +43,6 @@
         <el-table-column prop="orgName" label="所属组织" width="150" />
         <el-table-column prop="phone" label="联系电话" width="140" />
         <el-table-column prop="email" label="邮箱" width="180" />
-        <el-table-column prop="roles" label="角色" min-width="150">
-          <template #default="{ row }">
-            <el-tag v-for="role in row.roles" :key="role" size="small" style="margin-right: 4px;">{{ role }}</el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
@@ -60,10 +53,7 @@
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <span class="action-link" @click="handleEdit(row)">编辑</span>
-            <span class="action-link" @click="handleResetPwd(row)">重置密码</span>
-            <span :class="['action-link', row.status === 1 ? 'action-warning' : 'action-success']" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? '禁用' : '启用' }}
-            </span>
+            <span class="action-link" @click="handleChangePwd(row)">修改密码</span>
             <span class="action-link action-danger" @click="handleDelete(row)">删除</span>
           </template>
         </el-table-column>
@@ -153,8 +143,6 @@
               <el-select v-model="formData.status" placeholder="请选择状态" style="width: 100%">
                 <el-option label="正常" :value="0" />
                 <el-option label="禁用" :value="1" />
-                <el-option label="锁定" :value="2" />
-                <el-option label="过期" :value="3" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -176,7 +164,7 @@
 
     <!-- 重置密码弹窗 -->
     <el-dialog
-      :title="`重置密码[${currentUser?.realName || ''}(${currentUser?.username || ''})]`"
+      :title="`修改密码[${currentUser?.realName || ''}(${currentUser?.username || ''})]`"
       v-model="pwdDialogVisible"
       width="400px"
       :close-on-click-modal="false"
@@ -187,6 +175,9 @@
         :rules="pwdRules"
         label-width="100px"
       >
+        <el-form-item label="旧密码" prop="oldPwd">
+          <el-input v-model="pwdForm.oldPwd" type="password" placeholder="请输入旧密码" show-password />
+        </el-form-item>
         <el-form-item label="新密码" prop="newPwd">
           <el-input v-model="pwdForm.newPwd" type="password" placeholder="请输入新密码" show-password />
         </el-form-item>
@@ -203,36 +194,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-
-interface User {
-  id: number
-  username: string
-  realName: string
-  orgId: number
-  orgName: string
-  phone: string
-  email: string
-  roles: string[]
-  roleIds: number[]
-  status: number
-  lastLoginTime: string
-  createTime: string
-  remark?: string
-}
-
-interface Role {
-  id: number
-  name: string
-}
-
-interface OrgNode {
-  id: number
-  name: string
-  children?: OrgNode[]
-}
+import {
+  changeUserPassword,
+  createUser,
+  deleteUser,
+  getOrganizationTree,
+  getRoleOptions,
+  getUserDetail,
+  getUserPage,
+  updateUser,
+  type OrganizationItem,
+  type RoleItem,
+  type UserItem
+} from '@/api/system'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -240,6 +217,7 @@ const dialogTitle = ref('新增用户')
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
 const isEdit = ref(false)
+const editingUserId = ref<number>()
 
 const searchForm = reactive({
   username: '',
@@ -279,12 +257,12 @@ const formRules: FormRules = {
   confirmPwd: [
     { required: true, message: '请确认密码', trigger: 'blur' },
     {
-      validator: (_rule: any, value: string, callback: Function) => {
+      validator: (_rule: any, value: string, callback: (error?: Error) => void) => {
         if (value !== formData.password) {
           callback(new Error('两次输入的密码不一致'))
-        } else {
-          callback()
+          return
         }
+        callback()
       },
       trigger: 'blur'
     }
@@ -303,164 +281,62 @@ const formRules: FormRules = {
   ]
 }
 
-// 模拟组织树数据
-const orgTreeData = ref<OrgNode[]>([
-  {
-    id: 1,
-    name: '地质灾害监测中心',
-    children: [
-      {
-        id: 2,
-        name: '监测一部',
-        children: [
-          { id: 4, name: '北京监测组' },
-          { id: 5, name: '天津监测组' }
-        ]
-      },
-      {
-        id: 3,
-        name: '监测二部',
-        children: [
-          { id: 6, name: '河北监测组' }
-        ]
-      }
-    ]
-  }
-])
-
-// 模拟角色列表
-const roleList = ref<Role[]>([
-  { id: 1, name: '超级管理员' },
-  { id: 2, name: '管理员' },
-  { id: 3, name: '值班员' },
-  { id: 4, name: '巡检员' },
-  { id: 5, name: '只读用户' }
-])
-
-// 模拟用户数据
-const allUserList = ref<User[]>([
-  {
-    id: 1,
-    username: 'admin',
-    realName: '系统管理员',
-    orgId: 1,
-    orgName: '地质灾害监测中心',
-    phone: '13800138001',
-    email: 'admin@example.com',
-    roles: ['超级管理员'],
-    roleIds: [1],
-    status: 0,
-    lastLoginTime: '2024-03-20 09:30:00',
-    createTime: '2024-01-01 10:00:00',
-    remark: '系统内置账号'
-  },
-  {
-    id: 2,
-    username: 'zhangsan',
-    realName: '张三',
-    orgId: 2,
-    orgName: '监测一部',
-    phone: '13800138002',
-    email: 'zhangsan@example.com',
-    roles: ['管理员'],
-    roleIds: [2],
-    status: 0,
-    lastLoginTime: '2024-03-19 16:45:00',
-    createTime: '2024-01-05 09:00:00'
-  },
-  {
-    id: 3,
-    username: 'lisi',
-    realName: '李四',
-    orgId: 4,
-    orgName: '北京监测组',
-    phone: '13800138003',
-    email: 'lisi@example.com',
-    roles: ['值班员'],
-    roleIds: [3],
-    status: 0,
-    lastLoginTime: '2024-03-20 08:15:00',
-    createTime: '2024-01-10 08:30:00'
-  },
-  {
-    id: 4,
-    username: 'wangwu',
-    realName: '王五',
-    orgId: 5,
-    orgName: '天津监测组',
-    phone: '13800138004',
-    email: 'wangwu@example.com',
-    roles: ['巡检员'],
-    roleIds: [4],
-    status: 1,
-    lastLoginTime: '2024-03-15 14:20:00',
-    createTime: '2024-01-12 10:00:00'
-  },
-  {
-    id: 5,
-    username: 'zhaoliu',
-    realName: '赵六',
-    orgId: 6,
-    orgName: '河北监测组',
-    phone: '13800138005',
-    email: 'zhaoliu@example.com',
-    roles: ['只读用户'],
-    roleIds: [5],
-    status: 2,
-    lastLoginTime: '2024-03-10 11:00:00',
-    createTime: '2024-01-15 11:00:00'
-  }
-])
+const orgTreeData = ref<OrganizationItem[]>([])
+const roleList = ref<RoleItem[]>([])
+const userList = ref<UserItem[]>([])
 
 const pagination = reactive({
   page: 1,
   size: 10,
-  total: 5
-})
-
-// 过滤后的用户列表
-const userList = computed(() => {
-  let result = allUserList.value
-
-  if (searchForm.username) {
-    result = result.filter(u => u.username.includes(searchForm.username))
-  }
-  if (searchForm.realName) {
-    result = result.filter(u => u.realName.includes(searchForm.realName))
-  }
-  if (searchForm.status !== undefined) {
-    result = result.filter(u => u.status === searchForm.status)
-  }
-  if (searchForm.orgId !== undefined) {
-    result = result.filter(u => u.orgId === searchForm.orgId)
-  }
-
-  pagination.total = result.length
-  const start = (pagination.page - 1) * pagination.size
-  const end = start + pagination.size
-  return result.slice(start, end)
+  total: 0
 })
 
 const getStatusType = (status: number) => {
-  const map: Record<number, string> = { 0: 'success', 1: 'danger', 2: 'warning', 3: 'info' }
+  const map: Record<number, string> = { 0: 'success', 1: 'danger' }
   return map[status] || 'info'
 }
 
 const getStatusLabel = (status: number) => {
-  const map: Record<number, string> = { 0: '正常', 1: '禁用', 2: '锁定', 3: '过期' }
+  const map: Record<number, string> = { 0: '正常', 1: '禁用' }
   return map[status] || '未知'
 }
 
-const handleSearch = () => {
-  pagination.page = 1
+const loadBaseOptions = async () => {
+  const [orgs, roles] = await Promise.all([getOrganizationTree(), getRoleOptions()])
+  orgTreeData.value = orgs
+  roleList.value = roles
 }
 
-const handleReset = () => {
+const loadUsers = async () => {
+  loading.value = true
+  try {
+    const data = await getUserPage({
+      pageNum: pagination.page,
+      pageSize: pagination.size,
+      username: searchForm.username || undefined,
+      realName: searchForm.realName || undefined,
+      orgId: searchForm.orgId,
+      status: searchForm.status
+    })
+    userList.value = data.rows
+    pagination.total = data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSearch = async () => {
+  pagination.page = 1
+  await loadUsers()
+}
+
+const handleReset = async () => {
   searchForm.username = ''
   searchForm.realName = ''
   searchForm.status = undefined
   searchForm.orgId = undefined
   pagination.page = 1
+  await loadUsers()
 }
 
 const handleAdd = () => {
@@ -470,69 +346,59 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: User) => {
+const handleEdit = async (row: UserItem) => {
   isEdit.value = true
   dialogTitle.value = '编辑用户'
+  const detail = await getUserDetail(row.id)
+  editingUserId.value = row.id
   Object.assign(formData, {
-    id: row.id,
-    username: row.username,
-    realName: row.realName,
-    phone: row.phone,
-    email: row.email,
-    orgId: row.orgId,
-    status: row.status,
-    roleIds: [...row.roleIds],
-    remark: row.remark || '',
+    id: detail.id,
+    username: detail.username,
+    realName: detail.realName,
+    phone: detail.phone || '',
+    email: detail.email || '',
+    orgId: detail.orgId,
+    status: detail.status ?? 0,
+    roleIds: detail.roleIds || [],
+    remark: detail.remark || '',
     password: '',
     confirmPwd: ''
   })
   dialogVisible.value = true
 }
 
-const handleDelete = (row: User) => {
+const handleDelete = async (row: UserItem) => {
   if (row.username === 'admin') {
     ElMessage.warning('系统内置账号不可删除')
     return
   }
-  ElMessageBox.confirm(`确定要删除用户 "${row.username}" 吗？`, '系统提示', {
+  await ElMessageBox.confirm(`确定要删除用户 "${row.username}" 吗？`, '系统提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const index = allUserList.value.findIndex(u => u.id === row.id)
-    if (index !== -1) {
-      allUserList.value.splice(index, 1)
-    }
-    ElMessage.success('删除成功')
-  }).catch(() => {})
-}
-
-const handleToggleStatus = (row: User) => {
-  const newStatus = row.status === 1 ? 0 : 1
-  const action = newStatus === 0 ? '启用' : '禁用'
-  ElMessageBox.confirm(`确定要${action}用户 "${row.username}" 吗？`, '系统提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    row.status = newStatus
-    ElMessage.success(`${action}成功`)
-  }).catch(() => {})
+  })
+  await deleteUser(row.id)
+  ElMessage.success('删除成功')
+  await loadUsers()
 }
 
 // 重置密码
 const pwdDialogVisible = ref(false)
 const pwdLoading = ref(false)
 const pwdFormRef = ref<FormInstance>()
-const currentUserId = ref(0)
-const currentUser = ref<User | null>(null)
+const currentUserId = ref<number>()
+const currentUser = ref<UserItem | null>(null)
 
 const pwdForm = reactive({
+  oldPwd: '',
   newPwd: '',
   confirmPwd: ''
 })
 
 const pwdRules: FormRules = {
+  oldPwd: [
+    { required: true, message: '请输入旧密码', trigger: 'blur' }
+  ],
   newPwd: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
     { min: 6, max: 50, message: '长度在 6 到 50 个字符', trigger: 'blur' }
@@ -552,9 +418,10 @@ const pwdRules: FormRules = {
   ]
 }
 
-const handleResetPwd = (row: User) => {
+const handleChangePwd = (row: UserItem) => {
   currentUserId.value = row.id
   currentUser.value = row
+  pwdForm.oldPwd = ''
   pwdForm.newPwd = ''
   pwdForm.confirmPwd = ''
   pwdDialogVisible.value = true
@@ -562,16 +429,19 @@ const handleResetPwd = (row: User) => {
 
 const handlePwdSubmit = async () => {
   if (!pwdFormRef.value) return
-  await pwdFormRef.value.validate((valid) => {
-    if (valid) {
-      pwdLoading.value = true
-      setTimeout(() => {
-        pwdLoading.value = false
-        pwdDialogVisible.value = false
-        ElMessage.success('密码重置成功')
-      }, 500)
-    }
-  })
+  await pwdFormRef.value.validate()
+  if (!currentUserId.value) return
+  pwdLoading.value = true
+  try {
+    await changeUserPassword(currentUserId.value, {
+      oldPassword: pwdForm.oldPwd,
+      newPassword: pwdForm.newPwd
+    })
+    pwdDialogVisible.value = false
+    ElMessage.success('密码修改成功')
+  } finally {
+    pwdLoading.value = false
+  }
 }
 
 const resetForm = () => {
@@ -586,79 +456,58 @@ const resetForm = () => {
   formData.status = 0
   formData.roleIds = []
   formData.remark = ''
+  editingUserId.value = undefined
+  formRef.value?.clearValidate()
 }
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      submitLoading.value = true
-      setTimeout(() => {
-        const now = new Date().toLocaleString('zh-CN', { hour12: false })
-        if (isEdit.value) {
-          const user = allUserList.value.find(u => u.id === formData.id)
-          if (user) {
-            Object.assign(user, {
-              realName: formData.realName,
-              phone: formData.phone,
-              email: formData.email,
-              orgId: formData.orgId,
-              orgName: getOrgName(formData.orgId!),
-              status: formData.status,
-              roleIds: [...formData.roleIds],
-              roles: formData.roleIds.map(id => roleList.value.find(r => r.id === id)?.name || ''),
-              remark: formData.remark
-            })
-          }
-          ElMessage.success('修改成功')
-        } else {
-          const newUser: User = {
-            id: allUserList.value.length + 1,
-            username: formData.username,
-            realName: formData.realName,
-            phone: formData.phone,
-            email: formData.email,
-            orgId: formData.orgId!,
-            orgName: getOrgName(formData.orgId!),
-            status: formData.status,
-            roleIds: [...formData.roleIds],
-            roles: formData.roleIds.map(id => roleList.value.find(r => r.id === id)?.name || ''),
-            lastLoginTime: '-',
-            createTime: now,
-            remark: formData.remark
-          }
-          allUserList.value.push(newUser)
-          ElMessage.success('新增成功')
-        }
-        dialogVisible.value = false
-        submitLoading.value = false
-      }, 500)
+  await formRef.value.validate()
+  submitLoading.value = true
+  try {
+    const payload = {
+      username: formData.username,
+      password: formData.password || undefined,
+      realName: formData.realName,
+      phone: formData.phone,
+      email: formData.email,
+      orgId: formData.orgId,
+      status: formData.status,
+      roleIds: formData.roleIds,
+      remark: formData.remark
     }
-  })
-}
-
-const getOrgName = (orgId: number): string => {
-  const findName = (nodes: OrgNode[]): string | null => {
-    for (const node of nodes) {
-      if (node.id === orgId) return node.name
-      if (node.children) {
-        const found = findName(node.children)
-        if (found) return found
+    if (isEdit.value && editingUserId.value) {
+      await updateUser(editingUserId.value, payload)
+      ElMessage.success('修改成功')
+    } else {
+      if (!formData.password) {
+        ElMessage.warning('新增用户时必须填写密码')
+        return
       }
+      await createUser(payload)
+      ElMessage.success('新增成功')
     }
-    return null
+    dialogVisible.value = false
+    await loadUsers()
+  } finally {
+    submitLoading.value = false
   }
-  return findName(orgTreeData.value) || ''
 }
 
-const handleSizeChange = (val: number) => {
+const handleSizeChange = async (val: number) => {
   pagination.size = val
   pagination.page = 1
+  await loadUsers()
 }
 
-const handlePageChange = (val: number) => {
+const handlePageChange = async (val: number) => {
   pagination.page = val
+  await loadUsers()
 }
+
+onMounted(async () => {
+  await Promise.all([loadBaseOptions(), loadUsers()])
+})
 </script>
 
 <style scoped>

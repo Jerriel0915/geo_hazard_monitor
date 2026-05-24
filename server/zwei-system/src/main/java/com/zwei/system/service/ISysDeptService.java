@@ -84,6 +84,14 @@ public interface ISysDeptService
     public boolean checkDeptExistUser(Long deptId);
 
     /**
+     * 校验部门编码是否唯一
+     *
+     * @param dept 部门信息
+     * @return 结果
+     */
+    public boolean checkDeptCodeUnique(SysDept dept);
+
+    /**
      * 校验部门名称是否唯一
      * 
      * @param dept 部门信息

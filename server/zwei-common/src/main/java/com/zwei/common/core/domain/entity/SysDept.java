@@ -22,11 +22,20 @@ public class SysDept extends BaseEntity
     /** 部门ID */
     private Long deptId;
 
+    /** 组织编码 */
+    private String code;
+
     /** 父部门ID */
     private Long parentId;
 
     /** 祖级列表 */
     private String ancestors;
+
+    /** 父级路径 */
+    private String parentIds;
+
+    /** 层级 */
+    private Integer level;
 
     /** 部门名称 */
     private String deptName;
@@ -42,6 +51,12 @@ public class SysDept extends BaseEntity
 
     /** 邮箱 */
     private String email;
+
+    /** 区域 */
+    private String region;
+
+    /** 地址 */
+    private String address;
 
     /** 部门状态:0正常,1停用 */
     private String status;
@@ -65,6 +80,16 @@ public class SysDept extends BaseEntity
         this.deptId = deptId;
     }
 
+    public String getCode()
+    {
+        return code;
+    }
+
+    public void setCode(String code)
+    {
+        this.code = code;
+    }
+
     public Long getParentId()
     {
         return parentId;
@@ -83,6 +108,26 @@ public class SysDept extends BaseEntity
     public void setAncestors(String ancestors)
     {
         this.ancestors = ancestors;
+    }
+
+    public String getParentIds()
+    {
+        return parentIds;
+    }
+
+    public void setParentIds(String parentIds)
+    {
+        this.parentIds = parentIds;
+    }
+
+    public Integer getLevel()
+    {
+        return level;
+    }
+
+    public void setLevel(Integer level)
+    {
+        this.level = level;
     }
 
     @NotBlank(message = "部门名称不能为空")
@@ -141,6 +186,26 @@ public class SysDept extends BaseEntity
         this.email = email;
     }
 
+    public String getRegion()
+    {
+        return region;
+    }
+
+    public void setRegion(String region)
+    {
+        this.region = region;
+    }
+
+    public String getAddress()
+    {
+        return address;
+    }
+
+    public void setAddress(String address)
+    {
+        this.address = address;
+    }
+
     public String getStatus()
     {
         return status;
@@ -185,13 +250,18 @@ public class SysDept extends BaseEntity
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("deptId", getDeptId())
+            .append("code", getCode())
             .append("parentId", getParentId())
             .append("ancestors", getAncestors())
+            .append("parentIds", getParentIds())
+            .append("level", getLevel())
             .append("deptName", getDeptName())
             .append("orderNum", getOrderNum())
             .append("leader", getLeader())
             .append("phone", getPhone())
             .append("email", getEmail())
+            .append("region", getRegion())
+            .append("address", getAddress())
             .append("status", getStatus())
             .append("delFlag", getDelFlag())
             .append("createBy", getCreateBy())

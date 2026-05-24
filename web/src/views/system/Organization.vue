@@ -1,541 +1,390 @@
 <template>
   <div class="page-content">
     <div class="page-title">组织管理</div>
-    <div class="page-body">
-      <div class="org-container">
-        <div class="org-left">
-          <div class="org-tree-header">
-            <el-input
-              v-model="filterText"
-              placeholder="输入组织名称搜索"
-              clearable
-              size="small"
-              :prefix-icon="SearchIcon"
-            />
-            <el-button type="primary" size="small" @click="handleAddRoot" :icon="PlusIcon">新增</el-button>
-          </div>
-          <el-tree
-            ref="treeRef"
-            :data="orgTreeData"
-            :props="defaultProps"
-            :filter-node-method="filterNode"
-            node-key="id"
-            highlight-current
-            default-expand-all
-            :expand-on-click-node="false"
-            @node-click="handleNodeClick"
-            class="org-tree"
-          >
-            <template #default="{ node, data }">
-              <span class="custom-tree-node">
-                <span class="node-label">{{ node.label }}</span>
-                <span class="node-actions">
-                  <el-button
-                    v-if="getLevel(data) < 5"
-                    link
-                    type="primary"
-                    size="small"
-                    @click.stop="handleAdd(data)"
-                    :icon="PlusIcon"
-                    title="添加下级"
-                  />
-                  <el-button
-                    link
-                    type="primary"
-                    size="small"
-                    @click.stop="handleEdit(data)"
-                    :icon="EditIcon"
-                    title="编辑"
-                  />
-                  <el-button
-                    link
-                    type="danger"
-                    size="small"
-                    @click.stop="handleDelete(data)"
-                    :icon="DeleteIcon"
-                    title="删除"
-                  />
-                </span>
-              </span>
-            </template>
-          </el-tree>
-        </div>
-        <div class="org-right">
-          <div v-if="currentOrg" class="org-detail">
-            <div class="detail-header">
-              <h3>组织详情</h3>
-              <el-tag :type="currentOrg.status === 1 ? 'success' : 'danger'">
-                {{ currentOrg.status === 1 ? '启用' : '禁用' }}
+    <div class="toolbar">
+      <el-form :model="searchForm" inline>
+        <el-form-item label="组织编码">
+          <el-input v-model="searchForm.code" placeholder="请输入组织编码" clearable />
+        </el-form-item>
+        <el-form-item label="组织名称">
+          <el-input v-model="searchForm.name" placeholder="请输入组织名称" clearable />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 140px">
+            <el-option label="启用" :value="0" />
+            <el-option label="禁用" :value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+      <el-button type="primary" @click="handleAddRoot">新增组织</el-button>
+    </div>
+
+    <div class="content">
+      <div class="tree-panel">
+        <div class="panel-title">组织树</div>
+        <el-input v-model="treeKeyword" placeholder="输入组织名称过滤" clearable />
+        <el-tree
+          ref="treeRef"
+          class="tree-body"
+          node-key="id"
+          :data="treeData"
+          :props="{ label: 'name', children: 'children' }"
+          default-expand-all
+          highlight-current
+          :filter-node-method="filterTreeNode"
+          @node-click="handleTreeClick"
+        />
+      </div>
+
+      <div class="list-panel">
+        <div class="panel-title">组织列表</div>
+        <el-table :data="listData" border stripe v-loading="loading" @row-click="handleRowClick">
+          <el-table-column prop="code" label="组织编码" width="140" />
+          <el-table-column prop="name" label="组织名称" min-width="180" />
+          <el-table-column prop="level" label="层级" width="80" align="center" />
+          <el-table-column prop="leader" label="负责人" width="120" />
+          <el-table-column prop="phone" label="联系电话" width="150" />
+          <el-table-column prop="status" label="状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 0 ? 'success' : 'danger'">
+                {{ row.status === 0 ? '启用' : '禁用' }}
               </el-tag>
-            </div>
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="组织名称">{{ currentOrg.name }}</el-descriptions-item>
-              <el-descriptions-item label="负责人">{{ currentOrg.leader || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="联系电话">{{ currentOrg.phone || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="区域">{{ currentOrg.region || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="中心">{{ currentOrg.center || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="状态">
-                <el-tag :type="currentOrg.status === 1 ? 'success' : 'danger'">
-                  {{ currentOrg.status === 1 ? '启用' : '禁用' }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="地址" :span="2">{{ currentOrg.address || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="创建时间">{{ currentOrg.createTime || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="更新时间">{{ currentOrg.updateTime || '-' }}</el-descriptions-item>
-            </el-descriptions>
-            <div class="detail-actions">
-              <el-button type="primary" @click="handleEdit(currentOrg)">编辑组织</el-button>
-              <el-button v-if="getLevel(currentOrg) < 5" type="success" @click="handleAdd(currentOrg)">添加下级</el-button>
-            </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" width="180" />
+          <el-table-column label="操作" width="220" fixed="right">
+            <template #default="{ row }">
+              <span class="action-link" @click.stop="handleAddChild(row)">新增下级</span>
+              <span class="action-link" @click.stop="handleEdit(row)">编辑</span>
+              <span class="action-link action-danger" @click.stop="handleDelete(row)">删除</span>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="pagination.pageNum"
+            v-model:page-size="pagination.pageSize"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @current-change="loadList"
+            @size-change="handleSizeChange"
+          />
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-header">
+            <span>组织详情</span>
+            <el-button v-if="currentOrg" link type="primary" @click="handleEdit(currentOrg)">编辑</el-button>
           </div>
-          <el-empty v-else description="请选择左侧组织查看详情" />
+          <el-descriptions v-if="currentOrg" :column="2" border>
+            <el-descriptions-item label="组织编码">{{ currentOrg.code || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="组织名称">{{ currentOrg.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="父级路径">{{ currentOrg.parentIds || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="层级">{{ currentOrg.level ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="负责人">{{ currentOrg.leader || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="联系电话">{{ currentOrg.phone || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="邮箱">{{ currentOrg.email || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="区域">{{ currentOrg.region || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="currentOrg.status === 0 ? 'success' : 'danger'">
+                {{ currentOrg.status === 0 ? '启用' : '禁用' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="排序">{{ currentOrg.sortOrder ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="地址" :span="2">{{ currentOrg.address || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ currentOrg.createTime || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="更新时间">{{ currentOrg.updateTime || '-' }}</el-descriptions-item>
+          </el-descriptions>
+          <el-empty v-else description="请选择组织节点或列表数据" />
         </div>
       </div>
     </div>
 
-    <!-- 组织表单弹窗 -->
-    <el-dialog
-      :title="dialogTitle"
-      v-model="dialogVisible"
-      width="600px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        label-width="100px"
-      >
-        <el-form-item label="上级组织" v-if="formData.parentId !== 0">
-          <el-input v-model="parentName" disabled />
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="620px" :close-on-click-modal="false">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+        <el-form-item label="上级组织">
+          <el-input :model-value="parentName" disabled />
+        </el-form-item>
+        <el-form-item label="组织编码" prop="code">
+          <el-input v-model="formData.code" placeholder="请输入组织编码" />
         </el-form-item>
         <el-form-item label="组织名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入组织名称" maxlength="50" show-word-limit />
+          <el-input v-model="formData.name" placeholder="请输入组织名称" />
         </el-form-item>
         <el-form-item label="负责人" prop="leader">
-          <el-input v-model="formData.leader" placeholder="请输入负责人姓名" maxlength="20" />
+          <el-input v-model="formData.leader" placeholder="请输入负责人" />
         </el-form-item>
         <el-form-item label="联系电话" prop="phone">
-          <el-input v-model="formData.phone" placeholder="请输入联系电话" maxlength="20" />
+          <el-input v-model="formData.phone" placeholder="请输入联系电话" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="formData.email" placeholder="请输入邮箱" />
         </el-form-item>
         <el-form-item label="区域" prop="region">
-          <el-input v-model="formData.region" placeholder="请输入区域" maxlength="50" />
-        </el-form-item>
-        <el-form-item label="中心" prop="center">
-          <el-input v-model="formData.center" placeholder="请输入中心" maxlength="50" />
+          <el-input v-model="formData.region" placeholder="请输入区域" />
         </el-form-item>
         <el-form-item label="地址" prop="address">
-          <el-input
-            v-model="formData.address"
-            type="textarea"
-            :rows="2"
-            placeholder="请输入地址"
-            maxlength="200"
-            show-word-limit
-          />
+          <el-input v-model="formData.address" type="textarea" :rows="2" placeholder="请输入地址" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="formData.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
+            <el-radio :label="0">启用</el-radio>
+            <el-radio :label="1">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" :max="999" controls-position="right" />
+          <el-input-number v-model="formData.sortOrder" :min="0" :max="999" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick, h } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import {
+  createOrganization,
+  deleteOrganization,
+  getOrganizationDetail,
+  getOrganizationPage,
+  getOrganizationTree,
+  updateOrganization,
+  type OrganizationItem
+} from '@/api/system'
 
-interface OrgNode {
-  id: number
-  name: string
-  parentId: number
-  leader?: string
-  phone?: string
-  address?: string
-  region?: string
-  center?: string
-  status: number
-  sortOrder: number
-  createTime?: string
-  updateTime?: string
-  children?: OrgNode[]
-}
-
-const filterText = ref('')
-const treeRef = ref<any>(null)
-const currentOrg = ref<OrgNode | null>(null)
+const loading = ref(false)
+const submitLoading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增组织')
-const submitLoading = ref(false)
+const currentOrg = ref<OrganizationItem | null>(null)
+const treeData = ref<OrganizationItem[]>([])
+const listData = ref<OrganizationItem[]>([])
+const treeKeyword = ref('')
+const treeRef = ref()
 const formRef = ref<FormInstance>()
-const parentName = ref('')
 const isEdit = ref(false)
+const editingId = ref<number>()
+const parentName = ref('顶级组织')
 
-const formData = reactive<OrgNode>({
-  id: 0,
+const searchForm = reactive({
+  code: '',
+  name: '',
+  status: undefined as number | undefined
+})
+
+const pagination = reactive({
+  pageNum: 1,
+  pageSize: 10,
+  total: 0
+})
+
+const formData = reactive({
+  code: '',
   name: '',
   parentId: 0,
   leader: '',
   phone: '',
-  address: '',
+  email: '',
   region: '',
-  center: '',
-  status: 1,
+  address: '',
+  status: 0,
   sortOrder: 0
 })
 
 const formRules: FormRules = {
-  name: [
-    { required: true, message: '请输入组织名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-  ],
-  phone: [
-    { pattern: /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$|^\d{7,8}$/, message: '请输入正确的联系电话', trigger: 'blur' }
-  ],
-  status: [
-    { required: true, message: '请选择状态', trigger: 'change' }
-  ]
+  code: [{ required: true, message: '请输入组织编码', trigger: 'blur' }],
+  name: [{ required: true, message: '请输入组织名称', trigger: 'blur' }],
+  parentId: [{ required: true, message: '请选择上级组织', trigger: 'change' }],
+  email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }]
 }
 
-const defaultProps = {
-  children: 'children',
-  label: 'name'
-}
-
-// 图标渲染函数
-const PlusIcon = () => h('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', width: '14', height: '14' }, [
-  h('line', { x1: '12', y1: '5', x2: '12', y2: '19' }),
-  h('line', { x1: '5', y1: '12', x2: '19', y2: '12' })
-])
-
-const EditIcon = () => h('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', width: '14', height: '14' }, [
-  h('path', { d: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' }),
-  h('path', { d: 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' })
-])
-
-const DeleteIcon = () => h('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', width: '14', height: '14' }, [
-  h('polyline', { points: '3 6 5 6 21 6' }),
-  h('path', { d: 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2' })
-])
-
-const SearchIcon = () => h('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', width: '16', height: '16' }, [
-  h('circle', { cx: '11', cy: '11', r: '8' }),
-  h('line', { x1: '21', y1: '21', x2: '16.65', y2: '16.65' })
-])
-
-// 模拟组织数据
-const generateOrgData = (): OrgNode[] => {
-  return [
-    {
-      id: 1,
-      name: '地质灾害监测中心',
-      parentId: 0,
-      leader: '张主任',
-      phone: '13800138001',
-      address: '北京市海淀区中关村大街1号',
-      region: '华北区',
-      center: '总部',
-      status: 1,
-      sortOrder: 1,
-      createTime: '2024-01-01 10:00:00',
-      updateTime: '2024-03-15 14:30:00',
-      children: [
-        {
-          id: 2,
-          name: '监测一部',
-          parentId: 1,
-          leader: '李部长',
-          phone: '13800138002',
-          address: '北京市海淀区中关村大街1号A座',
-          region: '华北区',
-          center: '一部',
-          status: 1,
-          sortOrder: 1,
-          createTime: '2024-01-05 09:00:00',
-          updateTime: '2024-03-10 11:20:00',
-          children: [
-            {
-              id: 4,
-              name: '北京监测组',
-              parentId: 2,
-              leader: '王组长',
-              phone: '13800138004',
-              address: '北京市朝阳区建国路88号',
-              region: '北京',
-              center: '一组',
-              status: 1,
-              sortOrder: 1,
-              createTime: '2024-01-10 08:30:00',
-              updateTime: '2024-02-28 16:00:00'
-            },
-            {
-              id: 5,
-              name: '天津监测组',
-              parentId: 2,
-              leader: '赵组长',
-              phone: '13800138005',
-              address: '天津市滨海新区泰达大街1号',
-              region: '天津',
-              center: '二组',
-              status: 1,
-              sortOrder: 2,
-              createTime: '2024-01-12 10:00:00',
-              updateTime: '2024-03-01 09:30:00'
-            }
-          ]
-        },
-        {
-          id: 3,
-          name: '监测二部',
-          parentId: 1,
-          leader: '刘部长',
-          phone: '13800138003',
-          address: '北京市海淀区中关村大街1号B座',
-          region: '华北区',
-          center: '二部',
-          status: 1,
-          sortOrder: 2,
-          createTime: '2024-01-06 14:00:00',
-          updateTime: '2024-03-12 15:45:00',
-          children: [
-            {
-              id: 6,
-              name: '河北监测组',
-              parentId: 3,
-              leader: '陈组长',
-              phone: '13800138006',
-              address: '石家庄市长安区建设大街66号',
-              region: '河北',
-              center: '三组',
-              status: 0,
-              sortOrder: 1,
-              createTime: '2024-01-15 11:00:00',
-              updateTime: '2024-03-05 10:20:00'
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-
-const orgTreeData = ref<OrgNode[]>(generateOrgData())
-
-// 搜索过滤
-watch(filterText, (val) => {
-  treeRef.value?.filter(val)
+watch(treeKeyword, (value) => {
+  treeRef.value?.filter(value)
 })
 
-const filterNode = (value: string, data: OrgNode) => {
+const filterTreeNode = (value: string, data: OrganizationItem) => {
   if (!value) return true
-  return data.name.includes(value)
+  return data.name.includes(value) || data.code?.includes(value)
 }
 
-// 获取节点层级
-const getLevel = (data: OrgNode): number => {
-  let level = 1
-  let parent = findParent(orgTreeData.value, data.parentId)
-  while (parent) {
-    level++
-    parent = findParent(orgTreeData.value, parent.parentId)
+const loadTree = async () => {
+  treeData.value = await getOrganizationTree()
+}
+
+const loadList = async () => {
+  loading.value = true
+  try {
+    const data = await getOrganizationPage({
+      ...searchForm,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    })
+    listData.value = data.rows
+    pagination.total = data.total
+  } finally {
+    loading.value = false
   }
-  return level
 }
 
-// 查找父节点
-const findParent = (nodes: OrgNode[], parentId: number): OrgNode | null => {
-  for (const node of nodes) {
-    if (node.id === parentId) return node
-    if (node.children) {
-      const found = findParent(node.children, parentId)
-      if (found) return found
-    }
-  }
-  return null
+const loadDetail = async (id: number) => {
+  currentOrg.value = await getOrganizationDetail(id)
 }
 
-// 查找节点
-const findNode = (nodes: OrgNode[], id: number): OrgNode | null => {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.children) {
-      const found = findNode(node.children, id)
-      if (found) return found
-    }
-  }
-  return null
+const handleSearch = async () => {
+  pagination.pageNum = 1
+  await Promise.all([loadTree(), loadList()])
 }
 
-// 生成ID
-const generateId = (): number => {
-  let maxId = 0
-  const findMaxId = (nodes: OrgNode[]) => {
-    for (const node of nodes) {
-      if (node.id > maxId) maxId = node.id
-      if (node.children) findMaxId(node.children)
-    }
-  }
-  findMaxId(orgTreeData.value)
-  return maxId + 1
+const handleReset = async () => {
+  searchForm.code = ''
+  searchForm.name = ''
+  searchForm.status = undefined
+  pagination.pageNum = 1
+  await Promise.all([loadTree(), loadList()])
 }
 
-// 点击节点
-const handleNodeClick = (data: OrgNode) => {
-  currentOrg.value = data
+const handleTreeClick = async (node: OrganizationItem) => {
+  await loadDetail(node.id)
 }
 
-// 新增根组织
-const handleAddRoot = () => {
-  isEdit.value = false
-  dialogTitle.value = '新增组织'
-  resetForm()
-  formData.parentId = 0
-  parentName.value = '顶级组织'
-  dialogVisible.value = true
+const handleRowClick = async (row: OrganizationItem) => {
+  await loadDetail(row.id)
 }
 
-// 新增子组织
-const handleAdd = (data: OrgNode) => {
-  const level = getLevel(data)
-  if (level >= 5) {
-    ElMessage.warning('组织层级最多支持5级')
-    return
-  }
-  isEdit.value = false
-  dialogTitle.value = '新增下级组织'
-  resetForm()
-  formData.parentId = data.id
-  parentName.value = data.name
-  dialogVisible.value = true
+const handleSizeChange = async (size: number) => {
+  pagination.pageSize = size
+  pagination.pageNum = 1
+  await loadList()
 }
 
-// 编辑组织
-const handleEdit = (data: OrgNode) => {
-  isEdit.value = true
-  dialogTitle.value = '编辑组织'
-  Object.assign(formData, { ...data })
-  const parent = findParent(orgTreeData.value, data.parentId)
-  parentName.value = parent ? parent.name : '顶级组织'
-  dialogVisible.value = true
-}
-
-// 删除组织
-const handleDelete = (data: OrgNode) => {
-  if (data.children && data.children.length > 0) {
-    ElMessage.warning('请先删除下级组织')
-    return
-  }
-  ElMessageBox.confirm(
-    `确定要删除组织 "${data.name}" 吗？`,
-    '系统提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    deleteNode(orgTreeData.value, data.id)
-    if (currentOrg.value?.id === data.id) {
-      currentOrg.value = null
-    }
-    ElMessage.success('删除成功')
-  }).catch(() => {})
-}
-
-// 删除节点
-const deleteNode = (nodes: OrgNode[], id: number): boolean => {
-  const index = nodes.findIndex(node => node.id === id)
-  if (index !== -1) {
-    nodes.splice(index, 1)
-    return true
-  }
-  for (const node of nodes) {
-    if (node.children && deleteNode(node.children, id)) {
-      return true
-    }
-  }
-  return false
-}
-
-// 重置表单
 const resetForm = () => {
-  formData.id = 0
+  formData.code = ''
   formData.name = ''
   formData.parentId = 0
   formData.leader = ''
   formData.phone = ''
-  formData.address = ''
+  formData.email = ''
   formData.region = ''
-  formData.center = ''
-  formData.status = 1
+  formData.address = ''
+  formData.status = 0
   formData.sortOrder = 0
-  nextTick(() => {
-    formRef.value?.resetFields()
-  })
+  editingId.value = undefined
+  formRef.value?.clearValidate()
 }
 
-// 提交表单
+const handleAddRoot = () => {
+  isEdit.value = false
+  dialogTitle.value = '新增组织'
+  resetForm()
+  parentName.value = '顶级组织'
+  dialogVisible.value = true
+}
+
+const handleAddChild = (row: OrganizationItem) => {
+  isEdit.value = false
+  dialogTitle.value = '新增下级组织'
+  resetForm()
+  formData.parentId = row.id
+  parentName.value = row.name
+  dialogVisible.value = true
+}
+
+const handleEdit = async (row: OrganizationItem) => {
+  isEdit.value = true
+  dialogTitle.value = '编辑组织'
+  resetForm()
+  const detail = await getOrganizationDetail(row.id)
+  editingId.value = detail.id
+  formData.code = detail.code
+  formData.name = detail.name
+  formData.parentId = detail.parentId
+  formData.leader = detail.leader || ''
+  formData.phone = detail.phone || ''
+  formData.email = detail.email || ''
+  formData.region = detail.region || ''
+  formData.address = detail.address || ''
+  formData.status = detail.status ?? 0
+  formData.sortOrder = detail.sortOrder ?? 0
+  parentName.value = findOrganizationName(treeData.value, detail.parentId) || '顶级组织'
+  dialogVisible.value = true
+}
+
+const handleDelete = async (row: OrganizationItem) => {
+  if (row.children?.length) {
+    ElMessage.warning('存在下级组织，无法删除')
+    return
+  }
+  await ElMessageBox.confirm(`确定删除组织“${row.name}”吗？`, '系统提示', {
+    type: 'warning'
+  })
+  await deleteOrganization(row.id)
+  ElMessage.success('删除成功')
+  if (currentOrg.value?.id === row.id) {
+    currentOrg.value = null
+  }
+  await Promise.all([loadTree(), loadList()])
+}
+
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      submitLoading.value = true
-      setTimeout(() => {
-        const now = new Date().toLocaleString('zh-CN', { hour12: false })
-        if (isEdit.value) {
-          // 编辑
-          const node = findNode(orgTreeData.value, formData.id)
-          if (node) {
-            Object.assign(node, {
-              ...formData,
-              updateTime: now
-            })
-            if (currentOrg.value?.id === node.id) {
-              currentOrg.value = { ...node }
-            }
-          }
-          ElMessage.success('修改成功')
-        } else {
-          // 新增
-          const newNode: OrgNode = {
-            ...formData,
-            id: generateId(),
-            createTime: now,
-            updateTime: now
-          }
-          if (formData.parentId === 0) {
-            orgTreeData.value.push(newNode)
-          } else {
-            const parent = findNode(orgTreeData.value, formData.parentId)
-            if (parent) {
-              if (!parent.children) parent.children = []
-              parent.children.push(newNode)
-            }
-          }
-          ElMessage.success('新增成功')
-        }
-        dialogVisible.value = false
-        submitLoading.value = false
-        // 刷新树
-        nextTick(() => {
-          treeRef.value?.filter(filterText.value)
-        })
-      }, 500)
+  await formRef.value.validate()
+  submitLoading.value = true
+  try {
+    const payload = {
+      code: formData.code,
+      name: formData.name,
+      parentId: formData.parentId,
+      leader: formData.leader,
+      phone: formData.phone,
+      email: formData.email,
+      region: formData.region,
+      address: formData.address,
+      status: formData.status,
+      sortOrder: formData.sortOrder
     }
-  })
+    if (isEdit.value && editingId.value) {
+      await updateOrganization(editingId.value, payload)
+      ElMessage.success('修改成功')
+      await loadDetail(editingId.value)
+    } else {
+      const data = await createOrganization(payload)
+      ElMessage.success('新增成功')
+      await loadDetail(data.id)
+    }
+    dialogVisible.value = false
+    await Promise.all([loadTree(), loadList()])
+  } finally {
+    submitLoading.value = false
+  }
 }
+
+const findOrganizationName = (nodes: OrganizationItem[], id?: number): string => {
+  if (!id) return ''
+  for (const node of nodes) {
+    if (node.id === id) return node.name
+    if (node.children?.length) {
+      const match = findOrganizationName(node.children, id)
+      if (match) return match
+    }
+  }
+  return ''
+}
+
+onMounted(async () => {
+  await Promise.all([loadTree(), loadList()])
+})
 </script>
 
 <style scoped>
@@ -548,118 +397,78 @@ const handleSubmit = async () => {
 
 .page-title {
   font-size: 18px;
-  font-weight: bold;
-  color: #303133;
+  font-weight: 700;
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 1px solid #e4e7ed;
 }
 
-.page-body {
-  padding: 0;
-}
-
-.org-container {
+.toolbar {
   display: flex;
-  gap: 20px;
-  height: calc(100vh - 220px);
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.org-left {
-  width: 380px;
+.content {
+  display: flex;
+  gap: 16px;
+}
+
+.tree-panel {
+  width: 320px;
+  padding: 16px;
   border: 1px solid #e4e7ed;
   border-radius: 8px;
-  padding: 16px;
   background: #fafafa;
-  display: flex;
-  flex-direction: column;
 }
 
-.org-tree-header {
-  display: flex;
-  gap: 10px;
+.tree-body {
+  margin-top: 12px;
+  max-height: 720px;
+  overflow: auto;
+}
+
+.list-panel {
+  flex: 1;
+  padding: 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
   margin-bottom: 12px;
 }
 
-.org-tree-header .el-input {
-  flex: 1;
-}
-
-.org-tree {
-  flex: 1;
-  overflow: auto;
-  background: transparent;
-}
-
-.custom-tree-node {
+.pagination {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex: 1;
-  padding-right: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
-.node-label {
-  font-size: 14px;
-}
-
-.node-actions {
-  display: none;
-  gap: 4px;
-}
-
-.custom-tree-node:hover .node-actions {
-  display: flex;
-}
-
-.org-right {
-  flex: 1;
-  border: 1px solid #e4e7ed;
-  border-radius: 8px;
-  padding: 20px;
-  background: #fff;
-  overflow: auto;
-}
-
-.org-detail {
-  height: 100%;
+.detail-card {
+  margin-top: 20px;
 }
 
 .detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e4e7ed;
+  margin-bottom: 12px;
 }
 
-.detail-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #303133;
+.action-link {
+  display: inline-block;
+  margin-right: 8px;
+  color: #409eff;
+  cursor: pointer;
 }
 
-.detail-actions {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid #e4e7ed;
-  display: flex;
-  gap: 12px;
-}
-
-:deep(.el-tree-node__content) {
-  height: 36px;
-  border-radius: 4px;
-  margin: 2px 0;
-}
-
-:deep(.el-tree-node__content:hover) {
-  background-color: #f0f5ff;
-}
-
-:deep(.el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content) {
-  background-color: #e6f7ff;
-  color: #1890ff;
+.action-danger {
+  color: #f56c6c;
 }
 </style>

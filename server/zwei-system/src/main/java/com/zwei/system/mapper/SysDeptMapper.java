@@ -69,6 +69,14 @@ public interface SysDeptMapper
     public int checkDeptExistUser(Long deptId);
 
     /**
+     * 校验部门编码是否唯一
+     *
+     * @param code 部门编码
+     * @return 结果
+     */
+    public SysDept checkDeptCodeUnique(String code);
+
+    /**
      * 校验部门名称是否唯一
      * 
      * @param deptName 部门名称

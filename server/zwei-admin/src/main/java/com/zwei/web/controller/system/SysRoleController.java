@@ -6,10 +6,14 @@ import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysRole;
 import com.zwei.common.core.domain.entity.SysUser;
+import com.zwei.common.core.domain.model.BatchIdRequest;
+import com.zwei.common.core.domain.model.SysRoleQueryRequest;
 import com.zwei.common.core.domain.model.SysRoleResponse;
+import com.zwei.common.core.domain.model.SysRoleUpsertRequest;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
+import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.framework.web.service.SysPermissionService;
 import com.zwei.framework.web.service.TokenService;
@@ -56,9 +60,10 @@ public class SysRoleController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/page")
-    public AjaxResult list(SysRole role)
+    public AjaxResult list(SysRoleQueryRequest request)
     {
         startPage();
+        SysRole role = request.toEntity();
         List<SysRole> list = roleService.selectRoleList(role);
         List<SysRoleResponse> rspList = list.stream()
                 .map(SysRoleResponse::fromEntity)
@@ -103,8 +108,13 @@ public class SysRoleController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:role:add')")
     @Log(title = "角色管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody SysRole role)
+    public AjaxResult add(@Validated @RequestBody SysRoleUpsertRequest request)
     {
+        if (StringUtils.isEmpty(request.getCode()) || StringUtils.isEmpty(request.getName()) || request.getSortOrder() == null)
+        {
+            return error("角色编码、角色名称、排序不能为空");
+        }
+        SysRole role = request.toEntity();
         if (!roleService.checkRoleNameUnique(role))
         {
             return error("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
@@ -126,10 +136,17 @@ public class SysRoleController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:role:edit')")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SysRole role)
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SysRoleUpsertRequest request)
     {
+        SysRole role = roleService.selectRoleById(id);
+        if (role == null)
+        {
+            return error("角色不存在");
+        }
+        role.setRoleId(id);
         roleService.checkRoleAllowed(role);
-        roleService.checkRoleDataScope(role.getRoleId());
+        roleService.checkRoleDataScope(id);
+        request.applyTo(role, false);
         if (!roleService.checkRoleNameUnique(role))
         {
             return error("修改角色'" + role.getRoleName() + "'失败，角色名称已存在");
@@ -138,7 +155,6 @@ public class SysRoleController extends BaseController
         {
             return error("修改角色'" + role.getRoleName() + "'失败，角色权限已存在");
         }
-        role.setRoleId(id);
         role.setUpdateBy(getUsername());
         roleService.updateRole(role);
         // 刷新所有持有该角色的在线用户权限
@@ -165,7 +181,8 @@ public class SysRoleController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:role:remove')")
     @Log(title = "角色管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/batch")
-    public AjaxResult batchRemove(@RequestBody Long[] ids) {
+    public AjaxResult batchRemove(@Validated @RequestBody BatchIdRequest request) {
+        Long[] ids = request.getIds().toArray(new Long[0]);
         for (Long id : ids) {
             if (roleService.countUserRoleByRoleId(id) > 0) {
                 return error("角色ID " + id + " 下存在用户，无法删除");
@@ -182,8 +199,9 @@ public class SysRoleController extends BaseController
     @PutMapping("/{id}/dataScope")
     public AjaxResult dataScope(@PathVariable Long id, @RequestBody SysRole role)
     {
+        role.setRoleId(id);
         roleService.checkRoleAllowed(role);
-        roleService.checkRoleDataScope(role.getRoleId());
+        roleService.checkRoleDataScope(id);
         return toAjax(roleService.authDataScope(role));
     }
 
@@ -195,9 +213,9 @@ public class SysRoleController extends BaseController
     @PutMapping("/{id}/status")
     public AjaxResult changeStatus(@PathVariable Long id, @RequestBody SysRole role)
     {
-        roleService.checkRoleAllowed(role);
-        roleService.checkRoleDataScope(role.getRoleId());
         role.setRoleId(id);
+        roleService.checkRoleAllowed(role);
+        roleService.checkRoleDataScope(id);
         role.setUpdateBy(getUsername());
         return toAjax(roleService.updateRoleStatus(role));
     }

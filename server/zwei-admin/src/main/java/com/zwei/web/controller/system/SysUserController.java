@@ -7,7 +7,11 @@ import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysDept;
 import com.zwei.common.core.domain.entity.SysRole;
 import com.zwei.common.core.domain.entity.SysUser;
+import com.zwei.common.core.domain.model.BatchIdRequest;
+import com.zwei.common.core.domain.model.SysUserPasswordRequest;
+import com.zwei.common.core.domain.model.SysUserQueryRequest;
 import com.zwei.common.core.domain.model.SysUserResponse;
+import com.zwei.common.core.domain.model.SysUserUpsertRequest;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
@@ -56,9 +60,10 @@ public class SysUserController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/page")
-    public AjaxResult list(SysUser user)
+    public AjaxResult list(SysUserQueryRequest request)
     {
         startPage();
+        SysUser user = request.toEntity();
         List<SysUser> list = userService.selectUserList(user);
         List<SysUserResponse> rspList = list.stream()
                 .map(SysUserResponse::fromEntity)
@@ -124,10 +129,18 @@ public class SysUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:user:add')")
     @Log(title = "用户管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody SysUser user)
+    public AjaxResult add(@Validated @RequestBody SysUserUpsertRequest request)
     {
+        if (StringUtils.isEmpty(request.getUsername()) || StringUtils.isEmpty(request.getPassword()) || StringUtils.isEmpty(request.getRealName()))
+        {
+            return error("用户名、密码、真实姓名不能为空");
+        }
+        SysUser user = request.toEntity();
         deptService.checkDeptDataScope(user.getDeptId());
-        roleService.checkRoleDataScope(user.getRoleIds());
+        if (user.getRoleIds() != null)
+        {
+            roleService.checkRoleDataScope(user.getRoleIds());
+        }
         if (!userService.checkUserNameUnique(user))
         {
             return error("新增用户'" + user.getUserName() + "'失败，登录账号已存在");
@@ -154,12 +167,22 @@ public class SysUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:user:edit')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SysUser user)
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SysUserUpsertRequest request)
     {
+        SysUser user = userService.selectUserById(id);
+        if (user == null)
+        {
+            return error("用户不存在");
+        }
+        user.setUserId(id);
         userService.checkUserAllowed(user);
-        userService.checkUserDataScope(user.getUserId());
+        userService.checkUserDataScope(id);
+        request.applyTo(user, false);
         deptService.checkDeptDataScope(user.getDeptId());
-        roleService.checkRoleDataScope(user.getRoleIds());
+        if (user.getRoleIds() != null)
+        {
+            roleService.checkRoleDataScope(user.getRoleIds());
+        }
         if (!userService.checkUserNameUnique(user))
         {
             return error("修改用户'" + user.getUserName() + "'失败，登录账号已存在");
@@ -172,7 +195,6 @@ public class SysUserController extends BaseController
         {
             return error("修改用户'" + user.getUserName() + "'失败，邮箱账号已存在");
         }
-        user.setUserId(id);
         user.setUpdateBy(getUsername());
         return toAjax(userService.updateUser(user));
     }
@@ -196,8 +218,9 @@ public class SysUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:user:remove')")
     @Log(title = "用户管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/batch")
-    public AjaxResult batchRemove(@RequestBody Long[] ids)
+    public AjaxResult batchRemove(@Validated @RequestBody BatchIdRequest request)
     {
+        Long[] ids = request.getIds().toArray(new Long[0]);
         if (ArrayUtils.contains(ids, getUserId()))
         {
             return error("当前用户不能删除");
@@ -211,10 +234,18 @@ public class SysUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:user:resetPwd')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}/password")
-    public AjaxResult changePassword(@PathVariable Long id, @RequestBody SysUser user)
+    public AjaxResult changePassword(@PathVariable Long id, @Validated @RequestBody SysUserPasswordRequest request)
     {
+        SysUser user = userService.selectUserById(id);
+        if (user == null)
+        {
+            return error("用户不存在");
+        }
+        user.setUserId(id);
         userService.checkUserAllowed(user);
-        userService.checkUserDataScope(user.getUserId());
+        userService.checkUserDataScope(id);
+        user.setOldPassword(request.getOldPassword());
+        user.setNewPassword(request.getNewPassword());
         if (!SecurityUtils.matchesPassword(user.getOldPassword(), userService.selectUserById(id).getPassword())) {
             return error("旧密码不正确");
         }

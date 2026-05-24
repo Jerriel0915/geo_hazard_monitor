@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
  * - menuName → name
  * - menuType → type
  * - orderNum → sortOrder
- * - perms → code
+ * - routeName → code
  *
  * @author zwei
  */
@@ -77,6 +77,11 @@ public class SysMenuResponse {
      * 权限字符串
      */
     private String perms;
+
+    /**
+     * 菜单状态（0正常 1停用）
+     */
+    private Integer status;
 
     /**
      * 创建时间
@@ -199,6 +204,16 @@ public class SysMenuResponse {
         this.perms = perms;
     }
 
+    public Integer getStatus()
+    {
+        return status;
+    }
+
+    public void setStatus(Integer status)
+    {
+        this.status = status;
+    }
+
     public Date getCreateTime() {
         return createTime;
     }
@@ -250,7 +265,7 @@ public class SysMenuResponse {
         resp.setId(menu.getMenuId());
         resp.setParentId(menu.getParentId());
         resp.setName(menu.getMenuName());
-        resp.setCode(menu.getPerms());
+        resp.setCode(menu.getRouteName());
         resp.setPath(menu.getPath());
         resp.setComponent(menu.getComponent());
         resp.setIcon(menu.getIcon());
@@ -274,6 +289,7 @@ public class SysMenuResponse {
         resp.setIsCache(menu.getIsCache() != null ? Integer.valueOf(menu.getIsCache()) : null);
         resp.setSortOrder(menu.getOrderNum());
         resp.setPerms(menu.getPerms());
+        resp.setStatus(menu.getStatus() != null ? Integer.valueOf(menu.getStatus()) : null);
         resp.setCreateTime(menu.getCreateTime());
         resp.setCreateBy(menu.getCreateBy());
         resp.setUpdateTime(menu.getUpdateTime());
@@ -288,16 +304,23 @@ public class SysMenuResponse {
         if (menus == null) {
             return null;
         }
+        List<Long> ids = menus.stream().map(SysMenu::getMenuId).collect(Collectors.toList());
         return menus.stream()
-                .map(SysMenuResponse::fromEntity)
-                .peek(resp -> {
-                    List<SysMenu> children = menus.stream()
-                            .filter(m -> m.getParentId() != null && m.getParentId().equals(resp.getId()))
-                            .collect(Collectors.toList());
-                    if (!children.isEmpty()) {
-                        resp.setChildren(buildTree(children));
-                    }
-                })
+                .filter(menu -> menu.getParentId() == null || !ids.contains(menu.getParentId()))
+                .map(menu -> buildNode(menu, menus))
                 .collect(Collectors.toList());
+    }
+
+    private static SysMenuResponse buildNode(SysMenu menu, List<SysMenu> menus)
+    {
+        SysMenuResponse response = fromEntity(menu);
+        List<SysMenu> children = menus.stream()
+                .filter(item -> item.getParentId() != null && item.getParentId().equals(menu.getMenuId()))
+                .collect(Collectors.toList());
+        if (!children.isEmpty())
+        {
+            response.setChildren(children.stream().map(child -> buildNode(child, menus)).collect(Collectors.toList()));
+        }
+        return response;
     }
 }

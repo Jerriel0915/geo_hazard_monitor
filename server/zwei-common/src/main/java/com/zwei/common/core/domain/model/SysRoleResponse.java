@@ -40,7 +40,7 @@ public class SysRoleResponse {
     /**
      * 数据范围
      */
-    private String dataScope;
+    private Integer dataScope;
 
     /**
      * 显示顺序
@@ -109,11 +109,11 @@ public class SysRoleResponse {
         this.description = description;
     }
 
-    public String getDataScope() {
+    public Integer getDataScope() {
         return dataScope;
     }
 
-    public void setDataScope(String dataScope) {
+    public void setDataScope(Integer dataScope) {
         this.dataScope = dataScope;
     }
 
@@ -185,7 +185,7 @@ public class SysRoleResponse {
         resp.setCode(role.getRoleKey());
         resp.setName(role.getRoleName());
         resp.setDescription(role.getRemark());
-        resp.setDataScope(role.getDataScope());
+        resp.setDataScope(role.getDataScope() == null ? null : Integer.valueOf(role.getDataScope()));
         resp.setSortOrder(role.getRoleSort());
         if (role.getStatus() != null) {
             resp.setStatus(Integer.valueOf(role.getStatus()));

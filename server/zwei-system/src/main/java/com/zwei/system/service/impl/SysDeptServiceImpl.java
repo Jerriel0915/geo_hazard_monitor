@@ -165,6 +165,24 @@ public class SysDeptServiceImpl implements ISysDeptService
     }
 
     /**
+     * 校验部门编码是否唯一
+     *
+     * @param dept 部门信息
+     * @return 结果
+     */
+    @Override
+    public boolean checkDeptCodeUnique(SysDept dept)
+    {
+        Long deptId = StringUtils.isNull(dept.getDeptId()) ? -1L : dept.getDeptId();
+        SysDept info = deptMapper.checkDeptCodeUnique(dept.getCode());
+        if (StringUtils.isNotNull(info) && info.getDeptId().longValue() != deptId.longValue())
+        {
+            return UserConstants.NOT_UNIQUE;
+        }
+        return UserConstants.UNIQUE;
+    }
+
+    /**
      * 校验部门名称是否唯一
      * 
      * @param dept 部门信息
@@ -211,13 +229,16 @@ public class SysDeptServiceImpl implements ISysDeptService
     @Override
     public int insertDept(SysDept dept)
     {
-        SysDept info = deptMapper.selectDeptById(dept.getParentId());
-        // 如果父节点不为正常状态,则不允许新增子节点
-        if (!UserConstants.DEPT_NORMAL.equals(info.getStatus()))
+        SysDept info = null;
+        if (dept.getParentId() != null && dept.getParentId() != 0L)
+        {
+            info = deptMapper.selectDeptById(dept.getParentId());
+        }
+        if (info != null && !UserConstants.DEPT_NORMAL.equals(info.getStatus()))
         {
             throw new ServiceException("部门停用，不允许新增");
         }
-        dept.setAncestors(info.getAncestors() + "," + dept.getParentId());
+        populateHierarchyFields(dept, info);
         return deptMapper.insertDept(dept);
     }
 
@@ -230,14 +251,27 @@ public class SysDeptServiceImpl implements ISysDeptService
     @Override
     public int updateDept(SysDept dept)
     {
-        SysDept newParentDept = deptMapper.selectDeptById(dept.getParentId());
         SysDept oldDept = deptMapper.selectDeptById(dept.getDeptId());
-        if (StringUtils.isNotNull(newParentDept) && StringUtils.isNotNull(oldDept))
+        SysDept newParentDept = null;
+        if (dept.getParentId() != null && dept.getParentId() != 0L)
         {
-            String newAncestors = newParentDept.getAncestors() + "," + newParentDept.getDeptId();
+            newParentDept = deptMapper.selectDeptById(dept.getParentId());
+            if (StringUtils.isNotNull(newParentDept) && !UserConstants.DEPT_NORMAL.equals(newParentDept.getStatus()))
+            {
+                throw new ServiceException("部门停用，不允许修改");
+            }
+        }
+        if (StringUtils.isNotNull(oldDept))
+        {
+            String newAncestors = buildAncestors(newParentDept);
             String oldAncestors = oldDept.getAncestors();
+            String newParentIds = buildParentIds(newParentDept);
+            String oldParentIds = oldDept.getParentIds();
+            int newLevel = buildLevel(newParentDept);
             dept.setAncestors(newAncestors);
-            updateDeptChildren(dept.getDeptId(), newAncestors, oldAncestors);
+            dept.setParentIds(newParentIds);
+            dept.setLevel(newLevel);
+            updateDeptChildren(dept.getDeptId(), newAncestors, oldAncestors, newParentIds, oldParentIds, newLevel);
         }
         int result = deptMapper.updateDept(dept);
         if (UserConstants.DEPT_NORMAL.equals(dept.getStatus()) && StringUtils.isNotEmpty(dept.getAncestors())
@@ -268,12 +302,20 @@ public class SysDeptServiceImpl implements ISysDeptService
      * @param newAncestors 新的父ID集合
      * @param oldAncestors 旧的父ID集合
      */
-    public void updateDeptChildren(Long deptId, String newAncestors, String oldAncestors)
+    public void updateDeptChildren(Long deptId, String newAncestors, String oldAncestors, String newParentIds, String oldParentIds, int newLevel)
     {
         List<SysDept> children = deptMapper.selectChildrenDeptById(deptId);
         for (SysDept child : children)
         {
             child.setAncestors(child.getAncestors().replaceFirst(oldAncestors, newAncestors));
+            if (StringUtils.isNotEmpty(oldParentIds) && StringUtils.isNotEmpty(newParentIds) && StringUtils.isNotEmpty(child.getParentIds()))
+            {
+                child.setParentIds(child.getParentIds().replaceFirst(oldParentIds, newParentIds));
+            }
+            int relativeLevel = child.getLevel() == null || child.getLevel() <= 0 || oldDeptLevel(oldAncestors) <= 0
+                    ? 1
+                    : child.getLevel() - oldDeptLevel(oldAncestors);
+            child.setLevel(newLevel + relativeLevel);
         }
         if (children.size() > 0)
         {
@@ -360,5 +402,49 @@ public class SysDeptServiceImpl implements ISysDeptService
     private boolean hasChild(List<SysDept> list, SysDept t)
     {
         return getChildList(list, t).size() > 0;
+    }
+
+    private void populateHierarchyFields(SysDept dept, SysDept parentDept)
+    {
+        dept.setAncestors(buildAncestors(parentDept));
+        dept.setParentIds(buildParentIds(parentDept));
+        dept.setLevel(buildLevel(parentDept));
+    }
+
+    private String buildAncestors(SysDept parentDept)
+    {
+        if (parentDept == null)
+        {
+            return "0";
+        }
+        return parentDept.getAncestors() + "," + parentDept.getDeptId();
+    }
+
+    private String buildParentIds(SysDept parentDept)
+    {
+        if (parentDept == null)
+        {
+            return "/0/";
+        }
+        String parentIds = StringUtils.isNotEmpty(parentDept.getParentIds()) ? parentDept.getParentIds() : "/0/";
+        return parentIds + parentDept.getDeptId() + "/";
+    }
+
+    private int buildLevel(SysDept parentDept)
+    {
+        if (parentDept == null || parentDept.getLevel() == null)
+        {
+            return 1;
+        }
+        return parentDept.getLevel() + 1;
+    }
+
+    private int oldDeptLevel(String oldAncestors)
+    {
+        if (StringUtils.isEmpty(oldAncestors))
+        {
+            return 0;
+        }
+        return oldAncestors.split(",").length + 1;
     }
 }

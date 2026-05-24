@@ -5,6 +5,7 @@ import com.zwei.common.constant.UserConstants;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysMenu;
+import com.zwei.common.core.domain.model.SysMenuUpsertRequest;
 import com.zwei.common.core.domain.model.SysMenuResponse;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.StringUtils;
@@ -90,8 +91,14 @@ public class SysMenuController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:menu:add')")
     @Log(title = "菜单管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody SysMenu menu)
+    public AjaxResult add(@Validated @RequestBody SysMenuUpsertRequest request)
     {
+        SysMenu menu = request.toEntity();
+        if (StringUtils.isEmpty(menu.getMenuName()) || menu.getParentId() == null
+                || StringUtils.isEmpty(menu.getMenuType()) || menu.getOrderNum() == null)
+        {
+            return error("父级菜单、菜单名称、菜单类型、排序不能为空");
+        }
         if (!menuService.checkMenuNameUnique(menu))
         {
             return error("新增菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
@@ -117,8 +124,20 @@ public class SysMenuController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:menu:edit')")
     @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SysMenu menu)
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SysMenuUpsertRequest request)
     {
+        SysMenu menu = menuService.selectMenuById(id);
+        if (menu == null)
+        {
+            return error("菜单不存在");
+        }
+        menu.setMenuId(id);
+        request.applyTo(menu, false);
+        if (StringUtils.isEmpty(menu.getMenuName()) || menu.getParentId() == null
+                || StringUtils.isEmpty(menu.getMenuType()) || menu.getOrderNum() == null)
+        {
+            return error("父级菜单、菜单名称、菜单类型、排序不能为空");
+        }
         if (!menuService.checkMenuNameUnique(menu))
         {
             return error("修改菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
@@ -127,7 +146,7 @@ public class SysMenuController extends BaseController
         {
             return error("修改菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
         }
-        else if (menu.getMenuId().equals(menu.getParentId()))
+        else if (menu.getParentId() != null && menu.getMenuId().equals(menu.getParentId()))
         {
             return error("修改菜单'" + menu.getMenuName() + "'失败，上级菜单不能选择自己");
         }
@@ -135,7 +154,6 @@ public class SysMenuController extends BaseController
         {
             return error("修改菜单'" + menu.getMenuName() + "'失败，路由名称或地址已存在");
         }
-        menu.setMenuId(id);
         menu.setUpdateBy(getUsername());
         return toAjax(menuService.updateMenu(menu));
     }
