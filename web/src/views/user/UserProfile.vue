@@ -96,12 +96,7 @@
                 <label class="info-label">所属组织</label>
                 <div class="info-value">
                   <span v-if="!isEditing">{{ userInfo.orgName || '-' }}</span>
-                  <el-select v-else v-model="editForm.orgId" size="large" placeholder="请选择组织" class="org-select">
-                    <el-option label="系统管理部" :value="1" />
-                    <el-option label="监测运维部" :value="2" />
-                    <el-option label="数据分析部" :value="3" />
-                    <el-option label="应急指挥中心" :value="4" />
-                  </el-select>
+                  <span v-else>{{ userInfo.orgName || '-' }}</span>
                 </div>
               </div>
             </div>
@@ -316,7 +311,10 @@ const userInfo = reactive({
   email: '',
   orgId: 0,
   orgName: '',
-  avatar: ''
+  avatar: '',
+  sex: '',
+  roleGroup: '',
+  postGroup: ''
 })
 
 // Edit Form
@@ -327,7 +325,7 @@ const editForm = reactive({
   realName: '',
   phone: '',
   email: '',
-  orgId: 0
+  sex: ''
 })
 
 // Password Dialog
@@ -380,7 +378,7 @@ const toggleEdit = () => {
     editForm.realName = userInfo.realName
     editForm.phone = userInfo.phone
     editForm.email = userInfo.email
-    editForm.orgId = userInfo.orgId
+    editForm.sex = userInfo.sex
     isEditing.value = true
   }
 }
@@ -392,15 +390,16 @@ const cancelEdit = () => {
 const saveUserInfo = async () => {
   saving.value = true
   try {
-    // Backend expects: nickName (realName), phonenumber (phone), email, sex
-    await updateUserInfo(0, {
+    await updateUserInfo({
       realName: editForm.realName,
       phone: editForm.phone,
-      email: editForm.email
-    } as any)
+      email: editForm.email,
+      sex: editForm.sex
+    })
     userInfo.realName = editForm.realName
     userInfo.phone = editForm.phone
     userInfo.email = editForm.email
+    userInfo.sex = editForm.sex
     ElMessage.success('个人信息保存成功')
     isEditing.value = false
   } catch {
@@ -464,17 +463,21 @@ const navigateToSettings = () => {
 
 onMounted(async () => {
   try {
-    const data = await getUserInfo() as any
-    // /api/v1/auth/getInfo returns { user: { userId, username, nickName, phonenumber, email, deptId, deptName, avatar } }
-    const user = data.user || data
-    userInfo.id = user.userId || user.id || 0
-    userInfo.username = user.username || ''
-    userInfo.realName = user.nickName || ''
-    userInfo.phone = user.phonenumber || ''
-    userInfo.email = user.email || ''
-    userInfo.orgId = user.deptId || 0
-    userInfo.orgName = user.deptName || ''
-    userInfo.avatar = user.avatar || ''
+    const profile = await getUserInfo()
+    userInfo.id = profile.id || 0
+    userInfo.username = profile.username || ''
+    userInfo.realName = profile.realName || ''
+    userInfo.phone = profile.phone || ''
+    userInfo.email = profile.email || ''
+    userInfo.orgId = profile.orgId || 0
+    userInfo.orgName = profile.orgName || ''
+    userInfo.avatar = profile.avatar || ''
+    userInfo.sex = profile.sex || ''
+    userInfo.roleGroup = profile.roleGroup || ''
+    userInfo.postGroup = profile.postGroup || ''
+    accountInfo.roleCount = profile.roleGroup
+      ? profile.roleGroup.split(',').map(item => item.trim()).filter(Boolean).length
+      : 0
   } catch {
     ElMessage.error('获取用户信息失败')
   }

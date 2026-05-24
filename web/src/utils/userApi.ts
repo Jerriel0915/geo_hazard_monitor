@@ -10,14 +10,16 @@ export interface UserInfo {
   orgName: string
   avatar?: string
   status?: number
-  createTime?: string
+  sex?: string
+  roleGroup?: string
+  postGroup?: string
 }
 
 export interface UpdateUserParams {
-  realName?: string
+  realName: string
   phone?: string
   email?: string
-  orgId?: number
+  sex?: string
 }
 
 export interface PasswordChangeParams {
@@ -25,19 +27,30 @@ export interface PasswordChangeParams {
   newPassword: string
 }
 
-// 获取当前用户详情 - 调用 /api/v1/auth/getInfo 获取用户信息
+// 获取个人中心信息
 export function getUserInfo(): Promise<UserInfo> {
-  return request.get('/auth/getInfo')
+  return request.get('/profile')
 }
 
-// 更新用户信息 - 调用 /system/user/profile (id参数已废弃，接口从token获取用户)
-export function updateUserInfo(_id: number, data: UpdateUserParams): Promise<void> {
-  return request.put('/system/user/profile', data)
+// 更新个人中心资料
+export function updateUserInfo(data: UpdateUserParams): Promise<void> {
+  return request.put('/profile', data)
 }
 
-// 修改密码 - 调用 /system/user/profile/updatePwd
+// 修改个人中心密码
 export function changePassword(data: PasswordChangeParams): Promise<void> {
-  return request.put('/system/user/profile/updatePwd', data)
+  return request.put('/profile/password', data)
+}
+
+// 上传个人中心头像
+export function uploadAvatar(file: File): Promise<{ imgUrl: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/profile/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
 }
 
 // 获取当前登录用户ID（从 localStorage）
