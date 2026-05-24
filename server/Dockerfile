@@ -27,8 +27,8 @@ RUN mvn clean package -DskipTests -B
 FROM eclipse-temurin:17-jre
 
 # 安装必要工具（用于健康检查）
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
-&& sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
+RUN apt-get update \
+&& apt-get install -y --no-install-recommends curl ca-certificates \
 && rm -rf /var/lib/apt/lists/*
 
 
@@ -38,7 +38,7 @@ WORKDIR /app
 COPY --from=builder /app/zwei-admin/target/*.jar app.jar
 
 # 创建上传目录
-RUN mkdir -p /app/uploads
+RUN mkdir -p /app/uploads /app/logs
 
 # 环境变量（可在 docker-compose 或 K8s 中覆盖）
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
