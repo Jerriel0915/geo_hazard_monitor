@@ -23,4 +23,11 @@
             #{logType}
         </foreach>
     </select>
+
+    <delete id="deleteBefore">
+        delete from log_stream_checkpoint
+        where updated_at <![CDATA[<]]> #{cutoffTime}
+        order by updated_at asc
+        limit #{limit}
+    </delete>
 </mapper>

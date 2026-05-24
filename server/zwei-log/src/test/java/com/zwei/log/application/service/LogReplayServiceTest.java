@@ -10,6 +10,7 @@ import com.zwei.log.domain.model.LogAuthRecord;
 import com.zwei.log.domain.model.LogOperationRecord;
 import com.zwei.log.domain.model.LogRuntimeRecord;
 import com.zwei.log.domain.model.LogStreamCheckpoint;
+import com.zwei.log.infrastructure.config.LogModuleProperties;
 import com.zwei.log.infrastructure.persistence.mysql.AuthLogMapper;
 import com.zwei.log.infrastructure.persistence.mysql.LogStreamCheckpointMapper;
 import com.zwei.log.infrastructure.persistence.mysql.OperationLogMapper;
@@ -23,7 +24,7 @@ class LogReplayServiceTest {
         AuthLogMapper authLogMapper = Mockito.mock(AuthLogMapper.class);
         RuntimeLogMapper runtimeLogMapper = Mockito.mock(RuntimeLogMapper.class);
         LogStreamCheckpointMapper checkpointMapper = Mockito.mock(LogStreamCheckpointMapper.class);
-        LogReplayService service = new LogReplayService(operationLogMapper, authLogMapper, runtimeLogMapper, checkpointMapper);
+        LogReplayService service = new LogReplayService(operationLogMapper, authLogMapper, runtimeLogMapper, checkpointMapper, createProperties());
 
         Long resumeId = service.resolveResumeEventId("resume-key", Set.of(LogType.AUTH), 123L);
 
@@ -37,7 +38,7 @@ class LogReplayServiceTest {
         AuthLogMapper authLogMapper = Mockito.mock(AuthLogMapper.class);
         RuntimeLogMapper runtimeLogMapper = Mockito.mock(RuntimeLogMapper.class);
         LogStreamCheckpointMapper checkpointMapper = Mockito.mock(LogStreamCheckpointMapper.class);
-        LogReplayService service = new LogReplayService(operationLogMapper, authLogMapper, runtimeLogMapper, checkpointMapper);
+        LogReplayService service = new LogReplayService(operationLogMapper, authLogMapper, runtimeLogMapper, checkpointMapper, createProperties());
 
         LogOperationRecord operationRecord = new LogOperationRecord();
         operationRecord.setEventId(30L);
@@ -63,7 +64,7 @@ class LogReplayServiceTest {
         AuthLogMapper authLogMapper = Mockito.mock(AuthLogMapper.class);
         RuntimeLogMapper runtimeLogMapper = Mockito.mock(RuntimeLogMapper.class);
         LogStreamCheckpointMapper checkpointMapper = Mockito.mock(LogStreamCheckpointMapper.class);
-        LogReplayService service = new LogReplayService(operationLogMapper, authLogMapper, runtimeLogMapper, checkpointMapper);
+        LogReplayService service = new LogReplayService(operationLogMapper, authLogMapper, runtimeLogMapper, checkpointMapper, createProperties());
 
         LogStreamCheckpoint checkpoint = new LogStreamCheckpoint();
         checkpoint.setLastEventId(456L);
@@ -72,5 +73,34 @@ class LogReplayServiceTest {
         Long resumeId = service.resolveResumeEventId("resume-key", Set.of(LogType.AUTH), null);
 
         Assertions.assertEquals(456L, resumeId);
+    }
+
+    @Test
+    void shouldFlushCheckpointByIntervalAndOnDemand() {
+        OperationLogMapper operationLogMapper = Mockito.mock(OperationLogMapper.class);
+        AuthLogMapper authLogMapper = Mockito.mock(AuthLogMapper.class);
+        RuntimeLogMapper runtimeLogMapper = Mockito.mock(RuntimeLogMapper.class);
+        LogStreamCheckpointMapper checkpointMapper = Mockito.mock(LogStreamCheckpointMapper.class);
+        LogModuleProperties properties = createProperties();
+        properties.setSseCheckpointFlushIntervalMs(100000L);
+        LogReplayService service = new LogReplayService(operationLogMapper, authLogMapper, runtimeLogMapper, checkpointMapper, properties);
+
+        service.saveCheckpoint("resume-key", LogType.OPERATION, 100L);
+        Mockito.verifyNoInteractions(checkpointMapper);
+
+        Assertions.assertEquals(100L, service.resolveResumeEventId("resume-key", Set.of(LogType.OPERATION), null));
+
+        service.flushPendingCheckpoints("resume-key");
+
+        Mockito.verify(checkpointMapper).upsert(Mockito.argThat(checkpoint ->
+            "resume-key".equals(checkpoint.getSubscriberKey())
+                && "OPERATION".equals(checkpoint.getLogType())
+                && Long.valueOf(100L).equals(checkpoint.getLastEventId())));
+    }
+
+    private LogModuleProperties createProperties() {
+        LogModuleProperties properties = new LogModuleProperties();
+        properties.setSseCheckpointFlushIntervalMs(5000L);
+        return properties;
     }
 }

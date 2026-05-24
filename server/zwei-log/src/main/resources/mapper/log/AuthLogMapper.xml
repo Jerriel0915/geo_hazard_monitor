@@ -55,4 +55,11 @@
         order by event_id asc
         limit #{limit}
     </select>
+
+    <delete id="deleteBefore">
+        delete from log_auth_record
+        where occurred_at <![CDATA[<]]> #{cutoffTime}
+        order by occurred_at asc
+        limit #{limit}
+    </delete>
 </mapper>

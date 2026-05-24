@@ -1,13 +1,21 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working in this repository.
 
 ## Project Overview
 
-Geo-disaster Monitor (地质灾害监测预警系统) - A Vue 3 + Java Spring Boot system for monitoring geological hazards. The project has two main components:
+Geo-disaster Monitor (地质灾害监测预警系统) is a Vue 3 + Java Spring Boot system for geological hazard monitoring, device management, alarm handling, reports, and real-time log streaming.
 
-- `web/` - Vue 3 frontend (Element Plus, ECharts, Leaflet)
-- `server/` - Java Spring Boot backend (RuoYi v3.9.2 framework)
+The repository currently has two main applications:
+
+- `web/` - Vue 3 frontend
+- `server/` - Java Spring Boot backend (RuoYi v3.9.2 multi-module project)
+
+There are also supporting assets at the repo root:
+
+- `db/` - full schema, API docs, and upgrade SQL scripts
+- `docs/` - product and UI documentation
+- `docker-compose.yml` - local or deployment orchestration baseline
 
 ## Tech Stack
 
@@ -18,207 +26,347 @@ Geo-disaster Monitor (地质灾害监测预警系统) - A Vue 3 + Java Spring Bo
 - **UI Library**: Element Plus
 - **Charts**: ECharts
 - **Maps**: Leaflet + Leaflet Draw
-- **HTTP Client**: Axios (base URL: `/api/v1`)
+- **HTTP Client**: Axios wrapper in `web/src/utils/userApi.ts`
 
 ### Backend
 
-- **Framework**: Spring Boot 4.0.3 (RuoYi v3.9.2)
-- **Build**: Maven multi-module
-- **Database**: MySQL with Druid connection pool
-- **Cache**: Redis + Spring Boot `@Cacheable`注解
-- **ORM**: MyBatis + PageHelper
-- **Auth**: JWT (jjwt 0.9.1)
+- **Framework**: Spring Boot 4.0.3
+- **Architecture**: Maven multi-module
+- **ORM / Pagination**: MyBatis + PageHelper
+- **Database**: MySQL + Druid
+- **Cache**: Redis + Spring Cache annotations
+- **Auth**: JWT
+- **API Docs**: SpringDoc OpenAPI
+- **Scheduling**: Quartz
+- **MQTT**: `mica-mqtt`
 - **Java Version**: 17
 
-## Module Structure (server/)
+## Repository Structure
 
+```text
+geo_hazard_monitor/
+├── db/                         # Schema, API docs, upgrade scripts
+├── docs/                       # Product docs and screenshots
+├── server/                     # Spring Boot backend
+├── web/                        # Vue 3 frontend
+├── docker-compose.yml
+├── .env.example
+└── CLAUDE.md
 ```
+
+## Backend Modules (`server/`)
+
+Current backend modules defined in `server/pom.xml`:
+
+```text
 server/
-├── pom.xml                    # Parent POM, defines all modules
+├── pom.xml
 ├── sql/
-│   ├── ry_20260417.sql        # Core RuoYi tables
-│   └── quartz.sql             # Quartz scheduler tables
-├── zwei-admin/                # Web entry point & controllers
-│   └── src/main/java/com/zwei/
-│       ├── RuoYiApplication.java
-│       └── web/controller/
-│           ├── common/        # Upload, captcha, LogSseController
-│           ├── monitor/        # Cache, Server, Logs, Online users
-│           ├── system/         # SysIndex, SysUser, SysRole, SysMenu, etc.
-│           └── tool/           # Test tools
-├── zwei-common/               # Shared utilities & base classes
-│   └── src/main/java/com/zwei/common/
-│       ├── annotation/        # @Log, @RateLimiter, @DataScope, @Sensitive
-│       ├── config/             # RuoYiConfig, LogSseConfig
-│       ├── constant/           # CacheConstants, Constants, UserConstants
-│       ├── core/               # BaseController, AjaxResult, R, TableDataInfo
-│       ├── enums/              # BusinessType, UserStatus, HttpMethod
-│       ├── event/              # OperLogEvent (SSE日志事件)
-│       ├── exception/          # GlobalException, ServiceException, user/*
-│       ├── filter/             # XssFilter, RepeatableFilter
-│       └── utils/              # DateUtils, BeanUtils, DesensitizedUtil
-├── zwei-framework/            # Core framework components
-│   └── src/main/java/com/zwei/framework/
-│       ├── aspectj/           # DataScopeAspect, LogAspect, RateLimiterAspect
-│       ├── config/            # DruidConfig, RedisConfig, SecurityConfig, MyBatisConfig
-│       ├── datasource/        # DynamicDataSource
-│       ├── event/             # OperLogEvent, OperLogEventListener (SSE推送)
-│       ├── interceptor/       # RepeatSubmitInterceptor
-│       ├── manager/            # AsyncManager, AsyncFactory
-│       ├── security/           # JwtAuthenticationTokenFilter, AuthenticationEntryPointImpl
-│       └── web/                # TokenService, SysLoginService, GlobalExceptionHandler
-├── zwei-system/               # System management (users, roles, menus, depts)
-├── zwei-quartz/               # Scheduled tasks
-├── zwei-generator/             # Code generation
-└── zwei-iot/                   # IoT business logic (device, hazardPoint, monitor, video, broker)
+│   ├── quartz.sql
+│   └── ry_20260417.sql
+├── zwei-admin/                 # Boot entry, web controllers, app resources
+├── zwei-common/                # Shared annotations, constants, utils, base classes
+├── zwei-framework/             # Security, MVC, datasource, exception handling, aspects
+├── zwei-log/                   # Unified log query / SSE / storage / cleanup module
+├── zwei-system/                # System management domain and services
+├── zwei-quartz/                # Scheduled task management
+├── zwei-generator/             # Code generator
+└── zwei-iot/                   # IoT and hazard monitoring business modules
 ```
 
-### zwei-iot Module Structure
+### `zwei-admin`
 
+```text
+zwei-admin/src/main/
+├── java/com/zwei/
+│   ├── RuoYiApplication.java
+│   ├── RuoYiServletInitializer.java
+│   └── web/
+│       ├── controller/
+│       │   ├── common/         # Captcha, upload, shared endpoints
+│       │   ├── monitor/        # Cache, server info, online users
+│       │   ├── system/         # User/role/menu/config/notice/profile/login
+│       │   └── tool/           # TestController
+│       └── core/config/
+│           └── SwaggerConfig.java
+└── resources/
+    ├── application.yml
+    ├── application-prod.yml
+    ├── application-druid.yml
+    ├── logback-spring.xml
+    └── mybatis/mybatis-config.xml
 ```
+
+Notes:
+
+- Logging now uses `logback-spring.xml`, not `logback.xml`.
+- Production logging path is configured in `logback-spring.xml` via Spring profiles.
+
+### `zwei-common`
+
+Shared cross-module utilities and base abstractions:
+
+- `annotation/` - `@Log`, `@RateLimiter`, `@DataScope`, `@Anonymous`, `@Sensitive`
+- `config/` - `RuoYiConfig`, `LogSseConfig`, serializer helpers
+- `constant/` - shared constants such as `ScheduleConstants`, `CacheConstants`
+- `core/` - `BaseController`, `AjaxResult`, pagination, tree/domain helpers, Redis cache wrapper
+- `exception/` - common, file, job, and user exceptions
+- `utils/` - grouped helper packages for bean, file, http, ip, poi, reflect, spring, sql, uuid
+
+### `zwei-framework`
+
+Core framework layer for security and infrastructure:
+
+```text
+zwei-framework/src/main/java/com/zwei/framework/
+├── aspectj/                    # DataScope, Log, RateLimiter, DataSource aspects
+├── config/                     # Security, Redis, MyBatis, Druid, MVC, thread pool
+│   └── properties/             # DruidProperties, PermitAllUrlProperties
+├── datasource/                 # Dynamic data source
+├── interceptor/                # Repeat submit interceptor and impl/
+├── manager/                    # AsyncManager, ShutdownManager
+├── security/
+│   ├── context/
+│   ├── filter/                 # JwtAuthenticationTokenFilter
+│   └── handle/                 # Auth entry/logout handlers
+└── web/
+    ├── domain/
+    ├── exception/              # GlobalExceptionHandler
+    └── service/                # TokenService, login/register/password/permission services
+```
+
+### `zwei-log`
+
+This module is the most important recent structural change.
+
+```text
+zwei-log/src/main/java/com/zwei/log/
+├── api/
+│   ├── controller/             # LogQueryController, LogStreamController
+│   └── dto/                    # AuthLogQuery, OperationLogQuery, RuntimeLogQuery
+├── application/service/        # LogCenterService, replay/router services
+├── domain/
+│   ├── enums/                  # LogType, AuthEventType, LogExecutionStatus
+│   ├── model/                  # Operation/Auth/Runtime records + checkpoint
+│   └── sink/                   # LogSink, FileLogWriter, storage router abstractions
+├── infrastructure/
+│   ├── appender/               # RuntimeLogAppender
+│   ├── collector/http/         # AccessLogFilter
+│   ├── config/                 # LogModuleAutoConfiguration, LogModuleProperties
+│   ├── persistence/mysql/      # MyBatis mappers + MysqlLogSink
+│   ├── push/sse/               # LogStreamPublisher, LogSubscription
+│   └── sequence/               # EventIdGenerator
+└── task/
+    └── LogCleanupTask.java     # Periodic cleanup task bean
+```
+
+Current log endpoints:
+
+- `/api/v1/logs/operations/page`
+- `/api/v1/logs/auth/page`
+- `/api/v1/logs/runtime/page`
+- `/api/v1/logs/stream`
+- `/api/v1/logs/stream/connections`
+
+Current log-related configuration is under `zwei.log.*` and `log-sse.*`:
+
+- runtime log persistence levels
+- SSE timeout / retry
+- checkpoint flush interval
+- cleanup retention days / batch size
+
+### `zwei-system`
+
+System-domain module focused on mappers and services for:
+
+- users / roles / posts / menus / departments
+- dictionaries
+- config
+- notice + notice read
+- online users
+
+Notable structure additions compared with older versions:
+
+- `domain/vo/MetaVo.java`
+- `domain/vo/RouterVo.java`
+
+### `zwei-quartz`
+
+Quartz scheduling module:
+
+```text
+zwei-quartz/src/main/java/com/zwei/quartz/
+├── controller/                 # SysJobController, SysJobLogController
+├── domain/                     # SysJob, SysJobLog
+├── mapper/                     # SysJobMapper, SysJobLogMapper
+├── service/
+│   ├── impl/                   # SysJobServiceImpl, SysJobLogServiceImpl
+│   └── interfaces
+├── task/                       # RyTask
+└── util/                       # ScheduleUtils, JobInvokeUtil, CronUtils, Quartz job wrappers
+```
+
+Important behavior:
+
+- Jobs are initialized from `sys_job` at startup by `SysJobServiceImpl`.
+- Custom task methods can be invoked through Quartz using `invokeTarget`, such as `logCleanupTask.cleanExpiredLogs()`.
+
+### `zwei-iot`
+
+Current IoT business structure:
+
+```text
 zwei-iot/src/main/java/com/zwei/iot/
-├── device/                     # Device & sensor management
-│   ├── controller/             # DeviceController, SensorController
-│   ├── domain/                 # Device, DeviceSensor, SensorAttribute
-│   ├── mapper/                 # MyBatis mappers
-│   └── service/                # IDeviceService, IDeviceSensorService
-├── hazardpoint/                 # Hazard point & group management
-│   ├── controller/             # HazardPointController, HazardPointGroupController
-│   ├── domain/                 # HazardPoint, HazardPointGroup, DeviceHazardPoint
-│   ├── domain/dto/             # BoundDeviceVO, UnboundDeviceVO, BindDeviceRequest
-│   ├── mapper/
-│   └── service/                # IHazardPointService, IDeviceHazardPointService
-├── monitor/                     # Monitor types & content
-│   ├── controller/             # MonitorTypeController, MonitorContentController
-│   ├── domain/                 # MonitorType, MonitorContent
-│   ├── mapper/
-│   ├── service/
-│   └── warmup/                 # (预留，预热任务目录)
-├── video/                       # Video device management
-│   ├── controller/             # VideoDeviceController
-│   ├── domain/                 # VideoDevice
+├── broker/
+│   ├── component/
+│   ├── handler/
+│   └── service/
+├── device/
+│   ├── controller/
+│   ├── domain/
 │   ├── mapper/
 │   └── service/
-└── broker/                      # Mica-MQTT broker integration
-    ├── handler/                # MqttServerAuthHandler
-    ├── component/              # MqttServerSubscribeValidator
-    └── service/                 # MqttServerMessageListener, MqttSessionListener, MqttConnectStatusListener
+├── hazardpoint/
+│   ├── controller/
+│   ├── domain/
+│   ├── mapper/
+│   └── service/
+├── monitor/
+│   ├── controller/
+│   ├── domain/
+│   ├── mapper/
+│   └── service/
+└── video/
+    ├── controller/
+    ├── domain/
+    ├── mapper/
+    └── service/
 ```
 
-## Cache Mechanism (缓存机制)
+There is no longer a dedicated `domain/dto/` subtree under `hazardpoint` in the current code layout.
 
-系统使用 **Spring Boot `@Cacheable` 注解** 实现缓存，替代了旧的自定义缓存预热方案。
+## Frontend Structure
 
-### 缓存注解使用
+Current `web/src/` layout:
+
+```text
+web/src/
+├── App.vue
+├── main.ts
+├── style.css
+├── layout/
+│   └── index.vue
+├── router/
+│   └── index.ts
+├── utils/
+│   └── userApi.ts
+└── views/
+    ├── Login.vue
+    ├── alarm/                  # RealtimeAlarm, AlarmCriteria, AlarmNotification, AlarmDisposal
+    ├── basic/                  # HazardPoint, MonitorType, Device, VideoDevice
+    ├── dashboard/              # Dashboard.vue
+    ├── holo-board/             # Comprehensive, Alarm, Operation, Custom
+    ├── iot/                    # AlarmEngine, DataParse
+    ├── miniprogram/            # Device, Event, HazardPoint, MonitorData
+    ├── report/                 # Report, Query, Analysis, Screen
+    ├── system/                 # Organization, Identity, Permission, Log, Settings
+    └── user/                   # UserProfile
+```
+
+Recent frontend structure changes compared with older docs:
+
+- Added `views/holo-board/`
+- Added `views/miniprogram/`
+- `views/system/Log.vue` is now the real-time log console page
+- Route file still uses simple auth guarding based on `localStorage.getItem('token')`
+
+## Logging and SSE
+
+The project now has a dedicated unified log module instead of only relying on legacy system operation logs.
+
+### File Logging
+
+Backend file logging is configured by `zwei-admin/src/main/resources/logback-spring.xml`:
+
+- non-prod writes to `./logs`
+- prod writes to `/app/logs`
+- output files:
+  - `sys-info.log`
+  - `sys-error.log`
+  - `sys-user.log`
+
+### Runtime Log Persistence
+
+`RuntimeLogAppender` forwards selected runtime logs into the log module and persists them based on `zwei.log.runtime-levels`.
+
+Default configuration:
+
+- dev: `WARN`, `ERROR`
+- prod: `WARN`, `ERROR`
+
+### SSE Streaming
+
+The real-time log streaming implementation is centered on:
+
+- `LogStreamController`
+- `LogStreamPublisher`
+- `LogReplayService`
+- `LogStreamCheckpoint`
+
+SSE behavior now supports:
+
+- multiple log types (`operation`, `auth`, `runtime`)
+- replay from `Last-Event-ID`
+- subscriber checkpoints
+- configurable checkpoint flush interval
+- cleanup task for old logs and checkpoints
+
+## Cache Mechanism
+
+The project uses Spring Cache annotations with Redis, not a custom warmup-only cache layer.
+
+Typical pattern:
 
 ```java
-// 读取缓存
 @Cacheable(value = "hazardPoint", key = "#id")
 public HazardPoint selectHazardPointById(Long id)
 
-// 新增/修改时清除缓存
 @Caching(evict = {
-        @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id"),
-        @CacheEvict(value = "hazardPointList", allEntries = true)
+    @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id"),
+    @CacheEvict(value = "hazardPointList", allEntries = true)
 })
 public int insertHazardPoint(HazardPoint hazardPoint)
 ```
 
-### 缓存配置
+Related cache configuration lives mainly in:
 
-- **配置类**: `RedisConfig.java` (zwei-framework)
-- **缓存名**: `hazardPoint`, `hazardPointList`, `monitorType`, `monitorTypeList`, `hazardPointGroup`, `device`,
-  `deviceSensor`
-- **过期时间**: 通过 `spring.cache.redis.time-to-live` 配置
-
-## SSE Log Streaming (SSE日志推送)
-
-日志模块新增实时推送功能，通过SSE (Server-Sent Events) 推送到前端。
-
-### 核心组件
-
-| 组件                     | 位置                              | 说明                                 |
-|------------------------|---------------------------------|------------------------------------|
-| `OperLogEvent`         | `zwei-framework/event/`         | 日志事件，包含 SysOperLog                 |
-| `OperLogEventListener` | `zwei-framework/event/`         | 事件监听，维护SSE连接池，广播日志                 |
-| `LogSseController`     | `zwei-admin/controller/common/` | SSE端点 `/api/v1/common/logs/stream` |
-| `LogSseConfig`         | `zwei-common/config/`           | 可配置节流策略                            |
-
-### 配置项 (application.yml)
-
-```yaml
-log-sse:
-  enabled: true        # 是否启用
-  rate-limit: 10      # 最大推送条数/秒 (0=不限制)
-  timeout: 300        # 连接超时时间(秒)
-```
-
-### 使用方式
-
-前端通过 `EventSource` 连接 `/api/v1/common/logs/stream` 接收实时日志。
-
-## Frontend Structure
-
-```
-web/src/
-├── App.vue
-├── main.ts
-├── router/index.ts            # Vue Router with auth guard
-├── views/                     # Page components (lazy loaded)
-│   ├── Login.vue
-│   ├── dashboard/
-│   ├── basic/                 # HazardPoint, Device, VideoDevice, MonitorType
-│   ├── alarm/                 # RealtimeAlarm, AlarmCriteria, etc.
-│   ├── report/                # Report, Query, Analysis, Screen
-│   ├── iot/                   # AlarmEngine, DataParse
-│   ├── system/                # Organization, Identity, Permission, Log
-│   └── user/
-├── layout/index.vue
-└── utils/userApi.ts           # Axios instance with auth interceptors
-```
+- `zwei-framework/.../RedisConfig.java`
+- `application.yml`
 
 ## API Conventions
 
-All backend APIs follow REST conventions (see `db/api_20260505.md` for full docs):
+All backend APIs follow REST-style conventions:
 
 - **Base path**: `/api/v1`
-- **Response format**: `{ code, msg, data, timestamp }`
-- **Pagination**: `pageNum`, `pageSize` parameters with response metadata
-- **Auth**: `Authorization: Bearer {token}` header
-- **Status codes**: 200=成功, 400=参数错误, 401=未登录, 403=无权限, 500=服务器异常
+- **Auth**: `Authorization: Bearer {token}`
+- **Response wrapper**: `AjaxResult`
+- **Pagination**: `pageNum`, `pageSize`
 
-### API Modules
-| Prefix               | Description                                                      |
-|----------------------|------------------------------------------------------------------|
-| `/api/v1/system/`    | System management (auth, users, roles, menus, orgs)              |
-| `/api/v1/basic/`     | Base data (hazard-points, monitor-types, devices, video-devices) |
-| `/api/v1/alarm/`     | Alarm center (realtime, criteria, records, notifications)        |
-| `/api/v1/monitor/`   | Monitoring data                                                  |
-| `/api/v1/reports/`   | Reports & analysis                                               |
-| `/api/v1/dashboard/` | Dashboard overview                                               |
-| `/api/v1/iot/`       | IoT management (alarm-engine, data-parse)                        |
-| `/api/v1/common/`    | Common (file upload, logs/stream)                                |
+Current major route groups:
 
-## Key Backend Patterns
-
-**BaseController** (`zwei-common/core/controller/BaseController.java`)
-- Provides `getCurrentUserId()`, `getLoginUser()`, `getSysUser()`
-- All controllers extend this for shared functionality
-
-**AjaxResult** (`zwei-common/core/domain/AjaxResult.java`)
-- Standard response wrapper with `success()`, `error()`, `warn()` static factories
-
-**Service Layer**
-- Interface + Implementation pattern in `zwei-iot/*/service/`
-- Constructor injection (not field injection)
-- 使用 `@Cacheable` / `@CacheEvict` 注解实现缓存
-
-**DataScope** (`@DataScope` annotation + `DataScopeAspect`)
-- Row-level data permission filtering based on org hierarchy
+| Prefix | Description |
+|--------|-------------|
+| `/api/v1/system/` | system management |
+| `/api/v1/basic/` | hazard points, devices, monitor types, video devices |
+| `/api/v1/alarm/` | alarm center |
+| `/api/v1/reports/` | reports and analysis |
+| `/api/v1/iot/` | IoT management |
+| `/api/v1/logs/` | operation/auth/runtime log query and SSE stream |
+| `/api/v1/common/` | common upload/captcha utilities |
 
 ## Common Commands
 
-### Backend (server/)
+### Backend
 
 ```bash
 cd server
@@ -226,74 +374,150 @@ cd server
 # Build all modules
 mvn clean package
 
-# Build specific module with dependencies
-mvn clean install -pl zwei-iot -am
+# Build a module with dependencies
+mvn clean install -pl zwei-log -am
 
-# Run tests for a specific module
-mvn test -pl zwei-iot
+# Run tests for the log module
+mvn test -pl zwei-log -am
 
-# Run (from zwei-admin directory)
+# Run tests for the IoT module
+mvn test -pl zwei-iot -am
+
+# Start the admin app
 cd zwei-admin && mvn spring-boot:run
 ```
 
-### Frontend (web/)
+### Frontend
 
 ```bash
 cd web
 
-npm install          # Install dependencies
-npm run dev          # Start dev server
-npm run build        # Type check + production build
-npm run preview      # Preview production build
+npm install
+npm run dev
+npm run build
+npm run preview
 ```
 
 ## Configuration
 
-Backend configuration is in `zwei-admin/src/main/resources/`:
+Backend configuration files are in `server/zwei-admin/src/main/resources/`:
 
-- `application.yml` - Main Spring Boot config (包含 `log-sse` SSE日志推送配置)
-- `application-druid.yml` - Database connection pool settings
-- `logback.xml` - Logging configuration
+- `application.yml` - base and local/dev-oriented configuration
+- `application-prod.yml` - production profile overrides
+- `application-druid.yml` - Druid datasource settings
+- `logback-spring.xml` - file logging configuration with profile-based paths
 
-Frontend config: `web/vite.config.ts` and `web/tsconfig.json`
+Important config groups now in use:
 
-## Database Schema (db/geo_hazard_monitor_v1.2.sql)
+- `zwei.log.*` - unified log module settings
+- `log-sse.*` - SSE log streaming settings
+- `mqtt.server.*` - MQTT broker settings
+- `springdoc.*` - OpenAPI / Swagger settings
 
-### Database Upgrades (db/upgrade/)
-Database schema upgrades are stored in numbered scripts:
-- `db/upgrade/v1.2_sensor_attribute_icon.sql` - Adds `icon` field to `sensor_attribute` table
+Frontend config:
 
-### Key Business Tables
+- `web/vite.config.ts`
+- `web/tsconfig.json`
 
-| Table                       | Description                                                                                          |
-|-----------------------------|------------------------------------------------------------------------------------------------------|
-| `sys_organization`          | Organization hierarchy (id, code, name, parent_id, level)                                            |
-| `hazard_point_group`        | Hazard point groups (id, code, name, sort_order, status)                                             |
-| `hazard_point`              | Hazard points with geo coordinates (id, code, name, group_id, longitude, latitude, strike)           |
-| `monitor_type`              | Monitor types - rain, water level, displacement, etc. (id, code, name, device_type)                  |
-| `monitor_content`           | Monitor content metrics (id, monitor_type_id, code, name, unit, indicator_type)                      |
-| `device`                    | Physical devices (id, code, name, icon, status, run_status, last_report_time)                        |
-| `device_sensor`             | Device sensors (id, device_id, sensor_code, sensor_name, monitor_type_id)                            |
-| `sensor_attribute`          | Sensor attributes/ranges (id, sensor_id, attr_code, attr_name, unit, range_min, range_max, **icon**) |
-| `video_device`              | Video devices with stream URLs (id, code, name, protocol_code, stream_url, status)                   |
-| `device_hazard_point`       | Device-to-hazard binding (device_id, hazard_point_id, install_longitude/latitude)                    |
-| `video_device_hazard_point` | Video device-to-hazard binding                                                                       |
-| `alarm_criteria`            | Alarm rules per hazard point (id, hazard_point_id, device_id, blue/yellow/orange/red_expression)     |
-| `alarm_dispatch_rule`       | Notification dispatch rules (id, hazard_point_id, type, recipient_ids, channel)                      |
-| `alarm_record`              | Alarm history (id, hazard_point_id, alarm_level, status, current_value, handle_time)                 |
-| `monitor_data`              | Time-series monitoring data (id, hazard_point_id, device_id, sensor_id, attr_code, value, data_time) |
-| `report_template`           | Report templates (id, code, name, type, content)                                                     |
-| `report_record`             | Generated report records (id, template_id, hazard_point_id, report_date, file_path, status)          |
+## Database Schema
 
-### System Tables (RuoYi-based)
+Current main schema file:
 
-- `sys_user`, `sys_role`, `sys_menu`, `sys_dept`, `sys_post`
-- `sys_oper_log`, `sys_logininfor`, `sys_dict_type`, `sys_dict_data`
-- `sys_config`, `sys_notice`, `sys_job`, `sys_job_log`
+- `db/geo_hazard_monitor_v1.3.sql`
+
+Important upgrade scripts:
+
+- `db/upgrade/v1.3_log_module_schema.sql`
+- `db/upgrade/v1.3_log_module_migration.sql`
+- `db/upgrade/v1.3_log_module_indexes.sql`
+- `db/upgrade/v1.3_log_module_rollback.sql`
+
+Key log-related tables introduced or used by the new log module:
+
+- `log_operation_record`
+- `log_auth_record`
+- `log_runtime_record`
+- `log_stream_checkpoint`
+
+Existing core business tables still include:
+
+- `hazard_point`
+- `hazard_point_group`
+- `monitor_type`
+- `monitor_content`
+- `device`
+- `device_sensor`
+- `sensor_attribute`
+- `video_device`
+- `alarm_criteria`
+- `alarm_record`
+- `report_template`
+- `report_record`
+- `sys_job`
+- `sys_job_log`
+
+## Key Backend Patterns
+
+### BaseController
+
+`zwei-common/core/controller/BaseController.java`
+
+- shared controller helpers
+- pagination bootstrap
+- current user lookup helpers
+
+### AjaxResult
+
+`zwei-common/core/domain/AjaxResult.java`
+
+- standard JSON response wrapper
+
+### Service Pattern
+
+- interface + implementation is still the dominant pattern
+- constructor injection is used across new code
+- MyBatis mapper + XML remains the standard persistence style
+
+### Security
+
+Security-related code is centered in:
+
+- `zwei-framework/config/SecurityConfig.java`
+- `zwei-framework/security/filter/JwtAuthenticationTokenFilter.java`
+- `zwei-framework/security/handle/*`
+- `zwei-framework/web/service/TokenService.java`
+
+### Scheduling
+
+Quartz jobs are managed through:
+
+- `sys_job`
+- `SysJobServiceImpl`
+- `ScheduleUtils`
+- `JobInvokeUtil`
+
+The new log cleanup task can be scheduled using:
+
+- `logCleanupTask.cleanExpiredLogs()`
 
 ## Routing
 
-Frontend routes are in `web/src/router/index.ts` with lazy loading. Authentication check via `localStorage.getItem('token')` - routes other than `/login` redirect if token missing.
+Frontend routes are defined in `web/src/router/index.ts` and are lazy-loaded.
+
+Current major route groups include:
+
+- `/dashboard`
+- `/holo-board/*`
+- `/basic/*`
+- `/alarm/*`
+- `/report/*`
+- `/iot/*`
+- `/system/*`
+- `/user/profile`
+
+Authentication guard remains simple:
+
+- any route except `/login` requires `localStorage.getItem('token')`
 
 ## Commit Message Format
 

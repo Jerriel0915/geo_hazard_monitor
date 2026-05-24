@@ -28,6 +28,12 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter
     private TokenService tokenService;
 
     @Override
+    protected boolean shouldNotFilterAsyncDispatch()
+    {
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException
     {

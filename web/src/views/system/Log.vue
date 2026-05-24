@@ -291,6 +291,7 @@
 
           <div class="stream-actions">
             <el-button type="primary" :loading="sseStatus === 'connecting' || sseStatus === 'reconnecting'"
+                       :disabled="isStreamAlive"
                        @click="startStream">
               开始订阅
             </el-button>
@@ -307,7 +308,10 @@
               <div class="stream-item-head">
                 <div class="stream-item-tags">
                   <el-tag size="small" :type="getStreamEventTag(item.event)">{{ item.event.toUpperCase() }}</el-tag>
-                  <el-tag size="small" effect="plain">{{ item.logType }}</el-tag>
+                  <el-tag v-if="item.subType" size="small" effect="plain" :type="getLiveSubtypeTag(item.logType)">
+                    {{ item.subType }}
+                  </el-tag>
+                  <el-tag v-else size="small" effect="plain">{{ item.logType }}</el-tag>
                 </div>
                 <span class="stream-time">{{ item.timestamp }}</span>
               </div>
@@ -394,6 +398,7 @@ interface RuntimeLogRecord {
 interface LiveEventItem {
   event: string
   logType: string
+  subType: string
   eventId: string
   title: string
   detail: string
@@ -717,12 +722,14 @@ const createStreamUrl = () => {
 
 const pushLiveEvent = (event: string, eventId: string, payload: Record<string, any>) => {
   const logType = String(payload.logType || event).toUpperCase()
+  const subType = resolveLiveSubtype(logType, payload)
   const title = buildLiveTitle(event, payload)
   const detail = buildLiveDetail(payload)
   liveEvents.value = [
     {
       event,
       logType,
+      subType,
       eventId,
       title,
       detail,
@@ -759,6 +766,19 @@ const buildLiveDetail = (payload: Record<string, any>) => {
     return payload.messageDigest || payload.message || '--'
   }
   return JSON.stringify(payload)
+}
+
+const resolveLiveSubtype = (logType: string, payload: Record<string, any>) => {
+  if (logType === 'OPERATION') {
+    return String(payload.businessType || '')
+  }
+  if (logType === 'AUTH') {
+    return String(payload.authEventType || '')
+  }
+  if (logType === 'RUNTIME') {
+    return String(payload.level || '')
+  }
+  return ''
 }
 
 const scheduleTabRefresh = (payload: Record<string, any>) => {
@@ -826,6 +846,9 @@ const processSseEvent = (parsedEvent: { event: string; id: string; data: string 
 const startStream = async (isReconnect = false) => {
   if (!sseTypes.value.length) {
     ElMessage.warning('请至少选择一种订阅类型')
+    return
+  }
+  if (!isReconnect && isStreamAlive.value) {
     return
   }
   const token = localStorage.getItem('token')
@@ -943,6 +966,19 @@ const getStreamEventTag = (event: string) => {
     runtime: 'warning'
   }
   return map[event] || 'info'
+}
+
+const getLiveSubtypeTag = (logType: string) => {
+  if (logType === 'OPERATION') {
+    return 'warning'
+  }
+  if (logType === 'AUTH') {
+    return 'danger'
+  }
+  if (logType === 'RUNTIME') {
+    return 'info'
+  }
+  return ''
 }
 
 onMounted(() => {

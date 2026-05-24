@@ -24,4 +24,24 @@ class LogModulePropertiesTest {
 
         Assertions.assertTrue(properties.supportsRuntimeLevel("INFO"));
     }
+
+    @Test
+    void shouldNormalizeCheckpointFlushInterval() {
+        LogModuleProperties properties = new LogModuleProperties();
+        properties.setSseCheckpointFlushIntervalMs(-1L);
+
+        Assertions.assertEquals(0L, properties.getSseCheckpointFlushIntervalMs());
+    }
+
+    @Test
+    void shouldNormalizeCleanupSettings() {
+        LogModuleProperties properties = new LogModuleProperties();
+        properties.setCleanupRetentionDays(0);
+        properties.setCleanupCheckpointRetentionDays(-3);
+        properties.setCleanupBatchSize(10);
+
+        Assertions.assertEquals(1, properties.getCleanupRetentionDays());
+        Assertions.assertEquals(1, properties.getCleanupCheckpointRetentionDays());
+        Assertions.assertEquals(100, properties.getCleanupBatchSize());
+    }
 }

@@ -63,10 +63,6 @@ logging:
   level:
     com.zwei: info
     org.springframework: warn
-  file:
-    name: /app/logs/spring-boot.log
-    max-size: 100MB
-    max-history: 30
 
 # 项目相关配置
 zwei:
@@ -83,6 +79,14 @@ zwei:
       - ERROR
     # 兼容旧开关：生产环境显式关闭 INFO 级持久化
     runtime-info-enabled: false
+    # SSE断点最小落库间隔，单位毫秒；0表示每条事件都立即落库
+    sse-checkpoint-flush-interval-ms: 5000
+    # 普通日志保留天数
+    cleanup-retention-days: 30
+    # SSE断点保留天数
+    cleanup-checkpoint-retention-days: 30
+    # 单次清理批次大小
+    cleanup-batch-size: 1000
 
 # 服务器配置
 server:
@@ -152,7 +156,7 @@ pagehelper:
 # Springdoc（生产环境关闭）
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    enabled: false
   swagger-ui:
     enabled: false
 

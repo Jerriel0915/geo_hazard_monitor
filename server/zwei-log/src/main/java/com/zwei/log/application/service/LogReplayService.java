@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.log.domain.enums.LogType;
 import com.zwei.log.domain.model.AbstractLogRecord;
 import com.zwei.log.domain.model.LogStreamCheckpoint;
+import com.zwei.log.infrastructure.config.LogModuleProperties;
 import com.zwei.log.infrastructure.persistence.mysql.AuthLogMapper;
 import com.zwei.log.infrastructure.persistence.mysql.LogStreamCheckpointMapper;
 import com.zwei.log.infrastructure.persistence.mysql.OperationLogMapper;
@@ -29,15 +31,19 @@ public class LogReplayService {
     private final AuthLogMapper authLogMapper;
     private final RuntimeLogMapper runtimeLogMapper;
     private final LogStreamCheckpointMapper logStreamCheckpointMapper;
+    private final LogModuleProperties properties;
+    private final ConcurrentHashMap<String, PendingCheckpoint> pendingCheckpoints = new ConcurrentHashMap<>();
 
     public LogReplayService(OperationLogMapper operationLogMapper,
         AuthLogMapper authLogMapper,
         RuntimeLogMapper runtimeLogMapper,
-        LogStreamCheckpointMapper logStreamCheckpointMapper) {
+        LogStreamCheckpointMapper logStreamCheckpointMapper,
+        LogModuleProperties properties) {
         this.operationLogMapper = operationLogMapper;
         this.authLogMapper = authLogMapper;
         this.runtimeLogMapper = runtimeLogMapper;
         this.logStreamCheckpointMapper = logStreamCheckpointMapper;
+        this.properties = properties;
     }
 
     public Long resolveResumeEventId(String subscriberKey, Set<LogType> logTypes, Long lastEventId) {
@@ -50,6 +56,15 @@ public class LogReplayService {
         List<String> types = normalizeLogTypes(logTypes);
         if (types.isEmpty()) {
             return null;
+        }
+        Long pendingResumeId = types.stream()
+            .map(type -> pendingCheckpoints.get(buildCheckpointKey(subscriberKey, type)))
+            .filter(item -> item != null && item.lastEventId() != null && item.lastEventId() > 0)
+            .map(PendingCheckpoint::lastEventId)
+            .min(Long::compareTo)
+            .orElse(null);
+        if (pendingResumeId != null) {
+            return pendingResumeId;
         }
         List<LogStreamCheckpoint> checkpoints = logStreamCheckpointMapper.selectBySubscriberAndTypes(subscriberKey, types);
         return checkpoints.stream()
@@ -84,11 +99,43 @@ public class LogReplayService {
         if (StringUtils.isEmpty(subscriberKey) || logType == null || lastEventId == null) {
             return;
         }
+        String logTypeName = logType.name();
+        String checkpointKey = buildCheckpointKey(subscriberKey, logTypeName);
+        long now = System.currentTimeMillis();
+        long flushIntervalMs = properties.getSseCheckpointFlushIntervalMs();
+        PendingCheckpoint pendingCheckpoint = pendingCheckpoints.compute(checkpointKey, (key, existing) -> {
+            long lastFlushTime = existing == null ? now : existing.lastFlushTimeMs();
+            return new PendingCheckpoint(subscriberKey, logTypeName, lastEventId, lastFlushTime, true);
+        });
+        if (flushIntervalMs == 0L || now - pendingCheckpoint.lastFlushTimeMs() >= flushIntervalMs) {
+            flushCheckpoint(checkpointKey, pendingCheckpoint, now);
+        }
+    }
+
+    public void flushPendingCheckpoints(String subscriberKey) {
+        if (StringUtils.isEmpty(subscriberKey)) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        pendingCheckpoints.forEach((key, checkpoint) -> {
+            if (subscriberKey.equals(checkpoint.subscriberKey()) && checkpoint.dirty()) {
+                flushCheckpoint(key, checkpoint, now);
+            }
+        });
+    }
+
+    private void flushCheckpoint(String checkpointKey, PendingCheckpoint pendingCheckpoint, long flushTimeMs) {
         LogStreamCheckpoint checkpoint = new LogStreamCheckpoint();
-        checkpoint.setSubscriberKey(subscriberKey);
-        checkpoint.setLastEventId(lastEventId);
-        checkpoint.setLogType(logType.name());
+        checkpoint.setSubscriberKey(pendingCheckpoint.subscriberKey());
+        checkpoint.setLastEventId(pendingCheckpoint.lastEventId());
+        checkpoint.setLogType(pendingCheckpoint.logType());
         logStreamCheckpointMapper.upsert(checkpoint);
+        pendingCheckpoints.computeIfPresent(checkpointKey, (key, existing) -> {
+            if (!existing.lastEventId().equals(checkpoint.getLastEventId())) {
+                return existing;
+            }
+            return new PendingCheckpoint(existing.subscriberKey(), existing.logType(), existing.lastEventId(), flushTimeMs, false);
+        });
     }
 
     private Set<LogType> normalizeTypes(Set<LogType> logTypes) {
@@ -100,5 +147,12 @@ public class LogReplayService {
 
     private List<String> normalizeLogTypes(Set<LogType> logTypes) {
         return normalizeTypes(logTypes).stream().map(Enum::name).collect(Collectors.toList());
+    }
+
+    private String buildCheckpointKey(String subscriberKey, String logType) {
+        return subscriberKey + "::" + logType;
+    }
+
+    private record PendingCheckpoint(String subscriberKey, String logType, Long lastEventId, long lastFlushTimeMs, boolean dirty) {
     }
 }

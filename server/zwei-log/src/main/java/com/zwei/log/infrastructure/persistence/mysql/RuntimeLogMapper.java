@@ -1,5 +1,6 @@
 package com.zwei.log.infrastructure.persistence.mysql;
 
+import java.util.Date;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -19,4 +20,6 @@ public interface RuntimeLogMapper {
     List<LogRuntimeRecord> selectPage(RuntimeLogQuery query);
 
     List<LogRuntimeRecord> selectAfterEventId(@Param("eventId") Long eventId, @Param("limit") Integer limit);
+
+    int deleteBefore(@Param("cutoffTime") Date cutoffTime, @Param("limit") Integer limit);
 }

@@ -32,9 +32,9 @@ public class LogStreamPublisher {
     public SseEmitter subscribe(String subscriberKey, Set<LogType> logTypes, List<AbstractLogRecord> replayRecords, Long resumeEventId) {
         SseEmitter emitter = new SseEmitter(properties.getSseTimeoutMs());
         LogSubscription subscription = new LogSubscription(emitter, logTypes, subscriberKey);
-        emitter.onCompletion(() -> subscriptions.remove(subscription));
-        emitter.onTimeout(() -> subscriptions.remove(subscription));
-        emitter.onError(error -> subscriptions.remove(subscription));
+        emitter.onCompletion(() -> removeSubscription(subscription));
+        emitter.onTimeout(() -> removeSubscription(subscription));
+        emitter.onError(error -> removeSubscription(subscription));
         try {
             emitter.send(SseEmitter.event()
                 .name("ready")
@@ -46,7 +46,7 @@ public class LogStreamPublisher {
                 }
             }
         } catch (IOException ignored) {
-            subscriptions.remove(subscription);
+            removeSubscription(subscription);
             return emitter;
         }
         subscriptions.add(subscription);
@@ -62,7 +62,7 @@ public class LogStreamPublisher {
                 sendRecord(subscription, record, record.getLogType().name().toLowerCase());
             } catch (IOException ex) {
                 subscription.getEmitter().completeWithError(ex);
-                subscriptions.remove(subscription);
+                removeSubscription(subscription);
             }
         }
     }
@@ -78,5 +78,10 @@ public class LogStreamPublisher {
             .reconnectTime(properties.getSseRetryMs())
             .data(record));
         logReplayService.saveCheckpoint(subscription.getSubscriberKey(), record.getLogType(), record.getEventId());
+    }
+
+    private void removeSubscription(LogSubscription subscription) {
+        subscriptions.remove(subscription);
+        logReplayService.flushPendingCheckpoints(subscription.getSubscriberKey());
     }
 }

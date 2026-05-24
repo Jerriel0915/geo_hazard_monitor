@@ -24,6 +24,26 @@ public class LogModuleProperties {
 
     private long sseRetryMs = 3000L;
 
+    /**
+     * SSE断点最小落库间隔，避免每条事件都触发数据库写入
+     */
+    private long sseCheckpointFlushIntervalMs = 5000L;
+
+    /**
+     * 普通日志保留天数
+     */
+    private int cleanupRetentionDays = 30;
+
+    /**
+     * SSE断点保留天数
+     */
+    private int cleanupCheckpointRetentionDays = 30;
+
+    /**
+     * 单次清理批次大小
+     */
+    private int cleanupBatchSize = 1000;
+
     public boolean isRuntimeInfoEnabled() {
         return runtimeInfoEnabled;
     }
@@ -64,6 +84,38 @@ public class LogModuleProperties {
 
     public void setSseRetryMs(long sseRetryMs) {
         this.sseRetryMs = sseRetryMs;
+    }
+
+    public long getSseCheckpointFlushIntervalMs() {
+        return sseCheckpointFlushIntervalMs;
+    }
+
+    public void setSseCheckpointFlushIntervalMs(long sseCheckpointFlushIntervalMs) {
+        this.sseCheckpointFlushIntervalMs = Math.max(0L, sseCheckpointFlushIntervalMs);
+    }
+
+    public int getCleanupRetentionDays() {
+        return cleanupRetentionDays;
+    }
+
+    public void setCleanupRetentionDays(int cleanupRetentionDays) {
+        this.cleanupRetentionDays = Math.max(1, cleanupRetentionDays);
+    }
+
+    public int getCleanupCheckpointRetentionDays() {
+        return cleanupCheckpointRetentionDays;
+    }
+
+    public void setCleanupCheckpointRetentionDays(int cleanupCheckpointRetentionDays) {
+        this.cleanupCheckpointRetentionDays = Math.max(1, cleanupCheckpointRetentionDays);
+    }
+
+    public int getCleanupBatchSize() {
+        return cleanupBatchSize;
+    }
+
+    public void setCleanupBatchSize(int cleanupBatchSize) {
+        this.cleanupBatchSize = Math.max(100, cleanupBatchSize);
     }
 
     public boolean supportsRuntimeLevel(String level) {

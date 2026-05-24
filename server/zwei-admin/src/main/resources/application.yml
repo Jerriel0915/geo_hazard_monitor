@@ -23,6 +23,14 @@ zwei:
     sse-timeout-ms: 300000
     # SSE重连建议时间
     sse-retry-ms: 3000
+    # SSE断点最小落库间隔，单位毫秒；0表示每条事件都立即落库
+    sse-checkpoint-flush-interval-ms: 5000
+    # 普通日志保留天数
+    cleanup-retention-days: 30
+    # SSE断点保留天数
+    cleanup-checkpoint-retention-days: 30
+    # 单次清理批次大小
+    cleanup-batch-size: 1000
 
 # 开发环境配置
 server:
