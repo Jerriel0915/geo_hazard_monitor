@@ -19,4 +19,5 @@ public interface HazardPointGroupMapper
     int deleteHazardPointGroupByIds(Long[] ids);
     HazardPointGroup checkGroupCodeUnique(String code);
     List<Map<String, Object>> countHazardPointsByGroupIds(List<Long> groupIds);
+    int countHazardPointsByGroupId(Long groupId);
 }

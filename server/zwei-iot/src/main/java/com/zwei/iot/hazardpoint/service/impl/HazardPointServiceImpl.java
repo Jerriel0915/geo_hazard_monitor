@@ -75,7 +75,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
         if (hazardPoint.getStatus() == null) {
             hazardPoint.setStatus(IotConstants.HAZARD_POINT_STATUS_MONITORING);
         }
-        hazardPoint.setGroupName(resolveGroupName(hazardPoint.getGroupId()));
+        validateGroupId(hazardPoint.getGroupId());
         return hazardPointMapper.insertHazardPoint(hazardPoint);
     }
 
@@ -95,7 +95,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
         if (existing == null) {
             throw new ServiceException("隐患点不存在");
         }
-        hazardPoint.setGroupName(resolveGroupName(hazardPoint.getGroupId()));
+        validateGroupId(hazardPoint.getGroupId());
         return hazardPointMapper.updateHazardPoint(hazardPoint);
     }
 
@@ -201,14 +201,13 @@ public class HazardPointServiceImpl implements IHazardPointService {
         return hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), newStatus);
     }
 
-    private String resolveGroupName(Long groupId) {
+    private void validateGroupId(Long groupId) {
         if (groupId == null) {
-            return null;
+            return;
         }
         HazardPointGroup group = hazardPointGroupMapper.selectHazardPointGroupById(groupId);
         if (group == null) {
             throw new ServiceException("隐患点分组不存在");
         }
-        return group.getName();
     }
 }

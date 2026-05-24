@@ -6,12 +6,12 @@ import java.util.List;
 
 public interface IHazardPointGroupService
 {
-    public List<HazardPointGroup> selectHazardPointGroupList(HazardPointGroup group);
-    public List<HazardPointGroup> selectHazardPointGroupAll();
-    public HazardPointGroup selectHazardPointGroupById(Long id);
-    public int insertHazardPointGroup(HazardPointGroup group);
-    public int updateHazardPointGroup(HazardPointGroup group);
-    public int deleteHazardPointGroupById(Long id);
-    public int deleteHazardPointGroupByIds(Long[] ids);
-    public boolean checkGroupCodeUnique(HazardPointGroup group);
+    List<HazardPointGroup> selectHazardPointGroupList(HazardPointGroup group);
+    List<HazardPointGroup> selectHazardPointGroupAll();
+    HazardPointGroup selectHazardPointGroupById(Long id);
+    int insertHazardPointGroup(HazardPointGroup group);
+    int updateHazardPointGroup(HazardPointGroup group);
+    int deleteHazardPointGroupById(Long id);
+    int deleteHazardPointGroupByIds(Long[] ids);
+    boolean checkGroupCodeUnique(HazardPointGroup group);
 }

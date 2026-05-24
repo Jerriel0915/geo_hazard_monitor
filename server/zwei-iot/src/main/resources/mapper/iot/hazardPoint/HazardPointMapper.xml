@@ -25,7 +25,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectHazardPointVo">
-        SELECT h.id, h.code, h.name, h.group_id, h.group_name, h.longitude, h.latitude, h.strike,
+        SELECT h.id, h.code, h.name, h.group_id, g.name AS group_name, h.longitude, h.latitude, h.strike,
                h.description, h.status, h.device_count, h.del_flag, h.create_by, h.create_time,
                h.update_by, h.update_time,
                CASE h.status
@@ -35,6 +35,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                    ELSE ''
                END AS status_name
         FROM hazard_point h
+        LEFT JOIN hazard_point_group g ON g.id = h.group_id AND g.del_flag = '0'
         WHERE h.del_flag = '0'
     </sql>
 
@@ -78,7 +79,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="code != null and code != ''">code,</if>
             <if test="name != null and name != ''">name,</if>
             <if test="groupId != null">group_id,</if>
-            <if test="groupName != null">group_name,</if>
             <if test="longitude != null">longitude,</if>
             <if test="latitude != null">latitude,</if>
             <if test="strike != null">strike,</if>
@@ -90,7 +90,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="code != null and code != ''">#{code},</if>
             <if test="name != null and name != ''">#{name},</if>
             <if test="groupId != null">#{groupId},</if>
-            <if test="groupName != null">#{groupName},</if>
             <if test="longitude != null">#{longitude},</if>
             <if test="latitude != null">#{latitude},</if>
             <if test="strike != null">#{strike},</if>
@@ -105,7 +104,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         UPDATE hazard_point
         SET name = #{name},
             group_id = #{groupId},
-            group_name = #{groupName},
             longitude = #{longitude},
             latitude = #{latitude},
             strike = #{strike},
@@ -160,14 +158,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <foreach item="id" collection="ids" open="(" separator="," close=")">
             #{id}
         </foreach>
-    </update>
-
-    <update id="updateGroupNameByGroupId">
-        UPDATE hazard_point
-        SET group_name = #{groupName},
-            update_time = NOW()
-        WHERE group_id = #{groupId}
-          AND del_flag = '0'
     </update>
 
     <update id="refreshDeviceCountById">

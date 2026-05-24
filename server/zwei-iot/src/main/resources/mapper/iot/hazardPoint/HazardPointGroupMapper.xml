@@ -63,6 +63,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         group by group_id
     </select>
 
+    <select id="countHazardPointsByGroupId" parameterType="Long" resultType="int">
+        select count(*)
+        from hazard_point
+        where del_flag = 0
+          and group_id = #{groupId}
+    </select>
+
     <insert id="insertHazardPointGroup" parameterType="HazardPointGroup" useGeneratedKeys="true" keyProperty="id">
         insert into hazard_point_group(
             <if test="code != null and code != ''">code,</if>

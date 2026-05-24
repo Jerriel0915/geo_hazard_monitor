@@ -2,9 +2,8 @@ package com.zwei.iot.hazardpoint.mapper;
 
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 隐患点Mapper接口
@@ -77,15 +76,6 @@ public interface HazardPointMapper
      * @return 结果
      */
     public HazardPoint checkHazardPointCodeUnique(String code);
-
-    /**
-     * 根据分组ID同步隐患点分组名称
-     *
-     * @param groupId 分组ID
-     * @param groupName 分组名称
-     * @return 结果
-     */
-    int updateGroupNameByGroupId(@Param("groupId") Long groupId, @Param("groupName") String groupName);
 
     /**
      * 批量更新隐患点状态
