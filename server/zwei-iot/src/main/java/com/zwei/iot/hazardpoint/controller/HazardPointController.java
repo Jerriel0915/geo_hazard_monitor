@@ -9,6 +9,10 @@ import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
+import com.zwei.iot.hazardpoint.domain.dto.BindDeviceRequest;
+import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
+import com.zwei.iot.hazardpoint.domain.dto.UnboundDeviceVO;
+import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,10 +32,13 @@ import java.util.List;
 public class HazardPointController extends BaseController
 {
     private final IHazardPointService hazardPointService;
+    private final IDeviceHazardPointService deviceHazardPointService;
 
     @Autowired
-    public HazardPointController(IHazardPointService hazardPointService) {
+    public HazardPointController(IHazardPointService hazardPointService,
+                                IDeviceHazardPointService deviceHazardPointService) {
         this.hazardPointService = hazardPointService;
+        this.deviceHazardPointService = deviceHazardPointService;
     }
 
     /**
@@ -183,5 +190,96 @@ public class HazardPointController extends BaseController
         // JSON反序列化时ids为Integer数组，需转换为Long[]
         Long[] ids = idList.stream().map(Integer::longValue).toArray(Long[]::new);
         return toAjax(hazardPointService.batchOperateHazardPoint(ids, operation));
+    }
+
+    // ==================== 4.1 设备隐患点绑定接口 ====================
+
+    /**
+     * 获取隐患点已绑定的设备列表
+     *
+     * @param hpId 隐患点ID
+     * @return 已绑定设备列表
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
+    @GetMapping("/{hpId}/bound-devices")
+    public AjaxResult getBoundDevices(@PathVariable Long hpId)
+    {
+        if (StringUtils.isNull(hpId))
+        {
+            return error("参数错误");
+        }
+        List<BoundDeviceVO> list = deviceHazardPointService.getBoundDevices(hpId);
+        return success(list);
+    }
+
+    /**
+     * 获取未绑定设备列表
+     *
+     * @param hpId    隐患点ID
+     * @param keyword 关键词（设备/传感器名称模糊查询）
+     * @return 未绑定设备列表
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
+    @GetMapping("/{hpId}/unbound-devices")
+    public AjaxResult getUnboundDevices(@PathVariable Long hpId,
+                                       @RequestParam(required = false) String keyword)
+    {
+        if (StringUtils.isNull(hpId))
+        {
+            return error("参数错误");
+        }
+        List<UnboundDeviceVO> list = deviceHazardPointService.getUnboundDevices(hpId, keyword);
+        return success(list);
+    }
+
+    /**
+     * 绑定设备到隐患点
+     *
+     * @param hpId    隐患点ID
+     * @param request 绑定请求参数
+     * @return 影响行数
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
+    @Log(title = "隐患点设备绑定", businessType = BusinessType.INSERT)
+    @PostMapping("/{hpId}/bind-devices")
+    public AjaxResult bindDevices(@PathVariable Long hpId,
+                                 @Validated @RequestBody BindDeviceRequest request)
+    {
+        if (StringUtils.isNull(hpId))
+        {
+            return error("参数错误");
+        }
+        if (request == null || request.getDeviceIds() == null || request.getDeviceIds().isEmpty())
+        {
+            return error("设备ID列表不能为空");
+        }
+        return toAjax(deviceHazardPointService.bindDevices(hpId, request, getUsername()));
+    }
+
+    /**
+     * 解绑设备
+     *
+     * @param hpId 隐患点ID
+     * @param request 解绑请求参数
+     * @return 影响行数
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
+    @Log(title = "隐患点设备解绑", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{hpId}/unbind-devices")
+    public AjaxResult unbindDevices(@PathVariable Long hpId,
+                                   @RequestBody HashMap<String, Object> request)
+    {
+        if (StringUtils.isNull(hpId))
+        {
+            return error("参数错误");
+        }
+        @SuppressWarnings("unchecked")
+        List<Integer> deviceIdList = (List<Integer>) request.get("deviceIds");
+        if (deviceIdList == null || deviceIdList.isEmpty())
+        {
+            return error("设备ID列表不能为空");
+        }
+        List<Long> deviceIds = deviceIdList.stream().map(Integer::longValue).toList();
+        return toAjax(deviceHazardPointService.unbindDevices(hpId, deviceIds));
     }
 }

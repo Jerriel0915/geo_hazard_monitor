@@ -117,28 +117,30 @@ public class DeviceServiceImpl implements IDeviceService {
             return null;
         }
         // 创建新设备
-        Device copy = new Device();
-        copy.setCode(original.getCode() + "_copy");
-        copy.setName(original.getName() + "_副本");
-        copy.setIcon(original.getIcon());
-        copy.setIconPath(original.getIconPath());
-        copy.setStatus(original.getStatus());
-        copy.setCreateBy(original.getCreateBy());
+        Device copy = Device.builder()
+                .code(original.getCode() + "_copy")
+                .name(original.getName() + "_副本")
+                .icon(original.getIcon())
+                .iconPath(original.getIconPath())
+                .status(original.getStatus())
+                .createBy(original.getCreateBy())
+                .build();
+
         deviceMapper.insertDevice(copy);
 
         // 复制传感器
         List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(id);
         for (DeviceSensor originalSensor : sensors) {
-            DeviceSensor newSensor = new DeviceSensor();
-            newSensor.setDeviceId(copy.getId());
-            newSensor.setDeviceCode(copy.getCode());
-            newSensor.setSensorCode(originalSensor.getSensorCode() + "_copy");
-            newSensor.setSensorName(originalSensor.getSensorName());
-            newSensor.setMonitorTypeId(originalSensor.getMonitorTypeId());
-            newSensor.setMonitorTypeCode(originalSensor.getMonitorTypeCode());
-            newSensor.setMonitorTypeName(originalSensor.getMonitorTypeName());
-            newSensor.setStatus(originalSensor.getStatus());
-            newSensor.setCreateBy(original.getCreateBy());
+            DeviceSensor newSensor = DeviceSensor.builder()
+                    .deviceCode(copy.getCode())
+                    .sensorCode(originalSensor.getSensorCode() + "_copy")
+                    .sensorName(originalSensor.getSensorName())
+                    .monitorTypeId(originalSensor.getMonitorTypeId())
+                    .monitorTypeCode(originalSensor.getMonitorTypeCode())
+                    .monitorTypeName(originalSensor.getMonitorTypeName())
+                    .status(originalSensor.getStatus())
+                    .createBy(original.getCreateBy())
+                    .build();
             sensorMapper.insertSensor(newSensor);
 
             // 复制属性

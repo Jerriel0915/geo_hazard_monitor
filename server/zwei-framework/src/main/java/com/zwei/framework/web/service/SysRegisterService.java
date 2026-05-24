@@ -14,8 +14,12 @@ import com.zwei.common.utils.DateUtils;
 import com.zwei.common.utils.MessageUtils;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.StringUtils;
-import com.zwei.framework.manager.AsyncManager;
-import com.zwei.framework.manager.factory.AsyncFactory;
+import com.zwei.common.utils.ip.AddressUtils;
+import com.zwei.common.utils.ip.IpUtils;
+import com.zwei.log.application.service.LogCenterService;
+import com.zwei.log.domain.enums.AuthEventType;
+import com.zwei.log.domain.enums.LogExecutionStatus;
+import com.zwei.log.domain.model.LogAuthRecord;
 import com.zwei.system.service.ISysConfigService;
 import com.zwei.system.service.ISysUserService;
 
@@ -35,6 +39,9 @@ public class SysRegisterService
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private LogCenterService logCenterService;
 
     /**
      * 注册
@@ -86,7 +93,15 @@ public class SysRegisterService
             }
             else
             {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.REGISTER, MessageUtils.message("user.register.success")));
+                LogAuthRecord record = new LogAuthRecord();
+                record.setUsername(username);
+                record.setAuthEventType(AuthEventType.LOGIN_SUCCESS.name());
+                record.setAuthChannel(Constants.REGISTER);
+                record.setClientIp(IpUtils.getIpAddr());
+                record.setClientLocation(AddressUtils.getRealAddressByIP(record.getClientIp()));
+                record.setResultStatus(LogExecutionStatus.SUCCESS.name());
+                record.setFailureMessage(MessageUtils.message("user.register.success"));
+                logCenterService.publishAuth(record);
             }
         }
         return msg;

@@ -1,6 +1,11 @@
 package com.zwei.iot.monitor.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 
@@ -12,6 +17,11 @@ import java.io.Serial;
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 public class MonitorType extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -70,94 +80,6 @@ public class MonitorType extends BaseEntity {
      * 监测内容列表（查询详情时返回）
      */
     private Object contents;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Integer getDeviceType() {
-        return deviceType;
-    }
-
-    public void setDeviceType(Integer deviceType) {
-        this.deviceType = deviceType;
-    }
-
-    public String getDeviceTypeName() {
-        return deviceTypeName;
-    }
-
-    public void setDeviceTypeName(String deviceTypeName) {
-        this.deviceTypeName = deviceTypeName;
-    }
-
-    public String getIcon() {
-        return icon;
-    }
-
-    public void setIcon(String icon) {
-        this.icon = icon;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Integer getSortOrder() {
-        return sortOrder;
-    }
-
-    public void setSortOrder(Integer sortOrder) {
-        this.sortOrder = sortOrder;
-    }
-
-    public Integer getStatus() {
-        return status;
-    }
-
-    public void setStatus(Integer status) {
-        this.status = status;
-    }
-
-    public Integer getDelFlag() {
-        return delFlag;
-    }
-
-    public void setDelFlag(Integer delFlag) {
-        this.delFlag = delFlag;
-    }
-
-    public Object getContents() {
-        return contents;
-    }
-
-    public void setContents(Object contents) {
-        this.contents = contents;
-    }
 
     @Override
     public String toString() {

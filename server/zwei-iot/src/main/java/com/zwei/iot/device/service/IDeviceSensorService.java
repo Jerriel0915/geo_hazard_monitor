@@ -54,6 +54,14 @@ public interface IDeviceSensorService {
     int deleteSensorById(Long id);
 
     /**
+     * 根据传感器条件查询传感器列表
+     *
+     * @param sensor 传感器查询条件
+     * @return 传感器列表
+     */
+    List<DeviceSensor> selectSensorList(DeviceSensor sensor);
+
+    /**
      * 校验传感器编码是否唯一
      *
      * @param sensorCode 传感器编码

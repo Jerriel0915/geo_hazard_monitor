@@ -16,12 +16,12 @@
 
     <div class="search-bar">
       <el-input
-        v-model="searchKeyword"
-        placeholder="搜索编号或名称"
-        class="search-input"
-        clearable
-        @clear="handleSearch"
-        @keyup.enter="handleSearch"
+          v-model="searchKeyword"
+          placeholder="搜索编号或名称"
+          class="search-input"
+          clearable
+          @clear="handleSearch"
+          @keyup.enter="handleSearch"
       >
         <template #prefix>
           <span class="search-icon">🔍</span>
@@ -33,15 +33,16 @@
         <el-option label="ONVIF" value="ONVIF" />
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
+      <el-button @click="handleReset">重置</el-button>
     </div>
 
     <div class="table-container">
       <el-table
-        :data="tableData"
-        border
-        stripe
-        v-loading="loading"
-        :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
+          :data="tableData"
+          border
+          stripe
+          v-loading="loading"
+          :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
       >
         <el-table-column label="图标" width="80" align="center">
           <template #default="{ row }">
@@ -95,26 +96,27 @@
 
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          prev-text="上一页"
-          next-text="下一页"
-          :disabled="total === 0"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            prev-text="上一页"
+            next-text="下一页"
+            :disabled="total === 0"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
         />
       </div>
     </div>
 
+    <!-- 新增/编辑弹窗 -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="700px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="dialogVisible"
+        :title="dialogTitle"
+        width="700px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-row :gutter="20">
@@ -155,26 +157,26 @@
 
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
       </template>
     </el-dialog>
 
     <!-- 关联隐患点弹窗 -->
     <el-dialog
-      v-model="bindDialogVisible"
-      :title="`关联隐患点[${currentBindRow?.name || ''}]`"
-      width="600px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="bindDialogVisible"
+        :title="`关联隐患点[${currentBindRow?.name || ''}]`"
+        width="600px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <el-form ref="bindFormRef" :model="bindFormData" label-width="100px">
         <el-form-item label="隐患点" prop="hazardPointIds">
           <el-select v-model="bindFormData.hazardPointIds" multiple placeholder="请选择隐患点" filterable style="width: 100%">
             <el-option
-              v-for="hp in hazardPointList"
-              :key="hp.id"
-              :label="hp.name"
-              :value="hp.id"
+                v-for="hp in hazardPointList"
+                :key="hp.id"
+                :label="hp.name"
+                :value="hp.id"
             />
           </el-select>
         </el-form-item>
@@ -185,17 +187,17 @@
 
       <template #footer>
         <el-button @click="bindDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleBindSubmit">确定</el-button>
+        <el-button type="primary" @click="handleBindSubmit" :loading="bindLoading">确定</el-button>
       </template>
     </el-dialog>
 
     <!-- 地图弹窗：指定设备安装坐标 -->
     <el-dialog
-      v-model="mapDialogVisible"
-      title="指定视频设备安装位置"
-      width="800px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="mapDialogVisible"
+        title="指定视频设备安装位置"
+        width="800px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <div class="map-container">
         <div id="video-device-map" ref="mapRef" style="width: 100%; height: 400px;"></div>
@@ -211,7 +213,7 @@
       </div>
       <template #footer>
         <el-button @click="mapDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleMapConfirm">确定</el-button>
+        <el-button type="primary" @click="handleMapConfirm" :loading="mapLoading">确定</el-button>
       </template>
     </el-dialog>
 
@@ -219,34 +221,38 @@
     <el-dialog v-model="videoIconDialogVisible" title="选择视频设备图标" width="500px">
       <div class="icon-grid">
         <div
-          v-for="item in videoIconList"
-          :key="item.code"
-          class="icon-item"
-          @click="handleVideoIconSelect(item)"
+            v-for="item in videoIconList"
+            :key="item.code"
+            class="icon-item"
+            @click="handleVideoIconSelect(item)"
         >
           <img :src="item.path" class="icon-select-img" :alt="item.name" />
           <span class="icon-name">{{ item.name }}</span>
         </div>
       </div>
+      <template #footer>
+        <el-button @click="videoIconDialogVisible = false">取消</el-button>
+      </template>
     </el-dialog>
 
+    <!-- 视频播放弹窗 -->
     <el-dialog
-      v-model="playDialogVisible"
-      title="视频播放"
-      width="900px"
-      :close-on-click-modal="false"
-      destroy-on-close
-      class="video-play-dialog"
+        v-model="playDialogVisible"
+        title="视频播放"
+        width="900px"
+        :close-on-click-modal="false"
+        destroy-on-close
+        class="video-play-dialog"
     >
       <div class="video-container">
         <div class="video-wrapper" ref="videoWrapper">
           <video
-            ref="videoRef"
-            :src="playUrl"
-            controls
-            class="video-player"
-            @loadedmetadata="onVideoLoaded"
-            @error="onVideoError"
+              ref="videoRef"
+              :src="playUrl"
+              controls
+              class="video-player"
+              @loadedmetadata="onVideoLoaded"
+              @error="onVideoError"
           ></video>
           <div v-if="!videoLoaded" class="video-loading">
             <el-spinner type="dots" />
@@ -272,8 +278,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+
+// 获取token
+const getToken = () => localStorage.getItem('token')
 
 interface VideoDeviceItem {
   id: string
@@ -301,7 +311,7 @@ interface HazardPointItem {
   installLat?: number
 }
 
-// 视频设备图标列表 vidio1~vidio10
+// 视频设备图标列表
 const videoIconList = Array.from({ length: 10 }, (_, i) => {
   const num = i + 1
   return {
@@ -313,6 +323,9 @@ const videoIconList = Array.from({ length: 10 }, (_, i) => {
 })
 
 const loading = ref(false)
+const submitLoading = ref(false)
+const bindLoading = ref(false)
+const mapLoading = ref(false)
 const tableData = ref<VideoDeviceItem[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -402,95 +415,226 @@ const getStatusLabel = (status: number) => {
   return labels[status] || '未知'
 }
 
-const initTableData = () => {
+// ==================== API 请求 ====================
+
+// 分页查询视频设备
+const loadTableData = async () => {
   loading.value = true
-  setTimeout(() => {
-    tableData.value = [
-      {
-        id: '1',
-        code: 'VD001',
-        name: '隐患点A-摄像头1',
-        icon: 'vidio1',
-        iconPath: '/jc-icon/green/vidio1_green.png',
-        protocolCode: 'RTSP',
-        protocolName: 'RTSP',
-        streamUrl: 'rtsp://admin:123456@192.168.1.101:554/Streaming/Channels/101',
-        hazardPointIds: '1',
-        hazardPointNames: '隐患点A',
-        status: 1,
-        installTime: '2024-01-10 10:00:00',
-        lastOnlineTime: '2024-01-20 14:30:00'
-      },
-      {
-        id: '2',
-        code: 'VD002',
-        name: '隐患点A-摄像头2',
-        icon: 'vidio2',
-        iconPath: '/jc-icon/green/vidio2_green.png',
-        protocolCode: 'RTMP',
-        protocolName: 'RTMP',
-        streamUrl: 'rtmp://192.168.1.102:1935/live/stream001',
-        hazardPointIds: '1,2',
-        hazardPointNames: '隐患点A,隐患点B',
-        status: 1,
-        installTime: '2024-01-10 11:00:00',
-        lastOnlineTime: '2024-01-20 14:25:00'
-      },
-      {
-        id: '3',
-        code: 'VD003',
-        name: '隐患点B-摄像头1',
-        icon: 'vidio3',
-        iconPath: '/jc-icon/green/vidio3_green.png',
-        protocolCode: 'ONVIF',
-        protocolName: 'ONVIF',
-        streamUrl: 'http://192.168.1.103:8080/onvif/media',
-        hazardPointIds: '2',
-        hazardPointNames: '隐患点B',
-        status: 2,
-        installTime: '2024-01-15 09:00:00',
-        lastOnlineTime: '2024-01-19 10:00:00'
-      },
-      {
-        id: '4',
-        code: 'VD004',
-        name: '隐患点C-摄像头1',
-        icon: 'vidio4',
-        iconPath: '/jc-icon/green/vidio4_green.png',
-        protocolCode: 'RTSP',
-        protocolName: 'RTSP',
-        streamUrl: 'rtsp://admin:password@192.168.1.104:554/stream1',
-        hazardPointNames: '',
-        status: 0,
-        installTime: '2024-01-20 14:00:00',
-        lastOnlineTime: ''
-      }
-    ]
-    total.value = tableData.value.length
+  try {
+    const token = getToken()
+    const params: any = {
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchKeyword.value) {
+      params.code = searchKeyword.value
+      params.name = searchKeyword.value
+    }
+    if (searchProtocol.value) {
+      params.protocolCode = searchProtocol.value
+    }
+
+    const response = await axios.get('/api/v1/video-devices/page', {
+      params,
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      const data = response.data.data
+      tableData.value = data.rows || []
+      total.value = data.total || 0
+    } else {
+      ElMessage.error(response.data.msg || '获取数据失败')
+    }
+  } catch (error) {
+    console.error('请求失败:', error)
+    ElMessage.error('网络请求失败')
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
-const initHazardPointList = () => {
-  hazardPointList.value = [
-    { id: '1', code: 'HP001', name: '隐患点A', longitude: 104.156789, latitude: 30.678901 },
-    { id: '2', code: 'HP002', name: '隐患点B', longitude: 103.589234, latitude: 30.891234 },
-    { id: '3', code: 'HP003', name: '隐患点C', longitude: 102.891234, latitude: 29.589234 },
-    { id: '4', code: 'HP004', name: '隐患点D', longitude: 103.334567, latitude: 29.556789 }
-  ]
+// 获取隐患点列表
+const loadHazardPointList = async () => {
+  try {
+    const token = getToken()
+    const response = await axios.get('/api/v1/hazard-points/list', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      hazardPointList.value = response.data.data || []
+    } else {
+      console.error('获取隐患点列表失败:', response.data.msg)
+    }
+  } catch (error) {
+    console.error('获取隐患点列表失败:', error)
+  }
 }
+
+// 获取视频设备详情
+const fetchDetail = async (id: string) => {
+  try {
+    const token = getToken()
+    const response = await axios.get(`/api/v1/video-devices/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      return response.data.data
+    } else {
+      ElMessage.error(response.data.msg || '获取详情失败')
+      return null
+    }
+  } catch (error) {
+    console.error('获取详情失败:', error)
+    ElMessage.error('网络请求失败')
+    return null
+  }
+}
+
+// 新增视频设备
+const createVideoDevice = async () => {
+  submitLoading.value = true
+  try {
+    const token = getToken()
+    const response = await axios.post('/api/v1/video-devices', {
+      code: formData.code,
+      name: formData.name,
+      icon: formData.icon,
+      iconPath: formData.iconPath,
+      protocolCode: formData.protocolCode,
+      streamUrl: formData.streamUrl,
+      status: 1
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      ElMessage.success('新增成功')
+      dialogVisible.value = false
+      loadTableData()
+    } else {
+      ElMessage.error(response.data.msg || '新增失败')
+    }
+  } catch (error) {
+    console.error('新增失败:', error)
+    ElMessage.error('网络请求失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+// 修改视频设备
+const updateVideoDevice = async () => {
+  submitLoading.value = true
+  try {
+    const token = getToken()
+    const response = await axios.put(`/api/v1/video-devices/${formData.id}`, {
+      name: formData.name,
+      icon: formData.icon,
+      iconPath: formData.iconPath,
+      protocolCode: formData.protocolCode,
+      streamUrl: formData.streamUrl
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      ElMessage.success('修改成功')
+      dialogVisible.value = false
+      loadTableData()
+    } else {
+      ElMessage.error(response.data.msg || '修改失败')
+    }
+  } catch (error) {
+    console.error('修改失败:', error)
+    ElMessage.error('网络请求失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+// 删除视频设备
+const deleteVideoDevice = async (id: string) => {
+  try {
+    const token = getToken()
+    const response = await axios.delete(`/api/v1/video-devices/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (response.data.code === 200) {
+      ElMessage.success('删除成功')
+      loadTableData()
+    } else {
+      ElMessage.error(response.data.msg || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除失败:', error)
+    ElMessage.error('网络请求失败')
+  }
+}
+
+// 绑定视频设备到隐患点（批量）
+const bindToHazardPoints = async (hpId: string, videoDeviceId: string, installLng: number, installLat: number) => {
+  try {
+    const token = getToken()
+    const response = await axios.post(`/api/v1/hazard-points/${hpId}/bind-video-devices`, {
+      videoDeviceIds: [parseInt(videoDeviceId)],
+      installPositions: [
+        {
+          videoDeviceId: parseInt(videoDeviceId),
+          installLongitude: installLng,
+          installLatitude: installLat
+        }
+      ]
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    return response.data.code === 200
+  } catch (error) {
+    console.error('绑定失败:', error)
+    return false
+  }
+}
+
+// 解绑视频设备
+const unbindVideoDevice = async (hpId: string, videoDeviceId: string) => {
+  try {
+    const token = getToken()
+    const response = await axios.delete(`/api/v1/hazard-points/${hpId}/unbind-video-devices`, {
+      data: { videoDeviceIds: [parseInt(videoDeviceId)] },
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    return response.data.code === 200
+  } catch (error) {
+    console.error('解绑失败:', error)
+    return false
+  }
+}
+
+// ==================== 事件处理方法 ====================
 
 const handleSearch = () => {
   currentPage.value = 1
-  initTableData()
+  loadTableData()
+}
+
+const handleReset = () => {
+  searchKeyword.value = ''
+  searchProtocol.value = ''
+  currentPage.value = 1
+  loadTableData()
 }
 
 const handleSizeChange = () => {
-  initTableData()
+  loadTableData()
 }
 
 const handlePageChange = () => {
-  initTableData()
+  loadTableData()
 }
 
 const handleAdd = () => {
@@ -508,18 +652,21 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: VideoDeviceItem) => {
+const handleEdit = async (row: VideoDeviceItem) => {
   dialogTitle.value = '编辑视频设备'
   isEdit.value = true
-  Object.assign(formData, {
-    id: row.id,
-    code: row.code,
-    name: row.name,
-    icon: row.icon || '',
-    iconPath: row.iconPath || '',
-    protocolCode: row.protocolCode,
-    streamUrl: row.streamUrl
-  })
+  const detail = await fetchDetail(row.id)
+  if (detail) {
+    Object.assign(formData, {
+      id: detail.id,
+      code: detail.code,
+      name: detail.name,
+      icon: detail.icon || '',
+      iconPath: detail.iconPath || '',
+      protocolCode: detail.protocolCode,
+      streamUrl: detail.streamUrl
+    })
+  }
   dialogVisible.value = true
 }
 
@@ -536,12 +683,7 @@ const handleDelete = (row: VideoDeviceItem) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    const index = tableData.value.findIndex(item => item.id === row.id)
-    if (index > -1) {
-      tableData.value.splice(index, 1)
-      total.value--
-    }
-    ElMessage.success('删除成功')
+    deleteVideoDevice(row.id)
   }).catch(() => {})
 }
 
@@ -555,22 +697,44 @@ const handleExport = () => {
 const handleSubmit = () => {
   formRef.value.validate((valid: boolean) => {
     if (valid) {
-      ElMessage.success('保存成功')
-      dialogVisible.value = false
-      initTableData()
+      if (formData.id) {
+        updateVideoDevice()
+      } else {
+        createVideoDevice()
+      }
     }
   })
 }
 
-const handleBindSubmit = () => {
-  if (currentBindRow.value) {
-    const selectedNames = hazardPointList.value
-      .filter(hp => bindFormData.hazardPointIds.includes(hp.id))
-      .map(hp => hp.name)
-    currentBindRow.value.hazardPointIds = bindFormData.hazardPointIds.join(',')
-    currentBindRow.value.hazardPointNames = selectedNames.join(',')
+const handleBindSubmit = async () => {
+  if (!currentBindRow.value) return
+
+  bindLoading.value = true
+  try {
+    // 先解绑所有已有的关联
+    const oldHpIds = currentBindRow.value.hazardPointIds ? currentBindRow.value.hazardPointIds.split(',') : []
+    for (const hpId of oldHpIds) {
+      if (hpId && !bindFormData.hazardPointIds.includes(hpId)) {
+        await unbindVideoDevice(hpId, currentBindRow.value.id)
+      }
+    }
+
+    // 绑定新选择的隐患点
+    for (const hp of selectedHazardPoints.value) {
+      if (bindFormData.hazardPointIds.includes(hp.id)) {
+        const installLng = hp.installLng || hp.longitude || 0
+        const installLat = hp.installLat || hp.latitude || 0
+        await bindToHazardPoints(hp.id, currentBindRow.value.id, installLng, installLat)
+      }
+    }
+
     ElMessage.success('关联成功')
     bindDialogVisible.value = false
+    loadTableData() // 刷新列表
+  } catch (error) {
+    ElMessage.error('关联失败')
+  } finally {
+    bindLoading.value = false
   }
 }
 
@@ -586,8 +750,9 @@ const handleVideoIconSelect = (item: { code: string; name: string; icon: string;
 
 const handleOpenMap = () => {
   selectedHazardPoints.value = hazardPointList.value
-    .filter(hp => bindFormData.hazardPointIds.includes(hp.id))
-    .map(hp => ({ ...hp }))
+      .filter(hp => bindFormData.hazardPointIds.includes(hp.id))
+      .map(hp => ({ ...hp }))
+  currentHazardPointIndex.value = 0
   mapDialogVisible.value = true
   nextTick(() => {
     initMap()
@@ -603,28 +768,23 @@ const initMap = () => {
 
   mapInstance = L.map(mapRef.value).setView([30.67, 104.06], 10)
 
-  // 天地图矢量底图
   L.tileLayer('https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
     maxZoom: 18,
     attribution: '天地图'
   }).addTo(mapInstance)
 
-  // 天地图注记
   L.tileLayer('https://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
     maxZoom: 18
   }).addTo(mapInstance)
 
-  // 添加隐患点标记
   selectedHazardPoints.value.forEach((hp, index) => {
     if (hp.longitude && hp.latitude) {
       const marker = L.marker([hp.latitude, hp.longitude])
-        .addTo(mapInstance!)
-        .bindPopup(`${index + 1}. ${hp.name}`)
-      marker.openPopup()
+          .addTo(mapInstance!)
+          .bindPopup(`${index + 1}. ${hp.name}`)
     }
   })
 
-  // 点击地图设置设备安装坐标
   mapInstance.on('click', (e: L.LeafletMouseEvent) => {
     const hp = selectedHazardPoints.value[currentHazardPointIndex.value]
     if (hp) {
@@ -650,12 +810,16 @@ const initMap = () => {
 }
 
 const handleMapConfirm = () => {
-  mapDialogVisible.value = false
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
-  }
-  ElMessage.success('安装位置设置成功')
+  mapLoading.value = true
+  setTimeout(() => {
+    mapDialogVisible.value = false
+    if (mapInstance) {
+      mapInstance.remove()
+      mapInstance = null
+    }
+    mapLoading.value = false
+    ElMessage.success('安装位置设置成功')
+  }, 500)
 }
 
 const handlePlay = (row: VideoDeviceItem) => {
@@ -722,8 +886,8 @@ const onVideoError = () => {
 }
 
 onMounted(() => {
-  initTableData()
-  initHazardPointList()
+  loadTableData()
+  loadHazardPointList()
 })
 </script>
 
@@ -763,6 +927,7 @@ onMounted(() => {
   gap: 10px;
   margin-bottom: 20px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .search-input {
@@ -821,7 +986,6 @@ onMounted(() => {
   color: #f56c6c !important;
 }
 
-/* 设备图标选择器 */
 .device-icon-selector {
   display: flex;
   align-items: center;
@@ -850,7 +1014,6 @@ onMounted(() => {
   font-size: 12px;
 }
 
-/* 地图 */
 .map-container {
   border: 1px solid #ebeef5;
   border-radius: 4px;
@@ -881,7 +1044,6 @@ onMounted(() => {
   font-size: 13px;
 }
 
-/* 图标选择弹窗 */
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

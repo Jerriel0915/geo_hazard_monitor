@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper">
+
+    <!-- ==================== 结果映射 ==================== -->
+    <resultMap type="com.zwei.iot.hazardpoint.domain.DeviceHazardPoint" id="DeviceHazardPointResult">
+        <id property="id" column="id"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="hazardPointId" column="hazard_point_id"/>
+        <result property="installLongitude" column="install_longitude"/>
+        <result property="installLatitude" column="install_latitude"/>
+        <result property="bindTime" column="bind_time"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- ==================== 查询操作 ==================== -->
+
+    <!-- 查询已绑定设备列表 -->
+    <select id="selectBoundDevicesByHazardPointId" resultType="com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO">
+        SELECT dhp.id,
+               dhp.device_id AS deviceId,
+               d.code AS deviceCode,
+               d.name AS deviceName,
+               dhp.bind_time AS bindTime,
+               dhp.install_longitude AS installLongitude,
+               dhp.install_latitude AS installLatitude,
+               d.status AS deviceStatus
+        FROM device_hazard_point dhp
+        LEFT JOIN device d ON dhp.device_id = d.id AND d.del_flag = 0
+        WHERE dhp.hazard_point_id = #{hazardPointId}
+        ORDER BY dhp.bind_time DESC
+    </select>
+
+    <!-- 查询未绑定设备列表（排除已绑定到指定隐患点的设备） -->
+    <select id="selectUnboundDevices" resultType="com.zwei.iot.hazardpoint.domain.dto.UnboundDeviceVO">
+        SELECT d.id,
+               CONCAT(d.code, ' - ', d.name) AS label,
+               d.status,
+               (
+                   SELECT COUNT(*)
+                   FROM device_hazard_point dhp2
+                   WHERE dhp2.device_id = d.id
+               ) AS bindCount
+        FROM device d
+        WHERE d.del_flag = 0
+          AND d.id NOT IN (
+              SELECT device_id FROM device_hazard_point WHERE hazard_point_id = #{hazardPointId}
+          )
+          AND (
+              #{keyword} IS NULL
+              OR #{keyword} = ''
+              OR d.name LIKE CONCAT('%', #{keyword}, '%')
+              OR d.code LIKE CONCAT('%', #{keyword}, '%')
+              OR EXISTS (
+                  SELECT 1 FROM device_sensor ds
+                  WHERE ds.device_id = d.id
+                    AND ds.del_flag = 0
+                    AND ds.sensor_name LIKE CONCAT('%', #{keyword}, '%')
+              )
+          )
+        ORDER BY d.id DESC
+    </select>
+
+    <!-- ==================== 新增操作 ==================== -->
+
+    <!-- 批量插入设备隐患点绑定记录 -->
+    <insert id="insertBatch" parameterType="java.util.List">
+        INSERT INTO device_hazard_point (device_id, hazard_point_id, install_longitude, install_latitude, bind_time, create_by, create_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.deviceId}, #{item.hazardPointId}, #{item.installLongitude}, #{item.installLatitude}, SYSDATE(), #{item.createBy}, SYSDATE())
+        </foreach>
+    </insert>
+
+    <!-- ==================== 删除操作 ==================== -->
+
+    <!-- 根据隐患点ID删除绑定记录 -->
+    <delete id="deleteByHazardPointId">
+        DELETE FROM device_hazard_point
+        WHERE hazard_point_id = #{hazardPointId}
+    </delete>
+
+    <!-- 根据隐患点ID和设备ID列表删除绑定记录 -->
+    <delete id="deleteByDeviceIdsAndHazardPointId">
+        DELETE FROM device_hazard_point
+        WHERE hazard_point_id = #{hazardPointId}
+          AND device_id IN
+        <foreach collection="deviceIds" item="deviceId" open="(" separator="," close=")">
+            #{deviceId}
+        </foreach>
+    </delete>
+
+    <!-- ==================== 统计操作 ==================== -->
+
+    <!-- 查询设备绑定次数 -->
+    <select id="countByDeviceId" resultType="int">
+        SELECT COUNT(*)
+        FROM device_hazard_point
+        WHERE device_id = #{deviceId}
+    </select>
+
+</mapper>

@@ -1,14 +1,27 @@
 package com.zwei.iot.hazardpoint.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+
+import java.io.Serial;
 
 /**
  * 隐患点分组表 hazard_point_group
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 public class HazardPointGroup extends BaseEntity
 {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /** 主键ID */
@@ -34,86 +47,6 @@ public class HazardPointGroup extends BaseEntity
 
     /** 隐患点数量（查询时返回） */
     private Integer count;
-
-    public Long getId()
-    {
-        return id;
-    }
-
-    public void setId(Long id)
-    {
-        this.id = id;
-    }
-
-    public String getCode()
-    {
-        return code;
-    }
-
-    public void setCode(String code)
-    {
-        this.code = code;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public void setName(String name)
-    {
-        this.name = name;
-    }
-
-    public String getDescription()
-    {
-        return description;
-    }
-
-    public void setDescription(String description)
-    {
-        this.description = description;
-    }
-
-    public Integer getSortOrder()
-    {
-        return sortOrder;
-    }
-
-    public void setSortOrder(Integer sortOrder)
-    {
-        this.sortOrder = sortOrder;
-    }
-
-    public Integer getStatus()
-    {
-        return status;
-    }
-
-    public void setStatus(Integer status)
-    {
-        this.status = status;
-    }
-
-    public Integer getDelFlag()
-    {
-        return delFlag;
-    }
-
-    public void setDelFlag(Integer delFlag)
-    {
-        this.delFlag = delFlag;
-    }
-
-    public Integer getCount()
-    {
-        return count;
-    }
-
-    public void setCount(Integer count)
-    {
-        this.count = count;
-    }
 
     @Override
     public String toString()

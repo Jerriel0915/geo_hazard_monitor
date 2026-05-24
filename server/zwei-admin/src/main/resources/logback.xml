@@ -70,6 +70,9 @@
             <pattern>${log.pattern}</pattern>
         </encoder>
     </appender>
+
+    <!-- 运行日志持久化 -->
+    <appender name="runtime-db" class="com.zwei.log.infrastructure.appender.RuntimeLogAppender" />
 	
 	<!-- 系统模块日志级别控制  -->
 	<logger name="com.zwei" level="info" />
@@ -78,12 +81,14 @@
 
 	<root level="info">
 		<appender-ref ref="console" />
+        <appender-ref ref="runtime-db" />
 	</root>
 	
 	<!--系统操作日志-->
     <root level="info">
         <appender-ref ref="file_info" />
         <appender-ref ref="file_error" />
+        <appender-ref ref="runtime-db" />
     </root>
 	
 	<!--系统用户操作日志-->

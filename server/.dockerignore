@@ -1,0 +1,40 @@
+# 依赖和构建产物
+target/
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# 日志
+*.log
+logs/
+
+# 环境文件
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+*.md
+
+# Docker 相关（按需在服务器构建时排除）
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# 测试
+*Test*.java
+*Tests*.java
+src/test/
+
+# 文档和脚本
+docs/
+scripts/
+
+# 其他
+*.bak
+*.swp
+*~

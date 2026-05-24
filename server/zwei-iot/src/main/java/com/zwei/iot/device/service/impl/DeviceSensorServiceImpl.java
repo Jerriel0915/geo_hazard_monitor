@@ -111,4 +111,12 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         DeviceSensor result = sensorMapper.checkSensorCodeUnique(sensorCode, id);
         return result == null;
     }
+
+    /**
+     * 根据传感器条件查询传感器列表
+     */
+    @Override
+    public List<DeviceSensor> selectSensorList(DeviceSensor sensor) {
+        return sensorMapper.selectSensorList(sensor);
+    }
 }

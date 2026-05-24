@@ -2,8 +2,145 @@
   <div class="dashboard-container">
     <div ref="mapContainer" class="map-container"></div>
     
-    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed }">
-      <div class="left-panel">
+    <!-- 隐患点视图顶部标题栏 -->
+    <div v-if="currentView === 'hazard'" class="hazard-view-header">
+      <div class="hazard-title-wrapper">
+        <div class="hazard-title" @click="showHazardList = !showHazardList">
+          <span class="hazard-name">{{ currentHazardPoint?.name }}</span>
+          <span class="hazard-dropdown-arrow">▼</span>
+        </div>
+        <div v-show="showHazardList" class="hazard-list-dropdown">
+          <div 
+            v-for="point in hazardPoints" 
+            :key="point.id"
+            class="hazard-list-item"
+            :class="{ active: currentHazardPoint?.id === point.id }"
+            @click="selectHazardPoint(point)"
+          >
+            {{ point.name }}
+          </div>
+        </div>
+      </div>
+      <button class="close-hazard-view-btn" @click="exitHazardView" title="返回系统视图">
+        ✕
+      </button>
+    </div>
+    
+    <!-- 隐患点视图左侧面板 -->
+    <div v-if="currentView === 'hazard'" class="hazard-info-panel">
+      <!-- 隐患点基本信息 -->
+      <div class="hazard-basic-info">
+        <div class="info-title">隐患点基本信息</div>
+        <div class="info-content">
+          <div class="info-row">
+            <span class="info-label">隐患点名称:</span>
+            <span class="info-value">{{ currentHazardPoint?.name }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">隐患点编号:</span>
+            <span class="info-value">{{ currentHazardPoint?.code }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">坐标位置:</span>
+            <span class="info-value">{{ currentHazardPoint?.latitude.toFixed(6) }}, {{ currentHazardPoint?.longitude.toFixed(6) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">所属分组:</span>
+            <span class="info-value">{{ currentHazardPoint?.groupName }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">隐患点备注:</span>
+            <span class="info-value">{{ currentHazardPoint?.description }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 设备列表 -->
+      <div class="device-list-panel">
+        <div class="info-title">绑定设备列表</div>
+        <div class="device-list">
+          <div 
+            v-for="device in deviceList" 
+            :key="device.id"
+            class="device-item"
+            :class="{ selected: selectedDevice?.id === device.id }"
+            @click="selectDevice(device)"
+          >
+            <div class="device-info">
+              <div class="device-type-icon">
+                {{ device.type === 'GNSS' ? '📡' : device.type === 'RAIN' ? '🌧️' : device.type === 'PRESSURE' ? '💧' : '📏' }}
+              </div>
+              <div class="device-details">
+                <div class="device-name">{{ device.name }}</div>
+                <div class="device-meta">
+                  <span class="device-type">{{ device.typeName }}</span>
+                  <span class="device-sensors">{{ device.sensorCount }}个传感器</span>
+                </div>
+              </div>
+            </div>
+            <div class="device-status" :class="device.status">
+              <span class="status-dot"></span>
+              <span class="status-text">{{ getStatusText(device.status) }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 传感器列表 -->
+        <div v-if="selectedDevice && sensorList.length" class="sensor-list-panel">
+          <div class="sensor-title">传感器列表</div>
+          <div class="sensor-list">
+            <div 
+              v-for="sensor in sensorList" 
+              :key="sensor.id"
+              class="sensor-item"
+              :class="{ selected: selectedSensor?.id === sensor.id, warning: sensor.status === 'warning' }"
+              @click="selectSensor(sensor)"
+            >
+              <div class="sensor-icon">
+                {{ sensor.type === 'GNSS' ? '📍' : sensor.type === 'RAIN' ? '🌧️' : sensor.type === 'PRESSURE' ? '💧' : '📏' }}
+              </div>
+              <div class="sensor-info">
+                <div class="sensor-name">{{ sensor.name }}</div>
+                <div class="sensor-code">{{ sensor.code }}</div>
+              </div>
+              <div class="sensor-status" :class="sensor.status">
+                <span class="status-dot"></span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 数据曲线图 -->
+          <div v-if="showSensorChart && selectedSensor" class="sensor-chart">
+            <div class="chart-title">最近7天数据</div>
+            <div class="chart-container">
+              <svg class="chart-svg" viewBox="0 0 280 100">
+                <polyline
+                  :points="getChartPoints()"
+                  fill="none"
+                  stroke="#409eff"
+                  stroke-width="2"
+                />
+                <circle 
+                  v-for="(point, index) in sensorChartData" 
+                  :key="index"
+                  :cx="40 + index * 40"
+                  :cy="100 - point * 1.8"
+                  r="4"
+                  fill="#409eff"
+                />
+              </svg>
+              <div class="chart-labels">
+                <span>7天前</span>
+                <span>今天</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' }">
+      <div class="left-panel" v-if="currentView === 'system'">
         <div class="panel-content">
           <div class="panel-section health-section">
             <div class="section-header">
@@ -439,6 +576,11 @@ const resourceStats = ref({
 
 const isRightPanelCollapsed = ref(false)
 
+// 视图模式
+const currentView = ref<'system' | 'hazard'>('system')
+const currentHazardPoint = ref<typeof hazardPoints.value[0] | null>(null)
+const showHazardList = ref(false)
+
 // 工具按钮状态
 const showSearchPanel = ref(false)
 const showLayerPanel = ref(false)
@@ -446,6 +588,66 @@ const showLegendPanel = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
 const flashingPointId = ref<number | null>(null)
+
+// 设备列表
+const deviceList = ref([
+  {
+    id: 1,
+    name: 'GNSS接收机-001',
+    type: 'GNSS',
+    typeName: 'GNSS接收机',
+    status: 'online',
+    sensorCount: 3,
+    longitude: 104.085,
+    latitude: 30.652
+  },
+  {
+    id: 2,
+    name: '雨量计-003',
+    type: 'RAIN',
+    typeName: '雨量计',
+    status: 'online',
+    sensorCount: 1,
+    longitude: 104.088,
+    latitude: 30.655
+  },
+  {
+    id: 3,
+    name: '渗压计-012',
+    type: 'PRESSURE',
+    typeName: '渗压计',
+    status: 'warning',
+    sensorCount: 2,
+    longitude: 104.082,
+    latitude: 30.658
+  },
+  {
+    id: 4,
+    name: '位移计-005',
+    type: 'DISPLACEMENT',
+    typeName: '位移计',
+    status: 'offline',
+    sensorCount: 4,
+    longitude: 104.090,
+    latitude: 30.653
+  }
+])
+
+// 传感器列表
+const sensorList = ref<any[]>([])
+const selectedDevice = ref<typeof deviceList.value[0] | null>(null)
+const selectedSensor = ref<any | null>(null)
+const showSensorChart = ref(false)
+const sensorChartData = ref<number[]>([])
+
+// 生成最近7天的模拟数据
+const generateSensorData = () => {
+  const data: number[] = []
+  for (let i = 0; i < 7; i++) {
+    data.push(Math.random() * 50 + Math.sin(i * 0.5) * 10)
+  }
+  return data
+}
 
 // 图层设置
 const layerSettings = ref({
@@ -736,6 +938,10 @@ const addHazardPoints = () => {
       offset: L.point(0, -15)
     })
     
+    marker.on('click', () => {
+      enterHazardView(point)
+    })
+    
     marker.on('mouseover', () => {
       marker.openPopup()
     })
@@ -867,13 +1073,8 @@ const handleSearch = () => {
 }
 
 const selectSearchResult = (point: any) => {
-  if (!mapInstance) return
-  
-  // 漫游到目标位置
-  mapInstance.setView([point.latitude, point.longitude], 15)
-  
-  // 触发闪烁效果
-  startPointFlash(point.id)
+  // 进入隐患点视图
+  enterHazardView(point)
   
   // 关闭搜索面板
   showSearchPanel.value = false
@@ -911,8 +1112,195 @@ const startPointFlash = (pointId: number) => {
 // 图层控制
 const toggleLayer = (layerKey: string) => {
   console.log('Toggle layer:', layerKey, layerSettings.value[layerKey as keyof typeof layerSettings.value])
-  // 实际的图层切换逻辑可以根据需要实现
-  // 这里可以添加/移除相应的地图图层
+}
+
+// 隐患点视图相关函数
+const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
+  currentView.value = 'hazard'
+  currentHazardPoint.value = hazardPoint
+  showHazardList.value = false
+  selectedDevice.value = null
+  selectedSensor.value = null
+  showSensorChart.value = false
+  sensorList.value = []
+  
+  // 更新告警统计（限定到当前隐患点）
+  updateHazardAlarms(hazardPoint.id)
+  
+  // 地图聚焦到隐患点
+  if (mapInstance) {
+    mapInstance.setView([hazardPoint.latitude, hazardPoint.longitude], 14)
+  }
+  
+  // 添加设备标记
+  addDeviceMarkers(hazardPoint.id)
+}
+
+const exitHazardView = () => {
+  currentView.value = 'system'
+  currentHazardPoint.value = null
+  selectedDevice.value = null
+  selectedSensor.value = null
+  showSensorChart.value = false
+  sensorList.value = []
+  
+  // 恢复告警统计（全系统）
+  resetAlarmStats()
+  
+  // 恢复隐患点显示
+  if (mapInstance && hazardMarkerLayer) {
+    hazardMarkerLayer.clearLayers()
+    addHazardPoints()
+    fitToFocusArea()
+  }
+}
+
+const updateHazardAlarms = (hazardId: number) => {
+  // 模拟当前隐患点的告警数据
+  alarmStats.value.pendingCount = 3
+  alarmStats.value.historyCount = 28
+  alarmStats.value.levelStats = [
+    { key: 'critical', name: '严重', count: 1 },
+    { key: 'major', name: '重要', count: 1 },
+    { key: 'minor', name: '一般', count: 1 },
+    { key: 'info', name: '提示', count: 0 }
+  ]
+  alarmStats.value.recentAlarms = [
+    { id: 1, level: 'critical', title: '位移超限告警', source: 'GNSS接收机-001', time: '5分钟前' },
+    { id: 2, level: 'major', title: '数据异常', source: '渗压计-012', time: '30分钟前' },
+    { id: 3, level: 'minor', title: '设备离线', source: '位移计-005', time: '2小时前' }
+  ]
+}
+
+const resetAlarmStats = () => {
+  alarmStats.value = {
+    pendingCount: 12,
+    historyCount: 156,
+    levelStats: [
+      { key: 'critical', name: '严重', count: 3 },
+      { key: 'major', name: '重要', count: 5 },
+      { key: 'minor', name: '一般', count: 4 },
+      { key: 'info', name: '提示', count: 8 }
+    ],
+    recentAlarms: [
+      { id: 1, level: 'critical', title: '位移超限告警', source: 'K12+345隐患点', time: '10分钟前' },
+      { id: 2, level: 'major', title: '设备离线告警', source: 'GNSS-001', time: '15分钟前' },
+      { id: 3, level: 'minor', title: '雨量超标提醒', source: '雨量计-003', time: '30分钟前' },
+      { id: 4, level: 'info', title: '数据上报延迟', source: '渗压计-012', time: '1小时前' }
+    ]
+  }
+}
+
+const selectHazardPoint = (hazardPoint: typeof hazardPoints.value[0]) => {
+  currentHazardPoint.value = hazardPoint
+  showHazardList.value = false
+  updateHazardAlarms(hazardPoint.id)
+  
+  if (mapInstance) {
+    mapInstance.setView([hazardPoint.latitude, hazardPoint.longitude], 14)
+  }
+  
+  addDeviceMarkers(hazardPoint.id)
+}
+
+const addDeviceMarkers = (hazardId: number) => {
+  if (!mapInstance) return
+  
+  // 清除现有标记
+  if (hazardMarkerLayer) {
+    mapInstance.removeLayer(hazardMarkerLayer)
+  }
+  
+  hazardMarkerLayer = L.layerGroup().addTo(mapInstance)
+  
+  // 绘制隐患点范围
+  const hazardArea = L.circle([currentHazardPoint.value!.latitude, currentHazardPoint.value!.longitude], {
+    radius: 500,
+    color: '#f5222d',
+    fillColor: '#f5222d',
+    fillOpacity: 0.1,
+    weight: 2,
+    dashArray: '8,4'
+  }).addTo(hazardMarkerLayer)
+  
+  // 添加设备标记
+  deviceList.value.forEach(device => {
+    const icon = createDeviceIcon(device.status)
+    const marker = L.marker([device.latitude, device.longitude], { icon })
+      .addTo(hazardMarkerLayer!)
+      .bindPopup(`
+        <div style="padding: 8px; min-width: 180px;">
+          <div style="font-weight: 600; margin-bottom: 8px;">${device.name}</div>
+          <div style="font-size: 12px; color: #666;">
+            <div>类型: ${device.typeName}</div>
+            <div>传感器: ${device.sensorCount}个</div>
+            <div>状态: ${getStatusText(device.status)}</div>
+          </div>
+        </div>
+      `)
+  })
+}
+
+const createDeviceIcon = (status: string) => {
+  const color = status === 'online' ? '#52c41a' : status === 'warning' ? '#faad14' : '#f5222d'
+  return L.divIcon({
+    className: 'device-marker',
+    html: `<div style="
+      width: 24px;
+      height: 24px;
+      background: ${color};
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+    ">📡</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  })
+}
+
+const getStatusText = (status: string) => {
+  return status === 'online' ? '在线' : status === 'warning' ? '预警' : '离线'
+}
+
+const selectDevice = (device: typeof deviceList.value[0]) => {
+  selectedDevice.value = device
+  selectedSensor.value = null
+  showSensorChart.value = false
+  
+  // 生成传感器列表
+  sensorList.value = []
+  for (let i = 1; i <= device.sensorCount; i++) {
+    sensorList.value.push({
+      id: device.id * 100 + i,
+      name: `${device.typeName}-传感器${i}`,
+      code: `S${device.id.toString().padStart(3, '0')}-${i.toString().padStart(2, '0')}`,
+      type: device.type,
+      status: i === 1 ? 'warning' : 'online'
+    })
+  }
+}
+
+const selectSensor = (sensor: any) => {
+  if (selectedSensor.value?.id === sensor.id) {
+    showSensorChart.value = !showSensorChart.value
+  } else {
+    selectedSensor.value = sensor
+    showSensorChart.value = true
+    sensorChartData.value = generateSensorData()
+  }
+}
+
+const getChartPoints = () => {
+  return sensorChartData.value.map((point, index) => {
+    const x = 40 + index * 40
+    const y = 100 - point * 1.8
+    return `${x},${y}`
+  }).join(' ')
 }
 
 const handleLayerSelect = (layerId: string) => {
@@ -2093,5 +2481,371 @@ onUnmounted(() => {
 
 .legend-text {
   font-size: 16px;
+}
+
+/* 隐患点视图样式 */
+.hazard-view-header {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.hazard-title-wrapper {
+  position: relative;
+}
+
+.hazard-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.hazard-title:hover {
+  background: #e4e7ed;
+}
+
+.hazard-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.hazard-dropdown-arrow {
+  font-size: 10px;
+  color: #909399;
+  transition: transform 0.2s;
+}
+
+.hazard-list-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1001;
+}
+
+.hazard-list-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  color: #303133;
+}
+
+.hazard-list-item:hover {
+  background: #f0f7ff;
+}
+
+.hazard-list-item.active {
+  background: #e6f7ff;
+  color: #409eff;
+}
+
+.close-hazard-view-btn {
+  width: 36px;
+  height: 36px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-hazard-view-btn:hover {
+  background: #fff1f0;
+  border-color: #ff7875;
+  color: #f5222d;
+}
+
+/* 隐患点信息面板 */
+.hazard-info-panel {
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  width: 300px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  z-index: 999;
+}
+
+.hazard-basic-info {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.info-value {
+  font-size: 12px;
+  color: #303133;
+}
+
+/* 设备列表 */
+.device-list-panel {
+  padding: 16px;
+}
+
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.device-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.device-item:hover {
+  background: #f0f7ff;
+  border-color: #409eff;
+}
+
+.device-item.selected {
+  background: #e6f7ff;
+  border-color: #409eff;
+}
+
+.device-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.device-type-icon {
+  font-size: 24px;
+}
+
+.device-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.device-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.device-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: #909399;
+}
+
+.device-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.device-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.device-status.online .status-dot {
+  background: #52c41a;
+}
+
+.device-status.online .status-text {
+  color: #52c41a;
+}
+
+.device-status.warning .status-dot {
+  background: #faad14;
+}
+
+.device-status.warning .status-text {
+  color: #faad14;
+}
+
+.device-status.offline .status-dot {
+  background: #f5222d;
+}
+
+.device-status.offline .status-text {
+  color: #f5222d;
+}
+
+/* 传感器列表 */
+.sensor-list-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.sensor-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 10px;
+}
+
+.sensor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sensor-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #fafafa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.sensor-item:hover {
+  background: #f0f7ff;
+}
+
+.sensor-item.selected {
+  background: #e6f7ff;
+  border-color: #409eff;
+}
+
+.sensor-item.warning {
+  background: #fff7e6;
+}
+
+.sensor-item.warning.selected {
+  background: #fff1f0;
+  border-color: #fa541c;
+}
+
+.sensor-icon {
+  font-size: 18px;
+}
+
+.sensor-info {
+  flex: 1;
+}
+
+.sensor-name {
+  font-size: 12px;
+  color: #303133;
+}
+
+.sensor-code {
+  font-size: 10px;
+  color: #909399;
+}
+
+.sensor-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sensor-status.online .status-dot {
+  background: #52c41a;
+}
+
+.sensor-status.warning .status-dot {
+  background: #faad14;
+}
+
+/* 数据曲线图 */
+.sensor-chart {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.chart-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 10px;
+}
+
+.chart-container {
+  position: relative;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100px;
+  background: linear-gradient(to top, #f0f7ff 0%, transparent 100%);
+  border-radius: 4px;
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #909399;
+  margin-top: 4px;
 }
 </style>

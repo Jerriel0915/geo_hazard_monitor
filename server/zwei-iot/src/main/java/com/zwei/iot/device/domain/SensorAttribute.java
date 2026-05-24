@@ -1,6 +1,8 @@
 package com.zwei.iot.device.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
 import java.math.BigDecimal;
@@ -10,6 +12,11 @@ import java.math.BigDecimal;
  *
  * @author zwei
  */
+@Setter
+@Getter
+@SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 public class SensorAttribute extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -64,85 +71,10 @@ public class SensorAttribute extends BaseEntity {
      */
     private BigDecimal rangeMax;
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getSensorId() {
-        return sensorId;
-    }
-
-    public void setSensorId(Long sensorId) {
-        this.sensorId = sensorId;
-    }
-
-    public String getAttrCode() {
-        return attrCode;
-    }
-
-    public void setAttrCode(String attrCode) {
-        this.attrCode = attrCode;
-    }
-
-    public String getAttrName() {
-        return attrName;
-    }
-
-    public void setAttrName(String attrName) {
-        this.attrName = attrName;
-    }
-
-    public String getIndicatorType() {
-        return indicatorType;
-    }
-
-    public void setIndicatorType(String indicatorType) {
-        this.indicatorType = indicatorType;
-    }
-
-    public String getIndicatorTypeName() {
-        return indicatorTypeName;
-    }
-
-    public void setIndicatorTypeName(String indicatorTypeName) {
-        this.indicatorTypeName = indicatorTypeName;
-    }
-
-    public BigDecimal getInitialValue() {
-        return initialValue;
-    }
-
-    public void setInitialValue(BigDecimal initialValue) {
-        this.initialValue = initialValue;
-    }
-
-    public String getUnit() {
-        return unit;
-    }
-
-    public void setUnit(String unit) {
-        this.unit = unit;
-    }
-
-    public BigDecimal getRangeMin() {
-        return rangeMin;
-    }
-
-    public void setRangeMin(BigDecimal rangeMin) {
-        this.rangeMin = rangeMin;
-    }
-
-    public BigDecimal getRangeMax() {
-        return rangeMax;
-    }
-
-    public void setRangeMax(BigDecimal rangeMax) {
-        this.rangeMax = rangeMax;
-    }
+    /**
+     * 图标路径
+     */
+    private String icon;
 
     @Override
     public String toString() {
@@ -157,6 +89,7 @@ public class SensorAttribute extends BaseEntity {
                 ", unit='" + unit + '\'' +
                 ", rangeMin=" + rangeMin +
                 ", rangeMax=" + rangeMax +
+                ", icon='" + icon + '\'' +
                 '}';
     }
 }

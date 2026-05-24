@@ -1,6 +1,7 @@
 package com.zwei.iot.video.mapper;
 
 import com.zwei.iot.video.domain.VideoDevice;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.List;
  *
  * @author zwei
  */
+@Mapper
 public interface VideoDeviceMapper {
     /**
      * 分页查询视频设备

@@ -131,4 +131,20 @@
         WHERE device_id = #{deviceId}
     </delete>
 
+    <!-- 根据传感器条件查询传感器列表 -->
+    <select id="selectSensorList" parameterType="com.zwei.iot.device.domain.DeviceSensor" resultMap="DeviceSensorResult">
+        <include refid="selectSensorVo"/>
+        <where>
+            <if test="deviceId != null">ds.device_id = #{deviceId}</if>
+            <if test="deviceCode != null and deviceCode != ''">AND ds.device_code = #{deviceCode}</if>
+            <if test="sensorCode != null and sensorCode != ''">AND ds.sensor_code = #{sensorCode}</if>
+            <if test="sensorName != null and sensorName != ''">AND ds.sensor_name LIKE CONCAT('%', #{sensorName}, '%')</if>
+            <if test="monitorTypeId != null">AND ds.monitor_type_id = #{monitorTypeId}</if>
+            <if test="monitorTypeCode != null and monitorTypeCode != ''">AND ds.monitor_type_code = #{monitorTypeCode}</if>
+            <if test="status != null">AND ds.status = #{status}</if>
+            AND ds.del_flag = 0
+        </where>
+        ORDER BY ds.id ASC
+    </select>
+
 </mapper>

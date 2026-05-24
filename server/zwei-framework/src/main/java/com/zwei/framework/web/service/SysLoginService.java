@@ -22,11 +22,15 @@ import com.zwei.common.utils.DateUtils;
 import com.zwei.common.utils.MessageUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.ip.IpUtils;
-import com.zwei.framework.manager.AsyncManager;
-import com.zwei.framework.manager.factory.AsyncFactory;
 import com.zwei.framework.security.context.AuthenticationContextHolder;
+import com.zwei.log.application.service.LogCenterService;
+import com.zwei.log.domain.LogAttributes;
+import com.zwei.log.domain.enums.AuthEventType;
+import com.zwei.log.domain.enums.LogExecutionStatus;
+import com.zwei.log.domain.model.LogAuthRecord;
 import com.zwei.system.service.ISysConfigService;
 import com.zwei.system.service.ISysUserService;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 登录校验方法
@@ -50,6 +54,9 @@ public class SysLoginService
 
     @Autowired
     private ISysConfigService configService;
+
+    @Autowired
+    private LogCenterService logCenterService;
 
     /**
      * 登录验证
@@ -80,12 +87,12 @@ public class SysLoginService
         {
             if (e instanceof BadCredentialsException)
             {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match")));
+                publishLoginFailure(username, MessageUtils.message("user.password.not.match"));
                 throw new UserPasswordNotMatchException();
             }
             else
             {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, e.getMessage()));
+                publishLoginFailure(username, e.getMessage());
                 throw new ServiceException(e.getMessage());
             }
         }
@@ -93,7 +100,8 @@ public class SysLoginService
         {
             AuthenticationContextHolder.clearContext();
         }
-        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
+        publishAuthRecord(username, AuthEventType.LOGIN_SUCCESS, LogExecutionStatus.SUCCESS.name(),
+            MessageUtils.message("user.login.success"), null);
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
         recordLoginInfo(loginUser.getUserId());
         // 生成token
@@ -117,13 +125,13 @@ public class SysLoginService
             String captcha = redisCache.getCacheObject(verifyKey);
             if (captcha == null)
             {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.expire")));
+                publishLoginFailure(username, MessageUtils.message("user.jcaptcha.expire"));
                 throw new CaptchaExpireException();
             }
             redisCache.deleteObject(verifyKey);
             if (!code.equalsIgnoreCase(captcha))
             {
-                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error")));
+                publishLoginFailure(username, MessageUtils.message("user.jcaptcha.error"));
                 throw new CaptchaException();
             }
         }
@@ -139,28 +147,28 @@ public class SysLoginService
         // 用户名或密码为空 错误
         if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password))
         {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("not.null")));
+            publishLoginFailure(username, MessageUtils.message("not.null"));
             throw new UserNotExistsException();
         }
         // 密码如果不在指定范围内 错误
         if (password.length() < UserConstants.PASSWORD_MIN_LENGTH
                 || password.length() > UserConstants.PASSWORD_MAX_LENGTH)
         {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match")));
+            publishLoginFailure(username, MessageUtils.message("user.password.not.match"));
             throw new UserPasswordNotMatchException();
         }
         // 用户名不在指定范围内 错误
         if (username.length() < UserConstants.USERNAME_MIN_LENGTH
                 || username.length() > UserConstants.USERNAME_MAX_LENGTH)
         {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.password.not.match")));
+            publishLoginFailure(username, MessageUtils.message("user.password.not.match"));
             throw new UserPasswordNotMatchException();
         }
         // IP黑名单校验
         String blackStr = configService.selectConfigByKey("sys.login.blackIPList");
         if (IpUtils.isMatchedIp(blackStr, IpUtils.getIpAddr()))
         {
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("login.blocked")));
+            publishLoginFailure(username, MessageUtils.message("login.blocked"));
             throw new BlackListException();
         }
     }
@@ -173,5 +181,36 @@ public class SysLoginService
     public void recordLoginInfo(Long userId)
     {
         userService.updateLoginInfo(userId, IpUtils.getIpAddr(), DateUtils.getNowDate());
+    }
+
+    private void publishLoginFailure(String username, String message) {
+        publishAuthRecord(username, AuthEventType.LOGIN_FAIL, LogExecutionStatus.FAIL.name(), message, "LOGIN_FAIL");
+    }
+
+    private void publishAuthRecord(String username, AuthEventType eventType, String resultStatus, String message, String failureCode) {
+        LogAuthRecord record = new LogAuthRecord();
+        record.setUsername(username);
+        record.setAuthEventType(eventType.name());
+        record.setAuthChannel("PASSWORD");
+        record.setResultStatus(resultStatus);
+        record.setFailureMessage(message);
+        record.setFailureCode(failureCode);
+        record.setClientIp(IpUtils.getIpAddr());
+        record.setClientLocation(com.zwei.common.utils.ip.AddressUtils.getRealAddressByIP(record.getClientIp()));
+        HttpServletRequest request = com.zwei.common.utils.ServletUtils.getRequest();
+        if (request != null) {
+            record.setRequestUri(request.getRequestURI());
+            record.setRequestMethod(request.getMethod());
+            record.setUserAgent(StringUtils.substring(request.getHeader("User-Agent"), 0, 512));
+            Object traceId = request.getAttribute(LogAttributes.TRACE_ID);
+            Object requestId = request.getAttribute(LogAttributes.REQUEST_ID);
+            if (traceId != null) {
+                record.setTraceId(traceId.toString());
+            }
+            if (requestId != null) {
+                record.setRequestId(requestId.toString());
+            }
+        }
+        logCenterService.publishAuth(record);
     }
 }

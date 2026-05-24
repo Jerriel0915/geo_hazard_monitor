@@ -1,17 +1,19 @@
 package com.zwei.common.utils;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.util.PatternMatchUtils;
 import com.zwei.common.constant.Constants;
 import com.zwei.common.constant.HttpStatus;
 import com.zwei.common.core.domain.entity.SysRole;
 import com.zwei.common.core.domain.model.LoginUser;
 import com.zwei.common.exception.ServiceException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.util.PatternMatchUtils;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 安全服务工具类
@@ -79,6 +81,19 @@ public class SecurityUtils
         {
             throw new ServiceException("获取用户信息异常", HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    /**
+     * 安全获取当前登录用户，匿名或未认证请求返回null
+     */
+    public static LoginUser getLoginUserOrNull() {
+        Authentication authentication = getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        return principal instanceof LoginUser ? (LoginUser) principal : null;
     }
 
     /**

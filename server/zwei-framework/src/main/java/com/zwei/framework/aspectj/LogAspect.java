@@ -21,7 +21,6 @@ import com.zwei.common.annotation.Log;
 import com.zwei.common.core.domain.entity.SysUser;
 import com.zwei.common.core.domain.model.LoginUser;
 import com.zwei.common.core.text.Convert;
-import com.zwei.common.enums.BusinessStatus;
 import com.zwei.common.enums.HttpMethod;
 import com.zwei.common.filter.PropertyPreExcludeFilter;
 import com.zwei.common.utils.ExceptionUtil;
@@ -29,11 +28,10 @@ import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.ServletUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.ip.IpUtils;
-import com.zwei.framework.manager.AsyncManager;
-import com.zwei.framework.manager.factory.AsyncFactory;
-import com.zwei.system.domain.SysOperLog;
-import org.springframework.context.ApplicationEventPublisher;
-import com.zwei.framework.event.OperLogEvent;
+import com.zwei.log.application.service.LogCenterService;
+import com.zwei.log.domain.LogAttributes;
+import com.zwei.log.domain.enums.LogExecutionStatus;
+import com.zwei.log.domain.model.LogOperationRecord;
 
 /**
  * 操作日志记录处理
@@ -55,8 +53,12 @@ public class LogAspect
     /** 参数最大长度限制 */
     private static final int PARAM_MAX_LENGTH = 2000;
 
-    /** 事件发布器 */
-    private ApplicationEventPublisher eventPublisher;
+    private final LogCenterService logCenterService;
+
+    public LogAspect(LogCenterService logCenterService)
+    {
+        this.logCenterService = logCenterService;
+    }
 
     /**
      * 处理请求前执行
@@ -97,16 +99,18 @@ public class LogAspect
             // 获取当前的用户
             LoginUser loginUser = SecurityUtils.getLoginUser();
 
-            // *========数据库日志=========*//
-            SysOperLog operLog = new SysOperLog();
-            operLog.setStatus(BusinessStatus.SUCCESS.ordinal());
+            LogOperationRecord operLog = new LogOperationRecord();
+            operLog.setExecStatus(LogExecutionStatus.SUCCESS.name());
             // 请求的地址
             String ip = IpUtils.getIpAddr();
-            operLog.setOperIp(ip);
-            operLog.setOperUrl(StringUtils.substring(ServletUtils.getRequest().getRequestURI(), 0, 255));
+            operLog.setClientIp(ip);
+            operLog.setApiPath(StringUtils.substring(ServletUtils.getRequest().getRequestURI(), 0, 255));
+            operLog.setTraceId(String.valueOf(ServletUtils.getRequest().getAttribute(LogAttributes.TRACE_ID)));
+            operLog.setRequestId(String.valueOf(ServletUtils.getRequest().getAttribute(LogAttributes.REQUEST_ID)));
             if (loginUser != null)
             {
-                operLog.setOperName(loginUser.getUsername());
+                operLog.setUserId(loginUser.getUserId());
+                operLog.setUsername(loginUser.getUsername());
                 SysUser currentUser = loginUser.getUser();
                 if (StringUtils.isNotNull(currentUser) && StringUtils.isNotNull(currentUser.getDept()))
                 {
@@ -116,23 +120,22 @@ public class LogAspect
 
             if (e != null)
             {
-                operLog.setStatus(BusinessStatus.FAIL.ordinal());
-                operLog.setErrorMsg(StringUtils.substring(Convert.toStr(e.getMessage(), ExceptionUtil.getExceptionMessage(e)), 0, 2000));
+                operLog.setExecStatus(LogExecutionStatus.FAIL.name());
+                operLog.setErrorMessage(StringUtils.substring(Convert.toStr(e.getMessage(), ExceptionUtil.getExceptionMessage(e)), 0, 2000));
             }
             // 设置方法名称
             String className = joinPoint.getTarget().getClass().getName();
             String methodName = joinPoint.getSignature().getName();
-            operLog.setMethod(className + "." + methodName + "()");
+            operLog.setControllerMethod(className + "." + methodName + "()");
             // 设置请求方式
             operLog.setRequestMethod(ServletUtils.getRequest().getMethod());
             // 处理设置注解上的参数
             getControllerMethodDescription(joinPoint, controllerLog, operLog, jsonResult);
             // 设置消耗时间
-            operLog.setCostTime(System.currentTimeMillis() - TIME_THREADLOCAL.get());
-            // 保存数据库
-            AsyncManager.me().execute(AsyncFactory.recordOper(operLog));
-            // 发布事件用于SSE推送
-            publishEvent(operLog);
+            operLog.setHttpStatus(ServletUtils.getResponse().getStatus());
+            operLog.setCostTimeMs(System.currentTimeMillis() - TIME_THREADLOCAL.get());
+            ServletUtils.getRequest().setAttribute(LogAttributes.ASPECT_HANDLED, Boolean.TRUE);
+            logCenterService.publishOperation(operLog);
         }
         catch (Exception exp)
         {
@@ -152,14 +155,12 @@ public class LogAspect
      * @param operLog 操作日志
      * @throws Exception
      */
-    public void getControllerMethodDescription(JoinPoint joinPoint, Log log, SysOperLog operLog, Object jsonResult) throws Exception
+    public void getControllerMethodDescription(JoinPoint joinPoint, Log log, LogOperationRecord operLog, Object jsonResult) throws Exception
     {
         // 设置action动作
-        operLog.setBusinessType(log.businessType().ordinal());
+        operLog.setBusinessType(log.businessType().name());
         // 设置标题
         operLog.setTitle(log.title());
-        // 设置操作人类别
-        operLog.setOperatorType(log.operatorType().ordinal());
         // 是否需要保存request，参数和值
         if (log.isSaveRequestData())
         {
@@ -169,7 +170,7 @@ public class LogAspect
         // 是否需要保存response，参数和值
         if (log.isSaveResponseData() && StringUtils.isNotNull(jsonResult))
         {
-            operLog.setJsonResult(StringUtils.substring(JSON.toJSONString(jsonResult), 0, 2000));
+            operLog.setResponseBody(StringUtils.substring(JSON.toJSONString(jsonResult), 0, 2000));
         }
     }
 
@@ -179,18 +180,18 @@ public class LogAspect
      * @param operLog 操作日志
      * @throws Exception 异常
      */
-    private void setRequestValue(JoinPoint joinPoint, SysOperLog operLog, String[] excludeParamNames) throws Exception
+    private void setRequestValue(JoinPoint joinPoint, LogOperationRecord operLog, String[] excludeParamNames) throws Exception
     {
         String requestMethod = operLog.getRequestMethod();
         Map<?, ?> paramsMap = ServletUtils.getParamMap(ServletUtils.getRequest());
         if (StringUtils.isEmpty(paramsMap) && StringUtils.equalsAny(requestMethod, HttpMethod.PUT.name(), HttpMethod.POST.name(), HttpMethod.DELETE.name()))
         {
             String params = argsArrayToString(joinPoint.getArgs(), excludeParamNames);
-            operLog.setOperParam(params);
+            operLog.setRequestParams(params);
         }
         else
         {
-            operLog.setOperParam(StringUtils.substring(JSON.toJSONString(paramsMap, excludePropertyPreFilter(excludeParamNames)), 0, PARAM_MAX_LENGTH));
+            operLog.setRequestParams(StringUtils.substring(JSON.toJSONString(paramsMap, excludePropertyPreFilter(excludeParamNames)), 0, PARAM_MAX_LENGTH));
         }
     }
 
@@ -266,21 +267,5 @@ public class LogAspect
         }
         return o instanceof MultipartFile || o instanceof HttpServletRequest || o instanceof HttpServletResponse
                 || o instanceof BindingResult;
-    }
-
-    /**
-     * 设置事件发布器
-     */
-    public void setEventPublisher(ApplicationEventPublisher eventPublisher) {
-        this.eventPublisher = eventPublisher;
-    }
-
-    /**
-     * 发布日志事件
-     */
-    private void publishEvent(SysOperLog operLog) {
-        if (eventPublisher != null && operLog != null) {
-            eventPublisher.publishEvent(new OperLogEvent(operLog));
-        }
     }
 }
