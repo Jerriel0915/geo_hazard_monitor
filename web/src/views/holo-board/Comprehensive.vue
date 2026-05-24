@@ -619,6 +619,7 @@ const initMap = () => {
   }).addTo(map)
 
   L.control.zoom({position: 'bottomright'}).addTo(map)
+  const leafletMap = map
 
   hazardPoints.value.forEach(point => {
     const color = point.hasAlarm ? '#f5222d' : '#52c41a'
@@ -646,7 +647,7 @@ const initMap = () => {
 
     const marker = L.marker([point.y / 100 * 0.1 + 30.55, point.x / 100 * 0.2 + 104.0], {
       icon: customIcon
-    }).addTo(map)
+    }).addTo(leafletMap)
 
     const statusText = point.hasAlarm ? '待办告警' : '正常监测'
     const devicesHtml = point.devices.map(device => {

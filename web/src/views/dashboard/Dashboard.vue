@@ -699,7 +699,7 @@ const layerSettings = ref({
   showCompleted: false
 })
 
-const focusAreaBounds = ref([
+const focusAreaBounds = ref<[number, number][]>([
   [30.60, 104.00],
   [30.70, 104.15],
   [30.65, 104.25],
@@ -883,8 +883,7 @@ const addFocusBoundary = () => {
     color: '#f5222d',
     weight: 3,
     opacity: 1,
-    dashArray: '8,4',
-    zIndex: 10
+    dashArray: '8,4'
   }).addTo(mapInstance)
 }
 
@@ -894,19 +893,18 @@ const addMaskLayer = () => {
   const southWest = L.latLng(30.40, 103.80)
   const northEast = L.latLng(30.90, 104.40)
   const mapBounds = L.latLngBounds(southWest, northEast)
+  const outerRing: [number, number][] = [
+    [mapBounds.getWest(), mapBounds.getSouth()],
+    [mapBounds.getEast(), mapBounds.getSouth()],
+    [mapBounds.getEast(), mapBounds.getNorth()],
+    [mapBounds.getWest(), mapBounds.getNorth()],
+    [mapBounds.getWest(), mapBounds.getSouth()]
+  ]
+  const innerRing: [number, number][] = focusAreaBounds.value.map(([lat, lng]) => [lng, lat])
 
   const maskGeoJson = {
-    type: 'Polygon',
-    coordinates: [
-      [
-        [mapBounds.getWest(), mapBounds.getSouth()],
-        [mapBounds.getEast(), mapBounds.getSouth()],
-        [mapBounds.getEast(), mapBounds.getNorth()],
-        [mapBounds.getWest(), mapBounds.getNorth()],
-        [mapBounds.getWest(), mapBounds.getSouth()]
-      ],
-      focusAreaBounds.value.map(point => [point[1], point[0]])
-    ]
+    type: 'Polygon' as const,
+    coordinates: [outerRing, innerRing]
   }
 
   maskLayer = L.geoJSON(maskGeoJson, {
@@ -914,8 +912,7 @@ const addMaskLayer = () => {
       fillColor: '#000000',
       fillOpacity: 0.35,
       color: 'transparent',
-      weight: 0,
-      zIndex: 5
+      weight: 0
     }
   }).addTo(mapInstance)
 }
@@ -923,7 +920,8 @@ const addMaskLayer = () => {
 const addHazardPoints = () => {
   if (!mapInstance) return
 
-  hazardMarkerLayer = L.layerGroup().addTo(mapInstance)
+  const markerLayer = L.layerGroup().addTo(mapInstance)
+  hazardMarkerLayer = markerLayer
 
   hazardPoints.value.forEach(point => {
     const marker = L.circleMarker([point.latitude, point.longitude], {
@@ -932,9 +930,8 @@ const addHazardPoints = () => {
       color: '#ffffff',
       weight: 2,
       opacity: 1,
-      fillOpacity: 0.8,
-      zIndex: 20
-    }).addTo(hazardMarkerLayer)
+      fillOpacity: 0.8
+    }).addTo(markerLayer)
 
     // 存储marker引用
     hazardMarkerMap.set(point.id, marker)
@@ -993,7 +990,7 @@ const startRipple = (point: typeof hazardPoints.value[0]) => {
   if (!mapInstance || !point.alarmLevel) return
 
   const color = alarmColors[point.alarmLevel]
-  const center = [point.latitude, point.longitude]
+  const center: [number, number] = [point.latitude, point.longitude]
   const rippleCount = 3
   const rippleDelay = 1500
 
@@ -1009,15 +1006,15 @@ const startRipple = (point: typeof hazardPoints.value[0]) => {
         color: color,
         weight: 2,
         opacity: 0.8,
-        fillOpacity: 0.1,
-        zIndex: 15
+        fillOpacity: 0.1
       }).addTo(mapInstance!)
 
       circles.push(ripple)
 
-      ripple.setStyle({
-        transition: 'all 2s ease-out'
-      })
+      const rippleElement = ripple.getElement()
+      if (rippleElement instanceof HTMLElement || rippleElement instanceof SVGElement) {
+        rippleElement.style.setProperty('transition', 'all 2s ease-out')
+      }
 
       setTimeout(() => {
         ripple.setRadius(60)
@@ -1133,7 +1130,7 @@ const startPointFlash = (pointId: number) => {
     flashCount++
 
     // 切换marker样式来模拟闪烁
-    const currentOpacity = marker.options.fillOpacity
+    const currentOpacity = marker.options.fillOpacity ?? 0.8
     marker.setStyle({
       fillOpacity: currentOpacity > 0.5 ? 0.2 : 1
     })
