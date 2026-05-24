@@ -10,6 +10,13 @@
           </svg>
         </span>
         <span class="title">地质灾害监测预警系统1.0</span>
+        <span class="home-icon-wrapper" @click="goToDashboard">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" class="home-icon">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </span>
       </div>
       <nav class="header-nav">
         <el-menu mode="horizontal" default-active="Dashboard" @select="handleMenuSelect" class="nav-menu">
@@ -198,8 +205,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
 
 
 interface Message {
@@ -477,6 +484,14 @@ const scrollTabs = (direction: 'left' | 'right') => {
     }
   }
 }
+
+const goToDashboard = () => {
+  router.push('/dashboard')
+  if (!tabs.value.find(tab => tab.name === 'Dashboard')) {
+    tabs.value.push({name: 'Dashboard', label: '首页'})
+  }
+  activeTab.value = 'Dashboard'
+}
 </script>
 
 <style scoped>
@@ -568,6 +583,37 @@ const scrollTabs = (direction: 'left' | 'right') => {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+.home-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 12px;
+  backdrop-filter: blur(4px);
+}
+
+.home-icon-wrapper:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.home-icon {
+  width: 20px;
+  height: 20px;
+  color: white;
+  transition: transform 0.3s ease;
+}
+
+.home-icon-wrapper:hover .home-icon {
+  transform: scale(1.1);
+}
+
 .header-nav {
   flex: 1;
   margin-left: 48px;
@@ -621,11 +667,16 @@ const scrollTabs = (direction: 'left' | 'right') => {
   transition: transform 0.3s ease;
 }
 
-.nav-menu .el-sub-menu__title:hover,
-.nav-menu .el-sub-menu.is-active .el-sub-menu__title {
+.nav-menu .el-sub-menu__title:hover {
   background-color: rgba(0, 60, 130, 0.5);
   color: #ffffff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.nav-menu .el-sub-menu.is-active .el-sub-menu__title {
+  background-color: rgba(0, 60, 130, 0.5);
+  color: #001529;
+  text-shadow: none;
 }
 
 .nav-menu .el-sub-menu.is-active .menu-icon :deep(svg) {
@@ -1013,7 +1064,7 @@ const scrollTabs = (direction: 'left' | 'right') => {
 .main-content {
   flex: 1;
   background: linear-gradient(90deg, #e3f2fd 0%, #f5f7fa 50%, #ffffff 100%);
-  padding: 20px;
+  padding: 1px;
   overflow: auto;
   position: relative;
 }
