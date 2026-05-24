@@ -83,52 +83,16 @@
           <span class="panel-title">设备占比</span>
         </div>
         <div class="panel-body">
-          <div class="pie-container">
-            <svg class="pie-chart" viewBox="0 0 200 200">
-              <circle cx="100" cy="100" r="70" fill="none" stroke="#3b82f6" stroke-width="35" :stroke-dasharray="devicePieData[0].dashArray" transform="rotate(-90 100 100)"/>
-              <circle cx="100" cy="100" r="70" fill="none" stroke="#10b981" stroke-width="35" :stroke-dasharray="devicePieData[1].dashArray" :stroke-dashoffset="devicePieData[1].offset" transform="rotate(-90 100 100)"/>
-              <circle cx="100" cy="100" r="70" fill="none" stroke="#f59e0b" stroke-width="35" :stroke-dasharray="devicePieData[2].dashArray" :stroke-dashoffset="devicePieData[2].offset" transform="rotate(-90 100 100)"/>
-              <circle cx="100" cy="100" r="70" fill="none" stroke="#ef4444" stroke-width="35" :stroke-dasharray="devicePieData[3].dashArray" :stroke-dashoffset="devicePieData[3].offset" transform="rotate(-90 100 100)"/>
-              <circle cx="100" cy="100" r="70" fill="none" stroke="#8b5cf6" stroke-width="35" :stroke-dasharray="devicePieData[4].dashArray" :stroke-dashoffset="devicePieData[4].offset" transform="rotate(-90 100 100)"/>
-              <circle cx="100" cy="100" r="50" fill="#ffffff"/>
-            </svg>
-            <div class="pie-center">
-              <span class="pie-total">{{ stats.totalDevices }}</span>
-              <span class="pie-label">设备总数</span>
-            </div>
-          </div>
-          <div class="pie-legend">
-            <div v-for="item in deviceLegend" :key="item.name" class="legend-item">
-              <span class="legend-dot" :style="{ background: item.color }"></span>
-              <span class="legend-name">{{ item.name }}</span>
-              <span class="legend-value">{{ item.value }}%</span>
-            </div>
-          </div>
+          <div ref="pieChartRef" class="pie-echarts-container"></div>
         </div>
       </div>
 
       <div class="chart-panel bar-chart-panel">
         <div class="panel-header">
-          <span class="panel-title">各厂家设备在线率</span>
+          <span class="panel-title">监测类型设备在线率</span>
         </div>
         <div class="panel-body">
-          <div class="bar-chart-container">
-            <div class="bar-chart-y-axis">
-              <span>100%</span>
-              <span>80%</span>
-              <span>60%</span>
-              <span>40%</span>
-              <span>20%</span>
-              <span>0%</span>
-            </div>
-            <div class="bar-chart-area">
-              <div v-for="(item, index) in barChartData" :key="item.name" class="bar-item">
-                <div class="bar" :style="{ height: item.value + '%', background: barColors[index % barColors.length] }"></div>
-                <span class="bar-label">{{ item.name }}</span>
-                <span class="bar-value">{{ item.value }}%</span>
-              </div>
-            </div>
-          </div>
+          <div ref="barChartRef" class="echarts-container"></div>
         </div>
       </div>
 
@@ -137,14 +101,7 @@
           <span class="panel-title">传感器分类</span>
         </div>
         <div class="panel-body">
-          <div class="pyramid-container">
-            <div v-for="(item, index) in pyramidData" :key="item.name" class="pyramid-row">
-              <div class="pyramid-bar" :style="{ width: item.width + '%', background: pyramidColors[index] }">
-                <span class="pyramid-label">{{ item.name }}</span>
-                <span class="pyramid-value">{{ item.count }}</span>
-              </div>
-            </div>
-          </div>
+          <div ref="pyramidChartRef" class="echarts-container"></div>
         </div>
       </div>
     </div>
@@ -230,7 +187,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
+import { reactive, computed, ref, onMounted, onUnmounted } from 'vue'
+import * as echarts from 'echarts'
 
 const stats = reactive({
   totalDevices: 2363,
@@ -239,6 +197,261 @@ const stats = reactive({
   monitorTypes: 21,
   sensorOnlineRate: 99.2,
   hiddenDangerCount: 156
+})
+
+const barChartRef = ref<HTMLDivElement>()
+let barChartInstance: echarts.ECharts | null = null
+const pyramidChartRef = ref<HTMLDivElement>()
+let pyramidChartInstance: echarts.ECharts | null = null
+const pieChartRef = ref<HTMLDivElement>()
+let pieChartInstance: echarts.ECharts | null = null
+
+const initBarChart = () => {
+  if (!barChartRef.value) return
+  
+  barChartInstance = echarts.init(barChartRef.value)
+  
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: (params: any) => {
+        const data = params[0]
+        return `${data.name}<br/>在线率: ${data.value}%`
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '15%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: barChartData.map(item => item.name),
+      axisLabel: {
+        interval: 0,
+        rotate: 30,
+        color: '#64748b',
+        fontSize: 11
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#e2e8f0'
+        }
+      }
+    },
+    yAxis: {
+      type: 'value',
+      max: 100,
+      axisLabel: {
+        formatter: '{value}%',
+        color: '#64748b',
+        fontSize: 11
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#f1f5f9'
+        }
+      },
+      axisLine: {
+        show: false
+      }
+    },
+    series: [
+      {
+        name: '在线率',
+        type: 'bar',
+        data: barChartData.map((item, index) => ({
+          value: item.value,
+          itemStyle: {
+            color: barColors[index % barColors.length]
+          }
+        })),
+        barWidth: '50%',
+        label: {
+          show: true,
+          position: 'top',
+          formatter: '{c}%',
+          color: '#1e293b',
+          fontSize: 11,
+          fontWeight: 600
+        }
+      }
+    ]
+  }
+  
+  barChartInstance.setOption(option)
+}
+
+const initPieChart = () => {
+  if (!pieChartRef.value) return
+  
+  pieChartInstance = echarts.init(pieChartRef.value)
+  
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c}% ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      right: '5%',
+      top: 'center',
+      textStyle: {
+        color: '#334155',
+        fontSize: 11
+      },
+      itemWidth: 12,
+      itemHeight: 12,
+      itemGap: 8
+    },
+    series: [
+      {
+        name: '设备占比',
+        type: 'pie',
+        radius: ['40%', '65%'],
+        center: ['35%', '50%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#ffffff',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          position: 'outside',
+          formatter: '{b}\n{c}%',
+          color: '#334155',
+          fontSize: 11
+        },
+        labelLine: {
+          show: true,
+          lineStyle: {
+            color: '#94a3b8'
+          }
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 12,
+            fontWeight: 'bold'
+          }
+        },
+        data: deviceLegend.map(item => ({
+          name: item.name,
+          value: item.value,
+          itemStyle: {
+            color: item.color
+          }
+        }))
+      }
+    ]
+  }
+  
+  pieChartInstance.setOption(option)
+}
+
+const initPyramidChart = () => {
+  if (!pyramidChartRef.value) return
+  
+  pyramidChartInstance = echarts.init(pyramidChartRef.value)
+  
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: (params: any) => {
+        const data = params[0]
+        return `${data.name}<br/>数量: ${data.value}`
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '25%',
+      bottom: '3%',
+      top: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      axisLabel: {
+        color: '#64748b',
+        fontSize: 11
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#e2e8f0'
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#f1f5f9'
+        }
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: pyramidData.map(item => item.name).reverse(),
+      axisLabel: {
+        color: '#334155',
+        fontSize: 11
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#e2e8f0'
+        }
+      }
+    },
+    series: [
+      {
+        name: '数量',
+        type: 'bar',
+        data: pyramidData.map((item, index) => ({
+          value: item.count,
+          itemStyle: {
+            color: pyramidColors[index]
+          }
+        })).reverse(),
+        barWidth: '60%',
+        label: {
+          show: true,
+          position: 'right',
+          formatter: '{c}',
+          color: '#1e293b',
+          fontSize: 11,
+          fontWeight: 600
+        }
+      }
+    ]
+  }
+  
+  pyramidChartInstance.setOption(option)
+}
+
+const handleResize = () => {
+  barChartInstance?.resize()
+  pyramidChartInstance?.resize()
+  pieChartInstance?.resize()
+}
+
+onMounted(() => {
+  initBarChart()
+  initPyramidChart()
+  initPieChart()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  barChartInstance?.dispose()
+  pyramidChartInstance?.dispose()
+  pieChartInstance?.dispose()
 })
 
 const deviceLegend = [
@@ -263,14 +476,15 @@ const devicePieData = computed(() => {
   })
 })
 
-const barColors = ['#00d4ff', '#a855f7', '#f59e0b', '#10b981', '#ef4444', '#3b82f6']
+const barColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
 const barChartData = [
-  { name: '北京某公司', value: 100 },
-  { name: '深圳某科技', value: 96.82 },
-  { name: '深圳赛格', value: 97.2 },
-  { name: '广州某安', value: 94.96 },
-  { name: '江苏科技', value: 100 }
+  { name: '表面水平位移', value: 98.5 },
+  { name: '深部位移', value: 97.8 },
+  { name: '倾角', value: 96.2 },
+  { name: '加速度', value: 94.5 },
+  { name: '降雨量', value: 99.1 },
+  { name: '地下水水位', value: 95.3 }
 ]
 
 const pyramidColors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ec4899', '#00d4ff', '#84cc16', '#f97316']
@@ -315,15 +529,15 @@ const online24hData = [
 <style scoped>
 .operation-view {
   min-height: 100%;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
-  padding: 16px;
+  background: transparent;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .stats-row {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .stat-card {
@@ -331,21 +545,21 @@ const online24hData = [
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px;
+  padding: 14px 16px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .stat-icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 212, 255, 0.1);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .stat-content {
@@ -354,13 +568,13 @@ const online24hData = [
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: #1e293b;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
   margin-top: 2px;
 }
@@ -368,178 +582,42 @@ const online24hData = [
 .charts-row {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .chart-panel {
   flex: 1;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .panel-header {
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .panel-body {
-  padding: 16px;
+  padding: 12px;
 }
 
-.pie-container {
-  position: relative;
-  width: 180px;
-  height: 180px;
-  margin: 0 auto;
-}
-
-.pie-chart {
+.pie-echarts-container {
   width: 100%;
-  height: 100%;
+  height: 200px;
 }
 
-.pie-center {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-}
-
-.pie-total {
-  display: block;
-  font-size: 28px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.pie-label {
-  display: block;
-  font-size: 11px;
-  color: #64748b;
-}
-
-.pie-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
-
-.legend-name {
-  flex: 1;
-  color: #334155;
-}
-
-.legend-value {
-  color: #64748b;
-}
-
-.bar-chart-container {
-  display: flex;
-  gap: 10px;
-  height: 160px;
-}
-
-.bar-chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 5px 0;
-}
-
-.bar-chart-y-axis span {
-  font-size: 10px;
-  color: #94a3b8;
-}
-
-.bar-chart-area {
-  flex: 1;
-  display: flex;
-  justify-content: space-around;
-  align-items: flex-end;
-  padding-bottom: 5px;
-}
-
-.bar-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.bar {
-  width: 30px;
-  min-height: 5px;
-  border-radius: 4px 4px 0 0;
-  transition: height 0.3s ease;
-}
-
-.bar-label {
-  font-size: 10px;
-  color: #64748b;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-}
-
-.bar-value {
-  font-size: 11px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.pyramid-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pyramid-row {
-  display: flex;
-  justify-content: center;
-}
-
-.pyramid-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-.pyramid-label {
-  font-size: 11px;
-  color: #334155;
-}
-
-.pyramid-value {
-  font-size: 11px;
-  font-weight: 600;
-  color: #1e293b;
+.echarts-container {
+  width: 100%;
+  height: 180px;
 }
 
 .table-row {

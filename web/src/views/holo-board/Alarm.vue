@@ -470,8 +470,8 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 <style scoped>
 .alarm-view {
   min-height: 100%;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
-  padding: 0 20px 20px;
+  background: transparent;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -479,10 +479,10 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 16px 24px;
+  margin-bottom: 12px;
+  padding: 12px 20px;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
@@ -506,8 +506,8 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 .header-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 18px;
+  gap: 8px;
+  font-size: 16px;
   font-weight: 600;
   color: #1e293b;
 }
@@ -515,13 +515,13 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 .header-subtitle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   color: #52c41a;
-  font-size: 14px;
-  margin-left: 12px;
-  padding: 4px 12px;
+  font-size: 12px;
+  margin-left: 10px;
+  padding: 3px 10px;
   background: rgba(82, 196, 26, 0.1);
-  border-radius: 20px;
+  border-radius: 16px;
 }
 
 .arrow-icon {
@@ -537,9 +537,9 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 .stat-card-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
 }
 
 .stat-card-inline.red {
@@ -559,8 +559,8 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 }
 
 .stat-icon {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -584,12 +584,12 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 }
 
 .stat-card-inline .stat-label {
-  font-size: 13px;
+  font-size: 12px;
   color: #475569;
 }
 
 .stat-card-inline .stat-value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -610,7 +610,7 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 }
 
 .stat-card-inline .stat-unit {
-  font-size: 13px;
+  font-size: 12px;
   color: #94a3b8;
 }
 
@@ -653,40 +653,40 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 
 .alarm-content {
   display: flex;
-  gap: 16px;
-  height: calc(100vh - 180px);
+  gap: 12px;
+  height: calc(100vh - 120px);
 }
 
 .content-left {
   flex: 2;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .content-right {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .panel {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .panel-header {
-  padding: 14px 16px;
+  padding: 10px 14px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #1e293b;
   display: flex;
@@ -695,7 +695,7 @@ const blueOffset = -(redPercent + orangePercent + yellowPercent) * circumference
 }
 
 .panel-body {
-  padding: 16px;
+  padding: 12px;
 }
 
 .monthly-trend {

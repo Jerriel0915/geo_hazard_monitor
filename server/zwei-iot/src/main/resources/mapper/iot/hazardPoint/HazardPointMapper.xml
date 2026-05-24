@@ -136,11 +136,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </delete>
 
-    <select id="checkHazardPointCodeUnique" parameterType="String" resultMap="HazardPointResult">
-        <include refid="selectHazardPointVo"/>
-        WHERE h.del_flag = 0 AND h.code = #{code}
-    </select>
-
     <update id="updateHazardPointStatus">
         UPDATE hazard_point SET status = #{status}, update_time = NOW() WHERE id = #{id}
     </update>

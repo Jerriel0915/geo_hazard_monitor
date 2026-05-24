@@ -1063,7 +1063,7 @@ const goToDashboard = () => {
 .main-content {
   flex: 1;
   background: linear-gradient(90deg, #e3f2fd 0%, #f5f7fa 50%, #ffffff 100%);
-  padding: 20px;
+  padding: 1px;
   overflow: auto;
   position: relative;
 }
