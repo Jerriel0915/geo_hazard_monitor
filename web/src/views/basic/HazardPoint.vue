@@ -1007,6 +1007,22 @@ const groupFormRules = {
   ]
 }
 
+const getRequestErrorInfo = (error: any, fallbackMessage = '网络请求失败') => {
+  const status = error?.response?.status
+  const backendMessage = error?.response?.data?.msg
+  const message = backendMessage || error?.message || fallbackMessage
+  return { status, message }
+}
+
+const showRequestErrorMessage = (error: any, fallbackMessage = '网络请求失败') => {
+  const { status, message } = getRequestErrorInfo(error, fallbackMessage)
+  if (status === 400) {
+    ElMessage.warning(message)
+    return
+  }
+  ElMessage.error(message)
+}
+
 const detailMapRef = ref<HTMLDivElement | null>(null)
 let detailMapInstance: L.Map | null = null
 
@@ -1390,7 +1406,7 @@ const loadGroupList = async () => {
     }
   } catch (error) {
     console.error('获取分组失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '获取分组失败')
   } finally {
     loadingGroups.value = false
   }
@@ -1515,9 +1531,13 @@ const handleDeleteGroup = (group: GroupItem) => {
       } else {
         ElMessage.error(res.msg || '删除失败')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('删除失败:', error)
-      ElMessage.error('网络请求失败')
+      const { status } = getRequestErrorInfo(error, '删除失败')
+      showRequestErrorMessage(error, '删除失败')
+      if (status === 404) {
+        loadGroupList()
+      }
     } finally {
       loading.value = false
     }
@@ -1560,7 +1580,7 @@ const handleGroupSubmit = async () => {
         }
       } catch (error) {
         console.error('提交失败:', error)
-        ElMessage.error('网络请求失败')
+        showRequestErrorMessage(error, '操作失败')
       } finally {
         loading.value = false
       }
