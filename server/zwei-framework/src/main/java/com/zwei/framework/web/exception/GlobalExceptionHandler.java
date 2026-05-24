@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
@@ -95,9 +96,14 @@ public class GlobalExceptionHandler
      * 拦截未知的运行时异常
      */
     @ExceptionHandler(RuntimeException.class)
-    public AjaxResult handleRuntimeException(RuntimeException e, HttpServletRequest request)
+    public Object handleRuntimeException(RuntimeException e, HttpServletRequest request)
     {
         String requestURI = request.getRequestURI();
+        if (isSseRequest(request))
+        {
+            log.debug("请求地址'{}'的SSE响应异常已忽略: {}", requestURI, e.getMessage());
+            return null;
+        }
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
         return AjaxResult.error(e.getMessage());
     }
@@ -112,12 +118,26 @@ public class GlobalExceptionHandler
     }
 
     /**
+     * SSE/异步请求超时后不再写回AjaxResult，避免和event-stream响应类型冲突
+     */
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public void handleAsyncRequestTimeoutException(AsyncRequestTimeoutException e, HttpServletRequest request)
+    {
+        log.debug("请求地址'{}'的异步响应已超时，忽略后续输出。", request.getRequestURI());
+    }
+
+    /**
      * 系统异常
      */
     @ExceptionHandler(Exception.class)
-    public AjaxResult handleException(Exception e, HttpServletRequest request)
+    public Object handleException(Exception e, HttpServletRequest request)
     {
         String requestURI = request.getRequestURI();
+        if (isSseRequest(request))
+        {
+            log.debug("请求地址'{}'的SSE系统异常已忽略: {}", requestURI, e.getMessage());
+            return null;
+        }
         log.error("请求地址'{}',发生系统异常.", requestURI, e);
         return AjaxResult.error(e.getMessage());
     }
@@ -151,5 +171,20 @@ public class GlobalExceptionHandler
     public AjaxResult handleDemoModeException(DemoModeException e)
     {
         return AjaxResult.error("演示模式，不允许操作");
+    }
+
+    private boolean isSseRequest(HttpServletRequest request)
+    {
+        if (request == null)
+        {
+            return false;
+        }
+        String accept = request.getHeader("Accept");
+        if (StringUtils.isNotEmpty(accept) && accept.contains("text/event-stream"))
+        {
+            return true;
+        }
+        String requestURI = request.getRequestURI();
+        return StringUtils.isNotEmpty(requestURI) && requestURI.startsWith("/api/v1/logs/stream");
     }
 }

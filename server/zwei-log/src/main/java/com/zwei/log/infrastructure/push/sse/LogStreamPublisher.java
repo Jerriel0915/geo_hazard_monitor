@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.zwei.log.application.service.LogReplayService;
 import com.zwei.log.domain.enums.LogType;
@@ -45,8 +46,11 @@ public class LogStreamPublisher {
                     sendRecord(subscription, replayRecord, "replay");
                 }
             }
-        } catch (IOException ignored) {
-            removeSubscription(subscription);
+        } catch (Exception ex) {
+            if (!isDisconnectedClientException(ex)) {
+                throw rethrowSendException(ex);
+            }
+            failSubscription(subscription, ex);
             return emitter;
         }
         subscriptions.add(subscription);
@@ -60,9 +64,11 @@ public class LogStreamPublisher {
             }
             try {
                 sendRecord(subscription, record, record.getLogType().name().toLowerCase());
-            } catch (IOException ex) {
-                subscription.getEmitter().completeWithError(ex);
-                removeSubscription(subscription);
+            } catch (Exception ex) {
+                if (!isDisconnectedClientException(ex)) {
+                    throw rethrowSendException(ex);
+                }
+                failSubscription(subscription, ex);
             }
         }
     }
@@ -78,6 +84,27 @@ public class LogStreamPublisher {
             .reconnectTime(properties.getSseRetryMs())
             .data(record));
         logReplayService.saveCheckpoint(subscription.getSubscriberKey(), record.getLogType(), record.getEventId());
+    }
+
+    private void failSubscription(LogSubscription subscription, Exception ex) {
+        try {
+            subscription.getEmitter().completeWithError(ex);
+        } catch (Exception ignored) {
+            // Ignore secondary completion failures for already closed SSE emitters.
+        }
+        removeSubscription(subscription);
+    }
+
+    private boolean isDisconnectedClientException(Exception ex) {
+        return ex instanceof IOException
+            || ex instanceof IllegalStateException
+            || ex instanceof AsyncRequestNotUsableException;
+    }
+
+    private RuntimeException rethrowSendException(Exception ex) {
+        return ex instanceof RuntimeException runtimeException
+            ? runtimeException
+            : new IllegalStateException("Failed to publish SSE event", ex);
     }
 
     private void removeSubscription(LogSubscription subscription) {
