@@ -1,6 +1,7 @@
 package com.zwei.iot.hazardpoint.service.impl;
 
 import com.zwei.iot.hazardpoint.domain.HazardPointGroup;
+import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import com.zwei.iot.hazardpoint.mapper.HazardPointGroupMapper;
 import com.zwei.iot.hazardpoint.service.IHazardPointGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +23,13 @@ import java.util.stream.Collectors;
 public class HazardPointGroupServiceImpl implements IHazardPointGroupService {
 
     private final HazardPointGroupMapper mapper;
+    private final HazardPointMapper hazardPointMapper;
 
     @Autowired
-    public HazardPointGroupServiceImpl(HazardPointGroupMapper mapper) {
+    public HazardPointGroupServiceImpl(HazardPointGroupMapper mapper,
+                                       HazardPointMapper hazardPointMapper) {
         this.mapper = mapper;
+        this.hazardPointMapper = hazardPointMapper;
     }
 
     @Override
@@ -63,7 +67,11 @@ public class HazardPointGroupServiceImpl implements IHazardPointGroupService {
             @CacheEvict(value = "hazardPointGroupList", allEntries = true)
     })
     public int updateHazardPointGroup(HazardPointGroup group) {
-        return mapper.updateHazardPointGroup(group);
+        int rows = mapper.updateHazardPointGroup(group);
+        if (rows > 0) {
+            hazardPointMapper.updateGroupNameByGroupId(group.getId(), group.getName());
+        }
+        return rows;
     }
 
     @Override

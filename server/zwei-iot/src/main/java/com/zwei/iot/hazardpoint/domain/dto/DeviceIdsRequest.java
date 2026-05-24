@@ -1,6 +1,5 @@
 package com.zwei.iot.hazardpoint.domain.dto;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,22 +9,14 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * 绑定设备请求参数
- *
- * @author zwei
+ * 设备ID列表请求参数
  */
 @Setter
 @Getter
-public class BindDeviceRequest implements Serializable {
+public class DeviceIdsRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    /** 设备ID列表 */
     @NotEmpty(message = "设备ID列表不能为空")
     private List<Long> deviceIds;
-
-    /** 安装位置信息列表 */
-    @Valid
-    private List<InstallPosition> installPositions;
-
 }

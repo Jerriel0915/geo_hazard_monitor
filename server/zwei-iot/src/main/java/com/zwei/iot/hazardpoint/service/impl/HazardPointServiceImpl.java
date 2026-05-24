@@ -3,7 +3,9 @@ package com.zwei.iot.hazardpoint.service.impl;
 import com.zwei.common.constant.IotConstants;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
+import com.zwei.iot.hazardpoint.domain.HazardPointGroup;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
+import com.zwei.iot.hazardpoint.mapper.HazardPointGroupMapper;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -23,10 +25,13 @@ import java.util.List;
 @Service
 public class HazardPointServiceImpl implements IHazardPointService {
     private final HazardPointMapper hazardPointMapper;
+    private final HazardPointGroupMapper hazardPointGroupMapper;
 
     @Autowired
-    public HazardPointServiceImpl(HazardPointMapper hazardPointMapper) {
+    public HazardPointServiceImpl(HazardPointMapper hazardPointMapper,
+                                  HazardPointGroupMapper hazardPointGroupMapper) {
         this.hazardPointMapper = hazardPointMapper;
+        this.hazardPointGroupMapper = hazardPointGroupMapper;
     }
 
     /**
@@ -70,6 +75,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
         if (hazardPoint.getStatus() == null) {
             hazardPoint.setStatus(IotConstants.HAZARD_POINT_STATUS_MONITORING);
         }
+        hazardPoint.setGroupName(resolveGroupName(hazardPoint.getGroupId()));
         return hazardPointMapper.insertHazardPoint(hazardPoint);
     }
 
@@ -85,6 +91,11 @@ public class HazardPointServiceImpl implements IHazardPointService {
             @CacheEvict(value = "hazardPointList", allEntries = true)
     })
     public int updateHazardPoint(HazardPoint hazardPoint) {
+        HazardPoint existing = hazardPointMapper.selectHazardPointById(hazardPoint.getId());
+        if (existing == null) {
+            throw new ServiceException("隐患点不存在");
+        }
+        hazardPoint.setGroupName(resolveGroupName(hazardPoint.getGroupId()));
         return hazardPointMapper.updateHazardPoint(hazardPoint);
     }
 
@@ -188,5 +199,16 @@ public class HazardPointServiceImpl implements IHazardPointService {
         }
 
         return hazardPointMapper.batchUpdateHazardPointStatus(Arrays.asList(ids), newStatus);
+    }
+
+    private String resolveGroupName(Long groupId) {
+        if (groupId == null) {
+            return null;
+        }
+        HazardPointGroup group = hazardPointGroupMapper.selectHazardPointGroupById(groupId);
+        if (group == null) {
+            throw new ServiceException("隐患点分组不存在");
+        }
+        return group.getName();
     }
 }

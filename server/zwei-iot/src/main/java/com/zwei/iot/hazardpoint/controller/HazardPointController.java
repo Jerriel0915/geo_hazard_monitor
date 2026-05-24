@@ -2,12 +2,21 @@ package com.zwei.iot.hazardpoint.controller;
 
 import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
+import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.StringUtils;
+import com.zwei.iot.hazardpoint.domain.dto.BatchIdsRequest;
+import com.zwei.iot.hazardpoint.domain.dto.DeviceIdsRequest;
+import com.zwei.iot.hazardpoint.domain.dto.HazardPointCreateRequest;
+import com.zwei.iot.hazardpoint.domain.dto.HazardPointBatchOperateRequest;
+import com.zwei.iot.hazardpoint.domain.dto.HazardPointExportRequest;
+import com.zwei.iot.hazardpoint.domain.dto.HazardPointExportVO;
+import com.zwei.iot.hazardpoint.domain.dto.HazardPointPauseRequest;
+import com.zwei.iot.hazardpoint.domain.dto.HazardPointUpdateRequest;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BindDeviceRequest;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
@@ -19,8 +28,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 隐患点管理
@@ -61,6 +73,40 @@ public class HazardPointController extends BaseController
     }
 
     /**
+     * 导出隐患点列表
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
+    @Log(title = "隐患点管理", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response,
+                       @RequestBody(required = false) HazardPointExportRequest request)
+    {
+        HazardPoint hazardPoint = buildHazardPointFilter(request);
+        List<HazardPoint> list = hazardPointService.selectHazardPointList(hazardPoint);
+        List<HazardPointExportVO> exportList = new ArrayList<>(list.size());
+        for (HazardPoint item : list)
+        {
+            HazardPointExportVO vo = new HazardPointExportVO();
+            vo.setCode(item.getCode());
+            vo.setName(item.getName());
+            vo.setGroupName(item.getGroupName());
+            vo.setLongitude(item.getLongitude());
+            vo.setLatitude(item.getLatitude());
+            vo.setStrike(item.getStrike());
+            vo.setDescription(item.getDescription());
+            vo.setStatusName(item.getStatusName());
+            vo.setDeviceCount(item.getDeviceCount());
+            vo.setCreateBy(item.getCreateBy());
+            vo.setCreateTime(item.getCreateTime());
+            vo.setUpdateBy(item.getUpdateBy());
+            vo.setUpdateTime(item.getUpdateTime());
+            exportList.add(vo);
+        }
+        ExcelUtil<HazardPointExportVO> util = new ExcelUtil<>(HazardPointExportVO.class);
+        util.exportExcel(response, exportList, "隐患点数据");
+    }
+
+    /**
      * 获取隐患点详情
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:query')")
@@ -76,7 +122,7 @@ public class HazardPointController extends BaseController
         {
             return error("隐患点不存在");
         }
-        return success(hazardPoint);
+        return AjaxResult.success("成功", hazardPoint);
     }
 
     /**
@@ -85,14 +131,18 @@ public class HazardPointController extends BaseController
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:add')")
     @Log(title = "隐患点管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody HazardPoint hazardPoint)
+    public AjaxResult add(@Validated @RequestBody HazardPointCreateRequest request)
     {
-        if (!hazardPointService.checkHazardPointCodeUnique(hazardPoint.getCode()))
+        if (!hazardPointService.checkHazardPointCodeUnique(request.getCode()))
         {
             return error("新增隐患点失败，编号已存在");
         }
+        HazardPoint hazardPoint = buildHazardPoint(request);
         hazardPoint.setCreateBy(getUsername());
-        return toAjax(hazardPointService.insertHazardPoint(hazardPoint));
+        int rows = hazardPointService.insertHazardPoint(hazardPoint);
+        return rows > 0
+                ? AjaxResult.success("新增成功", Map.of("id", hazardPoint.getId()))
+                : AjaxResult.error("新增失败");
     }
 
     /**
@@ -101,15 +151,17 @@ public class HazardPointController extends BaseController
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody HazardPoint hazardPoint)
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody HazardPointUpdateRequest request)
     {
         if (StringUtils.isNull(id))
         {
             return error("参数错误");
         }
+        HazardPoint hazardPoint = buildHazardPoint(request);
         hazardPoint.setId(id);
         hazardPoint.setUpdateBy(getUsername());
-        return toAjax(hazardPointService.updateHazardPoint(hazardPoint));
+        int rows = hazardPointService.updateHazardPoint(hazardPoint);
+        return rows > 0 ? AjaxResult.success("修改成功") : AjaxResult.error("隐患点不存在");
     }
 
     /**
@@ -120,7 +172,8 @@ public class HazardPointController extends BaseController
     @DeleteMapping("/{id}")
     public AjaxResult remove(@PathVariable Long id)
     {
-        return toAjax(hazardPointService.deleteHazardPointById(id));
+        int rows = hazardPointService.deleteHazardPointById(id);
+        return rows > 0 ? AjaxResult.success("删除成功") : AjaxResult.error("隐患点不存在或已删除");
     }
 
     /**
@@ -129,9 +182,11 @@ public class HazardPointController extends BaseController
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:remove')")
     @Log(title = "隐患点管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/batch")
-    public AjaxResult removeBatch(@RequestBody Long[] ids)
+    public AjaxResult removeBatch(@Validated @RequestBody BatchIdsRequest request)
     {
-        return toAjax(hazardPointService.deleteHazardPointByIds(ids));
+        Long[] ids = request.getIds().toArray(Long[]::new);
+        int rows = hazardPointService.deleteHazardPointByIds(ids);
+        return rows > 0 ? AjaxResult.success("批量删除成功") : AjaxResult.error("批量删除失败");
     }
 
     /**
@@ -140,15 +195,14 @@ public class HazardPointController extends BaseController
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}/pause")
-    public AjaxResult pause(@PathVariable Long id, @RequestBody(required = false) Boolean pause)
+    public AjaxResult pause(@PathVariable Long id, @Validated @RequestBody HazardPointPauseRequest request)
     {
         if (StringUtils.isNull(id))
         {
             return error("参数错误");
         }
-        // pause参数为空时默认为true(停测)
-        boolean isPause = pause == null || pause;
-        return toAjax(hazardPointService.updateHazardPointPause(id, isPause));
+        int rows = hazardPointService.updateHazardPointPause(id, request.getPause());
+        return rows > 0 ? AjaxResult.success("操作成功") : AjaxResult.error("隐患点不存在或已删除");
     }
 
     /**
@@ -163,7 +217,8 @@ public class HazardPointController extends BaseController
         {
             return error("参数错误");
         }
-        return toAjax(hazardPointService.completeHazardPoint(id));
+        int rows = hazardPointService.completeHazardPoint(id);
+        return rows > 0 ? AjaxResult.success("完结成功") : AjaxResult.error("隐患点不存在或已删除");
     }
 
     /**
@@ -172,24 +227,11 @@ public class HazardPointController extends BaseController
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点管理", businessType = BusinessType.UPDATE)
     @PutMapping("/batch/operate")
-    public AjaxResult batchOperate(@RequestBody HashMap<String, Object> params)
+    public AjaxResult batchOperate(@Validated @RequestBody HazardPointBatchOperateRequest request)
     {
-        @SuppressWarnings("unchecked")
-        List<Integer> idList = (List<Integer>) params.get("ids");
-        String operation = (String) params.get("operation");
-
-        if (idList == null || idList.isEmpty())
-        {
-            return error("请选择要操作的隐患点");
-        }
-        if (StringUtils.isEmpty(operation))
-        {
-            return error("操作类型不能为空");
-        }
-
-        // JSON反序列化时ids为Integer数组，需转换为Long[]
-        Long[] ids = idList.stream().map(Integer::longValue).toArray(Long[]::new);
-        return toAjax(hazardPointService.batchOperateHazardPoint(ids, operation));
+        Long[] ids = request.getIds().toArray(Long[]::new);
+        int rows = hazardPointService.batchOperateHazardPoint(ids, request.getOperation());
+        return rows > 0 ? AjaxResult.success("操作成功") : AjaxResult.error("批量操作失败");
     }
 
     // ==================== 4.1 设备隐患点绑定接口 ====================
@@ -267,19 +309,65 @@ public class HazardPointController extends BaseController
     @Log(title = "隐患点设备解绑", businessType = BusinessType.DELETE)
     @DeleteMapping("/{hpId}/unbind-devices")
     public AjaxResult unbindDevices(@PathVariable Long hpId,
-                                   @RequestBody HashMap<String, Object> request)
+                                   @Validated @RequestBody DeviceIdsRequest request)
     {
         if (StringUtils.isNull(hpId))
         {
             return error("参数错误");
         }
-        @SuppressWarnings("unchecked")
-        List<Integer> deviceIdList = (List<Integer>) request.get("deviceIds");
-        if (deviceIdList == null || deviceIdList.isEmpty())
+        return toAjax(deviceHazardPointService.unbindDevices(hpId, request.getDeviceIds()));
+    }
+
+    private HazardPoint buildHazardPoint(HazardPointCreateRequest request)
+    {
+        HazardPoint hazardPoint = new HazardPoint();
+        hazardPoint.setCode(trimToNull(request.getCode()));
+        hazardPoint.setName(trimToNull(request.getName()));
+        hazardPoint.setGroupId(request.getGroupId());
+        hazardPoint.setLongitude(request.getLongitude());
+        hazardPoint.setLatitude(request.getLatitude());
+        hazardPoint.setStrike(request.getStrike());
+        hazardPoint.setDescription(trimToNull(request.getDescription()));
+        return hazardPoint;
+    }
+
+    private HazardPoint buildHazardPoint(HazardPointUpdateRequest request)
+    {
+        HazardPoint hazardPoint = new HazardPoint();
+        hazardPoint.setName(trimToNull(request.getName()));
+        hazardPoint.setGroupId(request.getGroupId());
+        hazardPoint.setLongitude(request.getLongitude());
+        hazardPoint.setLatitude(request.getLatitude());
+        hazardPoint.setStrike(request.getStrike());
+        hazardPoint.setDescription(trimToNull(request.getDescription()));
+        return hazardPoint;
+    }
+
+    private String trimToNull(String value)
+    {
+        if (value == null)
         {
-            return error("设备ID列表不能为空");
+            return null;
         }
-        List<Long> deviceIds = deviceIdList.stream().map(Integer::longValue).toList();
-        return toAjax(deviceHazardPointService.unbindDevices(hpId, deviceIds));
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private HazardPoint buildHazardPointFilter(HazardPointExportRequest request)
+    {
+        HazardPoint hazardPoint = new HazardPoint();
+        if (request == null)
+        {
+            return hazardPoint;
+        }
+        hazardPoint.setCode(trimToNull(request.getCode()));
+        hazardPoint.setName(trimToNull(request.getName()));
+        hazardPoint.setGroupId(request.getGroupId());
+        hazardPoint.setStatus(request.getStatus());
+        if (request.getIds() != null && !request.getIds().isEmpty())
+        {
+            hazardPoint.getParams().put("ids", request.getIds());
+        }
+        return hazardPoint;
     }
 }

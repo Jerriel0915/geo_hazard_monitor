@@ -79,6 +79,15 @@ public interface HazardPointMapper
     public HazardPoint checkHazardPointCodeUnique(String code);
 
     /**
+     * 根据分组ID同步隐患点分组名称
+     *
+     * @param groupId 分组ID
+     * @param groupName 分组名称
+     * @return 结果
+     */
+    int updateGroupNameByGroupId(@Param("groupId") Long groupId, @Param("groupName") String groupName);
+
+    /**
      * 批量更新隐患点状态
      *
      * @param ids 隐患点ID列表
@@ -95,4 +104,12 @@ public interface HazardPointMapper
      * @return 结果
      */
     int updateHazardPointStatus(@Param("id") Long id, @Param("status") Integer status);
+
+    /**
+     * 刷新隐患点绑定设备数量
+     *
+     * @param id 隐患点ID
+     * @return 结果
+     */
+    int refreshDeviceCountById(@Param("id") Long id);
 }

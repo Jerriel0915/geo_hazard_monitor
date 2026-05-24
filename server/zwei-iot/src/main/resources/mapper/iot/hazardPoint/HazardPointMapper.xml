@@ -53,6 +53,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="status != null">
             AND h.status = #{status}
         </if>
+        <if test="params.ids != null and params.ids.size() > 0">
+            AND h.id IN
+            <foreach item="id" collection="params.ids" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
         ORDER BY h.create_time DESC
     </select>
 
@@ -97,28 +103,35 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <update id="updateHazardPoint" parameterType="com.zwei.iot.hazardpoint.domain.HazardPoint">
         UPDATE hazard_point
-        <set>
-            <if test="code != null and code != ''">code = #{code},</if>
-            <if test="name != null and name != ''">name = #{name},</if>
-            <if test="groupId != null">group_id = #{groupId},</if>
-            <if test="groupName != null">group_name = #{groupName},</if>
-            <if test="longitude != null">longitude = #{longitude},</if>
-            <if test="latitude != null">latitude = #{latitude},</if>
-            <if test="strike != null">strike = #{strike},</if>
-            <if test="description != null">description = #{description},</if>
-            <if test="status != null">status = #{status},</if>
-            <if test="updateBy != null">update_by = #{updateBy},</if>
+        SET name = #{name},
+            group_id = #{groupId},
+            group_name = #{groupName},
+            longitude = #{longitude},
+            latitude = #{latitude},
+            strike = #{strike},
+            description = #{description},
+            update_by = #{updateBy},
             update_time = NOW()
-        </set>
         WHERE id = #{id}
+          AND del_flag = '0'
     </update>
 
     <delete id="deleteHazardPointById" parameterType="Long">
-        UPDATE hazard_point SET del_flag = '2' WHERE id = #{id}
+        UPDATE hazard_point
+        SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            del_flag = '2',
+            update_time = NOW()
+        WHERE id = #{id}
+          AND del_flag = '0'
     </delete>
 
     <delete id="deleteHazardPointByIds" parameterType="Long">
-        UPDATE hazard_point SET del_flag = '2' WHERE id IN
+        UPDATE hazard_point
+        SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            del_flag = '2',
+            update_time = NOW()
+        WHERE del_flag = '0'
+          AND id IN
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>
@@ -132,17 +145,41 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <update id="updateHazardPointStatus">
-        UPDATE hazard_point SET status = #{status}, update_time = NOW() WHERE id = #{id}
+        UPDATE hazard_point
+        SET status = #{status}, update_time = NOW()
+        WHERE id = #{id}
+          AND del_flag = '0'
     </update>
 
     <!-- 批量更新隐患点状态 -->
     <update id="batchUpdateHazardPointStatus">
         UPDATE hazard_point
         SET status = #{status}, update_time = NOW()
-        WHERE id IN
+        WHERE del_flag = '0'
+          AND id IN
         <foreach item="id" collection="ids" open="(" separator="," close=")">
             #{id}
         </foreach>
+    </update>
+
+    <update id="updateGroupNameByGroupId">
+        UPDATE hazard_point
+        SET group_name = #{groupName},
+            update_time = NOW()
+        WHERE group_id = #{groupId}
+          AND del_flag = '0'
+    </update>
+
+    <update id="refreshDeviceCountById">
+        UPDATE hazard_point
+        SET device_count = (
+            SELECT COUNT(*)
+            FROM device_hazard_point dhp
+            WHERE dhp.hazard_point_id = #{id}
+        ),
+            update_time = NOW()
+        WHERE id = #{id}
+          AND del_flag = '0'
     </update>
 
 </mapper>

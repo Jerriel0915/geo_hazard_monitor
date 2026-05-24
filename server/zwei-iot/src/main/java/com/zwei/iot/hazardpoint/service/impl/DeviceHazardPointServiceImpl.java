@@ -8,6 +8,7 @@ import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
 import com.zwei.iot.hazardpoint.domain.dto.InstallPosition;
 import com.zwei.iot.hazardpoint.domain.dto.UnboundDeviceVO;
 import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
+import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,12 +29,15 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
 
     private final DeviceHazardPointMapper deviceHazardPointMapper;
     private final DeviceSensorMapper deviceSensorMapper;
+    private final HazardPointMapper hazardPointMapper;
 
     @Autowired
     public DeviceHazardPointServiceImpl(DeviceHazardPointMapper deviceHazardPointMapper,
-                                       DeviceSensorMapper deviceSensorMapper) {
+                                       DeviceSensorMapper deviceSensorMapper,
+                                       HazardPointMapper hazardPointMapper) {
         this.deviceHazardPointMapper = deviceHazardPointMapper;
         this.deviceSensorMapper = deviceSensorMapper;
+        this.hazardPointMapper = hazardPointMapper;
     }
 
     /**
@@ -188,7 +192,9 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
             bindList.add(bind);
         }
 
-        return deviceHazardPointMapper.insertBatch(bindList);
+        int rows = deviceHazardPointMapper.insertBatch(bindList);
+        hazardPointMapper.refreshDeviceCountById(hazardPointId);
+        return rows;
     }
 
     /**
@@ -204,6 +210,8 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
             throw new IllegalArgumentException("设备ID列表不能为空");
         }
 
-        return deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, deviceIds);
+        int rows = deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, deviceIds);
+        hazardPointMapper.refreshDeviceCountById(hazardPointId);
+        return rows;
     }
 }
