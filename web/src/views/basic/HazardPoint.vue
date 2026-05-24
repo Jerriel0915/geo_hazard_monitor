@@ -41,6 +41,9 @@
             <el-button type="primary" @click="handleAdd">
               <span class="btn-icon">+</span> 新增
             </el-button>
+            <el-button type="danger" @click="handleBatchDelete" :disabled="selectedRows.length === 0">
+              <span class="btn-icon">-</span> 批量删除
+            </el-button>
             <el-button @click="handleBatchPause" :disabled="selectedRows.length === 0">
               <span class="btn-icon">⏸</span> 停测
             </el-button>
@@ -50,7 +53,7 @@
             <el-button @click="handleBatchComplete" :disabled="selectedRows.length === 0" type="warning">
               <span class="btn-icon">✓</span> 完结
             </el-button>
-            <el-button @click="handleExportData">
+            <el-button @click="handleExportHazardPoints">
               <span class="btn-icon">↓</span> 导出
             </el-button>
           </div>
@@ -120,6 +123,22 @@
               <template #default="{ row }">
                 <el-button type="text" size="small" @click="handleView(row)">查看</el-button>
                 <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
+                <el-button
+                  v-if="row.status !== 'COMPLETED'"
+                  type="text"
+                  size="small"
+                  @click="handleTogglePause(row)"
+                >
+                  {{ row.status === 'PAUSED' ? '恢复' : '停测' }}
+                </el-button>
+                <el-button
+                  v-if="row.status !== 'COMPLETED'"
+                  type="text"
+                  size="small"
+                  @click="handleComplete(row)"
+                >
+                  完结
+                </el-button>
                 <el-button type="text" size="small" @click="handleBindDevice(row)">绑定设备</el-button>
                 <el-button type="text" size="small" @click="handleConfigAlarm(row)">告警配置</el-button>
                 <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">删除</el-button>
@@ -300,9 +319,9 @@
             <div class="system-info-section">
               <h3 class="section-title">系统信息</h3>
               <el-descriptions :column="2" border>
-                <el-descriptions-item label="创建人">{{ currentRow?.creator || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="创建人">{{ currentRow?.createBy || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="创建时间">{{ currentRow?.createTime || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="更新人">{{ currentRow?.updater || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="更新人">{{ currentRow?.updateBy || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="更新时间">{{ currentRow?.updateTime || '-' }}</el-descriptions-item>
               </el-descriptions>
             </div>
@@ -828,7 +847,22 @@ import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import axios from 'axios'
+import {
+  batchOperateHazardPoints,
+  completeHazardPoint,
+  createHazardPoint,
+  createHazardPointGroup,
+  deleteHazardPoint,
+  deleteHazardPointGroup,
+  deleteHazardPoints,
+  exportHazardPoints,
+  getHazardPointDetail,
+  getHazardPointGroups,
+  getHazardPointPage,
+  pauseHazardPoint,
+  updateHazardPoint,
+  updateHazardPointGroup
+} from '@/api/hazardPoint'
 
 interface HazardPointItem {
   id: string
@@ -845,8 +879,8 @@ interface HazardPointItem {
   description?: string
   deviceCount: number
   createTime?: string
-  creator?: string
-  updater?: string
+  createBy?: string
+  updateBy?: string
   updateTime?: string
 }
 
@@ -1146,6 +1180,54 @@ const formRules = {
   name: [{ required: true, message: '请输入隐患点名称', trigger: 'blur' }]
 }
 
+const getStatusValue = () => {
+  if (!searchStatus.value) {
+    return undefined
+  }
+  const statusMap: Record<string, number> = {
+    MONITORING: 1,
+    PAUSED: 2,
+    COMPLETED: 3
+  }
+  return statusMap[searchStatus.value]
+}
+
+const buildHazardPointQueryParams = () => {
+  const params: Record<string, any> = {
+    pageNum: currentPage.value,
+    pageSize: pageSize.value
+  }
+
+  if (searchKeyword.value) {
+    if (searchType.value === 'name') {
+      params.name = searchKeyword.value
+    } else {
+      params.code = searchKeyword.value
+    }
+  }
+
+  const status = getStatusValue()
+  if (status !== undefined) {
+    params.status = status
+  }
+
+  if (selectedGroupId.value) {
+    params.groupId = parseInt(selectedGroupId.value)
+  }
+
+  return params
+}
+
+const buildHazardPointPayload = () => ({
+  code: formData.code,
+  name: formData.name,
+  groupId: formData.groupId ? Number(formData.groupId) : null,
+  longitude: formData.longitude,
+  latitude: formData.latitude,
+  strike: formData.strike || 0,
+  description: formData.description
+})
+
 const getStatusType = (status: string) => {
   const types: Record<string, string> = {
     'MONITORING': 'success',
@@ -1163,6 +1245,25 @@ const getStatusTagType = (status: string) => {
   }
   return types[status] || 'default'
 }
+
+const normalizeHazardPoint = (item: any): HazardPointItem => ({
+  id: String(item.id),
+  code: item.code || '',
+  name: item.name || '',
+  groupId: item.groupId ? String(item.groupId) : '',
+  groupName: item.groupName || '',
+  status: item.status === 1 ? 'MONITORING' : item.status === 2 ? 'PAUSED' : 'COMPLETED',
+  statusName: item.statusName || '',
+  longitude: item.longitude,
+  latitude: item.latitude,
+  strike: item.strike,
+  description: item.description,
+  deviceCount: item.deviceCount || 0,
+  createTime: item.createTime,
+  createBy: item.createBy,
+  updateBy: item.updateBy,
+  updateTime: item.updateTime
+})
 
 //#region 告警等级类型
 const getAlarmLevelType = (level: string) => {
@@ -1202,63 +1303,14 @@ const handleToggleDispatchStatus = (row: DispatchRule) => {
 const loadTableData = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    
-    const params: any = {
-      pageNum: currentPage.value,
-      pageSize: pageSize.value
-    }
-    
-    // 搜索关键词：根据选择的搜索方式传参
-    if (searchKeyword.value) {
-      if (searchType.value === 'name') {
-        params.name = searchKeyword.value
-      } else {
-        params.code = searchKeyword.value
-      }
-    }
-    
-    // 状态筛选
-    if (searchStatus.value) {
-      const statusMap: Record<string, number> = {
-        'MONITORING': 1,
-        'PAUSED': 2,
-        'COMPLETED': 3
-      }
-      params.status = statusMap[searchStatus.value]
-    }
-    
-    // 分组筛选
-    if (selectedGroupId.value) {
-      params.groupId = parseInt(selectedGroupId.value)
-    }
-    
-    const response = await axios.get('/api/v1/hazard-points/page', {
-      params,
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
-    if (response.data.code === 200) {
-      const data = response.data.data
-      tableData.value = data.rows.map((item: any) => ({
-        id: String(item.id),
-        code: item.code,
-        name: item.name,
-        groupId: item.groupId ? String(item.groupId) : '',
-        groupName: item.groupName || '',
-        status: item.status === 1 ? 'MONITORING' : item.status === 2 ? 'PAUSED' : 'COMPLETED',
-        statusName: item.statusName,
-        longitude: item.longitude,
-        latitude: item.latitude,
-        strike: item.strike,
-        description: item.description,
-        deviceCount: item.deviceCount,
-        createTime: item.createTime,
-        updateTime: item.updateTime
-      }))
+    const response: any = await getHazardPointPage(buildHazardPointQueryParams())
+
+    if (response.code === 200) {
+      const data = response.data
+      tableData.value = data.rows.map((item: any) => normalizeHazardPoint(item))
       total.value = data.total
     } else {
-      ElMessage.error(response.data.msg || '获取数据失败')
+      ElMessage.error(response.msg || '获取数据失败')
     }
   } catch (error) {
     console.error('请求失败:', error)
@@ -1268,18 +1320,49 @@ const loadTableData = async () => {
   }
 }
 
+const fetchHazardPointDetail = async (id: string) => {
+  const response: any = await getHazardPointDetail(id)
+  if (response.code !== 200) {
+    throw new Error(response.msg || '获取详情失败')
+  }
+  return normalizeHazardPoint(response.data)
+}
+
+const downloadBlobFile = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const getExportFileName = (contentDisposition?: string) => {
+  if (!contentDisposition) {
+    return `hazard-points-${Date.now()}.xlsx`
+  }
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1])
+  }
+  const normalMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
+  if (normalMatch?.[1]) {
+    return decodeURIComponent(normalMatch[1])
+  }
+  return `hazard-points-${Date.now()}.xlsx`
+}
+
 // ==================== 加载分组列表 ====================
 // 用途：从后端获取分组列表，并添加"全部"选项
 const loadGroupList = async () => {
   loadingGroups.value = true
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('/api/v1/hazard-point-groups', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
-    if (response.data.code === 200) {
-      const groups = response.data.data.map((item: any) => ({
+    const response: any = await getHazardPointGroups()
+
+    if (response.code === 200) {
+      const groups = response.data.map((item: any) => ({
         id: String(item.id),
         name: item.name,
         code: item.code,
@@ -1303,7 +1386,7 @@ const loadGroupList = async () => {
       
       loadGroupPage(1) // 加载第一页分组（用于左侧列表分页）
     } else {
-      ElMessage.error(response.data.msg || '获取分组失败')
+      ElMessage.error(response.msg || '获取分组失败')
     }
   } catch (error) {
     console.error('获取分组失败:', error)
@@ -1411,28 +1494,26 @@ const handleDeleteGroup = (group: GroupItem) => {
     ElMessage.warning('"全部"分组不允许删除')
     return
   }
-  
-  const confirmMsg = group.count > 0 
-    ? `该分组下有 ${group.count} 个隐患点，删除后这些隐患点将被迁移到"未分组"中。确定要删除分组"${group.name}"吗?`
-    : `确定要删除分组"${group.name}"吗?`
-    
-  ElMessageBox.confirm(confirmMsg, '删除确认', {
+
+  if (group.count > 0) {
+    ElMessage.warning(`分组"${group.name}"下仍绑定 ${group.count} 个隐患点，禁止删除`)
+    return
+  }
+
+  ElMessageBox.confirm(`确定要删除分组"${group.name}"吗?`, '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     loading.value = true
     try {
-      const token = localStorage.getItem('token')
-      const res = await axios.delete(`/api/v1/hazard-point-groups/${group.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (res.data.code === 200) {
+      const res: any = await deleteHazardPointGroup(group.id)
+
+      if (res.code === 200) {
         ElMessage.success('删除成功')
         loadGroupList()  // 刷新分组列表
       } else {
-        ElMessage.error(res.data.msg || '删除失败')
+        ElMessage.error(res.msg || '删除失败')
       }
     } catch (error) {
       console.error('删除失败:', error)
@@ -1450,39 +1531,32 @@ const handleGroupSubmit = async () => {
     if (valid) {
       loading.value = true
       try {
-        const token = localStorage.getItem('token')
-        let res
-        
+        let res: any
+
         if (isEditGroup.value) {
-          // 编辑分组：调用 PUT 接口
-          res = await axios.put(`/api/v1/hazard-point-groups/${groupFormData.id}`, {
+          res = await updateHazardPointGroup(groupFormData.id, {
             name: groupFormData.name,
             description: groupFormData.description,
             sortOrder: groupFormData.sortOrder,
             status: 1
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
           })
         } else {
-          // 新增分组：生成唯一编码
           const code = `G${Date.now()}`
-          res = await axios.post('/api/v1/hazard-point-groups', {
+          res = await createHazardPointGroup({
             code: code,
             name: groupFormData.name,
             description: groupFormData.description,
             sortOrder: groupFormData.sortOrder,
             status: 1
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
           })
         }
-        
-        if (res.data.code === 200) {
+
+        if (res.code === 200) {
           ElMessage.success(isEditGroup.value ? '修改成功' : '新增成功')
           groupDialogVisible.value = false
           loadGroupList()  // 刷新分组列表
         } else {
-          ElMessage.error(res.data.msg || '操作失败')
+          ElMessage.error(res.msg || '操作失败')
         }
       } catch (error) {
         console.error('提交失败:', error)
@@ -1580,16 +1654,24 @@ const handleEdit = (row: HazardPointItem) => {
   dialogVisible.value = true
 }
 
-const handleView = (row: HazardPointItem) => {
-  currentRow.value = row
-  activeTab.value = 'basic'
-  initBoundDevices(row.id)
-  initAlarmCriteria(row.id)
-  initDispatchRules(row.id)
-  detailDialogVisible.value = true
-  nextTick(() => {
-    initDetailMap()
-  })
+const handleView = async (row: HazardPointItem) => {
+  loading.value = true
+  try {
+    currentRow.value = await fetchHazardPointDetail(row.id)
+    activeTab.value = 'basic'
+    initBoundDevices(row.id)
+    initAlarmCriteria(row.id)
+    initDispatchRules(row.id)
+    detailDialogVisible.value = true
+    nextTick(() => {
+      initDetailMap()
+    })
+  } catch (error) {
+    console.error('获取详情失败:', error)
+    ElMessage.error('获取详情失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const initDetailMap = () => {
@@ -1644,17 +1726,14 @@ const handleDelete = async (row: any) => {
   }).then(async () => {
     loading.value = true
     try {
-      const token = localStorage.getItem('token')
-      const res = await axios.delete(`/api/v1/hazard-points/${row.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (res.data.code === 200) {
+      const res: any = await deleteHazardPoint(row.id)
+
+      if (res.code === 200) {
         ElMessage.success('删除成功')
         loadTableData() // 刷新列表
         loadGroupList() // 刷新分组列表
       } else {
-        ElMessage.error(res.data.msg || '删除失败')
+        ElMessage.error(res.msg || '删除失败')
       }
     } catch (error) {
       console.error('删除失败:', error)
@@ -1665,6 +1744,68 @@ const handleDelete = async (row: any) => {
   }).catch(() => {})
 }
 
+const handleBatchDelete = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要删除的隐患点')
+    return
+  }
+  ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 个隐患点吗？`, '批量删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    loading.value = true
+    try {
+      const ids = selectedRows.value.map(row => parseInt(row.id))
+      const res: any = await deleteHazardPoints(ids)
+      if (res.code === 200) {
+        ElMessage.success('批量删除成功')
+        loadTableData()
+        loadGroupList()
+      } else {
+        ElMessage.error(res.msg || '批量删除失败')
+      }
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      ElMessage.error('网络请求失败')
+    } finally {
+      loading.value = false
+    }
+  }).catch(() => {})
+}
+
+const handleExportHazardPoints = async () => {
+  try {
+    const exportPayload: Record<string, any> = {}
+    const selectedIds = selectedRows.value.map(row => parseInt(row.id))
+
+    if (selectedIds.length > 0) {
+      exportPayload.ids = selectedIds
+    } else {
+      const params = buildHazardPointQueryParams()
+      exportPayload.code = params.code
+      exportPayload.name = params.name
+      exportPayload.groupId = params.groupId
+      exportPayload.status = params.status
+    }
+
+    const response = await exportHazardPoints(exportPayload)
+    const contentType = String(response.headers['content-type'] || '')
+    if (contentType.includes('application/json')) {
+      const text = await response.data.text()
+      const result = JSON.parse(text)
+      throw new Error(result.msg || '导出失败')
+    }
+
+    const fileName = getExportFileName(response.headers['content-disposition'])
+    downloadBlobFile(response.data, fileName)
+    ElMessage.success(selectedIds.length > 0 ? '已按选中隐患点导出' : '已按当前筛选条件导出')
+  } catch (error: any) {
+    console.error('导出失败:', error)
+    ElMessage.error(error?.message || '导出失败')
+  }
+}
+
 // ==================== 新增/编辑隐患点 ====================
 // 用途：提交表单，调用新增或修改接口
 const handleSubmit = async () => {
@@ -1672,52 +1813,83 @@ const handleSubmit = async () => {
     if (valid) {
       loading.value = true
       try {
-        const token = localStorage.getItem('token')
-        let res
-        
-        if (isEdit.value) {
-          // 编辑模式：调用修改接口 PUT /api/v1/hazard-points/{id}
-          res = await axios.put(`/api/v1/hazard-points/${currentRow.value?.id}`, {
-            name: formData.name,
-            groupId: formData.groupId ? Number(formData.groupId) : null,
-            longitude: formData.longitude,
-            latitude: formData.latitude,
-            strike: formData.strike || 0,
-            description: formData.description
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
+        let res: any
+        const payload = buildHazardPointPayload()
+
+        if (isEdit.value && currentRow.value?.id) {
+          res = await updateHazardPoint(currentRow.value.id, payload)
         } else {
-          // 新增模式：调用新增接口 POST /api/v1/hazard-points
-          res = await axios.post('/api/v1/hazard-points', {
-            code: formData.code,
-            name: formData.name,
-            groupId: formData.groupId ? Number(formData.groupId) : null,
-            longitude: formData.longitude,
-            latitude: formData.latitude,
-            strike: formData.strike || 0,
-            description: formData.description
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
+          res = await createHazardPoint(payload)
         }
-        
-        if (res.data.code === 200) {
+
+        if (res.code === 200) {
           ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
           dialogVisible.value = false
           loadTableData() // 刷新列表
           loadGroupList() // 刷新分组列表
         } else {
-          ElMessage.error(res.data.msg || '操作失败')
+          ElMessage.error(res.msg || '操作失败')
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('提交失败:', error)
-        ElMessage.error('网络请求失败')
+        ElMessage.error(error?.response?.data?.msg || error?.message || '网络请求失败')
       } finally {
         loading.value = false
       }
     }
   })
+}
+
+const handleTogglePause = async (row: HazardPointItem) => {
+  const pause = row.status !== 'PAUSED'
+  const actionText = pause ? '停测' : '恢复'
+  ElMessageBox.confirm(`确定要${actionText}隐患点"${row.name}"吗？`, `${actionText}确认`, {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: pause ? 'warning' : 'info'
+  }).then(async () => {
+    loading.value = true
+    try {
+      const res: any = await pauseHazardPoint(row.id, pause)
+
+      if (res.code === 200) {
+        ElMessage.success(`${actionText}成功`)
+        loadTableData()
+      } else {
+        ElMessage.error(res.msg || `${actionText}失败`)
+      }
+    } catch (error) {
+      console.error(`${actionText}失败:`, error)
+      ElMessage.error('网络请求失败')
+    } finally {
+      loading.value = false
+    }
+  }).catch(() => {})
+}
+
+const handleComplete = async (row: HazardPointItem) => {
+  ElMessageBox.confirm(`确定要完结隐患点"${row.name}"吗？完结后将停止监测。`, '完结确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    loading.value = true
+    try {
+      const res: any = await completeHazardPoint(row.id)
+
+      if (res.code === 200) {
+        ElMessage.success('完结成功')
+        loadTableData()
+      } else {
+        ElMessage.error(res.msg || '完结失败')
+      }
+    } catch (error) {
+      console.error('完结失败:', error)
+      ElMessage.error('网络请求失败')
+    } finally {
+      loading.value = false
+    }
+  }).catch(() => {})
 }
 
 const handleOpenMap = () => {
@@ -2254,19 +2426,13 @@ const handleBatchPause = async () => {
     type: 'warning'
   }).then(async () => {
     try {
-      const token = localStorage.getItem('token')
       const ids = selectedRows.value.map(row => parseInt(row.id))
-      const res = await axios.put('/api/v1/hazard-points/batch/operate', {
-        ids,
-        operation: 'pause'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (res.data.code === 200) {
+      const res: any = await batchOperateHazardPoints(ids, 'pause')
+      if (res.code === 200) {
         ElMessage.success('批量停测成功')
         loadTableData()
       } else {
-        ElMessage.error(res.data.msg || '批量停测失败')
+        ElMessage.error(res.msg || '批量停测失败')
       }
     } catch (error) {
       console.error('批量停测失败:', error)
@@ -2286,19 +2452,13 @@ const handleBatchResume = async () => {
     type: 'info'
   }).then(async () => {
     try {
-      const token = localStorage.getItem('token')
       const ids = selectedRows.value.map(row => parseInt(row.id))
-      const res = await axios.put('/api/v1/hazard-points/batch/operate', {
-        ids,
-        operation: 'resume'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (res.data.code === 200) {
+      const res: any = await batchOperateHazardPoints(ids, 'resume')
+      if (res.code === 200) {
         ElMessage.success('批量恢复成功')
         loadTableData()
       } else {
-        ElMessage.error(res.data.msg || '批量恢复失败')
+        ElMessage.error(res.msg || '批量恢复失败')
       }
     } catch (error) {
       console.error('批量恢复失败:', error)
@@ -2318,19 +2478,13 @@ const handleBatchComplete = async () => {
     type: 'warning'
   }).then(async () => {
     try {
-      const token = localStorage.getItem('token')
       const ids = selectedRows.value.map(row => parseInt(row.id))
-      const res = await axios.put('/api/v1/hazard-points/batch/operate', {
-        ids,
-        operation: 'complete'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (res.data.code === 200) {
+      const res: any = await batchOperateHazardPoints(ids, 'complete')
+      if (res.code === 200) {
         ElMessage.success('批量完结成功')
         loadTableData()
       } else {
-        ElMessage.error(res.data.msg || '批量完结失败')
+        ElMessage.error(res.msg || '批量完结失败')
       }
     } catch (error) {
       console.error('批量完结失败:', error)
