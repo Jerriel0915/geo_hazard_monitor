@@ -10,7 +10,6 @@ import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -64,10 +63,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
      * @return 结果
      */
     @Override
-    @Caching(evict = {
-            @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id"),
-            @CacheEvict(value = "hazardPointList", allEntries = true)
-    })
+    @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id")
     public int insertHazardPoint(HazardPoint hazardPoint) {
         if (!checkHazardPointCodeUnique(hazardPoint.getCode())) {
             throw new ServiceException("隐患点编号已存在");
@@ -86,10 +82,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
      * @return 结果
      */
     @Override
-    @Caching(evict = {
-            @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id"),
-            @CacheEvict(value = "hazardPointList", allEntries = true)
-    })
+    @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id")
     public int updateHazardPoint(HazardPoint hazardPoint) {
         HazardPoint existing = hazardPointMapper.selectHazardPointById(hazardPoint.getId());
         if (existing == null) {
@@ -106,10 +99,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
      * @return 结果
      */
     @Override
-    @Caching(evict = {
-            @CacheEvict(value = "hazardPoint", key = "#id"),
-            @CacheEvict(value = "hazardPointList", allEntries = true)
-    })
+    @CacheEvict(value = "hazardPoint", key = "#id")
     public int deleteHazardPointById(Long id) {
         return hazardPointMapper.deleteHazardPointById(id);
     }
@@ -121,10 +111,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
      * @return 结果
      */
     @Override
-    @Caching(evict = {
-            @CacheEvict(value = "hazardPoint", allEntries = true),
-            @CacheEvict(value = "hazardPointList", allEntries = true)
-    })
+    @CacheEvict(value = "hazardPoint", allEntries = true)
     public int deleteHazardPointByIds(Long[] ids) {
         return hazardPointMapper.deleteHazardPointByIds(ids);
     }
@@ -178,10 +165,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
      * @return 结果
      */
     @Override
-    @Caching(evict = {
-            @CacheEvict(value = "hazardPoint", allEntries = true),
-            @CacheEvict(value = "hazardPointList", allEntries = true)
-    })
+    @CacheEvict(value = "hazardPoint", allEntries = true)
     public int batchOperateHazardPoint(Long[] ids, String operation) {
         if (ids == null || ids.length == 0) {
             throw new ServiceException("请选择要操作的隐患点");

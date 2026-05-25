@@ -5,6 +5,7 @@ import com.zwei.iot.hazardpoint.domain.HazardPointGroup;
 import com.zwei.iot.hazardpoint.mapper.HazardPointGroupMapper;
 import com.zwei.iot.hazardpoint.service.IHazardPointGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -54,6 +55,7 @@ public class HazardPointGroupServiceImpl implements IHazardPointGroupService {
     }
 
     @Override
+    @CacheEvict(value = "hazardPoint", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public int updateHazardPointGroup(HazardPointGroup group) {
         HazardPointGroup existing = mapper.selectHazardPointGroupById(group.getId());

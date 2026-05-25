@@ -38,6 +38,7 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      * 查询所有监测内容列表（不分页）
      */
     @Override
+    @Cacheable(value = "monitorContentList", key = "'all:' + (#monitorTypeId == null ? 'ALL' : #monitorTypeId)")
     public List<MonitorContent> selectMonitorContentAll(Long monitorTypeId) {
         return monitorContentMapper.selectMonitorContentAll(monitorTypeId);
     }
@@ -65,7 +66,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
-            @CacheEvict(value = "monitorContentList", allEntries = true)
+            @CacheEvict(value = "monitorContentList", allEntries = true),
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int insertMonitorContent(MonitorContent monitorContent) {
         return monitorContentMapper.insertMonitorContent(monitorContent);
@@ -77,7 +79,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
-            @CacheEvict(value = "monitorContentList", allEntries = true)
+            @CacheEvict(value = "monitorContentList", allEntries = true),
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int updateMonitorContent(MonitorContent monitorContent) {
         return monitorContentMapper.updateMonitorContent(monitorContent);
@@ -89,7 +92,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#id"),
-            @CacheEvict(value = "monitorContentList", allEntries = true)
+            @CacheEvict(value = "monitorContentList", allEntries = true),
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentById(Long id) {
         return monitorContentMapper.deleteMonitorContentById(id);
@@ -101,7 +105,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
-            @CacheEvict(value = "monitorContentList", allEntries = true)
+            @CacheEvict(value = "monitorContentList", allEntries = true),
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentByMonitorTypeId(Long monitorTypeId) {
         return monitorContentMapper.deleteMonitorContentByMonitorTypeId(monitorTypeId);
@@ -113,7 +118,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
-            @CacheEvict(value = "monitorContentList", allEntries = true)
+            @CacheEvict(value = "monitorContentList", allEntries = true),
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentByIds(Long[] ids) {
         return monitorContentMapper.deleteMonitorContentByIds(ids);
@@ -125,7 +131,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
-            @CacheEvict(value = "monitorContentList", allEntries = true)
+            @CacheEvict(value = "monitorContentList", allEntries = true),
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentByMonitorTypeIds(Long[] monitorTypeIds) {
         return monitorContentMapper.deleteMonitorContentByMonitorTypeIds(monitorTypeIds);

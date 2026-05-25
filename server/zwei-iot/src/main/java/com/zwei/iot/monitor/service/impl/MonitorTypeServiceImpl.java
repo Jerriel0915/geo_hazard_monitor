@@ -5,6 +5,7 @@ import com.zwei.iot.monitor.mapper.MonitorTypeMapper;
 import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      * 查询所有监测类型列表（不分页）
      */
     @Override
+    @Cacheable(value = "monitorTypeList", key = "'all'")
     public List<MonitorType> selectMonitorTypeAll() {
         List<MonitorType> monitorTypes = monitorTypeMapper.selectMonitorTypeAll();
         monitorTypes.forEach(this::populateDerivedFields);
@@ -54,6 +56,7 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      * 根据ID查询监测类型详情
      */
     @Override
+    @Cacheable(value = "monitorType", key = "#id")
     public MonitorType selectMonitorTypeById(Long id) {
         MonitorType monitorType = monitorTypeMapper.selectMonitorTypeById(id);
         if (monitorType == null) {
@@ -90,7 +93,9 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorType", key = "#monitorType.id"),
-            @CacheEvict(value = "monitorTypeList", allEntries = true)
+            @CacheEvict(value = "monitorTypeList", allEntries = true),
+            @CacheEvict(value = "monitorContent", allEntries = true),
+            @CacheEvict(value = "monitorContentList", allEntries = true)
     })
     public int updateMonitorType(MonitorType monitorType) {
         return monitorTypeMapper.updateMonitorType(monitorType);
@@ -102,7 +107,9 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorType", key = "#id"),
-            @CacheEvict(value = "monitorTypeList", allEntries = true)
+            @CacheEvict(value = "monitorTypeList", allEntries = true),
+            @CacheEvict(value = "monitorContent", allEntries = true),
+            @CacheEvict(value = "monitorContentList", allEntries = true)
     })
     @Transactional(rollbackFor = Exception.class)
     public int deleteMonitorTypeById(Long id) {
@@ -116,7 +123,9 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     @Override
     @Caching(evict = {
             @CacheEvict(value = "monitorType", allEntries = true),
-            @CacheEvict(value = "monitorTypeList", allEntries = true)
+            @CacheEvict(value = "monitorTypeList", allEntries = true),
+            @CacheEvict(value = "monitorContent", allEntries = true),
+            @CacheEvict(value = "monitorContentList", allEntries = true)
     })
     @Transactional(rollbackFor = Exception.class)
     public int deleteMonitorTypeByIds(Long[] ids) {

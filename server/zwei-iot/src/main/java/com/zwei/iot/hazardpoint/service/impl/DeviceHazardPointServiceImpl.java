@@ -11,6 +11,8 @@ import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -153,6 +155,9 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
      * 采用先删除再插入策略，支持更新设备的安装位置
      */
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "hazardPoint", key = "#hazardPointId")
+    })
     @Transactional(rollbackFor = Exception.class)
     public int bindDevices(Long hazardPointId, BindDeviceRequest request, String username) {
         if (hazardPointId == null) {
@@ -201,6 +206,9 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
      * 解绑设备
      */
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "hazardPoint", key = "#hazardPointId")
+    })
     @Transactional(rollbackFor = Exception.class)
     public int unbindDevices(Long hazardPointId, List<Long> deviceIds) {
         if (hazardPointId == null) {
