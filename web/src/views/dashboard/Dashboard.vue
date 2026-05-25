@@ -66,7 +66,7 @@
               :key="device.id"
               class="device-item"
               :class="{ selected: selectedDevice?.id === device.id }"
-              @click="selectDevice(device)"
+              @click="openDeviceDataModal(device)"
           >
             <div class="device-info">
               <div class="device-type-icon">
@@ -88,57 +88,152 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- 传感器列表 -->
-        <div v-if="selectedDevice && sensorList.length" class="sensor-list-panel">
-          <div class="sensor-title">传感器列表</div>
-          <div class="sensor-list">
-            <div
-                v-for="sensor in sensorList"
+    <!-- 设备数据弹窗 -->
+    <div v-if="showDeviceDataModal" class="device-data-modal" @click="closeDeviceDataModal">
+      <div class="modal-container" @click.stop>
+        <div class="modal-header">
+          <div class="modal-title">
+            <span class="device-icon">📊</span>
+            <span>{{ selectedDevice?.name }} - 传感器数据</span>
+          </div>
+          <button class="modal-close-btn" @click="closeDeviceDataModal">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- 左侧：传感器清单 -->
+          <div class="sensor-list-sidebar">
+            <div class="sidebar-header">
+              <span class="sidebar-title">传感器清单</span>
+              <span class="sensor-count">{{ modalSensorList.length }}个传感器</span>
+            </div>
+            <div class="sidebar-content">
+              <div
+                v-for="sensor in modalSensorList"
                 :key="sensor.id"
                 class="sensor-item"
-                :class="{ selected: selectedSensor?.id === sensor.id, warning: sensor.status === 'warning' }"
-                @click="selectSensor(sensor)"
-            >
-              <div class="sensor-icon">
-                {{
-                  sensor.type === 'GNSS' ? '📍' : sensor.type === 'RAIN' ? '🌧️' : sensor.type === 'PRESSURE' ? '💧' : '📏'
-                }}
-              </div>
-              <div class="sensor-info">
-                <div class="sensor-name">{{ sensor.name }}</div>
-                <div class="sensor-code">{{ sensor.code }}</div>
-              </div>
-              <div class="sensor-status" :class="sensor.status">
-                <span class="status-dot"></span>
+                :class="{ selected: selectedModalSensor?.id === sensor.id, warning: sensor.status === 'warning' }"
+                @click="selectModalSensor(sensor)"
+              >
+                <div class="sensor-icon-wrapper">
+                  {{ sensor.type === 'GNSS' ? '📍' : sensor.type === 'RAIN' ? '🌧️' : sensor.type === 'PRESSURE' ? '💧' : '📏' }}
+                </div>
+                <div class="sensor-details">
+                  <div class="sensor-name">{{ sensor.name }}</div>
+                  <div class="sensor-code">{{ sensor.code }}</div>
+                </div>
+                <div class="sensor-status-indicator" :class="sensor.status">
+                  <span class="status-dot"></span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 数据曲线图 -->
-          <div v-if="showSensorChart && selectedSensor" class="sensor-chart">
-            <div class="chart-title">最近7天数据</div>
-            <div class="chart-container">
-              <svg class="chart-svg" viewBox="0 0 280 100">
-                <polyline
-                    :points="getChartPoints()"
-                    fill="none"
-                    stroke="#409eff"
-                    stroke-width="2"
-                />
-                <circle
-                    v-for="(point, index) in sensorChartData"
-                    :key="index"
-                    :cx="40 + index * 40"
-                    :cy="100 - point * 1.8"
-                    r="4"
-                    fill="#409eff"
-                />
-              </svg>
-              <div class="chart-labels">
-                <span>7天前</span>
-                <span>今天</span>
+          <!-- 右侧：数据曲线面板 -->
+          <div class="data-chart-panel">
+            <div v-if="selectedModalSensor" class="chart-content">
+              <!-- 查询条件栏 -->
+              <div class="query-conditions">
+                <div class="condition-group">
+                  <label class="condition-label">时间范围:</label>
+                  <select v-model="queryTimeRange" class="condition-select">
+                    <option value="1">最近1天</option>
+                    <option value="7">最近1周</option>
+                    <option value="30">最近1月</option>
+                  </select>
+                </div>
+
+                <div class="condition-group">
+                  <label class="condition-label">值类型:</label>
+                  <select v-model="queryValueType" class="condition-select">
+                    <option value="raw">采集值</option>
+                    <option value="hourly">小时变化</option>
+                    <option value="daily">24小时变化</option>
+                    <option value="seventyTwo">72小时变化</option>
+                  </select>
+                </div>
+
+                <div class="condition-group">
+                  <label class="condition-label">方向:</label>
+                  <select v-model="queryDirection" class="condition-select">
+                    <option value="all">全部</option>
+                    <option value="x">X方向</option>
+                    <option value="y">Y方向</option>
+                    <option value="z">Z方向</option>
+                    <option value="h">水平位移</option>
+                    <option value="v">垂直位移</option>
+                  </select>
+                </div>
+
+                <button class="query-btn" @click="querySensorData">查询</button>
               </div>
+
+              <!-- 数据展示切换和操作按钮 -->
+              <div class="data-toolbar">
+                <div class="view-toggle">
+                  <button
+                    class="toggle-btn"
+                    :class="{ active: dataViewMode === 'chart' }"
+                    @click="dataViewMode = 'chart'"
+                  >
+                    图表
+                  </button>
+                  <button
+                    class="toggle-btn"
+                    :class="{ active: dataViewMode === 'table' }"
+                    @click="dataViewMode = 'table'"
+                  >
+                    表格
+                  </button>
+                </div>
+
+                <div class="data-actions">
+                  <button class="action-btn" @click="handleImport">
+                    <span class="btn-icon">📥</span>
+                    导入
+                  </button>
+                  <button class="action-btn" @click="handleExport">
+                    <span class="btn-icon">📤</span>
+                    导出
+                  </button>
+                </div>
+              </div>
+
+              <!-- 图表视图 -->
+              <div v-show="dataViewMode === 'chart'" class="chart-view">
+                <div ref="chartContainer" class="echarts-container"></div>
+              </div>
+
+              <!-- 表格视图 -->
+              <div v-show="dataViewMode === 'table'" class="table-view">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>时间</th>
+                      <th>采集值</th>
+                      <th>变化量</th>
+                      <th>状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, index) in tableData" :key="index">
+                      <td>{{ row.time }}</td>
+                      <td>{{ row.value.toFixed(3) }}</td>
+                      <td>{{ row.change.toFixed(3) }}</td>
+                      <td>
+                        <span class="status-badge" :class="row.status">{{ row.status === 'normal' ? '正常' : '预警' }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div v-else class="empty-state">
+              <div class="empty-icon">📊</div>
+              <div class="empty-text">请从左侧选择一个传感器查看数据</div>
             </div>
           </div>
         </div>
@@ -538,9 +633,10 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import * as echarts from 'echarts'
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -676,6 +772,24 @@ const selectedDevice = ref<typeof deviceList.value[0] | null>(null)
 const selectedSensor = ref<any | null>(null)
 const showSensorChart = ref(false)
 const sensorChartData = ref<number[]>([])
+
+// 设备数据弹窗相关数据
+const showDeviceDataModal = ref(false)
+const modalSensorList = ref<any[]>([])
+const selectedModalSensor = ref<any | null>(null)
+const chartContainer = ref<HTMLDivElement | null>(null)
+let chartInstance: echarts.ECharts | null = null
+
+// 查询条件
+const queryTimeRange = ref('7')
+const queryValueType = ref('raw')
+const queryDirection = ref('all')
+
+// 数据展示模式
+const dataViewMode = ref<'chart' | 'table'>('chart')
+
+// 表格数据
+const tableData = ref<any[]>([])
 
 // 生成最近7天的模拟数据
 const generateSensorData = () => {
@@ -1336,6 +1450,205 @@ const getChartPoints = () => {
     return `${x},${y}`
   }).join(' ')
 }
+
+// 打开设备数据弹窗
+const openDeviceDataModal = (device: typeof deviceList.value[0]) => {
+  selectedDevice.value = device
+  showDeviceDataModal.value = true
+  
+  // 生成传感器列表
+  modalSensorList.value = []
+  for (let i = 1; i <= device.sensorCount; i++) {
+    modalSensorList.value.push({
+      id: device.id * 100 + i,
+      name: `${device.typeName}-传感器${i}`,
+      code: `S${device.id.toString().padStart(3, '0')}-${i.toString().padStart(2, '0')}`,
+      type: device.type,
+      status: i === 1 ? 'warning' : 'online'
+    })
+  }
+  
+  // 初始化查询条件
+  queryTimeRange.value = '7'
+  queryValueType.value = 'raw'
+  queryDirection.value = 'all'
+  selectedModalSensor.value = null
+  dataViewMode.value = 'chart'
+}
+
+// 关闭设备数据弹窗
+const closeDeviceDataModal = () => {
+  showDeviceDataModal.value = false
+  selectedModalSensor.value = null
+  modalSensorList.value = []
+  
+  // 销毁图表实例
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+}
+
+// 选择传感器
+const selectModalSensor = (sensor: any) => {
+  if (selectedModalSensor.value?.id === sensor.id) {
+    return
+  }
+  
+  selectedModalSensor.value = sensor
+  querySensorData()
+}
+
+// 查询传感器数据
+const querySensorData = () => {
+  if (!selectedModalSensor.value) return
+  
+  // 生成模拟数据
+  generateMockData()
+  
+  // 渲染图表
+  nextTick(() => {
+    renderChart()
+  })
+}
+
+// 生成模拟数据
+const generateMockData = () => {
+  const days = parseInt(queryTimeRange.value)
+  const dataCount = days * 24
+  const now = new Date()
+  
+  tableData.value = []
+  for (let i = 0; i < dataCount; i++) {
+    const time = new Date(now.getTime() - (dataCount - i) * 3600000)
+    const value = Math.random() * 50 + Math.sin(i * 0.1) * 10 + 50
+    const change = (Math.random() - 0.5) * 5
+    
+    tableData.value.push({
+      time: time.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+      value: value,
+      change: change,
+      status: Math.random() > 0.9 ? 'warning' : 'normal'
+    })
+  }
+}
+
+// 渲染ECharts图表
+const renderChart = () => {
+  if (!chartContainer.value || tableData.value.length === 0) return
+  
+  // 销毁旧实例
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+  
+  // 创建新实例
+  chartInstance = echarts.init(chartContainer.value)
+  
+  const xAxisData = tableData.value.map(item => item.time)
+  const seriesData = tableData.value.map(item => item.value)
+  
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross'
+      }
+    },
+    legend: {
+      data: ['采集值'],
+      textStyle: {
+        fontSize: 12
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: xAxisData,
+      axisLabel: {
+        fontSize: 10,
+        rotate: 45
+      }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        fontSize: 10
+      }
+    },
+    series: [
+      {
+        name: '采集值',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        data: seriesData,
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+            { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+          ])
+        },
+        lineStyle: {
+          color: '#409eff',
+          width: 2
+        },
+        itemStyle: {
+          color: '#409eff'
+        }
+      }
+    ]
+  }
+  
+  chartInstance.setOption(option)
+}
+
+// 处理导入
+const handleImport = () => {
+  console.log('导入监测数据')
+  alert('数据导入功能开发中...')
+}
+
+// 处理导出
+const handleExport = () => {
+  console.log('导出监测数据')
+  if (tableData.value.length === 0) {
+    alert('暂无数据可导出')
+    return
+  }
+  
+  // 生成CSV数据
+  const headers = ['时间', '采集值', '变化量', '状态']
+  const rows = tableData.value.map(row => [
+    row.time,
+    row.value.toFixed(3),
+    row.change.toFixed(3),
+    row.status === 'normal' ? '正常' : '预警'
+  ])
+  
+  const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n')
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `传感器数据_${selectedModalSensor.value?.name || 'export'}_${new Date().toLocaleDateString()}.csv`
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+// 监听弹窗关闭时销毁图表
+watch(showDeviceDataModal, (newVal) => {
+  if (!newVal && chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+})
 
 const handleLayerSelect = (layerId: string) => {
   switchLayer(layerId)
@@ -2881,5 +3194,432 @@ onUnmounted(() => {
   font-size: 10px;
   color: #909399;
   margin-top: 4px;
+}
+
+/* 设备数据弹窗样式 */
+.device-data-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 95%;
+  max-width: 1200px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.device-icon {
+  font-size: 24px;
+}
+
+.modal-close-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.06);
+  border: none;
+  border-radius: 8px;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: #374151;
+}
+
+.modal-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 传感器清单侧边栏 */
+.sensor-list-sidebar {
+  width: 280px;
+  background: #fafbfc;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sidebar-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.sensor-count {
+  font-size: 12px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.sensor-list-sidebar .sensor-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+  border: 1px solid transparent;
+}
+
+.sensor-list-sidebar .sensor-item:hover {
+  background: #f0f7ff;
+  border-color: #409eff;
+}
+
+.sensor-list-sidebar .sensor-item.selected {
+  background: #e6f7ff;
+  border-color: #409eff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.sensor-list-sidebar .sensor-item.warning {
+  background: #fffbf0;
+}
+
+.sensor-list-sidebar .sensor-item.warning.selected {
+  background: #fff1f0;
+  border-color: #fa541c;
+}
+
+.sensor-icon-wrapper {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+.sensor-details {
+  flex: 1;
+}
+
+.sensor-list-sidebar .sensor-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 2px;
+}
+
+.sensor-list-sidebar .sensor-code {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.sensor-status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sensor-status-indicator.online {
+  background: #52c41a;
+}
+
+.sensor-status-indicator.warning {
+  background: #faad14;
+}
+
+/* 数据曲线面板 */
+.data-chart-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+.chart-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9ca3af;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 14px;
+}
+
+/* 查询条件栏 */
+.query-conditions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.condition-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.condition-label {
+  font-size: 13px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.condition-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+
+.condition-select:hover {
+  border-color: #409eff;
+}
+
+.condition-select:focus {
+  outline: none;
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+}
+
+.query-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.query-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+/* 数据工具栏 */
+.data-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.toggle-btn {
+  padding: 6px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: white;
+  color: #374151;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-btn:hover:not(.active) {
+  color: #374151;
+}
+
+.data-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: #f9fafb;
+  border-color: #409eff;
+  color: #409eff;
+}
+
+.action-btn .btn-icon {
+  font-size: 14px;
+}
+
+/* 图表视图 */
+.chart-view {
+  flex: 1;
+  min-height: 0;
+  background: #fafbfc;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.echarts-container {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+/* 表格视图 */
+.table-view {
+  flex: 1;
+  overflow: auto;
+  background: #fafbfc;
+  border-radius: 8px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table thead {
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #6b7280;
+}
+
+.data-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.normal {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.status-badge.warning {
+  background: rgba(250, 173, 20, 0.1);
+  color: #faad14;
 }
 </style>
