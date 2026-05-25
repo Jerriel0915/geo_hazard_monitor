@@ -282,6 +282,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
+import { getMonitorTypeDetail, getMonitorTypeList } from '@/api/monitorType'
 
 // 获取token
 const getToken = () => localStorage.getItem('token')
@@ -354,6 +355,22 @@ interface MonitorTypeItem {
     rangeMax: number
     unit: string
   }[]
+}
+
+const indicatorTypeNameMap: Record<string, string> = {
+  wy: '位移',
+  wd: '温度',
+  jd: '角度',
+  yl: '压力',
+  sw: '水位',
+  jsd: '加速度',
+  hsl: '含水率',
+  ljn: '力矩',
+  zdl: '震动频率',
+  dl: '电量',
+  dx: '断线',
+  sg: '声光',
+  sp: '视频'
 }
 
 const loading = ref(false)
@@ -580,16 +597,29 @@ const copyDevice = async (id: string) => {
 // 获取监测类型列表（用于传感器配置）
 const loadMonitorTypeList = async () => {
   try {
-    const token = getToken()
-    const response = await axios.get('/api/v1/monitor-types/list', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      monitorTypeList.value = response.data.data || []
-    }
+    const monitorTypes = await getMonitorTypeList()
+    const details = await Promise.all(
+      (monitorTypes || []).map(async (item: any) => {
+        const detail = await getMonitorTypeDetail(Number(item.id))
+        return {
+          id: String(detail.id),
+          name: detail.name,
+          modelAttrs: (detail.contents || []).map((content: any) => ({
+            attrCode: content.code,
+            attrName: content.name,
+            indicatorType: content.indicatorType,
+            indicatorTypeName: indicatorTypeNameMap[content.indicatorType] || content.indicatorType || '-',
+            rangeMin: content.rangeMin ?? 0,
+            rangeMax: content.rangeMax ?? 999999,
+            unit: content.unit || ''
+          }))
+        } as MonitorTypeItem
+      })
+    )
+    monitorTypeList.value = details
   } catch (error) {
     console.error('获取监测类型失败:', error)
+    ElMessage.error('获取监测类型失败')
   }
 }
 

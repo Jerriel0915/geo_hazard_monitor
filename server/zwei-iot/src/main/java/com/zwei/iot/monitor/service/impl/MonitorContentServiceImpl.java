@@ -96,6 +96,18 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     }
 
     /**
+     * 按监测类型删除监测内容（逻辑删除）
+     */
+    @Override
+    @Caching(evict = {
+            @CacheEvict(value = "monitorContent", allEntries = true),
+            @CacheEvict(value = "monitorContentList", allEntries = true)
+    })
+    public int deleteMonitorContentByMonitorTypeId(Long monitorTypeId) {
+        return monitorContentMapper.deleteMonitorContentByMonitorTypeId(monitorTypeId);
+    }
+
+    /**
      * 批量删除监测内容（逻辑删除）
      */
     @Override
@@ -105,6 +117,18 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     })
     public int deleteMonitorContentByIds(Long[] ids) {
         return monitorContentMapper.deleteMonitorContentByIds(ids);
+    }
+
+    /**
+     * 按监测类型批量删除监测内容（逻辑删除）
+     */
+    @Override
+    @Caching(evict = {
+            @CacheEvict(value = "monitorContent", allEntries = true),
+            @CacheEvict(value = "monitorContentList", allEntries = true)
+    })
+    public int deleteMonitorContentByMonitorTypeIds(Long[] monitorTypeIds) {
+        return monitorContentMapper.deleteMonitorContentByMonitorTypeIds(monitorTypeIds);
     }
 
     /**

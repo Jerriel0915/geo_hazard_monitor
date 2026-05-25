@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
+import java.math.BigDecimal;
 
 /**
  * 监测内容表 monitor_content
@@ -64,6 +65,16 @@ public class MonitorContent extends BaseEntity {
      */
     private String icon;
 
+    /**
+     * 最小值范围
+     */
+    private BigDecimal rangeMin;
+
+    /**
+     * 最大值范围
+     */
+    private BigDecimal rangeMax;
+
     @Override
     public String toString() {
         return "MonitorContent{" +
@@ -75,6 +86,8 @@ public class MonitorContent extends BaseEntity {
                 ", unit='" + unit + '\'' +
                 ", indicatorType='" + indicatorType + '\'' +
                 ", icon='" + icon + '\'' +
+                ", rangeMin=" + rangeMin +
+                ", rangeMax=" + rangeMax +
                 '}';
     }
 }

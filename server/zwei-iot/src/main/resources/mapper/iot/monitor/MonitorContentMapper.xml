@@ -14,6 +14,8 @@
         <result property="unit" column="unit"/>
         <result property="indicatorType" column="indicator_type"/>
         <result property="icon" column="icon"/>
+        <result property="rangeMin" column="range_min"/>
+        <result property="rangeMax" column="range_max"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
         <result property="updateBy" column="update_by"/>
@@ -29,6 +31,8 @@
                mc.unit,
                mc.indicator_type,
                mc.icon,
+               mc.range_min,
+               mc.range_max,
                mc.create_by,
                mc.create_time,
                mc.update_by,
@@ -99,6 +103,8 @@
         <if test="unit != null">unit,</if>
         <if test="indicatorType != null">indicator_type,</if>
         <if test="icon != null">icon,</if>
+        <if test="rangeMin != null">range_min,</if>
+        <if test="rangeMax != null">range_max,</if>
         <if test="createBy != null and createBy != ''">create_by,</if>
         create_time
         ) VALUES (
@@ -108,6 +114,8 @@
         <if test="unit != null">#{unit},</if>
         <if test="indicatorType != null">#{indicatorType},</if>
         <if test="icon != null">#{icon},</if>
+        <if test="rangeMin != null">#{rangeMin},</if>
+        <if test="rangeMax != null">#{rangeMax},</if>
         <if test="createBy != null and createBy != ''">#{createBy},</if>
         SYSDATE()
         )
@@ -125,10 +133,13 @@
             <if test="unit != null">unit = #{unit},</if>
             <if test="indicatorType != null">indicator_type = #{indicatorType},</if>
             <if test="icon != null">icon = #{icon},</if>
+            <if test="rangeMin != null">range_min = #{rangeMin},</if>
+            <if test="rangeMax != null">range_max = #{rangeMax},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             update_time = SYSDATE()
         </set>
         WHERE id = #{id}
+          AND del_flag = 0
     </update>
 
     <!-- ==================== 删除操作 ==================== -->
@@ -143,6 +154,16 @@
           AND del_flag = 0
     </delete>
 
+    <!-- 按监测类型删除监测内容（逻辑删除） -->
+    <delete id="deleteMonitorContentByMonitorTypeId" parameterType="Long">
+        UPDATE monitor_content
+        SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            del_flag = 1,
+            update_time = SYSDATE()
+        WHERE monitor_type_id = #{monitorTypeId}
+          AND del_flag = 0
+    </delete>
+
     <!-- 批量删除监测内容（逻辑删除） -->
     <delete id="deleteMonitorContentByIds" parameterType="Long">
         UPDATE monitor_content
@@ -153,6 +174,19 @@
           AND id IN
         <foreach collection="array" item="id" open="(" separator="," close=")">
             #{id}
+        </foreach>
+    </delete>
+
+    <!-- 按监测类型批量删除监测内容（逻辑删除） -->
+    <delete id="deleteMonitorContentByMonitorTypeIds" parameterType="Long">
+        UPDATE monitor_content
+        SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            del_flag = 1,
+            update_time = SYSDATE()
+        WHERE del_flag = 0
+          AND monitor_type_id IN
+        <foreach collection="array" item="monitorTypeId" open="(" separator="," close=")">
+            #{monitorTypeId}
         </foreach>
     </delete>
 

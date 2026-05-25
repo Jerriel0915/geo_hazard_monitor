@@ -70,12 +70,28 @@ public interface IMonitorContentService {
     int deleteMonitorContentById(Long id);
 
     /**
+     * 按监测类型删除监测内容（逻辑删除）
+     *
+     * @param monitorTypeId 监测类型ID
+     * @return 影响行数
+     */
+    int deleteMonitorContentByMonitorTypeId(Long monitorTypeId);
+
+    /**
      * 批量删除监测内容（逻辑删除）
      *
      * @param ids 需要删除的监测内容ID数组
      * @return 影响行数
      */
     int deleteMonitorContentByIds(Long[] ids);
+
+    /**
+     * 按监测类型批量删除监测内容（逻辑删除）
+     *
+     * @param monitorTypeIds 监测类型ID数组
+     * @return 影响行数
+     */
+    int deleteMonitorContentByMonitorTypeIds(Long[] monitorTypeIds);
 
     /**
      * 校验监测内容编码是否唯一

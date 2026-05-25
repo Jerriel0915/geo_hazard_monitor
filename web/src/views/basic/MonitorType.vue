@@ -8,16 +8,20 @@
         <el-button type="primary" @click="handleAdd">
           <span class="btn-icon">+</span> 新增
         </el-button>
-        <el-button @click="handleExport">
-          <span class="btn-icon">↓</span> 导出
+        <el-button @click="handleExport" :disabled="tableData.length === 0">
+          <span class="btn-icon">↓</span> 导出当前页
         </el-button>
       </div>
     </div>
 
     <div class="search-bar">
+      <el-select v-model="searchType" class="search-type-select">
+        <el-option label="按编号" value="code" />
+        <el-option label="按名称" value="name" />
+      </el-select>
       <el-input
         v-model="searchKeyword"
-        placeholder="搜索编号或名称"
+        :placeholder="searchType === 'code' ? '搜索监测类型编号' : '搜索监测类型名称'"
         class="search-input"
         clearable
         @clear="handleSearch"
@@ -27,7 +31,20 @@
           <span class="search-icon">🔍</span>
         </template>
       </el-input>
+      <el-select v-model="searchDeviceType" clearable placeholder="设备类型" class="device-type-select">
+        <el-option
+          v-for="item in deviceTypeOptions"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+      <el-select v-model="searchStatus" clearable placeholder="状态" class="status-select">
+        <el-option label="启用" :value="1" />
+        <el-option label="禁用" :value="0" />
+      </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
+      <el-button @click="handleReset">重置</el-button>
     </div>
 
     <div class="table-container">
@@ -51,31 +68,25 @@
             <el-tag type="info" effect="plain">{{ row.deviceTypeName || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="modelSummary" label="监测模型概要" min-width="250" align="center">
+        <el-table-column prop="description" label="描述" min-width="220" align="center">
           <template #default="{ row }">
-            <span class="param-summary">{{ row.modelSummary || '-' }}</span>
+            <span class="table-text">{{ row.description || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sensorCount" label="传感器数量" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag type="info" effect="plain">{{ row.sensorCount || 0 }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
+        <el-table-column prop="sortOrder" label="排序号" width="100" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.isDeleted ? 'danger' : 'success'" effect="plain">
-              {{ row.isDeleted ? '已作废' : '正常' }}
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
+              {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
         <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="text" size="small" @click="handleView(row)">查看</el-button>
-            <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">
-              {{ row.isDeleted ? '启用' : '作废' }}
-            </el-button>
+            <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -107,19 +118,30 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="编号" prop="code">
-              <el-input v-model="formData.code" placeholder="请输入编号" :disabled="isView" />
+              <el-input
+                v-model="formData.code"
+                placeholder="请输入监测类型编号"
+                :disabled="isView || isEdit"
+                maxlength="100"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="名称" prop="name">
-              <el-input v-model="formData.name" placeholder="请输入名称" :disabled="isView" />
+              <el-input
+                v-model="formData.name"
+                placeholder="请输入监测类型名称"
+                :disabled="isView"
+                maxlength="200"
+              />
             </el-form-item>
           </el-col>
         </el-row>
+
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="图标" prop="icon">
-              <div class="type-icon-selector" @click="!isView && handleSelectTypeIcon()">
+            <el-form-item label="图标">
+              <div class="type-icon-selector" :class="{ disabled: isView }" @click="!isView && handleSelectTypeIcon()">
                 <img v-if="formData.icon" :src="formData.icon" class="type-icon-img" alt="icon" />
                 <span v-else class="type-icon-placeholder">点击选择图标</span>
               </div>
@@ -127,54 +149,107 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="设备类型" prop="deviceType">
-              <el-select v-model="formData.deviceType" placeholder="请选择设备类型" :disabled="isView" style="width: 100%">
-                <el-option label="直连设备" value="DIRECT" />
-                <el-option label="传感器" value="SENSOR" />
-                <el-option label="RTU" value="RTU" />
+              <el-select
+                v-model="formData.deviceType"
+                placeholder="请选择设备类型"
+                :disabled="isView"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in deviceTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
+
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="创建人员" prop="createUser">
-              <el-input v-model="formData.createUser" placeholder="请输入创建人员" :disabled="isView" />
+            <el-form-item label="排序号" prop="sortOrder">
+              <el-input-number
+                v-model="formData.sortOrder"
+                :min="0"
+                :max="2147483647"
+                :disabled="isView"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态">
+              <el-tag :type="formData.status === 1 ? 'success' : 'info'" effect="plain">
+                {{ formData.status === 1 ? '启用' : '禁用' }}
+              </el-tag>
             </el-form-item>
           </el-col>
         </el-row>
+
+        <el-form-item label="描述" prop="description">
+          <el-input
+            v-model="formData.description"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+            placeholder="请输入描述"
+            :disabled="isView"
+          />
+        </el-form-item>
 
         <el-divider content-position="left">
           <span class="divider-title">监测模型</span>
         </el-divider>
 
+        <el-alert
+          v-if="!isView && isEdit"
+          class="form-alert"
+          type="info"
+          :closable="false"
+          title="已保存的监测内容支持修改名称、量程和单位；如需变更编码或指标类型，请删除后重新新增。"
+        />
+
         <div class="param-table-container">
           <div class="param-toolbar" v-if="!isView">
             <el-button type="primary" size="small" @click="handleAddModelAttr">
-              <span class="btn-icon">+</span> 添加属性
+              <span class="btn-icon">+</span> 添加监测内容
             </el-button>
           </div>
           <el-table
             :data="formData.modelAttrs"
             border
             size="small"
+            empty-text="暂无监测内容，可按需添加"
             :header-cell-style="{ background: '#f5f7fa', color: '#303133' }"
           >
-            <el-table-column label="属性标识" width="150" align="center">
+            <el-table-column label="内容编码" min-width="180" align="center">
               <template #default="{ row }">
-                <el-input v-model="row.attrCode" placeholder="如: displacement_x" :disabled="isView" />
+                <el-input
+                  v-model="row.code"
+                  placeholder="如 rainfall_hour"
+                  :disabled="isView || Boolean(row.id)"
+                  maxlength="100"
+                />
               </template>
             </el-table-column>
-            <el-table-column label="属性名称" width="150" align="center">
+            <el-table-column label="内容名称" min-width="180" align="center">
               <template #default="{ row }">
-                <el-input v-model="row.attrName" placeholder="如: X轴位移" :disabled="isView" />
+                <el-input
+                  v-model="row.name"
+                  placeholder="如 小时雨量"
+                  :disabled="isView"
+                  maxlength="200"
+                />
               </template>
             </el-table-column>
-            <el-table-column label="指标类型" width="150" align="center">
+            <el-table-column label="指标类型" width="160" align="center">
               <template #default="{ row }">
                 <el-select
                   v-model="row.indicatorType"
                   placeholder="请选择"
-                  :disabled="isView"
+                  :disabled="isView || Boolean(row.id)"
                   @change="handleIndicatorTypeChange(row)"
                 >
                   <el-option
@@ -186,23 +261,34 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="量程范围" min-width="200" align="center">
+            <el-table-column label="单位" width="120" align="center">
               <template #default="{ row }">
-                <div class="range-inputs" v-if="!isView">
-                  <el-input-number v-model="row.rangeMin" :min="-999999" :max="row.rangeMax" controls-position="right" placeholder="最小值" />
-                  <span class="range-separator">~</span>
-                  <el-input-number v-model="row.rangeMax" :min="row.rangeMin" :max="999999" controls-position="right" placeholder="最大值" />
-                </div>
-                <span v-else>{{ row.rangeMin }} ~ {{ row.rangeMax }}</span>
+                <el-input v-model="row.unit" placeholder="自动带出" :disabled="true" />
               </template>
             </el-table-column>
-            <el-table-column label="单位" width="100" align="center">
+            <el-table-column label="最小值" width="150" align="center">
               <template #default="{ row }">
-                <el-input v-model="row.unit" placeholder="单位" :disabled="true" />
+                <el-input-number
+                  v-model="row.rangeMin"
+                  :disabled="isView"
+                  :controls="false"
+                  placeholder="最小值"
+                  style="width: 100%"
+                />
               </template>
             </el-table-column>
-
-            <el-table-column label="操作" width="80" align="center" v-if="!isView">
+            <el-table-column label="最大值" width="150" align="center">
+              <template #default="{ row }">
+                <el-input-number
+                  v-model="row.rangeMax"
+                  :disabled="isView"
+                  :controls="false"
+                  placeholder="最大值"
+                  style="width: 100%"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="90" align="center" v-if="!isView">
               <template #default="{ $index }">
                 <el-button type="text" size="small" class="danger-text" @click="handleRemoveModelAttr($index)">
                   删除
@@ -215,11 +301,13 @@
 
       <template #footer v-if="!isView">
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+      </template>
+      <template #footer v-else>
+        <el-button @click="dialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
-    <!-- 监测类型图标选择弹窗 -->
     <el-dialog v-model="typeIconDialogVisible" title="选择监测类型图标" width="600px">
       <div class="icon-grid">
         <div
@@ -237,32 +325,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import {nextTick, onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox, type FormInstance, type FormRules} from 'element-plus'
+import {
+  createMonitorContent,
+  createMonitorType,
+  getMonitorTypeDetail,
+  getMonitorTypePage,
+  type MonitorContentItem,
+  type MonitorTypeItem,
+  removeMonitorContent,
+  removeMonitorType,
+  updateMonitorContent,
+  updateMonitorType
+} from '@/api/monitorType'
 
-
-// 获取token
-const getToken = () => localStorage.getItem('token')
-
-// 指标类型规范
-const IndicatorTypeEnum = {
-  WY: { code: 'wy', name: '位移', unit: 'mm', unitName: '毫米' },
-  WD: { code: 'wd', name: '温度', unit: '℃', unitName: '摄氏度' },
-  JD: { code: 'jd', name: '角度', unit: '°', unitName: '度' },
-  YL: { code: 'yl', name: '压力', unit: 'MPa', unitName: '兆帕斯' },
-  SW: { code: 'sw', name: '水位', unit: 'm', unitName: '米' },
-  JSD: { code: 'jsd', name: '加速度', unit: 'm/s²', unitName: '米/秒²' },
-  HSL: { code: 'hsl', name: '含水率', unit: '%', unitName: '百分比' },
-  LJN: { code: 'ljn', name: '力矩', unit: 'n/m²', unitName: '牛顿/米²' },
-  ZDL: { code: 'zdl', name: '震动频率', unit: 'Hz', unitName: '赫兹' },
-  DL: { code: 'dl', name: '电量', unit: 'V', unitName: '伏特' },
-  DX: { code: 'dx', name: '断线', unit: '1', unitName: '1' },
-  SG: { code: 'sg', name: '声光', unit: '1', unitName: '1' },
-  SP: { code: 'sp', name: '视频', unit: '1', unitName: '1' }
+interface IconItem {
+  code: string
+  name: string
+  icon: string
+  path: string
 }
 
-// 监测内容图标规范（用于监测类型图标选择）
+type SearchType = 'code' | 'name'
+
+const IndicatorTypeEnum = {
+  WY: { code: 'wy', name: '位移', unit: 'mm' },
+  WD: { code: 'wd', name: '温度', unit: '℃' },
+  JD: { code: 'jd', name: '角度', unit: '°' },
+  YL: { code: 'yl', name: '压力', unit: 'MPa' },
+  SW: { code: 'sw', name: '水位', unit: 'm' },
+  JSD: { code: 'jsd', name: '加速度', unit: 'm/s²' },
+  HSL: { code: 'hsl', name: '含水率', unit: '%' },
+  LJN: { code: 'ljn', name: '力矩', unit: 'N/m²' },
+  ZDL: { code: 'zdl', name: '震动频率', unit: 'Hz' },
+  DL: { code: 'dl', name: '电量', unit: 'V' },
+  DX: { code: 'dx', name: '断线', unit: '1' },
+  SG: { code: 'sg', name: '声光', unit: '1' },
+  SP: { code: 'sp', name: '视频', unit: '1' }
+} as const
+
 const MonitorContentIconEnum = {
   BSW: { code: 'BSW', name: '表面水平位移', icon: 'bsw' },
   SSW: { code: 'SSW', name: '深部水平位移', icon: 'ssw' },
@@ -289,121 +391,361 @@ const MonitorContentIconEnum = {
   NW: { code: 'NW', name: '泥水位', icon: 'nw' },
   DX: { code: 'DX', name: '断线', icon: 'dx' },
   SG: { code: 'SG', name: '声光', icon: 'sg' }
-}
+} as const
 
-const indicatorTypeOptions = Object.values(IndicatorTypeEnum).map(item => ({
-  code: item.code,
-  name: item.name,
-  unit: item.unit,
-  unitName: item.unitName
-}))
-
-
-const typeIconList = Object.values(MonitorContentIconEnum).map(item => ({
+const indicatorTypeOptions = Object.values(IndicatorTypeEnum)
+const deviceTypeOptions = [
+  { label: '直连设备', value: 1 },
+  { label: '传感器', value: 2 },
+  { label: 'RTU', value: 3 }
+]
+const typeIconList: IconItem[] = Object.values(MonitorContentIconEnum).map((item) => ({
   code: item.code,
   name: item.name,
   icon: item.icon,
   path: `/jc-icon/green/${item.icon}_green.png`
 }))
 
-interface ModelAttrItem {
-  attrCode: string
-  attrName: string
-  indicatorType: string
-  rangeMin: number
-  rangeMax: number
-  unit: string
-}
-
-interface MonitorTypeItem {
-  id: string
-  code: string
-  name: string
-  icon: string
-  deviceType: string
-  deviceTypeName: string
-  createUser: string
-  createTime: string
-  updateDept: string
-  updateUser: string
-  updateTime: string
-  isDeleted: boolean
-  deleteTime: string
-  modelAttrs: ModelAttrItem[]
-  modelSummary: string
-  sensorCount: number
-}
-
 const loading = ref(false)
+const submitLoading = ref(false)
 const tableData = ref<MonitorTypeItem[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const searchType = ref<SearchType>('name')
 const searchKeyword = ref('')
+const searchDeviceType = ref<number | ''>('')
+const searchStatus = ref<number | ''>('')
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const isView = ref(false)
 const isEdit = ref(false)
-const formRef = ref()
+const formRef = ref<FormInstance>()
 const typeIconDialogVisible = ref(false)
+const originalContents = ref<MonitorContentItem[]>([])
 
 const formData = reactive<{
-  id?: string
+  id?: number
   code: string
   name: string
   icon: string
-  deviceType: string
-  createUser: string
-  description: string,
-  sortOrder: number,
-  modelAttrs: ModelAttrItem[]
+  deviceType: number | null
+  description: string
+  sortOrder: number
+  status: number
+  modelAttrs: MonitorContentItem[]
 }>({
   code: '',
   name: '',
   icon: '',
-  deviceType: '',
-  createUser: '',
+  deviceType: null,
   description: '',
   sortOrder: 0,
+  status: 1,
   modelAttrs: []
 })
 
-const formRules = {
-  code: [{ required: true, message: '请输入编号', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入名称', trigger: 'blur' }]
+const formRules: FormRules = {
+  code: [
+    { required: true, message: '请输入监测类型编号', trigger: 'blur' },
+    { max: 100, message: '监测类型编号长度不能超过100个字符', trigger: 'blur' }
+  ],
+  name: [
+    { required: true, message: '请输入监测类型名称', trigger: 'blur' },
+    { max: 200, message: '监测类型名称长度不能超过200个字符', trigger: 'blur' }
+  ],
+  deviceType: [{ required: true, message: '请选择设备类型', trigger: 'change' }],
+  description: [{ max: 500, message: '描述长度不能超过500个字符', trigger: 'blur' }]
 }
 
-// 分页查询监测类型
+const normalizeMonitorContent = (item: any): MonitorContentItem => ({
+  id: item?.id ? Number(item.id) : undefined,
+  code: String(item?.code || '').trim(),
+  name: String(item?.name || '').trim(),
+  indicatorType: String(item?.indicatorType || '').trim(),
+  unit: String(item?.unit || '').trim(),
+  icon: item?.icon || '',
+  rangeMin: item?.rangeMin === null || item?.rangeMin === undefined ? null : Number(item.rangeMin),
+  rangeMax: item?.rangeMax === null || item?.rangeMax === undefined ? null : Number(item.rangeMax)
+})
+
+const getDeviceTypeLabel = (deviceType: number | null | undefined) =>
+  deviceTypeOptions.find((item) => item.value === deviceType)?.label || '-'
+
+const normalizeMonitorType = (item: any): MonitorTypeItem => ({
+  id: Number(item?.id),
+  code: String(item?.code || ''),
+  name: String(item?.name || ''),
+  deviceType: item?.deviceType ?? null,
+  deviceTypeName: String(item?.deviceTypeName || getDeviceTypeLabel(item?.deviceType)),
+  icon: String(item?.icon || ''),
+  description: String(item?.description || ''),
+  sortOrder: Number(item?.sortOrder ?? 0),
+  status: Number(item?.status ?? 1),
+  createTime: String(item?.createTime || ''),
+  contents: Array.isArray(item?.contents) ? item.contents.map(normalizeMonitorContent) : undefined
+})
+
+const getRequestErrorInfo = (error: any, fallbackMessage = '网络请求失败') => {
+  const status = error?.response?.status
+  const backendMessage = error?.response?.data?.msg
+  const message = backendMessage || error?.message || fallbackMessage
+  return { status, message }
+}
+
+const showRequestErrorMessage = (error: any, fallbackMessage = '网络请求失败') => {
+  const { status, message } = getRequestErrorInfo(error, fallbackMessage)
+  if (status === 400) {
+    ElMessage.warning(message)
+    return
+  }
+  ElMessage.error(message)
+}
+
+const resetFormData = () => {
+  Object.assign(formData, {
+    id: undefined,
+    code: '',
+    name: '',
+    icon: '',
+    deviceType: null,
+    description: '',
+    sortOrder: 0,
+    status: 1,
+    modelAttrs: []
+  })
+  originalContents.value = []
+}
+
+const openDialog = async () => {
+  dialogVisible.value = true
+  await nextTick()
+  formRef.value?.clearValidate()
+}
+
+const buildQueryParams = () => {
+  const params: Record<string, any> = {
+    pageNum: currentPage.value,
+    pageSize: pageSize.value
+  }
+
+  const keyword = searchKeyword.value.trim()
+  if (keyword) {
+    params[searchType.value] = keyword
+  }
+  if (searchDeviceType.value !== '') {
+    params.deviceType = searchDeviceType.value
+  }
+  if (searchStatus.value !== '') {
+    params.status = searchStatus.value
+  }
+  return params
+}
+
 const loadTableData = async () => {
   loading.value = true
   try {
-    const token = getToken()
-    const response = await axios.get('/api/v1/monitor-types/page', {
-      params: {
-        pageNum: currentPage.value,
-        pageSize: pageSize.value,
-        code: searchKeyword.value || undefined,
-        name: searchKeyword.value || undefined
-      },
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      const data = response.data.data
-       tableData.value = (data.rows || []).map((item: any) => ({
-        ...item,
-        deviceTypeName: item.deviceType === 1 ? '直连设备' : item.deviceType === 2 ? '传感器' : item.deviceType === 3 ? 'RTU' : '-'
-      }))
-      total.value = data.total || 0
-    } else {
-      ElMessage.error(response.data.msg || '获取数据失败')
-    }
+    const data = await getMonitorTypePage(buildQueryParams())
+    tableData.value = (data.rows || []).map(normalizeMonitorType)
+    total.value = Number(data.total || 0)
   } catch (error) {
-    console.error('请求失败:', error)
-    ElMessage.error('网络请求失败')
+    console.error('获取监测类型列表失败:', error)
+    showRequestErrorMessage(error, '获取监测类型列表失败')
   } finally {
     loading.value = false
   }
+}
+
+const fillFormFromDetail = (detail: MonitorTypeItem) => {
+  Object.assign(formData, {
+    id: detail.id,
+    code: detail.code,
+    name: detail.name,
+    icon: detail.icon || '',
+    deviceType: detail.deviceType,
+    description: detail.description || '',
+    sortOrder: detail.sortOrder ?? 0,
+    status: detail.status ?? 1,
+    modelAttrs: (detail.contents || []).map((item) => ({ ...item }))
+  })
+  originalContents.value = (detail.contents || []).map((item) => ({ ...item }))
+}
+
+const fetchDetail = async (id: number) => {
+  loading.value = true
+  try {
+    const detail = await getMonitorTypeDetail(id)
+    fillFormFromDetail(normalizeMonitorType(detail))
+    return true
+  } catch (error) {
+    console.error('获取监测类型详情失败:', error)
+    showRequestErrorMessage(error, '获取监测类型详情失败')
+    return false
+  } finally {
+    loading.value = false
+  }
+}
+
+const validateModelAttrs = () => {
+  const codeSet = new Set<string>()
+
+  for (let index = 0; index < formData.modelAttrs.length; index += 1) {
+    const row = formData.modelAttrs[index]
+    row.code = row.code.trim()
+    row.name = row.name.trim()
+
+    if (!row.code) {
+      ElMessage.warning(`第 ${index + 1} 行监测内容编码不能为空`)
+      return false
+    }
+    if (!row.name) {
+      ElMessage.warning(`第 ${index + 1} 行监测内容名称不能为空`)
+      return false
+    }
+    if (!row.indicatorType) {
+      ElMessage.warning(`第 ${index + 1} 行指标类型不能为空`)
+      return false
+    }
+    if (row.code.length > 100) {
+      ElMessage.warning(`第 ${index + 1} 行监测内容编码长度不能超过100个字符`)
+      return false
+    }
+    if (row.name.length > 200) {
+      ElMessage.warning(`第 ${index + 1} 行监测内容名称长度不能超过200个字符`)
+      return false
+    }
+    if (codeSet.has(row.code)) {
+      ElMessage.warning(`监测内容编码 "${row.code}" 重复，请调整后重试`)
+      return false
+    }
+    if (row.rangeMin !== null && row.rangeMin !== undefined && Number.isNaN(Number(row.rangeMin))) {
+      ElMessage.warning(`第 ${index + 1} 行最小值范围不合法`)
+      return false
+    }
+    if (row.rangeMax !== null && row.rangeMax !== undefined && Number.isNaN(Number(row.rangeMax))) {
+      ElMessage.warning(`第 ${index + 1} 行最大值范围不合法`)
+      return false
+    }
+    if (
+      row.rangeMin !== null &&
+      row.rangeMin !== undefined &&
+      row.rangeMax !== null &&
+      row.rangeMax !== undefined &&
+      Number(row.rangeMax) < Number(row.rangeMin)
+    ) {
+      ElMessage.warning(`第 ${index + 1} 行量程范围不合法，最大值不能小于最小值`)
+      return false
+    }
+    codeSet.add(row.code)
+  }
+
+  return true
+}
+
+const buildMonitorTypeCreatePayload = () => ({
+  code: formData.code.trim(),
+  name: formData.name.trim(),
+  deviceType: formData.deviceType,
+  icon: formData.icon || '',
+  description: formData.description.trim(),
+  sortOrder: formData.sortOrder ?? 0,
+  status: formData.status
+})
+
+const buildMonitorTypeUpdatePayload = () => ({
+  name: formData.name.trim(),
+  deviceType: formData.deviceType,
+  icon: formData.icon || '',
+  description: formData.description.trim(),
+  sortOrder: formData.sortOrder ?? 0
+})
+
+const syncMonitorContents = async (monitorTypeId: number) => {
+  const currentRows = formData.modelAttrs.map((item) => ({
+    id: item.id,
+    code: item.code.trim(),
+    name: item.name.trim(),
+    indicatorType: item.indicatorType,
+    unit: item.unit.trim(),
+    icon: item.icon || '',
+    rangeMin: item.rangeMin ?? null,
+    rangeMax: item.rangeMax ?? null
+  }))
+
+  const existingMap = new Map(originalContents.value.map((item) => [item.id, item]))
+  const currentIds = new Set(currentRows.filter((item) => item.id).map((item) => item.id as number))
+
+  for (const oldItem of originalContents.value) {
+    if (oldItem.id && !currentIds.has(oldItem.id)) {
+      await removeMonitorContent(oldItem.id)
+    }
+  }
+
+  for (const item of currentRows) {
+    if (item.id) {
+      const oldItem = existingMap.get(item.id)
+      if (!oldItem) {
+        continue
+      }
+
+      if (oldItem.code !== item.code || oldItem.indicatorType !== item.indicatorType) {
+        await removeMonitorContent(item.id)
+        await createMonitorContent({
+          monitorTypeId,
+          code: item.code,
+          name: item.name,
+          unit: item.unit,
+          indicatorType: item.indicatorType,
+          icon: item.icon,
+          rangeMin: item.rangeMin,
+          rangeMax: item.rangeMax
+        })
+        continue
+      }
+
+      if (
+        oldItem.name !== item.name ||
+        oldItem.unit !== item.unit ||
+        (oldItem.icon || '') !== (item.icon || '') ||
+        (oldItem.rangeMin ?? null) !== (item.rangeMin ?? null) ||
+        (oldItem.rangeMax ?? null) !== (item.rangeMax ?? null)
+      ) {
+        await updateMonitorContent(item.id, {
+          name: item.name,
+          unit: item.unit,
+          icon: item.icon,
+          rangeMin: item.rangeMin,
+          rangeMax: item.rangeMax
+        })
+      }
+      continue
+    }
+
+    await createMonitorContent({
+      monitorTypeId,
+      code: item.code,
+      name: item.name,
+      unit: item.unit,
+      indicatorType: item.indicatorType,
+      icon: item.icon,
+      rangeMin: item.rangeMin,
+      rangeMax: item.rangeMax
+    })
+  }
+}
+
+const downloadCsv = (fileName: string, rows: Array<Array<string | number>>) => {
+  const formatCsvCell = (value: string | number) => `"${String(value ?? '').replace(/"/g, '""')}"`
+  const csv = `\uFEFF${rows.map((row) => row.map(formatCsvCell).join(',')).join('\n')}`
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 const handleSearch = () => {
@@ -411,7 +753,17 @@ const handleSearch = () => {
   loadTableData()
 }
 
+const handleReset = () => {
+  searchType.value = 'name'
+  searchKeyword.value = ''
+  searchDeviceType.value = ''
+  searchStatus.value = ''
+  currentPage.value = 1
+  loadTableData()
+}
+
 const handleSizeChange = () => {
+  currentPage.value = 1
   loadTableData()
 }
 
@@ -419,91 +771,32 @@ const handlePageChange = () => {
   loadTableData()
 }
 
-// 新增监测类型
-const handleAdd = () => {
+const handleAdd = async () => {
   dialogTitle.value = '新增监测类型'
   isView.value = false
   isEdit.value = false
-  Object.assign(formData, {
-    id: undefined,
-    code: '',
-    name: '',
-    icon: '',
-    deviceType: '',
-    createUser: '',
-    description: '',
-    sortOrder: 0,
-    modelAttrs: []
-  })
-  dialogVisible.value = true
-}
-
-// 获取监测类型详情
-const fetchDetail = async (id: string) => {
-  loading.value = true
-  try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`/api/v1/monitor-types/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      const data = response.data.data
-      
-      // 转换设备类型：后端返回的数字转成前端的字符串
-      let deviceType = ''
-      if (data.deviceType === 1) deviceType = 'DIRECT'
-      else if (data.deviceType === 2) deviceType = 'SENSOR'
-      else if (data.deviceType === 3) deviceType = 'RTU'
-      
-      // 转换监测内容：后端的 contents 转成前端的 modelAttrs
-      const modelAttrs = (data.contents || []).map((c: any) => ({
-        attrCode: c.code,
-        attrName: c.name,
-        indicatorType: c.indicatorType || '',
-        rangeMin: 0,
-        rangeMax: 100,
-        unit: c.unit || ''
-      }))
-      
-      Object.assign(formData, {
-        id: String(data.id),
-        code: data.code,
-        name: data.name,
-        deviceType: deviceType,
-        icon: data.icon || '',
-        description: data.description || '',
-        sortOrder: data.sortOrder || 0,
-        createUser: data.createBy || '',   
-        modelAttrs: modelAttrs
-      })
-
-      console.log('回填后的 formData:', JSON.parse(JSON.stringify(formData)))
-    } else {
-      ElMessage.error(response.data.msg || '获取详情失败')
-    }
-  } catch (error) {
-    console.error('获取详情失败:', error)
-    ElMessage.error('网络请求失败')
-  } finally {
-    loading.value = false
-  }
+  resetFormData()
+  await openDialog()
 }
 
 const handleEdit = async (row: MonitorTypeItem) => {
   dialogTitle.value = '编辑监测类型'
   isView.value = false
   isEdit.value = true
-  await fetchDetail(row.id)
-  dialogVisible.value = true
+  resetFormData()
+  if (await fetchDetail(row.id)) {
+    await openDialog()
+  }
 }
 
 const handleView = async (row: MonitorTypeItem) => {
   dialogTitle.value = '查看监测类型'
   isView.value = true
   isEdit.value = false
-  await fetchDetail(row.id)
-  dialogVisible.value = true
+  resetFormData()
+  if (await fetchDetail(row.id)) {
+    await openDialog()
+  }
 }
 
 const handleDelete = (row: MonitorTypeItem) => {
@@ -512,106 +805,123 @@ const handleDelete = (row: MonitorTypeItem) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
+    loading.value = true
     try {
-      const token = getToken()
-      const response = await axios.delete(`/api/v1/monitor-types/${row.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (response.data.code === 200) {
-        ElMessage.success('删除成功')
-        loadTableData()
-      } else {
-        ElMessage.error(response.data.msg || '删除失败')
-      }
+      await removeMonitorType(row.id)
+      ElMessage.success('删除成功')
+      loadTableData()
     } catch (error) {
-      ElMessage.error('网络请求失败')
+      console.error('删除监测类型失败:', error)
+      showRequestErrorMessage(error, '删除监测类型失败')
+    } finally {
+      loading.value = false
     }
   }).catch(() => {})
 }
 
 const handleExport = () => {
-  ElMessage.info('正在导出...')
-  setTimeout(() => {
-    ElMessage.success('导出成功')
-  }, 1000)
+  const rows = [
+    ['编号', '名称', '设备类型', '描述', '排序号', '状态', '创建时间'],
+    ...tableData.value.map((item) => [
+      item.code,
+      item.name,
+      item.deviceTypeName || '',
+      item.description || '',
+      item.sortOrder,
+      item.status === 1 ? '启用' : '禁用',
+      item.createTime || ''
+    ])
+  ]
+  downloadCsv(`monitor-types-${Date.now()}.csv`, rows)
+  ElMessage.success('导出成功')
 }
 
 const handleSubmit = async () => {
-  formRef.value.validate(async (valid: boolean) => {
-    if (valid) {
-      try {
-        const token = localStorage.getItem('token')
-        let response
+  if (submitLoading.value) {
+    return
+  }
 
-        if (formData.id) {
-          response = await axios.put(`/api/v1/monitor-types/${formData.id}`, {
-            name: formData.name,
-            deviceType: formData.deviceType === 'SENSOR' ? 2 : formData.deviceType === 'RTU' ? 3 : 1,
-            icon: formData.icon,
-            description: formData.description,
-            sortOrder: formData.sortOrder,
-            status: 1
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        } else {
-          response = await axios.post('/api/v1/monitor-types', {
-            code: formData.code,
-            name: formData.name,
-            deviceType: formData.deviceType === 'SENSOR' ? 2 : formData.deviceType === 'RTU' ? 3 : 1,
-            icon: formData.icon,
-            description: formData.description,
-            sortOrder: formData.sortOrder,
-            status: 1
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        }
-        
-        if (response.data.code === 200) {
-          ElMessage.success(formData.id ? '修改成功' : '新增成功')
-          dialogVisible.value = false
-          loadTableData()
-        } else {
-          ElMessage.error(response.data.msg || '操作失败')
-        }
-      } catch (error) {
-        console.error('提交失败:', error)
-        ElMessage.error('网络请求失败')
-      }
+  try {
+    const valid = await formRef.value?.validate()
+    if (!valid) {
+      return
     }
-  })
+  } catch {
+    return
+  }
+
+  if (!validateModelAttrs()) {
+    return
+  }
+
+  submitLoading.value = true
+  try {
+    let monitorTypeId = formData.id
+
+    if (isEdit.value && monitorTypeId) {
+      await updateMonitorType(monitorTypeId, buildMonitorTypeUpdatePayload())
+    } else {
+      const createResult = await createMonitorType(buildMonitorTypeCreatePayload())
+      monitorTypeId = Number(createResult?.id)
+    }
+
+    if (!monitorTypeId) {
+      throw new Error('保存监测类型失败')
+    }
+
+    await syncMonitorContents(monitorTypeId)
+
+    ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
+    dialogVisible.value = false
+    loadTableData()
+  } catch (error) {
+    console.error('保存监测类型失败:', error)
+    showRequestErrorMessage(error, '保存监测类型失败')
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 const handleAddModelAttr = () => {
   formData.modelAttrs.push({
-    attrCode: '',
-    attrName: '',
+    code: '',
+    name: '',
     indicatorType: '',
-    rangeMin: 0,
-    rangeMax: 100,
-    unit: ''
+    unit: '',
+    icon: formData.icon || '',
+    rangeMin: null,
+    rangeMax: null
   })
 }
 
 const handleRemoveModelAttr = (index: number) => {
-  formData.modelAttrs.splice(index, 1)
+  const current = formData.modelAttrs[index]
+  const displayName = current?.name || current?.code || `第 ${index + 1} 条监测内容`
+
+  ElMessageBox.confirm(`确定要删除监测内容“${displayName}”吗？`, '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    formData.modelAttrs.splice(index, 1)
+  }).catch(() => {})
 }
 
-const handleIndicatorTypeChange = (row: ModelAttrItem) => {
-  const type = indicatorTypeOptions.find(opt => opt.code === row.indicatorType)
-  if (type) {
-    row.unit = type.unit
-  }
+const handleIndicatorTypeChange = (row: MonitorContentItem) => {
+  const type = indicatorTypeOptions.find((item) => item.code === row.indicatorType)
+  row.unit = type?.unit || ''
 }
 
 const handleSelectTypeIcon = () => {
   typeIconDialogVisible.value = true
 }
 
-const handleTypeIconSelect = (item: { code: string; name: string; icon: string; path: string }) => {
+const handleTypeIconSelect = (item: IconItem) => {
   formData.icon = item.path
+  formData.modelAttrs = formData.modelAttrs.map((row) => ({
+    ...row,
+    icon: row.icon || item.path
+  }))
   typeIconDialogVisible.value = false
 }
 
@@ -655,10 +965,21 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-type-select {
+  width: 110px;
 }
 
 .search-input {
-  width: 300px;
+  width: 280px;
+}
+
+.device-type-select,
+.status-select {
+  width: 140px;
 }
 
 .search-icon {
@@ -679,9 +1000,8 @@ onMounted(() => {
   color: #909399;
 }
 
-.param-summary {
+.table-text {
   color: #606266;
-  font-size: 13px;
 }
 
 .pagination-container {
@@ -704,6 +1024,10 @@ onMounted(() => {
   color: #303133;
 }
 
+.form-alert {
+  margin-bottom: 16px;
+}
+
 .param-table-container {
   border: 1px solid #ebeef5;
   border-radius: 4px;
@@ -715,7 +1039,6 @@ onMounted(() => {
   margin-bottom: 10px;
 }
 
-/* 监测类型图标选择器 */
 .type-icon-selector {
   display: flex;
   align-items: center;
@@ -733,6 +1056,15 @@ onMounted(() => {
   background: #f0f7ff;
 }
 
+.type-icon-selector.disabled {
+  cursor: not-allowed;
+}
+
+.type-icon-selector.disabled:hover {
+  border-color: #dcdfe6;
+  background: transparent;
+}
+
 .type-icon-img {
   width: 28px;
   height: 28px;
@@ -742,16 +1074,6 @@ onMounted(() => {
 .type-icon-placeholder {
   color: #909399;
   font-size: 12px;
-}
-
-.range-inputs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.range-separator {
-  color: #606266;
 }
 
 .icon-grid {

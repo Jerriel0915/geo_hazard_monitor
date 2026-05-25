@@ -1,16 +1,22 @@
 package com.zwei.iot.monitor.controller;
 
 import com.zwei.common.annotation.Log;
+import com.zwei.common.constant.HttpStatus;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.iot.monitor.domain.MonitorContent;
+import com.zwei.iot.monitor.domain.dto.MonitorContentCreateRequest;
+import com.zwei.iot.monitor.domain.dto.MonitorContentUpdateRequest;
 import com.zwei.iot.monitor.service.IMonitorContentService;
+import com.zwei.iot.monitor.service.IMonitorTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -33,10 +39,13 @@ public class MonitorContentController extends BaseController {
      * 注入监测内容Service
      */
     private final IMonitorContentService monitorContentService;
+    private final IMonitorTypeService monitorTypeService;
 
     @Autowired
-    public MonitorContentController(IMonitorContentService monitorContentService) {
+    public MonitorContentController(IMonitorContentService monitorContentService,
+                                    IMonitorTypeService monitorTypeService) {
         this.monitorContentService = monitorContentService;
+        this.monitorTypeService = monitorTypeService;
     }
 
     /**
@@ -51,7 +60,7 @@ public class MonitorContentController extends BaseController {
     @GetMapping
     public AjaxResult list(@RequestParam(required = false) Long monitorTypeId) {
         List<MonitorContent> list = monitorContentService.selectMonitorContentAll(monitorTypeId);
-        return success(list);
+        return AjaxResult.success("成功", list);
     }
 
     /**
@@ -65,21 +74,28 @@ public class MonitorContentController extends BaseController {
     public AjaxResult getInfo(@PathVariable Long id) {
         MonitorContent monitorContent = monitorContentService.selectMonitorContentById(id);
         if (monitorContent == null) {
-            return error("监测内容不存在");
+            return AjaxResult.error(HttpStatus.NOT_FOUND, "监测内容不存在");
         }
-        return success(monitorContent);
+        return AjaxResult.success("成功", monitorContent);
     }
 
     /**
      * 新增监测内容
      *
-     * @param monitorContent 监测内容信息
+     * @param request 新增请求参数
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:monitorContent:add')")
     @Log(title = "监测内容", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody MonitorContent monitorContent) {
+    public AjaxResult add(@Validated @RequestBody MonitorContentCreateRequest request) {
+        if (monitorTypeService.selectMonitorTypeById(request.getMonitorTypeId()) == null) {
+            return AjaxResult.error(HttpStatus.NOT_FOUND, "监测类型不存在");
+        }
+        if (!isValidRange(request.getRangeMin(), request.getRangeMax())) {
+            return AjaxResult.error(HttpStatus.BAD_REQUEST, "量程范围不合法，最大值不能小于最小值");
+        }
+        MonitorContent monitorContent = buildMonitorContentForCreate(request);
         // 校验编码唯一性
         if (!monitorContentService.checkMonitorContentCodeUnique(monitorContent)) {
             return error("新增监测内容'" + monitorContent.getName() + "'失败，监测内容编码已存在");
@@ -88,31 +104,40 @@ public class MonitorContentController extends BaseController {
         monitorContent.setCreateBy(getUsername());
         // 执行新增
         int rows = monitorContentService.insertMonitorContent(monitorContent);
-        return rows > 0 ? success(monitorContent.getId()) : error("新增失败");
+        return rows > 0
+                ? AjaxResult.success("新增成功", Collections.singletonMap("id", monitorContent.getId()))
+                : error("新增失败");
     }
 
     /**
      * 修改监测内容
      *
-     * @param id             监测内容ID
-     * @param monitorContent 监测内容信息
+     * @param id      监测内容ID
+     * @param request 修改请求参数
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:monitorContent:edit')")
     @Log(title = "监测内容", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody MonitorContent monitorContent) {
-        // 设置ID
-        monitorContent.setId(id);
-        // 校验编码唯一性
-        if (!monitorContentService.checkMonitorContentCodeUnique(monitorContent)) {
-            return error("修改监测内容'" + monitorContent.getName() + "'失败，监测内容编码已存在");
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody MonitorContentUpdateRequest request) {
+        if (!request.hasUpdatableField()) {
+            return AjaxResult.error(HttpStatus.BAD_REQUEST, "修改失败，请至少提供一个可更新字段");
         }
+        MonitorContent current = monitorContentService.selectMonitorContentById(id);
+        if (current == null) {
+            return AjaxResult.error(HttpStatus.NOT_FOUND, "监测内容不存在");
+        }
+        BigDecimal effectiveRangeMin = request.getRangeMin() != null ? request.getRangeMin() : current.getRangeMin();
+        BigDecimal effectiveRangeMax = request.getRangeMax() != null ? request.getRangeMax() : current.getRangeMax();
+        if (!isValidRange(effectiveRangeMin, effectiveRangeMax)) {
+            return AjaxResult.error(HttpStatus.BAD_REQUEST, "量程范围不合法，最大值不能小于最小值");
+        }
+        MonitorContent monitorContent = buildMonitorContentForUpdate(id, request);
         // 设置更新者
         monitorContent.setUpdateBy(getUsername());
         // 执行修改
         int rows = monitorContentService.updateMonitorContent(monitorContent);
-        return rows > 0 ? success() : error("修改失败");
+        return rows > 0 ? AjaxResult.success("修改成功") : error("修改失败");
     }
 
     /**
@@ -125,7 +150,38 @@ public class MonitorContentController extends BaseController {
     @Log(title = "监测内容", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id}")
     public AjaxResult remove(@PathVariable Long id) {
+        if (monitorContentService.selectMonitorContentById(id) == null) {
+            return AjaxResult.error(HttpStatus.NOT_FOUND, "监测内容不存在");
+        }
         int rows = monitorContentService.deleteMonitorContentById(id);
-        return rows > 0 ? success() : error("删除失败");
+        return rows > 0 ? AjaxResult.success("删除成功") : error("删除失败");
+    }
+
+    private MonitorContent buildMonitorContentForCreate(MonitorContentCreateRequest request) {
+        MonitorContent monitorContent = new MonitorContent();
+        monitorContent.setMonitorTypeId(request.getMonitorTypeId());
+        monitorContent.setCode(request.getCode());
+        monitorContent.setName(request.getName());
+        monitorContent.setUnit(request.getUnit());
+        monitorContent.setIndicatorType(request.getIndicatorType());
+        monitorContent.setIcon(request.getIcon());
+        monitorContent.setRangeMin(request.getRangeMin());
+        monitorContent.setRangeMax(request.getRangeMax());
+        return monitorContent;
+    }
+
+    private MonitorContent buildMonitorContentForUpdate(Long id, MonitorContentUpdateRequest request) {
+        MonitorContent monitorContent = new MonitorContent();
+        monitorContent.setId(id);
+        monitorContent.setName(request.getName());
+        monitorContent.setUnit(request.getUnit());
+        monitorContent.setIcon(request.getIcon());
+        monitorContent.setRangeMin(request.getRangeMin());
+        monitorContent.setRangeMax(request.getRangeMax());
+        return monitorContent;
+    }
+
+    private boolean isValidRange(BigDecimal rangeMin, BigDecimal rangeMax) {
+        return rangeMin == null || rangeMax == null || rangeMax.compareTo(rangeMin) >= 0;
     }
 }

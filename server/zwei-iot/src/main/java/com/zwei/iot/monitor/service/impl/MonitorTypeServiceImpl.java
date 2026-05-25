@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -103,7 +104,9 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
             @CacheEvict(value = "monitorType", key = "#id"),
             @CacheEvict(value = "monitorTypeList", allEntries = true)
     })
+    @Transactional(rollbackFor = Exception.class)
     public int deleteMonitorTypeById(Long id) {
+        monitorContentService.deleteMonitorContentByMonitorTypeId(id);
         return monitorTypeMapper.deleteMonitorTypeById(id);
     }
 
@@ -115,7 +118,11 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
             @CacheEvict(value = "monitorType", allEntries = true),
             @CacheEvict(value = "monitorTypeList", allEntries = true)
     })
+    @Transactional(rollbackFor = Exception.class)
     public int deleteMonitorTypeByIds(Long[] ids) {
+        if (ids != null && ids.length > 0) {
+            monitorContentService.deleteMonitorContentByMonitorTypeIds(ids);
+        }
         return monitorTypeMapper.deleteMonitorTypeByIds(ids);
     }
 
