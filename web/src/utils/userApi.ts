@@ -9,15 +9,17 @@ export interface UserInfo {
   orgId: number
   orgName: string
   avatar?: string
+  sex?: string
   status?: number
-  createTime?: string
+  roleGroup?: string
+  postGroup?: string
 }
 
 export interface UpdateUserParams {
   realName?: string
   phone?: string
   email?: string
-  orgId?: number
+  sex?: string
 }
 
 export interface PasswordChangeParams {
@@ -25,43 +27,75 @@ export interface PasswordChangeParams {
   newPassword: string
 }
 
-// 获取当前用户详情 - 调用 /api/v1/auth/getInfo 获取用户信息
-export function getUserInfo(): Promise<UserInfo> {
-  return request.get('/auth/getInfo').then(res => {
-    // 真实返回结构: { code, msg, user, roles, permissions, ... }
-    const user = res.user || {}
-    const dept = user.dept || {}
+export interface AuthInfo {
+  roles: string[]
+  permissions: string[]
+  loginIp: string
+  loginDate: string
+  isDefaultModifyPwd: boolean
+  isPasswordExpired: boolean
+  pwdChrtype: string
+}
 
+// 获取个人中心信息
+export function getUserInfo(): Promise<UserInfo> {
+  return request.get('/profile').then(res => {
+    const profile = res.data || {}
     return {
-      id: user.userId || 0,
-      username: user.userName || '',      // userName -> username
-      realName: user.nickName || '',
-      phone: user.phonenumber || '',
-      email: user.email || '',
-      orgId: user.deptId || 0,
-      orgName: dept.deptName || '',
-      avatar: user.avatar || '',
-      status: user.status ? parseInt(user.status) : 0,
-      createTime: user.createTime
+      id: profile.id || 0,
+      username: profile.username || '',
+      realName: profile.realName || '',
+      phone: profile.phone || '',
+      email: profile.email || '',
+      orgId: profile.orgId || 0,
+      orgName: profile.orgName || '',
+      avatar: profile.avatar || '',
+      sex: profile.sex || '',
+      status: typeof profile.status === 'number' ? profile.status : 0,
+      roleGroup: profile.roleGroup || '',
+      postGroup: profile.postGroup || ''
     }
   })
 }
 
-// 更新用户信息 - 调用 /system/user/profile
-export function updateUserInfo(_id: number, data: UpdateUserParams): Promise<void> {
-  // 转换参数格式给后端
-  const requestData: any = {}
-  if (data.realName !== undefined) requestData.nickName = data.realName
-  if (data.phone !== undefined) requestData.phonenumber = data.phone
-  if (data.email !== undefined) requestData.email = data.email
-  if (data.orgId !== undefined) requestData.deptId = data.orgId
-
-  return request.put('/system/user/profile', requestData)
+// 获取认证扩展信息
+export function getAuthInfo(): Promise<AuthInfo> {
+  return request.get('/auth/getInfo').then(res => {
+    const payload = res.data || res
+    const user = payload.user || {}
+    return {
+      roles: payload.roles || [],
+      permissions: payload.permissions || [],
+      loginIp: user.loginIp || '',
+      loginDate: user.loginDate || '',
+      isDefaultModifyPwd: payload.isDefaultModifyPwd || false,
+      isPasswordExpired: payload.isPasswordExpired || false,
+      pwdChrtype: payload.pwdChrtype || ''
+    }
+  })
 }
 
-// 修改密码 - 调用 /system/user/profile/updatePwd
+// 更新个人中心资料
+export function updateUserInfo(_id: number, data: UpdateUserParams): Promise<void> {
+  return request.put('/profile', data)
+}
+
+// 修改个人中心密码
 export function changePassword(data: PasswordChangeParams): Promise<void> {
-  return request.put('/system/user/profile/updatePwd', data)
+  return request.put('/profile/password', data)
+}
+
+// 上传个人中心头像
+export function uploadAvatar(file: File): Promise<{ imgUrl: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/profile/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }).then(res => ({
+    imgUrl: res.imgUrl || ''
+  }))
 }
 
 // 获取当前登录用户ID（从 localStorage）

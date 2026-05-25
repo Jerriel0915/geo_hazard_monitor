@@ -17,12 +17,19 @@
             </svg>
             <img v-else :src="userInfo.avatar" class="avatar-img" />
           </div>
-          <button class="avatar-edit-btn" @click="triggerAvatarEdit">
+          <button class="avatar-edit-btn" @click="triggerAvatarEdit" :disabled="avatarUploading">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </button>
+          <input
+            ref="avatarInputRef"
+            type="file"
+            accept="image/*"
+            class="avatar-file-input"
+            @change="handleAvatarChange"
+          />
         </div>
         <div class="user-meta">
           <h1 class="user-name">{{ userInfo.realName || '未设置姓名' }}</h1>
@@ -95,13 +102,7 @@
               <div class="info-item full-width">
                 <label class="info-label">所属组织</label>
                 <div class="info-value">
-                  <span v-if="!isEditing">{{ userInfo.orgName || '-' }}</span>
-                  <el-select v-else v-model="editForm.orgId" size="large" placeholder="请选择组织" class="org-select">
-                    <el-option label="系统管理部" :value="1" />
-                    <el-option label="监测运维部" :value="2" />
-                    <el-option label="数据分析部" :value="3" />
-                    <el-option label="应急指挥中心" :value="4" />
-                  </el-select>
+                  <span>{{ userInfo.orgName || '-' }}</span>
                 </div>
               </div>
             </div>
@@ -328,8 +329,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
-import { updateUserInfo } from '@/utils/userApi'
+import { getAuthInfo, getUserInfo, updateUserInfo, changePassword as changeUserPassword, uploadAvatar } from '@/utils/userApi'
 
 const router = useRouter()
 
@@ -343,6 +343,9 @@ const userInfo = reactive({
   orgId: 0,
   orgName: '',
   avatar: '',
+  sex: '',
+  roleGroup: '',
+  postGroup: '',
   loginIp: '',
   loginDate: ''
 })
@@ -363,13 +366,14 @@ const editForm = reactive({
   username: '',
   realName: '',
   phone: '',
-  email: '',
-  orgId: 0
+  email: ''
 })
 
 // 密码弹窗
 const showPasswordDialog = ref(false)
 const passwordChanging = ref(false)
+const avatarUploading = ref(false)
+const avatarInputRef = ref<HTMLInputElement | null>(null)
 const passwordForm = reactive({
   oldPassword: '',
   newPassword: '',
@@ -448,7 +452,6 @@ const toggleEdit = () => {
     editForm.realName = userInfo.realName
     editForm.phone = userInfo.phone
     editForm.email = userInfo.email
-    editForm.orgId = userInfo.orgId
     isEditing.value = true
   }
 }
@@ -482,30 +485,29 @@ const saveUserInfo = async () => {
 }
 
 // 修改密码 - 修改函数定义，接受参数
-const changePassword = async (data: { oldPassword: string; newPassword: string }) => {
-  if (!data.oldPassword) {
+const changePassword = async () => {
+  if (!passwordForm.oldPassword) {
     ElMessage.warning('请输入原密码')
     return
   }
-  if (!data.newPassword) {
+  if (!passwordForm.newPassword) {
     ElMessage.warning('请输入新密码')
     return
   }
-  if (data.newPassword.length < 6) {
+  if (passwordForm.newPassword.length < 6) {
     ElMessage.warning('密码长度不能少于6位')
     return
   }
-  if (data.newPassword !== passwordForm.confirmPassword) {
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
     ElMessage.warning('两次输入的密码不一致')
     return
   }
 
   passwordChanging.value = true
   try {
-    // 直接调用 request
-    await request.put('/system/user/profile/updatePwd', {
-      oldPassword: data.oldPassword,
-      newPassword: data.newPassword
+    await changeUserPassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
     })
 
     ElMessage.success('密码修改成功')
@@ -520,7 +522,29 @@ const changePassword = async (data: { oldPassword: string; newPassword: string }
 
 // 头像上传
 const triggerAvatarEdit = () => {
-  ElMessage.info('头像上传功能开发中')
+  if (!avatarUploading.value) {
+    avatarInputRef.value?.click()
+  }
+}
+
+const handleAvatarChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
+    return
+  }
+
+  avatarUploading.value = true
+  try {
+    const { imgUrl } = await uploadAvatar(file)
+    userInfo.avatar = imgUrl || userInfo.avatar
+    ElMessage.success('头像上传成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '头像上传失败，请重试')
+  } finally {
+    avatarUploading.value = false
+    input.value = ''
+  }
 }
 
 // 快捷操作跳转
@@ -548,78 +572,65 @@ const formatDate = (dateStr: string) => {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
-// 初始化
+const applyProfile = async () => {
+  const profile = await getUserInfo()
+  userInfo.id = profile.id || 0
+  userInfo.username = profile.username || ''
+  userInfo.realName = profile.realName || ''
+  userInfo.phone = profile.phone || ''
+  userInfo.email = profile.email || ''
+  userInfo.orgId = profile.orgId || 0
+  userInfo.orgName = profile.orgName || ''
+  userInfo.avatar = profile.avatar || ''
+  userInfo.sex = profile.sex || ''
+  userInfo.roleGroup = profile.roleGroup || ''
+  userInfo.postGroup = profile.postGroup || ''
+
+  accountInfo.roleCount = profile.roleGroup
+    ? profile.roleGroup.split(',').map((item: string) => item.trim()).filter(Boolean).length
+    : 0
+}
+
+const applyAuthInfo = async () => {
+  const authInfo = await getAuthInfo()
+  userRoles.value = authInfo.roles
+  userPermissions.value = authInfo.permissions
+  pwdChrtype.value = authInfo.pwdChrtype
+  isDefaultModifyPwd.value = authInfo.isDefaultModifyPwd
+  isPasswordExpired.value = authInfo.isPasswordExpired
+  userInfo.loginIp = authInfo.loginIp || ''
+  userInfo.loginDate = formatDate(authInfo.loginDate)
+
+  if (authInfo.roles.length > 0) {
+    accountInfo.roleCount = authInfo.roles.length
+  }
+
+  if (userInfo.loginDate) {
+    recentActivities.value[0].time = userInfo.loginDate
+  }
+}
+
 // 初始化
 onMounted(async () => {
   try {
-    const response = await request.get('/auth/getInfo')
-    console.log('接口返回:', response)
-
-    let user = null
-    let roles = []
-    let permissions = []
-    let defaultModifyPwd = false   // 改名
-    let passwordExpired = false     // 改名
-    let pwdCharType = ''            // 改名
-
-    if (response.data && response.data.user) {
-      user = response.data.user
-      roles = response.data.roles || []
-      permissions = response.data.permissions || []
-      defaultModifyPwd = response.data.isDefaultModifyPwd || false
-      passwordExpired = response.data.isPasswordExpired || false
-      pwdCharType = response.data.pwdChrtype || ''
-    } else if (response.user) {
-      user = response.user
-      roles = response.roles || []
-      permissions = response.permissions || []
-      defaultModifyPwd = response.isDefaultModifyPwd || false
-      passwordExpired = response.isPasswordExpired || false
-      pwdCharType = response.pwdChrtype || ''
-    } else {
-      user = response
-    }
-
-    const dept = user.dept || {}
-
-    userInfo.id = user.userId || 0
-    userInfo.username = user.userName || ''
-    userInfo.realName = user.nickName || ''
-    userInfo.phone = user.phonenumber || ''
-    userInfo.email = user.email || ''
-    userInfo.orgId = user.deptId || 0
-    userInfo.orgName = dept.deptName || ''
-    userInfo.avatar = user.avatar || ''
-    userInfo.loginIp = user.loginIp || ''
-    userInfo.loginDate = formatDate(user.loginDate)
-
-    userRoles.value = roles
-    userPermissions.value = permissions
-
-    // 赋值给 ref - 使用不同的变量名
-    pwdChrtype.value = pwdCharType
-    isDefaultModifyPwd.value = defaultModifyPwd
-    isPasswordExpired.value = passwordExpired
-
-    accountInfo.roleCount = userRoles.value.length
-
-    if (userInfo.loginDate) {
-      recentActivities.value[0].time = userInfo.loginDate
-    }
-
-    console.log('用户名:', userInfo.username)
-    console.log('真实姓名:', userInfo.realName)
-
-    if (isPasswordExpired.value) {
-      ElMessage.warning('您的密码已过期，请及时修改')
-      showPasswordDialog.value = true
-    } else if (isDefaultModifyPwd.value) {
-      ElMessage.info('您使用的是初始密码，建议立即修改')
-    }
-
+    await applyProfile()
   } catch (error) {
-    console.error('获取用户信息失败:', error)
-    ElMessage.error('获取用户信息失败')
+    console.error('获取个人中心信息失败:', error)
+    ElMessage.error('获取个人中心信息失败')
+    return
+  }
+
+  try {
+    await applyAuthInfo()
+  } catch (error) {
+    console.error('获取账号扩展信息失败:', error)
+  }
+
+  if (isPasswordExpired.value) {
+    ElMessage.warning('您的密码已过期，请及时修改')
+    showPasswordDialog.value = true
+  } else if (isDefaultModifyPwd.value) {
+    ElMessage.info('您使用的是初始密码，建议立即修改')
   }
 })
 </script>
@@ -759,6 +770,16 @@ onMounted(async () => {
   width: 18px;
   height: 18px;
   color: white;
+}
+
+.avatar-edit-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.avatar-file-input {
+  display: none;
 }
 
 .user-meta {
@@ -920,10 +941,6 @@ onMounted(async () => {
   font-size: 16px;
   color: #2d3748;
   font-weight: 500;
-}
-
-.org-select {
-  width: 100%;
 }
 
 /* Security Card */
@@ -1328,7 +1345,4 @@ onMounted(async () => {
 }
 
 /* Select overrides */
-.org-select .el-input__wrapper {
-  border-radius: 8px;
-}
 </style>
