@@ -2,10 +2,10 @@ package com.zwei.iot.monitor.service.impl;
 
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.mapper.MonitorTypeMapper;
+import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
@@ -20,10 +20,13 @@ import java.util.List;
 public class MonitorTypeServiceImpl implements IMonitorTypeService {
 
     private final MonitorTypeMapper monitorTypeMapper;
+    private final IMonitorContentService monitorContentService;
 
     @Autowired
-    public MonitorTypeServiceImpl(MonitorTypeMapper monitorTypeMapper) {
+    public MonitorTypeServiceImpl(MonitorTypeMapper monitorTypeMapper,
+                                  IMonitorContentService monitorContentService) {
         this.monitorTypeMapper = monitorTypeMapper;
+        this.monitorContentService = monitorContentService;
     }
 
     /**
@@ -31,7 +34,9 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      */
     @Override
     public List<MonitorType> selectMonitorTypePage(MonitorType monitorType, int pageNum, int pageSize) {
-        return monitorTypeMapper.selectMonitorTypeList(monitorType);
+        List<MonitorType> monitorTypes = monitorTypeMapper.selectMonitorTypeList(monitorType);
+        monitorTypes.forEach(this::populateDerivedFields);
+        return monitorTypes;
     }
 
     /**
@@ -39,16 +44,23 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
      */
     @Override
     public List<MonitorType> selectMonitorTypeAll() {
-        return monitorTypeMapper.selectMonitorTypeAll();
+        List<MonitorType> monitorTypes = monitorTypeMapper.selectMonitorTypeAll();
+        monitorTypes.forEach(this::populateDerivedFields);
+        return monitorTypes;
     }
 
     /**
      * 根据ID查询监测类型详情
      */
     @Override
-    @Cacheable(value = "monitorType", key = "#id")
     public MonitorType selectMonitorTypeById(Long id) {
-        return monitorTypeMapper.selectMonitorTypeById(id);
+        MonitorType monitorType = monitorTypeMapper.selectMonitorTypeById(id);
+        if (monitorType == null) {
+            return null;
+        }
+        populateDerivedFields(monitorType);
+        monitorType.setContents(monitorContentService.selectMonitorContentAll(id));
+        return monitorType;
     }
 
     /**
@@ -115,5 +127,21 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
         Long id = monitorType.getId() == null ? 0L : monitorType.getId();
         MonitorType exist = monitorTypeMapper.checkMonitorTypeCodeUnique(monitorType.getCode(), id);
         return exist == null;
+    }
+
+    private void populateDerivedFields(MonitorType monitorType) {
+        monitorType.setDeviceTypeName(resolveDeviceTypeName(monitorType.getDeviceType()));
+    }
+
+    private String resolveDeviceTypeName(Integer deviceType) {
+        if (deviceType == null) {
+            return null;
+        }
+        return switch (deviceType) {
+            case 1 -> "直连设备";
+            case 2 -> "传感器";
+            case 3 -> "RTU";
+            default -> null;
+        };
     }
 }

@@ -8,6 +8,7 @@
     <resultMap type="com.zwei.iot.monitor.domain.MonitorContent" id="MonitorContentResult">
         <id property="id" column="id"/>
         <result property="monitorTypeId" column="monitor_type_id"/>
+        <result property="monitorTypeName" column="monitor_type_name"/>
         <result property="code" column="code"/>
         <result property="name" column="name"/>
         <result property="unit" column="unit"/>
@@ -135,14 +136,21 @@
     <!-- 删除监测内容（逻辑删除） -->
     <delete id="deleteMonitorContentById" parameterType="Long">
         UPDATE monitor_content
-        SET del_flag = 1
+        SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            del_flag = 1,
+            update_time = SYSDATE()
         WHERE id = #{id}
+          AND del_flag = 0
     </delete>
 
     <!-- 批量删除监测内容（逻辑删除） -->
     <delete id="deleteMonitorContentByIds" parameterType="Long">
-        UPDATE monitor_content SET del_flag = 1
-        WHERE id IN
+        UPDATE monitor_content
+        SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            del_flag = 1,
+            update_time = SYSDATE()
+        WHERE del_flag = 0
+          AND id IN
         <foreach collection="array" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>

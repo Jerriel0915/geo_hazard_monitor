@@ -217,11 +217,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</update>
 	
 	<delete id="deleteUserById" parameterType="Long">
- 		update sys_user set del_flag = '2' where user_id = #{userId}
+ 		update sys_user
+        set user_name = concat(left(user_name, 6), '#DEL#', user_id),
+            phonenumber = case
+                when phonenumber is null or phonenumber = '' then phonenumber
+                else concat('0', lpad(mod(user_id, 10000000000), 10, '0'))
+            end,
+            email = case
+                when email is null or email = '' then email
+                else concat(left(email, 26), '#DEL#', user_id)
+            end,
+            del_flag = '2',
+            update_time = sysdate()
+        where user_id = #{userId}
+          and del_flag = '0'
  	</delete>
  	
  	<delete id="deleteUserByIds" parameterType="Long">
- 		update sys_user set del_flag = '2' where user_id in
+ 		update sys_user
+        set user_name = concat(left(user_name, 6), '#DEL#', user_id),
+            phonenumber = case
+                when phonenumber is null or phonenumber = '' then phonenumber
+                else concat('0', lpad(mod(user_id, 10000000000), 10, '0'))
+            end,
+            email = case
+                when email is null or email = '' then email
+                else concat(left(email, 26), '#DEL#', user_id)
+            end,
+            del_flag = '2',
+            update_time = sysdate()
+        where del_flag = '0'
+          and user_id in
  		<foreach collection="array" item="userId" open="(" separator="," close=")">
  			#{userId}
         </foreach> 

@@ -8,12 +8,15 @@ import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.iot.monitor.domain.MonitorType;
+import com.zwei.iot.monitor.domain.dto.MonitorTypeCreateRequest;
+import com.zwei.iot.monitor.domain.dto.MonitorTypeUpdateRequest;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -60,15 +63,16 @@ public class MonitorTypeController extends BaseController {
 
     /**
      * 获取所有监测类型列表（不分页）
+     * <p>
+     * 该接口按文档返回全部监测类型，不接收查询条件。
      *
-     * @param monitorType 查询条件
      * @return 监测类型列表
      */
     @PreAuthorize("@ss.hasPermi('basic:monitorType:list')")
     @GetMapping
-    public AjaxResult list(MonitorType monitorType) {
+    public AjaxResult list() {
         List<MonitorType> list = monitorTypeService.selectMonitorTypeAll();
-        return success(list);
+        return AjaxResult.success("成功", list);
     }
 
     /**
@@ -84,19 +88,20 @@ public class MonitorTypeController extends BaseController {
         if (monitorType == null) {
             return error("监测类型不存在");
         }
-        return success(monitorType);
+        return AjaxResult.success("成功", monitorType);
     }
 
     /**
      * 新增监测类型
      *
-     * @param monitorType 监测类型信息
+     * @param request 新增请求参数
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:monitorType:add')")
     @Log(title = "监测类型", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody MonitorType monitorType) {
+    public AjaxResult add(@Validated @RequestBody MonitorTypeCreateRequest request) {
+        MonitorType monitorType = buildMonitorTypeForCreate(request);
         // 校验编码唯一性
         if (!monitorTypeService.checkMonitorTypeCodeUnique(monitorType)) {
             return error("新增监测类型'" + monitorType.getName() + "'失败，监测类型编码已存在");
@@ -105,31 +110,35 @@ public class MonitorTypeController extends BaseController {
         monitorType.setCreateBy(getUsername());
         // 执行新增
         int rows = monitorTypeService.insertMonitorType(monitorType);
-        return rows > 0 ? success(monitorType.getId()) : error("新增失败");
+        return rows > 0
+                ? AjaxResult.success("新增成功", Collections.singletonMap("id", monitorType.getId()))
+                : error("新增失败");
     }
 
     /**
      * 修改监测类型
      *
-     * @param id          监测类型ID
-     * @param monitorType 监测类型信息
+     * @param id      监测类型ID
+     * @param request 修改请求参数
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:monitorType:edit')")
     @Log(title = "监测类型", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody MonitorType monitorType) {
-        // 设置ID
-        monitorType.setId(id);
-        // 校验编码唯一性
-        if (!monitorTypeService.checkMonitorTypeCodeUnique(monitorType)) {
-            return error("修改监测类型'" + monitorType.getName() + "'失败，监测类型编码已存在");
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody MonitorTypeUpdateRequest request) {
+        if (!request.hasUpdatableField()) {
+            return error("修改失败，请至少提供一个可更新字段");
         }
+        MonitorType current = monitorTypeService.selectMonitorTypeById(id);
+        if (current == null) {
+            return error("监测类型不存在");
+        }
+        MonitorType monitorType = buildMonitorTypeForUpdate(id, request);
         // 设置更新者
         monitorType.setUpdateBy(getUsername());
         // 执行修改
         int rows = monitorTypeService.updateMonitorType(monitorType);
-        return rows > 0 ? success() : error("修改失败");
+        return rows > 0 ? AjaxResult.success("修改成功") : error("修改失败");
     }
 
     /**
@@ -143,6 +152,29 @@ public class MonitorTypeController extends BaseController {
     @DeleteMapping("/{id}")
     public AjaxResult remove(@PathVariable Long id) {
         int rows = monitorTypeService.deleteMonitorTypeById(id);
-        return rows > 0 ? success() : error("删除失败");
+        return rows > 0 ? AjaxResult.success("删除成功") : error("删除失败");
+    }
+
+    private MonitorType buildMonitorTypeForCreate(MonitorTypeCreateRequest request) {
+        MonitorType monitorType = new MonitorType();
+        monitorType.setCode(request.getCode());
+        monitorType.setName(request.getName());
+        monitorType.setDeviceType(request.getDeviceType());
+        monitorType.setIcon(request.getIcon());
+        monitorType.setDescription(request.getDescription());
+        monitorType.setSortOrder(request.getSortOrder());
+        monitorType.setStatus(request.getStatus());
+        return monitorType;
+    }
+
+    private MonitorType buildMonitorTypeForUpdate(Long id, MonitorTypeUpdateRequest request) {
+        MonitorType monitorType = new MonitorType();
+        monitorType.setId(id);
+        monitorType.setName(request.getName());
+        monitorType.setDeviceType(request.getDeviceType());
+        monitorType.setIcon(request.getIcon());
+        monitorType.setDescription(request.getDescription());
+        monitorType.setSortOrder(request.getSortOrder());
+        return monitorType;
     }
 }

@@ -456,6 +456,24 @@ Existing core business tables still include:
 - `sys_job`
 - `sys_job_log`
 
+## Logical Delete and Unique Keys
+
+For tables that use logical delete (`del_flag`) and also have unique fields or unique indexes, deleting a record must not leave the original unique value permanently occupied.
+
+Required handling:
+
+- On logical delete, rewrite the unique field value before or while setting `del_flag`.
+- Prefer the existing project pattern: `CONCAT(LEFT(original_value, 75), '#DEL#', id)` for `varchar(100)` code fields.
+- Also update `update_time` during logical delete when the table has that column.
+- Guard the delete SQL with the current active flag condition when appropriate (for example `AND del_flag = 0` or `AND del_flag = '0'`) to avoid repeated rewrites.
+
+Current in-repo reference implementation:
+
+- `zwei-iot/.../hazardPoint/HazardPointMapper.xml` rewrites `hazard_point.code` on logical delete.
+- `zwei-iot/.../monitor/MonitorTypeMapper.xml` rewrites `monitor_type.code` on logical delete.
+
+When adding or reviewing delete logic for tables such as `device`, `device_sensor`, `monitor_content`, `video_device`, `hazard_point_group`, `sys_dept`, `sys_role`, or `sys_user`, always verify whether any unique field also needs this rewrite strategy.
+
 ## Key Backend Patterns
 
 ### BaseController

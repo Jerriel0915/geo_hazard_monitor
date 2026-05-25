@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
+import java.util.List;
 
 /**
  * 监测类型表 monitor_type
@@ -79,7 +80,7 @@ public class MonitorType extends BaseEntity {
     /**
      * 监测内容列表（查询详情时返回）
      */
-    private Object contents;
+    private List<MonitorContent> contents;
 
     @Override
     public String toString() {

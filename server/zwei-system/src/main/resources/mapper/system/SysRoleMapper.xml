@@ -139,11 +139,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</update>
 	
 	<delete id="deleteRoleById" parameterType="Long">
- 		update sys_role set del_flag = '2' where role_id = #{roleId}
+ 		update sys_role
+        set role_name = concat(left(role_name, 6), '#DEL#', role_id),
+            role_key = concat(left(role_key, 75), '#DEL#', role_id),
+            del_flag = '2',
+            update_time = sysdate()
+        where role_id = #{roleId}
+          and del_flag = '0'
  	</delete>
  	
  	<delete id="deleteRoleByIds" parameterType="Long">
- 	    update sys_role set del_flag = '2' where role_id in
+ 	    update sys_role
+        set role_name = concat(left(role_name, 6), '#DEL#', role_id),
+            role_key = concat(left(role_key, 75), '#DEL#', role_id),
+            del_flag = '2',
+            update_time = sysdate()
+        where del_flag = '0'
+          and role_id in
  		<foreach collection="array" item="roleId" open="(" separator="," close=")">
  			#{roleId}
         </foreach> 
