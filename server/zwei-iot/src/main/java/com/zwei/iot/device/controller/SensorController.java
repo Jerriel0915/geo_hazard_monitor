@@ -6,12 +6,16 @@ import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
+import com.zwei.iot.device.domain.dto.SensorAttributeRequest;
+import com.zwei.iot.device.domain.dto.SensorCreateRequest;
+import com.zwei.iot.device.domain.dto.SensorUpdateRequest;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -48,7 +52,7 @@ public class SensorController extends BaseController {
         if (sensor == null) {
             return error("传感器不存在");
         }
-        return success(sensor);
+        return AjaxResult.success("成功", sensor);
     }
 
     /**
@@ -61,16 +65,12 @@ public class SensorController extends BaseController {
     @PreAuthorize("@ss.hasPermi('basic:sensor:edit')")
     @Log(title = "传感器", businessType = BusinessType.UPDATE)
     @PutMapping("/sensors/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody DeviceSensor sensor) {
-        // 设置ID
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody SensorUpdateRequest request) {
+        DeviceSensor sensor = buildSensorForUpdate(id, request);
         sensor.setId(id);
-        // 设置更新者
         sensor.setUpdateBy(getUsername());
-        // 解析属性列表（attrList中每一项只包含attrCode,attrName,indicatorType等属性字段）
-        List<SensorAttribute> attrList = sensor.getAttrList();
-        // 执行修改
-        int rows = sensorService.updateSensor(sensor, attrList);
-        return rows > 0 ? success() : error("修改失败");
+        int rows = sensorService.updateSensor(sensor, buildAttributes(request.getAttrList()));
+        return rows > 0 ? AjaxResult.success("修改成功", null) : error("修改失败");
     }
 
     /**
@@ -84,7 +84,7 @@ public class SensorController extends BaseController {
     @DeleteMapping("/sensors/{id}")
     public AjaxResult remove(@PathVariable Long id) {
         int rows = sensorService.deleteSensorById(id);
-        return rows > 0 ? success() : error("删除失败");
+        return rows > 0 ? AjaxResult.success("删除成功", null) : error("删除失败");
     }
 
     /**
@@ -97,19 +97,60 @@ public class SensorController extends BaseController {
     @PreAuthorize("@ss.hasPermi('basic:sensor:add')")
     @Log(title = "传感器", businessType = BusinessType.INSERT)
     @PostMapping("/devices/{deviceId}/sensors")
-    public AjaxResult add(@PathVariable Long deviceId, @Validated @RequestBody DeviceSensor sensor) {
-        // 设置设备ID
+    public AjaxResult add(@PathVariable Long deviceId, @Validated @RequestBody SensorCreateRequest request) {
+        DeviceSensor sensor = buildSensorForCreate(request);
         sensor.setDeviceId(deviceId);
-        // 设置创建者
         sensor.setCreateBy(getUsername());
-        // 校验编码唯一性
         if (!sensorService.checkSensorCodeUnique(sensor.getSensorCode(), 0L)) {
             return error("新增传感器'" + sensor.getSensorName() + "'失败，传感器编码已存在");
         }
-        // 解析属性列表
-        List<SensorAttribute> attrList = sensor.getAttrList();
-        // 执行新增
-        Long id = sensorService.insertSensor(sensor, attrList);
-        return id != null ? success(id) : error("新增失败");
+        Long id = sensorService.insertSensor(sensor, buildAttributes(request.getAttrList()));
+        return id != null
+                ? AjaxResult.success("新增成功", Collections.singletonMap("id", id))
+                : error("新增失败");
+    }
+
+    private DeviceSensor buildSensorForCreate(SensorCreateRequest request) {
+        DeviceSensor sensor = new DeviceSensor();
+        sensor.setSensorCode(request.getSensorCode().trim());
+        sensor.setSensorName(request.getSensorName().trim());
+        sensor.setMonitorTypeId(request.getMonitorTypeId());
+        sensor.setStatus(request.getStatus());
+        return sensor;
+    }
+
+    private DeviceSensor buildSensorForUpdate(Long id, SensorUpdateRequest request) {
+        DeviceSensor sensor = new DeviceSensor();
+        sensor.setId(id);
+        sensor.setSensorName(request.getSensorName().trim());
+        sensor.setStatus(request.getStatus());
+        return sensor;
+    }
+
+    private List<SensorAttribute> buildAttributes(List<SensorAttributeRequest> attrRequests) {
+        return attrRequests.stream().map(this::buildAttribute).toList();
+    }
+
+    private SensorAttribute buildAttribute(SensorAttributeRequest request) {
+        SensorAttribute attribute = new SensorAttribute();
+        attribute.setId(request.getId());
+        attribute.setAttrCode(request.getAttrCode().trim());
+        attribute.setAttrName(request.getAttrName().trim());
+        attribute.setIndicatorType(trimToNull(request.getIndicatorType()));
+        attribute.setIndicatorTypeName(trimToNull(request.getIndicatorTypeName()));
+        attribute.setInitialValue(request.getInitialValue());
+        attribute.setUnit(trimToNull(request.getUnit()));
+        attribute.setRangeMin(request.getRangeMin());
+        attribute.setRangeMax(request.getRangeMax());
+        attribute.setIcon(trimToNull(request.getIcon()));
+        return attribute;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

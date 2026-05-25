@@ -104,6 +104,7 @@
     <update id="updateSensor" parameterType="com.zwei.iot.device.domain.DeviceSensor">
         UPDATE device_sensor
         <set>
+            <if test="deviceCode != null and deviceCode != ''">device_code = #{deviceCode},</if>
             <if test="sensorName != null and sensorName != ''">sensor_name = #{sensorName},</if>
             <if test="monitorTypeId != null">monitor_type_id = #{monitorTypeId},</if>
             <if test="monitorTypeCode != null">monitor_type_code = #{monitorTypeCode},</if>
@@ -113,6 +114,7 @@
             update_time = SYSDATE()
         </set>
         WHERE id = #{id}
+          AND del_flag = 0
     </update>
 
     <!-- ==================== 删除操作 ==================== -->

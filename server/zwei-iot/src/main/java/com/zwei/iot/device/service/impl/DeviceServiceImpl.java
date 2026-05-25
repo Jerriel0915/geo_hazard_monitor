@@ -88,9 +88,8 @@ public class DeviceServiceImpl implements IDeviceService {
      */
     @Override
     public int deleteDeviceById(Long id) {
-        // 删除设备下的传感器
+        deleteSensorAttributesByDeviceId(id);
         sensorMapper.deleteSensorByDeviceId(id);
-        // 删除设备
         return deviceMapper.deleteDeviceById(id);
     }
 
@@ -100,7 +99,7 @@ public class DeviceServiceImpl implements IDeviceService {
     @Override
     public int deleteDeviceByIds(Long[] ids) {
         for (Long id : ids) {
-            // 删除设备下的传感器
+            deleteSensorAttributesByDeviceId(id);
             sensorMapper.deleteSensorByDeviceId(id);
         }
         return deviceMapper.deleteDeviceByIds(ids);
@@ -132,6 +131,7 @@ public class DeviceServiceImpl implements IDeviceService {
         List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(id);
         for (DeviceSensor originalSensor : sensors) {
             DeviceSensor newSensor = DeviceSensor.builder()
+                    .deviceId(copy.getId())
                     .deviceCode(copy.getCode())
                     .sensorCode(originalSensor.getSensorCode() + "_copy")
                     .sensorName(originalSensor.getSensorName())
@@ -147,7 +147,9 @@ public class DeviceServiceImpl implements IDeviceService {
             List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(originalSensor.getId());
             if (!attrs.isEmpty()) {
                 for (SensorAttribute attr : attrs) {
+                    attr.setId(null);
                     attr.setSensorId(newSensor.getId());
+                    attr.setCreateBy(original.getCreateBy());
                 }
                 attributeMapper.batchInsertAttribute(attrs);
             }
@@ -175,5 +177,12 @@ public class DeviceServiceImpl implements IDeviceService {
             sensor.setAttrList(attrs);
         }
         return sensors;
+    }
+
+    private void deleteSensorAttributesByDeviceId(Long deviceId) {
+        List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(deviceId);
+        for (DeviceSensor sensor : sensors) {
+            attributeMapper.deleteAttributeBySensorId(sensor.getId());
+        }
     }
 }

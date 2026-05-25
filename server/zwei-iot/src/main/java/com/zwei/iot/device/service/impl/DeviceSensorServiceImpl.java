@@ -1,15 +1,25 @@
 package com.zwei.iot.device.service.impl;
 
+import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
+import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.monitor.domain.MonitorType;
+import com.zwei.iot.monitor.service.IMonitorTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * 传感器Service实现
@@ -18,13 +28,22 @@ import java.util.List;
  */
 @Service
 public class DeviceSensorServiceImpl implements IDeviceSensorService {
+    private static final int SENSOR_MONITOR_DEVICE_TYPE = 2;
+
+    private final DeviceMapper deviceMapper;
     private final DeviceSensorMapper sensorMapper;
     private final SensorAttributeMapper attributeMapper;
+    private final IMonitorTypeService monitorTypeService;
 
     @Autowired
-    public DeviceSensorServiceImpl(DeviceSensorMapper sensorMapper, SensorAttributeMapper attributeMapper) {
+    public DeviceSensorServiceImpl(DeviceMapper deviceMapper,
+                                   DeviceSensorMapper sensorMapper,
+                                   SensorAttributeMapper attributeMapper,
+                                   IMonitorTypeService monitorTypeService) {
+        this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
+        this.monitorTypeService = monitorTypeService;
     }
 
     /**
@@ -59,14 +78,19 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     @Transactional
     public Long insertSensor(DeviceSensor sensor, List<SensorAttribute> attrList) {
-        // 插入传感器
+        Device device = requireDevice(sensor.getDeviceId());
+        if (!checkSensorCodeUnique(sensor.getSensorCode(), 0L)) {
+            throw new ServiceException("传感器编码已存在");
+        }
+        fillDeviceFields(sensor, device);
+        fillMonitorTypeFields(sensor, requireSensorMonitorType(sensor.getMonitorTypeId()));
+        validateAttributeList(attrList);
+
         sensorMapper.insertSensor(sensor);
-        // 插入属性
-        if (attrList != null && !attrList.isEmpty()) {
-            for (SensorAttribute attr : attrList) {
-                attr.setSensorId(sensor.getId());
-                attributeMapper.insertAttribute(attr);
-            }
+        for (SensorAttribute attr : attrList) {
+            attr.setSensorId(sensor.getId());
+            attr.setCreateBy(sensor.getCreateBy());
+            attributeMapper.insertAttribute(attr);
         }
         return sensor.getId();
     }
@@ -77,15 +101,50 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     @Transactional
     public int updateSensor(DeviceSensor sensor, List<SensorAttribute> attrList) {
-        // 更新传感器基本信息
+        DeviceSensor existing = sensorMapper.selectSensorById(sensor.getId());
+        if (existing == null) {
+            throw new ServiceException("传感器不存在");
+        }
+
+        fillDeviceFields(sensor, requireDevice(existing.getDeviceId()));
+        Long monitorTypeId = sensor.getMonitorTypeId() != null ? sensor.getMonitorTypeId() : existing.getMonitorTypeId();
+        fillMonitorTypeFields(sensor, requireSensorMonitorType(monitorTypeId));
+        validateAttributeList(attrList);
+
         int rows = sensorMapper.updateSensor(sensor);
-        // 删除原有属性
-        attributeMapper.deleteAttributeBySensorId(sensor.getId());
-        // 插入新属性
-        if (attrList != null && !attrList.isEmpty()) {
-            for (SensorAttribute attr : attrList) {
+        if (rows <= 0) {
+            return rows;
+        }
+
+        List<SensorAttribute> existingAttrs = attributeMapper.selectAttributeListBySensorId(sensor.getId());
+        Map<Long, SensorAttribute> existingAttrMap = new HashMap<>();
+        for (SensorAttribute existingAttr : existingAttrs) {
+            existingAttrMap.put(existingAttr.getId(), existingAttr);
+        }
+
+        Set<Long> retainedIds = new HashSet<>();
+        for (SensorAttribute attr : attrList) {
+            if (attr.getId() == null) {
                 attr.setSensorId(sensor.getId());
+                attr.setCreateBy(sensor.getUpdateBy());
                 attributeMapper.insertAttribute(attr);
+                continue;
+            }
+
+            SensorAttribute currentAttr = existingAttrMap.get(attr.getId());
+            if (currentAttr == null) {
+                throw new ServiceException("属性不存在或不属于当前传感器");
+            }
+
+            retainedIds.add(attr.getId());
+            attr.setSensorId(sensor.getId());
+            attr.setUpdateBy(sensor.getUpdateBy());
+            attributeMapper.updateAttribute(attr);
+        }
+
+        for (SensorAttribute existingAttr : existingAttrs) {
+            if (!retainedIds.contains(existingAttr.getId())) {
+                attributeMapper.deleteAttributeById(existingAttr.getId());
             }
         }
         return rows;
@@ -97,9 +156,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     @Transactional
     public int deleteSensorById(Long id) {
-        // 删除属性
         attributeMapper.deleteAttributeBySensorId(id);
-        // 删除传感器
         return sensorMapper.deleteSensorById(id);
     }
 
@@ -118,5 +175,65 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     public List<DeviceSensor> selectSensorList(DeviceSensor sensor) {
         return sensorMapper.selectSensorList(sensor);
+    }
+
+    private Device requireDevice(Long deviceId) {
+        if (deviceId == null) {
+            throw new ServiceException("设备ID不能为空");
+        }
+        Device device = deviceMapper.selectDeviceById(deviceId);
+        if (device == null) {
+            throw new ServiceException("设备不存在");
+        }
+        return device;
+    }
+
+    private MonitorType requireSensorMonitorType(Long monitorTypeId) {
+        if (monitorTypeId == null) {
+            throw new ServiceException("监测类型ID不能为空");
+        }
+        MonitorType monitorType = monitorTypeService.selectMonitorTypeById(monitorTypeId);
+        if (monitorType == null) {
+            throw new ServiceException("监测类型不存在");
+        }
+        if (!Objects.equals(monitorType.getDeviceType(), SENSOR_MONITOR_DEVICE_TYPE)) {
+            throw new ServiceException("仅允许选择设备类型为传感器的监测类型");
+        }
+        return monitorType;
+    }
+
+    private void fillDeviceFields(DeviceSensor sensor, Device device) {
+        sensor.setDeviceId(device.getId());
+        sensor.setDeviceCode(device.getCode());
+    }
+
+    private void fillMonitorTypeFields(DeviceSensor sensor, MonitorType monitorType) {
+        sensor.setMonitorTypeId(monitorType.getId());
+        sensor.setMonitorTypeCode(monitorType.getCode());
+        sensor.setMonitorTypeName(monitorType.getName());
+    }
+
+    private void validateAttributeList(List<SensorAttribute> attrList) {
+        if (attrList == null || attrList.isEmpty()) {
+            throw new ServiceException("属性列表不能为空");
+        }
+
+        Set<String> attrCodeSet = new HashSet<>();
+        Set<Long> attrIdSet = new HashSet<>();
+        for (SensorAttribute attr : attrList) {
+            if (attr == null) {
+                throw new ServiceException("属性列表存在空数据");
+            }
+            if (!attrCodeSet.add(attr.getAttrCode())) {
+                throw new ServiceException("属性编码不能重复");
+            }
+            if (attr.getId() != null && !attrIdSet.add(attr.getId())) {
+                throw new ServiceException("属性ID不能重复");
+            }
+            if (attr.getRangeMin() != null && attr.getRangeMax() != null
+                    && attr.getRangeMin().compareTo(attr.getRangeMax()) > 0) {
+                throw new ServiceException("属性最小值不能大于最大值");
+            }
+        }
     }
 }

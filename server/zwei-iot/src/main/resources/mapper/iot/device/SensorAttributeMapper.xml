@@ -16,6 +16,11 @@
         <result property="unit" column="unit"/>
         <result property="rangeMin" column="range_min"/>
         <result property="rangeMax" column="range_max"/>
+        <result property="icon" column="icon"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
     </resultMap>
 
     <!-- ==================== SQL片段 ==================== -->
@@ -29,7 +34,12 @@
                sa.initial_value,
                sa.unit,
                sa.range_min,
-               sa.range_max
+               sa.range_max,
+               sa.icon,
+               sa.create_by,
+               sa.create_time,
+               sa.update_by,
+               sa.update_time
         FROM sensor_attribute sa
     </sql>
 
@@ -69,6 +79,8 @@
         <if test="unit != null">unit,</if>
         <if test="rangeMin != null">range_min,</if>
         <if test="rangeMax != null">range_max,</if>
+        <if test="icon != null">icon,</if>
+        <if test="createBy != null and createBy != ''">create_by,</if>
         create_time
         ) VALUES (
         <if test="sensorId != null">#{sensorId},</if>
@@ -80,6 +92,8 @@
         <if test="unit != null">#{unit},</if>
         <if test="rangeMin != null">#{rangeMin},</if>
         <if test="rangeMax != null">#{rangeMax},</if>
+        <if test="icon != null">#{icon},</if>
+        <if test="createBy != null and createBy != ''">#{createBy},</if>
         SYSDATE()
         )
     </insert>
@@ -96,6 +110,8 @@
         unit,
         range_min,
         range_max,
+        icon,
+        create_by,
         create_time
         ) VALUES
         <foreach collection="list" item="item" separator=",">
@@ -109,6 +125,8 @@
             #{item.unit},
             #{item.rangeMin},
             #{item.rangeMax},
+            #{item.icon},
+            #{item.createBy},
             SYSDATE()
             )
         </foreach>
@@ -120,6 +138,7 @@
     <update id="updateAttribute" parameterType="com.zwei.iot.device.domain.SensorAttribute">
         UPDATE sensor_attribute
         <set>
+            <if test="attrCode != null and attrCode != ''">attr_code = #{attrCode},</if>
             <if test="attrName != null and attrName != ''">attr_name = #{attrName},</if>
             <if test="indicatorType != null">indicator_type = #{indicatorType},</if>
             <if test="indicatorTypeName != null">indicator_type_name = #{indicatorTypeName},</if>
@@ -127,6 +146,8 @@
             <if test="unit != null">unit = #{unit},</if>
             <if test="rangeMin != null">range_min = #{rangeMin},</if>
             <if test="rangeMax != null">range_max = #{rangeMax},</if>
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             update_time = SYSDATE()
         </set>
         WHERE id = #{id}

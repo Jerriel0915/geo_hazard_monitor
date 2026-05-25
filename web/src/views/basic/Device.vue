@@ -215,46 +215,121 @@
           <span class="btn-icon">+</span> 添加传感器
         </el-button>
       </div>
-      <el-table :data="formData.sensorList" border size="small">
-        <el-table-column label="传感器编号" width="150" align="center">
+      <el-table :data="sensorTableData" border size="small" v-loading="sensorLoading">
+        <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center" />
+        <el-table-column prop="sensorName" label="传感器名称" width="150" align="center" />
+        <el-table-column prop="monitorTypeName" label="监测类型" width="180" align="center" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-input v-model="row.sensorCode" placeholder="编号" />
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
+              {{ row.status === 1 ? '启用' : '禁用' }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="传感器名称" width="150" align="center">
+        <el-table-column label="属性配置" min-width="320" align="center">
           <template #default="{ row }">
-            <el-input v-model="row.sensorName" placeholder="名称" />
-          </template>
-        </el-table-column>
-        <el-table-column label="监测类型" width="180" align="center">
-          <template #default="{ row }">
-            <el-select v-model="row.monitorTypeId" placeholder="选择监测类型" @change="handleMonitorTypeChange(row)">
-              <el-option v-for="mt in monitorTypeList" :key="mt.id" :label="mt.name" :value="mt.id" />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column label="属性初始值" min-width="300" align="center">
-          <template #default="{ row }">
-            <div v-if="row.attrList && row.attrList.length > 0" class="attr-config-list">
-              <div v-for="(attr, idx) in row.attrList" :key="idx" class="attr-config-item">
-                <span class="attr-name">{{ attr.attrName }}({{ attr.indicatorTypeName }}):</span>
-                <el-input-number v-model="attr.initialValue" :min="attr.rangeMin" :max="attr.rangeMax" controls-position="right" size="small" style="width: 100px" />
+            <div v-if="row.attrList?.length" class="attr-config-list">
+              <div v-for="attr in row.attrList" :key="attr.id || attr.attrCode" class="attr-config-item">
+                <span class="attr-name">{{ attr.attrName }}({{ attr.indicatorTypeName || '-' }}):</span>
+                <span>{{ attr.initialValue ?? 0 }}</span>
                 <span class="attr-unit">{{ attr.unit }}</span>
               </div>
             </div>
-            <span v-else class="empty-text">请先选择监测类型</span>
+            <span v-else class="empty-text">暂无属性</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="80" align="center">
-          <template #default="{ $index }">
-            <el-button type="text" size="small" class="danger-text" @click="handleRemoveSensor($index)">删除</el-button>
+        <el-table-column label="操作" width="120" align="center">
+          <template #default="{ row }">
+            <el-button type="text" size="small" @click="handleEditSensor(row)">编辑</el-button>
+            <el-button type="text" size="small" class="danger-text" @click="handleDeleteSensor(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <template #footer>
-        <el-button @click="sensorDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSensorSubmit" :loading="sensorSubmitLoading">确定</el-button>
+        <el-button @click="sensorDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+        v-model="sensorFormDialogVisible"
+        :title="sensorFormTitle"
+        width="820px"
+        :close-on-click-modal="false"
+        destroy-on-close
+    >
+      <el-form ref="sensorFormRef" :model="sensorFormData" :rules="sensorFormRules" label-width="100px">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="传感器编号" prop="sensorCode">
+              <el-input
+                  v-model="sensorFormData.sensorCode"
+                  placeholder="请输入传感器编号"
+                  :disabled="sensorFormMode === 'edit'"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="传感器名称" prop="sensorName">
+              <el-input v-model="sensorFormData.sensorName" placeholder="请输入传感器名称" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="监测类型" prop="monitorTypeId">
+              <el-select
+                  v-model="sensorFormData.monitorTypeId"
+                  placeholder="请选择监测类型"
+                  :disabled="sensorFormMode === 'edit'"
+                  @change="handleMonitorTypeChange(sensorFormData)"
+              >
+                <el-option v-for="mt in monitorTypeList" :key="mt.id" :label="mt.name" :value="mt.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="sensorFormData.status" placeholder="请选择状态">
+                <el-option label="启用" :value="1" />
+                <el-option label="禁用" :value="0" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-divider content-position="left">
+          <span class="divider-title">属性配置</span>
+        </el-divider>
+
+        <el-table :data="sensorFormData.attrList" border size="small">
+          <el-table-column prop="attrCode" label="属性编码" width="150" align="center" />
+          <el-table-column prop="attrName" label="属性名称" width="150" align="center" />
+          <el-table-column prop="indicatorTypeName" label="指标类型" width="120" align="center" />
+          <el-table-column label="初始值" width="140" align="center">
+            <template #default="{ row }">
+              <el-input-number
+                  v-model="row.initialValue"
+                  :min="row.rangeMin"
+                  :max="row.rangeMax"
+                  controls-position="right"
+                  size="small"
+                  style="width: 110px"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="量程范围" width="180" align="center">
+            <template #default="{ row }">
+              {{ row.rangeMin }} ~ {{ row.rangeMax }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="unit" label="单位" width="80" align="center" />
+        </el-table>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="sensorFormDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSensorSubmit" :loading="sensorFormSubmitLoading">确定</el-button>
       </template>
     </el-dialog>
 
@@ -282,7 +357,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
-import { getMonitorTypeDetail, getMonitorTypeList } from '@/api/monitorType'
+import { getMonitorTypeDetail } from '@/api/monitorType'
+import {
+  createSensor,
+  deleteSensor,
+  getDeviceSensors,
+  getSensorDetail,
+  getSensorMonitorTypes,
+  updateSensor,
+  type SensorItem
+} from '@/api/sensor'
 
 // 获取token
 const getToken = () => localStorage.getItem('token')
@@ -324,6 +408,7 @@ const deviceIconList = Object.values(MonitorContentIconEnum).map(item => ({
 }))
 
 interface SensorAttrItem {
+  id?: number
   attrCode: string
   attrName: string
   indicatorType: string
@@ -332,19 +417,21 @@ interface SensorAttrItem {
   unit: string
   rangeMin: number
   rangeMax: number
+  icon?: string
 }
 
-interface SensorItem {
-  id?: string
+interface SensorFormModel {
+  id?: number
   sensorCode: string
   sensorName: string
-  monitorTypeId: string
+  monitorTypeId: number | null
   monitorTypeName: string
+  status: number
   attrList: SensorAttrItem[]
 }
 
 interface MonitorTypeItem {
-  id: string
+  id: number
   name: string
   modelAttrs: {
     attrCode: string
@@ -354,6 +441,7 @@ interface MonitorTypeItem {
     rangeMin: number
     rangeMax: number
     unit: string
+    icon?: string
   }[]
 }
 
@@ -376,7 +464,7 @@ const indicatorTypeNameMap: Record<string, string> = {
 const loading = ref(false)
 const submitLoading = ref(false)
 const sensorLoading = ref(false)
-const sensorSubmitLoading = ref(false)
+const sensorFormSubmitLoading = ref(false)
 const tableData = ref<any[]>([])
 const sensorList = ref<SensorItem[]>([])
 const monitorTypeList = ref<MonitorTypeItem[]>([])
@@ -398,8 +486,13 @@ const currentRow = ref<any>(null)
 
 const sensorDialogVisible = ref(false)
 const currentSensorDevice = ref<any>(null)
+const sensorTableData = ref<SensorItem[]>([])
+const sensorFormDialogVisible = ref(false)
+const sensorFormTitle = ref('新增传感器')
+const sensorFormMode = ref<'add' | 'edit'>('add')
 
 const deviceIconDialogVisible = ref(false)
+const sensorFormRef = ref()
 
 const formData = reactive<{
   id?: string
@@ -418,9 +511,25 @@ const formData = reactive<{
   sensorList: []
 })
 
+const sensorFormData = reactive<SensorFormModel>({
+  sensorCode: '',
+  sensorName: '',
+  monitorTypeId: null,
+  monitorTypeName: '',
+  status: 1,
+  attrList: []
+})
+
 const formRules = {
   code: [{ required: true, message: '请输入设备编号', trigger: 'blur' }],
   name: [{ required: true, message: '请输入设备名称', trigger: 'blur' }]
+}
+
+const sensorFormRules = {
+  sensorCode: [{ required: true, message: '请输入传感器编号', trigger: 'blur' }],
+  sensorName: [{ required: true, message: '请输入传感器名称', trigger: 'blur' }],
+  monitorTypeId: [{ required: true, message: '请选择监测类型', trigger: 'change' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
 const getStatusType = (status: number) => {
@@ -597,12 +706,12 @@ const copyDevice = async (id: string) => {
 // 获取监测类型列表（用于传感器配置）
 const loadMonitorTypeList = async () => {
   try {
-    const monitorTypes = await getMonitorTypeList()
+    const monitorTypes = await getSensorMonitorTypes()
     const details = await Promise.all(
       (monitorTypes || []).map(async (item: any) => {
         const detail = await getMonitorTypeDetail(Number(item.id))
         return {
-          id: String(detail.id),
+          id: Number(detail.id),
           name: detail.name,
           modelAttrs: (detail.contents || []).map((content: any) => ({
             attrCode: content.code,
@@ -611,7 +720,8 @@ const loadMonitorTypeList = async () => {
             indicatorTypeName: indicatorTypeNameMap[content.indicatorType] || content.indicatorType || '-',
             rangeMin: content.rangeMin ?? 0,
             rangeMax: content.rangeMax ?? 999999,
-            unit: content.unit || ''
+            unit: content.unit || '',
+            icon: content.icon || ''
           }))
         } as MonitorTypeItem
       })
@@ -620,32 +730,6 @@ const loadMonitorTypeList = async () => {
   } catch (error) {
     console.error('获取监测类型失败:', error)
     ElMessage.error('获取监测类型失败')
-  }
-}
-
-// 保存传感器配置
-const saveSensors = async () => {
-  sensorSubmitLoading.value = true
-  try {
-    const token = getToken()
-    // 这里根据实际后端接口调整
-    const response = await axios.put(`/api/v1/devices/${currentSensorDevice.value?.id}/sensors`, {
-      sensors: formData.sensorList
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('传感器配置保存成功')
-      sensorDialogVisible.value = false
-    } else {
-      ElMessage.error(response.data.msg || '保存失败')
-    }
-  } catch (error) {
-    console.error('保存传感器失败:', error)
-    ElMessage.error('网络请求失败')
-  } finally {
-    sensorSubmitLoading.value = false
   }
 }
 
@@ -754,30 +838,93 @@ const handleCopy = (row: any) => {
 
 const handleConfigSensors = async (row: any) => {
   currentSensorDevice.value = row
-  const detail = await fetchDetail(row.id)
-  if (detail) {
-    formData.sensorList = detail.sensors || []
-  } else {
-    formData.sensorList = []
-  }
+  await loadSensorTableData(row.id)
   sensorDialogVisible.value = true
 }
 
-const handleAddSensor = () => {
-  formData.sensorList.push({
+const loadSensorTableData = async (deviceId: number) => {
+  sensorLoading.value = true
+  try {
+    sensorTableData.value = await getDeviceSensors(deviceId)
+  } catch (error) {
+    console.error('获取传感器列表失败:', error)
+    ElMessage.error('获取传感器列表失败')
+    sensorTableData.value = []
+  } finally {
+    sensorLoading.value = false
+  }
+}
+
+const resetSensorForm = () => {
+  Object.assign(sensorFormData, {
+    id: undefined,
     sensorCode: '',
     sensorName: '',
-    monitorTypeId: '',
+    monitorTypeId: null,
     monitorTypeName: '',
+    status: 1,
     attrList: []
   })
 }
 
-const handleRemoveSensor = (index: number) => {
-  formData.sensorList.splice(index, 1)
+const handleAddSensor = () => {
+  sensorFormTitle.value = '新增传感器'
+  sensorFormMode.value = 'add'
+  resetSensorForm()
+  sensorFormDialogVisible.value = true
 }
 
-const handleMonitorTypeChange = (row: SensorItem) => {
+const handleEditSensor = async (row: SensorItem) => {
+  sensorFormTitle.value = '编辑传感器'
+  sensorFormMode.value = 'edit'
+  resetSensorForm()
+  try {
+    const detail = await getSensorDetail(Number(row.id))
+    Object.assign(sensorFormData, {
+      id: detail.id,
+      sensorCode: detail.sensorCode,
+      sensorName: detail.sensorName,
+      monitorTypeId: detail.monitorTypeId,
+      monitorTypeName: detail.monitorTypeName || '',
+      status: detail.status,
+      attrList: (detail.attrList || []).map((attr) => ({
+        id: attr.id,
+        attrCode: attr.attrCode,
+        attrName: attr.attrName,
+        indicatorType: attr.indicatorType || '',
+        indicatorTypeName: attr.indicatorTypeName || '',
+        initialValue: Number(attr.initialValue ?? 0),
+        unit: attr.unit || '',
+        rangeMin: Number(attr.rangeMin ?? 0),
+        rangeMax: Number(attr.rangeMax ?? 999999),
+        icon: attr.icon || ''
+      }))
+    })
+    sensorFormDialogVisible.value = true
+  } catch (error) {
+    console.error('获取传感器详情失败:', error)
+    ElMessage.error('获取传感器详情失败')
+  }
+}
+
+const handleDeleteSensor = (row: SensorItem) => {
+  ElMessageBox.confirm(`确定要删除传感器"${row.sensorName}"吗?`, '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await deleteSensor(Number(row.id))
+      ElMessage.success('删除成功')
+      await loadSensorTableData(Number(currentSensorDevice.value?.id))
+    } catch (error) {
+      console.error('删除传感器失败:', error)
+      ElMessage.error('删除传感器失败')
+    }
+  }).catch(() => {})
+}
+
+const handleMonitorTypeChange = (row: SensorFormModel) => {
   const mt = monitorTypeList.value.find(item => item.id === row.monitorTypeId)
   if (mt) {
     row.monitorTypeName = mt.name
@@ -789,13 +936,92 @@ const handleMonitorTypeChange = (row: SensorItem) => {
       initialValue: 0,
       unit: attr.unit,
       rangeMin: attr.rangeMin,
-      rangeMax: attr.rangeMax
+      rangeMax: attr.rangeMax,
+      icon: attr.icon
     }))
   }
 }
 
+const validateSensorAttrs = () => {
+  if (!sensorFormData.attrList.length) {
+    ElMessage.warning('属性列表不能为空')
+    return false
+  }
+
+  const codeSet = new Set<string>()
+  for (let index = 0; index < sensorFormData.attrList.length; index += 1) {
+    const attr = sensorFormData.attrList[index]
+    attr.attrCode = attr.attrCode.trim()
+    attr.attrName = attr.attrName.trim()
+    if (!attr.attrCode) {
+      ElMessage.warning(`第 ${index + 1} 行属性编码不能为空`)
+      return false
+    }
+    if (!attr.attrName) {
+      ElMessage.warning(`第 ${index + 1} 行属性名称不能为空`)
+      return false
+    }
+    if (codeSet.has(attr.attrCode)) {
+      ElMessage.warning(`属性编码 ${attr.attrCode} 重复`)
+      return false
+    }
+    codeSet.add(attr.attrCode)
+    if (attr.rangeMin > attr.rangeMax) {
+      ElMessage.warning(`属性 ${attr.attrName} 的最小值不能大于最大值`)
+      return false
+    }
+  }
+  return true
+}
+
+const buildSensorPayload = () => ({
+  sensorCode: sensorFormData.sensorCode.trim(),
+  sensorName: sensorFormData.sensorName.trim(),
+  monitorTypeId: Number(sensorFormData.monitorTypeId),
+  status: sensorFormData.status,
+  attrList: sensorFormData.attrList.map((attr) => ({
+    id: attr.id,
+    attrCode: attr.attrCode.trim(),
+    attrName: attr.attrName.trim(),
+    indicatorType: attr.indicatorType || undefined,
+    indicatorTypeName: attr.indicatorTypeName || undefined,
+    initialValue: attr.initialValue,
+    unit: attr.unit || undefined,
+    rangeMin: attr.rangeMin,
+    rangeMax: attr.rangeMax,
+    icon: attr.icon || undefined
+  }))
+})
+
 const handleSensorSubmit = () => {
-  saveSensors()
+  sensorFormRef.value.validate(async (valid: boolean) => {
+    if (!valid || !validateSensorAttrs()) {
+      return
+    }
+
+    sensorFormSubmitLoading.value = true
+    try {
+      const payload = buildSensorPayload()
+      if (sensorFormMode.value === 'add') {
+        await createSensor(Number(currentSensorDevice.value?.id), payload)
+        ElMessage.success('新增成功')
+      } else if (sensorFormData.id) {
+        await updateSensor(sensorFormData.id, {
+          sensorName: payload.sensorName,
+          status: payload.status,
+          attrList: payload.attrList
+        })
+        ElMessage.success('修改成功')
+      }
+      sensorFormDialogVisible.value = false
+      await loadSensorTableData(Number(currentSensorDevice.value?.id))
+    } catch (error) {
+      console.error('保存传感器失败:', error)
+      ElMessage.error('保存传感器失败')
+    } finally {
+      sensorFormSubmitLoading.value = false
+    }
+  })
 }
 
 const handleSelectDeviceIcon = () => {
