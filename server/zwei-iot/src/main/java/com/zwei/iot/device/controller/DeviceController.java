@@ -121,15 +121,21 @@ public class DeviceController extends BaseController {
     @Log(title = "设备", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
     public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody Device device) {
-        // 设置ID
         device.setId(id);
-        // 校验编码唯一性
+        Device current = deviceService.selectDeviceById(id);
+        if (current == null) {
+            return error("设备不存在");
+        }
+        if (device.getCode() == null || device.getCode().isBlank()) {
+            device.setCode(current.getCode());
+        }
+        if (device.getName() == null || device.getName().isBlank()) {
+            device.setName(current.getName());
+        }
         if (!deviceService.checkDeviceCodeUnique(device)) {
             return error("修改设备'" + device.getName() + "'失败，设备编码已存在");
         }
-        // 设置更新者
         device.setUpdateBy(getUsername());
-        // 执行修改
         int rows = deviceService.updateDevice(device);
         return rows > 0 ? success() : error("修改失败");
     }

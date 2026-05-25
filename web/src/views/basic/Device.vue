@@ -641,9 +641,11 @@ const updateDevice = async () => {
   try {
     const token = getToken()
     const response = await axios.put(`/api/v1/devices/${formData.id}`, {
+      code: formData.code,
       name: formData.name,
       icon: formData.icon,
-      iconPath: formData.iconPath
+      iconPath: formData.iconPath,
+      status: formData.status
     }, {
       headers: { Authorization: `Bearer ${token}` }
     })
