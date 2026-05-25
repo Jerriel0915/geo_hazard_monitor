@@ -96,7 +96,12 @@
                 <label class="info-label">所属组织</label>
                 <div class="info-value">
                   <span v-if="!isEditing">{{ userInfo.orgName || '-' }}</span>
-                  <span v-else>{{ userInfo.orgName || '-' }}</span>
+                  <el-select v-else v-model="editForm.orgId" size="large" placeholder="请选择组织" class="org-select">
+                    <el-option label="系统管理部" :value="1" />
+                    <el-option label="监测运维部" :value="2" />
+                    <el-option label="数据分析部" :value="3" />
+                    <el-option label="应急指挥中心" :value="4" />
+                  </el-select>
                 </div>
               </div>
             </div>
@@ -243,30 +248,32 @@
 
     <!-- Password Change Dialog -->
     <el-dialog
-      v-model="showPasswordDialog"
-      title="修改密码"
-      width="480px"
-      class="password-dialog"
+        v-model="showPasswordDialog"
+        title="修改密码"
+        width="480px"
+        class="password-dialog"
+        @close="resetPasswordForm"
     >
       <div class="password-form">
         <div class="form-item">
           <label class="form-label">原密码</label>
           <el-input
-            v-model="passwordForm.oldPassword"
-            type="password"
-            size="large"
-            placeholder="请输入原密码"
-            show-password
+              v-model="passwordForm.oldPassword"
+              type="password"
+              size="large"
+              placeholder="请输入原密码"
+              show-password
           />
         </div>
         <div class="form-item">
           <label class="form-label">新密码</label>
           <el-input
-            v-model="passwordForm.newPassword"
-            type="password"
-            size="large"
-            placeholder="请输入新密码"
-            show-password
+              v-model="passwordForm.newPassword"
+              type="password"
+              size="large"
+              placeholder="请输入新密码"
+              show-password
+              @input="checkPasswordStrength"
           />
           <div class="password-strength">
             <div class="strength-bar">
@@ -274,16 +281,39 @@
             </div>
             <span class="strength-text" :class="passwordStrength.level">{{ passwordStrength.text }}</span>
           </div>
+          <div class="password-rules" v-if="passwordForm.newPassword">
+            <div class="rule-item" :class="{ valid: passwordRules.length >= 6 }">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>至少6位字符</span>
+            </div>
+            <div class="rule-item" :class="{ valid: passwordRules.hasLetter }">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>包含字母</span>
+            </div>
+            <div class="rule-item" :class="{ valid: passwordRules.hasNumber }">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>包含数字</span>
+            </div>
+          </div>
         </div>
         <div class="form-item">
           <label class="form-label">确认密码</label>
           <el-input
-            v-model="passwordForm.confirmPassword"
-            type="password"
-            size="large"
-            placeholder="请再次输入新密码"
-            show-password
+              v-model="passwordForm.confirmPassword"
+              type="password"
+              size="large"
+              placeholder="请再次输入新密码"
+              show-password
           />
+          <div v-if="passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword" class="error-tip">
+            两次输入的密码不一致
+          </div>
         </div>
       </div>
       <template #footer>
@@ -298,11 +328,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getUserInfo, updateUserInfo, changePassword as updatePasswordApi } from '@/utils/userApi'
+import request from '@/utils/request'
+import { updateUserInfo } from '@/utils/userApi'
 
 const router = useRouter()
 
-// User Info - from /api/v1/auth/getInfo response: { code, msg, data: { user: { userId, username, nickName, phonenumber, email, deptId, deptName, avatar } } }
+// 用户信息
 const userInfo = reactive({
   id: 0,
   username: '',
@@ -312,12 +343,20 @@ const userInfo = reactive({
   orgId: 0,
   orgName: '',
   avatar: '',
-  sex: '',
-  roleGroup: '',
-  postGroup: ''
+  loginIp: '',
+  loginDate: ''
 })
 
-// Edit Form
+// 密码策略相关
+const isDefaultModifyPwd = ref(false)
+const isPasswordExpired = ref(false)
+const pwdChrtype = ref('')
+
+// 用户角色和权限
+const userRoles = ref<string[]>([])
+const userPermissions = ref<string[]>([])
+
+// 编辑表单
 const isEditing = ref(false)
 const saving = ref(false)
 const editForm = reactive({
@@ -325,10 +364,10 @@ const editForm = reactive({
   realName: '',
   phone: '',
   email: '',
-  sex: ''
+  orgId: 0
 })
 
-// Password Dialog
+// 密码弹窗
 const showPasswordDialog = ref(false)
 const passwordChanging = ref(false)
 const passwordForm = reactive({
@@ -337,26 +376,29 @@ const passwordForm = reactive({
   confirmPassword: ''
 })
 
-// Account Stats
-const accountInfo = reactive({
-  loginCount: 128,
-  roleCount: 3,
-  alertCount: 5,
-  reportCount: 24
+// 密码规则校验
+const passwordRules = computed(() => {
+  const pwd = passwordForm.newPassword
+  return {
+    length: pwd.length,
+    hasLetter: /[a-zA-Z]/.test(pwd),
+    hasNumber: /\d/.test(pwd)
+  }
 })
 
-// Recent Activities
-const recentActivities = ref([
-  { type: 'login', text: '登录系统', time: '2024-01-20 14:30' },
-  { type: 'alarm', text: '处理二级告警', time: '2024-01-20 10:15' },
-  { type: 'report', text: '查看监测日报', time: '2024-01-19 16:40' },
-  { type: 'setting', text: '修改通知设置', time: '2024-01-19 09:20' }
-])
+// 密码强度
+const passwordStrength = ref({
+  level: '',
+  width: '0%',
+  text: ''
+})
 
-// Password Strength
-const passwordStrength = computed(() => {
+const checkPasswordStrength = () => {
   const pwd = passwordForm.newPassword
-  if (!pwd) return { level: '', width: '0%', text: '' }
+  if (!pwd) {
+    passwordStrength.value = { level: '', width: '0%', text: '' }
+    return
+  }
 
   let score = 0
   if (pwd.length >= 8) score++
@@ -364,12 +406,40 @@ const passwordStrength = computed(() => {
   if (/\d/.test(pwd)) score++
   if (/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) score++
 
-  if (score <= 1) return { level: 'weak', width: '33%', text: '弱' }
-  if (score <= 2) return { level: 'medium', width: '66%', text: '中' }
-  return { level: 'strong', width: '100%', text: '强' }
+  if (score <= 1) {
+    passwordStrength.value = { level: 'weak', width: '33%', text: '弱' }
+  } else if (score <= 2) {
+    passwordStrength.value = { level: 'medium', width: '66%', text: '中' }
+  } else {
+    passwordStrength.value = { level: 'strong', width: '100%', text: '强' }
+  }
+}
+
+// 账户统计数据
+const accountInfo = reactive({
+  loginCount: 128,
+  roleCount: 0,
+  alertCount: 5,
+  reportCount: 24
 })
 
-// Methods
+// 最近活动
+const recentActivities = ref([
+  { type: 'login', text: '登录系统', time: '' },
+  { type: 'alarm', text: '处理二级告警', time: '' },
+  { type: 'report', text: '查看监测日报', time: '' },
+  { type: 'setting', text: '修改通知设置', time: '' }
+])
+
+// 重置密码表单
+const resetPasswordForm = () => {
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordStrength.value = { level: '', width: '0%', text: '' }
+}
+
+// 切换编辑模式
 const toggleEdit = () => {
   if (isEditing.value) {
     cancelEdit()
@@ -378,77 +448,82 @@ const toggleEdit = () => {
     editForm.realName = userInfo.realName
     editForm.phone = userInfo.phone
     editForm.email = userInfo.email
-    editForm.sex = userInfo.sex
+    editForm.orgId = userInfo.orgId
     isEditing.value = true
   }
 }
 
+// 取消编辑
 const cancelEdit = () => {
   isEditing.value = false
 }
 
+// 保存用户信息
 const saveUserInfo = async () => {
   saving.value = true
   try {
-    await updateUserInfo({
+    await updateUserInfo(0, {
       realName: editForm.realName,
       phone: editForm.phone,
-      email: editForm.email,
-      sex: editForm.sex
+      email: editForm.email
     })
+
     userInfo.realName = editForm.realName
     userInfo.phone = editForm.phone
     userInfo.email = editForm.email
-    userInfo.sex = editForm.sex
+
     ElMessage.success('个人信息保存成功')
     isEditing.value = false
-  } catch {
-    ElMessage.error('保存失败，请重试')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '保存失败，请重试')
   } finally {
     saving.value = false
   }
 }
 
-const changePassword = async () => {
-  if (!passwordForm.oldPassword) {
+// 修改密码 - 修改函数定义，接受参数
+const changePassword = async (data: { oldPassword: string; newPassword: string }) => {
+  if (!data.oldPassword) {
     ElMessage.warning('请输入原密码')
     return
   }
-  if (!passwordForm.newPassword) {
+  if (!data.newPassword) {
     ElMessage.warning('请输入新密码')
     return
   }
-  if (passwordForm.newPassword.length < 6) {
+  if (data.newPassword.length < 6) {
     ElMessage.warning('密码长度不能少于6位')
     return
   }
-  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+  if (data.newPassword !== passwordForm.confirmPassword) {
     ElMessage.warning('两次输入的密码不一致')
     return
   }
 
   passwordChanging.value = true
   try {
-    await updatePasswordApi({
-      oldPassword: passwordForm.oldPassword,
-      newPassword: passwordForm.newPassword
+    // 直接调用 request
+    await request.put('/system/user/profile/updatePwd', {
+      oldPassword: data.oldPassword,
+      newPassword: data.newPassword
     })
+
     ElMessage.success('密码修改成功')
     showPasswordDialog.value = false
-    passwordForm.oldPassword = ''
-    passwordForm.newPassword = ''
-    passwordForm.confirmPassword = ''
-  } catch {
-    ElMessage.error('密码修改失败，请重试')
+    resetPasswordForm()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '密码修改失败，请重试')
   } finally {
     passwordChanging.value = false
   }
 }
 
+// 头像上传
 const triggerAvatarEdit = () => {
   ElMessage.info('头像上传功能开发中')
 }
 
+// 快捷操作跳转
 const navigateToAlarm = () => {
   router.push('/alarm/realtime')
 }
@@ -461,24 +536,89 @@ const navigateToSettings = () => {
   router.push('/system/settings')
 }
 
+// 格式化时间
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+// 初始化
+// 初始化
 onMounted(async () => {
   try {
-    const profile = await getUserInfo()
-    userInfo.id = profile.id || 0
-    userInfo.username = profile.username || ''
-    userInfo.realName = profile.realName || ''
-    userInfo.phone = profile.phone || ''
-    userInfo.email = profile.email || ''
-    userInfo.orgId = profile.orgId || 0
-    userInfo.orgName = profile.orgName || ''
-    userInfo.avatar = profile.avatar || ''
-    userInfo.sex = profile.sex || ''
-    userInfo.roleGroup = profile.roleGroup || ''
-    userInfo.postGroup = profile.postGroup || ''
-    accountInfo.roleCount = profile.roleGroup
-      ? profile.roleGroup.split(',').map(item => item.trim()).filter(Boolean).length
-      : 0
-  } catch {
+    const response = await request.get('/auth/getInfo')
+    console.log('接口返回:', response)
+
+    let user = null
+    let roles = []
+    let permissions = []
+    let defaultModifyPwd = false   // 改名
+    let passwordExpired = false     // 改名
+    let pwdCharType = ''            // 改名
+
+    if (response.data && response.data.user) {
+      user = response.data.user
+      roles = response.data.roles || []
+      permissions = response.data.permissions || []
+      defaultModifyPwd = response.data.isDefaultModifyPwd || false
+      passwordExpired = response.data.isPasswordExpired || false
+      pwdCharType = response.data.pwdChrtype || ''
+    } else if (response.user) {
+      user = response.user
+      roles = response.roles || []
+      permissions = response.permissions || []
+      defaultModifyPwd = response.isDefaultModifyPwd || false
+      passwordExpired = response.isPasswordExpired || false
+      pwdCharType = response.pwdChrtype || ''
+    } else {
+      user = response
+    }
+
+    const dept = user.dept || {}
+
+    userInfo.id = user.userId || 0
+    userInfo.username = user.userName || ''
+    userInfo.realName = user.nickName || ''
+    userInfo.phone = user.phonenumber || ''
+    userInfo.email = user.email || ''
+    userInfo.orgId = user.deptId || 0
+    userInfo.orgName = dept.deptName || ''
+    userInfo.avatar = user.avatar || ''
+    userInfo.loginIp = user.loginIp || ''
+    userInfo.loginDate = formatDate(user.loginDate)
+
+    userRoles.value = roles
+    userPermissions.value = permissions
+
+    // 赋值给 ref - 使用不同的变量名
+    pwdChrtype.value = pwdCharType
+    isDefaultModifyPwd.value = defaultModifyPwd
+    isPasswordExpired.value = passwordExpired
+
+    accountInfo.roleCount = userRoles.value.length
+
+    if (userInfo.loginDate) {
+      recentActivities.value[0].time = userInfo.loginDate
+    }
+
+    console.log('用户名:', userInfo.username)
+    console.log('真实姓名:', userInfo.realName)
+
+    if (isPasswordExpired.value) {
+      ElMessage.warning('您的密码已过期，请及时修改')
+      showPasswordDialog.value = true
+    } else if (isDefaultModifyPwd.value) {
+      ElMessage.info('您使用的是初始密码，建议立即修改')
+    }
+
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
     ElMessage.error('获取用户信息失败')
   }
 })
@@ -1058,6 +1198,37 @@ onMounted(async () => {
 .strength-text.medium { color: #d69e2e; }
 .strength-text.strong { color: #38a169; }
 
+.password-rules {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  padding: 8px 0;
+}
+
+.rule-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #a0aec0;
+  transition: color 0.2s ease;
+}
+
+.rule-item svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rule-item.valid {
+  color: #38a169;
+}
+
+.error-tip {
+  font-size: 12px;
+  color: #e53e3e;
+  margin-top: 4px;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .profile-content {
@@ -1105,6 +1276,10 @@ onMounted(async () => {
 
   .quick-actions {
     grid-template-columns: 1fr;
+  }
+
+  .password-rules {
+    flex-wrap: wrap;
   }
 }
 </style>

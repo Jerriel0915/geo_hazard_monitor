@@ -10,16 +10,14 @@ export interface UserInfo {
   orgName: string
   avatar?: string
   status?: number
-  sex?: string
-  roleGroup?: string
-  postGroup?: string
+  createTime?: string
 }
 
 export interface UpdateUserParams {
-  realName: string
+  realName?: string
   phone?: string
   email?: string
-  sex?: string
+  orgId?: number
 }
 
 export interface PasswordChangeParams {
@@ -27,30 +25,43 @@ export interface PasswordChangeParams {
   newPassword: string
 }
 
-// 获取个人中心信息
+// 获取当前用户详情 - 调用 /api/v1/auth/getInfo 获取用户信息
 export function getUserInfo(): Promise<UserInfo> {
-  return request.get('/profile')
-}
+  return request.get('/auth/getInfo').then(res => {
+    // 真实返回结构: { code, msg, user, roles, permissions, ... }
+    const user = res.user || {}
+    const dept = user.dept || {}
 
-// 更新个人中心资料
-export function updateUserInfo(data: UpdateUserParams): Promise<void> {
-  return request.put('/profile', data)
-}
-
-// 修改个人中心密码
-export function changePassword(data: PasswordChangeParams): Promise<void> {
-  return request.put('/profile/password', data)
-}
-
-// 上传个人中心头像
-export function uploadAvatar(file: File): Promise<{ imgUrl: string }> {
-  const formData = new FormData()
-  formData.append('file', file)
-  return request.post('/profile/avatar', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
+    return {
+      id: user.userId || 0,
+      username: user.userName || '',      // userName -> username
+      realName: user.nickName || '',
+      phone: user.phonenumber || '',
+      email: user.email || '',
+      orgId: user.deptId || 0,
+      orgName: dept.deptName || '',
+      avatar: user.avatar || '',
+      status: user.status ? parseInt(user.status) : 0,
+      createTime: user.createTime
     }
   })
+}
+
+// 更新用户信息 - 调用 /system/user/profile
+export function updateUserInfo(_id: number, data: UpdateUserParams): Promise<void> {
+  // 转换参数格式给后端
+  const requestData: any = {}
+  if (data.realName !== undefined) requestData.nickName = data.realName
+  if (data.phone !== undefined) requestData.phonenumber = data.phone
+  if (data.email !== undefined) requestData.email = data.email
+  if (data.orgId !== undefined) requestData.deptId = data.orgId
+
+  return request.put('/system/user/profile', requestData)
+}
+
+// 修改密码 - 调用 /system/user/profile/updatePwd
+export function changePassword(data: PasswordChangeParams): Promise<void> {
+  return request.put('/system/user/profile/updatePwd', data)
 }
 
 // 获取当前登录用户ID（从 localStorage）

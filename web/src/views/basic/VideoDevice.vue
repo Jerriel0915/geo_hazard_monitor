@@ -851,19 +851,47 @@ const handleFullscreen = () => {
 }
 
 const handleScreenshot = () => {
-  if (videoRef.value) {
+  if (!videoRef.value) {
+    ElMessage.warning('视频未加载')
+    return
+  }
+
+  const video = videoRef.value
+
+  if (video.videoWidth === 0 || video.videoHeight === 0) {
+    ElMessage.warning('视频未开始播放或尺寸无效，请先播放视频')
+    return
+  }
+
+  try {
     const canvas = document.createElement('canvas')
-    canvas.width = videoRef.value.videoWidth
-    canvas.height = videoRef.value.videoHeight
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
     const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height)
+    if (!ctx) {
+      ElMessage.error('无法创建截图')
+      return
+    }
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    // 尝试导出，捕获安全错误
+    try {
+      const dataUrl = canvas.toDataURL('image/png')
       const link = document.createElement('a')
       link.download = `screenshot_${new Date().getTime()}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = dataUrl
       link.click()
-      ElMessage.success('截图保存成功')
+      ElMessage.success('截图已保存')
+    } catch (securityError) {
+      // 如果是跨域问题，提示用户
+      ElMessage.error('由于浏览器安全限制，无法截取跨域视频，请使用浏览器截图工具')
+      console.error('跨域截图失败:', securityError)
     }
+  } catch (error) {
+    console.error('截图失败:', error)
+    ElMessage.error('截图失败')
   }
 }
 
