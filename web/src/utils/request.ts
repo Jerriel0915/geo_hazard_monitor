@@ -1,4 +1,5 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import { handleAuthFailure } from './auth'
 
 const rawRequest = axios.create({
   baseURL: '/api/v1',
@@ -8,7 +9,7 @@ const rawRequest = axios.create({
 rawRequest.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
-    if (token) {
+    if (token && !config.headers?.Authorization) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
@@ -17,12 +18,15 @@ rawRequest.interceptors.request.use(
 )
 
 rawRequest.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (handleAuthFailure(response.data, response.status)) {
+      return Promise.reject(new Error('登录状态已失效'))
+    }
+    return response
+  },
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
-      window.location.href = '/login'
+    if (handleAuthFailure(error.response?.data, error.response?.status)) {
+      return Promise.reject(error)
     }
     return Promise.reject(error)
   }

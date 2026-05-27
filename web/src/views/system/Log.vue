@@ -330,6 +330,7 @@
 import axios from 'axios'
 import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
+import { handleAuthFailure } from '@/utils/auth'
 
 type TabKey = 'operation' | 'auth' | 'runtime'
 type StreamStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -875,6 +876,10 @@ const startStream = async (isReconnect = false) => {
       },
       signal: streamAbortController.signal
     })
+
+    if (handleAuthFailure(undefined, response.status)) {
+      return
+    }
 
     if (!response.ok || !response.body) {
       throw new Error(`SSE连接失败: ${response.status}`)
