@@ -458,12 +458,16 @@ const loadTableData = async () => {
 const loadHazardPointList = async () => {
   try {
     const token = getToken()
-    const response = await axios.get('/api/v1/hazard-points/list', {
+    const response = await axios.get('/api/v1/hazard-points/page', {
+      params: {
+        pageNum: 1,
+        pageSize: 1000
+      },
       headers: { Authorization: `Bearer ${token}` }
     })
 
     if (response.data.code === 200) {
-      hazardPointList.value = response.data.data || []
+      hazardPointList.value = response.data.data?.rows || []
     } else {
       console.error('获取隐患点列表失败:', response.data.msg)
     }
