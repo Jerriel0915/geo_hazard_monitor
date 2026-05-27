@@ -139,138 +139,122 @@
     </div>
 
     <div class="center-panel">
-      <div class="map-container">
-        <div class="map-header">
-          <span class="map-title">隐患点分布图</span>
-          <div class="map-legend">
-            <div class="legend-item">
-              <span class="legend-dot alarm"></span>
-              <span class="legend-text">待办告警</span>
+      <div class="charts-container">
+        <div class="stats-bar">
+          <div class="stat-item">
+            <div class="stat-icon-wrapper alarm">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" width="24" height="24">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
             </div>
-            <div class="legend-item">
-              <span class="legend-dot normal"></span>
-              <span class="legend-text">正常监测</span>
+            <div class="stat-content">
+              <div class="stat-value-wrapper">
+                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.recentThreeMonthsAlarms }}</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">近三月告警次数</span>
+                <span class="stat-desc">需及时处理</span>
+              </div>
+            </div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <div class="stat-icon-wrapper warning">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" width="24" height="24">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value-wrapper">
+                <span class="stat-value highlight" :class="{ animate: animateStats }">{{ summaryStats.totalAlarms }}</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">累计告警次数</span>
+                <span class="stat-desc">历史记录</span>
+              </div>
+            </div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <div class="stat-icon-wrapper monitor">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" width="24" height="24">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value-wrapper">
+                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.totalMonitorCount }}</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">累计监测次数</span>
+                <span class="stat-desc">数据汇总</span>
+              </div>
+            </div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <div class="stat-icon-wrapper hazard">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" width="24" height="24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value-wrapper">
+                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.hazardPointCount }}</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">隐患点数量</span>
+                <span class="stat-desc">监测区域</span>
+              </div>
+            </div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <div class="stat-icon-wrapper device">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" width="24" height="24">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value-wrapper">
+                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.deviceCount }}</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">设备数量</span>
+                <span class="stat-desc">在线部署</span>
+              </div>
             </div>
           </div>
         </div>
-        <div class="map-content" ref="mapContainer"></div>
-      </div>
 
-      <div class="monitor-chart-panel" v-if="selectedPoint">
-        <div class="chart-header">
-          <span class="chart-title">{{ selectedPoint.name }} - 监测数据</span>
-          <button class="close-chart" @click="selectedPoint = null">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" width="16" height="16">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="chart-body">
-          <div class="data-filters">
-            <el-select v-model="dataFilter.deviceId" placeholder="选择设备" clearable style="width: 150px">
-              <el-option v-for="d in selectedPointDevices" :key="d.id" :label="d.name" :value="d.id"/>
-            </el-select>
-            <el-select v-model="dataFilter.sensorId" placeholder="选择传感器" clearable style="width: 150px">
-              <el-option v-for="s in currentSensors" :key="s.id" :label="s.name" :value="s.id"/>
-            </el-select>
-            <el-select v-model="dataFilter.valueType" placeholder="值类型" clearable style="width: 130px">
-              <el-option label="采集值" value="current"/>
-              <el-option label="小时变化" value="hour"/>
-              <el-option label="24小时变化" value="day"/>
-              <el-option label="72小时变化" value="week"/>
-            </el-select>
-            <el-select v-model="dataFilter.direction" placeholder="方向" clearable style="width: 80px">
-              <el-option label="X" value="x"/>
-              <el-option label="Y" value="y"/>
-              <el-option label="Z" value="z"/>
-            </el-select>
-            <el-date-picker
-                v-model="dataFilter.startTime"
-                type="datetime"
-                placeholder="开始时间"
-                style="width: 160px"
-            />
-            <el-date-picker
-                v-model="dataFilter.endTime"
-                type="datetime"
-                placeholder="结束时间"
-                style="width: 160px"
-            />
-            <el-button type="primary" size="small" @click="handleQueryData">查询</el-button>
-          </div>
-
-          <div class="data-toolbar">
-            <el-button-group>
-              <el-button :type="dataDisplayMode === 'chart' ? 'primary' : 'default'" size="small"
-                         @click="dataDisplayMode = 'chart'">图表展示
-              </el-button>
-              <el-button :type="dataDisplayMode === 'table' ? 'primary' : 'default'" size="small"
-                         @click="dataDisplayMode = 'table'">表格展示
-              </el-button>
-            </el-button-group>
-          </div>
-
-          <div class="data-content">
-            <div v-if="dataDisplayMode === 'chart'" class="chart-container">
-              <div class="chart-area-wrapper">
-                <div class="chart-y-axis">
-                  <span v-for="label in currentChartYLabels" :key="label">{{ label }}</span>
-                </div>
-                <div class="chart-main-area">
-                  <svg class="chart-svg" viewBox="0 0 500 180" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient :id="'chartGradient-' + activeChartTab" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="rgba(79, 172, 254, 0.3)"/>
-                        <stop offset="100%" stop-color="rgba(79, 172, 254, 0)"/>
-                      </linearGradient>
-                    </defs>
-                    <path :d="monitorChartAreaPath" :fill="'url(#chartGradient-' + activeChartTab + ')'"/>
-                    <path :d="monitorChartLinePath" fill="none" stroke="#4facfe" stroke-width="2"/>
-                    <circle
-                        v-for="(point, index) in monitorDataPoints"
-                        :key="index"
-                        :cx="point.x"
-                        :cy="point.y"
-                        r="4"
-                        fill="#4facfe"
-                        stroke="#fff"
-                        stroke-width="2"
-                    />
-                  </svg>
-                  <div class="chart-x-axis">
-                    <span v-for="label in currentChartXLabels" :key="label">{{ label }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="chart-stats">
-                <div class="stat-item">
-                  <span class="stat-label">当前值</span>
-                  <span class="stat-value current">{{ monitorStats.current }} {{ currentUnit }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">最大值</span>
-                  <span class="stat-value max">{{ monitorStats.max }} {{ currentUnit }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">最小值</span>
-                  <span class="stat-value min">{{ monitorStats.min }} {{ currentUnit }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">平均值</span>
-                  <span class="stat-value avg">{{ monitorStats.avg }} {{ currentUnit }}</span>
-                </div>
-              </div>
+        <div class="analysis-charts">
+          <div class="chart-panel">
+            <div class="panel-header">
+              <span class="panel-title">隐患点增长趋势分析</span>
+              <span class="panel-subtitle">近12个月新增隐患点统计</span>
             </div>
-            <div v-else class="table-container">
-              <el-table :data="monitorDataTable" border size="small">
-                <el-table-column prop="time" label="时间" width="180" align="center"/>
-                <el-table-column prop="deviceName" label="设备" width="150" align="center"/>
-                <el-table-column prop="sensorName" label="传感器" width="120" align="center"/>
-                <el-table-column prop="value" label="数值" width="100" align="center"/>
-                <el-table-column prop="unit" label="单位" width="80" align="center"/>
-                <el-table-column prop="direction" label="方向" width="80" align="center"/>
-              </el-table>
+            <div class="chart-body">
+              <div ref="hazardTrendChart" class="echarts-container"></div>
+            </div>
+          </div>
+
+          <div class="chart-panel">
+            <div class="panel-header">
+              <span class="panel-title">告警趋势分析</span>
+              <span class="panel-subtitle">近12个月告警统计及未来预测</span>
+            </div>
+            <div class="chart-body">
+              <div ref="alarmTrendChart" class="echarts-container"></div>
             </div>
           </div>
         </div>
@@ -416,8 +400,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import * as echarts from 'echarts'
 
 const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
@@ -445,10 +428,20 @@ interface HazardPoint {
 }
 
 const showAlgorithmDesc = ref(false)
-const selectedPoint = ref<HazardPoint | null>(null)
-const activeChartTab = ref('displacement')
-const activeSegment = ref<number | null>(null)
-const dataDisplayMode = ref<'chart' | 'table'>('chart')
+const animateStats = ref(false)
+
+const hazardTrendChart = ref<HTMLDivElement | null>(null)
+const alarmTrendChart = ref<HTMLDivElement | null>(null)
+let hazardTrendChartInstance: echarts.ECharts | null = null
+let alarmTrendChartInstance: echarts.ECharts | null = null
+
+const summaryStats = ref({
+  recentThreeMonthsAlarms: 156,
+  totalAlarms: 892,
+  totalMonitorCount: 125680,
+  hazardPointCount: 28,
+  deviceCount: 156
+})
 
 interface SensorInfo {
   id: string
@@ -456,55 +449,23 @@ interface SensorInfo {
   type: string
 }
 
-interface DeviceOption {
-  id: string
-  name: string
-}
-
-const dataFilter = ref({
-  deviceId: '',
-  sensorId: '',
-  valueType: '',
-  direction: '',
-  startTime: null as Date | null,
-  endTime: null as Date | null
+const hazardTrendData = ref({
+  months: ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
+  values: [2, 3, 5, 4, 6, 3, 4, 5, 3, 4, 2, 3]
 })
 
-const selectedPointDevices = computed<DeviceOption[]>(() => {
-  if (!selectedPoint.value) return []
-  return selectedPoint.value.devices.map((d, idx) => ({
-    id: `device-${idx + 1}`,
-    name: d.name
-  }))
-})
-
-const currentSensors = computed<SensorInfo[]>(() => {
-  const sensors: SensorInfo[] = [
-    {id: 'node1', name: '节点1', type: 'displacement'},
-    {id: 'node2', name: '节点2', type: 'displacement'},
-    {id: 'node3', name: '节点3', type: 'displacement'},
-    {id: 'battery', name: '电量', type: 'power'}
-  ]
-  return sensors
-})
-
-const currentUnit = computed(() => {
-  return 'mm'
-})
-
-const monitorStats = ref({
-  current: '15.6',
-  max: '25.3',
-  min: '8.1',
-  avg: '15.6'
-})
-
-const monitorDataPoints = computed(() => {
-  const data = [12, 15, 18, 22, 19, 16, 20, 18, 22, 25, 21, 18]
-  return data.map((value, index) => ({
-    x: index * 45 + 25,
-    y: 180 - (value / 30) * 180
-  }))
+const alarmTrendData = ref({
+  months: ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
+  level1: [5, 8, 12, 10, 15, 12, 14, 16, 12, 14, 10, 12],
+  level2: [8, 12, 15, 14, 18, 15, 17, 20, 16, 18, 14, 15],
+  level3: [3, 5, 7, 6, 8, 6, 7, 8, 6, 7, 5, 6],
+  level4: [2, 3, 4, 3, 5, 4, 4, 5, 4, 4, 3, 4],
+  total: [18, 28, 38, 33, 46, 37, 42, 49, 38, 43, 32, 37],
+  forecastTotal: [35, 38],
+  forecastLevel1: [11, 12],
+  forecastLevel2: [16, 17],
+  forecastLevel3: [6, 6],
+  forecastLevel4: [4, 4]
 })
 
 const monitorChartLinePath = computed(() => {
@@ -705,15 +666,293 @@ const zoomOut = () => {
 }
 
 onMounted(() => {
-  initMap()
+  initHazardTrendChart()
+  initAlarmTrendChart()
+  setTimeout(() => {
+    animateStats.value = true
+  }, 500)
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
-  if (map) {
-    map.remove()
-    map = null
+  if (hazardTrendChartInstance) {
+    hazardTrendChartInstance.dispose()
+    hazardTrendChartInstance = null
   }
+  if (alarmTrendChartInstance) {
+    alarmTrendChartInstance.dispose()
+    alarmTrendChartInstance = null
+  }
+  window.removeEventListener('resize', handleResize)
 })
+
+const handleResize = () => {
+  if (hazardTrendChartInstance) {
+    hazardTrendChartInstance.resize()
+  }
+  if (alarmTrendChartInstance) {
+    alarmTrendChartInstance.resize()
+  }
+}
+
+const initHazardTrendChart = () => {
+  if (!hazardTrendChart.value) return
+
+  hazardTrendChartInstance = echarts.init(hazardTrendChart.value)
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      textStyle: {
+        color: '#374151'
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: hazardTrendData.value.months,
+      axisLine: {
+        lineStyle: {
+          color: '#e2e8f0'
+        }
+      },
+      axisLabel: {
+        color: '#6b7280'
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '新增隐患点',
+      nameTextStyle: {
+        color: '#6b7280'
+      },
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
+      },
+      axisLabel: {
+        color: '#6b7280'
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#f3f4f6'
+        }
+      }
+    },
+    series: [
+      {
+        name: '新增隐患点',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 8,
+        lineStyle: {
+          width: 3,
+          color: '#6366f1'
+        },
+        itemStyle: {
+          color: '#6366f1',
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            {offset: 0, color: 'rgba(99, 102, 241, 0.3)'},
+            {offset: 1, color: 'rgba(99, 102, 241, 0.05)'}
+          ])
+        },
+        data: hazardTrendData.value.values
+      }
+    ]
+  }
+
+  hazardTrendChartInstance.setOption(option)
+}
+
+const initAlarmTrendChart = () => {
+  if (!alarmTrendChart.value) return
+
+  alarmTrendChartInstance = echarts.init(alarmTrendChart.value)
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      textStyle: {
+        color: '#374151'
+      }
+    },
+    legend: {
+      data: ['一级告警', '二级告警', '三级告警', '四级告警', '合计', '预测一级', '预测二级', '预测三级', '预测四级', '预测合计'],
+      bottom: 0,
+      textStyle: {
+        color: '#6b7280'
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '15%',
+      top: '5%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: [...alarmTrendData.value.months, '2026-06', '2026-07'],
+      axisLine: {
+        lineStyle: {
+          color: '#e2e8f0'
+        }
+      },
+      axisLabel: {
+        color: '#6b7280'
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '告警次数',
+      nameTextStyle: {
+        color: '#6b7280'
+      },
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
+      },
+      axisLabel: {
+        color: '#6b7280'
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#f3f4f6'
+        }
+      }
+    },
+    series: [
+      {
+        name: '一级告警',
+        type: 'line',
+        smooth: true,
+        color: '#ef4444',
+        data: [...alarmTrendData.value.level1, null, null]
+      },
+      {
+        name: '二级告警',
+        type: 'line',
+        smooth: true,
+        color: '#f97316',
+        data: [...alarmTrendData.value.level2, null, null]
+      },
+      {
+        name: '三级告警',
+        type: 'line',
+        smooth: true,
+        color: '#eab308',
+        data: [...alarmTrendData.value.level3, null, null]
+      },
+      {
+        name: '四级告警',
+        type: 'line',
+        smooth: true,
+        color: '#22c55e',
+        data: [...alarmTrendData.value.level4, null, null]
+      },
+      {
+        name: '合计',
+        type: 'line',
+        smooth: true,
+        color: '#3b82f6',
+        lineStyle: {
+          width: 3
+        },
+        data: [...alarmTrendData.value.total, null, null]
+      },
+      {
+        name: '预测一级',
+        type: 'line',
+        smooth: true,
+        color: '#ef4444',
+        lineStyle: {
+          width: 2,
+          type: 'dashed'
+        },
+        symbol: 'diamond',
+        symbolSize: 6,
+        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level1[11], ...alarmTrendData.value.forecastLevel1]
+      },
+      {
+        name: '预测二级',
+        type: 'line',
+        smooth: true,
+        color: '#f97316',
+        lineStyle: {
+          width: 2,
+          type: 'dashed'
+        },
+        symbol: 'diamond',
+        symbolSize: 6,
+        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level2[11], ...alarmTrendData.value.forecastLevel2]
+      },
+      {
+        name: '预测三级',
+        type: 'line',
+        smooth: true,
+        color: '#eab308',
+        lineStyle: {
+          width: 2,
+          type: 'dashed'
+        },
+        symbol: 'diamond',
+        symbolSize: 6,
+        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level3[11], ...alarmTrendData.value.forecastLevel3]
+      },
+      {
+        name: '预测四级',
+        type: 'line',
+        smooth: true,
+        color: '#22c55e',
+        lineStyle: {
+          width: 2,
+          type: 'dashed'
+        },
+        symbol: 'diamond',
+        symbolSize: 6,
+        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level4[11], ...alarmTrendData.value.forecastLevel4]
+      },
+      {
+        name: '预测合计',
+        type: 'line',
+        smooth: true,
+        color: '#3b82f6',
+        lineStyle: {
+          width: 2,
+          type: 'dashed'
+        },
+        symbol: 'diamond',
+        symbolSize: 6,
+        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.total[11], ...alarmTrendData.value.forecastTotal]
+      }
+    ]
+  }
+
+  alarmTrendChartInstance.setOption(option)
+}
 
 const chartTabs = [
   {key: 'displacement', label: '位移监测'},
@@ -1056,6 +1295,70 @@ const trendAreaPath = computed(() => {
   flex-direction: column;
   overflow: hidden;
   background: transparent;
+}
+
+.charts-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  margin: 16px;
+  overflow: hidden;
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.analysis-charts {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.chart-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 320px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.panel-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.chart-body {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.echarts-container {
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
 }
 
 .panel-section {
@@ -1470,16 +1773,115 @@ const trendAreaPath = computed(() => {
   font-weight: 600;
 }
 
-.map-container {
-  flex: 1;
+.stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.stat-icon-wrapper.alarm {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #ef4444;
+}
+
+.stat-icon-wrapper.warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #f59e0b;
+}
+
+.stat-icon-wrapper.monitor {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #3b82f6;
+}
+
+.stat-icon-wrapper.hazard {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #6366f1;
+}
+
+.stat-icon-wrapper.device {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #10b981;
+}
+
+.stat-content {
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 12px;
-  margin: 16px;
-  overflow: hidden;
-  box-shadow: none;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  gap: 6px;
+}
+
+.stat-value-wrapper {
+  position: relative;
+}
+
+.stat-value {
+  font-size: 44px;
+  font-weight: 900;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #111827;
+  letter-spacing: -1px;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value.animate {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stat-value.highlight {
+  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: none;
+}
+
+.stat-desc {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 64px;
+  background: linear-gradient(to bottom, transparent, rgba(156, 163, 175, 0.3), transparent);
 }
 
 .map-header {
