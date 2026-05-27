@@ -110,7 +110,7 @@ public class HazardPointController extends BaseController
      * 获取隐患点详情
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:query')")
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public AjaxResult getInfo(@PathVariable Long id)
     {
         if (StringUtils.isNull(id))
@@ -150,7 +150,7 @@ public class HazardPointController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点管理", businessType = BusinessType.UPDATE)
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody HazardPointUpdateRequest request)
     {
         if (StringUtils.isNull(id))
@@ -169,7 +169,7 @@ public class HazardPointController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:remove')")
     @Log(title = "隐患点管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public AjaxResult remove(@PathVariable Long id)
     {
         int rows = hazardPointService.deleteHazardPointById(id);
@@ -194,7 +194,7 @@ public class HazardPointController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点管理", businessType = BusinessType.UPDATE)
-    @PutMapping("/{id}/pause")
+    @PutMapping("/{id:\\d+}/pause")
     public AjaxResult pause(@PathVariable Long id, @Validated @RequestBody HazardPointPauseRequest request)
     {
         if (StringUtils.isNull(id))
@@ -210,7 +210,7 @@ public class HazardPointController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点管理", businessType = BusinessType.UPDATE)
-    @PutMapping("/{id}/complete")
+    @PutMapping("/{id:\\d+}/complete")
     public AjaxResult complete(@PathVariable Long id)
     {
         if (StringUtils.isNull(id))
@@ -243,7 +243,7 @@ public class HazardPointController extends BaseController
      * @return 已绑定设备列表
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
-    @GetMapping("/{hpId}/bound-devices")
+    @GetMapping("/{hpId:\\d+}/bound-devices")
     public AjaxResult getBoundDevices(@PathVariable Long hpId)
     {
         if (StringUtils.isNull(hpId))
@@ -262,7 +262,7 @@ public class HazardPointController extends BaseController
      * @return 未绑定设备列表
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
-    @GetMapping("/{hpId}/unbound-devices")
+    @GetMapping("/{hpId:\\d+}/unbound-devices")
     public AjaxResult getUnboundDevices(@PathVariable Long hpId,
                                        @RequestParam(required = false) String keyword)
     {
@@ -283,7 +283,7 @@ public class HazardPointController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点设备绑定", businessType = BusinessType.INSERT)
-    @PostMapping("/{hpId}/bind-devices")
+    @PostMapping("/{hpId:\\d+}/bind-devices")
     public AjaxResult bindDevices(@PathVariable Long hpId,
                                  @Validated @RequestBody BindDeviceRequest request)
     {
@@ -307,7 +307,7 @@ public class HazardPointController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
     @Log(title = "隐患点设备解绑", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{hpId}/unbind-devices")
+    @DeleteMapping("/{hpId:\\d+}/unbind-devices")
     public AjaxResult unbindDevices(@PathVariable Long hpId,
                                    @Validated @RequestBody DeviceIdsRequest request)
     {
