@@ -2,6 +2,7 @@ package com.zwei.iot.hazardpoint.domain.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,7 +23,7 @@ public class BindDeviceRequest implements Serializable {
 
     /** 设备ID列表 */
     @NotEmpty(message = "设备ID列表不能为空")
-    private List<Long> deviceIds;
+    private List<@NotNull(message = "设备ID不能为空") Long> deviceIds;
 
     /** 安装位置信息列表 */
     @Valid

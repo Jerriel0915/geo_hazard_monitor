@@ -10,14 +10,14 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * 设备ID列表请求参数
+ * 视频设备ID列表请求参数
  */
 @Setter
 @Getter
-public class DeviceIdsRequest implements Serializable {
+public class VideoDeviceIdsRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @NotEmpty(message = "设备ID列表不能为空")
-    private List<@NotNull(message = "设备ID不能为空") Long> deviceIds;
+    @NotEmpty(message = "视频设备ID列表不能为空")
+    private List<@NotNull(message = "视频设备ID不能为空") Long> videoDeviceIds;
 }

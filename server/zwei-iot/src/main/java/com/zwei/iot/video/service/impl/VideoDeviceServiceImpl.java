@@ -1,5 +1,6 @@
 package com.zwei.iot.video.service.impl;
 
+import com.zwei.iot.hazardpoint.mapper.VideoDeviceHazardPointMapper;
 import com.zwei.iot.video.domain.VideoDevice;
 import com.zwei.iot.video.mapper.VideoDeviceMapper;
 import com.zwei.iot.video.service.IVideoDeviceService;
@@ -17,10 +18,13 @@ import java.util.List;
 @Service
 public class VideoDeviceServiceImpl implements IVideoDeviceService {
     private final VideoDeviceMapper videoDeviceMapper;
+    private final VideoDeviceHazardPointMapper videoDeviceHazardPointMapper;
 
     @Autowired
-    public VideoDeviceServiceImpl(VideoDeviceMapper videoDeviceMapper) {
+    public VideoDeviceServiceImpl(VideoDeviceMapper videoDeviceMapper,
+                                  VideoDeviceHazardPointMapper videoDeviceHazardPointMapper) {
         this.videoDeviceMapper = videoDeviceMapper;
+        this.videoDeviceHazardPointMapper = videoDeviceHazardPointMapper;
     }
 
     /**
@@ -71,6 +75,7 @@ public class VideoDeviceServiceImpl implements IVideoDeviceService {
     @Override
     @Transactional
     public int deleteVideoDeviceById(Long id) {
+        videoDeviceHazardPointMapper.deleteByVideoDeviceIds(List.of(id));
         return videoDeviceMapper.deleteVideoDeviceById(id);
     }
 
@@ -80,6 +85,7 @@ public class VideoDeviceServiceImpl implements IVideoDeviceService {
     @Override
     @Transactional
     public int deleteVideoDeviceByIds(Long[] ids) {
+        videoDeviceHazardPointMapper.deleteByVideoDeviceIds(List.of(ids));
         return videoDeviceMapper.deleteVideoDeviceByIds(ids);
     }
 

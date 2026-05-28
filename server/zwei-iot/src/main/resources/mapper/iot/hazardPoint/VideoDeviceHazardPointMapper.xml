@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.hazardpoint.mapper.VideoDeviceHazardPointMapper">
+
+    <select id="selectBoundVideoDevicesByHazardPointId"
+            resultType="com.zwei.iot.hazardpoint.domain.dto.BoundVideoDeviceVO">
+        SELECT vdhp.id,
+               vdhp.video_device_id AS videoDeviceId,
+               vd.code AS deviceCode,
+               vd.name AS deviceName,
+               vdhp.bind_time AS bindTime,
+               vdhp.install_longitude AS installLongitude,
+               vdhp.install_latitude AS installLatitude
+        FROM video_device_hazard_point vdhp
+        INNER JOIN video_device vd ON vdhp.video_device_id = vd.id AND vd.del_flag = 0
+        WHERE vdhp.hazard_point_id = #{hazardPointId}
+        ORDER BY vdhp.bind_time DESC
+    </select>
+
+    <insert id="insertBatch" parameterType="java.util.List">
+        INSERT INTO video_device_hazard_point (
+            video_device_id,
+            hazard_point_id,
+            install_longitude,
+            install_latitude,
+            bind_time,
+            create_by,
+            create_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.videoDeviceId},
+                #{item.hazardPointId},
+                #{item.installLongitude},
+                #{item.installLatitude},
+                SYSDATE(),
+                #{item.createBy},
+                SYSDATE()
+            )
+        </foreach>
+    </insert>
+
+    <delete id="deleteByVideoDeviceIdsAndHazardPointId">
+        DELETE FROM video_device_hazard_point
+        WHERE hazard_point_id = #{hazardPointId}
+          AND video_device_id IN
+        <foreach collection="videoDeviceIds" item="videoDeviceId" open="(" separator="," close=")">
+            #{videoDeviceId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByVideoDeviceIds">
+        DELETE FROM video_device_hazard_point
+        WHERE video_device_id IN
+        <foreach collection="videoDeviceIds" item="videoDeviceId" open="(" separator="," close=")">
+            #{videoDeviceId}
+        </foreach>
+    </delete>
+</mapper>

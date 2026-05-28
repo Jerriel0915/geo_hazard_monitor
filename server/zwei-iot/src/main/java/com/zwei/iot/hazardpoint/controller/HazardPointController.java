@@ -10,6 +10,7 @@ import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.hazardpoint.domain.dto.BatchIdsRequest;
+import com.zwei.iot.hazardpoint.domain.dto.BindVideoDeviceRequest;
 import com.zwei.iot.hazardpoint.domain.dto.DeviceIdsRequest;
 import com.zwei.iot.hazardpoint.domain.dto.HazardPointCreateRequest;
 import com.zwei.iot.hazardpoint.domain.dto.HazardPointBatchOperateRequest;
@@ -20,9 +21,12 @@ import com.zwei.iot.hazardpoint.domain.dto.HazardPointUpdateRequest;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BindDeviceRequest;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
+import com.zwei.iot.hazardpoint.domain.dto.BoundVideoDeviceVO;
 import com.zwei.iot.hazardpoint.domain.dto.UnboundDeviceVO;
+import com.zwei.iot.hazardpoint.domain.dto.VideoDeviceIdsRequest;
 import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
+import com.zwei.iot.hazardpoint.service.IVideoDeviceHazardPointService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -45,12 +49,15 @@ public class HazardPointController extends BaseController
 {
     private final IHazardPointService hazardPointService;
     private final IDeviceHazardPointService deviceHazardPointService;
+    private final IVideoDeviceHazardPointService videoDeviceHazardPointService;
 
     @Autowired
     public HazardPointController(IHazardPointService hazardPointService,
-                                IDeviceHazardPointService deviceHazardPointService) {
+                                IDeviceHazardPointService deviceHazardPointService,
+                                IVideoDeviceHazardPointService videoDeviceHazardPointService) {
         this.hazardPointService = hazardPointService;
         this.deviceHazardPointService = deviceHazardPointService;
+        this.videoDeviceHazardPointService = videoDeviceHazardPointService;
     }
 
     /**
@@ -246,12 +253,8 @@ public class HazardPointController extends BaseController
     @GetMapping("/{hpId:\\d+}/bound-devices")
     public AjaxResult getBoundDevices(@PathVariable Long hpId)
     {
-        if (StringUtils.isNull(hpId))
-        {
-            return error("参数错误");
-        }
         List<BoundDeviceVO> list = deviceHazardPointService.getBoundDevices(hpId);
-        return success(list);
+        return AjaxResult.success("成功", list);
     }
 
     /**
@@ -266,12 +269,8 @@ public class HazardPointController extends BaseController
     public AjaxResult getUnboundDevices(@PathVariable Long hpId,
                                        @RequestParam(required = false) String keyword)
     {
-        if (StringUtils.isNull(hpId))
-        {
-            return error("参数错误");
-        }
         List<UnboundDeviceVO> list = deviceHazardPointService.getUnboundDevices(hpId, keyword);
-        return success(list);
+        return AjaxResult.success("成功", list);
     }
 
     /**
@@ -287,15 +286,8 @@ public class HazardPointController extends BaseController
     public AjaxResult bindDevices(@PathVariable Long hpId,
                                  @Validated @RequestBody BindDeviceRequest request)
     {
-        if (StringUtils.isNull(hpId))
-        {
-            return error("参数错误");
-        }
-        if (request == null || request.getDeviceIds() == null || request.getDeviceIds().isEmpty())
-        {
-            return error("设备ID列表不能为空");
-        }
-        return toAjax(deviceHazardPointService.bindDevices(hpId, request, getUsername()));
+        deviceHazardPointService.bindDevices(hpId, request, getUsername());
+        return AjaxResult.success("绑定成功", null);
     }
 
     /**
@@ -311,11 +303,47 @@ public class HazardPointController extends BaseController
     public AjaxResult unbindDevices(@PathVariable Long hpId,
                                    @Validated @RequestBody DeviceIdsRequest request)
     {
-        if (StringUtils.isNull(hpId))
-        {
-            return error("参数错误");
-        }
-        return toAjax(deviceHazardPointService.unbindDevices(hpId, request.getDeviceIds()));
+        deviceHazardPointService.unbindDevices(hpId, request.getDeviceIds());
+        return AjaxResult.success("解绑成功", null);
+    }
+
+    // ==================== 4.2 视频设备隐患点绑定接口 ====================
+
+    /**
+     * 获取隐患点已绑定的视频设备列表
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
+    @GetMapping("/{hpId:\\d+}/bound-video-devices")
+    public AjaxResult getBoundVideoDevices(@PathVariable Long hpId)
+    {
+        List<BoundVideoDeviceVO> list = videoDeviceHazardPointService.getBoundVideoDevices(hpId);
+        return AjaxResult.success("成功", list);
+    }
+
+    /**
+     * 绑定视频设备到隐患点
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
+    @Log(title = "隐患点视频设备绑定", businessType = BusinessType.INSERT)
+    @PostMapping("/{hpId:\\d+}/bind-video-devices")
+    public AjaxResult bindVideoDevices(@PathVariable Long hpId,
+                                       @Validated @RequestBody BindVideoDeviceRequest request)
+    {
+        videoDeviceHazardPointService.bindVideoDevices(hpId, request, getUsername());
+        return AjaxResult.success("绑定成功", null);
+    }
+
+    /**
+     * 从隐患点解绑视频设备
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")
+    @Log(title = "隐患点视频设备解绑", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{hpId:\\d+}/unbind-video-devices")
+    public AjaxResult unbindVideoDevices(@PathVariable Long hpId,
+                                         @Validated @RequestBody VideoDeviceIdsRequest request)
+    {
+        videoDeviceHazardPointService.unbindVideoDevices(hpId, request.getVideoDeviceIds());
+        return AjaxResult.success("解绑成功", null);
     }
 
     private HazardPoint buildHazardPoint(HazardPointCreateRequest request)

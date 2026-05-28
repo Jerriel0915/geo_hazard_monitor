@@ -59,6 +59,22 @@ public interface DeviceHazardPointMapper {
     int deleteByDeviceIdsAndHazardPointId(@Param("hazardPointId") Long hazardPointId, @Param("deviceIds") List<Long> deviceIds);
 
     /**
+     * 根据设备ID列表删除绑定记录
+     *
+     * @param deviceIds 设备ID列表
+     * @return 影响行数
+     */
+    int deleteByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
+
+    /**
+     * 根据设备ID列表查询受影响的隐患点ID
+     *
+     * @param deviceIds 设备ID列表
+     * @return 隐患点ID列表
+     */
+    List<Long> selectHazardPointIdsByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
+
+    /**
      * 查询设备绑定次数
      *
      * @param deviceId 设备ID

@@ -1,5 +1,6 @@
 package com.zwei.iot.hazardpoint.domain.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -10,14 +11,17 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * 设备ID列表请求参数
+ * 绑定视频设备请求参数
  */
 @Setter
 @Getter
-public class DeviceIdsRequest implements Serializable {
+public class BindVideoDeviceRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @NotEmpty(message = "设备ID列表不能为空")
-    private List<@NotNull(message = "设备ID不能为空") Long> deviceIds;
+    @NotEmpty(message = "视频设备ID列表不能为空")
+    private List<@NotNull(message = "视频设备ID不能为空") Long> videoDeviceIds;
+
+    @Valid
+    private List<VideoInstallPosition> installPositions;
 }

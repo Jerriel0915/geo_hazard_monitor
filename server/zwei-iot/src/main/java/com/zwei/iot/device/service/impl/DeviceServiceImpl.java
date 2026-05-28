@@ -7,10 +7,13 @@ import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.IDeviceService;
+import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
+import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,13 +26,19 @@ public class DeviceServiceImpl implements IDeviceService {
     private final DeviceMapper deviceMapper;
     private final DeviceSensorMapper sensorMapper;
     private final SensorAttributeMapper attributeMapper;
+    private final DeviceHazardPointMapper deviceHazardPointMapper;
+    private final HazardPointMapper hazardPointMapper;
 
     @Autowired
     public DeviceServiceImpl(DeviceMapper deviceMapper, DeviceSensorMapper sensorMapper,
-                             SensorAttributeMapper attributeMapper) {
+                             SensorAttributeMapper attributeMapper,
+                             DeviceHazardPointMapper deviceHazardPointMapper,
+                             HazardPointMapper hazardPointMapper) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
+        this.deviceHazardPointMapper = deviceHazardPointMapper;
+        this.hazardPointMapper = hazardPointMapper;
     }
 
     /**
@@ -88,9 +97,13 @@ public class DeviceServiceImpl implements IDeviceService {
      */
     @Override
     public int deleteDeviceById(Long id) {
+        List<Long> hazardPointIds = deviceHazardPointMapper.selectHazardPointIdsByDeviceIds(List.of(id));
         deleteSensorAttributesByDeviceId(id);
         sensorMapper.deleteSensorByDeviceId(id);
-        return deviceMapper.deleteDeviceById(id);
+        deviceHazardPointMapper.deleteByDeviceIds(List.of(id));
+        int rows = deviceMapper.deleteDeviceById(id);
+        refreshHazardPointDeviceCounts(hazardPointIds);
+        return rows;
     }
 
     /**
@@ -98,11 +111,16 @@ public class DeviceServiceImpl implements IDeviceService {
      */
     @Override
     public int deleteDeviceByIds(Long[] ids) {
+        List<Long> deviceIds = new ArrayList<>(List.of(ids));
+        List<Long> hazardPointIds = deviceHazardPointMapper.selectHazardPointIdsByDeviceIds(deviceIds);
         for (Long id : ids) {
             deleteSensorAttributesByDeviceId(id);
             sensorMapper.deleteSensorByDeviceId(id);
         }
-        return deviceMapper.deleteDeviceByIds(ids);
+        deviceHazardPointMapper.deleteByDeviceIds(deviceIds);
+        int rows = deviceMapper.deleteDeviceByIds(ids);
+        refreshHazardPointDeviceCounts(hazardPointIds);
+        return rows;
     }
 
     /**
@@ -183,6 +201,15 @@ public class DeviceServiceImpl implements IDeviceService {
         List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(deviceId);
         for (DeviceSensor sensor : sensors) {
             attributeMapper.deleteAttributeBySensorId(sensor.getId());
+        }
+    }
+
+    private void refreshHazardPointDeviceCounts(List<Long> hazardPointIds) {
+        if (hazardPointIds == null || hazardPointIds.isEmpty()) {
+            return;
+        }
+        for (Long hazardPointId : hazardPointIds) {
+            hazardPointMapper.refreshDeviceCountById(hazardPointId);
         }
     }
 }

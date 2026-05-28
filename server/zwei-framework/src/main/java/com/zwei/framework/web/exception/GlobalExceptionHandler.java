@@ -164,6 +164,16 @@ public class GlobalExceptionHandler
     }
 
     /**
+     * 非法参数异常
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public AjaxResult handleIllegalArgumentException(IllegalArgumentException e, HttpServletRequest request)
+    {
+        log.error("请求地址'{}'的参数不合法.", request.getRequestURI(), e);
+        return AjaxResult.error(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    /**
      * 拦截未知的运行时异常
      */
     @ExceptionHandler(RuntimeException.class)

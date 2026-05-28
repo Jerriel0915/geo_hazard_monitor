@@ -1,7 +1,10 @@
 package com.zwei.iot.hazardpoint.service.impl;
 
+import com.zwei.common.constant.HttpStatus;
+import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.device.domain.DeviceSensor;
-import com.zwei.iot.device.mapper.DeviceSensorMapper;
+import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.hazardpoint.domain.DeviceHazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BindDeviceRequest;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
@@ -17,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -30,15 +35,18 @@ import java.util.stream.Collectors;
 public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
 
     private final DeviceHazardPointMapper deviceHazardPointMapper;
-    private final DeviceSensorMapper deviceSensorMapper;
+    private final DeviceMapper deviceMapper;
+    private final IDeviceService deviceService;
     private final HazardPointMapper hazardPointMapper;
 
     @Autowired
     public DeviceHazardPointServiceImpl(DeviceHazardPointMapper deviceHazardPointMapper,
-                                       DeviceSensorMapper deviceSensorMapper,
+                                       DeviceMapper deviceMapper,
+                                       IDeviceService deviceService,
                                        HazardPointMapper hazardPointMapper) {
         this.deviceHazardPointMapper = deviceHazardPointMapper;
-        this.deviceSensorMapper = deviceSensorMapper;
+        this.deviceMapper = deviceMapper;
+        this.deviceService = deviceService;
         this.hazardPointMapper = hazardPointMapper;
     }
 
@@ -47,6 +55,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
      */
     @Override
     public List<BoundDeviceVO> getBoundDevices(Long hazardPointId) {
+        ensureHazardPointExists(hazardPointId);
         // 1. 查询已绑定设备基础信息
         List<BoundDeviceVO> boundDevices = deviceHazardPointMapper.selectBoundDevicesByHazardPointId(hazardPointId);
 
@@ -59,13 +68,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
                 .map(BoundDeviceVO::getDeviceId)
                 .toList();
 
-        List<DeviceSensor> allSensors = new ArrayList<>();
-        for (Long deviceId : deviceIds) {
-            List<DeviceSensor> sensors = deviceSensorMapper.selectSensorListByDeviceId(deviceId);
-            if (sensors != null) {
-                allSensors.addAll(sensors);
-            }
-        }
+        List<DeviceSensor> allSensors = loadSensors(deviceIds);
 
         // 3. 按设备ID分组
         Map<Long, List<DeviceSensor>> sensorsByDeviceId = allSensors.stream()
@@ -101,6 +104,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
      */
     @Override
     public List<UnboundDeviceVO> getUnboundDevices(Long hazardPointId, String keyword) {
+        ensureHazardPointExists(hazardPointId);
         // 1. 查询未绑定设备基础信息
         List<UnboundDeviceVO> unboundDevices = deviceHazardPointMapper.selectUnboundDevices(hazardPointId, keyword);
 
@@ -113,13 +117,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
                 .map(UnboundDeviceVO::getId)
                 .toList();
 
-        List<DeviceSensor> allSensors = new ArrayList<>();
-        for (Long deviceId : deviceIds) {
-            List<DeviceSensor> sensors = deviceSensorMapper.selectSensorListByDeviceId(deviceId);
-            if (sensors != null) {
-                allSensors.addAll(sensors);
-            }
-        }
+        List<DeviceSensor> allSensors = loadSensors(deviceIds);
 
         // 3. 按设备ID分组
         Map<Long, List<DeviceSensor>> sensorsByDeviceId = allSensors.stream()
@@ -152,7 +150,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
 
     /**
      * 绑定设备到隐患点
-     * 采用先删除再插入策略，支持更新设备的安装位置
+     * 采用按目标设备删除后重插策略，支持更新安装位置且不影响其他绑定关系
      */
     @Override
     @Caching(evict = {
@@ -160,36 +158,24 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     })
     @Transactional(rollbackFor = Exception.class)
     public int bindDevices(Long hazardPointId, BindDeviceRequest request, String username) {
-        if (hazardPointId == null) {
-            throw new IllegalArgumentException("隐患点ID不能为空");
-        }
-        if (request.getDeviceIds() == null || request.getDeviceIds().isEmpty()) {
-            throw new IllegalArgumentException("设备ID列表不能为空");
-        }
+        ensureHazardPointExists(hazardPointId);
+        List<Long> deviceIds = normalizeDeviceIds(request.getDeviceIds());
+        validateDevicesExist(deviceIds);
+        Map<Long, InstallPosition> positionMap = buildPositionMap(deviceIds, request.getInstallPositions());
 
-        // 1. 先删除该隐患点现有的所有绑定记录
-        deviceHazardPointMapper.deleteByHazardPointId(hazardPointId);
+        // 仅移除本次目标设备在该隐患点下的既有绑定，保留其他绑定关系。
+        deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, deviceIds);
 
-        // 2. 构建安装位置映射
-        Map<Long, InstallPosition> positionMap = null;
-        if (request.getInstallPositions() != null) {
-            positionMap = request.getInstallPositions().stream()
-                    .filter(p -> p.getDeviceId() != null)
-                    .collect(Collectors.toMap(InstallPosition::getDeviceId, p -> p));
-        }
-
-        // 3. 批量插入新的绑定记录
         List<DeviceHazardPoint> bindList = new ArrayList<>();
-        for (Long deviceId : request.getDeviceIds()) {
+        for (Long deviceId : deviceIds) {
             DeviceHazardPoint bind = DeviceHazardPoint.builder()
                     .deviceId(deviceId)
                     .hazardPointId(hazardPointId)
                     .createBy(username)
                     .build();
 
-            // 设置安装位置
-            if (positionMap != null && positionMap.containsKey(deviceId)) {
-                InstallPosition pos = positionMap.get(deviceId);
+            InstallPosition pos = positionMap.get(deviceId);
+            if (pos != null) {
                 bind.setInstallLongitude(pos.getInstallLongitude());
                 bind.setInstallLatitude(pos.getInstallLatitude());
             }
@@ -211,15 +197,72 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     })
     @Transactional(rollbackFor = Exception.class)
     public int unbindDevices(Long hazardPointId, List<Long> deviceIds) {
-        if (hazardPointId == null) {
-            throw new IllegalArgumentException("隐患点ID不能为空");
-        }
-        if (deviceIds == null || deviceIds.isEmpty()) {
-            throw new IllegalArgumentException("设备ID列表不能为空");
-        }
+        ensureHazardPointExists(hazardPointId);
+        List<Long> normalizedDeviceIds = normalizeDeviceIds(deviceIds);
+        validateDevicesExist(normalizedDeviceIds);
 
-        int rows = deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, deviceIds);
+        int rows = deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, normalizedDeviceIds);
         hazardPointMapper.refreshDeviceCountById(hazardPointId);
         return rows;
+    }
+
+    private List<DeviceSensor> loadSensors(List<Long> deviceIds) {
+        List<DeviceSensor> allSensors = new ArrayList<>();
+        for (Long deviceId : deviceIds) {
+            List<DeviceSensor> sensors = deviceService.selectSensorListByDeviceId(deviceId);
+            if (sensors != null) {
+                allSensors.addAll(sensors);
+            }
+        }
+        return allSensors;
+    }
+
+    private void ensureHazardPointExists(Long hazardPointId) {
+        if (hazardPointId == null) {
+            throw new ServiceException("隐患点ID不能为空", HttpStatus.BAD_REQUEST);
+        }
+        if (hazardPointMapper.selectHazardPointById(hazardPointId) == null) {
+            throw new ServiceException("隐患点不存在", HttpStatus.NOT_FOUND);
+        }
+    }
+
+    private List<Long> normalizeDeviceIds(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            throw new ServiceException("设备ID列表不能为空", HttpStatus.BAD_REQUEST);
+        }
+        if (deviceIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new ServiceException("设备ID不能为空", HttpStatus.BAD_REQUEST);
+        }
+        Set<Long> uniqueIds = new LinkedHashSet<>(deviceIds);
+        if (uniqueIds.size() != deviceIds.size()) {
+            throw new ServiceException("设备ID列表存在重复值", HttpStatus.BAD_REQUEST);
+        }
+        return new ArrayList<>(uniqueIds);
+    }
+
+    private void validateDevicesExist(List<Long> deviceIds) {
+        for (Long deviceId : deviceIds) {
+            if (deviceMapper.selectDeviceById(deviceId) == null) {
+                throw new ServiceException("设备不存在: " + deviceId, HttpStatus.NOT_FOUND);
+            }
+        }
+    }
+
+    private Map<Long, InstallPosition> buildPositionMap(List<Long> deviceIds, List<InstallPosition> installPositions) {
+        if (installPositions == null || installPositions.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> validIds = new LinkedHashSet<>(deviceIds);
+        try {
+            return installPositions.stream().collect(Collectors.toMap(position -> {
+                Long deviceId = position.getDeviceId();
+                if (!validIds.contains(deviceId)) {
+                    throw new ServiceException("安装位置信息存在未绑定的设备ID: " + deviceId, HttpStatus.BAD_REQUEST);
+                }
+                return deviceId;
+            }, position -> position));
+        } catch (IllegalStateException ex) {
+            throw new ServiceException("安装位置信息存在重复的设备ID", HttpStatus.BAD_REQUEST);
+        }
     }
 }
