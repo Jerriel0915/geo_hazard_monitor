@@ -401,6 +401,7 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
+import L from 'leaflet'
 
 const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
@@ -427,8 +428,16 @@ interface HazardPoint {
   devices: DeviceInfo[]
 }
 
+interface ChartPoint {
+  x: number
+  y: number
+}
+
 const showAlgorithmDesc = ref(false)
 const animateStats = ref(false)
+const activeSegment = ref<number | null>(null)
+const dataFilter = ref('all')
+const selectedPoint = ref<HazardPoint | null>(null)
 
 const hazardTrendChart = ref<HTMLDivElement | null>(null)
 const alarmTrendChart = ref<HTMLDivElement | null>(null)
@@ -471,7 +480,7 @@ const alarmTrendData = ref({
 const monitorChartLinePath = computed(() => {
   const points = monitorDataPoints.value
   if (points.length === 0) return ''
-  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  return points.map((p: ChartPoint, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
 })
 
 const monitorChartAreaPath = computed(() => {
@@ -536,6 +545,20 @@ const monitorDataTable = ref([
     direction: 'X'
   }
 ])
+
+const monitorDataPoints = computed<ChartPoint[]>(() => {
+  const values = monitorDataTable.value.map(item => Number(item.value))
+  const maxValue = Math.max(...values, 30)
+  const chartWidth = 475
+  const chartHeight = 180
+  const startX = 25
+  const stepX = values.length > 1 ? chartWidth / (values.length - 1) : 0
+
+  return values.map((value, index) => ({
+    x: startX + index * stepX,
+    y: chartHeight - (value / maxValue) * chartHeight
+  }))
+})
 
 const handleQueryData = () => {
   console.log('查询监测数据:', dataFilter.value)
