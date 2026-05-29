@@ -128,7 +128,7 @@ mqtt:
     read-buffer-size: 8KB
     max-bytes-in-message: 10MB
     auth:
-      enable: false
+      enable: true
     debug: false
     stat-enable: true
     mqtt-listener:

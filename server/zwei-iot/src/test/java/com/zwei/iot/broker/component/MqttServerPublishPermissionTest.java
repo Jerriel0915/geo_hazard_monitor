@@ -1,0 +1,134 @@
+package com.zwei.iot.broker.component;
+
+import com.zwei.iot.broker.config.MqttAuthCenterProperties;
+import com.zwei.iot.broker.exception.MqttExceptionReporter;
+import com.zwei.iot.broker.service.MqttDeviceAuthService;
+import com.zwei.iot.device.domain.Device;
+import com.zwei.iot.device.domain.DeviceSensor;
+import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.DeviceAuthLogService;
+import com.zwei.iot.device.service.IDeviceSensorService;
+import net.dreamlu.mica.net.core.ChannelContext;
+import org.dromara.mica.mqtt.codec.MqttQoS;
+import org.dromara.mica.mqtt.core.server.MqttServer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("MqttServerPublishPermission 单元测试")
+class MqttServerPublishPermissionTest {
+
+    @Mock
+    private DeviceMapper deviceMapper;
+
+    @Mock
+    private DeviceAuthLogService deviceAuthLogService;
+
+    @Mock
+    private IDeviceSensorService deviceSensorService;
+
+    @Mock
+    private ChannelContext channelContext;
+
+    private MqttServerPublishPermission publishPermission;
+    private MqttDeviceAuthService authService;
+
+    /**
+     * 先构造一个已完成 CONNECT 鉴权的会话，为后续发布准入场景提供统一起点。
+     */
+    @BeforeEach
+    void setUp() {
+        MqttAuthCenterProperties properties = new MqttAuthCenterProperties();
+        MqttDeviceSessionRegistry registry = new MqttDeviceSessionRegistry();
+        MqttAuthFailureGuard failureGuard = new MqttAuthFailureGuard(properties);
+        MqttExceptionReporter mqttExceptionReporter = new MqttExceptionReporter();
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("mqttServer", org.mockito.Mockito.mock(MqttServer.class));
+        authService = new MqttDeviceAuthService(
+                deviceMapper,
+                deviceAuthLogService,
+                deviceSensorService,
+                registry,
+                failureGuard,
+                properties,
+                beanFactory.getBeanProvider(MqttServer.class),
+                mqttExceptionReporter
+        );
+        publishPermission = new MqttServerPublishPermission(authService, mqttExceptionReporter);
+        when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(buildDevice());
+        authService.authenticate(channelContext, "client-1", "client-1", "A7K9P2", "m4T9x2Q8");
+    }
+
+    @Test
+    @DisplayName("已鉴权设备发布合法主题且传感器存在时应放行")
+    void hasPermission_shouldReturnTrueWhenTopicAndSensorMatch() {
+        when(deviceSensorService.selectSensorList(any())).thenReturn(
+                List.of(DeviceSensor.builder().deviceId(101L).sensorNo("S01").status(1).build())
+        );
+
+        boolean result = publishPermission.hasPermission(channelContext, "client-1", "sys/v1/101/S01/updata", MqttQoS.QOS1, false);
+
+        assertTrue(result);
+    }
+
+    @Test
+    @DisplayName("未认证会话发布消息时应拒绝")
+    void hasPermission_shouldReturnFalseWhenSessionMissing() {
+        boolean result = publishPermission.hasPermission(channelContext, "client-2", "sys/v1/101/S01/updata", MqttQoS.QOS1, false);
+
+        assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("topic 中设备ID与已认证设备不一致时应拒绝")
+    void hasPermission_shouldReturnFalseWhenDeviceMismatch() {
+        boolean result = publishPermission.hasPermission(channelContext, "client-1", "sys/v1/102/S01/updata", MqttQoS.QOS1, false);
+
+        assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("topic 非 sys 或 gb 规范时应拒绝")
+    void hasPermission_shouldReturnFalseWhenTopicInvalid() {
+        boolean result = publishPermission.hasPermission(channelContext, "client-1", "test/topic", MqttQoS.QOS0, false);
+
+        assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("传感器不存在时应拒绝")
+    void hasPermission_shouldReturnFalseWhenSensorMissing() {
+        when(deviceSensorService.selectSensorList(any())).thenReturn(List.of());
+
+        boolean result = publishPermission.hasPermission(channelContext, "client-1", "gb/v1/101/S99/updata", MqttQoS.QOS1, false);
+
+        assertFalse(result);
+    }
+
+    /**
+     * 构造一个默认可接入设备，用于发布权限测试前置鉴权。
+     *
+     * @return 可通过鉴权的设备实体
+     */
+    private Device buildDevice() {
+        Device device = new Device();
+        device.setId(101L);
+        device.setAuthUsername("A7K9P2");
+        device.setAuthPassword("m4T9x2Q8");
+        device.setAuthStatus(1);
+        device.setProtocolType("MQTT");
+        return device;
+    }
+}

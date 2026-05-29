@@ -184,7 +184,7 @@ mqtt:
     read-buffer-size: 8KB       # 接收数据的 buffer size，默认：8k
     max-bytes-in-message: 10MB  # 消息解析最大 bytes 长度，默认：10M
     auth:
-      enable: false             # 是否开启 mqtt 认证
+      enable: true              # 是否开启 mqtt 认证
       username: mica            # mqtt 认证用户名
       password: mica            # mqtt 认证密码
     debug: true                 # 如果开启 prometheus 指标收集建议关闭
@@ -221,5 +221,16 @@ mqtt:
         enable: true
         username: mica
         password: mica
-      mcp-server: # 大模型 mcp
-        enable: true
+    mcp-server: # 大模型 mcp
+      enable: true
+
+# 设备认证中心配置
+  auth-center:
+    # 是否强制校验设备协议类型必须为 MQTT；关闭后兼容历史设备资料未维护协议类型的场景。默认为 false
+    enforce-mqtt-protocol: false
+    # 单个设备账号连续失败达到阈值后进入临时封禁，降低暴力重试对 Broker 的冲击。
+    failure-threshold: 5
+    # 账号被封禁后的冷却时间，单位秒。
+    ban-duration-seconds: 600
+    # 开启后同一设备只允许保留一个活跃连接，后登录连接会挤掉前一个连接。
+    disconnect-previous-client: true

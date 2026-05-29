@@ -151,6 +151,8 @@
             <if test="deviceId != null">ds.device_id = #{deviceId}</if>
             <if test="deviceCode != null and deviceCode != ''">AND ds.device_code = #{deviceCode}</if>
             <if test="sensorCode != null and sensorCode != ''">AND ds.sensor_code = #{sensorCode}</if>
+            <!-- MQTT 鉴权中心按 topic 中的 sensor_no 做发布权限校验，因此这里补充 sensor_no 过滤。 -->
+            <if test="sensorNo != null and sensorNo != ''">AND ds.sensor_no = #{sensorNo}</if>
             <if test="sensorName != null and sensorName != ''">AND ds.sensor_name LIKE CONCAT('%', #{sensorName}, '%')</if>
             <if test="monitorTypeId != null">AND ds.monitor_type_id = #{monitorTypeId}</if>
             <if test="monitorTypeCode != null and monitorTypeCode != ''">AND ds.monitor_type_code = #{monitorTypeCode}</if>

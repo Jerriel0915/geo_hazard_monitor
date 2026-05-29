@@ -218,7 +218,10 @@ Current IoT business structure:
 zwei-iot/src/main/java/com/zwei/iot/
 ├── broker/
 │   ├── component/
+│   ├── config/
+│   ├── exception/
 │   ├── handler/
+│   ├── model/
 │   └── service/
 ├── device/
 │   ├── controller/
@@ -243,6 +246,49 @@ zwei-iot/src/main/java/com/zwei/iot/
 ```
 
 There is no longer a dedicated `domain/dto/` subtree under `hazardpoint` in the current code layout.
+
+### MQTT Auth Center
+
+The MQTT broker layer in `zwei-iot/broker/` now contains a production-ready authentication center instead of only a placeholder auth handler.
+
+Implemented core components:
+
+- `MqttServerAuthHandler` - CONNECT authentication entry
+- `MqttServerPublishPermission` - publish topic permission check
+- `MqttServerSubscribeValidator` - subscribe topic validation
+- `MqttConnectStatusListener` - online/offline status callback
+- `MqttDeviceAuthService` - core auth orchestration service
+- `MqttAuthFailureGuard` - consecutive failure counting and temporary blocking
+- `MqttDeviceSessionRegistry` - authenticated device session registry
+- `MqttExceptionReporter` + `broker/exception/*` - structured MQTT exception and logging convergence
+
+Current auth-center behavior:
+
+- broker auth is enabled in `application.yml` and `application-prod.yml`
+- device username is fixed to 6 uppercase alphanumeric chars
+- device password is fixed to 8 alphanumeric chars
+- publish topics allowed:
+  - `sys/v1/{device_id}/{sensor_no}/updata`
+  - `gb/v1/{device_id}/{sensor_no}/updata`
+- subscribe validator currently restricts device subscriptions to `sys/v1/{deviceCode}/{sensorCode}/updata`
+- topic `device_id` must match the authenticated device
+- sensor ownership/status is checked against `device_sensor`
+- only one active connection is allowed per device when `mqtt.auth-center.disconnect-previous-client=true`
+- consecutive auth failures trigger temporary blocking using `mqtt.auth-center.failure-threshold` and `mqtt.auth-center.ban-duration-seconds`
+- device runtime status, `last_auth_time`, and `last_auth_ip` are updated during auth/online/offline flow
+- auth audit records are written to `device_auth_log`
+
+Current auth-center configuration group:
+
+- `mqtt.auth-center.enforce-mqtt-protocol`
+- `mqtt.auth-center.failure-threshold`
+- `mqtt.auth-center.ban-duration-seconds`
+- `mqtt.auth-center.disconnect-previous-client`
+
+Important scope note:
+
+- the repository currently implements the MQTT auth center itself
+- message parsing, IoTDB write, retry queue, and alarm engine linkage are still documented targets, not completed broker-side delivery features
 
 ## Frontend Structure
 

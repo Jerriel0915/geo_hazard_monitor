@@ -1,5 +1,6 @@
 package com.zwei.iot.broker.component;
 
+import com.zwei.iot.broker.exception.MqttExceptionReporter;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import net.dreamlu.mica.net.core.ChannelContext;
@@ -40,7 +41,7 @@ class MqttServerSubscribeValidatorTest {
 
     @BeforeEach
     void setUp() {
-        validator = new MqttServerSubscribeValidator(deviceSensorService);
+        validator = new MqttServerSubscribeValidator(deviceSensorService, new MqttExceptionReporter());
     }
 
     @Nested

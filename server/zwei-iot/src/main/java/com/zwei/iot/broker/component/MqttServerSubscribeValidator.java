@@ -1,5 +1,9 @@
 package com.zwei.iot.broker.component;
 
+import com.zwei.common.utils.StringUtils;
+import com.zwei.iot.broker.exception.MqttBusinessException;
+import com.zwei.iot.broker.exception.MqttCommunicationException;
+import com.zwei.iot.broker.exception.MqttExceptionReporter;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import lombok.extern.slf4j.Slf4j;
@@ -26,10 +30,13 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
     private static final Pattern TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,64})/updata$");
 
     private final IDeviceSensorService deviceSensorService;
+    private final MqttExceptionReporter mqttExceptionReporter;
 
     @Autowired
-    public MqttServerSubscribeValidator(IDeviceSensorService deviceSensorService) {
+    public MqttServerSubscribeValidator(IDeviceSensorService deviceSensorService,
+                                        MqttExceptionReporter mqttExceptionReporter) {
         this.deviceSensorService = deviceSensorService;
+        this.mqttExceptionReporter = mqttExceptionReporter;
     }
 
     /**
@@ -45,22 +52,28 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
     @Override
     public boolean isValid(ChannelContext context, String clientId, String topicFilter, MqttQoS qoS) {
         // 空topic过滤
-        if (topicFilter == null || topicFilter.isBlank()) {
-            log.debug("[MQTT] Empty topic. clientId: {}, topic: {}", clientId, topicFilter);
-            return false;
+        if (StringUtils.isBlank(topicFilter)) {
+            return mqttExceptionReporter.rejectWithDebug(new MqttBusinessException.InvalidTopic(
+                    mqttExceptionReporter.context(clientId, topicFilter, qoS).build(),
+                    "订阅主题为空"
+            ));
         }
 
         // 快速判断前缀合法
-        if (!topicFilter.startsWith(TOPIC_PREFIX)) {
-            log.debug("[MQTT] Invalid topic prefix. clientId: {}, topic: {}", clientId, topicFilter);
-            return false;
+        if (!StringUtils.startsWith(topicFilter, TOPIC_PREFIX)) {
+            return mqttExceptionReporter.rejectWithDebug(new MqttBusinessException.InvalidTopic(
+                    mqttExceptionReporter.context(clientId, topicFilter, qoS).build(),
+                    "订阅主题前缀非法"
+            ));
         }
 
         // 严格正则匹配
         Matcher matcher = TOPIC_PATTERN.matcher(topicFilter);
         if (!matcher.matches()) {
-            log.debug("[MQTT] Invalid topic format. clientId: {}, topic: {}", clientId, topicFilter);
-            return false;
+            return mqttExceptionReporter.rejectWithDebug(new MqttBusinessException.InvalidTopic(
+                    mqttExceptionReporter.context(clientId, topicFilter, qoS).build(),
+                    "订阅主题格式非法"
+            ));
         }
 
         String deviceCode = matcher.group("deviceCode");
@@ -71,17 +84,26 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
                     .deviceCode(deviceCode)
                     .sensorCode(sensorCode)
                     .build();
-            boolean exists = deviceSensorService.selectSensorList(sensor).stream()
-                    .findFirst()
-                    .isPresent();
+            boolean exists = StringUtils.isNotEmpty(deviceSensorService.selectSensorList(sensor));
             if (!exists) {
-                log.debug("[MQTT] Sensor not found. clientId: {}, deviceCode: {}, sensorCode: {}", clientId, deviceCode, sensorCode);
-                return false;
+                return mqttExceptionReporter.rejectWithDebug(new MqttBusinessException.PermissionDenied(
+                        mqttExceptionReporter.context(clientId, topicFilter, qoS)
+                                .putAttribute("deviceCode", deviceCode)
+                                .putAttribute("sensorCode", sensorCode)
+                                .build(),
+                        "测点不存在或无权限订阅"
+                ));
             }
             log.debug("[MQTT] Valid topic. clientId: {}, topic: {}", clientId, topicFilter);
         } catch (Exception e) {
-            log.error("[MQTT] Exception while validating topic. clientId: {}, topic: {}, deviceCode: {}, sensorCode: {}", clientId, topicFilter, deviceCode, sensorCode, e);
-            return false;
+            return mqttExceptionReporter.rejectWithError(new MqttCommunicationException.SubscribeFailed(
+                    mqttExceptionReporter.context(clientId, topicFilter, qoS)
+                            .putAttribute("deviceCode", deviceCode)
+                            .putAttribute("sensorCode", sensorCode)
+                            .build(),
+                    "订阅校验异常",
+                    e
+            ), e);
         }
 
         // 校验通过
