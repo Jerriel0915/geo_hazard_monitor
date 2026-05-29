@@ -13,7 +13,6 @@ COPY zwei-framework/pom.xml zwei-framework/
 COPY zwei-system/pom.xml zwei-system/
 COPY zwei-log/pom.xml zwei-log/
 COPY zwei-quartz/pom.xml zwei-quartz/
-COPY zwei-generator/pom.xml zwei-generator/
 COPY zwei-iot/pom.xml zwei-iot/
 COPY zwei-admin/pom.xml zwei-admin/
 

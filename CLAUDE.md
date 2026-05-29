@@ -70,7 +70,6 @@ server/
 ├── zwei-log/                   # Unified log query / SSE / storage / cleanup module
 ├── zwei-system/                # System management domain and services
 ├── zwei-quartz/                # Scheduled task management
-├── zwei-generator/             # Code generator
 └── zwei-iot/                   # IoT and hazard monitoring business modules
 ```
 

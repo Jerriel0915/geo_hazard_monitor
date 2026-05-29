@@ -54,12 +54,6 @@
             <artifactId>zwei-quartz</artifactId>
         </dependency>
 
-        <!-- 代码生成-->
-        <dependency>
-            <groupId>com.zwei</groupId>
-            <artifactId>zwei-generator</artifactId>
-        </dependency>
-
         <!-- 系统模块-->
         <dependency>
             <groupId>com.zwei</groupId>

@@ -174,7 +174,7 @@ public class Constants
      * 定时任务违规的字符
      */
     public static final String[] JOB_ERROR_STR = { "java.net.URL", "javax.naming.InitialContext", "org.yaml.snakeyaml",
-            "org.springframework", "org.apache", "com.zwei.common.utils.file", "com.zwei.common.config", "com.zwei.generator" };
+            "org.springframework", "org.apache", "com.zwei.common.utils.file", "com.zwei.common.config" };
 
     /**
      * 部门相关常量

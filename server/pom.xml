@@ -27,7 +27,6 @@
         <oshi.version>6.10.0</oshi.version>
         <commons.io.version>2.21.0</commons.io.version>
         <poi.version>4.1.2</poi.version>
-        <velocity.version>2.3</velocity.version>
         <jwt.version>0.9.1</jwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>3.0.2</springdoc.version>
@@ -109,13 +108,6 @@
                 <version>${poi.version}</version>
             </dependency>
 
-            <!-- velocity代码生成使用模板 -->
-            <dependency>
-                <groupId>org.apache.velocity</groupId>
-                <artifactId>velocity-engine-core</artifactId>
-                <version>${velocity.version}</version>
-            </dependency>
-
             <!-- 阿里JSON解析器 -->
             <dependency>
                 <groupId>com.alibaba.fastjson2</groupId>
@@ -141,13 +133,6 @@
             <dependency>
                 <groupId>com.zwei</groupId>
                 <artifactId>zwei-quartz</artifactId>
-                <version>${zwei.version}</version>
-            </dependency>
-
-            <!-- 代码生成-->
-            <dependency>
-                <groupId>com.zwei</groupId>
-                <artifactId>zwei-generator</artifactId>
                 <version>${zwei.version}</version>
             </dependency>
 
@@ -211,7 +196,6 @@
         <module>zwei-log</module>
         <module>zwei-system</module>
         <module>zwei-quartz</module>
-        <module>zwei-generator</module>
         <module>zwei-common</module>
         <module>zwei-iot</module>
     </modules>
