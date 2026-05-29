@@ -637,6 +637,8 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import * as echarts from 'echarts'
+import { getHazardPointPage, getHazardPointGroups } from '@/api/hazardPoint'
+import { getDeviceSensors } from '@/api/sensor'
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -821,86 +823,9 @@ const focusAreaBounds = ref<[number, number][]>([
   [30.60, 104.00]
 ])
 
-const hazardPoints = ref([
-  {
-    id: 1,
-    name: 'K12+345 隐患点',
-    code: 'HZD-001',
-    longitude: 104.08,
-    latitude: 30.65,
-    groupId: 1,
-    groupName: '第一监测组',
-    description: '该区域边坡存在滑坡风险，需重点监测',
-    deviceCount: 8,
-    status: 'normal',
-    alarmLevel: 'critical'
-  },
-  {
-    id: 2,
-    name: 'K15+678 隐患点',
-    code: 'HZD-002',
-    longitude: 104.12,
-    latitude: 30.68,
-    groupId: 1,
-    groupName: '第一监测组',
-    description: '道路边坡，雨季需加强监测',
-    deviceCount: 6,
-    status: 'warning',
-    alarmLevel: 'major'
-  },
-  {
-    id: 3,
-    name: 'K18+123 隐患点',
-    code: 'HZD-003',
-    longitude: 104.18,
-    latitude: 30.62,
-    groupId: 2,
-    groupName: '第二监测组',
-    description: '小型滑坡隐患，定期监测',
-    deviceCount: 4,
-    status: 'normal',
-    alarmLevel: null
-  },
-  {
-    id: 4,
-    name: 'K20+456 隐患点',
-    code: 'HZD-004',
-    longitude: 104.05,
-    latitude: 30.67,
-    groupId: 2,
-    groupName: '第二监测组',
-    description: '高边坡区域，重点防护',
-    deviceCount: 10,
-    status: 'warning',
-    alarmLevel: 'minor'
-  },
-  {
-    id: 5,
-    name: 'K22+789 隐患点',
-    code: 'HZD-005',
-    longitude: 104.15,
-    latitude: 30.60,
-    groupId: 3,
-    groupName: '第三监测组',
-    description: '已治理区域，常规监测',
-    deviceCount: 3,
-    status: 'normal',
-    alarmLevel: null
-  },
-  {
-    id: 6,
-    name: 'K25+012 隐患点',
-    code: 'HZD-006',
-    longitude: 104.20,
-    latitude: 30.64,
-    groupId: 3,
-    groupName: '第三监测组',
-    description: '新发现隐患，待评估',
-    deviceCount: 5,
-    status: 'danger',
-    alarmLevel: 'info'
-  }
-])
+// 隐患点列表（从API获取）
+const hazardPoints = ref<any[]>([])
+const hazardPointGroups = ref<any[]>([])
 
 let maskLayer: L.GeoJSON | null = null
 let boundaryLayer: L.Polyline | null = null
@@ -1351,7 +1276,7 @@ const selectHazardPoint = (hazardPoint: typeof hazardPoints.value[0]) => {
   addDeviceMarkers(hazardPoint.id)
 }
 
-const addDeviceMarkers = (hazardId: number) => {
+const addDeviceMarkers = async (hazardId: number) => {
   if (!mapInstance) return
 
   // 清除现有标记
@@ -1371,22 +1296,44 @@ const addDeviceMarkers = (hazardId: number) => {
     dashArray: '8,4'
   }).addTo(hazardMarkerLayer)
 
-  // 添加设备标记
-  deviceList.value.forEach(device => {
-    const icon = createDeviceIcon(device.status)
-    const marker = L.marker([device.latitude, device.longitude], {icon})
-        .addTo(hazardMarkerLayer!)
-        .bindPopup(`
-        <div style="padding: 8px; min-width: 180px;">
-          <div style="font-weight: 600; margin-bottom: 8px;">${device.name}</div>
-          <div style="font-size: 12px; color: #666;">
-            <div>类型: ${device.typeName}</div>
-            <div>传感器: ${device.sensorCount}个</div>
-            <div>状态: ${getStatusText(device.status)}</div>
-          </div>
-        </div>
-      `)
-  })
+  // 从API获取绑定设备列表
+  try {
+    const request = await import('@/utils/request')
+    const response = await request.default.get(`/hazard-points/${hazardId}/bound-devices`)
+    if (response.code === 200 && response.data) {
+      const devices = response.data
+      // 更新设备列表
+      deviceList.value = devices.map((device: any) => ({
+        id: device.id,
+        name: device.name,
+        type: device.deviceType || 'UNKNOWN',
+        typeName: device.deviceTypeName || '未知设备',
+        status: device.status === 0 ? 'online' : device.status === 1 ? 'warning' : 'offline',
+        sensorCount: device.sensorCount || 0,
+        longitude: device.longitude || currentHazardPoint.value!.longitude,
+        latitude: device.latitude || currentHazardPoint.value!.latitude
+      }))
+      
+      // 添加设备标记
+      deviceList.value.forEach(device => {
+        const icon = createDeviceIcon(device.status)
+        const marker = L.marker([device.latitude, device.longitude], {icon})
+            .addTo(hazardMarkerLayer!)
+            .bindPopup(`
+            <div style="padding: 8px; min-width: 180px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">${device.name}</div>
+              <div style="font-size: 12px; color: #666;">
+                <div>类型: ${device.typeName}</div>
+                <div>传感器: ${device.sensorCount}个</div>
+                <div>状态: ${getStatusText(device.status)}</div>
+              </div>
+            </div>
+          `)
+      })
+    }
+  } catch (error) {
+    console.error('加载设备列表失败:', error)
+  }
 }
 
 const createDeviceIcon = (status: string) => {
@@ -1452,20 +1399,23 @@ const getChartPoints = () => {
 }
 
 // 打开设备数据弹窗
-const openDeviceDataModal = (device: typeof deviceList.value[0]) => {
+const openDeviceDataModal = async (device: typeof deviceList.value[0]) => {
   selectedDevice.value = device
   showDeviceDataModal.value = true
   
-  // 生成传感器列表
-  modalSensorList.value = []
-  for (let i = 1; i <= device.sensorCount; i++) {
-    modalSensorList.value.push({
-      id: device.id * 100 + i,
-      name: `${device.typeName}-传感器${i}`,
-      code: `S${device.id.toString().padStart(3, '0')}-${i.toString().padStart(2, '0')}`,
-      type: device.type,
-      status: i === 1 ? 'warning' : 'online'
-    })
+  // 从API获取传感器列表
+  try {
+    const sensors = await getDeviceSensors(device.id)
+    modalSensorList.value = sensors.map((sensor: any) => ({
+      id: sensor.id,
+      name: sensor.sensorName,
+      code: sensor.sensorCode,
+      type: sensor.monitorTypeCode || 'UNKNOWN',
+      status: sensor.status === 0 ? 'online' : sensor.status === 1 ? 'warning' : 'offline'
+    }))
+  } catch (error) {
+    console.error('加载传感器列表失败:', error)
+    modalSensorList.value = []
   }
   
   // 初始化查询条件
@@ -1689,9 +1639,57 @@ const switchLayer = (layerId: string) => {
   addLayer(layerId)
 }
 
-onMounted(() => {
+// 加载隐患点列表
+const loadHazardPoints = async () => {
+  try {
+    const response = await getHazardPointPage({ pageNum: 1, pageSize: 100 })
+    if (response.code === 200 && response.data) {
+      const list = response.data.rows || []
+      // 转换数据格式以适配前端
+      hazardPoints.value = list.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        code: item.code,
+        longitude: item.longitude,
+        latitude: item.latitude,
+        groupId: item.groupId,
+        groupName: item.groupName || '',
+        description: item.description || '',
+        deviceCount: item.deviceCount || 0,
+        status: item.status === 0 ? 'normal' : item.status === 1 ? 'warning' : 'danger',
+        alarmLevel: item.alarmLevel || null
+      }))
+      
+      // 重新渲染地图标记
+      if (mapInstance && hazardMarkerLayer) {
+        hazardMarkerLayer.clearLayers()
+        addHazardPoints()
+      }
+    }
+  } catch (error) {
+    console.error('加载隐患点列表失败:', error)
+  }
+}
+
+// 加载隐患点分组
+const loadHazardPointGroups = async () => {
+  try {
+    const response = await getHazardPointGroups()
+    if (response.code === 200 && response.data) {
+      hazardPointGroups.value = response.data
+    }
+  } catch (error) {
+    console.error('加载隐患点分组失败:', error)
+  }
+}
+
+onMounted(async () => {
   initMap()
   window.addEventListener('resize', handleResize)
+  
+  // 加载数据
+  await loadHazardPointGroups()
+  await loadHazardPoints()
 })
 
 onUnmounted(() => {
