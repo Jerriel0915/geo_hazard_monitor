@@ -2,6 +2,8 @@ package com.zwei.iot.device.service;
 
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
+import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
+import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 
 import java.util.List;
 
@@ -35,6 +37,25 @@ public interface IDeviceService {
      * @return 设备详情
      */
     Device selectDeviceById(Long id);
+
+    /**
+     * 后台新增设备并自动生成接入账号
+     *
+     * @param request  设备创建请求
+     * @param operator 操作人
+     * @return 已创建设备
+     */
+    Device createDevice(DeviceCreateRequest request, String operator);
+
+    /**
+     * 更新设备基础信息
+     *
+     * @param id       设备ID
+     * @param request  更新请求
+     * @param operator 操作人
+     * @return 更新后的设备
+     */
+    Device updateDevice(Long id, DeviceUpdateRequest request, String operator);
 
     /**
      * 新增设备
@@ -91,4 +112,33 @@ public interface IDeviceService {
      * @return 传感器列表
      */
     List<DeviceSensor> selectSensorListByDeviceId(Long deviceId);
+
+    /**
+     * 查询设备账号信息
+     *
+     * @param deviceId 设备ID
+     * @return 设备信息
+     */
+    Device getDeviceAuthAccount(Long deviceId, String operator, String clientIp);
+
+    /**
+     * 重置设备密码
+     *
+     * @param deviceId  设备ID
+     * @param operator  操作人
+     * @param resetReason 重置原因
+     * @return 更新后的设备
+     */
+    Device resetDeviceAuthPassword(Long deviceId, String operator, String resetReason, Boolean forceOffline, String clientIp);
+
+    /**
+     * 变更设备账号状态
+     *
+     * @param deviceId   设备ID
+     * @param authStatus 账号状态
+     * @param operator   操作人
+     * @param reason     变更原因
+     * @return 更新后的设备
+     */
+    Device changeDeviceAuthStatus(Long deviceId, Integer authStatus, String operator, String reason, String clientIp);
 }

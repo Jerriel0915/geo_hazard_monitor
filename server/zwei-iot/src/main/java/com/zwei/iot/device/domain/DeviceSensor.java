@@ -45,6 +45,11 @@ public class DeviceSensor extends BaseEntity {
     private String sensorCode;
 
     /**
+     * 传感器主题编号
+     */
+    private String sensorNo;
+
+    /**
      * 传感器名称
      */
     private String sensorName;
@@ -86,6 +91,7 @@ public class DeviceSensor extends BaseEntity {
                 ", deviceId=" + deviceId +
                 ", deviceCode='" + deviceCode + '\'' +
                 ", sensorCode='" + sensorCode + '\'' +
+                ", sensorNo='" + sensorNo + '\'' +
                 ", sensorName='" + sensorName + '\'' +
                 ", monitorTypeId=" + monitorTypeId +
                 ", monitorTypeCode='" + monitorTypeCode + '\'' +

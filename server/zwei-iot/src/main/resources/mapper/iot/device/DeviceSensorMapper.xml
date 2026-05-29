@@ -10,6 +10,7 @@
         <result property="deviceId" column="device_id"/>
         <result property="deviceCode" column="device_code"/>
         <result property="sensorCode" column="sensor_code"/>
+        <result property="sensorNo" column="sensor_no"/>
         <result property="sensorName" column="sensor_name"/>
         <result property="monitorTypeId" column="monitor_type_id"/>
         <result property="monitorTypeCode" column="monitor_type_code"/>
@@ -28,6 +29,7 @@
                ds.device_id,
                ds.device_code,
                ds.sensor_code,
+               ds.sensor_no,
                ds.sensor_name,
                ds.monitor_type_id,
                ds.monitor_type_code,
@@ -77,6 +79,7 @@
         <if test="deviceId != null">device_id,</if>
         <if test="deviceCode != null">device_code,</if>
         <if test="sensorCode != null and sensorCode != ''">sensor_code,</if>
+        <if test="sensorNo != null and sensorNo != ''">sensor_no,</if>
         <if test="sensorName != null and sensorName != ''">sensor_name,</if>
         <if test="monitorTypeId != null">monitor_type_id,</if>
         <if test="monitorTypeCode != null">monitor_type_code,</if>
@@ -88,6 +91,7 @@
         <if test="deviceId != null">#{deviceId},</if>
         <if test="deviceCode != null">#{deviceCode},</if>
         <if test="sensorCode != null and sensorCode != ''">#{sensorCode},</if>
+        <if test="sensorNo != null and sensorNo != ''">#{sensorNo},</if>
         <if test="sensorName != null and sensorName != ''">#{sensorName},</if>
         <if test="monitorTypeId != null">#{monitorTypeId},</if>
         <if test="monitorTypeCode != null">#{monitorTypeCode},</if>
@@ -105,6 +109,7 @@
         UPDATE device_sensor
         <set>
             <if test="deviceCode != null and deviceCode != ''">device_code = #{deviceCode},</if>
+            <if test="sensorNo != null and sensorNo != ''">sensor_no = #{sensorNo},</if>
             <if test="sensorName != null and sensorName != ''">sensor_name = #{sensorName},</if>
             <if test="monitorTypeId != null">monitor_type_id = #{monitorTypeId},</if>
             <if test="monitorTypeCode != null">monitor_type_code = #{monitorTypeCode},</if>

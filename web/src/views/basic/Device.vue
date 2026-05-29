@@ -57,6 +57,23 @@
         </el-table-column>
         <el-table-column prop="code" label="编号" width="150" align="center" />
         <el-table-column prop="name" label="名称" min-width="180" align="center" />
+        <el-table-column prop="sn" label="SN" width="160" align="center">
+          <template #default="{ row }">
+            <span>{{ row.sn || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
+          <template #default="{ row }">
+            <span>{{ row.authUsername || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="authStatus" label="账号状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.authStatus === 1 ? 'success' : 'danger'" effect="plain">
+              {{ row.authStatus === 1 ? '有效' : '禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="statusName" label="设备状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
@@ -76,10 +93,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
-        <el-table-column label="操作" width="280" fixed="right" align="center">
+        <el-table-column label="操作" width="380" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="text" size="small" @click="handleView(row)">查看</el-button>
             <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button type="text" size="small" @click="handleViewAuth(row)">账号</el-button>
+            <el-button type="text" size="small" @click="handleToggleAuthStatus(row)">
+              {{ row.authStatus === 1 ? '禁用账号' : '启用账号' }}
+            </el-button>
             <el-button type="text" size="small" @click="handleConfigSensors(row)">传感器</el-button>
             <el-button type="text" size="small" @click="handleCopy(row)">复制</el-button>
             <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">删除</el-button>
@@ -126,6 +147,46 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="设备SN" prop="sn">
+              <el-input v-model="formData.sn" placeholder="请输入设备SN" :disabled="isView" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="厂商名称" prop="vendorName">
+              <el-input v-model="formData.vendorName" placeholder="请输入厂商名称" :disabled="isView" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="设备类型" prop="deviceType">
+              <el-select v-model="formData.deviceType" placeholder="请选择设备类型" :disabled="isView">
+                <el-option label="单参数" :value="0" />
+                <el-option label="多参数" :value="1" />
+                <el-option label="本地组网" :value="2" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="网络类型" prop="networkType">
+              <el-select v-model="formData.networkType" placeholder="请选择网络类型" :disabled="isView">
+                <el-option label="蜂窝" :value="0" />
+                <el-option label="NB-Iot" :value="1" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="接入协议" prop="protocolType">
+              <el-select v-model="formData.protocolType" placeholder="请选择接入协议" :disabled="isView">
+                <el-option label="MQTT" value="MQTT" />
+                <el-option label="HTTP" value="HTTP" />
+                <el-option label="COAP" value="COAP" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="图标" prop="icon">
               <div class="device-icon-selector" @click="!isView && handleSelectDeviceIcon()">
                 <img v-if="formData.iconPath" :src="formData.iconPath" class="device-icon-img" alt="icon" />
@@ -155,6 +216,41 @@
       </template>
     </el-dialog>
 
+    <el-dialog
+        v-model="authDialogVisible"
+        :title="`设备账号[${currentAuthDevice?.name || ''}]`"
+        width="640px"
+        :close-on-click-modal="false"
+        destroy-on-close
+    >
+      <el-descriptions :column="2" border v-if="authAccount">
+        <el-descriptions-item label="设备编号">{{ currentAuthDevice?.code || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="设备名称">{{ currentAuthDevice?.name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="用户名">{{ authAccount.username || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="密码">{{ authAccount.password || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="账号状态">
+          <el-tag :type="authAccount.authStatus === 1 ? 'success' : 'danger'" size="small">
+            {{ authAccount.authStatus === 1 ? '有效' : '禁用' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="注册时间">{{ authAccount.registeredAt || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="最近鉴权">{{ authAccount.lastAuthTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="鉴权IP">{{ authAccount.lastAuthIp || '-' }}</el-descriptions-item>
+      </el-descriptions>
+
+      <template #footer>
+        <el-button @click="authDialogVisible = false">关闭</el-button>
+        <el-button
+          :type="authAccount?.authStatus === 1 ? 'warning' : 'success'"
+          @click="handleToggleAuthStatus(currentAuthDevice)"
+          :loading="authStatusLoading"
+        >
+          {{ authAccount?.authStatus === 1 ? '禁用账号' : '启用账号' }}
+        </el-button>
+        <el-button type="primary" @click="handleResetPassword" :loading="authResetLoading">重置密码</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 设备详情弹窗 -->
     <el-dialog
         v-model="detailDialogVisible"
@@ -166,6 +262,10 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item label="设备编号">{{ currentRow?.code }}</el-descriptions-item>
         <el-descriptions-item label="设备名称">{{ currentRow?.name }}</el-descriptions-item>
+        <el-descriptions-item label="设备SN">{{ currentRow?.sn || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="接入协议">{{ currentRow?.protocolType || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="注册来源">{{ currentRow?.registerSource || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="接入账号">{{ currentRow?.authUsername || '-' }}</el-descriptions-item>
         <el-descriptions-item label="设备状态">
           <el-tag :type="getStatusType(currentRow?.status || 0)" size="small">{{ currentRow?.statusName }}</el-tag>
         </el-descriptions-item>
@@ -356,7 +456,20 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import {
+  changeDeviceAuthStatus,
+  copyDevice as copyDeviceApi,
+  createDevice as createDeviceApi,
+  deleteDevice as deleteDeviceApi,
+  getDeviceAuthAccount,
+  getDeviceDetail,
+  getDevicePage,
+  resetDevicePassword,
+  updateDevice as updateDeviceApi,
+  type DeviceAuthAccount,
+  type DeviceItem,
+  type DevicePageParams
+} from '@/api/device'
 import { getMonitorTypeDetail } from '@/api/monitorType'
 import {
   createSensor,
@@ -367,9 +480,6 @@ import {
   updateSensor,
   type SensorItem
 } from '@/api/sensor'
-
-// 获取token
-const getToken = () => localStorage.getItem('token')
 
 // 监测内容图标规范
 const MonitorContentIconEnum = {
@@ -465,7 +575,9 @@ const loading = ref(false)
 const submitLoading = ref(false)
 const sensorLoading = ref(false)
 const sensorFormSubmitLoading = ref(false)
-const tableData = ref<any[]>([])
+const authResetLoading = ref(false)
+const authStatusLoading = ref(false)
+const tableData = ref<DeviceItem[]>([])
 const sensorList = ref<SensorItem[]>([])
 const monitorTypeList = ref<MonitorTypeItem[]>([])
 const currentPage = ref(1)
@@ -482,10 +594,14 @@ const isView = ref(false)
 const formRef = ref()
 
 const detailDialogVisible = ref(false)
-const currentRow = ref<any>(null)
+const currentRow = ref<DeviceItem | null>(null)
+
+const authDialogVisible = ref(false)
+const currentAuthDevice = ref<DeviceItem | null>(null)
+const authAccount = ref<DeviceAuthAccount | null>(null)
 
 const sensorDialogVisible = ref(false)
-const currentSensorDevice = ref<any>(null)
+const currentSensorDevice = ref<DeviceItem | null>(null)
 const sensorTableData = ref<SensorItem[]>([])
 const sensorFormDialogVisible = ref(false)
 const sensorFormTitle = ref('新增传感器')
@@ -495,9 +611,14 @@ const deviceIconDialogVisible = ref(false)
 const sensorFormRef = ref()
 
 const formData = reactive<{
-  id?: string
+  id?: number
   code: string
   name: string
+  sn: string
+  deviceType: number | null
+  networkType: number | null
+  protocolType: string
+  vendorName: string
   icon: string
   iconPath: string
   status: number
@@ -505,6 +626,11 @@ const formData = reactive<{
 }>({
   code: '',
   name: '',
+  sn: '',
+  deviceType: 0,
+  networkType: 0,
+  protocolType: 'MQTT',
+  vendorName: '',
   icon: '',
   iconPath: '',
   status: 1,
@@ -548,30 +674,18 @@ const getStatusType = (status: number) => {
 const loadTableData = async () => {
   loading.value = true
   try {
-    const token = getToken()
-    const params: any = {
+    const params: DevicePageParams = {
       pageNum: currentPage.value,
       pageSize: pageSize.value
     }
     if (searchKeyword.value) {
       params.code = searchKeyword.value
-      params.name = searchKeyword.value
     }
     if (searchStatus.value !== '') params.status = searchStatus.value
     if (searchRunStatus.value !== '') params.runStatus = searchRunStatus.value
-
-    const response = await axios.get('/api/v1/devices/page', {
-      params,
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      const data = response.data.data
-      tableData.value = data.rows || []
-      total.value = data.total || 0
-    } else {
-      ElMessage.error(response.data.msg || '获取数据失败')
-    }
+    const data = await getDevicePage(params)
+    tableData.value = data.rows || []
+    total.value = data.total || 0
   } catch (error) {
     console.error('请求失败:', error)
     ElMessage.error('网络请求失败')
@@ -581,21 +695,10 @@ const loadTableData = async () => {
 }
 
 // 获取设备详情
-const fetchDetail = async (id: string) => {
+const fetchDetail = async (id: number) => {
   loading.value = true
   try {
-    const token = getToken()
-    const response = await axios.get(`/api/v1/devices/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      const data = response.data.data
-      return data
-    } else {
-      ElMessage.error(response.data.msg || '获取详情失败')
-      return null
-    }
+    return await getDeviceDetail(id)
   } catch (error) {
     console.error('获取详情失败:', error)
     ElMessage.error('网络请求失败')
@@ -609,24 +712,33 @@ const fetchDetail = async (id: string) => {
 const createDevice = async () => {
   submitLoading.value = true
   try {
-    const token = getToken()
-    const response = await axios.post('/api/v1/devices', {
+    const result = await createDeviceApi({
       code: formData.code,
       name: formData.name,
+      sn: formData.sn || undefined,
+      deviceType: formData.deviceType,
+      networkType: formData.networkType,
+      protocolType: formData.protocolType,
+      vendorName: formData.vendorName || undefined,
       icon: formData.icon,
       iconPath: formData.iconPath,
       status: formData.status
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
     })
-
-    if (response.data.code === 200) {
-      ElMessage.success('新增成功')
-      dialogVisible.value = false
-      loadTableData()
-    } else {
-      ElMessage.error(response.data.msg || '新增失败')
-    }
+    ElMessage.success('新增成功')
+    dialogVisible.value = false
+    await loadTableData()
+    const row = tableData.value.find(item => item.id === result.id)
+    await openAuthDialog(row || {
+      id: result.id,
+      code: formData.code,
+      name: formData.name,
+      status: formData.status
+    }, {
+      deviceId: result.id,
+      username: result.username,
+      password: result.password,
+      authStatus: 1
+    })
   } catch (error) {
     console.error('新增失败:', error)
     ElMessage.error('网络请求失败')
@@ -639,24 +751,20 @@ const createDevice = async () => {
 const updateDevice = async () => {
   submitLoading.value = true
   try {
-    const token = getToken()
-    const response = await axios.put(`/api/v1/devices/${formData.id}`, {
-      code: formData.code,
+    await updateDeviceApi(Number(formData.id), {
       name: formData.name,
+      sn: formData.sn || undefined,
+      deviceType: formData.deviceType,
+      networkType: formData.networkType,
+      protocolType: formData.protocolType,
+      vendorName: formData.vendorName || undefined,
       icon: formData.icon,
       iconPath: formData.iconPath,
       status: formData.status
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
     })
-
-    if (response.data.code === 200) {
-      ElMessage.success('修改成功')
-      dialogVisible.value = false
-      loadTableData()
-    } else {
-      ElMessage.error(response.data.msg || '修改失败')
-    }
+    ElMessage.success('修改成功')
+    dialogVisible.value = false
+    await loadTableData()
   } catch (error) {
     console.error('修改失败:', error)
     ElMessage.error('网络请求失败')
@@ -666,19 +774,11 @@ const updateDevice = async () => {
 }
 
 // 删除设备
-const deleteDevice = async (id: string, name: string) => {
+const deleteDevice = async (id: number) => {
   try {
-    const token = getToken()
-    const response = await axios.delete(`/api/v1/devices/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('删除成功')
-      loadTableData()
-    } else {
-      ElMessage.error(response.data.msg || '删除失败')
-    }
+    await deleteDeviceApi(id)
+    ElMessage.success('删除成功')
+    await loadTableData()
   } catch (error) {
     console.error('删除失败:', error)
     ElMessage.error('网络请求失败')
@@ -686,23 +786,21 @@ const deleteDevice = async (id: string, name: string) => {
 }
 
 // 复制设备
-const copyDevice = async (id: string) => {
+const copyDevice = async (id: number) => {
   try {
-    const token = getToken()
-    const response = await axios.post(`/api/v1/devices/${id}/copy`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('复制成功')
-      loadTableData()
-    } else {
-      ElMessage.error(response.data.msg || '复制失败')
-    }
+    await copyDeviceApi(id)
+    ElMessage.success('复制成功')
+    await loadTableData()
   } catch (error) {
     console.error('复制失败:', error)
     ElMessage.error('网络请求失败')
   }
+}
+
+const openAuthDialog = async (device: DeviceItem, account?: DeviceAuthAccount) => {
+  currentAuthDevice.value = device
+  authAccount.value = account || await getDeviceAuthAccount(Number(device.id))
+  authDialogVisible.value = true
 }
 
 // 获取监测类型列表（用于传感器配置）
@@ -766,6 +864,11 @@ const handleAdd = () => {
     id: undefined,
     code: '',
     name: '',
+    sn: '',
+    deviceType: 0,
+    networkType: 0,
+    protocolType: 'MQTT',
+    vendorName: '',
     icon: '',
     iconPath: '',
     status: 1,
@@ -774,7 +877,7 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = async (row: any) => {
+const handleEdit = async (row: DeviceItem) => {
   dialogTitle.value = '编辑设备'
   isEdit.value = true
   isView.value = false
@@ -782,6 +885,11 @@ const handleEdit = async (row: any) => {
     id: row.id,
     code: row.code,
     name: row.name,
+    sn: row.sn || '',
+    deviceType: row.deviceType ?? 0,
+    networkType: row.networkType ?? 0,
+    protocolType: row.protocolType || 'MQTT',
+    vendorName: row.vendorName || '',
     icon: row.icon || '',
     iconPath: row.iconPath || '',
     status: row.status,
@@ -790,22 +898,23 @@ const handleEdit = async (row: any) => {
   dialogVisible.value = true
 }
 
-const handleView = async (row: any) => {
+const handleView = async (row: DeviceItem) => {
   currentRow.value = row
-  const detail = await fetchDetail(row.id)
+  const detail = await fetchDetail(Number(row.id))
   if (detail) {
+    currentRow.value = detail
     sensorList.value = detail.sensors || []
   }
   detailDialogVisible.value = true
 }
 
-const handleDelete = (row: any) => {
+const handleDelete = (row: DeviceItem) => {
   ElMessageBox.confirm(`确定要删除设备"${row.name}"吗?`, '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    deleteDevice(row.id, row.name)
+    deleteDevice(Number(row.id))
   }).catch(() => {})
 }
 
@@ -828,19 +937,102 @@ const handleSubmit = () => {
   })
 }
 
-const handleCopy = (row: any) => {
+const handleCopy = (row: DeviceItem) => {
   ElMessageBox.confirm(`确定要复制设备"${row.name}"吗?`, '复制确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
   }).then(() => {
-    copyDevice(row.id)
+    copyDevice(Number(row.id))
   }).catch(() => {})
 }
 
-const handleConfigSensors = async (row: any) => {
+const handleViewAuth = async (row: DeviceItem) => {
+  try {
+    await openAuthDialog(row)
+  } catch (error) {
+    console.error('获取设备账号失败:', error)
+    ElMessage.error('获取设备账号失败')
+  }
+}
+
+const handleToggleAuthStatus = async (row?: DeviceItem | null) => {
+  if (!row?.id) {
+    return
+  }
+  const currentStatus = row.authStatus ?? authAccount.value?.authStatus ?? 1
+  const nextStatus = currentStatus === 1 ? 2 : 1
+  const actionText = nextStatus === 1 ? '启用' : '禁用'
+  try {
+    const { value } = await ElMessageBox.prompt(`请输入${actionText}原因`, `${actionText}账号`, {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPlaceholder: `例如：现场${actionText}账号`,
+      inputValue: `现场${actionText}账号`
+    })
+    authStatusLoading.value = true
+    const account = await changeDeviceAuthStatus(Number(row.id), nextStatus, value || undefined)
+    if (currentAuthDevice.value?.id === row.id) {
+      authAccount.value = account
+      currentAuthDevice.value = {
+        ...currentAuthDevice.value,
+        authStatus: account.authStatus
+      }
+    }
+    const tableRow = tableData.value.find(item => item.id === row.id)
+    if (tableRow) {
+      tableRow.authStatus = account.authStatus
+    }
+    ElMessage.success(`${actionText}成功`)
+  } catch (error: any) {
+    if (error === 'cancel' || error?.action === 'cancel' || error?.action === 'close') {
+      return
+    }
+    console.error(`${actionText}账号失败:`, error)
+    ElMessage.error(`${actionText}账号失败`)
+  } finally {
+    authStatusLoading.value = false
+  }
+}
+
+const handleResetPassword = async () => {
+  if (!currentAuthDevice.value?.id) {
+    return
+  }
+  try {
+    const { value } = await ElMessageBox.prompt('请输入重置原因', '重置密码', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：现场更换设备',
+      inputValue: '现场运维重置'
+    })
+    authResetLoading.value = true
+    const result = await resetDevicePassword(Number(currentAuthDevice.value.id), value || undefined)
+    authAccount.value = {
+      deviceId: Number(currentAuthDevice.value.id),
+      username: result.username,
+      password: result.password,
+      authStatus: authAccount.value?.authStatus ?? 1,
+      registeredAt: authAccount.value?.registeredAt,
+      lastAuthTime: authAccount.value?.lastAuthTime,
+      lastAuthIp: authAccount.value?.lastAuthIp
+    }
+    ElMessage.success('密码已重置')
+    await loadTableData()
+  } catch (error: any) {
+    if (error === 'cancel' || error?.action === 'cancel' || error?.action === 'close') {
+      return
+    }
+    console.error('重置密码失败:', error)
+    ElMessage.error('重置密码失败')
+  } finally {
+    authResetLoading.value = false
+  }
+}
+
+const handleConfigSensors = async (row: DeviceItem) => {
   currentSensorDevice.value = row
-  await loadSensorTableData(row.id)
+  await loadSensorTableData(Number(row.id))
   sensorDialogVisible.value = true
 }
 

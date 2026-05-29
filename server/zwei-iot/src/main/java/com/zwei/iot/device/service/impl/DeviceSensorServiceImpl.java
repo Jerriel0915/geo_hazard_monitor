@@ -205,6 +205,9 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     private void fillDeviceFields(DeviceSensor sensor, Device device) {
         sensor.setDeviceId(device.getId());
         sensor.setDeviceCode(device.getCode());
+        if (sensor.getSensorNo() == null || sensor.getSensorNo().isBlank()) {
+            sensor.setSensorNo(sensor.getSensorCode());
+        }
     }
 
     private void fillMonitorTypeFields(DeviceSensor sensor, MonitorType monitorType) {

@@ -22,8 +22,8 @@ import java.util.regex.Pattern;
 public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidator {
     // 统一前缀，快速判断
     private static final String TOPIC_PREFIX = "sys/v1/";
-    // 严格正则，只允许出现字母数字和特殊符号'_' '-'
-    private static final Pattern TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,64})$");
+    // 严格正则，只允许出现字母数字和特殊符号'_' '-'，且主题必须以 /updata 结尾
+    private static final Pattern TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,64})/updata$");
 
     private final IDeviceSensorService deviceSensorService;
 
@@ -34,7 +34,7 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
 
     /**
      * 是否可以订阅
-     * 设备只能订阅主题：sys/v1/{deviceCode}/{sensorCode}
+     * 设备只能订阅主题：sys/v1/{deviceCode}/{sensorCode}/updata
      *
      * @param context     ChannelContext
      * @param clientId    客户端 id

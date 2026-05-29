@@ -214,22 +214,37 @@ CREATE TABLE `device`
 (
     `id`               bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `code`             varchar(100) NOT NULL COMMENT '设备编号',
+    `sn`               varchar(100)          DEFAULT NULL COMMENT '设备SN',
     `name`             varchar(200) NOT NULL COMMENT '设备名称',
-    `icon`             varchar(200) DEFAULT NULL COMMENT '设备图标',
-    `icon_path`        varchar(500) DEFAULT NULL COMMENT '图标路径',
-    `status`           tinyint      DEFAULT '1' COMMENT '状态: 1-正常, 2-故障, 3-离线',
-    `run_status`       tinyint      DEFAULT '0' COMMENT '运行状态: 0-未知, 1-运行中, 2-停止',
-    `last_report_time` datetime     DEFAULT NULL COMMENT '最近上报时间',
-    `create_by`        varchar(64)  DEFAULT NULL COMMENT '创建者',
-    `create_time`      datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_by`        varchar(64)  DEFAULT NULL COMMENT '更新者',
-    `update_time`      datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `del_flag`         tinyint      DEFAULT '0' COMMENT '删除标记: 0-正常, 1-删除',
+    `device_type`      tinyint               DEFAULT NULL COMMENT '设备类型:0单参数,1多参数,2本地组网',
+    `network_type`     tinyint               DEFAULT NULL COMMENT '网络类型:0蜂窝,1NB-Iot',
+    `protocol_type`    varchar(20)  NOT NULL DEFAULT 'MQTT' COMMENT '接入协议:MQTT/HTTP/COAP',
+    `register_source`  varchar(20)  NOT NULL DEFAULT 'MANUAL' COMMENT '注册来源:MANUAL/API/IMPORT',
+    `vendor_name`      varchar(200)          DEFAULT NULL COMMENT '厂商名称',
+    `auth_username`    char(6)               DEFAULT NULL COMMENT '设备接入用户名,固定6位',
+    `auth_password`    varchar(32)           DEFAULT NULL COMMENT '设备接入密码,明文存储',
+    `auth_status`      tinyint      NOT NULL DEFAULT '1' COMMENT '账号状态:1有效,2禁用',
+    `icon`             varchar(200)          DEFAULT NULL COMMENT '设备图标',
+    `icon_path`        varchar(500)          DEFAULT NULL COMMENT '图标路径',
+    `status`           tinyint               DEFAULT '1' COMMENT '状态: 1-正常, 2-故障, 3-离线',
+    `run_status`       tinyint               DEFAULT '0' COMMENT '运行状态: 0-未知, 1-运行中, 2-停止',
+    `last_report_time` datetime              DEFAULT NULL COMMENT '最近上报时间',
+    `registered_at`    datetime              DEFAULT NULL COMMENT '注册时间',
+    `last_auth_time`   datetime              DEFAULT NULL COMMENT '最近鉴权时间',
+    `last_auth_ip`     varchar(64)           DEFAULT NULL COMMENT '最近鉴权IP',
+    `create_by`        varchar(64)           DEFAULT NULL COMMENT '创建者',
+    `create_time`      datetime              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by`        varchar(64)           DEFAULT NULL COMMENT '更新者',
+    `update_time`      datetime              DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `del_flag`         tinyint               DEFAULT '0' COMMENT '删除标记: 0-正常, 1-删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_device_code` (`code`),
+    UNIQUE KEY `uk_device_auth_username` (`auth_username`),
     KEY `idx_device_status` (`status`),
     KEY `idx_device_run_status` (`run_status`),
-    KEY `idx_device_del_flag` (`del_flag`)
+    KEY `idx_device_del_flag` (`del_flag`),
+    KEY `idx_device_register_source` (`register_source`),
+    KEY `idx_device_auth_status` (`auth_status`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备表';
@@ -243,6 +258,41 @@ LOCK TABLES `device` WRITE;
 /*!40000 ALTER TABLE `device`
     DISABLE KEYS */;
 /*!40000 ALTER TABLE `device`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `device_auth_log`
+--
+
+DROP TABLE IF EXISTS `device_auth_log`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `device_auth_log`
+(
+    `id`             bigint  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `device_id`      bigint  NOT NULL COMMENT '设备ID',
+    `auth_username`  char(6) NOT NULL COMMENT '设备用户名',
+    `auth_result`    tinyint NOT NULL COMMENT '1成功,0失败',
+    `client_id`      varchar(128) DEFAULT NULL COMMENT 'MQTT客户端ID',
+    `client_ip`      varchar(64)  DEFAULT NULL COMMENT '客户端IP',
+    `failure_reason` varchar(255) DEFAULT NULL COMMENT '失败原因',
+    `create_time`    datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_device_auth_log_device` (`device_id`, `create_time`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备认证日志';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `device_auth_log`
+--
+
+LOCK TABLES `device_auth_log` WRITE;
+/*!40000 ALTER TABLE `device_auth_log`
+    DISABLE KEYS */;
+/*!40000 ALTER TABLE `device_auth_log`
     ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -293,6 +343,45 @@ LOCK TABLES `device_hazard_point` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `device_registration_log`
+--
+
+DROP TABLE IF EXISTS `device_registration_log`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `device_registration_log`
+(
+    `id`              bigint      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `request_id`      varchar(64) NOT NULL COMMENT '请求幂等ID',
+    `register_code`   varchar(64)  DEFAULT NULL COMMENT '设备注册码',
+    `register_source` varchar(20) NOT NULL COMMENT '注册来源',
+    `vendor_name`     varchar(200) DEFAULT NULL COMMENT '厂商名称',
+    `device_id`       bigint       DEFAULT NULL COMMENT '设备ID',
+    `sn`              varchar(100) DEFAULT NULL COMMENT '设备SN',
+    `result_status`   varchar(20) NOT NULL COMMENT 'SUCCESS/FAIL',
+    `failure_reason`  varchar(500) DEFAULT NULL COMMENT '失败原因',
+    `request_body`    json         DEFAULT NULL COMMENT '原始请求',
+    `create_time`     datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_device_register_request_id` (`request_id`),
+    KEY `idx_device_register_device_id` (`device_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备注册日志';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `device_registration_log`
+--
+
+LOCK TABLES `device_registration_log` WRITE;
+/*!40000 ALTER TABLE `device_registration_log`
+    DISABLE KEYS */;
+/*!40000 ALTER TABLE `device_registration_log`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `device_sensor`
 --
 
@@ -305,6 +394,7 @@ CREATE TABLE `device_sensor`
     `device_id`         bigint       NOT NULL COMMENT '设备ID',
     `device_code`       varchar(100) DEFAULT NULL COMMENT '设备编号',
     `sensor_code`       varchar(100) NOT NULL COMMENT '传感器编号',
+    `sensor_no`         varchar(32)  NOT NULL COMMENT '传感器编号',
     `sensor_name`       varchar(200) NOT NULL COMMENT '传感器名称',
     `monitor_type_id`   bigint       NOT NULL COMMENT '监测类型ID',
     `monitor_type_code` varchar(100) DEFAULT NULL COMMENT '监测类型编码',
@@ -317,6 +407,7 @@ CREATE TABLE `device_sensor`
     `del_flag`          tinyint      DEFAULT '0' COMMENT '删除标记: 0-正常, 1-删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_device_sensor_code` (`sensor_code`),
+    UNIQUE KEY `uk_device_sensor_no` (`device_id`, `sensor_no`),
     KEY `idx_device_sensor_device_id` (`device_id`),
     KEY `idx_device_sensor_type_id` (`monitor_type_id`),
     KEY `idx_device_sensor_status` (`status`),
@@ -1092,6 +1183,7 @@ CREATE TABLE `sensor_attribute`
     `update_by`           varchar(64)    DEFAULT NULL COMMENT '更新者',
     `update_time`         datetime       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sensor_attr_code` (`sensor_id`, `attr_code`),
     KEY `idx_sensor_attr_sensor_id` (`sensor_id`),
     KEY `idx_sensor_attr_attr_code` (`attr_code`)
 ) ENGINE = InnoDB
@@ -2155,4 +2247,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION = @OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES = @OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-28 11:40:29
+-- Dump completed on 2026-05-28 17:41:57

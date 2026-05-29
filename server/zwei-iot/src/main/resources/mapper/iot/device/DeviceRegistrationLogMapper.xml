@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.device.mapper.DeviceRegistrationLogMapper">
+
+    <resultMap id="DeviceRegistrationLogResult" type="com.zwei.iot.device.domain.DeviceRegistrationLog">
+        <id property="id" column="id"/>
+        <result property="requestId" column="request_id"/>
+        <result property="registerCode" column="register_code"/>
+        <result property="registerSource" column="register_source"/>
+        <result property="vendorName" column="vendor_name"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="sn" column="sn"/>
+        <result property="resultStatus" column="result_status"/>
+        <result property="failureReason" column="failure_reason"/>
+        <result property="requestBody" column="request_body"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="selectByRequestId" parameterType="String" resultMap="DeviceRegistrationLogResult">
+        SELECT id,
+               request_id,
+               register_code,
+               register_source,
+               vendor_name,
+               device_id,
+               sn,
+               result_status,
+               failure_reason,
+               request_body,
+               create_time
+        FROM device_registration_log
+        WHERE request_id = #{requestId}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.iot.device.domain.DeviceRegistrationLog" useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO device_registration_log(
+            request_id,
+            register_code,
+            register_source,
+            vendor_name,
+            device_id,
+            sn,
+            result_status,
+            failure_reason,
+            request_body,
+            create_time
+        ) VALUES (
+            #{requestId},
+            #{registerCode},
+            #{registerSource},
+            #{vendorName},
+            #{deviceId},
+            #{sn},
+            #{resultStatus},
+            #{failureReason},
+            #{requestBody},
+            SYSDATE()
+        )
+    </insert>
+</mapper>

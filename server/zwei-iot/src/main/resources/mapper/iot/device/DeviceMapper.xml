@@ -9,11 +9,23 @@
         <id property="id" column="id"/>
         <result property="code" column="code"/>
         <result property="name" column="name"/>
+        <result property="sn" column="sn"/>
+        <result property="deviceType" column="device_type"/>
+        <result property="networkType" column="network_type"/>
+        <result property="protocolType" column="protocol_type"/>
+        <result property="registerSource" column="register_source"/>
+        <result property="vendorName" column="vendor_name"/>
+        <result property="authUsername" column="auth_username"/>
+        <result property="authPassword" column="auth_password"/>
+        <result property="authStatus" column="auth_status"/>
         <result property="icon" column="icon"/>
         <result property="iconPath" column="icon_path"/>
         <result property="status" column="status"/>
         <result property="runStatus" column="run_status"/>
         <result property="lastReportTime" column="last_report_time"/>
+        <result property="registeredAt" column="registered_at"/>
+        <result property="lastAuthTime" column="last_auth_time"/>
+        <result property="lastAuthIp" column="last_auth_ip"/>
         <result property="delFlag" column="del_flag"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
@@ -26,11 +38,23 @@
         SELECT d.id,
                d.code,
                d.name,
+               d.sn,
+               d.device_type,
+               d.network_type,
+               d.protocol_type,
+               d.register_source,
+               d.vendor_name,
+               d.auth_username,
+               d.auth_password,
+               d.auth_status,
                d.icon,
                d.icon_path,
                d.status,
                d.run_status,
                d.last_report_time,
+               d.registered_at,
+               d.last_auth_time,
+               d.last_auth_ip,
                d.del_flag,
                d.create_by,
                d.create_time,
@@ -64,8 +88,14 @@
             <if test="name != null and name != ''">
                 AND d.name LIKE CONCAT('%', #{name}, '%')
             </if>
+            <if test="sn != null and sn != ''">
+                AND d.sn LIKE CONCAT('%', #{sn}, '%')
+            </if>
             <if test="status != null">
                 AND d.status = #{status}
+            </if>
+            <if test="runStatus != null">
+                AND d.run_status = #{runStatus}
             </if>
         </where>
         ORDER BY d.id DESC
@@ -90,6 +120,18 @@
         WHERE d.code = #{code} AND d.del_flag = 0
     </select>
 
+    <select id="selectDeviceBySn" parameterType="String" resultMap="DeviceResult">
+        <include refid="selectDeviceVo"/>
+        WHERE d.sn = #{sn} AND d.del_flag = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectDeviceByAuthUsername" parameterType="String" resultMap="DeviceResult">
+        <include refid="selectDeviceVo"/>
+        WHERE d.auth_username = #{authUsername} AND d.del_flag = 0
+        LIMIT 1
+    </select>
+
     <!-- 校验设备编码是否唯一 -->
     <select id="checkDeviceCodeUnique" resultMap="DeviceResult">
         <include refid="selectDeviceVo"/>
@@ -109,17 +151,41 @@
         INSERT INTO device(
         <if test="code != null and code != ''">code,</if>
         <if test="name != null and name != ''">name,</if>
+        <if test="sn != null and sn != ''">sn,</if>
+        <if test="deviceType != null">device_type,</if>
+        <if test="networkType != null">network_type,</if>
+        <if test="protocolType != null and protocolType != ''">protocol_type,</if>
+        <if test="registerSource != null and registerSource != ''">register_source,</if>
+        <if test="vendorName != null and vendorName != ''">vendor_name,</if>
+        <if test="authUsername != null and authUsername != ''">auth_username,</if>
+        <if test="authPassword != null and authPassword != ''">auth_password,</if>
+        <if test="authStatus != null">auth_status,</if>
         <if test="icon != null">icon,</if>
         <if test="iconPath != null">icon_path,</if>
         <if test="status != null">status,</if>
+        <if test="registeredAt != null and registeredAt != ''">registered_at,</if>
+        <if test="lastAuthTime != null and lastAuthTime != ''">last_auth_time,</if>
+        <if test="lastAuthIp != null and lastAuthIp != ''">last_auth_ip,</if>
         <if test="createBy != null and createBy != ''">create_by,</if>
         create_time
         ) VALUES (
         <if test="code != null and code != ''">#{code},</if>
         <if test="name != null and name != ''">#{name},</if>
+        <if test="sn != null and sn != ''">#{sn},</if>
+        <if test="deviceType != null">#{deviceType},</if>
+        <if test="networkType != null">#{networkType},</if>
+        <if test="protocolType != null and protocolType != ''">#{protocolType},</if>
+        <if test="registerSource != null and registerSource != ''">#{registerSource},</if>
+        <if test="vendorName != null and vendorName != ''">#{vendorName},</if>
+        <if test="authUsername != null and authUsername != ''">#{authUsername},</if>
+        <if test="authPassword != null and authPassword != ''">#{authPassword},</if>
+        <if test="authStatus != null">#{authStatus},</if>
         <if test="icon != null">#{icon},</if>
         <if test="iconPath != null">#{iconPath},</if>
         <if test="status != null">#{status},</if>
+        <if test="registeredAt != null and registeredAt != ''">#{registeredAt},</if>
+        <if test="lastAuthTime != null and lastAuthTime != ''">#{lastAuthTime},</if>
+        <if test="lastAuthIp != null and lastAuthIp != ''">#{lastAuthIp},</if>
         <if test="createBy != null and createBy != ''">#{createBy},</if>
         SYSDATE()
         )
@@ -131,13 +197,24 @@
     <update id="updateDevice" parameterType="com.zwei.iot.device.domain.Device">
         UPDATE device
         <set>
-            <if test="code != null and code != ''">code = #{code},</if>
             <if test="name != null and name != ''">name = #{name},</if>
+            <if test="sn != null">sn = #{sn},</if>
+            <if test="deviceType != null">device_type = #{deviceType},</if>
+            <if test="networkType != null">network_type = #{networkType},</if>
+            <if test="protocolType != null and protocolType != ''">protocol_type = #{protocolType},</if>
+            <if test="registerSource != null and registerSource != ''">register_source = #{registerSource},</if>
+            <if test="vendorName != null">vendor_name = #{vendorName},</if>
+            <if test="authUsername != null">auth_username = #{authUsername},</if>
+            <if test="authPassword != null">auth_password = #{authPassword},</if>
+            <if test="authStatus != null">auth_status = #{authStatus},</if>
             <if test="icon != null">icon = #{icon},</if>
             <if test="iconPath != null">icon_path = #{iconPath},</if>
             <if test="status != null">status = #{status},</if>
             <if test="runStatus != null">run_status = #{runStatus},</if>
             <if test="lastReportTime != null">last_report_time = #{lastReportTime},</if>
+            <if test="registeredAt != null">registered_at = #{registeredAt},</if>
+            <if test="lastAuthTime != null">last_auth_time = #{lastAuthTime},</if>
+            <if test="lastAuthIp != null">last_auth_ip = #{lastAuthIp},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             update_time = SYSDATE()
         </set>
@@ -150,6 +227,8 @@
     <delete id="deleteDeviceById" parameterType="Long">
         UPDATE device
         SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            auth_username = NULL,
+            auth_password = NULL,
             del_flag = 1,
             update_time = SYSDATE()
         WHERE id = #{id}
@@ -160,6 +239,8 @@
     <delete id="deleteDeviceByIds" parameterType="Long">
         UPDATE device
         SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
+            auth_username = NULL,
+            auth_password = NULL,
             del_flag = 1,
             update_time = SYSDATE()
         WHERE del_flag = 0

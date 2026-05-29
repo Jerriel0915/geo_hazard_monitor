@@ -7,8 +7,13 @@ import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
+import com.zwei.common.utils.ip.IpUtils;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
+import com.zwei.iot.device.domain.dto.DeviceAuthStatusChangeRequest;
+import com.zwei.iot.device.domain.dto.DeviceAuthPasswordResetRequest;
+import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
+import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 import com.zwei.iot.device.service.IDeviceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 设备管理Controller
@@ -92,52 +98,34 @@ public class DeviceController extends BaseController {
     /**
      * 新增设备
      *
-     * @param device 设备信息
+     * @param request 设备信息
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:device:add')")
     @Log(title = "设备", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody Device device) {
-        // 校验编码唯一性
-        if (!deviceService.checkDeviceCodeUnique(device)) {
-            return error("新增设备'" + device.getName() + "'失败，设备编码已存在");
-        }
-        // 设置创建者
-        device.setCreateBy(getUsername());
-        // 执行新增
-        int rows = deviceService.insertDevice(device);
-        return rows > 0 ? success(device.getId()) : error("新增失败");
+    public AjaxResult add(@Validated @RequestBody DeviceCreateRequest request) {
+        Device device = deviceService.createDevice(request, getUsername());
+        return AjaxResult.success("新增成功", Map.of(
+                "id", device.getId(),
+                "username", device.getAuthUsername(),
+                "password", device.getAuthPassword()
+        ));
     }
 
     /**
      * 修改设备
      *
      * @param id     设备ID
-     * @param device 设备信息
+     * @param request 设备信息
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:device:edit')")
     @Log(title = "设备", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody Device device) {
-        device.setId(id);
-        Device current = deviceService.selectDeviceById(id);
-        if (current == null) {
-            return error("设备不存在");
-        }
-        if (device.getCode() == null || device.getCode().isBlank()) {
-            device.setCode(current.getCode());
-        }
-        if (device.getName() == null || device.getName().isBlank()) {
-            device.setName(current.getName());
-        }
-        if (!deviceService.checkDeviceCodeUnique(device)) {
-            return error("修改设备'" + device.getName() + "'失败，设备编码已存在");
-        }
-        device.setUpdateBy(getUsername());
-        int rows = deviceService.updateDevice(device);
-        return rows > 0 ? success() : error("修改失败");
+    public AjaxResult edit(@PathVariable Long id, @Validated @RequestBody DeviceUpdateRequest request) {
+        Device device = deviceService.updateDevice(id, request, getUsername());
+        return AjaxResult.success("修改成功", Map.of("id", device.getId()));
     }
 
     /**
@@ -182,5 +170,62 @@ public class DeviceController extends BaseController {
     public AjaxResult getSensors(@PathVariable Long deviceId) {
         List<DeviceSensor> sensors = deviceService.selectSensorListByDeviceId(deviceId);
         return success(sensors);
+    }
+
+    /**
+     * 查看设备账号
+     */
+    @PreAuthorize("@ss.hasPermi('basic:device:auth:view')")
+    @GetMapping("/{id}/auth-account")
+    public AjaxResult getAuthAccount(@PathVariable Long id) {
+        Device device = deviceService.getDeviceAuthAccount(id, getUsername(), IpUtils.getIpAddr());
+        return AjaxResult.success("成功", buildAuthAccount(device));
+    }
+
+    /**
+     * 重置设备密码
+     */
+    @PreAuthorize("@ss.hasPermi('basic:device:auth:reset')")
+    @Log(title = "设备账号", businessType = BusinessType.UPDATE)
+    @PostMapping("/{id}/auth-password/reset")
+    public AjaxResult resetPassword(@PathVariable Long id,
+                                    @RequestBody(required = false) DeviceAuthPasswordResetRequest request) {
+        String reason = request == null ? null : request.getReason();
+        Boolean forceOffline = request == null ? null : request.getForceOffline();
+        Device device = deviceService.resetDeviceAuthPassword(id, getUsername(), reason, forceOffline, IpUtils.getIpAddr());
+        return AjaxResult.success("重置成功", Map.of(
+                "username", device.getAuthUsername(),
+                "password", device.getAuthPassword()
+        ));
+    }
+
+    /**
+     * 启停设备账号
+     */
+    @PreAuthorize("@ss.hasPermi('basic:device:auth:status')")
+    @Log(title = "设备账号", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/auth-status")
+    public AjaxResult changeAuthStatus(@PathVariable Long id,
+                                       @Validated @RequestBody DeviceAuthStatusChangeRequest request) {
+        Device device = deviceService.changeDeviceAuthStatus(
+                id,
+                request.getAuthStatus(),
+                getUsername(),
+                request.getReason(),
+                IpUtils.getIpAddr()
+        );
+        return AjaxResult.success("状态更新成功", buildAuthAccount(device));
+    }
+
+    private Map<String, Object> buildAuthAccount(Device device) {
+        HashMap<String, Object> data = new HashMap<>();
+        data.put("deviceId", device.getId());
+        data.put("username", device.getAuthUsername());
+        data.put("password", device.getAuthPassword());
+        data.put("authStatus", device.getAuthStatus());
+        data.put("registeredAt", device.getRegisteredAt());
+        data.put("lastAuthTime", device.getLastAuthTime());
+        data.put("lastAuthIp", device.getLastAuthIp());
+        return data;
     }
 }

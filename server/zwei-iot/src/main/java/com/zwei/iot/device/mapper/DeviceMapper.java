@@ -45,6 +45,22 @@ public interface DeviceMapper {
     Device selectDeviceByCode(String code);
 
     /**
+     * 根据SN查询设备
+     *
+     * @param sn 设备SN
+     * @return 设备详情
+     */
+    Device selectDeviceBySn(String sn);
+
+    /**
+     * 根据接入用户名查询设备
+     *
+     * @param authUsername 设备接入用户名
+     * @return 设备详情
+     */
+    Device selectDeviceByAuthUsername(String authUsername);
+
+    /**
      * 新增设备
      *
      * @param device 设备信息
