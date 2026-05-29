@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
  */
 public record MqttDeviceSession(
         Long deviceId,
+        String deviceCode,
         String authUsername,
         String clientId,
         String clientIp,

@@ -4,10 +4,8 @@ import com.zwei.iot.broker.config.MqttAuthCenterProperties;
 import com.zwei.iot.broker.exception.MqttExceptionReporter;
 import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceAuthLogService;
-import com.zwei.iot.device.service.IDeviceSensorService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import org.dromara.mica.mqtt.codec.MqttQoS;
 import org.dromara.mica.mqtt.core.server.MqttServer;
@@ -19,11 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,13 +32,12 @@ class MqttServerPublishPermissionTest {
     private DeviceAuthLogService deviceAuthLogService;
 
     @Mock
-    private IDeviceSensorService deviceSensorService;
-
-    @Mock
     private ChannelContext channelContext;
 
     private MqttServerPublishPermission publishPermission;
     private MqttDeviceAuthService authService;
+
+    private static final String DEVICE_CODE = "DEV001";
 
     /**
      * 先构造一个已完成 CONNECT 鉴权的会话，为后续发布准入场景提供统一起点。
@@ -59,7 +53,6 @@ class MqttServerPublishPermissionTest {
         authService = new MqttDeviceAuthService(
                 deviceMapper,
                 deviceAuthLogService,
-                deviceSensorService,
                 registry,
                 failureGuard,
                 properties,
@@ -72,13 +65,9 @@ class MqttServerPublishPermissionTest {
     }
 
     @Test
-    @DisplayName("已鉴权设备发布合法主题且传感器存在时应放行")
-    void hasPermission_shouldReturnTrueWhenTopicAndSensorMatch() {
-        when(deviceSensorService.selectSensorList(any())).thenReturn(
-                List.of(DeviceSensor.builder().deviceId(101L).sensorNo("S01").status(1).build())
-        );
-
-        boolean result = publishPermission.hasPermission(channelContext, "client-1", "sys/v1/101/S01/updata", MqttQoS.QOS1, false);
+    @DisplayName("已鉴权设备发布合法主题时应放行")
+    void hasPermission_shouldReturnTrueWhenTopicValidAndAuthenticated() {
+        boolean result = publishPermission.hasPermission(channelContext, "client-1", "sys/v1/" + DEVICE_CODE + "/S01/updata", MqttQoS.QOS1, false);
 
         assertTrue(result);
     }
@@ -86,15 +75,15 @@ class MqttServerPublishPermissionTest {
     @Test
     @DisplayName("未认证会话发布消息时应拒绝")
     void hasPermission_shouldReturnFalseWhenSessionMissing() {
-        boolean result = publishPermission.hasPermission(channelContext, "client-2", "sys/v1/101/S01/updata", MqttQoS.QOS1, false);
+        boolean result = publishPermission.hasPermission(channelContext, "client-2", "sys/v1/" + DEVICE_CODE + "/S01/updata", MqttQoS.QOS1, false);
 
         assertFalse(result);
     }
 
     @Test
-    @DisplayName("topic 中设备ID与已认证设备不一致时应拒绝")
+    @DisplayName("topic 中设备编码与已认证设备不一致时应拒绝")
     void hasPermission_shouldReturnFalseWhenDeviceMismatch() {
-        boolean result = publishPermission.hasPermission(channelContext, "client-1", "sys/v1/102/S01/updata", MqttQoS.QOS1, false);
+        boolean result = publishPermission.hasPermission(channelContext, "client-1", "sys/v1/OTHER/S01/updata", MqttQoS.QOS1, false);
 
         assertFalse(result);
     }
@@ -107,16 +96,6 @@ class MqttServerPublishPermissionTest {
         assertFalse(result);
     }
 
-    @Test
-    @DisplayName("传感器不存在时应拒绝")
-    void hasPermission_shouldReturnFalseWhenSensorMissing() {
-        when(deviceSensorService.selectSensorList(any())).thenReturn(List.of());
-
-        boolean result = publishPermission.hasPermission(channelContext, "client-1", "gb/v1/101/S99/updata", MqttQoS.QOS1, false);
-
-        assertFalse(result);
-    }
-
     /**
      * 构造一个默认可接入设备，用于发布权限测试前置鉴权。
      *
@@ -125,6 +104,7 @@ class MqttServerPublishPermissionTest {
     private Device buildDevice() {
         Device device = new Device();
         device.setId(101L);
+        device.setCode(DEVICE_CODE);
         device.setAuthUsername("A7K9P2");
         device.setAuthPassword("m4T9x2Q8");
         device.setAuthStatus(1);

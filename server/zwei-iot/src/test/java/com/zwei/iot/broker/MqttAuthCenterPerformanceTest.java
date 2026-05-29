@@ -9,7 +9,6 @@ import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceAuthLogService;
-import com.zwei.iot.device.service.IDeviceSensorService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import org.dromara.mica.mqtt.core.server.MqttServer;
 import org.junit.jupiter.api.DisplayName;
@@ -19,11 +18,7 @@ import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,7 +34,6 @@ class MqttAuthCenterPerformanceTest {
     void authenticate_shouldHandleBurstTraffic() throws Exception {
         DeviceMapper deviceMapper = mock(DeviceMapper.class);
         DeviceAuthLogService deviceAuthLogService = mock(DeviceAuthLogService.class);
-        IDeviceSensorService deviceSensorService = mock(IDeviceSensorService.class);
         MqttServer mqttServer = mock(MqttServer.class);
         Device device = new Device();
         device.setId(101L);
@@ -55,7 +49,6 @@ class MqttAuthCenterPerformanceTest {
         MqttDeviceAuthService authService = new MqttDeviceAuthService(
                 deviceMapper,
                 deviceAuthLogService,
-                deviceSensorService,
                 new MqttDeviceSessionRegistry(),
                 new MqttAuthFailureGuard(properties),
                 properties,

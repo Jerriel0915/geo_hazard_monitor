@@ -268,11 +268,11 @@ Current auth-center behavior:
 - device username is fixed to 6 uppercase alphanumeric chars
 - device password is fixed to 8 alphanumeric chars
 - publish topics allowed:
-  - `sys/v1/{device_id}/{sensor_no}/updata`
-  - `gb/v1/{device_id}/{sensor_no}/updata`
+    - `sys/v1/{deviceCode}/{sensorNo}/updata`
+    - `gb/v1/{deviceCode}/{sensorNo}/updata`
 - subscribe validator currently restricts device subscriptions to `sys/v1/{deviceCode}/{sensorCode}/updata`
-- topic `device_id` must match the authenticated device
-- sensor ownership/status is checked against `device_sensor`
+- topic `deviceCode` must match the authenticated device's `code` field
+- sensor ownership/status verification delegated to `MonitorMetadataService` during data ingestion phase
 - only one active connection is allowed per device when `mqtt.auth-center.disconnect-previous-client=true`
 - consecutive auth failures trigger temporary blocking using `mqtt.auth-center.failure-threshold` and `mqtt.auth-center.ban-duration-seconds`
 - device runtime status, `last_auth_time`, and `last_auth_ip` are updated during auth/online/offline flow
@@ -287,8 +287,9 @@ Current auth-center configuration group:
 
 Important scope note:
 
-- the repository currently implements the MQTT auth center itself
-- message parsing, IoTDB write, retry queue, and alarm engine linkage are still documented targets, not completed broker-side delivery features
+- the repository currently implements the MQTT auth center, message parsing, Redis Stream buffering, retry queue, IoTDB
+  write, and monitor-data query APIs
+- alarm engine linkage remains a documented target, not a completed broker-side delivery feature
 
 ## Frontend Structure
 

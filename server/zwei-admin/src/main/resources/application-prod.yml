@@ -112,6 +112,29 @@ iot:
     warmup:
       enabled: true
       thread-size: 4
+  # 生产环境监测数据 Redis Stream 配置，用于接入缓冲、消费组管理和失败重试控制。
+  monitor-ingest:
+    enabled: true
+    stream-key: ${IOT_MONITOR_STREAM_KEY:stream:monitor:ingest}
+    dead-letter-stream-key: ${IOT_MONITOR_DLQ_STREAM_KEY:stream:monitor:dlq}
+    consumer-group: ${IOT_MONITOR_GROUP:monitor-ingest-group}
+    consumer-name: ${IOT_MONITOR_CONSUMER:admin-node}
+    dedupe-key-prefix: ${IOT_MONITOR_DEDUPE_PREFIX:monitor:dedupe:}
+    dedupe-ttl-seconds: ${IOT_MONITOR_DEDUPE_TTL:86400}
+    poll-batch-size: ${IOT_MONITOR_POLL_BATCH_SIZE:20}
+    poll-block-ms: ${IOT_MONITOR_POLL_BLOCK_MS:2000}
+    retry-delays-seconds: ${IOT_MONITOR_RETRY_DELAYS:5,30,120}
+  # 生产环境 IoTDB 连接参数
+  iotdb:
+    enabled: ${IOTDB_ENABLED:true}
+    host: ${IOTDB_HOST:iotdb}
+    port: ${IOTDB_PORT:6667}
+    username: ${IOTDB_USERNAME:root}
+    password: ${IOTDB_PASSWORD:root}
+    database: ${IOTDB_DATABASE:root.geo_hazard}
+    connection-timeout-ms: ${IOTDB_CONNECTION_TIMEOUT_MS:5000}
+    query-timeout-seconds: ${IOTDB_QUERY_TIMEOUT_SECONDS:30}
+    fetch-size: ${IOTDB_FETCH_SIZE:500}
 
 # SSE 日志推送配置
 log-sse:

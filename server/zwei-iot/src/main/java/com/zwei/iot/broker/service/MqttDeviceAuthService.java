@@ -6,16 +6,14 @@ import com.zwei.iot.broker.component.MqttAuthFailureGuard;
 import com.zwei.iot.broker.component.MqttDeviceSessionRegistry;
 import com.zwei.iot.broker.config.MqttAuthCenterProperties;
 import com.zwei.iot.broker.exception.MqttBusinessException;
-import com.zwei.iot.broker.exception.MqttProtocolException;
 import com.zwei.iot.broker.exception.MqttConnectionException;
 import com.zwei.iot.broker.exception.MqttExceptionReporter;
+import com.zwei.iot.broker.exception.MqttProtocolException;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceAuthLog;
-import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceAuthLogService;
-import com.zwei.iot.device.service.IDeviceSensorService;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
@@ -26,7 +24,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -51,16 +48,15 @@ public class MqttDeviceAuthService {
      */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^[A-Za-z0-9]{8}$");
     /**
-     * 平台通用 JSON 上报主题。
+     * 平台通用 JSON 上报主题。设备标识使用 deviceCode 与订阅主题保持一致。
      */
-    private static final Pattern SYS_TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceId>\\d{1,20})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
+    private static final Pattern SYS_TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
     /**
      * 国标兼容主题。当前鉴权中心只做 topic 级别准入，不解析报文体。
      */
-    private static final Pattern GB_TOPIC_PATTERN = Pattern.compile("^gb/v1/(?<deviceId>\\d{1,20})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
+    private static final Pattern GB_TOPIC_PATTERN = Pattern.compile("^gb/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
     private static final String PROTOCOL_MQTT = "MQTT";
     private static final int AUTH_STATUS_ENABLED = 1;
-    private static final int SENSOR_STATUS_ENABLED = 1;
     private static final int DEVICE_RUN_STATUS_RUNNING = 1;
     private static final int DEVICE_RUN_STATUS_STOPPED = 2;
     private static final int AUTH_SUCCESS = 1;
@@ -68,7 +64,6 @@ public class MqttDeviceAuthService {
 
     private final DeviceMapper deviceMapper;
     private final DeviceAuthLogService deviceAuthLogService;
-    private final IDeviceSensorService deviceSensorService;
     private final MqttDeviceSessionRegistry sessionRegistry;
     private final MqttAuthFailureGuard failureGuard;
     private final MqttAuthCenterProperties properties;
@@ -78,7 +73,6 @@ public class MqttDeviceAuthService {
     @Autowired
     public MqttDeviceAuthService(DeviceMapper deviceMapper,
                                  DeviceAuthLogService deviceAuthLogService,
-                                 IDeviceSensorService deviceSensorService,
                                  MqttDeviceSessionRegistry sessionRegistry,
                                  MqttAuthFailureGuard failureGuard,
                                  MqttAuthCenterProperties properties,
@@ -86,7 +80,6 @@ public class MqttDeviceAuthService {
                                  MqttExceptionReporter mqttExceptionReporter) {
         this.deviceMapper = deviceMapper;
         this.deviceAuthLogService = deviceAuthLogService;
-        this.deviceSensorService = deviceSensorService;
         this.sessionRegistry = sessionRegistry;
         this.failureGuard = failureGuard;
         this.properties = properties;
@@ -173,6 +166,7 @@ public class MqttDeviceAuthService {
 
         MqttDeviceSession session = new MqttDeviceSession(
                 device.getId(),
+                device.getCode(),
                 device.getAuthUsername(),
                 normalizedClientId,
                 clientIp,
@@ -220,34 +214,19 @@ public class MqttDeviceAuthService {
             ));
         }
         MqttDeviceSession session = sessionOptional.get();
-        if (!Objects.equals(session.deviceId(), publishTarget.deviceId())) {
+        if (!Objects.equals(session.deviceCode(), publishTarget.deviceCode())) {
             return mqttExceptionReporter.rejectWithWarn(new MqttBusinessException.PermissionDenied(
                     mqttExceptionReporter.context(normalizedClientId, topic, qoS)
-                            .putAttribute("authedDeviceId", session.deviceId())
-                            .putAttribute("topicDeviceId", publishTarget.deviceId())
+                            .putAttribute("authedDeviceCode", session.deviceCode())
+                            .putAttribute("topicDeviceCode", publishTarget.deviceCode())
                             .build(),
                     "设备与主题不匹配，禁止发布"
             ));
         }
 
-        // 发布鉴权落到库中真实测点，避免设备伪造不存在或越权的 sensor_no。
-        DeviceSensor condition = DeviceSensor.builder()
-                .deviceId(publishTarget.deviceId())
-                .sensorNo(publishTarget.sensorNo())
-                .status(SENSOR_STATUS_ENABLED)
-                .build();
-        List<DeviceSensor> sensors = deviceSensorService.selectSensorList(condition);
-        boolean allowed = sensors.stream().findFirst().isPresent();
-        if (!allowed) {
-            mqttExceptionReporter.rejectWithWarn(new MqttBusinessException.PermissionDenied(
-                    mqttExceptionReporter.context(normalizedClientId, topic, qoS)
-                            .putAttribute("deviceId", publishTarget.deviceId())
-                            .putAttribute("sensorNo", publishTarget.sensorNo())
-                            .build(),
-                    "测点不匹配或未启用，禁止发布"
-            ));
-        }
-        return allowed;
+        // 传感器存在性与启用状态校验统一由 MonitorMetadataService 在数据接入阶段负责，
+        // 避免同一条消息在发布准入和元数据加载时对 device_sensor 表重复查询。
+        return true;
     }
 
     /**
@@ -386,7 +365,7 @@ public class MqttDeviceAuthService {
     }
 
     /**
-     * 解析发布主题中的设备与测点标识。
+     * 解析发布主题中的设备编码与测点编号。
      *
      * @param topic 发布主题
      * @return 解析结果；主题不匹配时返回 {@code null}
@@ -394,11 +373,11 @@ public class MqttDeviceAuthService {
     private PublishTarget parsePublishTarget(String topic) {
         Matcher sysMatcher = SYS_TOPIC_PATTERN.matcher(topic == null ? "" : topic);
         if (sysMatcher.matches()) {
-            return new PublishTarget(Long.parseLong(sysMatcher.group("deviceId")), sysMatcher.group("sensorNo"));
+            return new PublishTarget(sysMatcher.group("deviceCode"), sysMatcher.group("sensorNo"));
         }
         Matcher gbMatcher = GB_TOPIC_PATTERN.matcher(topic == null ? "" : topic);
         if (gbMatcher.matches()) {
-            return new PublishTarget(Long.parseLong(gbMatcher.group("deviceId")), gbMatcher.group("sensorNo"));
+            return new PublishTarget(gbMatcher.group("deviceCode"), gbMatcher.group("sensorNo"));
         }
         return null;
     }
@@ -488,6 +467,6 @@ public class MqttDeviceAuthService {
     /**
      * 主题解析出的设备与测点标识。
      */
-    private record PublishTarget(Long deviceId, String sensorNo) {
+    private record PublishTarget(String deviceCode, String sensorNo) {
     }
 }

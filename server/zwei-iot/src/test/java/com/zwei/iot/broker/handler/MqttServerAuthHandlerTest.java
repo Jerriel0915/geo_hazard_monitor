@@ -8,7 +8,6 @@ import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceAuthLogService;
-import com.zwei.iot.device.service.IDeviceSensorService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
 import org.dromara.mica.mqtt.core.server.MqttServer;
@@ -25,10 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MqttServerAuthHandler 单元测试")
@@ -41,9 +37,6 @@ class MqttServerAuthHandlerTest {
     private DeviceAuthLogService deviceAuthLogService;
 
     @Mock
-    private IDeviceSensorService deviceSensorService;
-
-    @Mock
     private MqttServer mqttServer;
 
     @Mock
@@ -53,10 +46,12 @@ class MqttServerAuthHandlerTest {
 
     /**
      * 组装鉴权中心的最小依赖，验证 Handler 对核心服务的委派行为。
+     *
      */
     @BeforeEach
     void setUp() {
         MqttAuthCenterProperties properties = new MqttAuthCenterProperties();
+        properties.setEnforceMqttProtocol(true);
         MqttDeviceSessionRegistry registry = new MqttDeviceSessionRegistry();
         MqttAuthFailureGuard failureGuard = new MqttAuthFailureGuard(properties);
         MqttExceptionReporter mqttExceptionReporter = new MqttExceptionReporter();
@@ -66,7 +61,6 @@ class MqttServerAuthHandlerTest {
         MqttDeviceAuthService authService = new MqttDeviceAuthService(
                 deviceMapper,
                 deviceAuthLogService,
-                deviceSensorService,
                 registry,
                 failureGuard,
                 properties,

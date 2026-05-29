@@ -128,6 +128,32 @@ iot:
       enabled: true
       # 预热线程池大小（默认4）
       thread-size: 4
+  # 监测数据 Redis Stream 接入配置，用于支撑 MQTT 报文缓冲、去重与异步写入 IoTDB。
+  monitor-ingest:
+    enabled: true
+    stream-key: stream:monitor:ingest
+    dead-letter-stream-key: stream:monitor:dlq
+    consumer-group: monitor-ingest-group
+    consumer-name: admin-node
+    dedupe-key-prefix: "monitor:dedupe:"
+    dedupe-ttl-seconds: 86400
+    poll-batch-size: 20
+    poll-block-ms: 2000
+    retry-delays-seconds:
+      - 5
+      - 30
+      - 120
+  # 新增 IoTDB 基础连接参数，用于工业监测数据的时序化落库与查询。
+  iotdb:
+    enabled: true
+    host: localhost
+    port: 6667
+    username: root
+    password: root
+    database: root.geo_hazard
+    connection-timeout-ms: 5000
+    query-timeout-seconds: 30
+    fetch-size: 500
 
 # MyBatis配置
 mybatis:
