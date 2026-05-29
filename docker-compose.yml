@@ -89,7 +89,7 @@ services:
       - geo_backend
 
   # ---------- IoTDB 时序数据库 ----------
-  # 使用 standalone 单节点镜像，JDBC 端口 6667，REST API 端口 18080
+  # 使用 standalone 单节点镜像，JDBC 端口 6667，通过内置 CLI 探测就绪
   iotdb:
     image: apache/iotdb:2.0.2-standalone
     container_name: geo_iotdb
@@ -101,11 +101,11 @@ services:
     volumes:
       - iotdb_data:/iotdb/data
     healthcheck:
-      test: [ "CMD-SHELL", "curl -fsS http://127.0.0.1:18080/ || exit 1" ]
+      test: [ "CMD-SHELL", "/iotdb/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -e 'show version' 2>/dev/null | grep -qi version || exit 1" ]
       interval: 15s
-      timeout: 10s
-      retries: 15
-      start_period: 45s
+      timeout: 15s
+      retries: 20
+      start_period: 60s
     stop_grace_period: 1m
     security_opt:
       - no-new-privileges:true
