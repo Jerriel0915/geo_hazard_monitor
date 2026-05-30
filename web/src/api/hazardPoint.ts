@@ -90,3 +90,26 @@ export function updateHazardPointGroup(id: string, data: Omit<GroupPayload, 'cod
 export function deleteHazardPointGroup(id: string) {
   return request.delete(`/hazard-point-groups/${id}`)
 }
+
+// 获取隐患点已绑定的设备
+export function getBoundDevices(hpId: string) {
+  return request.get(`/hazard-points/${hpId}/bound-devices`)
+}
+
+// 获取未绑定设备列表
+export function getUnboundDevices(hpId: string, keyword?: string) {
+  return request.get(`/hazard-points/${hpId}/unbound-devices`, { params: { keyword } })
+}
+
+// 绑定设备到隐患点
+export function bindDevicesToHazardPoint(hpId: string, data: {
+  deviceIds: number[],
+  installPositions?: Array<{ deviceId: number, installLongitude: number, installLatitude: number }>
+}) {
+  return request.post(`/hazard-points/${hpId}/bind-devices`, data)
+}
+
+// 从隐患点解绑设备
+export function unbindDevicesFromHazardPoint(hpId: string, deviceIds: number[]) {
+  return request.delete(`/hazard-points/${hpId}/unbind-devices`, { data: { deviceIds } })
+}

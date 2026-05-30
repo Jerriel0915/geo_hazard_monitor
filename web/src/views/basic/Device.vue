@@ -39,6 +39,7 @@
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
+      <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
     </div>
 
     <div class="table-container">
@@ -572,6 +573,7 @@ const indicatorTypeNameMap: Record<string, string> = {
 }
 
 const loading = ref(false)
+const refreshing = ref(false)
 const submitLoading = ref(false)
 const sensorLoading = ref(false)
 const sensorFormSubmitLoading = ref(false)
@@ -846,6 +848,19 @@ const handleReset = () => {
   searchRunStatus.value = ''
   currentPage.value = 1
   loadTableData()
+}
+
+// 刷新页面
+const handleRefresh = async () => {
+  refreshing.value = true
+  try {
+    await loadTableData()
+    ElMessage.success('刷新成功')
+  } catch (error) {
+    ElMessage.error('刷新失败')
+  } finally {
+    refreshing.value = false
+  }
 }
 
 const handleSizeChange = () => {

@@ -4,7 +4,7 @@
       <div class="group-panel-toggle" @click="toggleGroupPanel" :class="{ expanded: showGroupPanel }">
         <span class="toggle-icon">{{ showGroupPanel ? '◀' : '▶' }}</span>
       </div>
-      
+
       <div class="group-panel" :class="{ hidden: !showGroupPanel }" :style="{ width: groupPanelWidth + 'px' }">
         <div class="panel-header">
           <span class="panel-title">分组列表</span>
@@ -82,6 +82,8 @@
     <el-option label="已完结" value="COMPLETED" />
   </el-select>
   <el-button type="primary" @click="handleSearch">搜索</el-button>
+  <el-button @click="handleReset">重置</el-button>
+  <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
 </div>
 
         <div class="table-container">
@@ -574,13 +576,18 @@
         <div class="transfer-panel">
           <div class="panel-header">
             <span class="panel-title">待绑定设备</span>
-            <el-input
-              v-model="leftSearchText"
-              placeholder="搜索设备/传感器名称"
-              class="search-input"
-              clearable
-              size="small"
-            />
+            <div style="display: flex; gap: 8px;">
+              <el-input
+                  v-model="leftSearchText"
+                  placeholder="搜索设备/传感器名称"
+                  class="search-input"
+                  clearable
+                  size="small"
+                  @clear="handleSearchUnboundDevices"
+                  @keyup.enter="handleSearchUnboundDevices"
+              />
+              <el-button size="small" @click="handleSearchUnboundDevices">搜索</el-button>
+            </div>
           </div>
           <div class="transfer-tree">
             <el-tree
@@ -654,7 +661,7 @@
       </div>
       <template #footer>
         <el-button @click="bindDeviceDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleBindDeviceSubmit">确定</el-button>
+        <el-button type="primary" @click="handleBindDeviceSubmit" :loading="bindLoading">确定</el-button>
       </template>
     </el-dialog>
 
@@ -861,7 +868,11 @@ import {
   getHazardPointPage,
   pauseHazardPoint,
   updateHazardPoint,
-  updateHazardPointGroup
+  updateHazardPointGroup,
+  getBoundDevices,
+  getUnboundDevices,
+  bindDevicesToHazardPoint,
+  unbindDevicesFromHazardPoint
 } from '@/api/hazardPoint'
 
 interface HazardPointItem {
@@ -948,6 +959,7 @@ interface TreeNode {
 }
 
 const loading = ref(false)
+const refreshing = ref(false)
 const tableData = ref<HazardPointItem[]>([])
 const groupList = ref<GroupItem[]>([])
 const selectedGroupId = ref<string | null>(null)
@@ -960,6 +972,7 @@ const groupPanelWidth = ref(200)
 const activeTab = ref('basic')
 const selectedRows = ref<HazardPointItem[]>([])
 const searchType = ref('name')  // 默认按名称搜索
+const bindLoading = ref(false)  //  绑定设备加载中
 
 // 分组面板相关
 const showGroupPanel = ref(true)
@@ -1386,7 +1399,7 @@ const loadGroupList = async () => {
         sortOrder: item.sortOrder,
         count: item.count
       }))
-      
+
       // 添加"全部"选项
       groupList.value = [
         {
@@ -1399,7 +1412,7 @@ const loadGroupList = async () => {
         },
         ...groups
       ]
-      
+
       loadGroupPage(1) // 加载第一页分组（用于左侧列表分页）
     } else {
       ElMessage.error(response.msg || '获取分组失败')
@@ -1618,6 +1631,29 @@ const handleSelectGroup = (group: GroupItem) => {
 const handleSearch = () => {
   currentPage.value = 1
   loadTableData()
+}
+
+// 重置搜索条件
+const handleReset = () => {
+  searchKeyword.value = ''
+  searchStatus.value = ''
+  searchType.value = 'name'
+  selectedGroupId.value = null
+  currentPage.value = 1
+  loadTableData()
+}
+
+// 刷新页面（同时刷新隐患点列表和分组列表）
+const handleRefresh = async () => {
+  refreshing.value = true
+  try {
+    await Promise.all([loadTableData(), loadGroupList()])
+    ElMessage.success('刷新成功')
+  } catch (error) {
+    ElMessage.error('刷新失败')
+  } finally {
+    refreshing.value = false
+  }
 }
 
 // ==================== 分页 ====================
@@ -2038,49 +2074,80 @@ const handleMapConfirm = () => {
   ElMessage.success('隐患点范围设置成功')
 }
 
-const initBoundDevices = (hazardPointId: string) => {
-  if (hazardPointId === '1') {
-    boundDevices.value = [
-      {
-        deviceId: '1',
-        deviceCode: 'DEV001',
-        deviceName: '雨量监测站-01',
-        bindTime: '2024-01-15 10:00:00',
-        deviceStatus: 'NORMAL',
-        sensors: [
-          { id: 's1', name: '雨量传感器', iconPath: '/jc-icon/green/rain_green.png' },
-          { id: 's2', name: '温湿度传感器', iconPath: '/jc-icon/green/temp_green.png' }
-        ]
-      },
-      {
-        deviceId: '2',
-        deviceCode: 'DEV002',
-        deviceName: '位移监测站-01',
-        bindTime: '2024-01-16 11:00:00',
-        deviceStatus: 'NORMAL',
-        sensors: [
-          { id: 's3', name: '位移传感器X', iconPath: '/jc-icon/green/displacement_green.png' },
-          { id: 's4', name: '位移传感器Y', iconPath: '/jc-icon/green/displacement_green.png' }
-        ]
-      }
-    ]
-  } else if (hazardPointId === '2') {
-    boundDevices.value = [
-      {
-        deviceId: '3',
-        deviceCode: 'DEV003',
-        deviceName: '温湿度监测站-01',
-        bindTime: '2024-01-17 09:00:00',
-        deviceStatus: 'FAULT',
-        sensors: [
-          { id: 's5', name: '温度传感器', iconPath: '/jc-icon/green/temp_green.png' },
-          { id: 's6', name: '湿度传感器', iconPath: '/jc-icon/green/humidity_green.png' }
-        ]
-      }
-    ]
-  } else {
+//初始化绑定设备
+const initBoundDevices = async (hazardPointId: string) => {
+  try {
+    const response: any = await getBoundDevices(hazardPointId)
+    if (response.code === 200) {
+      boundDevices.value = response.data.map((item: any) => ({
+        deviceId: String(item.deviceId || item.id),
+        deviceCode: item.deviceCode,
+        deviceName: item.deviceName,
+        bindTime: item.bindTime,
+        deviceStatus: item.deviceStatus === 1 ? 'NORMAL' : item.deviceStatus === 2 ? 'FAULT' : 'OFFLINE',
+        sensors: item.sensors || []
+      }))
+    } else {
+      boundDevices.value = []
+    }
+  } catch (error) {
+    console.error('获取绑定设备失败:', error)
     boundDevices.value = []
   }
+}
+
+//设备绑定相关函数
+const loadUnboundDevices = async (keyword?: string) => {
+  if (!currentRow.value) return []
+  try {
+    const response: any = await getUnboundDevices(currentRow.value.id, keyword)
+    if (response.code === 200) {
+      return response.data.map((item: any) => ({
+        id: String(item.id),
+        label: item.label,
+        bindCount: item.bindCount,
+        status: String(item.status), // 转为字符串
+        iconPath: item.iconPath,
+        children: item.children?.map((child: any) => ({
+          id: String(child.id),
+          label: child.label,
+          iconPath: child.iconPath,
+          status: String(child.status) // 转为字符串
+        })) || []
+      }))
+    }
+    return []
+  } catch (error) {
+    console.error('获取未绑定设备失败:', error)
+    return []
+  }
+}
+
+const handleSearchUnboundDevices = async () => {
+  if (!currentRow.value) return
+  const devices = await loadUnboundDevices(leftSearchText.value)
+  leftDeviceTree.value = devices
+}
+
+const refreshDeviceLists = async () => {
+  if (!currentRow.value) return
+
+  await initBoundDevices(currentRow.value.id)
+
+  const unboundDevices = await loadUnboundDevices()
+  leftDeviceTree.value = unboundDevices
+
+  rightDeviceTree.value = boundDevices.value.map(device => ({
+    id: device.deviceId,
+    label: `${device.deviceCode} - ${device.deviceName}`,
+    iconPath: '/jc-icon/green/device_green.png',
+    status: String(device.deviceStatus === 'NORMAL' ? 1 : device.deviceStatus === 'FAULT' ? 2 : 3), // 转为字符串
+    children: device.sensors.map(sensor => ({
+      id: sensor.id,
+      label: sensor.name,
+      iconPath: sensor.iconPath
+    }))
+  }))
 }
 
 const initAlarmCriteria = (hazardPointId: string) => {
@@ -2107,37 +2174,14 @@ const initDispatchRules = (hazardPointId: string) => {
   }
 }
 
-const handleBindDevice = (row: HazardPointItem) => {
+const handleBindDevice = async (row: HazardPointItem) => {
   currentRow.value = row
-  initBoundDevices(row.id)
-  
-  const allDevices: TreeNode[] = [
-    { id: 'd1', label: '雨量监测站-01', icon: '/jc-icon/green/device_green.png', status: 'NORMAL', statusText: '正常', bindCount: 2, children: [
-      { id: 'd1-s1', label: '雨量传感器', icon: '/jc-icon/green/rain_green.png', status: 'NORMAL', statusText: '正常' },
-      { id: 'd1-s2', label: '温湿度传感器', icon: '/jc-icon/green/temp_green.png', status: 'NORMAL', statusText: '正常' }
-    ]},
-    { id: 'd2', label: '位移监测站-01', icon: '/jc-icon/green/device_green.png', status: 'NORMAL', statusText: '正常', bindCount: 1, children: [
-      { id: 'd2-s1', label: '位移传感器X', icon: '/jc-icon/green/displacement_green.png', status: 'NORMAL', statusText: '正常' },
-      { id: 'd2-s2', label: '位移传感器Y', icon: '/jc-icon/green/displacement_green.png', status: 'NORMAL', statusText: '正常' }
-    ]},
-    { id: 'd3', label: '温湿度监测站-01', icon: '/jc-icon/green/device_green.png', status: 'FAULT', statusText: '故障', bindCount: 1, children: [
-      { id: 'd3-s1', label: '温度传感器', icon: '/jc-icon/green/temp_green.png', status: 'NORMAL', statusText: '正常' },
-      { id: 'd3-s2', label: '湿度传感器', icon: '/jc-icon/green/humidity_green.png', status: 'FAULT', statusText: '故障' }
-    ]},
-    { id: 'd4', label: '综合监测站-01', icon: '/jc-icon/green/device_green.png', status: 'OFFLINE', statusText: '离线', bindCount: 0, children: [
-      { id: 'd4-s1', label: '倾斜传感器', icon: '/jc-icon/green/inclination_green.png', status: 'OFFLINE', statusText: '离线' }
-    ]}
-  ]
+  bindDeviceDialogVisible.value = true
 
-  const boundIds = boundDevices.value.map(d => 'd' + d.deviceId)
-  
-  leftDeviceTree.value = allDevices.filter(d => !boundIds.includes(d.id))
-  rightDeviceTree.value = allDevices.filter(d => boundIds.includes(d.id))
-  
+  await refreshDeviceLists()
+
   selectedLeftKeys.value = []
   selectedRightKeys.value = []
-  
-  bindDeviceDialogVisible.value = true
 }
 
 const filterLeftNode = (value: string, data: any) => {
@@ -2170,43 +2214,115 @@ const handleRightCheck = (data: any, checkedInfo: any) => {
   }
 }
 
-const transferToRight = () => {
-  selectedLeftKeys.value.forEach(key => {
-    const nodeIndex = leftDeviceTree.value.findIndex(n => n.id === key)
-    if (nodeIndex > -1) {
-      const node = leftDeviceTree.value.splice(nodeIndex, 1)[0]
-      rightDeviceTree.value.push(node)
+const transferToRight = async () => {
+  if (selectedLeftKeys.value.length === 0) {
+    ElMessage.warning('请选择要绑定的设备')
+    return
+  }
+
+  const deviceIds = selectedLeftKeys.value.map(id => parseInt(id))
+
+  bindLoading.value = true
+  try {
+    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, { deviceIds })
+    if (response.code === 200) {
+      ElMessage.success('绑定成功')
+      await refreshDeviceLists()
+      selectedLeftKeys.value = []
+      selectedRightKeys.value = []
+    } else {
+      ElMessage.error(response.msg || '绑定失败')
     }
-  })
-  selectedLeftKeys.value = []
+  } catch (error) {
+    console.error('绑定失败:', error)
+    ElMessage.error('绑定失败')
+  } finally {
+    bindLoading.value = false
+  }
 }
 
-const transferAllToRight = () => {
-  rightDeviceTree.value.push(...leftDeviceTree.value)
-  leftDeviceTree.value = []
-  selectedLeftKeys.value = []
-}
+const transferToLeft = async () => {
+  if (selectedRightKeys.value.length === 0) {
+    ElMessage.warning('请选择要解绑的设备')
+    return
+  }
 
-const transferToLeft = () => {
-  selectedRightKeys.value.forEach(key => {
-    const nodeIndex = rightDeviceTree.value.findIndex(n => n.id === key)
-    if (nodeIndex > -1) {
-      const node = rightDeviceTree.value.splice(nodeIndex, 1)[0]
-      leftDeviceTree.value.push(node)
+  const deviceIds = selectedRightKeys.value.map(id => parseInt(id))
+
+  bindLoading.value = true
+  try {
+    const response: any = await unbindDevicesFromHazardPoint(currentRow.value!.id, deviceIds)
+    if (response.code === 200) {
+      ElMessage.success('解绑成功')
+      await refreshDeviceLists()
+      selectedLeftKeys.value = []
+      selectedRightKeys.value = []
+    } else {
+      ElMessage.error(response.msg || '解绑失败')
     }
-  })
-  selectedRightKeys.value = []
+  } catch (error) {
+    console.error('解绑失败:', error)
+    ElMessage.error('解绑失败')
+  } finally {
+    bindLoading.value = false
+  }
 }
 
-const transferAllToLeft = () => {
-  leftDeviceTree.value.push(...rightDeviceTree.value)
-  rightDeviceTree.value = []
-  selectedRightKeys.value = []
+const transferAllToRight = async () => {
+  const allDeviceIds = leftDeviceTree.value.map(node => parseInt(node.id))
+  if (allDeviceIds.length === 0) {
+    ElMessage.warning('没有可绑定的设备')
+    return
+  }
+
+  bindLoading.value = true
+  try {
+    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, { deviceIds: allDeviceIds })
+    if (response.code === 200) {
+      ElMessage.success('全部绑定成功')
+      await refreshDeviceLists()
+      selectedLeftKeys.value = []
+      selectedRightKeys.value = []
+    } else {
+      ElMessage.error(response.msg || '绑定失败')
+    }
+  } catch (error) {
+    console.error('绑定失败:', error)
+    ElMessage.error('绑定失败')
+  } finally {
+    bindLoading.value = false
+  }
+}
+
+const transferAllToLeft = async () => {
+  const allDeviceIds = rightDeviceTree.value.map(node => parseInt(node.id))
+  if (allDeviceIds.length === 0) {
+    ElMessage.warning('没有可解绑的设备')
+    return
+  }
+
+  bindLoading.value = true
+  try {
+    const response: any = await unbindDevicesFromHazardPoint(currentRow.value!.id, allDeviceIds)
+    if (response.code === 200) {
+      ElMessage.success('全部解绑成功')
+      await refreshDeviceLists()
+      selectedLeftKeys.value = []
+      selectedRightKeys.value = []
+    } else {
+      ElMessage.error(response.msg || '解绑失败')
+    }
+  } catch (error) {
+    console.error('解绑失败:', error)
+    ElMessage.error('解绑失败')
+  } finally {
+    bindLoading.value = false
+  }
 }
 
 const handleBindDeviceSubmit = () => {
-  ElMessage.success('设备绑定成功')
   bindDeviceDialogVisible.value = false
+  loadTableData()
 }
 
 const handleConfigAlarm = (row: HazardPointItem) => {
@@ -2341,7 +2457,7 @@ const handleEditDispatchRule = (row: DispatchRule) => {
   let execFrequencyNum = 1
   let execFrequencyUnit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' = 'hour'
   let execTimePoints = ''
-  
+
   if (execTime) {
     const parts = execTime.split('|')
     if (parts.length === 2) {
@@ -2350,7 +2466,7 @@ const handleEditDispatchRule = (row: DispatchRule) => {
       execTimePoints = parts[1]
     }
   }
-  
+
   Object.assign(dispatchFormData, {
     id: row.id,
     hazardPointId: currentRow.value?.id || '',
@@ -2378,7 +2494,7 @@ const handleDispatchSubmit = () => {
         execTimeValue = `${dispatchFormData.execFrequencyUnit}|${dispatchFormData.execTimePoints}`
       }
       dispatchFormData.execTime = execTimeValue
-      
+
       ElMessage.success(isEditDispatch.value ? '规则修改成功' : '规则添加成功')
       dispatchDialogVisible.value = false
       if (currentRow.value) {
