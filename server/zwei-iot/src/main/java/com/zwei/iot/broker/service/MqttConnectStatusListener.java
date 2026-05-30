@@ -33,8 +33,12 @@ public class MqttConnectStatusListener implements IMqttConnectStatusListener {
      */
     @Override
     public void online(ChannelContext context, String clientId, String username) {
-        mqttDeviceAuthService.handleClientOnline(context, clientId, username);
-        log.info("MqttClientOnline clientId:{}, username:{}", clientId, username);
+        try {
+            mqttDeviceAuthService.handleClientOnline(context, clientId, username);
+            log.info("MqttClientOnline clientId:{}, username:{}", clientId, username);
+        } catch (Exception e) {
+            log.error("处理设备上线事件失败。clientId={}, username={}", clientId, username, e);
+        }
     }
 
     /**
@@ -47,8 +51,12 @@ public class MqttConnectStatusListener implements IMqttConnectStatusListener {
      */
     @Override
     public void offline(ChannelContext context, String clientId, String username, String reason) {
-        mqttDeviceAuthService.handleClientOffline(context, clientId, username, reason);
-        log.info("MqttClientOffline clientId:{}, username:{}, reason:{}", clientId, username, reason);
+        try {
+            mqttDeviceAuthService.handleClientOffline(context, clientId, username, reason);
+            log.info("MqttClientOffline clientId:{}, username:{}, reason:{}", clientId, username, reason);
+        } catch (Exception e) {
+            log.error("处理设备离线事件失败。clientId={}, username={}", clientId, username, e);
+        }
     }
 
 }

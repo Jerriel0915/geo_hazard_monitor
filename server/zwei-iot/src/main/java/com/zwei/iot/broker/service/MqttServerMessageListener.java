@@ -60,6 +60,10 @@ public class MqttServerMessageListener {
         }
         Long deviceId = session.get().deviceId();
         log.debug("收到监测主题消息 clientNode={}, topic={}", clientNode, topic);
-        monitorIngestFacade.ingest(topic, message, deviceId);
+        try {
+            monitorIngestFacade.ingest(topic, message, deviceId);
+        } catch (Exception e) {
+            log.error("监测消息处理失败。topic={}, deviceId={}, clientId={}", topic, deviceId, clientId, e);
+        }
     }
 }

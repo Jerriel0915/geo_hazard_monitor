@@ -160,7 +160,12 @@ public class IotdbTimeSeriesService {
         try {
             jdbcClient.execute("CREATE DATABASE " + properties.getDatabase());
         } catch (ServiceException e) {
-            log.debug("数据库 {} 已存在或建库失败", properties.getDatabase(), e);
+            if (isAlreadyExistsError(e)) {
+                log.debug("数据库 {} 已存在，跳过建库", properties.getDatabase());
+            } else {
+                log.warn("创建数据库 {} 失败", properties.getDatabase(), e);
+                throw e;
+            }
         }
         databaseReady = true;
     }
@@ -183,10 +188,21 @@ public class IotdbTimeSeriesService {
         if (createdMeasurements.contains(measurementPath)) {
             return;
         }
-        jdbcClient.execute("CREATE TIMESERIES IF NOT EXISTS " + measurementPath
-                + " WITH DATATYPE=" + dataType
-                + ", ENCODING=" + encoding
-                + ", COMPRESSOR=SNAPPY");
+        // IoTDB 2.0 不支持 CREATE TIMESERIES IF NOT EXISTS 语法，
+        // 通过 try-catch 兜底 + createdMeasurements 缓存避免重复尝试。
+        try {
+            jdbcClient.execute("CREATE TIMESERIES " + measurementPath
+                    + " WITH DATATYPE=" + dataType
+                    + ", ENCODING=" + encoding
+                    + ", COMPRESSOR=SNAPPY");
+        } catch (ServiceException e) {
+            if (isAlreadyExistsError(e)) {
+                log.debug("时序 {} 已存在，跳过创建", measurementPath);
+            } else {
+                log.warn("创建时序 {} 失败", measurementPath, e);
+                throw e;
+            }
+        }
         createdMeasurements.add(measurementPath);
     }
 
@@ -222,5 +238,13 @@ public class IotdbTimeSeriesService {
             return number.intValue();
         }
         return Integer.parseInt(String.valueOf(value));
+    }
+
+    /**
+     * 判断 IoTDB 异常是否为资源已存在的预期错误。
+     */
+    private boolean isAlreadyExistsError(ServiceException e) {
+        String msg = e.getMessage();
+        return msg != null && (msg.contains("already exist") || msg.contains("already been created"));
     }
 }
