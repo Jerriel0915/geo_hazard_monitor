@@ -55,13 +55,31 @@ public class IotdbTimeSeriesService {
         }
         ensureDatabase();
         for (StandardMeasurementPoint point : points) {
-            // 首次写入前惰性创建指标列，降低初始化维护成本。
             ensureMeasurement(point.attrCode(), point.deviceId(), point.sensorNo(), "DOUBLE", "GORILLA");
             ensureMeasurement("quality", point.deviceId(), point.sensorNo(), "INT32", "RLE");
             String sql = "INSERT INTO " + pathResolver.buildSensorPath(point.deviceId(), point.sensorNo())
                     + "(timestamp," + point.attrCode() + ",quality) ALIGNED VALUES("
                     + point.dataTime() + "," + point.value() + "," + point.quality() + ")";
             jdbcClient.execute(sql);
+        }
+    }
+
+    /**
+     * 为指定设备传感器预创建 IoTDB 时序 schema。
+     * <p>
+     * 在设备/传感器注册时调用，将建库建时序从写入热路径提前至注册冷路径，
+     * 避免每条消息写入时触发 DDL 的 ERROR 日志。
+     *
+     * @param deviceId  设备ID
+     * @param sensorNo  传感器编号
+     * @param attrCodes 指标编码列表（不含 quality，quality 列自动创建）
+     */
+    public void createSensorSchema(Long deviceId, String sensorNo, List<String> attrCodes) {
+        // 确保数据库表存在
+        ensureDatabase();
+        ensureMeasurement("quality", deviceId, sensorNo, "INT32", "RLE");
+        for (String attrCode : attrCodes) {
+            ensureMeasurement(attrCode, deviceId, sensorNo, "DOUBLE", "GORILLA");
         }
     }
 
@@ -155,14 +173,14 @@ public class IotdbTimeSeriesService {
         if (databaseReady) {
             return;
         }
-        // 先通过 SHOW DATABASES 预检是否存在，避免触发 IoTDB 服务端内部
-        // "already been created" WARN 日志（ConfigNode 集群协调日志）。
+        // 先通过 SHOW DATABASES 预检，已存在则跳过；
+        // 不存在时用 executeSilent 创建（失败仅 DEBUG 记录，不抛异常）。
         if (databaseExists()) {
             log.info("数据库 {} 已存在，跳过建库", properties.getDatabase());
             databaseReady = true;
             return;
         }
-        jdbcClient.execute("CREATE DATABASE " + properties.getDatabase());
+        jdbcClient.executeSilent("CREATE DATABASE " + properties.getDatabase());
         databaseReady = true;
     }
 
@@ -204,21 +222,11 @@ public class IotdbTimeSeriesService {
         if (createdMeasurements.contains(measurementPath)) {
             return;
         }
-        // IoTDB 2.0 不支持 CREATE TIMESERIES IF NOT EXISTS 语法，
-        // 通过 try-catch 兜底 + createdMeasurements 缓存避免重复尝试。
-        try {
-            jdbcClient.execute("CREATE TIMESERIES " + measurementPath
-                    + " WITH DATATYPE=" + dataType
-                    + ", ENCODING=" + encoding
-                    + ", COMPRESSOR=SNAPPY");
-        } catch (ServiceException e) {
-            if (isAlreadyExistsError(e)) {
-                log.debug("时序 {} 已存在，跳过创建", measurementPath);
-            } else {
-                log.warn("创建时序 {} 失败", measurementPath, e);
-                throw e;
-            }
-        }
+        // executeSilent：成功则静默，已存在则 DEBUG 记录
+        jdbcClient.executeSilent("CREATE TIMESERIES " + measurementPath
+                + " WITH DATATYPE=" + dataType
+                + ", ENCODING=" + encoding
+                + ", COMPRESSOR=SNAPPY");
         createdMeasurements.add(measurementPath);
     }
 
@@ -256,11 +264,4 @@ public class IotdbTimeSeriesService {
         return Integer.parseInt(String.valueOf(value));
     }
 
-    /**
-     * 判断 IoTDB 异常是否为资源已存在的预期错误。
-     */
-    private boolean isAlreadyExistsError(ServiceException e) {
-        String msg = e.getMessage();
-        return msg != null && (msg.contains("already exist") || msg.contains("already been created"));
-    }
 }

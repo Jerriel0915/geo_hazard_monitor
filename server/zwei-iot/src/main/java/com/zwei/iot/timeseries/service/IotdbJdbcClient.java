@@ -72,4 +72,22 @@ public class IotdbJdbcClient {
             throw new ServiceException("执行 IoTDB SQL 失败").setDetailMessage(e.getMessage());
         }
     }
+
+    /**
+     * 静默执行 IoTDB DDL（建库/建时序），失败仅 DEBUG 记录，不抛异常。
+     * <p>
+     * 用于资源已存在属预期场景（如建库/建时序时的幂等操作），
+     *
+     * @param sql 待执行 DDL
+     */
+    public void executeSilent(String sql) {
+        try (Connection connection = getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.setQueryTimeout(properties.getQueryTimeoutSeconds());
+            statement.execute(sql);
+        } catch (SQLException e) {
+            // 仅记录 SQL 文本，不输出堆栈 —— 建库/建时序时资源已存在属 100% 预期场景
+            log.debug("IoTDB DDL 已忽略: {}", sql);
+        }
+    }
 }

@@ -10,16 +10,12 @@ import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
+import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 传感器Service实现
@@ -34,16 +30,19 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     private final DeviceSensorMapper sensorMapper;
     private final SensorAttributeMapper attributeMapper;
     private final IMonitorTypeService monitorTypeService;
+    private final IotdbTimeSeriesService iotdbTimeSeriesService;
 
     @Autowired
     public DeviceSensorServiceImpl(DeviceMapper deviceMapper,
                                    DeviceSensorMapper sensorMapper,
                                    SensorAttributeMapper attributeMapper,
-                                   IMonitorTypeService monitorTypeService) {
+                                   IMonitorTypeService monitorTypeService,
+                                   IotdbTimeSeriesService iotdbTimeSeriesService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
         this.monitorTypeService = monitorTypeService;
+        this.iotdbTimeSeriesService = iotdbTimeSeriesService;
     }
 
     /**
@@ -92,6 +91,9 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             attr.setCreateBy(sensor.getCreateBy());
             attributeMapper.insertAttribute(attr);
         }
+        // 注册时预创建 IoTDB 时序 schema，将 DDL 从写入热路径提前到注册冷路径
+        iotdbTimeSeriesService.createSensorSchema(sensor.getDeviceId(), sensor.getSensorNo(),
+                attrList.stream().map(SensorAttribute::getAttrCode).toList());
         return sensor.getId();
     }
 

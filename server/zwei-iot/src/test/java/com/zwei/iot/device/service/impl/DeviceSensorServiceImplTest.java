@@ -9,6 +9,7 @@ import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
+import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,9 +23,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DeviceSensorServiceImpl 单元测试")
@@ -41,6 +40,9 @@ class DeviceSensorServiceImplTest {
 
     @Mock
     private IMonitorTypeService monitorTypeService;
+
+    @Mock
+    private IotdbTimeSeriesService iotdbTimeSeriesService;
 
     @InjectMocks
     private DeviceSensorServiceImpl service;

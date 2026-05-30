@@ -141,6 +141,10 @@ public class MonitorIngestConsumerService {
                     .lastReportTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             .format(new java.util.Date(point.dataTime())))
                     .build());
+            log.info("时序数据落库成功 deviceId={} sensorNo={} attrCode={} attrName={} value={} {} dataTime={}",
+                    point.deviceId(), point.sensorNo(), point.attrCode(), point.attrName(),
+                    point.value(), point.unit() != null ? point.unit() : "",
+                    new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(point.dataTime())));
             ack(record);
         } catch (Exception e) {
             if (retryCount >= properties.getRetryDelaysSeconds().size()) {

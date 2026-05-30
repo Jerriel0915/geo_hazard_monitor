@@ -22,6 +22,7 @@ import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
+import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 设备注册中心服务
@@ -55,6 +51,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     private final IMonitorTypeService monitorTypeService;
     private final IMonitorContentService monitorContentService;
     private final DeviceAuthAccountGenerator accountGenerator;
+    private final IotdbTimeSeriesService iotdbTimeSeriesService;
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     @Value("${zwei.iot.device-registry.register-codes:ABCDEF123456}")
@@ -67,7 +64,8 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
                                      DeviceRegistrationLogService registrationLogService,
                                      IMonitorTypeService monitorTypeService,
                                      IMonitorContentService monitorContentService,
-                                     DeviceAuthAccountGenerator accountGenerator) {
+                                     DeviceAuthAccountGenerator accountGenerator,
+                                     IotdbTimeSeriesService iotdbTimeSeriesService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
@@ -76,6 +74,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         this.monitorTypeService = monitorTypeService;
         this.monitorContentService = monitorContentService;
         this.accountGenerator = accountGenerator;
+        this.iotdbTimeSeriesService = iotdbTimeSeriesService;
     }
 
     @Override
@@ -199,36 +198,44 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     }
 
     private void insertSensor(Device device, RegistrationSensorSpec spec) {
-        DeviceSensor sensor = new DeviceSensor();
-        sensor.setDeviceId(device.getId());
-        sensor.setDeviceCode(device.getCode());
-        sensor.setSensorCode(spec.sensorCode());
-        sensor.setSensorNo(spec.sensorNo());
-        sensor.setSensorName(spec.sensorName());
-        sensor.setMonitorTypeId(spec.monitorType().getId());
-        sensor.setMonitorTypeCode(spec.monitorType().getCode());
-        sensor.setMonitorTypeName(spec.monitorType().getName());
-        sensor.setStatus(1);
-        sensor.setCreateBy("device-registry");
+        DeviceSensor sensor = DeviceSensor.builder()
+                .deviceId(device.getId())
+                .deviceCode(device.getCode())
+                .sensorCode(spec.sensorCode())
+                .sensorNo(spec.sensorNo())
+                .sensorName(spec.sensorName())
+                .monitorTypeId(spec.monitorType().getId())
+                .monitorTypeCode(spec.monitorType().getCode())
+                .monitorTypeName(spec.monitorType().getName())
+                .status(1)
+                .createBy("device-registry")
+                .build();
         sensorMapper.insertSensor(sensor);
+
+        // 注册时预创建 IoTDB 时序 schema
+        List<String> attrCodes = spec.contents() != null
+                ? spec.contents().stream().map(MonitorContent::getCode).toList()
+                : List.of();
+        iotdbTimeSeriesService.createSensorSchema(device.getId(), sensor.getSensorNo(), attrCodes);
 
         List<MonitorContent> contents = spec.contents();
         if (contents == null || contents.isEmpty()) {
             return;
         }
         for (MonitorContent content : contents) {
-            SensorAttribute attribute = new SensorAttribute();
-            attribute.setSensorId(sensor.getId());
-            attribute.setAttrCode(content.getCode());
-            attribute.setAttrName(content.getName());
-            attribute.setIndicatorType(content.getIndicatorType());
-            attribute.setIndicatorTypeName(resolveIndicatorTypeName(content.getIndicatorType()));
-            attribute.setInitialValue(BigDecimal.ZERO);
-            attribute.setUnit(content.getUnit());
-            attribute.setRangeMin(content.getRangeMin());
-            attribute.setRangeMax(content.getRangeMax());
-            attribute.setIcon(content.getIcon());
-            attribute.setCreateBy("device-registry");
+            SensorAttribute attribute = SensorAttribute.builder()
+                    .sensorId(sensor.getId())
+                    .attrCode(content.getCode())
+                    .attrName(content.getName())
+                    .indicatorType(content.getIndicatorType())
+                    .indicatorTypeName(resolveIndicatorTypeName(content.getIndicatorType()))
+                    .initialValue(BigDecimal.ZERO)
+                    .unit(content.getUnit())
+                    .rangeMin(content.getRangeMin())
+                    .rangeMax(content.getRangeMax())
+                    .icon(content.getIcon())
+                    .createBy("device-registry")
+                    .build();
             attributeMapper.insertAttribute(attribute);
         }
     }

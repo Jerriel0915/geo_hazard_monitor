@@ -16,6 +16,7 @@ import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
+import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,14 +29,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DeviceRegistryServiceImpl 单元测试")
@@ -64,6 +60,9 @@ class DeviceRegistryServiceImplTest {
 
     @Mock
     private DeviceAuthAccountGenerator accountGenerator;
+
+    @Mock
+    private IotdbTimeSeriesService iotdbTimeSeriesService;
 
     @InjectMocks
     private DeviceRegistryServiceImpl service;
