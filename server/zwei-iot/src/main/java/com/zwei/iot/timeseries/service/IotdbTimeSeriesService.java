@@ -155,7 +155,13 @@ public class IotdbTimeSeriesService {
         if (databaseReady) {
             return;
         }
-        jdbcClient.execute("CREATE DATABASE IF NOT EXISTS " + properties.getDatabase());
+        // IoTDB 2.0 不支持 CREATE DATABASE IF NOT EXISTS 语法，
+        // 通过 try-catch 兜底 + databaseReady 标志确保仅首次触发。
+        try {
+            jdbcClient.execute("CREATE DATABASE " + properties.getDatabase());
+        } catch (ServiceException e) {
+            log.debug("数据库 {} 已存在或建库失败", properties.getDatabase(), e);
+        }
         databaseReady = true;
     }
 
