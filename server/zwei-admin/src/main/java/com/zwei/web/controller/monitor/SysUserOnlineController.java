@@ -29,14 +29,18 @@ import com.zwei.system.service.ISysUserOnlineService;
  * @author zwei
  */
 @RestController
-@RequestMapping("/monitor/online")
+@RequestMapping("/sys/v1/monitor/online")
 public class SysUserOnlineController extends BaseController
 {
-    @Autowired
-    private ISysUserOnlineService userOnlineService;
+    private final ISysUserOnlineService userOnlineService;
+
+    private final RedisCache redisCache;
 
     @Autowired
-    private RedisCache redisCache;
+    public SysUserOnlineController(RedisCache redisCache, ISysUserOnlineService userOnlineService) {
+        this.redisCache = redisCache;
+        this.userOnlineService = userOnlineService;
+    }
 
     @PreAuthorize("@ss.hasPermi('monitor:online:list')")
     @GetMapping("/list")
