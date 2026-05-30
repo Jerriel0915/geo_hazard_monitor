@@ -155,14 +155,35 @@ public class IotdbTimeSeriesService {
         if (databaseReady) {
             return;
         }
-        // IoTDB 2.0 不支持 CREATE DATABASE IF NOT EXISTS 语法，
-        // 通过 try-catch 兜底 + databaseReady 标志确保仅首次触发。
-        try {
-            jdbcClient.execute("CREATE DATABASE " + properties.getDatabase());
-        } catch (ServiceException e) {
-            log.debug("数据库 {} 已存在或建库失败", properties.getDatabase(), e);
+        // 先通过 SHOW DATABASES 预检是否存在，避免触发 IoTDB 服务端内部
+        // "already been created" WARN 日志（ConfigNode 集群协调日志）。
+        if (databaseExists()) {
+            log.info("数据库 {} 已存在，跳过建库", properties.getDatabase());
+            databaseReady = true;
+            return;
         }
+        jdbcClient.execute("CREATE DATABASE " + properties.getDatabase());
         databaseReady = true;
+    }
+
+    /**
+     * 通过 JDBC 查询 IoTDB 中是否已存在目标数据库。
+     */
+    private boolean databaseExists() {
+        try (Connection connection = jdbcClient.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.setQueryTimeout(properties.getQueryTimeoutSeconds());
+            ResultSet rs = statement.executeQuery("SHOW DATABASES");
+            while (rs.next()) {
+                if (properties.getDatabase().equals(rs.getString(1))) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (SQLException e) {
+            log.debug("SHOW DATABASES 查询失败，回退到 CREATE DATABASE 尝试", e);
+            return false;
+        }
     }
 
     /**
@@ -183,10 +204,21 @@ public class IotdbTimeSeriesService {
         if (createdMeasurements.contains(measurementPath)) {
             return;
         }
-        jdbcClient.execute("CREATE TIMESERIES IF NOT EXISTS " + measurementPath
-                + " WITH DATATYPE=" + dataType
-                + ", ENCODING=" + encoding
-                + ", COMPRESSOR=SNAPPY");
+        // IoTDB 2.0 不支持 CREATE TIMESERIES IF NOT EXISTS 语法，
+        // 通过 try-catch 兜底 + createdMeasurements 缓存避免重复尝试。
+        try {
+            jdbcClient.execute("CREATE TIMESERIES " + measurementPath
+                    + " WITH DATATYPE=" + dataType
+                    + ", ENCODING=" + encoding
+                    + ", COMPRESSOR=SNAPPY");
+        } catch (ServiceException e) {
+            if (isAlreadyExistsError(e)) {
+                log.debug("时序 {} 已存在，跳过创建", measurementPath);
+            } else {
+                log.warn("创建时序 {} 失败", measurementPath, e);
+                throw e;
+            }
+        }
         createdMeasurements.add(measurementPath);
     }
 
@@ -222,5 +254,13 @@ public class IotdbTimeSeriesService {
             return number.intValue();
         }
         return Integer.parseInt(String.valueOf(value));
+    }
+
+    /**
+     * 判断 IoTDB 异常是否为资源已存在的预期错误。
+     */
+    private boolean isAlreadyExistsError(ServiceException e) {
+        String msg = e.getMessage();
+        return msg != null && (msg.contains("already exist") || msg.contains("already been created"));
     }
 }

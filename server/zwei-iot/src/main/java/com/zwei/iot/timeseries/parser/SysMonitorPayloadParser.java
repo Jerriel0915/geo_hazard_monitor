@@ -489,7 +489,9 @@ public class SysMonitorPayloadParser implements MonitorPayloadParser {
         try {
             resolveTimestamp(value, -1L);
             return true;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // resolveTimestamp 仅对非数字非 ISO-8601 格式的字符串抛出 DateTimeParseException，
+            // 即无法解析为时间戳的值，视为非时间戳键。
             return false;
         }
     }

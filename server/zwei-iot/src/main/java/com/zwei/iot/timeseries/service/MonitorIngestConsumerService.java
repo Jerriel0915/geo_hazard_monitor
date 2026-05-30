@@ -5,10 +5,11 @@ import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.connection.stream.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -63,9 +64,12 @@ public class MonitorIngestConsumerService {
     }
 
     /**
-     * 初始化并启动消费线程。
+     * 应用启动完成后初始化消费组并启动消费线程。
+     * <p>
+     * 使用 {@link ApplicationReadyEvent} 替代 {@code @PostConstruct}，
+     * 确保 Redis 连接池等基础设施已完全就绪后再执行初始化。
      */
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void start() {
         if (!properties.isEnabled()) {
             return;
@@ -177,19 +181,52 @@ public class MonitorIngestConsumerService {
     }
 
     /**
-     * 初始化 Redis Stream 消费组。
+     * 初始化 Redis Stream 消费组，含重试机制。
+     * <p>
+     * ApplicationReadyEvent 触发后 Redis 连接池可能仍在预热，
+     * 最多重试 3 次，间隔递增（2s / 4s）。
+     * 消费组已存在（BUSYGROUP）直接视为成功，不进入重试。
      */
     private void initConsumerGroup() {
-        try {
-            redisTemplate.opsForStream().createGroup(properties.getStreamKey(), ReadOffset.latest(), properties.getConsumerGroup());
-        } catch (Exception ignored) {
-            redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), java.util.Map.of("bootstrap", "1")));
+        for (int attempt = 1; attempt <= 3; attempt++) {
             try {
-                redisTemplate.opsForStream().createGroup(properties.getStreamKey(), ReadOffset.latest(), properties.getConsumerGroup());
-            } catch (Exception innerIgnored) {
-                // ignore duplicate group creation
+                redisTemplate.opsForStream().createGroup(properties.getStreamKey(),
+                        ReadOffset.latest(), properties.getConsumerGroup());
+                log.info("消费组初始化成功。stream={}, group={}",
+                        properties.getStreamKey(), properties.getConsumerGroup());
+                return;
+            } catch (Exception e) {
+                // BUSYGROUP：消费组已存在，属正常运行态，无需重试。
+                if (isConsumerGroupExists(e)) {
+                    log.debug("消费组已存在，跳过创建。stream={}, group={}",
+                            properties.getStreamKey(), properties.getConsumerGroup());
+                    return;
+                }
+                if (attempt < 3) {
+                    long delay = (long) Math.pow(2, attempt);
+                    log.debug("创建消费组失败（第 {} 次），{}s 后重试。stream={}, group={}",
+                            attempt, delay, properties.getStreamKey(), properties.getConsumerGroup(), e);
+                    sleep(delay);
+                } else {
+                    log.warn("消费组初始化最终失败。stream={}, group={}",
+                            properties.getStreamKey(), properties.getConsumerGroup(), e);
+                }
             }
         }
+    }
+
+    /**
+     * 判断异常是否为消费组已存在的预期错误（Redis BUSYGROUP）。
+     */
+    private boolean isConsumerGroupExists(Exception e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause.getMessage() != null && cause.getMessage().contains("BUSYGROUP")) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     /**
