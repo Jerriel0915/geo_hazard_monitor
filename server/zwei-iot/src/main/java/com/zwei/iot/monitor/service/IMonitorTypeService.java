@@ -38,6 +38,13 @@ public interface IMonitorTypeService {
     MonitorType selectMonitorTypeById(Long id);
 
     /**
+     * 查询所有监测类型及其内容（批量加载，避免 N+1）。
+     *
+     * @return 所有监测类型列表（含 contents）
+     */
+    List<MonitorType> selectMonitorTypeAllWithContents();
+
+    /**
      * 根据编码查询监测类型
      *
      * @param code 监测类型编码

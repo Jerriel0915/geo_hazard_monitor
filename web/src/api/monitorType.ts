@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { AjaxResult, PageResult } from './system'
+import type {AjaxResult, PageResult} from './system'
 
 export interface MonitorContentItem {
   id?: number
@@ -86,6 +86,10 @@ export const getMonitorTypeDetail = (id: number) =>
 
 export const getMonitorTypeList = () =>
   unwrap<MonitorTypeItem[]>(request.get('/monitor-types'))
+
+/** 批量获取所有监测类型及其内容（单次请求，避免 N+1） */
+export const getMonitorTypeListWithContents = () =>
+    unwrap<MonitorTypeItem[]>(request.get('/monitor-types/with-contents'))
 
 export const createMonitorType = async (payload: MonitorTypeCreatePayload) => {
   const response = await request.post<AjaxResult<{ id: number }>>('/monitor-types', payload)

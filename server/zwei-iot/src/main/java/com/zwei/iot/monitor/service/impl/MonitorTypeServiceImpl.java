@@ -1,17 +1,21 @@
 package com.zwei.iot.monitor.service.impl;
 
+import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.mapper.MonitorTypeMapper;
 import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 监测类型Service实现类
@@ -65,6 +69,27 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
         populateDerivedFields(monitorType);
         monitorType.setContents(monitorContentService.selectMonitorContentAll(id));
         return monitorType;
+    }
+
+    /**
+     * 查询所有监测类型及其内容（批量加载，避免 N+1 查询）。
+     * <p>
+     * 1 次查询加载所有 monitorType + 1 次查询加载所有 monitorContent，
+     * 然后在内存中按 monitorTypeId 分组关联，将 N+1 次 SQL 降为 2 次。
+     */
+    @Override
+    @Cacheable(value = "monitorTypeList", key = "'withContents'")
+    public List<MonitorType> selectMonitorTypeAllWithContents() {
+        List<MonitorType> monitorTypes = monitorTypeMapper.selectMonitorTypeAll();
+        monitorTypes.forEach(this::populateDerivedFields);
+        List<MonitorContent> allContents = monitorContentService.selectMonitorContentAll(null);
+        Map<Long, List<MonitorContent>> contentsByTypeId = allContents.stream()
+                .collect(Collectors.groupingBy(
+                        c -> c.getMonitorTypeId() != null ? c.getMonitorTypeId() : 0L));
+        for (MonitorType mt : monitorTypes) {
+            mt.setContents(contentsByTypeId.getOrDefault(mt.getId(), Collections.emptyList()));
+        }
+        return monitorTypes;
     }
 
     /**

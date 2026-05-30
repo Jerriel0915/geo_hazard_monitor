@@ -454,31 +454,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {
   changeDeviceAuthStatus,
   copyDevice as copyDeviceApi,
   createDevice as createDeviceApi,
   deleteDevice as deleteDeviceApi,
+  type DeviceAuthAccount,
+  type DeviceItem,
+  type DevicePageParams,
   getDeviceAuthAccount,
   getDeviceDetail,
   getDevicePage,
   resetDevicePassword,
-  updateDevice as updateDeviceApi,
-  type DeviceAuthAccount,
-  type DeviceItem,
-  type DevicePageParams
+  updateDevice as updateDeviceApi
 } from '@/api/device'
-import { getMonitorTypeDetail } from '@/api/monitorType'
+import {getMonitorTypeListWithContents} from '@/api/monitorType'
 import {
   createSensor,
   deleteSensor,
   getDeviceSensors,
   getSensorDetail,
-  getSensorMonitorTypes,
-  updateSensor,
-  type SensorItem
+  type SensorItem,
+  updateSensor
 } from '@/api/sensor'
 
 // 监测内容图标规范
@@ -804,16 +803,16 @@ const openAuthDialog = async (device: DeviceItem, account?: DeviceAuthAccount) =
 }
 
 // 获取监测类型列表（用于传感器配置）
+// 使用批量接口一次加载所有类型及其内容，避免逐条拉取详情的 N+1 请求
 const loadMonitorTypeList = async () => {
   try {
-    const monitorTypes = await getSensorMonitorTypes()
-    const details = await Promise.all(
-      (monitorTypes || []).map(async (item: any) => {
-        const detail = await getMonitorTypeDetail(Number(item.id))
-        return {
-          id: Number(detail.id),
-          name: detail.name,
-          modelAttrs: (detail.contents || []).map((content: any) => ({
+    const allTypes = await getMonitorTypeListWithContents()
+    const details = (allTypes || [])
+        .filter((item: any) => item.deviceType === 2)
+        .map((item: any) => ({
+          id: Number(item.id),
+          name: item.name,
+          modelAttrs: (item.contents || []).map((content: any) => ({
             attrCode: content.code,
             attrName: content.name,
             indicatorType: content.indicatorType,
@@ -823,9 +822,7 @@ const loadMonitorTypeList = async () => {
             unit: content.unit || '',
             icon: content.icon || ''
           }))
-        } as MonitorTypeItem
-      })
-    )
+        } as MonitorTypeItem))
     monitorTypeList.value = details
   } catch (error) {
     console.error('获取监测类型失败:', error)

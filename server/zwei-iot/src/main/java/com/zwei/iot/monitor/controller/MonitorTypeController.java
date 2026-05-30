@@ -76,6 +76,21 @@ public class MonitorTypeController extends BaseController {
     }
 
     /**
+     * 获取所有监测类型及其内容（批量加载，避免 N+1）。
+     * <p>
+     * 单次请求加载全部监测类型及其关联的监测内容，
+     * 替代前端先拉列表再逐条请求详情的 N+1 调用模式。
+     *
+     * @return 含 contents 的监测类型列表
+     */
+    @PreAuthorize("@ss.hasPermi('basic:monitorType:list')")
+    @GetMapping("/with-contents")
+    public AjaxResult listWithContents() {
+        List<MonitorType> list = monitorTypeService.selectMonitorTypeAllWithContents();
+        return AjaxResult.success("成功", list);
+    }
+
+    /**
      * 获取监测类型详情
      *
      * @param id 监测类型ID
