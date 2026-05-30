@@ -61,6 +61,14 @@ public interface DeviceMapper {
     Device selectDeviceByAuthUsername(String authUsername);
 
     /**
+     * 根据ID列表批量查询设备
+     *
+     * @param ids 设备ID列表
+     * @return 设备列表
+     */
+    List<Device> selectDeviceByIds(@Param("ids") List<Long> ids);
+
+    /**
      * 新增设备
      *
      * @param device 设备信息

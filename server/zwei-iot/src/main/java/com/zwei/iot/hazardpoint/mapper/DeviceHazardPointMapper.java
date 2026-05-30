@@ -42,6 +42,15 @@ public interface DeviceHazardPointMapper {
     int insertBatch(@Param("list") List<DeviceHazardPoint> bindList);
 
     /**
+     * 批量插入或更新设备隐患点绑定记录（基于唯一键 uk_device_hazard_point 幂等）。
+     * 已存在时仅更新安装位置和更新者信息，保留原创建时间。
+     *
+     * @param bindList 绑定记录列表
+     * @return 影响行数
+     */
+    int insertOrUpdate(@Param("list") List<DeviceHazardPoint> bindList);
+
+    /**
      * 根据隐患点ID删除绑定记录
      *
      * @param hazardPointId 隐患点ID

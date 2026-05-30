@@ -2,10 +2,12 @@ package com.zwei.iot.hazardpoint.service.impl;
 
 import com.zwei.common.constant.HttpStatus;
 import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.hazardpoint.domain.DeviceHazardPoint;
+import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BindDeviceRequest;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
 import com.zwei.iot.hazardpoint.domain.dto.InstallPosition;
@@ -19,11 +21,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -163,9 +161,8 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
         validateDevicesExist(deviceIds);
         Map<Long, InstallPosition> positionMap = buildPositionMap(deviceIds, request.getInstallPositions());
 
-        // 仅移除本次目标设备在该隐患点下的既有绑定，保留其他绑定关系。
-        deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, deviceIds);
-
+        // 使用 ON DUPLICATE KEY UPDATE 基于唯一键幂等操作：
+        // 已绑定设备仅更新安装位置和更新者，新绑定设备插入记录。
         List<DeviceHazardPoint> bindList = new ArrayList<>();
         for (Long deviceId : deviceIds) {
             DeviceHazardPoint bind = DeviceHazardPoint.builder()
@@ -183,7 +180,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
             bindList.add(bind);
         }
 
-        int rows = deviceHazardPointMapper.insertBatch(bindList);
+        int rows = deviceHazardPointMapper.insertOrUpdate(bindList);
         hazardPointMapper.refreshDeviceCountById(hazardPointId);
         return rows;
     }
@@ -221,8 +218,15 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
         if (hazardPointId == null) {
             throw new ServiceException("隐患点ID不能为空", HttpStatus.BAD_REQUEST);
         }
-        if (hazardPointMapper.selectHazardPointById(hazardPointId) == null) {
+        HazardPoint hazardPoint = hazardPointMapper.selectHazardPointById(hazardPointId);
+        if (hazardPoint == null) {
             throw new ServiceException("隐患点不存在", HttpStatus.NOT_FOUND);
+        }
+        if (!"0".equals(hazardPoint.getDelFlag())) {
+            throw new ServiceException("隐患点已删除，无法绑定设备", HttpStatus.BAD_REQUEST);
+        }
+        if (!Integer.valueOf(1).equals(hazardPoint.getStatus())) {
+            throw new ServiceException("隐患点已停用，无法绑定设备", HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -241,9 +245,21 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     }
 
     private void validateDevicesExist(List<Long> deviceIds) {
-        for (Long deviceId : deviceIds) {
-            if (deviceMapper.selectDeviceById(deviceId) == null) {
-                throw new ServiceException("设备不存在: " + deviceId, HttpStatus.NOT_FOUND);
+        List<Device> devices = deviceMapper.selectDeviceByIds(deviceIds);
+        if (devices.size() != deviceIds.size()) {
+            Set<Long> foundIds = devices.stream().map(Device::getId).collect(Collectors.toCollection(LinkedHashSet::new));
+            String missing = deviceIds.stream()
+                    .filter(id -> !foundIds.contains(id))
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "));
+            throw new ServiceException("设备不存在或已删除: " + missing, HttpStatus.NOT_FOUND);
+        }
+        for (Device device : devices) {
+            if (!Integer.valueOf(1).equals(device.getAuthStatus())) {
+                throw new ServiceException("设备账号已禁用: " + device.getCode(), HttpStatus.BAD_REQUEST);
+            }
+            if (!Integer.valueOf(1).equals(device.getStatus())) {
+                throw new ServiceException("设备已停用: " + device.getCode(), HttpStatus.BAD_REQUEST);
             }
         }
     }
