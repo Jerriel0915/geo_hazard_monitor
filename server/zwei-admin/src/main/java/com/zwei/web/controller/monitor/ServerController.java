@@ -13,7 +13,7 @@ import com.zwei.framework.web.domain.Server;
  * @author zwei
  */
 @RestController
-@RequestMapping("/monitor/server")
+@RequestMapping("/sys/v1/monitor/server")
 public class ServerController
 {
     @PreAuthorize("@ss.hasPermi('monitor:server:list')")

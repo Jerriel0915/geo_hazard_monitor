@@ -28,11 +28,15 @@ import com.zwei.system.domain.SysCache;
  * @author zwei
  */
 @RestController
-@RequestMapping("/monitor/cache")
+@RequestMapping("/sys/v1/monitor/cache")
 public class CacheController
 {
+    private final RedisTemplate<String, String> redisTemplate;
+
     @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    public CacheController(RedisTemplate<String, String> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     private final static List<SysCache> caches = new ArrayList<SysCache>();
     {

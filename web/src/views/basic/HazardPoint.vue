@@ -14,10 +14,10 @@
         </div>
         <div class="group-list" @scroll="handleGroupListScroll">
           <div
-            v-for="group in displayGroupList"
-            :key="group.id"
-            :class="['group-item', { active: selectedGroupId === group.id }]"
-            @click="handleSelectGroup(group)"
+              v-for="group in displayGroupList"
+              :key="group.id"
+              :class="['group-item', { active: selectedGroupId === group.id }]"
+              @click="handleSelectGroup(group)"
           >
             <span class="group-name">{{ group.name }}</span>
             <span class="group-count">({{ group.count }})</span>
@@ -60,44 +60,44 @@
         </div>
 
         <div class="search-bar">
-  <el-select v-model="searchType" placeholder="搜索方式" class="search-type-select">
-    <el-option label="按名称" value="name" />
-    <el-option label="按编号" value="code" />
-  </el-select>
-  <el-input
-    v-model="searchKeyword"
-    :placeholder="searchType === 'name' ? '搜索名称' : '搜索编号'"
-    class="search-input"
-    clearable
-    @clear="handleSearch"
-    @keyup.enter="handleSearch"
-  >
-    <template #prefix>
-      <span class="search-icon">🔍</span>
-    </template>
-  </el-input>
-  <el-select v-model="searchStatus" placeholder="状态" clearable class="status-select">
-    <el-option label="监测中" value="MONITORING" />
-    <el-option label="停测中" value="PAUSED" />
-    <el-option label="已完结" value="COMPLETED" />
-  </el-select>
-  <el-button type="primary" @click="handleSearch">搜索</el-button>
-  <el-button @click="handleReset">重置</el-button>
-  <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
-</div>
+          <el-select v-model="searchType" placeholder="搜索方式" class="search-type-select">
+            <el-option label="按名称" value="name"/>
+            <el-option label="按编号" value="code"/>
+          </el-select>
+          <el-input
+              v-model="searchKeyword"
+              :placeholder="searchType === 'name' ? '搜索名称' : '搜索编号'"
+              class="search-input"
+              clearable
+              @clear="handleSearch"
+              @keyup.enter="handleSearch"
+          >
+            <template #prefix>
+              <span class="search-icon">🔍</span>
+            </template>
+          </el-input>
+          <el-select v-model="searchStatus" placeholder="状态" clearable class="status-select">
+            <el-option label="监测中" value="MONITORING"/>
+            <el-option label="停测中" value="PAUSED"/>
+            <el-option label="已完结" value="COMPLETED"/>
+          </el-select>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button @click="handleReset">重置</el-button>
+          <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
+        </div>
 
         <div class="table-container">
           <el-table
-            :data="tableData"
-            border
-            stripe
-            v-loading="loading"
-            :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
-            @selection-change="handleSelectionChange"
+              :data="tableData"
+              border
+              stripe
+              v-loading="loading"
+              :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
+              @selection-change="handleSelectionChange"
           >
-            <el-table-column type="selection" width="55" align="center" />
-            <el-table-column prop="code" label="编号" width="150" align="center" />
-            <el-table-column prop="name" label="名称" min-width="200" align="center" />
+            <el-table-column type="selection" width="55" align="center"/>
+            <el-table-column prop="code" label="编号" width="150" align="center"/>
+            <el-table-column prop="name" label="名称" min-width="200" align="center"/>
             <el-table-column prop="statusName" label="状态" width="100" align="center">
               <template #default="{ row }">
                 <span :class="['status-badge', `status-${row.status.toLowerCase()}`]">
@@ -126,18 +126,18 @@
                 <el-button type="text" size="small" @click="handleView(row)">查看</el-button>
                 <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
                 <el-button
-                  v-if="row.status !== 'COMPLETED'"
-                  type="text"
-                  size="small"
-                  @click="handleTogglePause(row)"
+                    v-if="row.status !== 'COMPLETED'"
+                    type="text"
+                    size="small"
+                    @click="handleTogglePause(row)"
                 >
                   {{ row.status === 'PAUSED' ? '恢复' : '停测' }}
                 </el-button>
                 <el-button
-                  v-if="row.status !== 'COMPLETED'"
-                  type="text"
-                  size="small"
-                  @click="handleComplete(row)"
+                    v-if="row.status !== 'COMPLETED'"
+                    type="text"
+                    size="small"
+                    @click="handleComplete(row)"
                 >
                   完结
                 </el-button>
@@ -150,16 +150,16 @@
 
           <div class="pagination-container">
             <el-pagination
-              v-model:current-page="currentPage"
-              v-model:page-size="pageSize"
-              :total="total"
-              :page-sizes="[10, 20, 50, 100]"
-              layout="total, sizes, prev, pager, next, jumper"
-              prev-text="上一页"
-              next-text="下一页"
-              :disabled="total === 0"
-              @size-change="handleSizeChange"
-              @current-change="handlePageChange"
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :total="total"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                prev-text="上一页"
+                next-text="下一页"
+                :disabled="total === 0"
+                @size-change="handleSizeChange"
+                @current-change="handlePageChange"
             />
           </div>
         </div>
@@ -167,21 +167,21 @@
     </div>
 
     <el-dialog
-      v-model="groupDialogVisible"
-      :title="groupDialogTitle"
-      width="500px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="groupDialogVisible"
+        :title="groupDialogTitle"
+        width="500px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <el-form ref="groupFormRef" :model="groupFormData" :rules="groupFormRules" label-width="100px">
         <el-form-item label="分组名称" prop="name">
-          <el-input v-model="groupFormData.name" placeholder="请输入分组名称" />
+          <el-input v-model="groupFormData.name" placeholder="请输入分组名称"/>
         </el-form-item>
         <el-form-item label="分组描述" prop="description">
-          <el-input v-model="groupFormData.description" type="textarea" :rows="3" placeholder="请输入分组描述（可选）" />
+          <el-input v-model="groupFormData.description" type="textarea" :rows="3" placeholder="请输入分组描述（可选）"/>
         </el-form-item>
         <el-form-item label="排序序号" prop="sortOrder">
-          <el-input-number v-model="groupFormData.sortOrder" :min="0" :max="999" placeholder="排序序号" />
+          <el-input-number v-model="groupFormData.sortOrder" :min="0" :max="999" placeholder="排序序号"/>
           <span class="form-hint">数字越小越靠前</span>
         </el-form-item>
       </el-form>
@@ -192,22 +192,22 @@
     </el-dialog>
 
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="700px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="dialogVisible"
+        :title="dialogTitle"
+        width="700px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="编号" prop="code">
-              <el-input v-model="formData.code" placeholder="请输入隐患点编号" :disabled="isEdit" />
+              <el-input v-model="formData.code" placeholder="请输入隐患点编号" :disabled="isEdit"/>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="名称" prop="name">
-              <el-input v-model="formData.name" placeholder="请输入隐患点名称" />
+              <el-input v-model="formData.name" placeholder="请输入隐患点名称"/>
             </el-form-item>
           </el-col>
         </el-row>
@@ -221,7 +221,8 @@
                       <span>{{ g.name }}</span>
                       <span v-if="g.id !== '1'" style="display: flex; gap: 5px;">
                         <span class="group-action-btn" @click.stop="handleEditGroupFromSelect(g)" title="修改">✎</span>
-                        <span class="group-action-btn delete-btn" @click.stop="handleDeleteGroupFromSelect(g)" title="删除">×</span>
+                        <span class="group-action-btn delete-btn" @click.stop="handleDeleteGroupFromSelect(g)"
+                              title="删除">×</span>
                       </span>
                     </div>
                   </el-option>
@@ -232,22 +233,24 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="走向" prop="strike">
-              <el-input-number v-model="formData.strike" :min="0" :max="360" placeholder="走向角度(度)" />
+              <el-input-number v-model="formData.strike" :min="0" :max="360" placeholder="走向角度(度)"/>
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="中心坐标" prop="coordinates">
           <div class="coordinate-input">
-            <el-input-number v-model="formData.longitude" :precision="6" :step="0.000001" placeholder="经度" class="coord-input" />
+            <el-input-number v-model="formData.longitude" :precision="6" :step="0.000001" placeholder="经度"
+                             class="coord-input"/>
             <span class="coord-separator">,</span>
-            <el-input-number v-model="formData.latitude" :precision="6" :step="0.000001" placeholder="纬度" class="coord-input" />
+            <el-input-number v-model="formData.latitude" :precision="6" :step="0.000001" placeholder="纬度"
+                             class="coord-input"/>
             <el-button type="primary" size="small" @click="handleOpenMap">
               <span>📍</span> 地图设置
             </el-button>
           </div>
         </el-form-item>
         <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
+          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述"/>
         </el-form-item>
       </el-form>
 
@@ -258,11 +261,11 @@
     </el-dialog>
 
     <el-dialog
-      v-model="mapDialogVisible"
-      title="绘制隐患点范围"
-      width="800px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="mapDialogVisible"
+        title="绘制隐患点范围"
+        width="800px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <div class="map-container">
         <div id="hazard-point-map" ref="mapRef" style="width: 100%; height: 400px;"></div>
@@ -287,11 +290,11 @@
     </el-dialog>
 
     <el-dialog
-      v-model="detailDialogVisible"
-      title="隐患点详情"
-      width="1000px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="detailDialogVisible"
+        title="隐患点详情"
+        width="1000px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <el-tabs v-model="activeTab">
         <el-tab-pane label="基本信息" name="basic">
@@ -303,7 +306,10 @@
                 <el-descriptions-item label="隐患点名称">{{ currentRow?.name }}</el-descriptions-item>
                 <el-descriptions-item label="分组">{{ currentRow?.groupName || '未分组' }}</el-descriptions-item>
                 <el-descriptions-item label="状态">
-                  <el-tag :type="getStatusType(currentRow?.status || '')" size="small">{{ currentRow?.statusName }}</el-tag>
+                  <el-tag :type="getStatusType(currentRow?.status || '')" size="small">{{
+                      currentRow?.statusName
+                    }}
+                  </el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="中心坐标" :span="2">
                   {{ currentRow?.longitude?.toFixed(6) }}, {{ currentRow?.latitude?.toFixed(6) }}
@@ -332,19 +338,19 @@
 
         <el-tab-pane label="绑定设备" name="devices">
           <el-table :data="boundDevices" border size="small">
-            <el-table-column prop="deviceCode" label="设备编号" width="150" align="center" />
-            <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center" />
+            <el-table-column prop="deviceCode" label="设备编号" width="150" align="center"/>
+            <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center"/>
             <el-table-column prop="sensorNames" label="传感器" min-width="150" align="center">
               <template #default="{ row }">
-                <span v-for="sensor in row.sensors" :key="sensor.id" class="sensor-tag">
-                  <img :src="sensor.iconPath" class="sensor-icon" />{{ sensor.name }}
-                </span>
+                <span v-for="sensor in row.sensors" :key="sensor.id" class="sensor-tag">{{ sensor.name }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="bindTime" label="绑定时间" width="180" align="center" />
+            <el-table-column prop="bindTime" label="绑定时间" width="180" align="center"/>
             <el-table-column prop="deviceStatus" label="设备状态" width="100" align="center">
               <template #default="{ row }">
-                <el-tag :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'warning'" size="small">
+                <el-tag
+                    :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'warning'"
+                    size="small">
                   {{ row.deviceStatus === 'NORMAL' ? '正常' : row.deviceStatus === 'FAULT' ? '故障' : '离线' }}
                 </el-tag>
               </template>
@@ -357,9 +363,9 @@
             <div class="config-section">
               <h3 class="section-title">告警判据</h3>
               <el-table :data="alarmCriteriaList" border size="small">
-                <el-table-column prop="name" label="判据名称" width="150" align="center" />
-                <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
-                <el-table-column prop="expression" label="表达式" width="250" align="center" />
+                <el-table-column prop="name" label="判据名称" width="150" align="center"/>
+                <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center"/>
+                <el-table-column prop="expression" label="表达式" width="250" align="center"/>
                 <el-table-column prop="alarmLevel" label="告警等级" width="100" align="center">
                   <template #default="{ row }">
                     <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
@@ -367,7 +373,10 @@
                 </el-table-column>
                 <el-table-column prop="isEnabled" label="状态" width="80" align="center">
                   <template #default="{ row }">
-                    <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
+                    <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{
+                        row.isEnabled ? '启用' : '禁用'
+                      }}
+                    </el-tag>
                   </template>
                 </el-table-column>
               </el-table>
@@ -376,7 +385,7 @@
             <div class="config-section">
               <h3 class="section-title">告警分发</h3>
               <el-table :data="dispatchRules" border size="small">
-                <el-table-column prop="name" label="规则名称" width="150" align="center" />
+                <el-table-column prop="name" label="规则名称" width="150" align="center"/>
                 <el-table-column prop="type" label="类型" width="100" align="center">
                   <template #default="{ row }">
                     <el-tag :type="row.type === 'ALARM' ? 'warning' : 'info'" size="small">
@@ -390,15 +399,20 @@
                     <span v-else class="empty-text">-</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="recipientName" label="接收人" width="120" align="center" />
+                <el-table-column prop="recipientName" label="接收人" width="120" align="center"/>
                 <el-table-column prop="channel" label="通知渠道" width="150" align="center">
                   <template #default="{ row }">
-                    <span v-for="ch in row.channel.split(',')" :key="ch" class="channel-tag">{{ getChannelLabel(ch) }}</span>
+                    <span v-for="ch in row.channel.split(',')" :key="ch" class="channel-tag">{{
+                        getChannelLabel(ch)
+                      }}</span>
                   </template>
                 </el-table-column>
                 <el-table-column prop="isEnabled" label="状态" width="80" align="center">
                   <template #default="{ row }">
-                    <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
+                    <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{
+                        row.isEnabled ? '启用' : '禁用'
+                      }}
+                    </el-tag>
                   </template>
                 </el-table-column>
               </el-table>
@@ -410,32 +424,36 @@
           <div class="monitor-data-panel">
             <div class="data-filters">
               <el-select v-model="dataFilter.deviceId" placeholder="选择设备" clearable style="width: 150px">
-                <el-option v-for="d in boundDevices" :key="d.deviceId" :label="d.deviceName" :value="d.deviceId" />
+                <el-option v-for="d in boundDevices" :key="d.deviceId" :label="d.deviceName" :value="d.deviceId"/>
               </el-select>
               <el-select v-model="dataFilter.sensorId" placeholder="选择传感器" clearable style="width: 150px">
-                <el-option label="节点1" value="node1" />
-                <el-option label="节点2" value="node2" />
-                <el-option label="节点3" value="node3" />
-                <el-option label="电量" value="battery" />
+                <el-option label="节点1" value="node1"/>
+                <el-option label="节点2" value="node2"/>
+                <el-option label="节点3" value="node3"/>
+                <el-option label="电量" value="battery"/>
               </el-select>
               <el-select v-model="dataFilter.valueType" placeholder="值类型" clearable style="width: 150px">
-                <el-option label="采集值" value="current" />
-                <el-option label="小时变化" value="hour" />
-                <el-option label="24小时变化" value="day" />
-                <el-option label="72小时变化" value="week" />
+                <el-option label="采集值" value="current"/>
+                <el-option label="小时变化" value="hour"/>
+                <el-option label="24小时变化" value="day"/>
+                <el-option label="72小时变化" value="week"/>
               </el-select>
               <el-select v-model="dataFilter.direction" placeholder="方向" clearable style="width: 100px">
-                <el-option label="X" value="x" />
-                <el-option label="Y" value="y" />
-                <el-option label="Z" value="z" />
+                <el-option label="X" value="x"/>
+                <el-option label="Y" value="y"/>
+                <el-option label="Z" value="z"/>
               </el-select>
               <el-button type="primary" size="small" @click="handleQueryData">查询</el-button>
             </div>
 
             <div class="data-toolbar">
               <el-button-group>
-                <el-button :type="dataDisplayMode === 'chart' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'chart'">图表展示</el-button>
-                <el-button :type="dataDisplayMode === 'table' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'table'">表格展示</el-button>
+                <el-button :type="dataDisplayMode === 'chart' ? 'primary' : 'default'" size="small"
+                           @click="dataDisplayMode = 'chart'">图表展示
+                </el-button>
+                <el-button :type="dataDisplayMode === 'table' ? 'primary' : 'default'" size="small"
+                           @click="dataDisplayMode = 'table'">表格展示
+                </el-button>
               </el-button-group>
               <div class="data-actions">
                 <el-button size="small" @click="handleImportData">导入数据</el-button>
@@ -451,12 +469,12 @@
               </div>
               <div v-else class="table-container">
                 <el-table :data="monitorDataList" border size="small">
-                  <el-table-column prop="time" label="时间" width="180" align="center" />
-                  <el-table-column prop="deviceName" label="设备" width="150" align="center" />
-                  <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
-                  <el-table-column prop="value" label="数值" width="100" align="center" />
-                  <el-table-column prop="unit" label="单位" width="80" align="center" />
-                  <el-table-column prop="direction" label="方向" width="80" align="center" />
+                  <el-table-column prop="time" label="时间" width="180" align="center"/>
+                  <el-table-column prop="deviceName" label="设备" width="150" align="center"/>
+                  <el-table-column prop="sensorName" label="传感器" width="120" align="center"/>
+                  <el-table-column prop="value" label="数值" width="100" align="center"/>
+                  <el-table-column prop="unit" label="单位" width="80" align="center"/>
+                  <el-table-column prop="direction" label="方向" width="80" align="center"/>
                 </el-table>
               </div>
             </div>
@@ -470,11 +488,11 @@
     </el-dialog>
 
     <el-dialog
-      v-model="alarmConfigDialogVisible"
-      :title="`告警配置[${currentRow?.name || ''}]`"
-      width="1000px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="alarmConfigDialogVisible"
+        :title="`告警配置[${currentRow?.name || ''}]`"
+        width="1000px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <div class="alarm-config-content">
         <div class="config-section">
@@ -485,9 +503,9 @@
             </el-button>
           </div>
           <el-table :data="alarmCriteriaList" border size="small">
-            <el-table-column prop="name" label="判据名称" width="150" align="center" />
-            <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
-            <el-table-column prop="expression" label="表达式" width="250" align="center" />
+            <el-table-column prop="name" label="判据名称" width="150" align="center"/>
+            <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center"/>
+            <el-table-column prop="expression" label="表达式" width="250" align="center"/>
             <el-table-column prop="alarmLevel" label="告警等级" width="100" align="center">
               <template #default="{ row }">
                 <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
@@ -495,7 +513,7 @@
             </el-table-column>
             <el-table-column prop="isEnabled" label="状态" width="80" align="center">
               <template #default="{ row }">
-                <el-switch v-model="row.isEnabled" @change="handleToggleAlarm(row)" />
+                <el-switch v-model="row.isEnabled" @change="handleToggleAlarm(row)"/>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="100" align="center">
@@ -525,10 +543,14 @@
             <el-table-column label="告警等级/关联设备" min-width="200">
               <template #default="{ row }">
                 <template v-if="row.type === 'alarm'">
-                  <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
+                  <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small"
+                          style="margin-right: 4px;">{{ lvl }}
+                  </el-tag>
                 </template>
                 <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
-                  <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+                  <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">
+                    {{ name }}
+                  </el-tag>
                 </template>
                 <span v-else class="empty-text">-</span>
               </template>
@@ -547,13 +569,14 @@
             </el-table-column>
             <el-table-column prop="status" label="状态" width="80" align="center">
               <template #default="{ row }">
-                <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)" />
+                <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)"/>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="100" align="center">
               <template #default="{ row }">
                 <el-button type="text" size="small" @click="handleEditDispatchRule(row)">编辑</el-button>
-                <el-button type="text" size="small" class="danger-text" @click="handleDeleteDispatchRule(row)">删除</el-button>
+                <el-button type="text" size="small" class="danger-text" @click="handleDeleteDispatchRule(row)">删除
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -566,11 +589,11 @@
     </el-dialog>
 
     <el-dialog
-      v-model="bindDeviceDialogVisible"
-      :title="`绑定设备[${currentRow?.name || ''}]`"
-      width="900px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="bindDeviceDialogVisible"
+        :title="`绑定设备[${currentRow?.name || ''}]`"
+        width="900px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <div class="transfer-container">
         <div class="transfer-panel">
@@ -591,20 +614,21 @@
           </div>
           <div class="transfer-tree">
             <el-tree
-              :data="leftDeviceTree"
-              :props="{ label: 'label', children: 'children' }"
-              show-checkbox
-              node-key="id"
-              :default-checked-keys="selectedLeftKeys"
-              @check="handleLeftCheck"
-              :filter-node-method="filterLeftNode"
+                :data="leftDeviceTree"
+                :props="{ label: 'label', children: 'children' }"
+                show-checkbox
+                node-key="id"
+                :default-checked-keys="selectedLeftKeys"
+                @check="handleLeftCheck"
+                :filter-node-method="filterLeftNode"
             >
               <template #default="{ node, data }">
                 <span class="tree-node">
-                  <img v-if="data.icon" :src="data.icon" class="node-icon" />
+                  <img v-if="data.icon" :src="data.icon" class="node-icon"/>
                   <span>{{ node.label }}</span>
                   <span v-if="data.bindCount !== undefined" class="bind-count">({{ data.bindCount }})</span>
-                  <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini" class="status-tag">{{ data.statusText }}</el-tag>
+                  <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini"
+                          class="status-tag">{{ data.statusText }}</el-tag>
                 </span>
               </template>
             </el-tree>
@@ -630,29 +654,30 @@
           <div class="panel-header">
             <span class="panel-title">已绑定设备</span>
             <el-input
-              v-model="rightSearchText"
-              placeholder="搜索设备/传感器名称"
-              class="search-input"
-              clearable
-              size="small"
+                v-model="rightSearchText"
+                placeholder="搜索设备/传感器名称"
+                class="search-input"
+                clearable
+                size="small"
             />
           </div>
           <div class="transfer-tree">
             <el-tree
-              :data="rightDeviceTree"
-              :props="{ label: 'label', children: 'children' }"
-              show-checkbox
-              node-key="id"
-              :default-checked-keys="selectedRightKeys"
-              @check="handleRightCheck"
-              :filter-node-method="filterRightNode"
+                :data="rightDeviceTree"
+                :props="{ label: 'label', children: 'children' }"
+                show-checkbox
+                node-key="id"
+                :default-checked-keys="selectedRightKeys"
+                @check="handleRightCheck"
+                :filter-node-method="filterRightNode"
             >
               <template #default="{ node, data }">
                 <span class="tree-node">
-                  <img v-if="data.icon" :src="data.icon" class="node-icon" />
+                  <img v-if="data.icon" :src="data.icon" class="node-icon"/>
                   <span>{{ node.label }}</span>
                   <span v-if="data.bindCount !== undefined" class="bind-count">({{ data.bindCount }})</span>
-                  <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini" class="status-tag">{{ data.statusText }}</el-tag>
+                  <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini"
+                          class="status-tag">{{ data.statusText }}</el-tag>
                 </span>
               </template>
             </el-tree>
@@ -666,28 +691,29 @@
     </el-dialog>
 
     <el-dialog
-      v-model="alarmDialogVisible"
-      :title="`${isEditAlarm ? '编辑告警判据' : '添加告警判据'}[${currentRow?.name || ''}]`"
-      width="700px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="alarmDialogVisible"
+        :title="`${isEditAlarm ? '编辑告警判据' : '添加告警判据'}[${currentRow?.name || ''}]`"
+        width="700px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <el-form ref="alarmFormRef" :model="alarmFormData" :rules="alarmFormRules" label-width="120px">
         <el-form-item label="判据名称" prop="name">
-          <el-input v-model="alarmFormData.name" placeholder="请输入判据名称" />
+          <el-input v-model="alarmFormData.name" placeholder="请输入判据名称"/>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="设备" prop="deviceId">
               <el-select v-model="alarmFormData.deviceId" placeholder="请选择设备" @change="handleAlarmDeviceChange">
-                <el-option v-for="d in boundDevices" :key="d.deviceId" :label="d.deviceName" :value="d.deviceId" />
+                <el-option v-for="d in boundDevices" :key="d.deviceId" :label="d.deviceName" :value="d.deviceId"/>
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="监测类型" prop="monitorTypeId">
-              <el-select v-model="alarmFormData.monitorTypeId" placeholder="请选择监测类型" @change="handleMonitorTypeChange">
-                <el-option v-for="mt in monitorTypeList" :key="mt.id" :label="mt.name" :value="mt.id" />
+              <el-select v-model="alarmFormData.monitorTypeId" placeholder="请选择监测类型"
+                         @change="handleMonitorTypeChange">
+                <el-option v-for="mt in monitorTypeList" :key="mt.id" :label="mt.name" :value="mt.id"/>
               </el-select>
             </el-form-item>
           </el-col>
@@ -695,14 +721,15 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="监测内容" prop="monitorContentCode">
-              <el-select v-model="alarmFormData.monitorContentCode" placeholder="请选择监测内容" @change="handleMonitorContentChange">
-                <el-option v-for="mc in filteredMonitorContent" :key="mc.value" :label="mc.label" :value="mc.value" />
+              <el-select v-model="alarmFormData.monitorContentCode" placeholder="请选择监测内容"
+                         @change="handleMonitorContentChange">
+                <el-option v-for="mc in filteredMonitorContent" :key="mc.value" :label="mc.label" :value="mc.value"/>
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="指标单位" prop="unit">
-              <el-input v-model="alarmFormData.unit" placeholder="自动填充" :disabled="true" />
+              <el-input v-model="alarmFormData.unit" placeholder="自动填充" :disabled="true"/>
             </el-form-item>
           </el-col>
         </el-row>
@@ -710,29 +737,29 @@
           <div class="expression-section">
             <span class="section-title">蓝色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.blueExpression" placeholder="请输入判断表达式" class="expr-input" />
-              <el-input v-model="alarmFormData.blueDescription" placeholder="描述" class="desc-input" />
+              <el-input v-model="alarmFormData.blueExpression" placeholder="请输入判断表达式" class="expr-input"/>
+              <el-input v-model="alarmFormData.blueDescription" placeholder="描述" class="desc-input"/>
             </div>
           </div>
           <div class="expression-section">
             <span class="section-title">黄色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.yellowExpression" placeholder="请输入判断表达式" class="expr-input" />
-              <el-input v-model="alarmFormData.yellowDescription" placeholder="描述" class="desc-input" />
+              <el-input v-model="alarmFormData.yellowExpression" placeholder="请输入判断表达式" class="expr-input"/>
+              <el-input v-model="alarmFormData.yellowDescription" placeholder="描述" class="desc-input"/>
             </div>
           </div>
           <div class="expression-section">
             <span class="section-title">橙色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.orangeExpression" placeholder="请输入判断表达式" class="expr-input" />
-              <el-input v-model="alarmFormData.orangeDescription" placeholder="描述" class="desc-input" />
+              <el-input v-model="alarmFormData.orangeExpression" placeholder="请输入判断表达式" class="expr-input"/>
+              <el-input v-model="alarmFormData.orangeDescription" placeholder="描述" class="desc-input"/>
             </div>
           </div>
           <div class="expression-section">
             <span class="section-title">红色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.redExpression" placeholder="请输入判断表达式" class="expr-input" />
-              <el-input v-model="alarmFormData.redDescription" placeholder="描述" class="desc-input" />
+              <el-input v-model="alarmFormData.redExpression" placeholder="请输入判断表达式" class="expr-input"/>
+              <el-input v-model="alarmFormData.redDescription" placeholder="描述" class="desc-input"/>
             </div>
           </div>
         </div>
@@ -761,16 +788,16 @@
     </el-dialog>
 
     <el-dialog
-      v-model="dispatchDialogVisible"
-      :title="`${isEditDispatch ? '编辑告警分发规则' : '添加告警分发规则'}[${currentRow?.name || ''}]`"
-      width="550px"
-      :close-on-click-modal="false"
-      destroy-on-close
+        v-model="dispatchDialogVisible"
+        :title="`${isEditDispatch ? '编辑告警分发规则' : '添加告警分发规则'}[${currentRow?.name || ''}]`"
+        width="550px"
+        :close-on-click-modal="false"
+        destroy-on-close
     >
       <el-form ref="dispatchFormRef" :model="dispatchFormData" :rules="dispatchFormRules" label-width="100px">
         <el-form-item label="隐患点">
           <el-select v-model="dispatchFormData.hazardPointId" disabled style="width: 100%">
-            <el-option :value="currentRow?.id" :label="currentRow?.name" />
+            <el-option :value="currentRow?.id" :label="currentRow?.name"/>
           </el-select>
         </el-form-item>
         <el-form-item label="类型" prop="type">
@@ -780,20 +807,22 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="告警等级" prop="level" v-if="dispatchFormData.type === 'alarm'">
-          <el-select v-model="dispatchFormData.level" multiple placeholder="请选择告警等级（支持多选）" style="width: 100%">
-            <el-option label="四级(注意)" value="四级(注意)" />
-            <el-option label="三级(警示)" value="三级(警示)" />
-            <el-option label="二级(警戒)" value="二级(警戒)" />
-            <el-option label="一级(警报)" value="一级(警报)" />
+          <el-select v-model="dispatchFormData.level" multiple placeholder="请选择告警等级（支持多选）"
+                     style="width: 100%">
+            <el-option label="四级(注意)" value="四级(注意)"/>
+            <el-option label="三级(警示)" value="三级(警示)"/>
+            <el-option label="二级(警戒)" value="二级(警戒)"/>
+            <el-option label="一级(警报)" value="一级(警报)"/>
           </el-select>
         </el-form-item>
         <el-form-item label="关联设备" prop="deviceIds" v-if="dispatchFormData.type === 'offline'">
-          <el-select v-model="dispatchFormData.deviceIds" multiple placeholder="请选择设备（支持多选）" style="width: 100%">
+          <el-select v-model="dispatchFormData.deviceIds" multiple placeholder="请选择设备（支持多选）"
+                     style="width: 100%">
             <el-option
-              v-for="d in boundDevices"
-              :key="d.deviceId"
-              :label="`${d.deviceCode} - ${d.deviceName}`"
-              :value="d.deviceId"
+                v-for="d in boundDevices"
+                :key="d.deviceId"
+                :label="`${d.deviceCode} - ${d.deviceName}`"
+                :value="d.deviceId"
             />
           </el-select>
         </el-form-item>
@@ -804,24 +833,26 @@
           </el-radio-group>
           <div v-if="dispatchFormData.execType === 'timed'" class="exec-time-config">
             <span class="exec-label">每</span>
-            <el-input-number v-model="dispatchFormData.execFrequencyNum" :min="1" :max="99" style="width: 80px" />
+            <el-input-number v-model="dispatchFormData.execFrequencyNum" :min="1" :max="99" style="width: 80px"/>
             <el-select v-model="dispatchFormData.execFrequencyUnit" style="width: 100px">
-              <el-option label="分钟" value="minute" />
-              <el-option label="小时" value="hour" />
-              <el-option label="天" value="day" />
-              <el-option label="周" value="week" />
-              <el-option label="月" value="month" />
-              <el-option label="年" value="year" />
+              <el-option label="分钟" value="minute"/>
+              <el-option label="小时" value="hour"/>
+              <el-option label="天" value="day"/>
+              <el-option label="周" value="week"/>
+              <el-option label="月" value="month"/>
+              <el-option label="年" value="year"/>
             </el-select>
             <span class="exec-label">在</span>
-            <el-input v-model="dispatchFormData.execTimePoints" placeholder="多个时间点用逗号隔开" style="width: 150px" />
+            <el-input v-model="dispatchFormData.execTimePoints" placeholder="多个时间点用逗号隔开"
+                      style="width: 150px"/>
             <span class="exec-label">执行</span>
-            <span class="form-hint">时间点示例：分钟填秒数(10,20)，小时填分钟数(10,50)，天填小时数(8,10)，周填星期(1-7)，月填日期(1,16)，年填天数(1,36)</span>
+            <span
+                class="form-hint">时间点示例：分钟填秒数(10,20)，小时填分钟数(10,50)，天填小时数(8,10)，周填星期(1-7)，月填日期(1,16)，年填天数(1,36)</span>
           </div>
         </el-form-item>
         <el-form-item label="通知人员" prop="persons">
           <el-select v-model="dispatchFormData.persons" multiple placeholder="请选择通知人员" style="width: 100%">
-            <el-option v-for="u in userList" :key="u.id" :label="u.name" :value="u.name" />
+            <el-option v-for="u in userList" :key="u.id" :label="u.name" :value="u.name"/>
           </el-select>
         </el-form-item>
         <el-form-item label="通知渠道" prop="channels">
@@ -838,7 +869,7 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="dispatchFormData.remark" type="textarea" :rows="2" placeholder="请输入备注" />
+          <el-input v-model="dispatchFormData.remark" type="textarea" :rows="2" placeholder="请输入备注"/>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -850,12 +881,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {computed, nextTick, onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   batchOperateHazardPoints,
+  bindDevicesToHazardPoint,
   completeHazardPoint,
   createHazardPoint,
   createHazardPointGroup,
@@ -863,16 +895,15 @@ import {
   deleteHazardPointGroup,
   deleteHazardPoints,
   exportHazardPoints,
+  getBoundDevices,
   getHazardPointDetail,
   getHazardPointGroups,
   getHazardPointPage,
-  pauseHazardPoint,
-  updateHazardPoint,
-  updateHazardPointGroup,
-  getBoundDevices,
   getUnboundDevices,
-  bindDevicesToHazardPoint,
-  unbindDevicesFromHazardPoint
+  pauseHazardPoint,
+  unbindDevicesFromHazardPoint,
+  updateHazardPoint,
+  updateHazardPointGroup
 } from '@/api/hazardPoint'
 
 interface HazardPointItem {
@@ -955,6 +986,7 @@ interface TreeNode {
   statusText?: string
   bindCount?: number
   children?: TreeNode[]
+
   [key: string]: any
 }
 
@@ -1015,8 +1047,8 @@ const validateGroupName = (_rule: any, value: string, callback: any) => {
 
 const groupFormRules = {
   name: [
-    { required: true, message: '请输入分组名称', trigger: 'blur' },
-    { validator: validateGroupName, trigger: 'blur' }
+    {required: true, message: '请输入分组名称', trigger: 'blur'},
+    {validator: validateGroupName, trigger: 'blur'}
   ]
 }
 
@@ -1024,11 +1056,11 @@ const getRequestErrorInfo = (error: any, fallbackMessage = '网络请求失败')
   const status = error?.response?.status
   const backendMessage = error?.response?.data?.msg
   const message = backendMessage || error?.message || fallbackMessage
-  return { status, message }
+  return {status, message}
 }
 
 const showRequestErrorMessage = (error: any, fallbackMessage = '网络请求失败') => {
-  const { status, message } = getRequestErrorInfo(error, fallbackMessage)
+  const {status, message} = getRequestErrorInfo(error, fallbackMessage)
   if (status === 400) {
     ElMessage.warning(message)
     return
@@ -1040,7 +1072,14 @@ const detailMapRef = ref<HTMLDivElement | null>(null)
 let detailMapInstance: L.Map | null = null
 
 const dataDisplayMode = ref('chart')
-const monitorDataList = ref<{ time: string; deviceName: string; sensorName: string; value: string; unit: string; direction: string }[]>([])
+const monitorDataList = ref<{
+  time: string;
+  deviceName: string;
+  sensorName: string;
+  value: string;
+  unit: string;
+  direction: string
+}[]>([])
 
 const mapDialogVisible = ref(false)
 const mapRef = ref<HTMLDivElement | null>(null)
@@ -1095,10 +1134,10 @@ const alarmFormData = reactive({
   redDescription: ''
 })
 const alarmFormRules = {
-  name: [{ required: true, message: '请输入判据名称', trigger: 'blur' }],
-  deviceId: [{ required: true, message: '请选择设备', trigger: 'blur' }],
-  monitorTypeId: [{ required: true, message: '请选择监测类型', trigger: 'blur' }],
-  monitorContentCode: [{ required: true, message: '请选择监测内容', trigger: 'blur' }]
+  name: [{required: true, message: '请输入判据名称', trigger: 'blur'}],
+  deviceId: [{required: true, message: '请选择设备', trigger: 'blur'}],
+  monitorTypeId: [{required: true, message: '请选择监测类型', trigger: 'blur'}],
+  monitorContentCode: [{required: true, message: '请选择监测内容', trigger: 'blur'}]
 }
 
 //#region 告警等级类型
@@ -1106,48 +1145,69 @@ const currentEditingAlarmLevel = ref('')
 
 
 //#region 监测类型
-const monitorTypeList = ref<{ id: string; name: string; code: string; contents: { value: string; label: string; unit: string }[] }[]>([
-  { id: '1', name: '地表位移监测', code: 'DISPLACEMENT', contents: [
-    { value: 'displacement_x', label: 'X方向位移', unit: 'mm' },
-    { value: 'displacement_y', label: 'Y方向位移', unit: 'mm' },
-    { value: 'displacement_z', label: 'Z方向位移', unit: 'mm' },
-    { value: 'total_displacement', label: '总位移', unit: 'mm' }
-  ]},
-  { id: '2', name: '裂缝监测', code: 'CRACK', contents: [
-    { value: 'crack_width', label: '裂缝宽度', unit: 'mm' },
-    { value: 'crack_length', label: '裂缝长度', unit: 'm' },
-    { value: 'crack_depth', label: '裂缝深度', unit: 'm' }
-  ]},
-  { id: '3', name: '雨量监测', code: 'RAINFALL', contents: [
-    { value: 'rainfall_hour', label: '小时雨量', unit: 'mm' },
-    { value: 'rainfall_day', label: '日雨量', unit: 'mm' },
-    { value: 'rainfall_week', label: '周雨量', unit: 'mm' },
-    { value: 'rainfall_month', label: '月雨量', unit: 'mm' }
-  ]},
-  { id: '4', name: '水位监测', code: 'WATER_LEVEL', contents: [
-    { value: 'water_level', label: '水位', unit: 'm' },
-    { value: 'water_temp', label: '水温', unit: '℃' },
-    { value: 'water_pressure', label: '水压', unit: 'kPa' }
-  ]},
-  { id: '5', name: '地温监测', code: 'SOIL_TEMP', contents: [
-    { value: 'soil_temp_10cm', label: '10cm地温', unit: '℃' },
-    { value: 'soil_temp_30cm', label: '30cm地温', unit: '℃' },
-    { value: 'soil_temp_50cm', label: '50cm地温', unit: '℃' }
-  ]},
-  { id: '6', name: '含水率监测', code: 'MOISTURE', contents: [
-    { value: 'soil_moisture', label: '土壤含水率', unit: '%' },
-    { value: 'volumetric_water', label: '体积含水率', unit: '%' }
-  ]},
-  { id: '7', name: '倾斜监测', code: 'INCLINATION', contents: [
-    { value: 'inclination_x', label: 'X方向倾角', unit: '°' },
-    { value: 'inclination_y', label: 'Y方向倾角', unit: '°' },
-    { value: 'total_inclination', label: '总倾角', unit: '°' }
-  ]},
-  { id: '8', name: '应力应变监测', code: 'STRESS', contents: [
-    { value: 'axial_stress', label: '轴向应力', unit: 'MPa' },
-    { value: 'radial_stress', label: '径向应力', unit: 'MPa' },
-    { value: 'strain', label: '应变', unit: 'με' }
-  ]}
+const monitorTypeList = ref<{
+  id: string;
+  name: string;
+  code: string;
+  contents: { value: string; label: string; unit: string }[]
+}[]>([
+  {
+    id: '1', name: '地表位移监测', code: 'DISPLACEMENT', contents: [
+      {value: 'displacement_x', label: 'X方向位移', unit: 'mm'},
+      {value: 'displacement_y', label: 'Y方向位移', unit: 'mm'},
+      {value: 'displacement_z', label: 'Z方向位移', unit: 'mm'},
+      {value: 'total_displacement', label: '总位移', unit: 'mm'}
+    ]
+  },
+  {
+    id: '2', name: '裂缝监测', code: 'CRACK', contents: [
+      {value: 'crack_width', label: '裂缝宽度', unit: 'mm'},
+      {value: 'crack_length', label: '裂缝长度', unit: 'm'},
+      {value: 'crack_depth', label: '裂缝深度', unit: 'm'}
+    ]
+  },
+  {
+    id: '3', name: '雨量监测', code: 'RAINFALL', contents: [
+      {value: 'rainfall_hour', label: '小时雨量', unit: 'mm'},
+      {value: 'rainfall_day', label: '日雨量', unit: 'mm'},
+      {value: 'rainfall_week', label: '周雨量', unit: 'mm'},
+      {value: 'rainfall_month', label: '月雨量', unit: 'mm'}
+    ]
+  },
+  {
+    id: '4', name: '水位监测', code: 'WATER_LEVEL', contents: [
+      {value: 'water_level', label: '水位', unit: 'm'},
+      {value: 'water_temp', label: '水温', unit: '℃'},
+      {value: 'water_pressure', label: '水压', unit: 'kPa'}
+    ]
+  },
+  {
+    id: '5', name: '地温监测', code: 'SOIL_TEMP', contents: [
+      {value: 'soil_temp_10cm', label: '10cm地温', unit: '℃'},
+      {value: 'soil_temp_30cm', label: '30cm地温', unit: '℃'},
+      {value: 'soil_temp_50cm', label: '50cm地温', unit: '℃'}
+    ]
+  },
+  {
+    id: '6', name: '含水率监测', code: 'MOISTURE', contents: [
+      {value: 'soil_moisture', label: '土壤含水率', unit: '%'},
+      {value: 'volumetric_water', label: '体积含水率', unit: '%'}
+    ]
+  },
+  {
+    id: '7', name: '倾斜监测', code: 'INCLINATION', contents: [
+      {value: 'inclination_x', label: 'X方向倾角', unit: '°'},
+      {value: 'inclination_y', label: 'Y方向倾角', unit: '°'},
+      {value: 'total_inclination', label: '总倾角', unit: '°'}
+    ]
+  },
+  {
+    id: '8', name: '应力应变监测', code: 'STRESS', contents: [
+      {value: 'axial_stress', label: '轴向应力', unit: 'MPa'},
+      {value: 'radial_stress', label: '径向应力', unit: 'MPa'},
+      {value: 'strain', label: '应变', unit: 'με'}
+    ]
+  }
 ])
 
 const filteredMonitorContent = computed(() => {
@@ -1178,18 +1238,18 @@ const dispatchFormData = reactive({
   remark: ''
 })
 const dispatchFormRules = {
-  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  level: [{ required: true, type: 'array', min: 1, message: '请选择告警等级', trigger: 'change' }],
-  deviceIds: [{ required: true, type: 'array', min: 1, message: '请选择设备', trigger: 'change' }],
-  persons: [{ required: true, type: 'array', min: 1, message: '请选择通知人员', trigger: 'change' }],
-  channels: [{ required: true, type: 'array', min: 1, message: '请选择通知渠道', trigger: 'change' }]
+  type: [{required: true, message: '请选择类型', trigger: 'change'}],
+  level: [{required: true, type: 'array', min: 1, message: '请选择告警等级', trigger: 'change'}],
+  deviceIds: [{required: true, type: 'array', min: 1, message: '请选择设备', trigger: 'change'}],
+  persons: [{required: true, type: 'array', min: 1, message: '请选择通知人员', trigger: 'change'}],
+  channels: [{required: true, type: 'array', min: 1, message: '请选择通知渠道', trigger: 'change'}]
 }
 
 const userList = ref<{ id: string; name: string; phone: string }[]>([
-  { id: '1', name: '张三', phone: '13923755477' },
-  { id: '2', name: '李四', phone: '13558981389' },
-  { id: '3', name: '王强', phone: '13889771288' },
-  { id: '4', name: '陈经理', phone: '13900001111' }
+  {id: '1', name: '张三', phone: '13923755477'},
+  {id: '2', name: '李四', phone: '13558981389'},
+  {id: '3', name: '王强', phone: '13889771288'},
+  {id: '4', name: '陈经理', phone: '13900001111'}
 ])
 
 const groupOptions = computed(() => groupList.value.filter(g => g.id !== 'all'))
@@ -1205,8 +1265,8 @@ const formData = reactive({
 })
 
 const formRules = {
-  code: [{ required: true, message: '请输入隐患点编号', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入隐患点名称', trigger: 'blur' }]
+  code: [{required: true, message: '请输入隐患点编号', trigger: 'blur'}],
+  name: [{required: true, message: '请输入隐患点名称', trigger: 'blur'}]
 }
 
 const getStatusValue = () => {
@@ -1546,7 +1606,7 @@ const handleDeleteGroup = (group: GroupItem) => {
       }
     } catch (error: any) {
       console.error('删除失败:', error)
-      const { status } = getRequestErrorInfo(error, '删除失败')
+      const {status} = getRequestErrorInfo(error, '删除失败')
       showRequestErrorMessage(error, '删除失败')
       if (status === 404) {
         loadGroupList()
@@ -1554,7 +1614,8 @@ const handleDeleteGroup = (group: GroupItem) => {
     } finally {
       loading.value = false
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 // ==================== 提交分组（新增/编辑） ====================
@@ -1797,7 +1858,8 @@ const handleDelete = async (row: any) => {
     } finally {
       loading.value = false
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleBatchDelete = async () => {
@@ -1827,7 +1889,8 @@ const handleBatchDelete = async () => {
     } finally {
       loading.value = false
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleExportHazardPoints = async () => {
@@ -1920,7 +1983,8 @@ const handleTogglePause = async (row: HazardPointItem) => {
     } finally {
       loading.value = false
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleComplete = async (row: HazardPointItem) => {
@@ -1945,7 +2009,8 @@ const handleComplete = async (row: HazardPointItem) => {
     } finally {
       loading.value = false
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleOpenMap = () => {
@@ -2006,7 +2071,7 @@ const initMap = () => {
       if (drawLayer) {
         drawLayer.clearLayers()
         if (polygonCoords.value.length > 1) {
-          L.polyline([...polygonCoords.value], { color: '#409eff', dashArray: '5,5' }).addTo(drawLayer)
+          L.polyline([...polygonCoords.value], {color: '#409eff', dashArray: '5,5'}).addTo(drawLayer)
         }
         polygonCoords.value.forEach((coord, i) => {
           L.marker([coord.lat, coord.lng], {
@@ -2026,7 +2091,7 @@ const initMap = () => {
         if (strikeCoords.value.length >= 2) {
           const p1 = strikeCoords.value[0]
           const p2 = strikeCoords.value[1]
-          L.polyline([p1, p2], { color: '#f56c6c', weight: 3 }).addTo(drawLayer)
+          L.polyline([p1, p2], {color: '#f56c6c', weight: 3}).addTo(drawLayer)
           const angle = Math.atan2(p2.lat - p1.lat, p2.lng - p1.lng) * (180 / Math.PI)
           strikeAngle.value = Math.round((angle + 360) % 360)
           formData.strike = strikeAngle.value
@@ -2153,9 +2218,48 @@ const refreshDeviceLists = async () => {
 const initAlarmCriteria = (hazardPointId: string) => {
   if (hazardPointId === '1') {
     alarmCriteriaList.value = [
-      { id: '1', name: '水位雷达判据', deviceId: '1', deviceName: '雨量监测站-01', monitorTypeId: '4', monitorTypeName: '水位监测', monitorContentCode: 'water_level', monitorContentName: '水位', expression: '水位(m) >= 808.5', alarmLevel: '黄色预警', alarmLevelText: '黄色预警', isEnabled: true },
-      { id: '2', name: '雨量告警判据', deviceId: '1', deviceName: '雨量监测站-01', monitorTypeId: '3', monitorTypeName: '雨量监测', monitorContentCode: 'rainfall_day', monitorContentName: '日雨量', expression: '雨量(mm) >= 100', alarmLevel: '橙色预警', alarmLevelText: '橙色预警', isEnabled: true },
-      { id: '3', name: '位移变化告警', deviceId: '2', deviceName: '位移监测站-01', monitorTypeId: '1', monitorTypeName: '地表位移监测', monitorContentCode: 'total_displacement', monitorContentName: '总位移', expression: '位移(mm) >= 808.8', alarmLevel: '红色预警', alarmLevelText: '红色预警', isEnabled: true }
+      {
+        id: '1',
+        name: '水位雷达判据',
+        deviceId: '1',
+        deviceName: '雨量监测站-01',
+        monitorTypeId: '4',
+        monitorTypeName: '水位监测',
+        monitorContentCode: 'water_level',
+        monitorContentName: '水位',
+        expression: '水位(m) >= 808.5',
+        alarmLevel: '黄色预警',
+        alarmLevelText: '黄色预警',
+        isEnabled: true
+      },
+      {
+        id: '2',
+        name: '雨量告警判据',
+        deviceId: '1',
+        deviceName: '雨量监测站-01',
+        monitorTypeId: '3',
+        monitorTypeName: '雨量监测',
+        monitorContentCode: 'rainfall_day',
+        monitorContentName: '日雨量',
+        expression: '雨量(mm) >= 100',
+        alarmLevel: '橙色预警',
+        alarmLevelText: '橙色预警',
+        isEnabled: true
+      },
+      {
+        id: '3',
+        name: '位移变化告警',
+        deviceId: '2',
+        deviceName: '位移监测站-01',
+        monitorTypeId: '1',
+        monitorTypeName: '地表位移监测',
+        monitorContentCode: 'total_displacement',
+        monitorContentName: '总位移',
+        expression: '位移(mm) >= 808.8',
+        alarmLevel: '红色预警',
+        alarmLevelText: '红色预警',
+        isEnabled: true
+      }
     ]
   } else {
     alarmCriteriaList.value = []
@@ -2165,9 +2269,40 @@ const initAlarmCriteria = (hazardPointId: string) => {
 const initDispatchRules = (hazardPointId: string) => {
   if (hazardPointId === '1') {
     dispatchRules.value = [
-      { id: '1', type: 'alarm', level: ['三级(警示)', '二级(警戒)'], deviceIds: [], persons: ['张三', '李四'], channels: ['sms', 'system'], execTime: '', status: 1, remark: '重大告警通知' },
-      { id: '2', type: 'alarm', level: ['四级(注意)'], deviceIds: [], persons: ['王强'], channels: ['system'], execTime: '', status: 1, remark: '一般告警通知' },
-      { id: '3', type: 'offline', level: [], deviceIds: ['d1', 'd2'], deviceNames: ['雨量监测站-01', '位移监测站-01'], persons: ['陈经理'], channels: ['sms', 'email'], execTime: '09:00,14:00,18:00', status: 1, remark: '设备离线通知' }
+      {
+        id: '1',
+        type: 'alarm',
+        level: ['三级(警示)', '二级(警戒)'],
+        deviceIds: [],
+        persons: ['张三', '李四'],
+        channels: ['sms', 'system'],
+        execTime: '',
+        status: 1,
+        remark: '重大告警通知'
+      },
+      {
+        id: '2',
+        type: 'alarm',
+        level: ['四级(注意)'],
+        deviceIds: [],
+        persons: ['王强'],
+        channels: ['system'],
+        execTime: '',
+        status: 1,
+        remark: '一般告警通知'
+      },
+      {
+        id: '3',
+        type: 'offline',
+        level: [],
+        deviceIds: ['d1', 'd2'],
+        deviceNames: ['雨量监测站-01', '位移监测站-01'],
+        persons: ['陈经理'],
+        channels: ['sms', 'email'],
+        execTime: '09:00,14:00,18:00',
+        status: 1,
+        remark: '设备离线通知'
+      }
     ]
   } else {
     dispatchRules.value = []
@@ -2224,7 +2359,7 @@ const transferToRight = async () => {
 
   bindLoading.value = true
   try {
-    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, { deviceIds })
+    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, {deviceIds})
     if (response.code === 200) {
       ElMessage.success('绑定成功')
       await refreshDeviceLists()
@@ -2277,7 +2412,7 @@ const transferAllToRight = async () => {
 
   bindLoading.value = true
   try {
-    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, { deviceIds: allDeviceIds })
+    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, {deviceIds: allDeviceIds})
     if (response.code === 200) {
       ElMessage.success('全部绑定成功')
       await refreshDeviceLists()
@@ -2430,7 +2565,8 @@ const handleDeleteAlarm = (row: AlarmCriteria) => {
     if (currentRow.value) {
       initAlarmCriteria(currentRow.value.id)
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleAddDispatchRule = () => {
@@ -2515,23 +2651,94 @@ const handleDeleteDispatchRule = (row: DispatchRule) => {
     if (currentRow.value) {
       initDispatchRules(currentRow.value.id)
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleQueryData = () => {
   ElMessage.info('正在加载监测数据...')
   setTimeout(() => {
     monitorDataList.value = [
-      { time: '2024-01-20 08:00:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '12.5', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 08:15:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '15.3', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 08:30:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '18.7', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 08:45:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '22.1', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 09:00:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '25.6', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 09:15:00', deviceName: '位移监测站-01', sensorName: '位移传感器X', value: '0.5', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 09:30:00', deviceName: '位移监测站-01', sensorName: '位移传感器Y', value: '0.3', unit: 'mm', direction: 'Y' },
-      { time: '2024-01-20 09:45:00', deviceName: '位移监测站-01', sensorName: '位移传感器X', value: '0.7', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 10:00:00', deviceName: '位移监测站-01', sensorName: '位移传感器Y', value: '0.4', unit: 'mm', direction: 'Y' },
-      { time: '2024-01-20 10:15:00', deviceName: '雨量监测站-01', sensorName: '温湿度传感器', value: '25.3', unit: '℃', direction: '-' }
+      {
+        time: '2024-01-20 08:00:00',
+        deviceName: '雨量监测站-01',
+        sensorName: '雨量传感器',
+        value: '12.5',
+        unit: 'mm',
+        direction: 'X'
+      },
+      {
+        time: '2024-01-20 08:15:00',
+        deviceName: '雨量监测站-01',
+        sensorName: '雨量传感器',
+        value: '15.3',
+        unit: 'mm',
+        direction: 'X'
+      },
+      {
+        time: '2024-01-20 08:30:00',
+        deviceName: '雨量监测站-01',
+        sensorName: '雨量传感器',
+        value: '18.7',
+        unit: 'mm',
+        direction: 'X'
+      },
+      {
+        time: '2024-01-20 08:45:00',
+        deviceName: '雨量监测站-01',
+        sensorName: '雨量传感器',
+        value: '22.1',
+        unit: 'mm',
+        direction: 'X'
+      },
+      {
+        time: '2024-01-20 09:00:00',
+        deviceName: '雨量监测站-01',
+        sensorName: '雨量传感器',
+        value: '25.6',
+        unit: 'mm',
+        direction: 'X'
+      },
+      {
+        time: '2024-01-20 09:15:00',
+        deviceName: '位移监测站-01',
+        sensorName: '位移传感器X',
+        value: '0.5',
+        unit: 'mm',
+        direction: 'X'
+      },
+      {
+        time: '2024-01-20 09:30:00',
+        deviceName: '位移监测站-01',
+        sensorName: '位移传感器Y',
+        value: '0.3',
+        unit: 'mm',
+        direction: 'Y'
+      },
+      {
+        time: '2024-01-20 09:45:00',
+        deviceName: '位移监测站-01',
+        sensorName: '位移传感器X',
+        value: '0.7',
+        unit: 'mm',
+        direction: 'X'
+      },
+      {
+        time: '2024-01-20 10:00:00',
+        deviceName: '位移监测站-01',
+        sensorName: '位移传感器Y',
+        value: '0.4',
+        unit: 'mm',
+        direction: 'Y'
+      },
+      {
+        time: '2024-01-20 10:15:00',
+        deviceName: '雨量监测站-01',
+        sensorName: '温湿度传感器',
+        value: '25.3',
+        unit: '℃',
+        direction: '-'
+      }
     ]
     ElMessage.success('监测数据加载成功')
   }, 800)
@@ -2574,7 +2781,8 @@ const handleBatchPause = async () => {
       console.error('批量停测失败:', error)
       ElMessage.error('网络请求失败')
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleBatchResume = async () => {
@@ -2600,7 +2808,8 @@ const handleBatchResume = async () => {
       console.error('批量恢复失败:', error)
       ElMessage.error('网络请求失败')
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 const handleBatchComplete = async () => {
@@ -2626,7 +2835,8 @@ const handleBatchComplete = async () => {
       console.error('批量完结失败:', error)
       ElMessage.error('网络请求失败')
     }
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 onMounted(() => {
@@ -3005,10 +3215,10 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.sensor-icon {
+/* .sensor-icon {
   width: 16px;
   height: 16px;
-}
+} */
 
 .transfer-container {
   display: flex;

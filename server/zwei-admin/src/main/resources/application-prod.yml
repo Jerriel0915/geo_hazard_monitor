@@ -62,7 +62,7 @@ spring:
 logging:
   level:
     com.zwei: info
-    org.springframework: warn
+    org.springframework: debug
 
 # 项目相关配置
 zwei:
