@@ -1,5 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import type { RouteRecordRaw } from 'vue-router'
+import type {RouteRecordRaw} from 'vue-router'
+import {createRouter, createWebHistory} from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -32,6 +32,17 @@ const routes: RouteRecordRaw[] = [
       { path: '/report/screen', name: 'Screen', component: () => import('@/views/report/Screen.vue') },
       { path: '/iot/alarm-engine', name: 'AlarmEngine', component: () => import('@/views/iot/AlarmEngine.vue') },
       { path: '/iot/data-parse', name: 'DataParse', component: () => import('@/views/iot/DataParse.vue') },
+        {
+            path: '/miniprogram/hazard-point',
+            name: 'MpHazardPoint',
+            component: () => import('@/views/miniprogram/HazardPoint.vue')
+        },
+        {path: '/miniprogram/device', name: 'MpDevice', component: () => import('@/views/miniprogram/Device.vue')},
+        {
+            path: '/miniprogram/monitor-data',
+            name: 'MpMonitorData',
+            component: () => import('@/views/miniprogram/MonitorData.vue')
+        },
       { path: '/system/organization', name: 'Organization', component: () => import('@/views/system/Organization.vue') },
       { path: '/system/identity', name: 'Identity', component: () => import('@/views/system/Identity.vue') },
       { path: '/system/permission', name: 'Permission', component: () => import('@/views/system/Permission.vue') },

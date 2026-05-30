@@ -97,18 +97,21 @@ public class IotdbTimeSeriesService {
         ensureMeasurement("quality", deviceId, sensorNo, "INT32", "RLE");
         String sql = "SELECT " + attrCode + ", quality FROM " + pathResolver.buildSensorPath(deviceId, sensorNo)
                 + " ORDER BY TIME DESC LIMIT 1";
+        // IoTDB JDBC ResultSet 中列名为完整路径，需用 buildMeasurementPath 构造。
+        // 同时移除 setFetchSize / setQueryTimeout（IoTDB JDBC 不支持）。
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, "quality");
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
-            statement.setFetchSize(properties.getFetchSize());
-            statement.setQueryTimeout(properties.getQueryTimeoutSeconds());
             ResultSet resultSet = statement.executeQuery(sql);
             if (!resultSet.next()) {
                 return null;
             }
+            Double value = safeGetDouble(resultSet, attrCol);
             return IotdbQueryRow.builder()
                     .time(resultSet.getLong("Time"))
-                    .value(toDouble(resultSet.getObject(attrCode)))
-                    .quality(toInteger(resultSet.getObject("quality")))
+                    .value(value)
+                    .quality(safeGetInteger(resultSet, qualityCol))
                     .build();
         } catch (SQLException e) {
             throw new ServiceException("查询 IoTDB 最新值失败").setDetailMessage(e.getMessage());
@@ -145,17 +148,23 @@ public class IotdbTimeSeriesService {
                 sql.append("time < ").append(endTime);
             }
         }
+        // IoTDB JDBC ResultSet 中列名为完整路径。
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
-            statement.setFetchSize(properties.getFetchSize());
-            statement.setQueryTimeout(properties.getQueryTimeoutSeconds());
             ResultSet resultSet = statement.executeQuery(sql.toString());
             while (resultSet.next()) {
+                Double value = safeGetDouble(resultSet, attrCol);
+                Integer quality = safeGetInteger(resultSet, qualityCol);
+                if (value == null) {
+                    continue;
+                }
                 rows.add(IotdbQueryRow.builder()
                         .time(resultSet.getLong("Time"))
-                        .value(toDouble(resultSet.getObject(attrCode)))
-                        .quality(toInteger(resultSet.getObject("quality")))
+                        .value(value)
+                        .quality(quality)
                         .build());
             }
             return rows;
@@ -264,4 +273,25 @@ public class IotdbTimeSeriesService {
         return Integer.parseInt(String.valueOf(value));
     }
 
+    /**
+     * 安全获取 ResultSet 中的列值，兜底 IoTDB 2.0 对不存在的 measurement
+     * 执行 SELECT 时 JDBC 驱动 getObject() 的 NPE。
+     */
+    private Double safeGetDouble(ResultSet rs, String column) {
+        try {
+            return toDouble(rs.getObject(column));
+        } catch (Exception e) {
+            log.debug("IoTDB 列不存在: {}", column);
+            return null;
+        }
+    }
+
+    private Integer safeGetInteger(ResultSet rs, String column) {
+        try {
+            return toInteger(rs.getObject(column));
+        } catch (Exception e) {
+            log.debug("IoTDB 列不存在: {}", column);
+            return 0;
+        }
+    }
 }

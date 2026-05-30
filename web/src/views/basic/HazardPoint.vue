@@ -409,25 +409,16 @@
         <el-tab-pane label="监测数据" name="monitorData">
           <div class="monitor-data-panel">
             <div class="data-filters">
-              <el-select v-model="dataFilter.deviceId" placeholder="选择设备" clearable style="width: 150px">
+              <el-select v-model="dataFilter.deviceId" placeholder="选择设备" clearable style="width: 150px"
+                         @change="onDataDeviceChange">
                 <el-option v-for="d in boundDevices" :key="d.deviceId" :label="d.deviceName" :value="d.deviceId" />
               </el-select>
-              <el-select v-model="dataFilter.sensorId" placeholder="选择传感器" clearable style="width: 150px">
-                <el-option label="节点1" value="node1" />
-                <el-option label="节点2" value="node2" />
-                <el-option label="节点3" value="node3" />
-                <el-option label="电量" value="battery" />
+              <el-select v-model="dataFilter.sensorId" placeholder="选择传感器" clearable style="width: 150px"
+                         @change="onDataSensorChange">
+                <el-option v-for="s in monitorSensors" :key="s.id" :label="s.name" :value="s.id"/>
               </el-select>
-              <el-select v-model="dataFilter.valueType" placeholder="值类型" clearable style="width: 150px">
-                <el-option label="采集值" value="current" />
-                <el-option label="小时变化" value="hour" />
-                <el-option label="24小时变化" value="day" />
-                <el-option label="72小时变化" value="week" />
-              </el-select>
-              <el-select v-model="dataFilter.direction" placeholder="方向" clearable style="width: 100px">
-                <el-option label="X" value="x" />
-                <el-option label="Y" value="y" />
-                <el-option label="Z" value="z" />
+              <el-select v-model="dataFilter.attrCode" placeholder="选择指标" clearable style="width: 160px">
+                <el-option v-for="a in monitorAttrs" :key="a.code" :label="a.label" :value="a.code"/>
               </el-select>
               <el-button type="primary" size="small" @click="handleQueryData">查询</el-button>
             </div>
@@ -451,12 +442,14 @@
               </div>
               <div v-else class="table-container">
                 <el-table :data="monitorDataList" border size="small">
-                  <el-table-column prop="time" label="时间" width="180" align="center" />
+                  <el-table-column prop="time" label="时间" width="180" align="center">
+                    <template #default="{ row }">{{ formatMonitorTime(row.time) }}</template>
+                  </el-table-column>
                   <el-table-column prop="deviceName" label="设备" width="150" align="center" />
                   <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
+                  <el-table-column prop="attrName" label="指标" width="100" align="center"/>
                   <el-table-column prop="value" label="数值" width="100" align="center" />
                   <el-table-column prop="unit" label="单位" width="80" align="center" />
-                  <el-table-column prop="direction" label="方向" width="80" align="center" />
                 </el-table>
               </div>
             </div>
@@ -850,12 +843,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {computed, nextTick, onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   batchOperateHazardPoints,
+  bindDevicesToHazardPoint,
   completeHazardPoint,
   createHazardPoint,
   createHazardPointGroup,
@@ -863,17 +857,18 @@ import {
   deleteHazardPointGroup,
   deleteHazardPoints,
   exportHazardPoints,
+  getBoundDevices,
   getHazardPointDetail,
   getHazardPointGroups,
   getHazardPointPage,
-  pauseHazardPoint,
-  updateHazardPoint,
-  updateHazardPointGroup,
-  getBoundDevices,
   getUnboundDevices,
-  bindDevicesToHazardPoint,
-  unbindDevicesFromHazardPoint
+  pauseHazardPoint,
+  unbindDevicesFromHazardPoint,
+  updateHazardPoint,
+  updateHazardPointGroup
 } from '@/api/hazardPoint'
+import {getDeviceSensors} from '@/api/sensor'
+import {getMonitorDataPage} from '@/api/monitorData'
 
 interface HazardPointItem {
   id: string
@@ -1056,11 +1051,14 @@ const currentRow = ref<HazardPointItem | null>(null)
 const boundDevices = ref<BoundDevice[]>([])
 const alarmCriteriaList = ref<AlarmCriteria[]>([])
 const dispatchRules = ref<DispatchRule[]>([])
+const monitorSensors = ref<{ id: number; name: string }[]>([])
+const monitorAttrs = ref<{ code: string; label: string }[]>([])
+const monitorSensorMap = ref<Map<number, any>>(new Map())
+
 const dataFilter = reactive({
-  deviceId: '',
-  sensorId: '',
-  valueType: 'current',
-  direction: ''
+  deviceId: '' as string | number,
+  sensorId: '' as string | number,
+  attrCode: ''
 })
 
 const bindDeviceDialogVisible = ref(false)
@@ -2518,23 +2516,70 @@ const handleDeleteDispatchRule = (row: DispatchRule) => {
   }).catch(() => {})
 }
 
-const handleQueryData = () => {
-  ElMessage.info('正在加载监测数据...')
-  setTimeout(() => {
-    monitorDataList.value = [
-      { time: '2024-01-20 08:00:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '12.5', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 08:15:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '15.3', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 08:30:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '18.7', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 08:45:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '22.1', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 09:00:00', deviceName: '雨量监测站-01', sensorName: '雨量传感器', value: '25.6', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 09:15:00', deviceName: '位移监测站-01', sensorName: '位移传感器X', value: '0.5', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 09:30:00', deviceName: '位移监测站-01', sensorName: '位移传感器Y', value: '0.3', unit: 'mm', direction: 'Y' },
-      { time: '2024-01-20 09:45:00', deviceName: '位移监测站-01', sensorName: '位移传感器X', value: '0.7', unit: 'mm', direction: 'X' },
-      { time: '2024-01-20 10:00:00', deviceName: '位移监测站-01', sensorName: '位移传感器Y', value: '0.4', unit: 'mm', direction: 'Y' },
-      { time: '2024-01-20 10:15:00', deviceName: '雨量监测站-01', sensorName: '温湿度传感器', value: '25.3', unit: '℃', direction: '-' }
-    ]
-    ElMessage.success('监测数据加载成功')
-  }, 800)
+// 设备选择 → 加载传感器列表
+const onDataDeviceChange = async (deviceId: string | number) => {
+  dataFilter.sensorId = ''
+  dataFilter.attrCode = ''
+  monitorSensors.value = []
+  monitorAttrs.value = []
+  if (!deviceId) return
+  try {
+    const sensors = await getDeviceSensors(Number(deviceId))
+    const map = new Map(monitorSensorMap.value)
+    for (const s of sensors) {
+      if (s.id != null) {
+        map.set(s.id, s)
+        monitorSensors.value.push({id: s.id, name: s.sensorName})
+      }
+    }
+    monitorSensorMap.value = map
+  } catch { /* ignore */
+  }
+}
+
+// 传感器选择 → 加载属性指标
+const onDataSensorChange = (sensorId: string | number) => {
+  dataFilter.attrCode = ''
+  if (!sensorId) {
+    monitorAttrs.value = [];
+    return
+  }
+  const sensor = monitorSensorMap.value.get(Number(sensorId))
+  monitorAttrs.value = (sensor?.attrList || []).map((a: any) => ({
+    code: a.attrCode,
+    label: `${a.attrName || a.attrCode}${a.unit ? ` (${a.unit})` : ''}`
+  }))
+}
+
+const formatMonitorTime = (ts: any) => {
+  if (!ts) return ''
+  if (typeof ts === 'number') return new Date(ts).toISOString().replace('T', ' ').substring(0, 19)
+  return String(ts)
+}
+
+const handleQueryData = async () => {
+  if (!currentRow.value) {
+    ElMessage.warning('请先选择隐患点');
+    return
+  }
+  try {
+    const params: any = {hazardPointId: Number(currentRow.value.id), pageNum: 1, pageSize: 50}
+    if (dataFilter.deviceId) params.deviceId = Number(dataFilter.deviceId)
+    if (dataFilter.sensorId) params.sensorId = Number(dataFilter.sensorId)
+    if (dataFilter.attrCode) params.attrCode = dataFilter.attrCode
+    const res: any = await getMonitorDataPage(params)
+    monitorDataList.value = (res.rows || []).map((item: any) => ({
+      time: item.dataTime || item.time,
+      deviceName: item.deviceName,
+      sensorName: item.sensorName,
+      attrName: item.attrName || item.attrCode,
+      value: item.value,
+      unit: item.unit || ''
+    }))
+    ElMessage.success(`加载 ${monitorDataList.value.length} 条数据`)
+  } catch {
+    ElMessage.error('获取监测数据失败')
+  }
 }
 
 const handleImportData = () => {
