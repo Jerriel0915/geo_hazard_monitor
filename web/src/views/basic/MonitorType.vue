@@ -84,9 +84,20 @@
         <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
         <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="text" size="small" @click="handleView(row)">查看</el-button>
-            <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">删除</el-button>
+            <div class="op-cell">
+              <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                <el-button type="primary" text size="small">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="delete">
+                      <span style="color: #f56c6c">删除</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -819,6 +830,12 @@ const handleDelete = (row: MonitorTypeItem) => {
   }).catch(() => {})
 }
 
+const handleMoreCommand = (command: string, row: MonitorTypeItem) => {
+  if (command === 'delete') {
+    handleDelete(row)
+  }
+}
+
 const handleExport = () => {
   const rows = [
     ['编号', '名称', '设备类型', '描述', '排序号', '状态', '创建时间'],
@@ -1029,7 +1046,7 @@ onMounted(() => {
 }
 
 .param-table-container {
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8e8e8;
   border-radius: 4px;
   padding: 15px;
   background: #fafafa;
@@ -1052,8 +1069,8 @@ onMounted(() => {
 }
 
 .type-icon-selector:hover {
-  border-color: #409eff;
-  background: #f0f7ff;
+  border-color: #1890ff;
+  background: #e6f7ff;
 }
 
 .type-icon-selector.disabled {
@@ -1089,15 +1106,15 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 10px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8e8e8;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .icon-item:hover {
-  border-color: #409eff;
-  background: #f0f7ff;
+  border-color: #1890ff;
+  background: #e6f7ff;
 }
 
 .icon-select-img {
