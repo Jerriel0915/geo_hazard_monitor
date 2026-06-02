@@ -137,7 +137,15 @@
 
             <!-- 趋势图 -->
             <el-tab-pane label="趋势图" name="chart">
-              <div ref="chartRef" class="chart-box" v-loading="chartLoading"></div>
+              <VueApexCharts
+                    v-if="chartSeriesData.length > 0"
+                    type="area"
+                    height="100%"
+                    :options="chartOptions"
+                    :series="chartOptions.series"
+                    class="chart-box"
+                  />
+                  <div v-else class="chart-empty">暂无图表数据</div>
             </el-tab-pane>
           </el-tabs>
         </el-tab-pane>
@@ -153,7 +161,7 @@
 <script setup lang="ts">
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import * as echarts from 'echarts'
+import VueApexCharts from 'vue3-apexcharts'
 import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
 import {
   type ChartData,
@@ -346,62 +354,66 @@ const loadMonitorTable = async () => {
   }
 }
 
-// ----- 趋势图 -----
-const chartRef = ref<HTMLDivElement | null>(null)
-let chartInstance: echarts.ECharts | null = null
-const chartLoading = ref(false)
+// ----- 趋势图（ApexCharts）-----
+const chartSeriesData = ref<ChartData[]>([])
+const chartOptions = ref<Record<string, any>>({})
+
+const CHART_COLORS = [
+  '#5470C6', '#91CC75', '#FAC858', '#EE6666', '#73C0DE',
+  '#3BA272', '#FC8452', '#9A60B4', '#EA7CCC', '#909399'
+]
+
+const buildChartOptions = () => {
+  const seriesData = chartSeriesData.value
+  if (seriesData.length === 0) return
+
+  const allLabels = new Set<string>()
+  for (const s of seriesData) for (const l of s.labels) allLabels.add(l)
+  const xCategories = Array.from(allLabels).sort()
+
+  chartOptions.value = {
+    chart: {
+      type: 'area' as const,
+      height: '100%',
+      fontFamily: 'inherit',
+      toolbar: { tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
+      zoom: { enabled: true, type: 'x' as const },
+      animations: { enabled: true, easing: 'easeinout' as const, speed: 800 }
+    },
+    colors: CHART_COLORS,
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth' as const, width: 2 },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0.02, stops: [0, 100] } },
+    markers: { size: 0, hover: { size: 5 } },
+    grid: { borderColor: '#e7e7e7', strokeDashArray: 4, padding: { top: 10, right: 10, bottom: 5, left: 10 } },
+    legend: { position: 'top' as const, horizontalAlign: 'center' as const, fontSize: '13px', fontWeight: 500, itemMargin: { horizontal: 16 } },
+    xaxis: { type: 'category' as const, categories: xCategories, labels: { rotate: -30, style: { fontSize: '11px' } }, tickAmount: Math.min(xCategories.length, 10) },
+    yaxis: { title: { text: seriesData[0]?.unit || '', style: { fontSize: '12px' } } },
+    tooltip: { shared: true, intersect: false },
+    series: seriesData.map(s => {
+      const points = s.labels.map((l, i) => ({ x: l, y: s.values[i] }))
+      return { name: s.seriesName, data: points }
+    })
+  }
+}
 
 const loadChart = async () => {
   if (!monitorTimeRange.value || monitorTimeRange.value.length < 2) {
     ElMessage.warning('请选择时间范围')
     return
   }
-  chartLoading.value = true
   try {
     const series = await getChartData({
       ...buildMonitorParams(),
       startTime: monitorTimeRange.value![0],
       endTime: monitorTimeRange.value![1]
     })
+    chartSeriesData.value = series
     await nextTick()
-    renderChart(series)
+    buildChartOptions()
   } catch {
     ElMessage.error('获取图表数据失败')
-  } finally {
-    chartLoading.value = false
   }
-}
-
-const renderChart = (seriesData: ChartData[]) => {
-  if (!chartRef.value) return
-  if (!chartInstance) chartInstance = echarts.init(chartRef.value)
-  const first = seriesData[0]
-  if (!first) return
-  const allLabels = new Set<string>()
-  for (const s of seriesData) for (const l of s.labels) allLabels.add(l)
-  const xData = Array.from(allLabels).sort()
-  const series = seriesData.map(s => {
-    const labelToValue = new Map<string, number>()
-    for (let i = 0; i < s.labels.length; i++) labelToValue.set(s.labels[i], s.values[i])
-    return {
-      name: s.seriesName,
-      type: 'line' as const,
-      data: xData.map(l => labelToValue.get(l) ?? null),
-      smooth: true,
-      symbol: 'none',
-      lineStyle: { width: 2 },
-      areaStyle: { color: 'rgba(64,158,255,0.1)' }
-    }
-  })
-  chartInstance.setOption({
-    tooltip: {trigger: 'axis'},
-    legend: {type: 'scroll', bottom: 0, data: seriesData.map(s => s.seriesName)},
-    xAxis: {type: 'category', data: xData, axisLabel: {rotate: 30, fontSize: 10}},
-    yAxis: {type: 'value', name: first.unit || ''},
-    dataZoom: [{type: 'inside'}, {type: 'slider'}],
-    series,
-    grid: {left: 50, right: 20, top: 20, bottom: seriesData.length > 1 ? 50 : 60}
-  }, true)
 }
 
 const formatTime = (ts: number) => {

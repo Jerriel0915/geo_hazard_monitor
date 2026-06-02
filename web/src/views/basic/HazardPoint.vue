@@ -424,10 +424,10 @@
                 <el-option v-for="a in monitorAttrs" :key="a.code" :label="a.label" :value="a.code"/>
               </el-select>
               <el-select v-model="dataFilter.valueType" placeholder="聚合粒度" style="width: 120px">
-                <el-option label="原始" value="current" />
-                <el-option label="小时" value="hour" />
-                <el-option label="天" value="24h" />
-                <el-option label="3天" value="72h" />
+                <el-option label="原始值" value="current" />
+                <el-option label="小时均值" value="hour" />
+                <el-option label="日均值" value="24h" />
+                <el-option label="3日均值" value="72h" />
               </el-select>
               <el-date-picker
                 v-model="dataFilter.timeRange"
@@ -455,8 +455,14 @@
 
             <div class="data-content">
               <div v-if="dataDisplayMode === 'chart'" class="chart-container">
-                <div ref="monitorChartRef" class="chart-inner"></div>
-                <div v-if="chartSeriesData.length === 0" class="chart-empty-tip">暂无数据，请先选择条件并点击查询</div>
+                <VueApexCharts
+                  v-if="chartSeriesData.length > 0"
+                  type="area"
+                  height="100%"
+                  :options="chartOptions"
+                  :series="chartOptions.series"
+                />
+                <div v-if="chartSeriesData.length === 0" class="chart-empty-tip">暂无数据，选择条件后将自动加载近3天数据</div>
               </div>
               <div v-else class="table-container">
                 <el-table :data="monitorDataList" border size="small">
@@ -864,7 +870,7 @@ import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from '
 import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import * as echarts from 'echarts'
+import VueApexCharts from 'vue3-apexcharts'
 import {
   batchOperateHazardPoints,
   bindDevicesToHazardPoint,
@@ -1055,8 +1061,20 @@ let detailMapInstance: L.Map | null = null
 const dataDisplayMode = ref('chart')
 const monitorDataList = ref<MonitorDataPageItem[]>([])
 const chartSeriesData = ref<ChartData[]>([])
-const monitorChartRef = ref<HTMLDivElement | null>(null)
-let monitorChartInstance: echarts.ECharts | null = null
+const chartOptions = ref({
+  series: [] as any[],
+  chart: {} as any,
+  xaxis: {} as any,
+  yaxis: {} as any,
+  stroke: {} as any,
+  fill: {} as any,
+  legend: {} as any,
+  tooltip: {} as any,
+  dataLabels: {} as any,
+  grid: {} as any,
+  colors: [] as string[],
+  markers: {} as any,
+})
 
 const mapDialogVisible = ref(false)
 const mapRef = ref<HTMLDivElement | null>(null)
@@ -2583,90 +2601,92 @@ const onDataSensorChange = (sensorId: string | number) => {
   }))
 }
 
-// ==================== 渲染监测数据折线图（使用后端 chart 接口返回的 ChartData[]） ====================
-const disposeMonitorChart = () => {
-  if (monitorChartInstance) {
-    monitorChartInstance.dispose()
-    monitorChartInstance = null
-  }
-}
+// ==================== ApexCharts 图表配置 ====================
+const CHART_COLORS = [
+  '#5470C6', '#91CC75', '#FAC858', '#EE6666', '#73C0DE',
+  '#3BA272', '#FC8452', '#9A60B4', '#EA7CCC', '#909399'
+]
 
-const renderMonitorChart = () => {
-  if (!monitorChartRef.value) return
-  disposeMonitorChart()
+const buildChartOptions = () => {
   const seriesData = chartSeriesData.value
   if (seriesData.length === 0) return
-  monitorChartInstance = echarts.init(monitorChartRef.value)
 
-  const colors = [
-    { hex: '#5470C6', rgb: 'rgba(84,112,198' },
-    { hex: '#91CC75', rgb: 'rgba(145,204,117' },
-    { hex: '#FAC858', rgb: 'rgba(250,200,88' },
-    { hex: '#EE6666', rgb: 'rgba(238,102,102' },
-    { hex: '#73C0DE', rgb: 'rgba(115,192,222' },
-    { hex: '#3BA272', rgb: 'rgba(59,162,114' },
-    { hex: '#FC8452', rgb: 'rgba(252,132,82' },
-    { hex: '#9A60B4', rgb: 'rgba(154,96,180' },
-    { hex: '#EA7CCC', rgb: 'rgba(234,124,204' },
-    { hex: '#909399', rgb: 'rgba(144,147,153' },
-  ]
+  const allLabels = new Set<string>()
+  for (const s of seriesData) for (const l of s.labels) allLabels.add(l)
+  const xCategories = Array.from(allLabels).sort()
 
-  const allLabelsSet = new Set<string>()
-  for (const s of seriesData) for (const l of s.labels) allLabelsSet.add(l)
-  const xData = Array.from(allLabelsSet).sort()
-
-  const series = seriesData.map((s, idx) => {
-    const c = colors[idx % colors.length]
-    const labelToValue = new Map<string, number>()
-    for (let i = 0; i < s.labels.length; i++) labelToValue.set(s.labels[i], s.values[i])
-    return {
-      type: 'line' as const,
-      name: s.seriesName,
-      data: xData.map(l => [l, labelToValue.get(l) ?? null]),
-      smooth: true,
-      symbol: 'none',
-      lineStyle: { color: c.hex, width: 2 },
-      itemStyle: { color: c.hex },
-      areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: `${c.rgb}, 0.25)` },
-          { offset: 1, color: `${c.rgb}, 0.02)` }
-        ])
+  chartOptions.value = {
+    chart: {
+      type: 'area' as const,
+      height: '100%',
+      fontFamily: 'inherit',
+      toolbar: {
+        tools: {
+          download: true,
+          selection: true,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: true,
+          reset: true
+        }
+      },
+      zoom: { enabled: true, type: 'x' as const },
+      animations: { enabled: true, easing: 'easeinout' as const, speed: 800 }
+    },
+    colors: CHART_COLORS,
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth' as const, width: 2 },
+    fill: {
+      type: 'gradient',
+      gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0.02, stops: [0, 100] }
+    },
+    markers: {
+      size: 0,
+      hover: { size: 5 }
+    },
+    grid: {
+      borderColor: '#e7e7e7',
+      strokeDashArray: 4,
+      padding: { top: 10, right: 10, bottom: 5, left: 10 }
+    },
+    legend: {
+      position: 'top' as const,
+      horizontalAlign: 'center' as const,
+      fontSize: '13px',
+      fontWeight: 500,
+      markers: { width: 12, height: 12, radius: 6, offsetX: -4 },
+      itemMargin: { horizontal: 16, vertical: 4 },
+      offsetY: -4
+    },
+    xaxis: {
+      type: 'category' as const,
+      categories: xCategories,
+      labels: {
+        rotate: -30,
+        style: { fontSize: '11px', colors: '#666' }
+      },
+      tickAmount: Math.min(xCategories.length, 10),
+      tooltip: { enabled: false }
+    },
+    yaxis: {
+      title: {
+        text: seriesData[0]?.unit || '',
+        style: { fontSize: '12px', color: '#888' }
+      },
+      labels: {
+        formatter: (val: number) => val != null ? Number(val.toFixed(2)).toString() : ''
       }
-    }
-  })
-
-  const seriesNames = seriesData.map(s => s.seriesName)
-  const unit = seriesData[0]?.unit || ''
-  const allSeries = seriesData.flatMap(s => s.values)
-  const hasData = allSeries.length > 0
-  const minValue = hasData ? Math.min(...allSeries) : undefined
-  const maxValue = hasData ? Math.max(...allSeries) : undefined
-  const yMin = minValue != null ? minValue - Math.abs(minValue) * 0.05 : undefined
-  const yMax = maxValue != null ? maxValue + Math.abs(maxValue) * 0.05 : undefined
-
-  monitorChartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { type: 'scroll', bottom: 0, data: seriesNames },
-    xAxis: {
-      type: 'category',
-      data: xData,
-      axisLabel: { rotate: 30, fontSize: 11 }
     },
-    yAxis: {
-      type: 'value',
-      name: unit,
-      min: yMin,
-      max: yMax,
-      nameTextStyle: { fontSize: 12 }
+    tooltip: {
+      shared: true,
+      intersect: false
     },
-    dataZoom: [
-      { type: 'inside' },
-      { type: 'slider', bottom: seriesNames.length > 1 ? 28 : 0 }
-    ],
-    series,
-    grid: { left: 60, right: 30, top: 30, bottom: seriesNames.length > 1 ? 60 : 50 }
-  }, true)
+    series: seriesData.map((s) => {
+      const points = s.labels.map((l, i) => ({ x: l, y: s.values[i] }))
+      return { name: s.seriesName, data: points }
+    })
+  }
 }
 
 const handleQueryData = async () => {
@@ -2709,7 +2729,7 @@ const queryChart = async (baseParams: Record<string, unknown>) => {
     chartSeriesData.value = series
     ElMessage.success(`加载 ${series.length} 条曲线，共 ${series[0]?.labels.length || 0} 个数据点`)
     await nextTick()
-    renderMonitorChart()
+    buildChartOptions()
   } catch {
     ElMessage.error('获取图表数据失败')
   }
@@ -2823,26 +2843,36 @@ const handleBatchComplete = async () => {
 
 watch(dataDisplayMode, (mode) => {
   if (mode === 'chart') {
-    nextTick(() => renderMonitorChart())
-  } else {
-    disposeMonitorChart()
+    nextTick(() => buildChartOptions())
   }
 })
 
 watch(activeTab, (tab) => {
-  if (tab === 'monitorData' && dataDisplayMode.value === 'chart') {
-    nextTick(() => renderMonitorChart())
+  if (tab === 'monitorData') {
+    if (!dataFilter.timeRange) {
+      const end = new Date()
+      const start = new Date(end.getTime() - 3 * 24 * 60 * 60 * 1000)
+      const fmt = (d: Date) => {
+        const pad = (n: number) => String(n).padStart(2, '0')
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      }
+      dataFilter.timeRange = [fmt(start), fmt(end)]
+    }
+    if (dataDisplayMode.value === 'chart') {
+      nextTick(() => buildChartOptions())
+    }
   }
 })
 
-// 关闭详情弹窗时销毁图表实例
+watch(dataFilter, () => {
+  if (dataFilter.deviceId && dataFilter.sensorId && dataDisplayMode.value === 'chart') {
+    handleQueryData()
+  }
+})
+
+// 关闭详情弹窗时重置状态
 watch(detailDialogVisible, (visible) => {
   if (!visible) {
-    if (monitorChartInstance) {
-      monitorChartInstance.dispose()
-      monitorChartInstance = null
-    }
-    // 重置监测数据相关状态
     monitorDataList.value = []
     chartSeriesData.value = []
     dataFilter.deviceId = ''
@@ -2853,23 +2883,12 @@ watch(detailDialogVisible, (visible) => {
   }
 })
 
-// 窗口大小变化时重绘图表
-const handleMonitorChartResize = () => {
-  monitorChartInstance?.resize()
-}
-
 onMounted(() => {
   loadTableData()
   loadGroupList()
-  window.addEventListener('resize', handleMonitorChartResize)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleMonitorChartResize)
-  if (monitorChartInstance) {
-    monitorChartInstance.dispose()
-    monitorChartInstance = null
-  }
 })
 </script>
 
