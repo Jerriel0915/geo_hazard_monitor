@@ -84,12 +84,23 @@
           </template>
         </el-table-column>
         <el-table-column prop="installTime" label="安装时间" width="180" align="center" />
-        <el-table-column label="操作" width="220" fixed="right" align="center">
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="text" size="small" @click="handlePlay(row)">播放</el-button>
-            <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="text" size="small" @click="handleBindHazardPoint(row)">关联隐患点</el-button>
-            <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">删除</el-button>
+            <div class="op-cell">
+              <el-button type="primary" text size="small" @click="handlePlay(row)">播放</el-button>
+              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                <el-button type="primary" text size="small">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="bindHazardPoint">关联隐患点</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>
+                      <span style="color: #f56c6c">删除</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -681,6 +692,14 @@ const handleBindHazardPoint = (row: VideoDeviceItem) => {
   bindDialogVisible.value = true
 }
 
+const handleMoreCommand = (command: string, row: VideoDeviceItem) => {
+  const map: Record<string, () => void> = {
+    bindHazardPoint: () => handleBindHazardPoint(row),
+    delete: () => handleDelete(row)
+  }
+  map[command]?.()
+}
+
 const handleDelete = (row: VideoDeviceItem) => {
   ElMessageBox.confirm(`确定要删除视频设备"${row.name}"吗?`, '删除确认', {
     confirmButtonText: '确定',
@@ -801,7 +820,7 @@ const initMap = () => {
       currentMarker = L.marker([e.latlng.lat, e.latlng.lng], {
         icon: L.divIcon({
           className: 'device-marker',
-          html: `<div style="background:#409eff;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;">${hp.name}</div>`,
+          html: `<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;">${hp.name}</div>`,
           iconSize: [100, 30],
           iconAnchor: [50, 15]
         })
@@ -1031,8 +1050,8 @@ onMounted(() => {
 }
 
 .device-icon-selector:hover {
-  border-color: #409eff;
-  background: #f0f7ff;
+  border-color: #1890ff;
+  background: #e6f7ff;
 }
 
 .device-icon-img {
@@ -1047,7 +1066,7 @@ onMounted(() => {
 }
 
 .map-container {
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8e8e8;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -1072,7 +1091,7 @@ onMounted(() => {
 }
 
 .hazard-coords {
-  color: #409eff;
+  color: #1890ff;
   font-size: 13px;
 }
 
@@ -1089,15 +1108,15 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 10px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8e8e8;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .icon-item:hover {
-  border-color: #409eff;
-  background: #f0f7ff;
+  border-color: #1890ff;
+  background: #e6f7ff;
 }
 
 .icon-select-img {

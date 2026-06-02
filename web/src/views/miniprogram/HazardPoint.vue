@@ -416,6 +416,25 @@ const loadChart = async () => {
   }
 }
 
+const renderChart = (data: ChartData) => {
+  if (!chartRef.value) return
+  if (!chartInstance) chartInstance = echarts.init(chartRef.value)
+  chartInstance.setOption({
+    tooltip: {trigger: 'axis'},
+    xAxis: {type: 'category', data: data.labels || [], axisLabel: {rotate: 30, fontSize: 10}},
+    yAxis: {type: 'value', name: data.unit || ''},
+    dataZoom: [{type: 'inside'}, {type: 'slider'}],
+    series: [{
+      name: data.attrName || '',
+      type: 'line', data: data.values || [], smooth: true,
+      lineStyle: {color: '#1890ff', width: 2},
+      areaStyle: {color: 'rgba(64,158,255,0.1)'}
+    }],
+    grid: {left: 50, right: 20, top: 20, bottom: 60}
+  }, true)
+}
+
+
 const formatTime = (ts: number) => {
   if (!ts) return ''
   return new Date(ts).toISOString().replace('T', ' ').substring(0, 19)
@@ -441,7 +460,7 @@ onMounted(() => {
   color: #303133;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .search-bar {
@@ -468,7 +487,7 @@ onMounted(() => {
 }
 
 .device-card {
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 12px;

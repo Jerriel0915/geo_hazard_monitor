@@ -94,17 +94,26 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
-        <el-table-column label="操作" width="380" fixed="right" align="center">
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="text" size="small" @click="handleView(row)">查看</el-button>
-            <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="text" size="small" @click="handleViewAuth(row)">账号</el-button>
-            <el-button type="text" size="small" @click="handleToggleAuthStatus(row)">
-              {{ row.authStatus === 1 ? '禁用账号' : '启用账号' }}
-            </el-button>
-            <el-button type="text" size="small" @click="handleConfigSensors(row)">传感器</el-button>
-            <el-button type="text" size="small" @click="handleCopy(row)">复制</el-button>
-            <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">删除</el-button>
+            <div class="op-cell">
+              <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                <el-button type="primary" text size="small">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="account">账号</el-dropdown-item>
+                    <el-dropdown-item command="toggleAuth">{{ row.authStatus === 1 ? '禁用账号' : '启用账号' }}</el-dropdown-item>
+                    <el-dropdown-item command="sensors">传感器</el-dropdown-item>
+                    <el-dropdown-item command="copy">复制</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>
+                      <span style="color: #f56c6c">删除</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -920,6 +929,17 @@ const handleView = async (row: DeviceItem) => {
   detailDialogVisible.value = true
 }
 
+const handleMoreCommand = (command: string, row: DeviceItem) => {
+  const map: Record<string, () => void> = {
+    account: () => handleViewAuth(row),
+    toggleAuth: () => handleToggleAuthStatus(row),
+    sensors: () => handleConfigSensors(row),
+    copy: () => handleCopy(row),
+    delete: () => handleDelete(row)
+  }
+  map[command]?.()
+}
+
 const handleDelete = (row: DeviceItem) => {
   ElMessageBox.confirm(`确定要删除设备"${row.name}"吗?`, '删除确认', {
     confirmButtonText: '确定',
@@ -1367,8 +1387,8 @@ onMounted(() => {
 }
 
 .device-icon-selector:hover {
-  border-color: #409eff;
-  background: #f0f7ff;
+  border-color: #1890ff;
+  background: #e6f7ff;
 }
 
 .device-icon-img {
@@ -1423,15 +1443,15 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 10px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8e8e8;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .icon-item:hover {
-  border-color: #409eff;
-  background: #f0f7ff;
+  border-color: #1890ff;
+  background: #e6f7ff;
 }
 
 .icon-select-img {

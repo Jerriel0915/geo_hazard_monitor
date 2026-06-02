@@ -46,17 +46,25 @@
               </el-table-column>
               <el-table-column prop="description" label="角色说明" min-width="220" show-overflow-tooltip />
               <el-table-column prop="createTime" label="创建时间" width="180" />
-              <el-table-column label="操作" width="240" fixed="right">
+              <el-table-column label="操作" width="220" fixed="right">
                 <template #default="{ row }">
-                  <span class="action-link" @click="handleEditRole(row)">编辑</span>
-                  <span class="action-link" @click="handleConfigPermission(row)">权限配置</span>
-                  <span
-                    :class="['action-link', row.status === 0 ? 'action-warning' : 'action-success']"
-                    @click="handleToggleRoleStatus(row)"
-                  >
-                    {{ row.status === 0 ? '停用' : '启用' }}
-                  </span>
-                  <span v-if="row.id !== 1" class="action-link action-danger" @click="handleDeleteRole(row)">删除</span>
+                  <div class="op-cell">
+                    <el-button type="primary" text size="small" @click="handleEditRole(row)">编辑</el-button>
+                    <el-button type="primary" text size="small" @click="handleConfigPermission(row)">权限配置</el-button>
+                    <el-dropdown trigger="hover" @command="(cmd: string) => handleRoleMoreCommand(cmd, row)">
+                      <el-button type="primary" text size="small">更多</el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item :command="'toggle_' + row.id">
+                            {{ row.status === 0 ? '停用' : '启用' }}
+                          </el-dropdown-item>
+                          <el-dropdown-item v-if="row.id !== 1" command="delete" divided>
+                            <span style="color: #f56c6c">删除</span>
+                          </el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -481,6 +489,14 @@ const handleToggleRoleStatus = async (row: RoleItem) => {
   await loadRoles()
 }
 
+const handleRoleMoreCommand = (command: string, row: RoleItem) => {
+  if (command === 'delete') {
+    handleDeleteRole(row)
+  } else if (command.startsWith('toggle_')) {
+    handleToggleRoleStatus(row)
+  }
+}
+
 const handleDeleteRole = async (row: RoleItem) => {
   await ElMessageBox.confirm(`确定要删除角色 "${row.name}" 吗？`, '系统提示', {
     confirmButtonText: '确定',
@@ -750,7 +766,7 @@ onMounted(async () => {
   color: #303133;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .page-body {

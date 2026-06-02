@@ -528,7 +528,7 @@
               <div class="legend-group">
                 <div class="legend-group-title">隐患点状态</div>
                 <div class="legend-item">
-                  <div class="legend-icon" style="background: #409eff;"></div>
+                  <div class="legend-icon" style="background: #1890ff;"></div>
                   <span>正常</span>
                 </div>
                 <div class="legend-item">
@@ -965,7 +965,7 @@ const addHazardPoints = () => {
   hazardPoints.value.forEach(point => {
     const marker = L.circleMarker([point.latitude, point.longitude], {
       radius: 10,
-      fillColor: point.alarmLevel ? alarmColors[point.alarmLevel] : '#409eff',
+      fillColor: point.alarmLevel ? alarmColors[point.alarmLevel] : '#1890ff',
       color: '#ffffff',
       weight: 2,
       opacity: 1,
@@ -1547,11 +1547,11 @@ const renderChart = () => {
           ])
         },
         lineStyle: {
-          color: '#409eff',
+          color: '#1890ff',
           width: 2
         },
         itemStyle: {
-          color: '#409eff'
+          color: '#1890ff'
         }
       }
     ]
@@ -1769,7 +1769,7 @@ onUnmounted(() => {
 
 .layer-toggle-btn:hover {
   background: #f5f7fa;
-  border-color: #409eff;
+  border-color: #1890ff;
 }
 
 .btn-icon {
@@ -1790,7 +1790,7 @@ onUnmounted(() => {
   top: calc(100% + 8px);
   right: 0;
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 140px;
@@ -1814,7 +1814,7 @@ onUnmounted(() => {
 
 .layer-item.active {
   background: #e8f4ff;
-  color: #409eff;
+  color: #1890ff;
 }
 
 .layer-item.active::after {
@@ -1827,7 +1827,7 @@ onUnmounted(() => {
   width: 20px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
 }
 
 .zoom-controls {
@@ -1858,11 +1858,11 @@ onUnmounted(() => {
 
 .zoom-btn:hover {
   background: #f5f7fa;
-  border-color: #409eff;
+  border-color: #1890ff;
 }
 
 .zoom-in {
-  color: #409eff;
+  color: #1890ff;
 }
 
 .zoom-out {
@@ -1928,7 +1928,7 @@ onUnmounted(() => {
 }
 
 .health-question {
-  color: #409eff;
+  color: #1890ff;
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -1992,12 +1992,12 @@ onUnmounted(() => {
 .ring-score {
   font-size: 20px;
   font-weight: 700;
-  color: #1f2937;
+  color: #303133;
 }
 
 .ring-label {
   font-size: 10px;
-  color: #6b7280;
+  color: #909399;
 }
 
 .health-bars {
@@ -2028,7 +2028,7 @@ onUnmounted(() => {
 
 .bar-name {
   font-size: 11px;
-  color: #4b5563;
+  color: #606266;
 }
 
 .bar-value {
@@ -2105,13 +2105,13 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   font-size: 16px;
   font-weight: 700;
-  color: #1f2937;
+  color: #303133;
 }
 
 .total-label {
   margin-top: 4px;
   font-size: 10px;
-  color: #6b7280;
+  color: #909399;
 }
 
 .resource-breakdown {
@@ -2148,12 +2148,12 @@ onUnmounted(() => {
 .breakdown-value {
   font-size: 15px;
   font-weight: 700;
-  color: #1f2937;
+  color: #303133;
 }
 
 .breakdown-label {
   font-size: 10px;
-  color: #6b7280;
+  color: #909399;
 }
 
 .device-type-section {
@@ -2163,7 +2163,7 @@ onUnmounted(() => {
 
 .type-title {
   font-size: 11px;
-  color: #4b5563;
+  color: #606266;
   margin-bottom: 8px;
 }
 
@@ -2182,12 +2182,12 @@ onUnmounted(() => {
 
 .type-name {
   font-size: 11px;
-  color: #6b7280;
+  color: #909399;
 }
 
 .type-count {
   font-size: 11px;
-  color: #3b82f6;
+  color: #1890ff;
   font-weight: 600;
 }
 
@@ -2212,7 +2212,7 @@ onUnmounted(() => {
 
 .toggle-icon {
   font-size: 18px;
-  color: #409eff;
+  color: #1890ff;
   font-weight: bold;
   transition: transform 0.2s ease;
 }
@@ -2251,7 +2251,7 @@ onUnmounted(() => {
 .modal-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: #303133;
 }
 
 .modal-close {
@@ -2263,14 +2263,14 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.06);
   border: none;
   border-radius: 6px;
-  color: #6b7280;
+  color: #909399;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .modal-close:hover {
   background: rgba(0, 0, 0, 0.1);
-  color: #374151;
+  color: #303133;
 }
 
 .modal-body {
@@ -2281,7 +2281,7 @@ onUnmounted(() => {
 
 .modal-body p {
   font-size: 14px;
-  color: #4b5563;
+  color: #606266;
   line-height: 1.6;
   margin: 0 0 12px 0;
 }
@@ -2293,7 +2293,7 @@ onUnmounted(() => {
 
 .modal-body li {
   font-size: 13px;
-  color: #6b7280;
+  color: #909399;
   line-height: 1.8;
   margin-bottom: 8px;
 }
@@ -2396,7 +2396,7 @@ onUnmounted(() => {
 .summary-count {
   font-size: 18px;
   font-weight: 700;
-  color: #1f2937;
+  color: #303133;
 }
 
 .alarm-level-stats {
@@ -2439,13 +2439,13 @@ onUnmounted(() => {
 .level-name {
   flex: 1;
   font-size: 12px;
-  color: #6b7280;
+  color: #909399;
 }
 
 .level-count {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #303133;
 }
 
 .alarm-list-section {
@@ -2459,7 +2459,7 @@ onUnmounted(() => {
 .list-title {
   font-size: 12px;
   font-weight: 600;
-  color: #4b5563;
+  color: #606266;
 }
 
 .alarm-list {
@@ -2513,7 +2513,7 @@ onUnmounted(() => {
 
 .alarm-title {
   font-size: 12px;
-  color: #374151;
+  color: #303133;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2522,7 +2522,7 @@ onUnmounted(() => {
 
 .alarm-meta {
   font-size: 11px;
-  color: #9ca3af;
+  color: #909399;
   margin-top: 2px;
 }
 
@@ -2534,13 +2534,13 @@ onUnmounted(() => {
 .hazard-popup .popup-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: #303133;
   margin-bottom: 4px;
 }
 
 .hazard-popup .popup-code {
   font-size: 11px;
-  color: #6b7280;
+  color: #909399;
   margin-bottom: 10px;
 }
 
@@ -2558,14 +2558,14 @@ onUnmounted(() => {
 
 .hazard-popup .info-label {
   font-size: 12px;
-  color: #6b7280;
+  color: #909399;
   font-weight: 500;
   flex-shrink: 0;
 }
 
 .hazard-popup .info-value {
   font-size: 12px;
-  color: #374151;
+  color: #303133;
 }
 
 :deep(.leaflet-popup-content-wrapper) {
@@ -2621,19 +2621,19 @@ onUnmounted(() => {
 
 .tool-btn:hover {
   background: #f0f7ff;
-  border-color: #409eff;
+  border-color: #1890ff;
   transform: scale(1.05);
 }
 
 .tool-btn.active {
   background: rgba(64, 158, 255, 0.1);
-  border-color: #409eff;
-  color: #409eff;
+  border-color: #1890ff;
+  color: #1890ff;
 }
 
 .tool-panel {
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   padding: 12px;
@@ -2673,13 +2673,13 @@ onUnmounted(() => {
 }
 
 .search-input:focus {
-  border-color: #409eff;
+  border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
 }
 
 .search-btn {
   padding: 8px 12px;
-  background: #409eff;
+  background: #1890ff;
   color: white;
   border: none;
   border-radius: 6px;
@@ -2761,14 +2761,14 @@ onUnmounted(() => {
 }
 
 .layer-item:hover {
-  color: #409eff;
+  color: #1890ff;
 }
 
 .layer-item input[type="checkbox"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #409eff;
+  accent-color: #1890ff;
 }
 
 /* 图例面板样式 */
@@ -2861,7 +2861,7 @@ onUnmounted(() => {
 }
 
 .hazard-title:hover {
-  background: #e4e7ed;
+  background: #e8e8e8;
 }
 
 .hazard-name {
@@ -2903,14 +2903,14 @@ onUnmounted(() => {
 
 .hazard-list-item.active {
   background: #e6f7ff;
-  color: #409eff;
+  color: #1890ff;
 }
 
 .close-hazard-view-btn {
   width: 36px;
   height: 36px;
   background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
   cursor: pointer;
   font-size: 18px;
@@ -3004,12 +3004,12 @@ onUnmounted(() => {
 
 .device-item:hover {
   background: #f0f7ff;
-  border-color: #409eff;
+  border-color: #1890ff;
 }
 
 .device-item.selected {
   background: #e6f7ff;
-  border-color: #409eff;
+  border-color: #1890ff;
 }
 
 .device-info {
@@ -3116,7 +3116,7 @@ onUnmounted(() => {
 
 .sensor-item.selected {
   background: #e6f7ff;
-  border-color: #409eff;
+  border-color: #1890ff;
 }
 
 .sensor-item.warning {
@@ -3236,7 +3236,7 @@ onUnmounted(() => {
   gap: 12px;
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: #303133;
 }
 
 .device-icon {
@@ -3252,7 +3252,7 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.06);
   border: none;
   border-radius: 8px;
-  color: #6b7280;
+  color: #909399;
   cursor: pointer;
   font-size: 18px;
   transition: all 0.2s;
@@ -3260,7 +3260,7 @@ onUnmounted(() => {
 
 .modal-close-btn:hover {
   background: rgba(0, 0, 0, 0.12);
-  color: #374151;
+  color: #303133;
 }
 
 .modal-body {
@@ -3272,8 +3272,8 @@ onUnmounted(() => {
 /* 传感器清单侧边栏 */
 .sensor-list-sidebar {
   width: 280px;
-  background: #fafbfc;
-  border-right: 1px solid #e5e7eb;
+  background: #f5f7fa;
+  border-right: 1px solid #e8e8e8;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -3284,19 +3284,19 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .sidebar-title {
   font-size: 15px;
   font-weight: 600;
-  color: #374151;
+  color: #303133;
 }
 
 .sensor-count {
   font-size: 12px;
-  color: #9ca3af;
-  background: #f3f4f6;
+  color: #909399;
+  background: #f5f7fa;
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -3322,12 +3322,12 @@ onUnmounted(() => {
 
 .sensor-list-sidebar .sensor-item:hover {
   background: #f0f7ff;
-  border-color: #409eff;
+  border-color: #1890ff;
 }
 
 .sensor-list-sidebar .sensor-item.selected {
   background: #e6f7ff;
-  border-color: #409eff;
+  border-color: #1890ff;
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
 }
 
@@ -3347,7 +3347,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: #f5f7fa;
   border-radius: 8px;
 }
 
@@ -3358,13 +3358,13 @@ onUnmounted(() => {
 .sensor-list-sidebar .sensor-name {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #303133;
   margin-bottom: 2px;
 }
 
 .sensor-list-sidebar .sensor-code {
   font-size: 11px;
-  color: #9ca3af;
+  color: #909399;
 }
 
 .sensor-status-indicator {
@@ -3404,7 +3404,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #9ca3af;
+  color: #909399;
 }
 
 .empty-icon {
@@ -3423,7 +3423,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background: #f9fafb;
+  background: #f5f7fa;
   border-radius: 8px;
   margin-bottom: 16px;
   flex-wrap: wrap;
@@ -3437,16 +3437,16 @@ onUnmounted(() => {
 
 .condition-label {
   font-size: 13px;
-  color: #6b7280;
+  color: #909399;
   white-space: nowrap;
 }
 
 .condition-select {
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #dcdfe6;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #303133;
   background: white;
   cursor: pointer;
   transition: all 0.2s;
@@ -3454,18 +3454,18 @@ onUnmounted(() => {
 }
 
 .condition-select:hover {
-  border-color: #409eff;
+  border-color: #1890ff;
 }
 
 .condition-select:focus {
   outline: none;
-  border-color: #409eff;
+  border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
 }
 
 .query-btn {
   padding: 8px 20px;
-  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+  background: linear-gradient(135deg, #1890ff 0%, #66b1ff 100%);
   color: white;
   border: none;
   border-radius: 6px;
@@ -3492,7 +3492,7 @@ onUnmounted(() => {
 .view-toggle {
   display: flex;
   gap: 8px;
-  background: #f3f4f6;
+  background: #f5f7fa;
   padding: 4px;
   border-radius: 8px;
 }
@@ -3503,20 +3503,20 @@ onUnmounted(() => {
   border: none;
   border-radius: 6px;
   font-size: 13px;
-  color: #6b7280;
+  color: #909399;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .toggle-btn.active {
   background: white;
-  color: #374151;
+  color: #303133;
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-btn:hover:not(.active) {
-  color: #374151;
+  color: #303133;
 }
 
 .data-actions {
@@ -3530,18 +3530,18 @@ onUnmounted(() => {
   gap: 6px;
   padding: 8px 16px;
   background: white;
-  border: 1px solid #d1d5db;
+  border: 1px solid #dcdfe6;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #303133;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background: #f9fafb;
-  border-color: #409eff;
-  color: #409eff;
+  background: #f5f7fa;
+  border-color: #1890ff;
+  color: #1890ff;
 }
 
 .action-btn .btn-icon {
@@ -3552,7 +3552,7 @@ onUnmounted(() => {
 .chart-view {
   flex: 1;
   min-height: 0;
-  background: #fafbfc;
+  background: #f5f7fa;
   border-radius: 8px;
   padding: 16px;
 }
@@ -3567,7 +3567,7 @@ onUnmounted(() => {
 .table-view {
   flex: 1;
   overflow: auto;
-  background: #fafbfc;
+  background: #f5f7fa;
   border-radius: 8px;
 }
 
@@ -3588,19 +3588,19 @@ onUnmounted(() => {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
-  border-bottom: 2px solid #e5e7eb;
+  color: #303133;
+  border-bottom: 2px solid #e8e8e8;
   white-space: nowrap;
 }
 
 .data-table td {
   padding: 12px;
-  border-bottom: 1px solid #f3f4f6;
-  color: #6b7280;
+  border-bottom: 1px solid #f5f7fa;
+  color: #909399;
 }
 
 .data-table tbody tr:hover {
-  background: #f9fafb;
+  background: #f5f7fa;
 }
 
 .status-badge {

@@ -1178,7 +1178,7 @@ const handleExportAlarm = () => {
   color: #303133;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .page-body {
@@ -1199,7 +1199,7 @@ const handleExportAlarm = () => {
 .params-sidebar {
   width: 160px;
   flex-shrink: 0;
-  border-right: 1px solid #e4e7ed;
+  border-right: 1px solid #e8e8e8;
   padding-right: 12px;
 }
 
@@ -1241,7 +1241,7 @@ const handleExportAlarm = () => {
   color: #303133;
   margin: 0 0 20px 0;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .param-remark {
@@ -1255,7 +1255,7 @@ const handleExportAlarm = () => {
   bottom: 0;
   background: #fff;
   padding: 16px 0;
-  border-top: 1px solid #e4e7ed;
+  border-top: 1px solid #e8e8e8;
   margin-top: 20px;
   display: flex;
   gap: 12px;
@@ -1274,7 +1274,7 @@ const handleExportAlarm = () => {
 }
 
 .geojson-preview {
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 6px;
   padding: 12px;
   background: #fafafa;
@@ -1323,7 +1323,7 @@ const handleExportAlarm = () => {
 .map-container {
   width: 100%;
   height: 500px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 6px;
 }
 

@@ -24,7 +24,7 @@
   color: #303133;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .page-body {
