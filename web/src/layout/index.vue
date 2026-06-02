@@ -292,10 +292,10 @@ const menuList = [
     label: '告警中心',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     children: [
-      { name: 'RealtimeAlarm', label: '实时告警' },
-      { name: 'AlarmCriteria', label: '告警判据管理' },
-      { name: 'AlarmNotification', label: '告警查看和通知' },
-      { name: 'AlarmDisposal', label: '告警处置' }
+      { name: 'RealtimeAlarm', label: '待办告警' },
+      { name: 'AlarmCriteria', label: '告警判据' },
+      { name: 'AlarmNotification', label: '历史告警' },
+      { name: 'AlarmDisposal', label: '告警通知查询' }
     ]
   },
   {
@@ -373,10 +373,10 @@ const menuLabelMap: Record<string, string> = {
   MonitorType: '监测类型',
   Device: '设备管理',
   VideoDevice: '视频设备管理',
-  RealtimeAlarm: '实时告警',
-  AlarmCriteria: '告警判据管理',
-  AlarmNotification: '告警查看和通知',
-  AlarmDisposal: '告警处置',
+  RealtimeAlarm: '待办告警',
+  AlarmCriteria: '告警判据',
+  AlarmNotification: '历史告警',
+  AlarmDisposal: '告警通知查询',
   Report: '报告管理',
   Query: '查询中心',
   Analysis: '数据分析',
