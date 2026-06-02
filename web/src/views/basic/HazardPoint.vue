@@ -118,30 +118,24 @@
                 <el-tag type="info" effect="plain">{{ row.deviceCount || 0 }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right" align="center">
+            <el-table-column label="操作" width="200" fixed="right" align="center">
               <template #default="{ row }">
-                <div class="action-cell">
-                  <el-link type="primary" :underline="false" @click="handleView(row)">查看</el-link>
-                  <el-link type="primary" :underline="false" @click="handleEdit(row)">编辑</el-link>
-                  <el-dropdown trigger="click" @command="(cmd: string) => handleRowCommand(cmd, row)">
-                    <el-link type="info" :underline="false" class="action-more">
-                      更多<span class="dropdown-arrow">▾</span>
-                    </el-link>
+                <div class="op-cell">
+                  <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                  <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+                  <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                    <el-button type="primary" text size="small">更多</el-button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item
-                          v-if="row.status !== 'COMPLETED'"
-                          command="togglePause"
-                        >
-                          {{ row.status === 'PAUSED' ? '▶ 恢复' : '⏸ 停测' }}
+                        <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="togglePause">
+                          {{ row.status === 'PAUSED' ? '恢复' : '停测' }}
                         </el-dropdown-item>
-                        <el-dropdown-item
-                          v-if="row.status !== 'COMPLETED'"
-                          command="complete"
-                        >
-                          ✓ 完结
+                        <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="complete">完结</el-dropdown-item>
+                        <el-dropdown-item command="bindDevice">绑定设备</el-dropdown-item>
+                        <el-dropdown-item command="alarmConfig">告警配置</el-dropdown-item>
+                        <el-dropdown-item command="delete" divided>
+                          <span style="color: #f56c6c">删除</span>
                         </el-dropdown-item>
-                        <el-dropdown-item command="delete" divided class="drop-danger">✕ 删除</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -1817,7 +1811,7 @@ const initDetailMap = () => {
     const endLat = lat + Math.sin(strikeRad) * offset
     const endLng = lng + Math.cos(strikeRad) * offset
     L.polyline([[lat, lng], [endLat, endLng]], {
-      color: '#409eff',
+      color: '#1890ff',
       weight: 3
     }).addTo(detailMapInstance)
   }
@@ -1825,6 +1819,16 @@ const initDetailMap = () => {
 
 // ==================== 删除隐患点 ====================
 // 用途：调用删除接口，删除选中的隐患点
+const handleMoreCommand = (command: string, row: any) => {
+  const map: Record<string, () => void> = {
+    togglePause: () => handleTogglePause(row),
+    complete: () => handleComplete(row),
+    bindDevice: () => handleBindDevice(row),
+    alarmConfig: () => handleConfigAlarm(row),
+    delete: () => handleDelete(row)
+  }
+  map[command]?.()
+}
 const handleDelete = async (row: any) => {
   ElMessageBox.confirm(`确定要删除隐患点"${row.name}"吗？`, '删除确认', {
     confirmButtonText: '确定',
@@ -2030,7 +2034,7 @@ const initMap = () => {
     L.marker([formData.latitude, formData.longitude], {
       icon: L.divIcon({
         className: 'center-marker',
-        html: '<div style="background:#409eff;color:#fff;padding:4px 8px;border-radius:50%;font-size:12px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">★</div>',
+        html: '<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:50%;font-size:12px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">★</div>',
         iconSize: [30, 30],
         iconAnchor: [15, 15]
       })
@@ -2046,7 +2050,7 @@ const initMap = () => {
         L.marker([e.latlng.lat, e.latlng.lng], {
           icon: L.divIcon({
             className: 'center-marker',
-            html: '<div style="background:#409eff;color:#fff;padding:4px 8px;border-radius:50%;font-size:12px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">★</div>',
+            html: '<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:50%;font-size:12px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">★</div>',
             iconSize: [30, 30],
             iconAnchor: [15, 15]
           })
@@ -2057,7 +2061,7 @@ const initMap = () => {
       if (drawLayer) {
         drawLayer.clearLayers()
         if (polygonCoords.value.length > 1) {
-          L.polyline([...polygonCoords.value], { color: '#409eff', dashArray: '5,5' }).addTo(drawLayer)
+          L.polyline([...polygonCoords.value], { color: '#1890ff', dashArray: '5,5' }).addTo(drawLayer)
         }
         polygonCoords.value.forEach((coord, i) => {
           L.marker([coord.lat, coord.lng], {
@@ -2911,11 +2915,32 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.group-panel-toggle {
+  width: 20px;
+  background: #f5f7fa;
+  border: 1px solid #e8e8e8;
+  border-right: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px 0 0 4px;
+  transition: all 0.3s;
+}
+
+.group-panel-toggle:hover {
+  background: #e8e8e8;
+}
+
+.toggle-icon {
+  font-size: 12px;
+  color: #606266;
+}
+
 /* ========== 左侧分组面板 ========== */
 .group-panel {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px 0 0 8px;
+  background: #fafafa;
+  border-right: 1px solid #e8e8e8;
   display: flex;
   flex-direction: column;
   transition: width 0.3s;
@@ -2923,8 +2948,8 @@ onUnmounted(() => {
 }
 
 .panel-header {
-  padding: 14px 14px 10px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 15px;
+  border-bottom: 1px solid #e8e8e8;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2937,10 +2962,14 @@ onUnmounted(() => {
 
 .panel-title {
   font-size: 12px;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
+  color: #909399;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.action-btn:hover {
+  background: #e8e8e8;
+  color: #606266;
 }
 
 .group-list {
@@ -3025,9 +3054,13 @@ onUnmounted(() => {
   transition: all 0.15s;
 }
 
-.action-btn:hover {
-  background: #f1f5f9;
-  color: #475569;
+.group-item:hover {
+  background: #e6f7ff;
+}
+
+.group-item.active {
+  background: #bae7ff;
+  color: #1890ff;
 }
 
 .action-btn.delete-btn:hover {
@@ -3055,14 +3088,14 @@ onUnmounted(() => {
 }
 
 .resize-handle:hover {
-  background: rgba(59, 130, 246, 0.15);
+  background: #1890ff;
 }
 
 .resize-handle:hover::after {
   content: '';
   width: 2px;
-  height: 36px;
-  background: #3b82f6;
+  height: 40px;
+  background: #1890ff;
   border-radius: 1px;
 }
 
@@ -3279,16 +3312,6 @@ onUnmounted(() => {
   letter-spacing: 0.2px;
 }
 
-:deep(.el-button--primary) {
-  background: #3b82f6;
-  border-color: #3b82f6;
-}
-
-:deep(.el-button--primary:hover) {
-  background: #2563eb;
-  border-color: #2563eb;
-}
-
 :deep(.el-pagination) {
   font-size: 13px;
 }
@@ -3375,8 +3398,8 @@ onUnmounted(() => {
 
 /* ========== 地图 ========== */
 .map-container {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -3419,9 +3442,8 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
 }
 
 .transfer-panel .panel-header {
@@ -3503,7 +3525,7 @@ onUnmounted(() => {
 .expression-toolbar {
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid #e8e8e8;
 }
 
 .expression-tips {
@@ -3561,7 +3583,7 @@ onUnmounted(() => {
   color: #1f2937;
   margin-bottom: 14px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #3b82f6;
+  border-bottom: 2px solid #1890ff;
 }
 
 .divider-title {
@@ -3594,12 +3616,12 @@ onUnmounted(() => {
   color: #1f2937;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .map-section #detail-map {
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  border: 1px solid #e8e8e8;
 }
 
 /* ========== 监测数据面板 ========== */

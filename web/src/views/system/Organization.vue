@@ -400,7 +400,7 @@ onMounted(async () => {
   font-weight: 700;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .toolbar {
@@ -420,7 +420,7 @@ onMounted(async () => {
 .tree-panel {
   width: 320px;
   padding: 16px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
   background: #fafafa;
 }
@@ -434,7 +434,7 @@ onMounted(async () => {
 .list-panel {
   flex: 1;
   padding: 16px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
 }
 
@@ -464,7 +464,7 @@ onMounted(async () => {
 .action-link {
   display: inline-block;
   margin-right: 8px;
-  color: #409eff;
+  color: #1890ff;
   cursor: pointer;
 }
 
