@@ -1,11 +1,7 @@
 <template>
   <div class="hazard-point-page">
     <div class="page-container">
-      <div class="group-panel-toggle" @click="toggleGroupPanel" :class="{ expanded: showGroupPanel }">
-        <span class="toggle-icon">{{ showGroupPanel ? '◀' : '▶' }}</span>
-      </div>
-
-      <div class="group-panel" :class="{ hidden: !showGroupPanel }" :style="{ width: groupPanelWidth + 'px' }">
+      <div class="group-panel" :style="{ width: groupPanelWidth + 'px' }">
         <div class="panel-header">
           <span class="panel-title">分组列表</span>
           <div class="panel-actions">
@@ -30,7 +26,7 @@
         </div>
       </div>
 
-      <div class="resize-handle" @mousedown="startResize" :class="{ hidden: !showGroupPanel }"></div>
+      <div class="resize-handle" @mousedown="startResize"></div>
 
       <div class="content-panel">
         <div class="page-header">
@@ -38,25 +34,25 @@
             <h2 class="page-title">隐患点管理</h2>
           </div>
           <div class="header-right">
-            <el-button type="primary" @click="handleAdd">
-              <span class="btn-icon">+</span> 新增
-            </el-button>
-            <el-button type="danger" @click="handleBatchDelete" :disabled="selectedRows.length === 0">
-              <span class="btn-icon">-</span> 批量删除
-            </el-button>
-            <el-button @click="handleBatchPause" :disabled="selectedRows.length === 0">
-              <span class="btn-icon">⏸</span> 停测
-            </el-button>
-            <el-button @click="handleBatchResume" :disabled="selectedRows.length === 0">
-              <span class="btn-icon">▶</span> 恢复
-            </el-button>
-            <el-button @click="handleBatchComplete" :disabled="selectedRows.length === 0" type="warning">
-              <span class="btn-icon">✓</span> 完结
-            </el-button>
-            <el-button @click="handleExportHazardPoints">
-              <span class="btn-icon">↓</span> 导出
+            <el-button type="primary" @click="handleAdd">+ 新增</el-button>
+            <el-button type="danger" @click="handleBatchDelete" :disabled="selectedRows.length === 0" plain>批量删除</el-button>
+            <el-button @click="handleBatchPause" :disabled="selectedRows.length === 0" plain>停测</el-button>
+            <el-button @click="handleBatchResume" :disabled="selectedRows.length === 0" plain>恢复</el-button>
+            <el-button @click="handleBatchComplete" :disabled="selectedRows.length === 0" type="warning" plain>完结</el-button>
+            <el-button @click="handleExportHazardPoints" plain>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="margin-right:4px;vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出
             </el-button>
           </div>
+        </div>
+
+        <div class="stats-bar">
+          <span class="stat-item">隐患点 <strong>{{ statsTotal }}</strong></span>
+          <span class="stat-sep">|</span>
+          <span class="stat-item">监测中 <strong class="c-green">{{ statsMonitoring }}</strong></span>
+          <span class="stat-sep">|</span>
+          <span class="stat-item">关联设备 <strong class="c-amber">{{ statsDeviceTotal }}</strong></span>
+          <span class="stat-sep">|</span>
+          <span class="stat-item">分组 <strong class="c-purple">{{ statsGroupCount }}</strong></span>
         </div>
 
         <div class="search-bar">
@@ -87,14 +83,15 @@
 </div>
 
         <div class="table-container">
-          <el-table
-            :data="tableData"
-            border
-            stripe
-            v-loading="loading"
-            :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
-            @selection-change="handleSelectionChange"
-          >
+          <div class="table-scroll">
+            <el-table
+              :data="tableData"
+              border
+              stripe
+              v-loading="loading"
+              :header-cell-style="{ background: '#f8fafc', color: '#475569', fontWeight: 600 }"
+              @selection-change="handleSelectionChange"
+            >
             <el-table-column type="selection" width="55" align="center" />
             <el-table-column prop="code" label="编号" width="150" align="center" />
             <el-table-column prop="name" label="名称" min-width="200" align="center" />
@@ -121,32 +118,38 @@
                 <el-tag type="info" effect="plain">{{ row.deviceCount || 0 }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="280" fixed="right" align="center">
+            <el-table-column label="操作" width="180" fixed="right" align="center">
               <template #default="{ row }">
-                <el-button type="text" size="small" @click="handleView(row)">查看</el-button>
-                <el-button type="text" size="small" @click="handleEdit(row)">编辑</el-button>
-                <el-button
-                  v-if="row.status !== 'COMPLETED'"
-                  type="text"
-                  size="small"
-                  @click="handleTogglePause(row)"
-                >
-                  {{ row.status === 'PAUSED' ? '恢复' : '停测' }}
-                </el-button>
-                <el-button
-                  v-if="row.status !== 'COMPLETED'"
-                  type="text"
-                  size="small"
-                  @click="handleComplete(row)"
-                >
-                  完结
-                </el-button>
-                <el-button type="text" size="small" @click="handleBindDevice(row)">绑定设备</el-button>
-                <el-button type="text" size="small" @click="handleConfigAlarm(row)">告警配置</el-button>
-                <el-button type="text" size="small" class="danger-text" @click="handleDelete(row)">删除</el-button>
+                <div class="action-cell">
+                  <el-link type="primary" :underline="false" @click="handleView(row)">查看</el-link>
+                  <el-link type="primary" :underline="false" @click="handleEdit(row)">编辑</el-link>
+                  <el-dropdown trigger="click" @command="(cmd: string) => handleRowCommand(cmd, row)">
+                    <el-link type="info" :underline="false" class="action-more">
+                      更多<span class="dropdown-arrow">▾</span>
+                    </el-link>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item
+                          v-if="row.status !== 'COMPLETED'"
+                          command="togglePause"
+                        >
+                          {{ row.status === 'PAUSED' ? '▶ 恢复' : '⏸ 停测' }}
+                        </el-dropdown-item>
+                        <el-dropdown-item
+                          v-if="row.status !== 'COMPLETED'"
+                          command="complete"
+                        >
+                          ✓ 完结
+                        </el-dropdown-item>
+                        <el-dropdown-item command="delete" divided class="drop-danger">✕ 删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </template>
             </el-table-column>
           </el-table>
+          </div>
 
           <div class="pagination-container">
             <el-pagination
@@ -337,7 +340,7 @@
             <el-table-column prop="sensorNames" label="传感器" min-width="150" align="center">
               <template #default="{ row }">
                 <span v-for="sensor in row.sensors" :key="sensor.id" class="sensor-tag">
-                  <img :src="sensor.iconPath" class="sensor-icon" />{{ sensor.name }}
+                  {{ sensor.name }}
                 </span>
               </template>
             </el-table-column>
@@ -436,9 +439,8 @@
 
             <div class="data-content">
               <div v-if="dataDisplayMode === 'chart'" class="chart-container">
-                <div class="chart-placeholder">
-                  <span>ECHARTS图表展示区域</span>
-                </div>
+                <div ref="monitorChartRef" class="chart-inner"></div>
+                <div v-if="monitorDataList.length === 0" class="chart-empty-tip">暂无数据，请先选择条件并点击查询</div>
               </div>
               <div v-else class="table-container">
                 <el-table :data="monitorDataList" border size="small">
@@ -843,10 +845,11 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onMounted, reactive, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import * as echarts from 'echarts'
 import {
   batchOperateHazardPoints,
   bindDevicesToHazardPoint,
@@ -970,7 +973,6 @@ const searchType = ref('name')  // 默认按名称搜索
 const bindLoading = ref(false)  //  绑定设备加载中
 
 // 分组面板相关
-const showGroupPanel = ref(true)
 const displayGroupList = ref<GroupItem[]>([])
 const loadingGroups = ref(false)
 const groupPageSize = ref(10)
@@ -1035,7 +1037,9 @@ const detailMapRef = ref<HTMLDivElement | null>(null)
 let detailMapInstance: L.Map | null = null
 
 const dataDisplayMode = ref('chart')
-const monitorDataList = ref<{ time: string; deviceName: string; sensorName: string; value: string; unit: string; direction: string }[]>([])
+const monitorDataList = ref<{ time: string; deviceName: string; sensorName: string; attrName: string; value: string; unit: string; direction: string }[]>([])
+const monitorChartRef = ref<HTMLDivElement | null>(null)
+let monitorChartInstance: echarts.ECharts | null = null
 
 const mapDialogVisible = ref(false)
 const mapRef = ref<HTMLDivElement | null>(null)
@@ -1191,6 +1195,12 @@ const userList = ref<{ id: string; name: string; phone: string }[]>([
 ])
 
 const groupOptions = computed(() => groupList.value.filter(g => g.id !== 'all'))
+
+// 统计卡片数据
+const statsTotal = computed(() => total.value)
+const statsMonitoring = computed(() => tableData.value.filter(r => r.status === 'MONITORING').length)
+const statsDeviceTotal = computed(() => tableData.value.reduce((sum, r) => sum + (r.deviceCount || 0), 0))
+const statsGroupCount = computed(() => Math.max(0, groupList.value.length - 1)) // 排除"全部"
 
 const formData = reactive({
   code: '',
@@ -1449,10 +1459,6 @@ const handleGroupListScroll = (e: Event) => {
   }
 }
 
-const toggleGroupPanel = () => {
-  showGroupPanel.value = !showGroupPanel.value
-}
-
 const handleAddGroup = () => {
   groupDialogTitle.value = '新增分组'
   isEditGroup.value = false
@@ -1706,6 +1712,15 @@ const handleEdit = (row: HazardPointItem) => {
     description: row.description || ''
   })
   dialogVisible.value = true
+}
+
+// ==================== 操作列下拉菜单路由 ====================
+const handleRowCommand = (command: string, row: HazardPointItem) => {
+  switch (command) {
+    case 'togglePause': handleTogglePause(row); break
+    case 'complete': handleComplete(row); break
+    case 'delete': handleDelete(row); break
+  }
 }
 
 const handleView = async (row: HazardPointItem) => {
@@ -2149,27 +2164,13 @@ const refreshDeviceLists = async () => {
 }
 
 const initAlarmCriteria = (hazardPointId: string) => {
-  if (hazardPointId === '1') {
-    alarmCriteriaList.value = [
-      { id: '1', name: '水位雷达判据', deviceId: '1', deviceName: '雨量监测站-01', monitorTypeId: '4', monitorTypeName: '水位监测', monitorContentCode: 'water_level', monitorContentName: '水位', expression: '水位(m) >= 808.5', alarmLevel: '黄色预警', alarmLevelText: '黄色预警', isEnabled: true },
-      { id: '2', name: '雨量告警判据', deviceId: '1', deviceName: '雨量监测站-01', monitorTypeId: '3', monitorTypeName: '雨量监测', monitorContentCode: 'rainfall_day', monitorContentName: '日雨量', expression: '雨量(mm) >= 100', alarmLevel: '橙色预警', alarmLevelText: '橙色预警', isEnabled: true },
-      { id: '3', name: '位移变化告警', deviceId: '2', deviceName: '位移监测站-01', monitorTypeId: '1', monitorTypeName: '地表位移监测', monitorContentCode: 'total_displacement', monitorContentName: '总位移', expression: '位移(mm) >= 808.8', alarmLevel: '红色预警', alarmLevelText: '红色预警', isEnabled: true }
-    ]
-  } else {
-    alarmCriteriaList.value = []
-  }
+  // TODO: 接入后端告警判据查询接口
+  alarmCriteriaList.value = []
 }
 
 const initDispatchRules = (hazardPointId: string) => {
-  if (hazardPointId === '1') {
-    dispatchRules.value = [
-      { id: '1', type: 'alarm', level: ['三级(警示)', '二级(警戒)'], deviceIds: [], persons: ['张三', '李四'], channels: ['sms', 'system'], execTime: '', status: 1, remark: '重大告警通知' },
-      { id: '2', type: 'alarm', level: ['四级(注意)'], deviceIds: [], persons: ['王强'], channels: ['system'], execTime: '', status: 1, remark: '一般告警通知' },
-      { id: '3', type: 'offline', level: [], deviceIds: ['d1', 'd2'], deviceNames: ['雨量监测站-01', '位移监测站-01'], persons: ['陈经理'], channels: ['sms', 'email'], execTime: '09:00,14:00,18:00', status: 1, remark: '设备离线通知' }
-    ]
-  } else {
-    dispatchRules.value = []
-  }
+  // TODO: 接入后端告警分发规则查询接口
+  dispatchRules.value = []
 }
 
 const handleBindDevice = async (row: HazardPointItem) => {
@@ -2557,6 +2558,111 @@ const formatMonitorTime = (ts: any) => {
   return String(ts)
 }
 
+// ==================== 渲染监测数据折线图 ====================
+const disposeMonitorChart = () => {
+  if (monitorChartInstance) {
+    monitorChartInstance.dispose()
+    monitorChartInstance = null
+  }
+}
+
+const renderMonitorChart = () => {
+  if (!monitorChartRef.value) return
+  // v-if 会销毁 DOM，旧实例可能绑在已销毁的 DOM 上，每次渲染前先销毁重建
+  disposeMonitorChart()
+  if (monitorDataList.value.length === 0) return
+  monitorChartInstance = echarts.init(monitorChartRef.value)
+
+  // 按 attrName 分组，每组对应一条折线（无筛选条件时可能存在多个方向）
+  const groups = new Map<string, { time: number; value: number }[]>()
+  for (const item of monitorDataList.value) {
+    const key = item.attrName || '数值'
+    if (!groups.has(key)) groups.set(key, [])
+    const ts = typeof item.time === 'number' ? item.time : new Date(item.time).getTime()
+    const v = parseFloat(item.value)
+    groups.get(key)!.push({ time: ts, value: isNaN(v) ? 0 : v })
+  }
+
+  // 收集所有时间点并去重、排序，作为公共横轴
+  const allTimes = new Set<number>()
+  for (const pts of groups.values()) {
+    for (const p of pts) allTimes.add(p.time)
+  }
+  const xData = Array.from(allTimes).sort((a, b) => a - b).map(t => formatMonitorTime(t))
+  const xTimeMap = new Map<number, number>() // time → index
+  Array.from(allTimes).sort((a, b) => a - b).forEach((t, i) => xTimeMap.set(t, i))
+
+  // 三条折线颜色（多组也循环使用）
+  const COLOR_PALETTE = [
+    { hex: '#409eff', rgb: 'rgba(64,158,255' },
+    { hex: '#67c23a', rgb: 'rgba(103,194,58' },
+    { hex: '#e6a23c', rgb: 'rgba(230,162,60' },
+    { hex: '#f56c6c', rgb: 'rgba(245,108,108' },
+    { hex: '#909399', rgb: 'rgba(144,147,153' },
+  ]
+  const groupNames = Array.from(groups.keys())
+  const unit = monitorDataList.value[0]?.unit || ''
+
+  const series = groupNames.map((name, idx) => {
+    const pts = groups.get(name)!
+    // 构建按统一时间轴对齐的数据（缺少的时间点填 null，折线不中断）
+    const data = new Array(xData.length).fill(null)
+    for (const p of pts) {
+      const ti = xTimeMap.get(p.time)
+      if (ti !== undefined) data[ti] = p.value
+    }
+    const c = COLOR_PALETTE[idx % COLOR_PALETTE.length]
+    return {
+      name,
+      type: 'line' as const,
+      data,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 4,
+      connectNulls: true,
+      lineStyle: { color: c.hex, width: 2 },
+      itemStyle: { color: c.hex },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: `${c.rgb}, 0.25)` },
+          { offset: 1, color: `${c.rgb}, 0.02)` }
+        ])
+      }
+    }
+  })
+
+  monitorChartInstance.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any[]) => {
+        if (!params || params.length === 0) return ''
+        let html = params[0].axisValue
+        for (const p of params) {
+          if (p.value != null) html += `<br/>${p.marker} ${p.seriesName}: ${p.value} ${unit}`
+        }
+        return html
+      }
+    },
+    legend: groupNames.length > 1 ? { bottom: 0, textStyle: { fontSize: 12 } } : undefined,
+    xAxis: {
+      type: 'category',
+      data: xData,
+      axisLabel: { rotate: 30, fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value',
+      name: unit,
+      nameTextStyle: { fontSize: 12 }
+    },
+    dataZoom: [
+      { type: 'inside' },
+      { type: 'slider', bottom: groupNames.length > 1 ? 28 : 0 }
+    ],
+    series,
+    grid: { left: 60, right: 30, top: 30, bottom: groupNames.length > 1 ? 60 : 50 }
+  }, true)
+}
+
 const handleQueryData = async () => {
   if (!currentRow.value) {
     ElMessage.warning('请先选择隐患点');
@@ -2577,6 +2683,8 @@ const handleQueryData = async () => {
       unit: item.unit || ''
     }))
     ElMessage.success(`加载 ${monitorDataList.value.length} 条数据`)
+    await nextTick()
+    renderMonitorChart()
   } catch {
     ElMessage.error('获取监测数据失败')
   }
@@ -2674,64 +2782,92 @@ const handleBatchComplete = async () => {
   }).catch(() => {})
 }
 
+// 切换到表格视图时 v-if 会销毁图表 DOM，先销毁 ECharts 实例避免残留在已销毁 DOM 上
+watch(dataDisplayMode, (mode) => {
+  if (mode === 'chart') {
+    nextTick(() => renderMonitorChart())
+  } else {
+    disposeMonitorChart()
+  }
+})
+
+// 切换到监测数据 tab 时重新渲染图表
+watch(activeTab, (tab) => {
+  if (tab === 'monitorData' && dataDisplayMode.value === 'chart') {
+    nextTick(() => renderMonitorChart())
+  }
+})
+
+// 关闭详情弹窗时销毁图表实例
+watch(detailDialogVisible, (visible) => {
+  if (!visible) {
+    if (monitorChartInstance) {
+      monitorChartInstance.dispose()
+      monitorChartInstance = null
+    }
+    // 重置监测数据相关状态
+    monitorDataList.value = []
+    dataFilter.deviceId = ''
+    dataFilter.sensorId = ''
+    dataFilter.attrCode = ''
+    monitorSensors.value = []
+    monitorAttrs.value = []
+  }
+})
+
+// 窗口大小变化时重绘图表
+const handleMonitorChartResize = () => {
+  monitorChartInstance?.resize()
+}
+
 onMounted(() => {
   loadTableData()
   loadGroupList()
+  window.addEventListener('resize', handleMonitorChartResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleMonitorChartResize)
+  if (monitorChartInstance) {
+    monitorChartInstance.dispose()
+    monitorChartInstance = null
+  }
 })
 </script>
 
 <style scoped>
+/* ========== 全局 ========== */
 .hazard-point-page {
   padding: 20px;
-  background: #fff;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
   border-radius: 8px;
-  min-height: calc(100% - 40px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .page-container {
   display: flex;
-  height: calc(100vh - 180px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.group-panel-toggle {
-  width: 20px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
-  border-right: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 4px 0 0 4px;
-  transition: all 0.3s;
-}
-
-.group-panel-toggle:hover {
-  background: #e4e7ed;
-}
-
-.toggle-icon {
-  font-size: 12px;
-  color: #606266;
-}
-
+/* ========== 左侧分组面板 ========== */
 .group-panel {
-  background: #fafafa;
-  border-right: 1px solid #e4e7ed;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px 0 0 8px;
   display: flex;
   flex-direction: column;
   transition: width 0.3s;
-}
-
-.group-panel.hidden {
-  width: 0 !important;
-  overflow: hidden;
-  border-right: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .panel-header {
-  padding: 15px;
-  border-bottom: 1px solid #e4e7ed;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid #f1f5f9;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2739,14 +2875,84 @@ onMounted(() => {
 
 .panel-actions {
   display: flex;
-  gap: 5px;
+  gap: 6px;
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.group-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.group-item {
+  padding: 9px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 13px;
+  color: #374151;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.group-item::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.group-item:hover {
+  background: #f8fafc;
+}
+
+.group-item.active {
+  background: rgba(59, 130, 246, 0.06);
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.group-item.active::before {
+  background: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.group-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-count {
+  font-size: 11px;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
 }
 
 .group-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.15s;
 }
 
 .group-item:hover .group-actions {
@@ -2754,27 +2960,311 @@ onMounted(() => {
 }
 
 .action-btn {
-  font-size: 12px;
-  color: #909399;
-  padding: 2px 6px;
-  border-radius: 3px;
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
 .action-btn:hover {
-  background: #e4e7ed;
-  color: #606266;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .action-btn.delete-btn:hover {
-  background: #fef0f0;
-  color: #f56c6c;
+  background: #fef2f2;
+  color: #ef4444;
 }
 
 .loading-more {
   text-align: center;
   padding: 10px;
-  color: #909399;
+  color: #94a3b8;
   font-size: 12px;
+}
+
+/* ========== 分隔手柄 ========== */
+.resize-handle {
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resize-handle:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.resize-handle:hover::after {
+  content: '';
+  width: 2px;
+  height: 36px;
+  background: #3b82f6;
+  border-radius: 1px;
+}
+
+/* ========== 内容面板 ========== */
+.content-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-left: 20px;
+  min-width: 0;
+}
+
+/* ========== 页头 ========== */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ========== 统计条 ========== */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #64748b;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.stat-item strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-left: 3px;
+}
+
+.stat-item .c-green { color: #10b981; }
+.stat-item .c-amber { color: #f59e0b; }
+.stat-item .c-purple { color: #6366f1; }
+
+.stat-sep {
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+/* ========== 搜索栏 ========== */
+.search-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.search-input {
+  width: 250px;
+}
+
+.search-icon {
+  font-size: 14px;
+}
+
+.status-select {
+  width: 120px;
+}
+
+.search-type-select {
+  width: 100px;
+}
+
+/* ========== 表格 ========== */
+.table-container {
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.table-scroll :deep(.el-table) {
+  /* 表格填满滚动区 */
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 16px;
+  background: #fff;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.empty-text {
+  color: #94a3b8;
+}
+
+/* ========== 状态标签 ========== */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 56px;
+  letter-spacing: 0.2px;
+}
+
+.status-monitoring {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+}
+
+.status-paused {
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+}
+
+.status-completed {
+  background: rgba(100, 116, 139, 0.08);
+  color: #64748b;
+}
+
+/* ========== 操作列 ========== */
+.action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.action-more {
+  font-size: 13px !important;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.drop-danger {
+  color: #ef4444 !important;
+}
+
+.drop-danger:hover {
+  background-color: #fef2f2 !important;
+  color: #ef4444 !important;
+}
+
+/* ========== 表格全局微调 ========== */
+:deep(.el-table) {
+  --el-table-border-color: #f1f5f9;
+  font-size: 13px;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: #f8fafc !important;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+:deep(.el-table tr) {
+  transition: background 0.15s;
+}
+
+:deep(.el-table .el-table__body tr:hover > td) {
+  background: #f8fafc;
+}
+
+:deep(.el-tag) {
+  border: none;
+  font-weight: 500;
+}
+
+:deep(.el-button) {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+:deep(.el-button--primary) {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+:deep(.el-button--primary:hover) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+:deep(.el-pagination) {
+  font-size: 13px;
+}
+
+:deep(.el-pagination .btn-prev),
+:deep(.el-pagination .btn-next) {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+:deep(.el-pagination .el-pager li) {
+  border-radius: 6px;
+}
+
+:deep(.el-pagination .el-pager li.is-active) {
+  background: #3b82f6;
+}
+
+:deep(.el-select .el-input__wrapper) {
+  border-radius: 6px;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+
+/* ========== 对话框内表单 ========== */
+.form-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
 }
 
 .group-select-wrapper {
@@ -2794,218 +3284,23 @@ onMounted(() => {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 14px;
-  color: #67c23a;
-  transition: all 0.2s;
+  color: #10b981;
+  transition: all 0.15s;
 }
 
 .group-action-btn:hover {
-  background-color: #f0f9eb;
+  background: rgba(16, 185, 129, 0.08);
 }
 
 .group-action-btn.delete-btn {
-  color: #f56c6c;
+  color: #ef4444;
 }
 
 .group-action-btn.delete-btn:hover {
-  background-color: #fef0f0;
+  background: #fef2f2;
 }
 
-.form-hint {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-}
-
-.exec-type-group {
-  display: flex;
-  gap: 30px;
-  margin-bottom: 12px;
-}
-
-.exec-time-config {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.exec-label {
-  font-size: 14px;
-  color: #606266;
-}
-
-.panel-title {
-  font-weight: bold;
-  color: #303133;
-}
-
-.group-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-}
-
-.group-item {
-  padding: 12px 15px;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.group-item:hover {
-  background: #f0f7ff;
-}
-
-.group-item.active {
-  background: #e6f0ff;
-  color: #409eff;
-}
-
-.group-name {
-  font-size: 14px;
-}
-
-.group-count {
-  font-size: 12px;
-  color: #909399;
-}
-
-.resize-handle {
-  width: 6px;
-  height: 100%;
-  cursor: col-resize;
-  background: transparent;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.resize-handle:hover {
-  background: #409eff;
-}
-
-.resize-handle:hover::before {
-  content: '';
-  width: 2px;
-  height: 40px;
-  background: #409eff;
-  border-radius: 1px;
-}
-
-.resize-handle.hidden {
-  width: 0;
-  cursor: default;
-  visibility: hidden;
-}
-
-.content-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding-left: 20px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-icon {
-  margin-right: 4px;
-}
-
-.search-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
-}
-
-.search-input {
-  width: 250px;
-}
-
-.search-icon {
-  font-size: 14px;
-}
-
-.status-select {
-  width: 120px;
-}
-
-.table-container {
-  flex: 1;
-  background: #fff;
-}
-
-.empty-text {
-  color: #909399;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
-
-.danger-text {
-  color: #f56c6c !important;
-}
-
-.danger-text:hover {
-  color: #f56c6c !important;
-}
-
-.divider-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.alarm-toolbar,
-.dispatch-toolbar {
-  margin-bottom: 15px;
-}
-
-.monitor-data-panel {
-  padding: 10px 0;
-}
-
-.data-filters {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.data-placeholder {
-  height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fafafa;
-  border: 1px dashed #dcdfe6;
-  border-radius: 4px;
-  color: #909399;
-}
-
+/* ========== 坐标输入 ========== */
 .coordinate-input {
   display: flex;
   align-items: center;
@@ -3018,12 +3313,13 @@ onMounted(() => {
 
 .coord-separator {
   margin: 0 4px;
-  color: #909399;
+  color: #94a3b8;
 }
 
+/* ========== 地图 ========== */
 .map-container {
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -3032,32 +3328,33 @@ onMounted(() => {
 }
 
 .map-info {
-  padding: 10px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   font-size: 13px;
+  color: #475569;
 }
 
+/* ========== 传感器标签 ========== */
 .sensor-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-right: 8px;
+  margin-right: 6px;
   margin-bottom: 4px;
   padding: 2px 8px;
-  background: #f5f7fa;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
+  color: #475569;
 }
 
-.sensor-icon {
-  width: 16px;
-  height: 16px;
-}
-
+/* ========== 穿梭框 ========== */
 .transfer-container {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   height: 400px;
 }
 
@@ -3065,19 +3362,22 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .transfer-panel .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .transfer-panel .panel-title {
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .transfer-panel .search-input {
@@ -3087,18 +3387,18 @@ onMounted(() => {
 .transfer-tree {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 8px;
 }
 
 .transfer-actions {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .arrow-icon {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .tree-node {
@@ -3113,27 +3413,21 @@ onMounted(() => {
 }
 
 .bind-count {
-  font-size: 12px;
-  color: #909399;
+  font-size: 11px;
+  color: #94a3b8;
 }
 
 .status-tag {
   margin-left: auto;
 }
 
+/* ========== 表达编辑器 ========== */
 .expression-builder {
   margin-top: 15px;
 }
 
 .expression-section {
   margin-bottom: 15px;
-}
-
-.section-title {
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 8px;
-  display: block;
 }
 
 .expression-row {
@@ -3152,110 +3446,158 @@ onMounted(() => {
 .expression-toolbar {
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid #f1f5f9;
 }
 
 .expression-tips {
   margin-top: 10px;
   font-size: 12px;
-  color: #909399;
+  color: #94a3b8;
 }
 
+/* ========== 通知渠道标签 ========== */
 .channel-tag {
   display: inline-block;
   padding: 2px 8px;
-  background: #f5f7fa;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   margin-right: 4px;
+  color: #475569;
 }
 
+/* ========== 告警配置 ========== */
 .alarm-config-content {
-  padding: 10px;
+  padding: 8px;
 }
 
 .config-section {
-  margin-bottom: 25px;
+  margin-bottom: 24px;
 }
 
 .config-section:last-child {
   margin-bottom: 0;
 }
 
-.config-section .section-title {
-  font-size: 16px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #409eff;
+.alarm-toolbar,
+.dispatch-toolbar {
+  margin-bottom: 12px;
 }
 
+.alarm-config-view {
+  padding: 8px;
+}
+
+/* ========== 分区标题 ========== */
+.section-title {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+  display: block;
+  font-size: 13px;
+}
+
+.config-section .section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.divider-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* ========== 详情弹窗 ========== */
 .basic-info-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .info-section,
 .map-section,
 .system-info-section {
-  background: #fafafa;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 15px;
+  padding: 16px;
 }
 
 .info-section .section-title,
 .map-section .section-title,
 .system-info-section .section-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 15px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.map-section {
-  padding: 15px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .map-section #detail-map {
-  border-radius: 4px;
-  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ========== 监测数据面板 ========== */
+.monitor-data-panel {
+  padding: 8px 0;
+}
+
+.data-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
 }
 
 .data-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 14px;
 }
 
 .data-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .data-content {
   height: 400px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .chart-container {
   width: 100%;
   height: 100%;
+  position: relative;
 }
 
-.chart-placeholder {
+.chart-inner {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fafafa;
-  border: 1px dashed #dcdfe6;
-  border-radius: 4px;
-  color: #909399;
+}
+
+.chart-empty-tip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #94a3b8;
+  font-size: 13px;
+  pointer-events: none;
 }
 
 .data-content .table-container {
@@ -3263,47 +3605,109 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.alarm-config-view {
-  padding: 10px;
-}
-
+/* ========== Element Plus 深层覆盖 ========== */
 :deep(.el-form-item) {
   margin-bottom: 18px;
 }
 
-:deep(.el-descriptions) {
-  margin-bottom: 20px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
+:deep(.el-form-item__label) {
+  color: #475569;
+  font-size: 13px;
   font-weight: 500;
-  text-align: center;
-  min-width: 60px;
 }
 
-.status-monitoring {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #c8e6c9;
+:deep(.el-descriptions) {
+  margin-bottom: 18px;
 }
 
-.status-paused {
-  background-color: #fff3e0;
-  color: #e65100;
-  border: 1px solid #ffe0b2;
+:deep(.el-descriptions__label) {
+  color: #64748b;
+  font-size: 12px;
 }
 
-.status-completed {
-  background-color: #f5f5f5;
-  color: #757575;
-  border: 1px solid #e0e0e0;
+:deep(.el-descriptions__content) {
+  color: #1f2937;
+  font-size: 13px;
 }
 
-.search-type-select {
-  width: 100px;
+:deep(.el-dialog) {
+  border-radius: 12px;
+}
+
+:deep(.el-dialog__header) {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+:deep(.el-dialog__title) {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+:deep(.el-dialog__body) {
+  padding: 20px 24px;
+}
+
+:deep(.el-dialog__footer) {
+  padding: 14px 24px 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+:deep(.el-tabs__item) {
+  font-size: 13px;
+  color: #64748b;
+}
+
+:deep(.el-tabs__item.is-active) {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+:deep(.el-tabs__active-bar) {
+  background: #3b82f6;
+}
+
+/* ========== 告警表单相关 ========== */
+.exec-type-group {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 12px;
+}
+
+.exec-time-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exec-label {
+  font-size: 13px;
+  color: #475569;
+}
+
+.danger-text {
+  color: #ef4444 !important;
+}
+
+.danger-text:hover {
+  color: #dc2626 !important;
+}
+
+.data-placeholder {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  color: #94a3b8;
+}
+
+:deep(.el-tree-node__content) {
+  height: 32px;
+  font-size: 13px;
 }
 </style>
