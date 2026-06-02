@@ -26,9 +26,19 @@
                 <span class="menu-icon" v-html="menu.icon"></span>
                 <span>{{ menu.label }}</span>
               </template>
-              <el-menu-item v-for="child in menu.children" :key="child.name" :index="child.name">
-                {{ child.label }}
-              </el-menu-item>
+              <template v-for="child in menu.children" :key="child.name">
+                <template v-if="child.children && child.children.length > 0">
+                  <el-sub-menu :index="child.name">
+                    <template #title>{{ child.label }}</template>
+                    <el-menu-item v-for="subChild in child.children" :key="subChild.name" :index="subChild.name">
+                      {{ subChild.label }}
+                    </el-menu-item>
+                  </el-sub-menu>
+                </template>
+                <el-menu-item v-else :index="child.name">
+                  {{ child.label }}
+                </el-menu-item>
+              </template>
             </el-sub-menu>
           </template>
         </el-menu>
@@ -292,9 +302,14 @@ const menuList = [
     label: '告警中心',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     children: [
-      { name: 'RealtimeAlarm', label: '待办告警' },
+      { 
+        name: 'RealtimeAlarm', 
+        label: '待办告警',
+        children: [
+          { name: 'AlarmNotification', label: '历史告警' }
+        ]
+      },
       { name: 'AlarmCriteria', label: '告警判据' },
-      { name: 'AlarmNotification', label: '历史告警' },
       { name: 'AlarmDisposal', label: '告警通知查询' }
     ]
   },
