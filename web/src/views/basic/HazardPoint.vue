@@ -423,6 +423,22 @@
               <el-select v-model="dataFilter.attrCode" placeholder="选择指标" clearable style="width: 160px">
                 <el-option v-for="a in monitorAttrs" :key="a.code" :label="a.label" :value="a.code"/>
               </el-select>
+              <el-select v-model="dataFilter.valueType" placeholder="聚合粒度" style="width: 120px">
+                <el-option label="原始" value="current" />
+                <el-option label="小时" value="hour" />
+                <el-option label="天" value="24h" />
+                <el-option label="3天" value="72h" />
+              </el-select>
+              <el-date-picker
+                v-model="dataFilter.timeRange"
+                type="datetimerange"
+                range-separator="至"
+                start-placeholder="开始"
+                end-placeholder="结束"
+                format="YYYY-MM-DD HH:mm:ss"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 360px"
+              />
               <el-button type="primary" size="small" @click="handleQueryData">查询</el-button>
             </div>
 
@@ -440,18 +456,17 @@
             <div class="data-content">
               <div v-if="dataDisplayMode === 'chart'" class="chart-container">
                 <div ref="monitorChartRef" class="chart-inner"></div>
-                <div v-if="monitorDataList.length === 0" class="chart-empty-tip">暂无数据，请先选择条件并点击查询</div>
+                <div v-if="chartSeriesData.length === 0" class="chart-empty-tip">暂无数据，请先选择条件并点击查询</div>
               </div>
               <div v-else class="table-container">
                 <el-table :data="monitorDataList" border size="small">
-                  <el-table-column prop="time" label="时间" width="180" align="center">
-                    <template #default="{ row }">{{ formatMonitorTime(row.time) }}</template>
-                  </el-table-column>
+                  <el-table-column prop="dataTime" label="时间" width="180" align="center" />
                   <el-table-column prop="deviceName" label="设备" width="150" align="center" />
                   <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
                   <el-table-column prop="attrName" label="指标" width="100" align="center"/>
                   <el-table-column prop="value" label="数值" width="100" align="center" />
                   <el-table-column prop="unit" label="单位" width="80" align="center" />
+                  <el-table-column prop="qualityText" label="质量" width="80" align="center" />
                 </el-table>
               </div>
             </div>
@@ -871,7 +886,8 @@ import {
   updateHazardPointGroup
 } from '@/api/hazardPoint'
 import {getDeviceSensors} from '@/api/sensor'
-import {getMonitorDataPage} from '@/api/monitorData'
+import {getChartData, getLatestData, getMonitorDataPage} from '@/api/monitorData'
+import type {ChartData, LatestDataItem, MonitorDataPageItem} from '@/api/monitorData'
 
 interface HazardPointItem {
   id: string
@@ -1037,7 +1053,8 @@ const detailMapRef = ref<HTMLDivElement | null>(null)
 let detailMapInstance: L.Map | null = null
 
 const dataDisplayMode = ref('chart')
-const monitorDataList = ref<{ time: string; deviceName: string; sensorName: string; attrName: string; value: string; unit: string; direction: string }[]>([])
+const monitorDataList = ref<MonitorDataPageItem[]>([])
+const chartSeriesData = ref<ChartData[]>([])
 const monitorChartRef = ref<HTMLDivElement | null>(null)
 let monitorChartInstance: echarts.ECharts | null = null
 
@@ -1062,7 +1079,9 @@ const monitorSensorMap = ref<Map<number, any>>(new Map())
 const dataFilter = reactive({
   deviceId: '' as string | number,
   sensorId: '' as string | number,
-  attrCode: ''
+  attrCode: '',
+  valueType: 'current',
+  timeRange: null as [string, string] | null
 })
 
 const bindDeviceDialogVisible = ref(false)
@@ -1731,6 +1750,7 @@ const handleView = async (row: HazardPointItem) => {
     initBoundDevices(row.id)
     initAlarmCriteria(row.id)
     initDispatchRules(row.id)
+    initLatestData(row.id)
     detailDialogVisible.value = true
     nextTick(() => {
       initDetailMap()
@@ -2517,7 +2537,18 @@ const handleDeleteDispatchRule = (row: DispatchRule) => {
   }).catch(() => {})
 }
 
+const latestDataList = ref<LatestDataItem[]>([])
+
+const initLatestData = async (hazardPointId: string) => {
+  try {
+    latestDataList.value = await getLatestData(Number(hazardPointId))
+  } catch {
+    latestDataList.value = []
+  }
+}
+
 // 设备选择 → 加载传感器列表
+
 const onDataDeviceChange = async (deviceId: string | number) => {
   dataFilter.sensorId = ''
   dataFilter.attrCode = ''
@@ -2552,13 +2583,7 @@ const onDataSensorChange = (sensorId: string | number) => {
   }))
 }
 
-const formatMonitorTime = (ts: any) => {
-  if (!ts) return ''
-  if (typeof ts === 'number') return new Date(ts).toISOString().replace('T', ' ').substring(0, 19)
-  return String(ts)
-}
-
-// ==================== 渲染监测数据折线图 ====================
+// ==================== 渲染监测数据折线图（使用后端 chart 接口返回的 ChartData[]） ====================
 const disposeMonitorChart = () => {
   if (monitorChartInstance) {
     monitorChartInstance.dispose()
@@ -2568,58 +2593,38 @@ const disposeMonitorChart = () => {
 
 const renderMonitorChart = () => {
   if (!monitorChartRef.value) return
-  // v-if 会销毁 DOM，旧实例可能绑在已销毁的 DOM 上，每次渲染前先销毁重建
   disposeMonitorChart()
-  if (monitorDataList.value.length === 0) return
+  const seriesData = chartSeriesData.value
+  if (seriesData.length === 0) return
   monitorChartInstance = echarts.init(monitorChartRef.value)
 
-  // 按 attrName 分组，每组对应一条折线（无筛选条件时可能存在多个方向）
-  const groups = new Map<string, { time: number; value: number }[]>()
-  for (const item of monitorDataList.value) {
-    const key = item.attrName || '数值'
-    if (!groups.has(key)) groups.set(key, [])
-    const ts = typeof item.time === 'number' ? item.time : new Date(item.time).getTime()
-    const v = parseFloat(item.value)
-    groups.get(key)!.push({ time: ts, value: isNaN(v) ? 0 : v })
-  }
-
-  // 收集所有时间点并去重、排序，作为公共横轴
-  const allTimes = new Set<number>()
-  for (const pts of groups.values()) {
-    for (const p of pts) allTimes.add(p.time)
-  }
-  const xData = Array.from(allTimes).sort((a, b) => a - b).map(t => formatMonitorTime(t))
-  const xTimeMap = new Map<number, number>() // time → index
-  Array.from(allTimes).sort((a, b) => a - b).forEach((t, i) => xTimeMap.set(t, i))
-
-  // 三条折线颜色（多组也循环使用）
-  const COLOR_PALETTE = [
-    { hex: '#409eff', rgb: 'rgba(64,158,255' },
-    { hex: '#67c23a', rgb: 'rgba(103,194,58' },
-    { hex: '#e6a23c', rgb: 'rgba(230,162,60' },
-    { hex: '#f56c6c', rgb: 'rgba(245,108,108' },
+  const colors = [
+    { hex: '#5470C6', rgb: 'rgba(84,112,198' },
+    { hex: '#91CC75', rgb: 'rgba(145,204,117' },
+    { hex: '#FAC858', rgb: 'rgba(250,200,88' },
+    { hex: '#EE6666', rgb: 'rgba(238,102,102' },
+    { hex: '#73C0DE', rgb: 'rgba(115,192,222' },
+    { hex: '#3BA272', rgb: 'rgba(59,162,114' },
+    { hex: '#FC8452', rgb: 'rgba(252,132,82' },
+    { hex: '#9A60B4', rgb: 'rgba(154,96,180' },
+    { hex: '#EA7CCC', rgb: 'rgba(234,124,204' },
     { hex: '#909399', rgb: 'rgba(144,147,153' },
   ]
-  const groupNames = Array.from(groups.keys())
-  const unit = monitorDataList.value[0]?.unit || ''
 
-  const series = groupNames.map((name, idx) => {
-    const pts = groups.get(name)!
-    // 构建按统一时间轴对齐的数据（缺少的时间点填 null，折线不中断）
-    const data = new Array(xData.length).fill(null)
-    for (const p of pts) {
-      const ti = xTimeMap.get(p.time)
-      if (ti !== undefined) data[ti] = p.value
-    }
-    const c = COLOR_PALETTE[idx % COLOR_PALETTE.length]
+  const allLabelsSet = new Set<string>()
+  for (const s of seriesData) for (const l of s.labels) allLabelsSet.add(l)
+  const xData = Array.from(allLabelsSet).sort()
+
+  const series = seriesData.map((s, idx) => {
+    const c = colors[idx % colors.length]
+    const labelToValue = new Map<string, number>()
+    for (let i = 0; i < s.labels.length; i++) labelToValue.set(s.labels[i], s.values[i])
     return {
-      name,
       type: 'line' as const,
-      data,
+      name: s.seriesName,
+      data: xData.map(l => [l, labelToValue.get(l) ?? null]),
       smooth: true,
-      symbol: 'circle',
-      symbolSize: 4,
-      connectNulls: true,
+      symbol: 'none',
       lineStyle: { color: c.hex, width: 2 },
       itemStyle: { color: c.hex },
       areaStyle: {
@@ -2631,19 +2636,18 @@ const renderMonitorChart = () => {
     }
   })
 
+  const seriesNames = seriesData.map(s => s.seriesName)
+  const unit = seriesData[0]?.unit || ''
+  const allSeries = seriesData.flatMap(s => s.values)
+  const hasData = allSeries.length > 0
+  const minValue = hasData ? Math.min(...allSeries) : undefined
+  const maxValue = hasData ? Math.max(...allSeries) : undefined
+  const yMin = minValue != null ? minValue - Math.abs(minValue) * 0.05 : undefined
+  const yMax = maxValue != null ? maxValue + Math.abs(maxValue) * 0.05 : undefined
+
   monitorChartInstance.setOption({
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: any[]) => {
-        if (!params || params.length === 0) return ''
-        let html = params[0].axisValue
-        for (const p of params) {
-          if (p.value != null) html += `<br/>${p.marker} ${p.seriesName}: ${p.value} ${unit}`
-        }
-        return html
-      }
-    },
-    legend: groupNames.length > 1 ? { bottom: 0, textStyle: { fontSize: 12 } } : undefined,
+    tooltip: { trigger: 'axis' },
+    legend: { type: 'scroll', bottom: 0, data: seriesNames },
     xAxis: {
       type: 'category',
       data: xData,
@@ -2652,14 +2656,16 @@ const renderMonitorChart = () => {
     yAxis: {
       type: 'value',
       name: unit,
+      min: yMin,
+      max: yMax,
       nameTextStyle: { fontSize: 12 }
     },
     dataZoom: [
       { type: 'inside' },
-      { type: 'slider', bottom: groupNames.length > 1 ? 28 : 0 }
+      { type: 'slider', bottom: seriesNames.length > 1 ? 28 : 0 }
     ],
     series,
-    grid: { left: 60, right: 30, top: 30, bottom: groupNames.length > 1 ? 60 : 50 }
+    grid: { left: 60, right: 30, top: 30, bottom: seriesNames.length > 1 ? 60 : 50 }
   }, true)
 }
 
@@ -2668,40 +2674,73 @@ const handleQueryData = async () => {
     ElMessage.warning('请先选择隐患点');
     return
   }
+  const baseParams = {
+    hazardPointId: Number(currentRow.value.id),
+    valueType: dataFilter.valueType || undefined,
+    startTime: dataFilter.timeRange?.[0] || undefined,
+    endTime: dataFilter.timeRange?.[1] || undefined
+  }
+  if (dataFilter.deviceId) Object.assign(baseParams, {deviceId: Number(dataFilter.deviceId)})
+  if (dataFilter.sensorId) Object.assign(baseParams, {sensorId: Number(dataFilter.sensorId)})
+  if (dataFilter.attrCode) Object.assign(baseParams, {attrCode: dataFilter.attrCode})
+
+  if (dataDisplayMode.value === 'chart') {
+    await queryChart(baseParams)
+  } else {
+    await queryPage(baseParams)
+  }
+}
+
+const queryChart = async (baseParams: Record<string, unknown>) => {
+  if (!baseParams.startTime || !baseParams.endTime) {
+    ElMessage.warning('图表模式需要选择时间范围')
+    return
+  }
   try {
-    const params: any = {hazardPointId: Number(currentRow.value.id), pageNum: 1, pageSize: 50}
-    if (dataFilter.deviceId) params.deviceId = Number(dataFilter.deviceId)
-    if (dataFilter.sensorId) params.sensorId = Number(dataFilter.sensorId)
-    if (dataFilter.attrCode) params.attrCode = dataFilter.attrCode
-    const res: any = await getMonitorDataPage(params)
-    monitorDataList.value = (res.rows || []).map((item: any) => ({
-      time: item.dataTime || item.time,
-      deviceName: item.deviceName,
-      sensorName: item.sensorName,
-      attrName: item.attrName || item.attrCode,
-      value: item.value,
-      unit: item.unit || ''
-    }))
-    ElMessage.success(`加载 ${monitorDataList.value.length} 条数据`)
+    const series = await getChartData({
+      hazardPointId: baseParams.hazardPointId as number,
+      deviceId: baseParams.deviceId as number | undefined,
+      sensorId: baseParams.sensorId as number | undefined,
+      attrCode: baseParams.attrCode as string | undefined,
+      valueType: baseParams.valueType as string | undefined,
+      startTime: baseParams.startTime as string,
+      endTime: baseParams.endTime as string
+    })
+    chartSeriesData.value = series
+    ElMessage.success(`加载 ${series.length} 条曲线，共 ${series[0]?.labels.length || 0} 个数据点`)
     await nextTick()
     renderMonitorChart()
+  } catch {
+    ElMessage.error('获取图表数据失败')
+  }
+}
+
+const queryPage = async (baseParams: Record<string, unknown>) => {
+  try {
+    const res = await getMonitorDataPage({
+      hazardPointId: baseParams.hazardPointId as number,
+      deviceId: baseParams.deviceId as number | undefined,
+      sensorId: baseParams.sensorId as number | undefined,
+      attrCode: baseParams.attrCode as string | undefined,
+      valueType: baseParams.valueType as string | undefined,
+      startTime: baseParams.startTime as string | undefined,
+      endTime: baseParams.endTime as string | undefined,
+      pageNum: 1,
+      pageSize: 100
+    })
+    monitorDataList.value = res.rows || []
+    ElMessage.success(`加载 ${monitorDataList.value.length} 条数据`)
   } catch {
     ElMessage.error('获取监测数据失败')
   }
 }
 
 const handleImportData = () => {
-  ElMessage.info('正在导入监测数据...')
-  setTimeout(() => {
-    ElMessage.success('监测数据导入成功')
-  }, 1000)
+  ElMessage.info('导入功能开发中，敬请期待')
 }
 
 const handleExportData = () => {
-  ElMessage.info('正在导出监测数据...')
-  setTimeout(() => {
-    ElMessage.success('监测数据导出成功')
-  }, 1000)
+  ElMessage.info('导出功能开发中，敬请期待')
 }
 
 const handleBatchPause = async () => {
@@ -2782,7 +2821,6 @@ const handleBatchComplete = async () => {
   }).catch(() => {})
 }
 
-// 切换到表格视图时 v-if 会销毁图表 DOM，先销毁 ECharts 实例避免残留在已销毁 DOM 上
 watch(dataDisplayMode, (mode) => {
   if (mode === 'chart') {
     nextTick(() => renderMonitorChart())
@@ -2791,7 +2829,6 @@ watch(dataDisplayMode, (mode) => {
   }
 })
 
-// 切换到监测数据 tab 时重新渲染图表
 watch(activeTab, (tab) => {
   if (tab === 'monitorData' && dataDisplayMode.value === 'chart') {
     nextTick(() => renderMonitorChart())
@@ -2807,6 +2844,7 @@ watch(detailDialogVisible, (visible) => {
     }
     // 重置监测数据相关状态
     monitorDataList.value = []
+    chartSeriesData.value = []
     dataFilter.deviceId = ''
     dataFilter.sensorId = ''
     dataFilter.attrCode = ''

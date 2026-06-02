@@ -358,13 +358,13 @@ const loadChart = async () => {
   }
   chartLoading.value = true
   try {
-    const res = await getChartData({
+    const series = await getChartData({
       ...buildMonitorParams(),
       startTime: monitorTimeRange.value![0],
       endTime: monitorTimeRange.value![1]
     })
     await nextTick()
-    renderChart(res)
+    renderChart(series)
   } catch {
     ElMessage.error('获取图表数据失败')
   } finally {
@@ -372,21 +372,35 @@ const loadChart = async () => {
   }
 }
 
-const renderChart = (data: ChartData) => {
+const renderChart = (seriesData: ChartData[]) => {
   if (!chartRef.value) return
   if (!chartInstance) chartInstance = echarts.init(chartRef.value)
+  const first = seriesData[0]
+  if (!first) return
+  const allLabels = new Set<string>()
+  for (const s of seriesData) for (const l of s.labels) allLabels.add(l)
+  const xData = Array.from(allLabels).sort()
+  const series = seriesData.map(s => {
+    const labelToValue = new Map<string, number>()
+    for (let i = 0; i < s.labels.length; i++) labelToValue.set(s.labels[i], s.values[i])
+    return {
+      name: s.seriesName,
+      type: 'line' as const,
+      data: xData.map(l => labelToValue.get(l) ?? null),
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { width: 2 },
+      areaStyle: { color: 'rgba(64,158,255,0.1)' }
+    }
+  })
   chartInstance.setOption({
     tooltip: {trigger: 'axis'},
-    xAxis: {type: 'category', data: data.labels || [], axisLabel: {rotate: 30, fontSize: 10}},
-    yAxis: {type: 'value', name: data.unit || ''},
+    legend: {type: 'scroll', bottom: 0, data: seriesData.map(s => s.seriesName)},
+    xAxis: {type: 'category', data: xData, axisLabel: {rotate: 30, fontSize: 10}},
+    yAxis: {type: 'value', name: first.unit || ''},
     dataZoom: [{type: 'inside'}, {type: 'slider'}],
-    series: [{
-      name: data.attrName || '',
-      type: 'line', data: data.values || [], smooth: true,
-      lineStyle: {color: '#409eff', width: 2},
-      areaStyle: {color: 'rgba(64,158,255,0.1)'}
-    }],
-    grid: {left: 50, right: 20, top: 20, bottom: 60}
+    series,
+    grid: {left: 50, right: 20, top: 20, bottom: seriesData.length > 1 ? 50 : 60}
   }, true)
 }
 

@@ -2,19 +2,25 @@ import request from '@/utils/request'
 import type {AjaxResult, PageResult} from './system'
 
 export interface LatestDataItem {
+    hazardPointId: number
+    hazardPointName: string
     deviceId: number
     deviceName: string
     sensorId: number
-    sensorNo: string
     sensorName: string
     attrCode: string
     attrName: string
     value: number
     unit: string
-    dataTime: number
+    dataTime: string
+    quality: number
+    qualityText: string
 }
 
 export interface ChartData {
+    seriesName: string
+    deviceName: string
+    sensorName: string
     labels: string[]
     values: number[]
     unit: string
@@ -25,6 +31,8 @@ export interface ChartData {
 }
 
 export interface MonitorDataPageItem {
+    hazardPointId: number
+    hazardPointName: string
     dataTime: string
     deviceId: number
     deviceName: string
@@ -35,6 +43,7 @@ export interface MonitorDataPageItem {
     value: number
     unit: string
     quality: number
+    qualityText: string
 }
 
 export interface MonitorDataPageQuery {
@@ -42,6 +51,7 @@ export interface MonitorDataPageQuery {
     deviceId?: number
     sensorId?: number
     attrCode?: string
+    valueType?: string
     startTime?: string
     endTime?: string
     pageNum?: number
@@ -61,13 +71,14 @@ export const getLatestData = (hazardPointId: number) =>
 export const getMonitorDataPage = (params: MonitorDataPageQuery) =>
     unwrap<PageResult<MonitorDataPageItem>>(request.get('/monitor-data/page', {params}))
 
-/** 查询监测指标的图表（曲线）数据 */
+/** 查询监测指标的图表（曲线）数据（支持多测点多序列） */
 export const getChartData = (params: {
     hazardPointId: number
     deviceId?: number
     sensorId?: number
     attrCode?: string
+    valueType?: string
     startTime: string
     endTime: string
 }) =>
-    unwrap<ChartData>(request.get('/monitor-data/chart', {params}))
+    unwrap<ChartData[]>(request.get('/monitor-data/chart', {params}))
