@@ -997,18 +997,29 @@ const goToDashboard = () => {
 .tab-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
+  gap: 6px;
+  padding: 8px 10px 8px 14px;
   height: 36px;
   line-height: 20px;
   cursor: pointer;
-  border-radius: var(--radius-md);
+  border-radius: 10px 0 10px 0;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 14px;
   color: #666666;
   white-space: nowrap;
   background: transparent;
   position: relative;
+}
+
+.tab-item + .tab-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 16px;
+  background: #dcdfe6;
 }
 
 .tab-item::before {
