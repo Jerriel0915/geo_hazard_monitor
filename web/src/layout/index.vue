@@ -19,7 +19,7 @@
         </span>
       </div>
       <nav class="header-nav">
-        <el-menu mode="horizontal" default-active="Dashboard" @select="handleMenuSelect" class="nav-menu">
+        <el-menu mode="horizontal" :default-active="activeMenu" @select="handleMenuSelect" class="nav-menu">
           <template v-for="menu in menuList" :key="menu.name">
             <el-sub-menu :index="menu.name">
               <template #title>
@@ -265,6 +265,8 @@ const pwdForm = reactive({
   confirmPwd: ''
 })
 
+const activeMenu = ref('')
+
 const menuList = [
   {
     name: 'Dashboard',
@@ -397,11 +399,13 @@ const handleMenuSelect = (key: string) => {
       tabs.value.push({ name: key, label: menuLabelMap[key] })
     }
     activeTab.value = key
+    activeMenu.value = key
   }
 }
 
 const switchTab = (name: string) => {
   activeTab.value = name
+  activeMenu.value = name === 'Dashboard' ? '' : name
   const route = menuRouteMap[name]
   if (route) {
     router.push(route)
@@ -415,9 +419,12 @@ const closeTab = (name: string) => {
     if (activeTab.value === name) {
       if (tabs.value.length > 0) {
         const newIndex = index > 0 ? index - 1 : 0
-        activeTab.value = tabs.value[newIndex].name
-        router.push(menuRouteMap[tabs.value[newIndex].name])
+        const newTab = tabs.value[newIndex]
+        activeTab.value = newTab.name
+        activeMenu.value = newTab.name === 'Dashboard' ? '' : newTab.name
+        router.push(menuRouteMap[newTab.name])
       } else {
+        activeMenu.value = ''
         router.push('/dashboard')
       }
     }
@@ -428,6 +435,7 @@ const handleTabAction = (command: string) => {
   if (command === 'closeAll') {
     tabs.value = [{ name: 'Dashboard', label: '首页' }]
     activeTab.value = 'Dashboard'
+    activeMenu.value = ''
     router.push('/dashboard')
   } else if (command === 'closeOther') {
     tabs.value = tabs.value.filter(tab => tab.name === activeTab.value)
@@ -487,6 +495,7 @@ const scrollTabs = (direction: 'left' | 'right') => {
 
 const goToDashboard = () => {
   router.push('/dashboard')
+  activeMenu.value = ''
   if (!tabs.value.find(tab => tab.name === 'Dashboard')) {
     tabs.value.push({name: 'Dashboard', label: '首页'})
   }
@@ -502,9 +511,9 @@ const goToDashboard = () => {
   --success-color: #52c41a;
   --warning-color: #faad14;
   --error-color: #f5222d;
-  --text-primary: #1f1f1f;
-  --text-secondary: #666666;
-  --text-tertiary: #999999;
+  --text-primary: #303133;
+  --text-secondary: #606266;
+  --text-tertiary: #909399;
   --bg-primary: #f0f2f5;
   --bg-secondary: #ffffff;
   --border-color: #e8e8e8;
@@ -622,38 +631,65 @@ const goToDashboard = () => {
 .nav-menu {
   background: transparent;
   border: none;
+  --el-menu-hover-bg-color: rgba(255, 255, 255, 0.12);
+  --el-menu-active-color: #ffffff;
 }
 
-.nav-menu .el-menu-item {
-  color: white;
-  height: 50px;
-  line-height: 50px;
-  font-size: 14px;
-  padding: 0 20px;
-  transition: all 0.3s ease;
-  background-color: rgba(30, 136, 229, 0.95);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-.nav-menu .el-menu-item:hover,
-.nav-menu .el-menu-item.is-active {
-  background-color: rgba(0, 60, 130, 0.85);
-  color: #ffffff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  letter-spacing: 0.5px;
-}
-
-.nav-menu .el-sub-menu__title {
-  color: white;
-  height: 64px;
-  line-height: 64px;
+.nav-menu :deep(.el-sub-menu__title) {
+  color: rgba(255, 255, 255, 0.9);
+  height: 40px;
+  line-height: 40px;
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 14px;
   padding: 0 20px;
-  transition: all 0.3s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  margin: 12px 0;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  border-radius: 24px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(4px);
+}
+
+.nav-menu :deep(.el-sub-menu__title:hover) {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-menu :deep(.el-sub-menu.is-active .el-sub-menu__title) {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff;
+  font-weight: 600;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-menu :deep(.el-sub-menu.is-active .menu-icon svg) {
+  transform: scale(1.1);
+}
+
+.nav-menu :deep(.el-menu-item) {
+  color: rgba(255, 255, 255, 0.9);
+  height: 50px;
+  line-height: 50px;
+  font-size: 14px;
+  padding: 0 20px;
+  transition: all 0.25s ease;
+  background-color: transparent;
+}
+
+.nav-menu :deep(.el-menu-item:hover) {
+  background-color: rgba(0, 20, 60, 0.7) !important;
+  color: #ffffff;
+}
+
+.nav-menu :deep(.el-menu-item.is-active) {
+  background-color: rgba(0, 20, 60, 0.85) !important;
+  color: #ffffff;
+  font-weight: 600;
+  border-bottom: 2px solid #ffffff;
 }
 
 .menu-icon {
@@ -664,23 +700,7 @@ const goToDashboard = () => {
 .menu-icon :deep(svg) {
   width: 18px;
   height: 18px;
-  transition: transform 0.3s ease;
-}
-
-.nav-menu .el-sub-menu__title:hover {
-  background-color: rgba(0, 60, 130, 0.5);
-  color: #ffffff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.nav-menu .el-sub-menu.is-active .el-sub-menu__title {
-  background-color: rgba(0, 60, 130, 0.5);
-  color: #001529;
-  text-shadow: none;
-}
-
-.nav-menu .el-sub-menu.is-active .menu-icon :deep(svg) {
-  transform: scale(1.1);
+  transition: transform 0.25s ease;
 }
 
 .header-right {
@@ -1169,15 +1189,4 @@ const goToDashboard = () => {
   transition: all 0.25s ease;
 }
 
-:deep(.el-button--primary) {
-  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  border: none;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
-}
-
-:deep(.el-button--primary:hover) {
-  background: linear-gradient(135deg, #40a9ff 0%, #1890ff 100%);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
-  transform: translateY(-1px);
-}
 </style>
