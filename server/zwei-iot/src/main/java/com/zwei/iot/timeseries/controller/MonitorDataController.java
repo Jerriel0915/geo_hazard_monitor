@@ -60,12 +60,13 @@ public class MonitorDataController {
                            @RequestParam(required = false) Long deviceId,
                            @RequestParam(required = false) Long sensorId,
                            @RequestParam(required = false) String attrCode,
+                           @RequestParam(required = false) String valueType,
                            @RequestParam(required = false) String startTime,
                            @RequestParam(required = false) String endTime,
                            @RequestParam(defaultValue = "1") int pageNum,
                            @RequestParam(defaultValue = "10") int pageSize) {
         return AjaxResult.success("成功", monitorDataQueryService.page(
-                hazardPointId, deviceId, sensorId, attrCode, startTime, endTime, pageNum, pageSize
+                hazardPointId, deviceId, sensorId, attrCode, valueType, startTime, endTime, pageNum, pageSize
         ));
     }
 
@@ -86,10 +87,11 @@ public class MonitorDataController {
                             @RequestParam(required = false) Long deviceId,
                             @RequestParam(required = false) Long sensorId,
                             @RequestParam(required = false) String attrCode,
+                            @RequestParam(required = false) String valueType,
                             @RequestParam String startTime,
                             @RequestParam String endTime) {
         return AjaxResult.success("成功", monitorDataQueryService.chart(
-                hazardPointId, deviceId, sensorId, attrCode, startTime, endTime
+                hazardPointId, deviceId, sensorId, attrCode, valueType, startTime, endTime
         ));
     }
 }

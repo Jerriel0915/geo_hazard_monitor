@@ -6,9 +6,14 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
 import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
+import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
+import com.zwei.iot.timeseries.domain.ChartDataVO;
 import com.zwei.iot.timeseries.domain.IotdbQueryRow;
+import com.zwei.iot.timeseries.domain.MonitorDataVO;
+import com.zwei.iot.timeseries.domain.ValueType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +27,7 @@ import java.util.*;
 @Service
 public class MonitorDataQueryService {
     private final DeviceHazardPointMapper deviceHazardPointMapper;
+    private final HazardPointMapper hazardPointMapper;
     private final IDeviceSensorService deviceSensorService;
     private final IotdbTimeSeriesService iotdbTimeSeriesService;
 
@@ -29,14 +35,17 @@ public class MonitorDataQueryService {
      * 构造监测数据查询服务。
      *
      * @param deviceHazardPointMapper 设备隐患点绑定 Mapper
+     * @param hazardPointMapper       隐患点 Mapper
      * @param deviceSensorService     设备传感器服务
      * @param iotdbTimeSeriesService  IoTDB 时序服务
      */
     @Autowired
     public MonitorDataQueryService(DeviceHazardPointMapper deviceHazardPointMapper,
+                                   HazardPointMapper hazardPointMapper,
                                    IDeviceSensorService deviceSensorService,
                                    IotdbTimeSeriesService iotdbTimeSeriesService) {
         this.deviceHazardPointMapper = deviceHazardPointMapper;
+        this.hazardPointMapper = hazardPointMapper;
         this.deviceSensorService = deviceSensorService;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
     }
@@ -48,9 +57,10 @@ public class MonitorDataQueryService {
      * @return 最新监测数据集合
      * @throws ServiceException 当隐患点ID为空或元数据解析失败时抛出
      */
-    public List<Map<String, Object>> latest(Long hazardPointId) {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        for (ResolvedMeasurement measurement : resolveMeasurements(hazardPointId, null, null, null)) {
+    public List<MonitorDataVO> latest(Long hazardPointId) {
+        String hazardPointName = resolveHazardPointName(hazardPointId);
+        List<MonitorDataVO> rows = new ArrayList<>();
+        for (ResolvedMeasurement measurement : resolveMeasurements(hazardPointName, hazardPointId, null, null, null)) {
             IotdbQueryRow latest = iotdbTimeSeriesService.queryLatest(
                     measurement.deviceId(),
                     measurement.sensorNo(),
@@ -82,36 +92,54 @@ public class MonitorDataQueryService {
                                     Long deviceId,
                                     Long sensorId,
                                     String attrCode,
+                                    String valueType,
                                     String startTime,
                                     String endTime,
                                     int pageNum,
                                     int pageSize) {
-        List<Map<String, Object>> allRows = new ArrayList<>();
+        String hazardPointName = resolveHazardPointName(hazardPointId);
+        ValueType vt = ValueType.fromCode(valueType);
         Long startMillis = toMillis(startTime);
         Long endMillis = toMillis(endTime);
-        for (ResolvedMeasurement measurement : resolveMeasurements(hazardPointId, deviceId, sensorId, attrCode)) {
-            List<IotdbQueryRow> rangeRows = iotdbTimeSeriesService.queryRange(
-                    measurement.deviceId(),
-                    measurement.sensorNo(),
-                    measurement.attrCode(),
-                    startMillis,
-                    endMillis
-            );
-            for (IotdbQueryRow rangeRow : rangeRows) {
-                if (rangeRow.value() == null) {
-                    continue;
-                }
-                allRows.add(buildRow(measurement, rangeRow));
-            }
-        }
-        allRows.sort(Comparator.comparing(row -> String.valueOf(row.get("dataTime")), Comparator.reverseOrder()));
         int safePageNum = Math.max(pageNum, 1);
         int safePageSize = Math.max(pageSize, 10);
-        int fromIndex = Math.min((safePageNum - 1) * safePageSize, allRows.size());
-        int toIndex = Math.min(fromIndex + safePageSize, allRows.size());
+        List<ResolvedMeasurement> measurements = resolveMeasurements(hazardPointName, hazardPointId, deviceId, sensorId, attrCode);
+        List<MonitorDataVO> rows;
+        long total;
+        if (measurements.size() == 1) {
+            // 单测点：IoTDB 直接分页
+            ResolvedMeasurement m = measurements.get(0);
+            int offset = (safePageNum - 1) * safePageSize;
+            rows = new ArrayList<>();
+            for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
+                    m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis, safePageSize, offset)) {
+                if (r.value() != null) {
+                    rows.add(buildRow(m, r));
+                }
+            }
+            total = iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis);
+        } else {
+            // 多测点：每个测点查询 limit = pageNum * pageSize，合并排序后截取
+            int perMeasurementLimit = safePageNum * safePageSize;
+            total = 0;
+            List<MonitorDataVO> allRows = new ArrayList<>();
+            for (ResolvedMeasurement m : measurements) {
+                total += iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis);
+                for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
+                        m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis, perMeasurementLimit, 0)) {
+                    if (r.value() != null) {
+                        allRows.add(buildRow(m, r));
+                    }
+                }
+            }
+            allRows.sort(Comparator.comparing(MonitorDataVO::dataTime, Comparator.reverseOrder()));
+            int fromIndex = Math.min((safePageNum - 1) * safePageSize, allRows.size());
+            int toIndex = Math.min(fromIndex + safePageSize, allRows.size());
+            rows = allRows.subList(fromIndex, toIndex);
+        }
         Map<String, Object> data = new HashMap<>();
-        data.put("total", allRows.size());
-        data.put("rows", allRows.subList(fromIndex, toIndex));
+        data.put("total", total);
+        data.put("rows", rows);
         data.put("pageNum", safePageNum);
         data.put("pageSize", safePageSize);
         return data;
@@ -129,48 +157,62 @@ public class MonitorDataQueryService {
      * @return 图表数据对象
      * @throws ServiceException 当未找到可查询指标时抛出
      */
-    public Map<String, Object> chart(Long hazardPointId,
-                                     Long deviceId,
-                                     Long sensorId,
-                                     String attrCode,
-                                     String startTime,
-                                     String endTime) {
-        List<ResolvedMeasurement> measurements = resolveMeasurements(hazardPointId, deviceId, sensorId, attrCode);
+    public List<ChartDataVO> chart(Long hazardPointId,
+                                    Long deviceId,
+                                    Long sensorId,
+                                    String attrCode,
+                                    String valueType,
+                                    String startTime,
+                                    String endTime) {
+        String hazardPointName = resolveHazardPointName(hazardPointId);
+        List<ResolvedMeasurement> measurements = resolveMeasurements(hazardPointName, hazardPointId, deviceId, sensorId, attrCode);
         if (measurements.isEmpty()) {
             throw new ServiceException("未找到可查询的监测指标");
         }
-        ResolvedMeasurement measurement = measurements.get(0);
-        List<IotdbQueryRow> rows = iotdbTimeSeriesService.queryRange(
-                measurement.deviceId(),
-                measurement.sensorNo(),
-                measurement.attrCode(),
-                toMillis(startTime),
-                toMillis(endTime)
-        );
-        List<String> labels = new ArrayList<>();
-        List<Double> values = new ArrayList<>();
-        double max = Double.NEGATIVE_INFINITY;
-        double min = Double.POSITIVE_INFINITY;
-        double sum = 0D;
-        for (IotdbQueryRow row : rows) {
-            if (row.value() == null) {
-                continue;
+        ValueType vt = ValueType.fromCode(valueType);
+        Long startMillis = toMillis(startTime);
+        Long endMillis = toMillis(endTime);
+        List<ChartDataVO> series = new ArrayList<>();
+        for (ResolvedMeasurement measurement : measurements) {
+            List<IotdbQueryRow> rows = iotdbTimeSeriesService.queryRange(
+                    measurement.deviceId(),
+                    measurement.sensorNo(),
+                    measurement.attrCode(),
+                    startMillis,
+                    endMillis,
+                    vt
+            );
+            List<String> labels = new ArrayList<>();
+            List<Double> values = new ArrayList<>();
+            double max = Double.NEGATIVE_INFINITY;
+            double min = Double.POSITIVE_INFINITY;
+            double sum = 0D;
+            for (IotdbQueryRow row : rows) {
+                if (row.value() == null) {
+                    continue;
+                }
+                labels.add(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, new Date(row.time())));
+                values.add(row.value());
+                max = Math.max(max, row.value());
+                min = Math.min(min, row.value());
+                sum += row.value();
             }
-            labels.add(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, new Date(row.time())));
-            values.add(row.value());
-            max = Math.max(max, row.value());
-            min = Math.min(min, row.value());
-            sum += row.value();
+            String seriesName = measurement.attrName()
+                    + (measurement.sensorName() != null ? " (" + measurement.sensorName() + ")" : "");
+            series.add(new ChartDataVO(
+                    seriesName,
+                    measurement.deviceName(),
+                    measurement.sensorName(),
+                    labels,
+                    values,
+                    measurement.unit(),
+                    measurement.attrName(),
+                    values.isEmpty() ? null : max,
+                    values.isEmpty() ? null : min,
+                    values.isEmpty() ? null : sum / values.size()
+            ));
         }
-        Map<String, Object> data = new HashMap<>();
-        data.put("labels", labels);
-        data.put("values", values);
-        data.put("unit", measurement.unit());
-        data.put("attrName", measurement.attrName());
-        data.put("maxValue", values.isEmpty() ? null : max);
-        data.put("minValue", values.isEmpty() ? null : min);
-        data.put("avgValue", values.isEmpty() ? null : sum / values.size());
-        return data;
+        return series;
     }
 
     /**
@@ -183,7 +225,7 @@ public class MonitorDataQueryService {
      * @return 可查询指标集合
      * @throws ServiceException 当隐患点ID为空时抛出
      */
-    private List<ResolvedMeasurement> resolveMeasurements(Long hazardPointId, Long deviceId, Long sensorId, String attrCode) {
+    private List<ResolvedMeasurement> resolveMeasurements(String hazardPointName, Long hazardPointId, Long deviceId, Long sensorId, String attrCode) {
         if (hazardPointId == null) {
             throw new ServiceException("隐患点ID不能为空");
         }
@@ -206,6 +248,7 @@ public class MonitorDataQueryService {
                         continue;
                     }
                     measurements.add(new ResolvedMeasurement(
+                            hazardPointName,
                             hazardPointId,
                             boundDevice.getDeviceId(),
                             boundDevice.getDeviceName(),
@@ -229,21 +272,33 @@ public class MonitorDataQueryService {
      * @param row         IoTDB 查询结果
      * @return 接口输出行
      */
-    private Map<String, Object> buildRow(ResolvedMeasurement measurement, IotdbQueryRow row) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("hazardPointId", measurement.hazardPointId());
-        data.put("deviceId", measurement.deviceId());
-        data.put("deviceName", measurement.deviceName());
-        data.put("sensorId", measurement.sensorId());
-        data.put("sensorName", measurement.sensorName());
-        data.put("attrCode", measurement.attrCode());
-        data.put("attrName", measurement.attrName());
-        data.put("value", row.value());
-        data.put("unit", measurement.unit());
-        data.put("dataTime", DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, new Date(row.time())));
-        data.put("quality", row.quality());
-        data.put("qualityText", row.quality() == null || row.quality() == 0 ? "正常" : "异常");
-        return data;
+    private MonitorDataVO buildRow(ResolvedMeasurement measurement, IotdbQueryRow row) {
+        return new MonitorDataVO(
+                measurement.hazardPointId(),
+                measurement.hazardPointName(),
+                measurement.deviceId(),
+                measurement.deviceName(),
+                measurement.sensorId(),
+                measurement.sensorName(),
+                measurement.attrCode(),
+                measurement.attrName(),
+                row.value(),
+                measurement.unit(),
+                DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, new Date(row.time())),
+                row.quality(),
+                row.quality() == null || row.quality() == 0 ? "正常" : "异常"
+        );
+    }
+
+    /**
+     * 解析隐患点名称。
+     *
+     * @param hazardPointId 隐患点ID
+     * @return 隐患点名称；不存在时返回空字符串
+     */
+    private String resolveHazardPointName(Long hazardPointId) {
+        HazardPoint hazardPoint = hazardPointMapper.selectHazardPointById(hazardPointId);
+        return hazardPoint != null ? hazardPoint.getName() : "";
     }
 
     /**
@@ -259,7 +314,8 @@ public class MonitorDataQueryService {
         return DateUtils.parseDate(text).getTime();
     }
 
-    private record ResolvedMeasurement(Long hazardPointId,
+    private record ResolvedMeasurement(String hazardPointName,
+                                       Long hazardPointId,
                                        Long deviceId,
                                        String deviceName,
                                        Long sensorId,
