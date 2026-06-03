@@ -66,6 +66,12 @@
             <artifactId>zwei-iot</artifactId>
         </dependency>
 
+        <!-- 监控模块-->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-monitor</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

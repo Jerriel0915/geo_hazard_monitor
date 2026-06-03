@@ -8,52 +8,44 @@
         <version>3.9.2</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-
-    <artifactId>zwei-iot</artifactId>
+    <packaging>jar</packaging>
+    <artifactId>zwei-monitor</artifactId>
 
     <description>
-        IOT物联网模块 - 隐患点管理、设备管理、监测数据等
+        系统监控模块 — 统一对外暴露系统级监控与 MQTT 服务器运行状态
     </description>
 
     <dependencies>
-
-        <!-- 通用工具-->
+        <!-- 核心模块 -->
         <dependency>
             <groupId>com.zwei</groupId>
             <artifactId>zwei-common</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-        </dependency>
 
-        <!-- mica-mqtt -->
-        <dependency>
-            <groupId>org.dromara.mica-mqtt</groupId>
-            <artifactId>mica-mqtt-server-spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
-        </dependency>
-
-        <!-- 统一日志模块 -->
+        <!-- 框架模块（安全、权限） -->
         <dependency>
             <groupId>com.zwei</groupId>
-            <artifactId>zwei-log</artifactId>
+            <artifactId>zwei-framework</artifactId>
         </dependency>
 
+        <!-- IoT 模块（设备/隐患点 Mapper，MQTT 会话注册表） -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-iot</artifactId>
+        </dependency>
+
+        <!-- Spring Web（提供 RestTemplate 等） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
-
     </dependencies>
 
 </project>

@@ -194,6 +194,13 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+            <!-- 监控模块 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-monitor</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -205,6 +212,7 @@
         <module>zwei-quartz</module>
         <module>zwei-common</module>
         <module>zwei-iot</module>
+        <module>zwei-monitor</module>
     </modules>
     <packaging>pom</packaging>
 

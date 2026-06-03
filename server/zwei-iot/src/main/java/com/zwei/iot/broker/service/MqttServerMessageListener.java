@@ -4,6 +4,7 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.component.MqttDeviceSessionRegistry;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.timeseries.service.MonitorIngestFacade;
+import com.zwei.log.mqtt.MqttMessageLogService;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
@@ -24,12 +25,15 @@ import java.util.Optional;
 public class MqttServerMessageListener {
     private final MonitorIngestFacade monitorIngestFacade;
     private final MqttDeviceSessionRegistry sessionRegistry;
+    private final MqttMessageLogService messageLogService;
 
     @Autowired
     public MqttServerMessageListener(MonitorIngestFacade monitorIngestFacade,
-                                     MqttDeviceSessionRegistry sessionRegistry) {
+                                     MqttDeviceSessionRegistry sessionRegistry,
+                                     MqttMessageLogService messageLogService) {
         this.monitorIngestFacade = monitorIngestFacade;
         this.sessionRegistry = sessionRegistry;
+        this.messageLogService = messageLogService;
     }
 
     /**
@@ -59,8 +63,10 @@ public class MqttServerMessageListener {
             return;
         }
         Long deviceId = session.get().deviceId();
+        String username = session.get().authUsername();
         log.debug("收到监测主题消息 clientNode={}, topic={}", clientNode, topic);
         try {
+            messageLogService.record(clientId, username, topic, message);
             monitorIngestFacade.ingest(topic, message, deviceId);
         } catch (Exception e) {
             log.error("监测消息处理失败。topic={}, deviceId={}, clientId={}", topic, deviceId, clientId, e);
