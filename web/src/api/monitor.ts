@@ -154,3 +154,36 @@ export function kickMqttClient(clientId: string): Promise<AjaxResult<null>> {
 export function kickMqttClients(clientIds: string[]): Promise<AjaxResult<MqttKickBatchResult>> {
     return request.delete('/monitor/mqtt/clients/batch', {data: clientIds})
 }
+
+// ===================== 数据日志 =====================
+
+/** MQTT 数据日志条目 */
+export interface MqttMessageLogItem {
+    receiveTime: number
+    clientId: string
+    username: string
+    topic: string
+    payload: string
+    payloadSize: number
+}
+
+/** MQTT 数据日志分页查询参数 */
+export interface MqttMessageLogParams {
+    page?: number
+    pageSize?: number
+    clientId?: string
+    topic?: string
+}
+
+/** MQTT 数据日志分页结果 */
+export interface MqttMessageLogPageResult {
+    pageNumber: number
+    pageSize: number
+    totalRow: number
+    list: MqttMessageLogItem[]
+}
+
+/** 分页查询 MQTT 数据日志 */
+export function getMqttMessages(params?: MqttMessageLogParams): Promise<AjaxResult<MqttMessageLogPageResult>> {
+    return request.get('/monitor/mqtt/messages/page', {params})
+}

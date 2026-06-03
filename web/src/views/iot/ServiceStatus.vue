@@ -107,14 +107,6 @@
             <label>主题</label>
             <input v-model="logQuery.topic" type="text" placeholder="请输入主题"/>
           </div>
-          <div class="query-item query-item-time">
-            <label>时间范围</label>
-            <div class="time-inputs">
-              <input v-model="logQuery.startTime" type="datetime-local"/>
-              <span class="time-separator">至</span>
-              <input v-model="logQuery.endTime" type="datetime-local"/>
-            </div>
-          </div>
           <div class="query-actions">
             <button class="btn-query" @click="handleLogSearch">查询</button>
             <button class="btn-reset" @click="handleLogReset">重置</button>
@@ -133,26 +125,26 @@
           </tr>
           </thead>
           <tbody>
-          <tr v-for="(log, index) in logs" :key="log.id">
+          <tr v-for="(log, index) in logs" :key="(logPage - 1) * logPageSize + index">
             <td>{{ (logPage - 1) * logPageSize + index + 1 }}</td>
-            <td>{{ log.receiveTime }}</td>
+            <td>{{ formatTimestamp(log.receiveTime) }}</td>
             <td><code>{{ log.clientId || '-' }}</code></td>
             <td>{{ log.username }}</td>
             <td><code>{{ log.topic }}</code></td>
-            <td class="log-message-cell">{{ log.message }}</td>
-            <td>{{ log.size }}</td>
+            <td class="log-message-cell" :title="log.payload">{{ log.payload }}</td>
+            <td>{{ fmtBytes(log.payloadSize) }}</td>
           </tr>
           <tr v-if="logs.length === 0">
-            <td colspan="7" class="empty-row">暂无数据</td>
+            <td colspan="7" class="empty-row">{{ logsLoading ? '加载中...' : '暂无数据' }}</td>
           </tr>
           </tbody>
         </table>
         <div class="pagination-row" v-if="logTotal > logPageSize">
           <span class="page-info">共 {{ logTotal }} 条</span>
           <div class="page-btns">
-            <button :disabled="logPage <= 1" @click="logPage--; handleLogSearch()">上一页</button>
+            <button :disabled="logPage <= 1" @click="logPage--; fetchLogs()">上一页</button>
             <span class="page-num">{{ logPage }} / {{ Math.ceil(logTotal / logPageSize) }}</span>
-            <button :disabled="logPage >= Math.ceil(logTotal / logPageSize)" @click="logPage++; handleLogSearch()">
+            <button :disabled="logPage >= Math.ceil(logTotal / logPageSize)" @click="logPage++; fetchLogs()">
               下一页
             </button>
           </div>
@@ -312,12 +304,14 @@ import {
   getMqttClients,
   getMqttConfig,
   getMqttListeners,
+  getMqttMessages,
   getMqttStats,
   kickMqttClient,
   kickMqttClients,
   type MqttClientItem,
   type MqttConfig,
   type MqttListener,
+  type MqttMessageLogItem,
   type MqttStats,
   type MqttSubscription
 } from '@/api/monitor'
@@ -424,142 +418,43 @@ onUnmounted(() => {
   if (uptimeTimer) clearInterval(uptimeTimer)
 })
 
-// ===== 数据日志（mock） =====
-const logQuery = ref({clientId: '', topic: '', startTime: '', endTime: ''})
+// ===== 数据日志 =====
+const logQuery = ref({clientId: '', topic: ''})
 const logPage = ref(1)
 const logPageSize = 10
-const logTotal = ref(22)
+const logTotal = ref(0)
+const logs = ref<MqttMessageLogItem[]>([])
+const logsLoading = ref(false)
 
-const allLogs = [
-  {
-    id: 1,
-    receiveTime: '2026-06-03 09:15:32',
-    clientId: 'device/gnss/a1-001',
-    username: 'gnss_a1',
-    topic: 'sensor/gnss/displacement',
-    message: '{"x":12.3,"y":5.1,"z":-0.2,"unit":"mm"}',
-    size: '78 B'
-  },
-  {
-    id: 2,
-    receiveTime: '2026-06-03 09:15:28',
-    clientId: 'device/rain/b3-002',
-    username: 'rain_b3',
-    topic: 'sensor/rainfall/current',
-    message: '{"value":0.5,"unit":"mm/h"}',
-    size: '42 B'
-  },
-  {
-    id: 3,
-    receiveTime: '2026-06-03 09:15:15',
-    clientId: 'device/press/c5-003',
-    username: 'press_c5',
-    topic: 'sensor/pressure/level',
-    message: '{"value":2.3,"unit":"m"}',
-    size: '38 B'
-  },
-  {
-    id: 4,
-    receiveTime: '2026-06-03 09:14:58',
-    clientId: 'device/crack/d2-004',
-    username: 'crack_d2',
-    topic: 'sensor/crack/width',
-    message: '{"value":0.08,"unit":"mm"}',
-    size: '40 B'
-  },
-  {
-    id: 5,
-    receiveTime: '2026-06-03 09:14:42',
-    clientId: 'device/water/e7-005',
-    username: 'water_e7',
-    topic: 'sensor/water/level',
-    message: '{"value":4.7,"unit":"m"}',
-    size: '37 B'
-  },
-  {
-    id: 6,
-    receiveTime: '2026-06-03 09:14:10',
-    clientId: 'device/gnss/a2-006',
-    username: 'gnss_a2',
-    topic: 'sensor/gnss/position',
-    message: '{"lat":30.6512,"lng":104.1015}',
-    size: '52 B'
-  },
-  {
-    id: 7,
-    receiveTime: '2026-06-03 09:13:35',
-    clientId: 'device/tilt/f8-007',
-    username: 'tilt_f8',
-    topic: 'sensor/tilt/angle',
-    message: '{"x":0.12,"y":-0.05,"unit":"deg"}',
-    size: '55 B'
-  },
-  {
-    id: 8,
-    receiveTime: '2026-06-03 09:12:50',
-    clientId: 'device/rain/c8-008',
-    username: 'rain_c8',
-    topic: 'sensor/rainfall/daily',
-    message: '{"total":12.8,"unit":"mm"}',
-    size: '45 B'
-  },
-  {
-    id: 9,
-    receiveTime: '2026-06-03 09:12:20',
-    clientId: 'device/gnss/a1-001',
-    username: 'gnss_a1',
-    topic: 'sensor/gnss/displacement',
-    message: '{"x":12.4,"y":5.0,"z":-0.1,"unit":"mm"}',
-    size: '78 B'
-  },
-  {
-    id: 10,
-    receiveTime: '2026-06-03 09:11:45',
-    clientId: 'monitor/edge/gw01',
-    username: 'edge_gw1',
-    topic: 'status/gateway/heartbeat',
-    message: '{"cpu":45,"mem":62,"disk":38,"uptime":86400}',
-    size: '68 B'
-  },
-  {
-    id: 11,
-    receiveTime: '2026-06-03 09:11:10',
-    clientId: 'device/press/c5-003',
-    username: 'press_c5',
-    topic: 'sensor/pressure/level',
-    message: '{"value":2.4,"unit":"m"}',
-    size: '38 B'
-  },
-  {
-    id: 12,
-    receiveTime: '2026-06-03 09:10:33',
-    clientId: 'device/crack/d2-004',
-    username: 'crack_d2',
-    topic: 'cmd/crack/d2',
-    message: '{"action":"calibrate","timestamp":1717402200}',
-    size: '62 B'
+const fetchLogs = async () => {
+  logsLoading.value = true
+  try {
+    const res = await getMqttMessages({
+      page: logPage.value,
+      pageSize: logPageSize,
+      clientId: logQuery.value.clientId || undefined,
+      topic: logQuery.value.topic || undefined
+    })
+    const data = res.data
+    logs.value = data?.list ?? []
+    logTotal.value = data?.totalRow ?? 0
+  } catch {
+    logs.value = []
+    logTotal.value = 0
+  } finally {
+    logsLoading.value = false
   }
-]
-
-const logs = ref(allLogs)
+}
 
 const handleLogSearch = () => {
-  let filtered = [...allLogs]
-  const q = logQuery.value
-  if (q.clientId) filtered = filtered.filter(l => l.clientId.toLowerCase().includes(q.clientId.toLowerCase()))
-  if (q.topic) filtered = filtered.filter(l => l.topic.toLowerCase().includes(q.topic.toLowerCase()))
-  if (q.startTime) filtered = filtered.filter(l => l.receiveTime >= q.startTime.replace('T', ' '))
-  if (q.endTime) filtered = filtered.filter(l => l.receiveTime <= q.endTime.replace('T', ' '))
-  logs.value = filtered
-  logTotal.value = filtered.length
   logPage.value = 1
+  fetchLogs()
 }
 
 const handleLogReset = () => {
-  logQuery.value = {clientId: '', topic: '', startTime: '', endTime: ''}
-  logs.value = allLogs
-  logTotal.value = allLogs.length
+  logQuery.value = {clientId: '', topic: ''}
   logPage.value = 1
+  fetchLogs()
 }
 
 // ===== 在线客户端 =====
@@ -877,22 +772,6 @@ const openClientDetail = async (client: MqttClientItem) => {
 
 .query-item input[type="datetime-local"]:focus {
   border-color: #3b82f6;
-}
-
-.time-separator {
-  font-size: 13px;
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.time-inputs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.query-item-time .time-inputs input[type="datetime-local"] {
-  width: 175px;
 }
 
 .query-actions {

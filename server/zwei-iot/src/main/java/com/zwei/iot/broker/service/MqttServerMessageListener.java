@@ -4,7 +4,7 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.component.MqttDeviceSessionRegistry;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.timeseries.service.MonitorIngestFacade;
-import com.zwei.log.application.service.MqttMessageLogService;
+import com.zwei.log.mqtt.MqttMessageLogService;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;

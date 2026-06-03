@@ -67,19 +67,6 @@ server/
 └── zwei-log/         Audit/operation logging, SSE streaming, MQTT message logs
 ```
 
-### Log Module (`zwei-log/`) — Layered architecture
-
-```
-com.zwei.log
-├── api/controller/    → LogQueryController, LogStreamController, MqttMessageLogController
-├── api/dto/           → AuthLogQuery, OperationLogQuery, RuntimeLogQuery
-├── application/service/ → LogCenterService, LogReplayService, MqttMessageLogService
-├── domain/model/      → LogOperationRecord, LogAuthRecord, LogRuntimeRecord, LogMqttMessage
-├── domain/enums/      → LogType, AuthEventType, LogExecutionStatus
-├── domain/sink/       → LogSink, FileLogWriter, LogStorageRouter
-└── infrastructure/    → persistence (MySQL mappers), push (SSE), config, appender
-```
-
 ### IoT Module (`zwei-iot/`) — Core Business Logic
 
 This is where the domain-specific logic lives, organized into sub-packages:
