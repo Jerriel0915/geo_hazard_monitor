@@ -8,3 +8,5 @@ web/dist/
 .idea/
 .trae/
 /.claude/settings.local.json
+.playwright-mcp/
+.mcp.json
