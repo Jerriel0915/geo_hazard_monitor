@@ -249,7 +249,7 @@ const initBarChart = () => {
         interval: 0,
         rotate: 30,
         color: '#64748b',
-        fontSize: 11
+        fontSize: 14
       },
       axisLine: {
         lineStyle: {
@@ -263,7 +263,7 @@ const initBarChart = () => {
       axisLabel: {
         formatter: '{value}%',
         color: '#64748b',
-        fontSize: 11
+        fontSize: 14
       },
       splitLine: {
         lineStyle: {
@@ -290,7 +290,7 @@ const initBarChart = () => {
           position: 'top',
           formatter: '{c}%',
           color: '#1e293b',
-          fontSize: 11,
+          fontSize: 14,
           fontWeight: 600
         }
       }
@@ -316,7 +316,7 @@ const initPieChart = () => {
       top: 'center',
       textStyle: {
         color: '#334155',
-        fontSize: 11
+        fontSize: 14
       },
       itemWidth: 12,
       itemHeight: 12,
@@ -339,7 +339,7 @@ const initPieChart = () => {
           position: 'outside',
           formatter: '{b}\n{c}%',
           color: '#334155',
-          fontSize: 11
+          fontSize: 14
         },
         labelLine: {
           show: true,
@@ -395,7 +395,7 @@ const initPyramidChart = () => {
       type: 'value',
       axisLabel: {
         color: '#64748b',
-        fontSize: 11
+        fontSize: 14
       },
       axisLine: {
         lineStyle: {
@@ -413,7 +413,7 @@ const initPyramidChart = () => {
       data: pyramidData.map(item => item.name).reverse(),
       axisLabel: {
         color: '#334155',
-        fontSize: 11
+        fontSize: 14
       },
       axisLine: {
         lineStyle: {
@@ -437,7 +437,7 @@ const initPyramidChart = () => {
           position: 'right',
           formatter: '{c}',
           color: '#1e293b',
-          fontSize: 11,
+          fontSize: 14,
           fontWeight: 600
         }
       }
@@ -543,7 +543,7 @@ const online24hData = [
 .operation-view {
   min-height: 100%;
   background: transparent;
-  padding: 0;
+  padding: 20px 0 0 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -581,13 +581,13 @@ const online24hData = [
 }
 
 .stat-value {
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
   color: #1e293b;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
   margin-top: 2px;
 }
@@ -614,7 +614,7 @@ const online24hData = [
 }
 
 .panel-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #1e293b;
 }
@@ -655,7 +655,7 @@ const online24hData = [
 .online-table th {
   padding: 8px 10px;
   text-align: center;
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
   font-weight: 600;
   border-bottom: 2px solid #e2e8f0;
@@ -664,7 +664,7 @@ const online24hData = [
 .online-table td {
   padding: 8px 10px;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   color: #334155;
   border-bottom: 1px solid #f1f5f9;
 }
@@ -676,7 +676,7 @@ const online24hData = [
 .rate-badge {
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
 }
 

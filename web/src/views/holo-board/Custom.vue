@@ -19,7 +19,7 @@
 }
 
 .page-title {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   color: #303133;
   margin-bottom: 20px;
@@ -28,7 +28,7 @@
 }
 
 .page-body {
-  font-size: 16px;
+  font-size: 14px;
   color: #606266;
   padding: 40px;
   text-align: center;
