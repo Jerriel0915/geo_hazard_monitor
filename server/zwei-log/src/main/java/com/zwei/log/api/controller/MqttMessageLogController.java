@@ -1,7 +1,7 @@
-package com.zwei.log.mqtt.controller;
+package com.zwei.log.api.controller;
 
 import com.zwei.common.core.domain.AjaxResult;
-import com.zwei.log.mqtt.MqttMessageLogService;
+import com.zwei.log.application.service.MqttMessageLogService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

@@ -1,4 +1,4 @@
-package com.zwei.log.mqtt;
+package com.zwei.log.domain.model;
 
 import lombok.Data;
 
@@ -8,7 +8,7 @@ import lombok.Data;
  * 记录每条经平台转发的设备监测消息的关键元数据，用于实时故障排查和流量观测。
  */
 @Data
-public class MqttMessageLog {
+public class LogMqttMessage {
     /**
      * 接收时间戳（毫秒）
      */

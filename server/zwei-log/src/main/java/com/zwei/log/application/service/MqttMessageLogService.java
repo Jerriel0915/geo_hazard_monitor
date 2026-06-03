@@ -1,5 +1,6 @@
-package com.zwei.log.mqtt;
+package com.zwei.log.application.service;
 
+import com.zwei.log.domain.model.LogMqttMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +33,7 @@ public class MqttMessageLogService {
      */
     private static final int PAYLOAD_TRUNCATE_CHARS = 500;
 
-    private final ConcurrentLinkedDeque<MqttMessageLog> buffer = new ConcurrentLinkedDeque<>();
+    private final ConcurrentLinkedDeque<LogMqttMessage> buffer = new ConcurrentLinkedDeque<>();
 
     /**
      * 记录一条消息日志。
@@ -43,7 +44,7 @@ public class MqttMessageLogService {
      * @param payload  原始消息负载字节数组
      */
     public void record(String clientId, String username, String topic, byte[] payload) {
-        MqttMessageLog entry = new MqttMessageLog();
+        LogMqttMessage entry = new LogMqttMessage();
         entry.setReceiveTime(System.currentTimeMillis());
         entry.setClientId(clientId);
         entry.setUsername(username);
@@ -71,7 +72,7 @@ public class MqttMessageLogService {
      * @return 分页结果
      */
     public PageResult query(int page, int pageSize, String clientId, String topic) {
-        List<MqttMessageLog> all = new ArrayList<>(buffer);
+        List<LogMqttMessage> all = new ArrayList<>(buffer);
         Collections.reverse(all);
 
         if (clientId != null && !clientId.isEmpty()) {
@@ -98,9 +99,9 @@ public class MqttMessageLogService {
         public int pageNumber;
         public int pageSize;
         public int totalRow;
-        public List<MqttMessageLog> list;
+        public List<LogMqttMessage> list;
 
-        public PageResult(int pageNumber, int pageSize, int totalRow, List<MqttMessageLog> list) {
+        public PageResult(int pageNumber, int pageSize, int totalRow, List<LogMqttMessage> list) {
             this.pageNumber = pageNumber;
             this.pageSize = pageSize;
             this.totalRow = totalRow;
