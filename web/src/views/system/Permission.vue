@@ -44,6 +44,11 @@
                   <el-tag :type="getRoleStatusType(row.status)">{{ getRoleStatusLabel(row.status) }}</el-tag>
                 </template>
               </el-table-column>
+              <el-table-column label="菜单权限数" width="110" align="center">
+                <template #default="{ row }">
+                  {{ row.menuIds?.length ?? '-' }}
+                </template>
+              </el-table-column>
               <el-table-column prop="description" label="角色说明" min-width="220" show-overflow-tooltip />
               <el-table-column prop="createTime" label="创建时间" width="180" />
               <el-table-column label="操作" width="220" fixed="right">
@@ -121,6 +126,14 @@
               </el-table-column>
               <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
               <el-table-column prop="perms" label="权限标识" min-width="220" show-overflow-tooltip />
+              <el-table-column label="覆盖状态" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag v-if="row.perms" size="small" :type="isPermMissingFromDb(row.perms) ? 'warning' : 'success'">
+                    {{ isPermMissingFromDb(row.perms) ? '仅代码' : '已注册' }}
+                  </el-tag>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
               <el-table-column label="操作" width="150" fixed="right">
                 <template #default="{ row }">
                   <span class="action-link" @click="handleEditMenu(row)">编辑</span>
@@ -218,6 +231,9 @@
         </el-tabs>
       </div>
       <template #footer>
+        <el-button v-if="coverage?.missingInDb.length" type="warning" @click="handleBatchRegister" :loading="registerLoading">
+          注册缺失权限 ({{ coverage.missingInDb.length }})
+        </el-button>
         <el-button @click="permDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handlePermSubmit" :loading="permSubmitLoading">保存</el-button>
       </template>
@@ -295,12 +311,14 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import {
+  batchRegisterPermissions,
   createMenu,
   createRole,
   deleteMenu,
   deleteRole,
   getMenuDetail,
   getMenuTree,
+  getPermissionCoverage,
   getRoleDeptTree,
   getRoleDetail,
   getRolePage,
@@ -309,6 +327,7 @@ import {
   updateMenu,
   updateRole,
   type MenuItem,
+  type PermissionCoverage,
   type RoleItem,
   type TreeOption
 } from '@/api/system'
@@ -555,6 +574,22 @@ const handleConfigPermission = async (row: RoleItem) => {
   setTreeCheckedKeys(permDeptTreeRef.value, checkedDeptKeys.value)
 }
 
+const registerLoading = ref(false)
+
+const handleBatchRegister = async () => {
+  if (!coverage.value?.missingInDb.length) return
+  registerLoading.value = true
+  try {
+    const res = await batchRegisterPermissions(coverage.value.missingInDb)
+    ElMessage.success(res.data ?? res.msg ?? '注册成功')
+    await loadMenus()
+  } catch {
+    ElMessage.error('注册失败')
+  } finally {
+    registerLoading.value = false
+  }
+}
+
 const handlePermSubmit = async () => {
   if (!currentRole.value || !permRoleDetail.value) return
   permSubmitLoading.value = true
@@ -583,15 +618,21 @@ const handlePermSubmit = async () => {
 
 const menuLoading = ref(false)
 const menuList = ref<MenuItem[]>([])
+const coverage = ref<PermissionCoverage | null>(null)
 
 const loadMenus = async () => {
   menuLoading.value = true
   try {
-    menuList.value = await getMenuTree()
+    const [tree, cov] = await Promise.all([getMenuTree(), getPermissionCoverage()])
+    menuList.value = tree
+    coverage.value = cov
   } finally {
     menuLoading.value = false
   }
 }
+
+const isPermMissingFromDb = (perms?: string) =>
+  perms && coverage.value ? coverage.value.missingInDb.includes(perms) : false
 
 const menuParentOptions = computed(() => [
   {

@@ -279,3 +279,15 @@ export const updateMenu = (id: number, payload: MenuPayload) =>
 
 export const deleteMenu = (id: number) =>
   unwrap<null>(request.delete(`/menus/${id}`))
+
+export interface PermissionCoverage {
+  codePerms: string[]
+  dbPerms: string[]
+  missingInDb: string[]
+}
+
+export const getPermissionCoverage = () =>
+  unwrap<PermissionCoverage>(request.get('/menus/permission-coverage'))
+
+export const batchRegisterPermissions = (perms: string[]) =>
+  request.post<AjaxResult<string>>('/menus/batch-register', perms)

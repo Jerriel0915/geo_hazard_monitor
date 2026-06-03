@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,6 +43,7 @@ public class LogStreamController {
         this.logReplayService = logReplayService;
     }
 
+    @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
     @GetMapping("/stream")
     public SseEmitter stream(@RequestParam(value = "types", required = false) String types,
         @RequestParam(value = "subscriberKey", required = false) String subscriberKey,
@@ -54,6 +56,7 @@ public class LogStreamController {
         return logStreamPublisher.subscribe(resolvedSubscriberKey, logTypes, replayRecords, resumeEventId);
     }
 
+    @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
     @GetMapping("/stream/connections")
     public AjaxResult connectionCount() {
         return AjaxResult.success("成功", Collections.singletonMap("activeCount", logCenterService.getActiveStreamCount()));

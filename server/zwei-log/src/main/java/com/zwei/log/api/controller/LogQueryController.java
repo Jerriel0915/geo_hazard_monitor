@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.github.pagehelper.PageInfo;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +35,7 @@ public class LogQueryController extends BaseController {
         this.logCenterService = logCenterService;
     }
 
+    @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
     @GetMapping("/operations/page")
     public AjaxResult operationPage(OperationLogQuery query) {
         startPage();
@@ -41,6 +43,7 @@ public class LogQueryController extends BaseController {
         return AjaxResult.success("成功", buildPageData(rows));
     }
 
+    @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
     @GetMapping("/auth/page")
     public AjaxResult authPage(AuthLogQuery query) {
         startPage();
@@ -48,6 +51,7 @@ public class LogQueryController extends BaseController {
         return AjaxResult.success("成功", buildPageData(rows));
     }
 
+    @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
     @GetMapping("/runtime/page")
     public AjaxResult runtimePage(RuntimeLogQuery query) {
         startPage();
