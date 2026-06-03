@@ -26,6 +26,7 @@ const routes: RouteRecordRaw[] = [
       { path: '/alarm/criteria', name: 'AlarmCriteria', component: () => import('@/views/alarm/AlarmCriteria.vue') },
       { path: '/alarm/notification', name: 'AlarmNotification', component: () => import('@/views/alarm/AlarmNotification.vue') },
       { path: '/alarm/disposal', name: 'AlarmDisposal', component: () => import('@/views/alarm/AlarmDisposal.vue') },
+      { path: '/alarm/composite', name: 'CompositeAlarm', component: () => import('@/views/alarm/CompositeAlarm.vue') },
       { path: '/report/report', name: 'Report', component: () => import('@/views/report/Report.vue') },
       { path: '/report/query', name: 'Query', component: () => import('@/views/report/Query.vue') },
       { path: '/report/analysis', name: 'Analysis', component: () => import('@/views/report/Analysis.vue') },
