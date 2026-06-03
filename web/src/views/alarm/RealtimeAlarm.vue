@@ -43,11 +43,8 @@
             </el-form-item>
             <el-form-item label="警情状态">
               <el-select v-model="queryParams.status" placeholder="请选择" clearable multiple style="width: 120px">
-                <el-option label="待处理" value="pending" />
-                <el-option label="处理中" value="processing" />
-                <el-option label="已处理" value="handled" />
-                <el-option label="误报" value="false_alarm" />
-                <el-option label="已销警" value="closed" />
+                <el-option label="新警情" value="pending" />
+                <el-option label="已响应" value="processing" />
               </el-select>
             </el-form-item>
             <el-form-item>
@@ -306,40 +303,6 @@ const mockData = [
   },
   {
     id: 3,
-    hazardPointName: '山体滑坡点C-12',
-    alarmLevel: '3',
-    firstAlarmTime: '2024-05-28 16:20:00',
-    lastAlarmTime: '2024-06-02 20:30:00',
-    alarmCount: 25,
-    alarmType: 'threshold',
-    status: 'handled',
-    responderName: '李四',
-    responseTime: '2024-05-28 17:00:00',
-    alarmContent: '山体倾斜角度超过阈值5度，当前值为6.2度',
-    alarmList: [
-      { alarmTime: '2024-05-28 16:20:00', alarmLevel: '3', alarmContent: '山体倾斜角度5.1度' },
-      { alarmTime: '2024-06-02 20:30:00', alarmLevel: '3', alarmContent: '山体倾斜角度6.2度' }
-    ]
-  },
-  {
-    id: 4,
-    hazardPointName: '桥梁监测点D-03',
-    alarmLevel: '4',
-    firstAlarmTime: '2024-06-01 00:00:00',
-    lastAlarmTime: '2024-06-02 00:00:00',
-    alarmCount: 3,
-    alarmType: 'threshold',
-    status: 'false_alarm',
-    responderName: '王五',
-    responseTime: '2024-06-01 08:00:00',
-    alarmContent: '桥墩沉降超过阈值2mm，经核查为传感器故障',
-    alarmList: [
-      { alarmTime: '2024-06-01 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.1mm' },
-      { alarmTime: '2024-06-02 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.3mm' }
-    ]
-  },
-  {
-    id: 5,
     hazardPointName: '隧道监测点E-08',
     alarmLevel: '1',
     firstAlarmTime: '2024-06-03 08:00:00',
@@ -356,20 +319,54 @@ const mockData = [
     ]
   },
   {
-    id: 6,
-    hazardPointName: '水库监测点F-02',
-    alarmLevel: '2',
-    firstAlarmTime: '2024-05-25 06:00:00',
-    lastAlarmTime: '2024-06-01 18:00:00',
-    alarmCount: 12,
-    alarmType: 'threshold',
-    status: 'closed',
-    responderName: '赵六',
-    responseTime: '2024-06-01 20:00:00',
-    alarmContent: '水库水位超过警戒水位50cm，当前已降至安全范围',
+    id: 4,
+    hazardPointName: '泥石流监测点G-07',
+    alarmLevel: '1',
+    firstAlarmTime: '2024-06-03 15:00:00',
+    lastAlarmTime: '2024-06-03 16:30:00',
+    alarmCount: 6,
+    alarmType: 'comprehensive',
+    status: 'pending',
+    responderName: '',
+    responseTime: '',
+    alarmContent: '综合预警：降雨量和土壤含水率同时超过阈值',
     alarmList: [
-      { alarmTime: '2024-05-25 06:00:00', alarmLevel: '2', alarmContent: '水库水位超限30cm' },
-      { alarmTime: '2024-06-01 18:00:00', alarmLevel: '2', alarmContent: '水库水位超限50cm' }
+      { alarmTime: '2024-06-03 15:00:00', alarmLevel: '1', alarmContent: '降雨量达到阈值' },
+      { alarmTime: '2024-06-03 16:30:00', alarmLevel: '1', alarmContent: '土壤含水率超限' }
+    ]
+  },
+  {
+    id: 5,
+    hazardPointName: '地质灾害点H-09',
+    alarmLevel: '2',
+    firstAlarmTime: '2024-06-03 10:00:00',
+    lastAlarmTime: '2024-06-03 11:00:00',
+    alarmCount: 3,
+    alarmType: 'threshold',
+    status: 'processing',
+    responderName: '李四',
+    responseTime: '2024-06-03 10:30:00',
+    alarmContent: '裂缝宽度超过阈值，正在处理中',
+    alarmList: [
+      { alarmTime: '2024-06-03 10:00:00', alarmLevel: '2', alarmContent: '裂缝宽度5mm' },
+      { alarmTime: '2024-06-03 11:00:00', alarmLevel: '2', alarmContent: '裂缝宽度6mm' }
+    ]
+  },
+  {
+    id: 6,
+    hazardPointName: '边坡监测点J-15',
+    alarmLevel: '3',
+    firstAlarmTime: '2024-06-03 09:30:00',
+    lastAlarmTime: '2024-06-03 14:00:00',
+    alarmCount: 10,
+    alarmType: 'threshold',
+    status: 'processing',
+    responderName: '王五',
+    responseTime: '2024-06-03 10:00:00',
+    alarmContent: '地表位移超过阈值，已安排人员现场勘查',
+    alarmList: [
+      { alarmTime: '2024-06-03 09:30:00', alarmLevel: '3', alarmContent: '位移3mm' },
+      { alarmTime: '2024-06-03 14:00:00', alarmLevel: '3', alarmContent: '位移4.5mm' }
     ]
   }
 ]
@@ -469,10 +466,7 @@ const getAlarmTypeText = (type: string) => {
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
     'pending': 'danger',
-    'processing': 'warning',
-    'handled': 'success',
-    'false_alarm': 'info',
-    'closed': 'info'
+    'processing': 'warning'
   }
   return map[status] || 'info'
 }
@@ -480,11 +474,8 @@ const getStatusType = (status: string) => {
 // 获取状态文本
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    'pending': '待处理',
-    'processing': '处理中',
-    'handled': '已处理',
-    'false_alarm': '误报',
-    'closed': '已销警'
+    'pending': '新警情',
+    'processing': '已响应'
   }
   return map[status] || status
 }
