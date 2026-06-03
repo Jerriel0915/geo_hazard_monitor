@@ -1,5 +1,4 @@
 <template>
-<<<<<<< Updated upstream
   <div class="page-content">
     <div class="page-title">待办告警</div>
     <div class="page-body">
@@ -170,200 +169,11 @@
           <el-descriptions-item label="告警内容" :span="2">{{ currentRow.alarmContent }}</el-descriptions-item>
         </el-descriptions>
       </div>
-=======
-  <div class="realtime-alarm-container">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <div class="header-left">
-        <h2>实时告警</h2>
-      </div>
-      <div class="header-right">
-        <el-button type="primary" @click="handleExport">导出</el-button>
-      </div>
-    </div>
-
-    <!-- 查询条件 -->
-    <div class="search-bar">
-      <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="隐患点名称">
-          <el-input
-            v-model="searchForm.hazardPointName"
-            placeholder="请输入隐患点名称"
-            clearable
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="响应人员">
-          <el-input
-            v-model="searchForm.responseUserName"
-            placeholder="请输入响应人员"
-            clearable
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="告警时间">
-          <el-date-picker
-            v-model="alarmTimeRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item label="告警次数">
-          <el-input-number
-            v-model="searchForm.alarmCountMin"
-            :min="0"
-            placeholder="最小"
-            style="width: 120px"
-          />
-          <span style="margin: 0 5px">-</span>
-          <el-input-number
-            v-model="searchForm.alarmCountMax"
-            :min="0"
-            placeholder="最大"
-            style="width: 120px"
-          />
-        </el-form-item>
-        <el-form-item label="告警等级">
-          <el-select v-model="searchForm.alarmLevel" placeholder="请选择" clearable style="width: 150px">
-            <el-option label="一级(红色)" :value="1" />
-            <el-option label="二级(橙色)" :value="2" />
-            <el-option label="三级(黄色)" :value="3" />
-            <el-option label="四级(蓝色)" :value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="告警类型">
-          <el-select v-model="searchForm.alarmType" placeholder="请选择" clearable style="width: 150px">
-            <el-option label="阈值预警" :value="1" />
-            <el-option label="综合预警" :value="2" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="警情状态">
-          <el-select v-model="searchForm.alarmStatus" placeholder="请选择" clearable style="width: 150px">
-            <el-option label="待处理" :value="0" />
-            <el-option label="处理中" :value="1" />
-            <el-option label="已处理" :value="2" />
-            <el-option label="误报" :value="3" />
-            <el-option label="已销警" :value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </div>
-
-    <!-- 表格 -->
-    <div class="table-container">
-      <el-table
-        :data="tableData"
-        border
-        stripe
-        highlight-current-row
-        @row-click="handleRowClick"
-        v-loading="loading"
-      >
-        <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="hazardPointName" label="隐患点名称" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="alarmLevelName" label="告警等级" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getAlarmLevelType(row.alarmLevel)" effect="dark">
-              {{ row.alarmLevelName }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="firstAlarmTime" label="首次告警时间" width="170" align="center">
-          <template #default="{ row }">
-            {{ formatDateTime(row.firstAlarmTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="lastAlarmTime" label="最后告警时间" width="170" align="center">
-          <template #default="{ row }">
-            {{ formatDateTime(row.lastAlarmTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="alarmCount" label="告警次数" width="100" align="center">
-          <template #default="{ row }">
-            <el-link type="primary" @click.stop="handleShowAlarmList(row)">
-              {{ row.alarmCount }}
-            </el-link>
-          </template>
-        </el-table-column>
-        <el-table-column prop="alarmTypeName" label="告警类型" width="120" align="center" />
-        <el-table-column prop="alarmStatusName" label="警情状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getAlarmStatusType(row.alarmStatus)">
-              {{ row.alarmStatusName }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="responseUserName" label="响应人员" width="100" align="center" show-overflow-tooltip />
-        <el-table-column prop="responseTime" label="响应时间" width="170" align="center">
-          <template #default="{ row }">
-            {{ formatDateTime(row.responseTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="240" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click.stop="handleView(row)">查看</el-button>
-            <el-button link type="success" size="small" @click.stop="handleFeedback(row)">反馈</el-button>
-            <el-button link type="warning" size="small" @click.stop="handleFalseAlarm(row)">误报</el-button>
-            <el-button link type="danger" size="small" @click.stop="handleClearAlarm(row)">销警</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
-    <!-- 分页 -->
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
-    </div>
-
-    <!-- 告警详情弹窗 -->
-    <el-dialog
-      v-model="detailDialogVisible"
-      title="告警详情"
-      width="700px"
-      destroy-on-close
-    >
-      <el-descriptions :column="2" border v-if="currentAlarm">
-        <el-descriptions-item label="隐患点名称">{{ currentAlarm.hazardPointName }}</el-descriptions-item>
-        <el-descriptions-item label="告警等级">
-          <el-tag :type="getAlarmLevelType(currentAlarm.alarmLevel)" effect="dark">
-            {{ currentAlarm.alarmLevelName }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="告警类型">{{ currentAlarm.alarmTypeName }}</el-descriptions-item>
-        <el-descriptions-item label="警情状态">
-          <el-tag :type="getAlarmStatusType(currentAlarm.alarmStatus)">
-            {{ currentAlarm.alarmStatusName }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="首次告警时间">{{ formatDateTime(currentAlarm.firstAlarmTime) }}</el-descriptions-item>
-        <el-descriptions-item label="最后告警时间">{{ formatDateTime(currentAlarm.lastAlarmTime) }}</el-descriptions-item>
-        <el-descriptions-item label="告警次数">{{ currentAlarm.alarmCount }}</el-descriptions-item>
-        <el-descriptions-item label="响应人员">{{ currentAlarm.responseUserName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="响应时间" :span="2">{{ formatDateTime(currentAlarm.responseTime) }}</el-descriptions-item>
-        <el-descriptions-item label="告警详情" :span="2">{{ currentAlarm.alarmDetail || '-' }}</el-descriptions-item>
-      </el-descriptions>
->>>>>>> Stashed changes
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
-<<<<<<< Updated upstream
     <!-- 告警列表弹窗 -->
     <el-dialog v-model="alarmListDialogVisible" title="告警列表" width="900px">
       <div class="alarm-list-table">
@@ -387,31 +197,10 @@
       <el-form :model="feedbackForm" label-width="100px">
         <el-form-item label="反馈内容">
           <el-input v-model="feedbackForm.content" type="textarea" :rows="5" placeholder="请输入反馈内容" />
-=======
-    <!-- 反馈弹窗 -->
-    <el-dialog
-      v-model="feedbackDialogVisible"
-      title="告警反馈"
-      width="500px"
-      destroy-on-close
-    >
-      <el-form :model="feedbackForm" label-width="100px">
-        <el-form-item label="告警信息">
-          <span>{{ currentAlarm?.hazardPointName }} - {{ currentAlarm?.alarmLevelName }}</span>
-        </el-form-item>
-        <el-form-item label="反馈内容" required>
-          <el-input
-            v-model="feedbackForm.feedback"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入反馈内容"
-          />
->>>>>>> Stashed changes
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="feedbackDialogVisible = false">取消</el-button>
-<<<<<<< Updated upstream
         <el-button type="primary" @click="submitFeedback">确定</el-button>
       </template>
     </el-dialog>
@@ -432,49 +221,11 @@
         <el-button @click="closeAlarmDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="confirmCloseAlarm">确定</el-button>
       </template>
-=======
-        <el-button type="primary" @click="submitFeedback">提交</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 告警列表弹窗 -->
-    <el-dialog
-      v-model="alarmListDialogVisible"
-      title="告警记录"
-      width="800px"
-      destroy-on-close
-    >
-      <el-table :data="alarmListData" border stripe max-height="400">
-        <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="alarmLevelName" label="告警等级" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getAlarmLevelType(row.alarmLevel)" effect="dark" size="small">
-              {{ row.alarmLevelName }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="alarmTypeName" label="告警类型" width="100" align="center" />
-        <el-table-column prop="firstAlarmTime" label="告警时间" width="170" align="center">
-          <template #default="{ row }">
-            {{ formatDateTime(row.firstAlarmTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="alarmStatusName" label="状态" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getAlarmStatusType(row.alarmStatus)" size="small">
-              {{ row.alarmStatusName }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="responseUserName" label="响应人员" width="100" align="center" />
-      </el-table>
->>>>>>> Stashed changes
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-<<<<<<< Updated upstream
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { View, ChatDotRound, Warning, CircleClose, Download } from '@element-plus/icons-vue'
@@ -494,46 +245,10 @@ const queryParams = reactive({
 // 分页
 const pagination = reactive({
   currentPage: 1,
-=======
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  getRealtimeAlarmPage,
-  getRealtimeAlarmDetail,
-  getRealtimeAlarmByHazardPoint,
-  feedbackAlarm,
-  markAsFalseAlarm,
-  clearAlarm,
-  exportRealtimeAlarms,
-  type RealtimeAlarmListParams,
-  type RealtimeAlarmDetail
-} from '@/api/realtimeAlarm'
-
-const loading = ref(false)
-const tableData = ref<RealtimeAlarmDetail[]>([])
-const currentAlarm = ref<RealtimeAlarmDetail | null>(null)
-const alarmListData = ref<RealtimeAlarmDetail[]>([])
-
-const searchForm = reactive<Partial<RealtimeAlarmListParams>>({
-  hazardPointName: '',
-  responseUserName: '',
-  alarmCountMin: undefined,
-  alarmCountMax: undefined,
-  alarmLevel: undefined,
-  alarmType: undefined,
-  alarmStatus: undefined
-})
-
-const alarmTimeRange = ref<[string, string] | null>(null)
-
-const pagination = reactive({
-  pageNum: 1,
->>>>>>> Stashed changes
   pageSize: 10,
   total: 0
 })
 
-<<<<<<< Updated upstream
 // 表格数据
 const tableData = ref<any[]>([])
 const selectedRows = ref<any[]>([])
@@ -949,253 +664,6 @@ const handleCurrentChange = (page: number) => {
   pagination.currentPage = page
   tableData.value = paginatedData.value
 }
-=======
-const detailDialogVisible = ref(false)
-const feedbackDialogVisible = ref(false)
-const alarmListDialogVisible = ref(false)
-
-const feedbackForm = reactive({
-  feedback: ''
-})
-
-const formatDateTime = (dateTime: string | null) => {
-  if (!dateTime) return '-'
-  return dateTime
-}
-
-const getAlarmLevelType = (level: number) => {
-  const types: Record<number, string> = {
-    1: 'danger',
-    2: 'warning',
-    3: 'warning',
-    4: 'info'
-  }
-  return types[level] || 'info'
-}
-
-const getAlarmStatusType = (status: number) => {
-  const types: Record<number, string> = {
-    0: 'danger',
-    1: 'warning',
-    2: 'success',
-    3: 'info',
-    4: 'success'
-  }
-  return types[status] || 'info'
-}
-
-const loadData = async () => {
-  loading.value = true
-  try {
-    const params: RealtimeAlarmListParams = {
-      pageNum: pagination.pageNum,
-      pageSize: pagination.pageSize,
-      ...searchForm
-    }
-
-    if (alarmTimeRange.value && alarmTimeRange.value.length === 2) {
-      params.alarmStartTime = alarmTimeRange.value[0]
-      params.alarmEndTime = alarmTimeRange.value[1]
-    }
-
-    const response: any = await getRealtimeAlarmPage(params)
-    if (response.code === 200) {
-      tableData.value = response.data.rows || []
-      pagination.total = response.data.total || 0
-    } else {
-      ElMessage.error(response.msg || '加载数据失败')
-    }
-  } catch (error) {
-    console.error('加载数据失败:', error)
-    ElMessage.error('加载数据失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleSearch = () => {
-  pagination.pageNum = 1
-  loadData()
-}
-
-const handleReset = () => {
-  Object.keys(searchForm).forEach(key => {
-    (searchForm as any)[key] = undefined
-  })
-  alarmTimeRange.value = null
-  pagination.pageNum = 1
-  loadData()
-}
-
-const handleSizeChange = (size: number) => {
-  pagination.pageSize = size
-  pagination.pageNum = 1
-  loadData()
-}
-
-const handlePageChange = (page: number) => {
-  pagination.pageNum = page
-  loadData()
-}
-
-const handleRowClick = (row: RealtimeAlarmDetail) => {
-  handleView(row)
-}
-
-const handleView = async (row: RealtimeAlarmDetail) => {
-  try {
-    const response: any = await getRealtimeAlarmDetail(row.id.toString())
-    if (response.code === 200) {
-      currentAlarm.value = response.data
-      detailDialogVisible.value = true
-    } else {
-      ElMessage.error(response.msg || '获取详情失败')
-    }
-  } catch (error) {
-    console.error('获取详情失败:', error)
-    ElMessage.error('获取详情失败')
-  }
-}
-
-const handleFeedback = (row: RealtimeAlarmDetail) => {
-  currentAlarm.value = row
-  feedbackForm.feedback = ''
-  feedbackDialogVisible.value = true
-}
-
-const submitFeedback = async () => {
-  if (!feedbackForm.feedback.trim()) {
-    ElMessage.warning('请输入反馈内容')
-    return
-  }
-
-  try {
-    const response: any = await feedbackAlarm({
-      alarmId: currentAlarm.value!.id,
-      feedback: feedbackForm.feedback,
-      responseUserId: 1,
-      responseUserName: '当前用户'
-    })
-
-    if (response.code === 200) {
-      ElMessage.success('反馈成功')
-      feedbackDialogVisible.value = false
-      loadData()
-    } else {
-      ElMessage.error(response.msg || '反馈失败')
-    }
-  } catch (error) {
-    console.error('反馈失败:', error)
-    ElMessage.error('反馈失败')
-  }
-}
-
-const handleFalseAlarm = async (row: RealtimeAlarmDetail) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要将"${row.hazardPointName}"的告警标记为误报吗？`,
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    const response: any = await markAsFalseAlarm(row.id.toString())
-    if (response.code === 200) {
-      ElMessage.success('标记误报成功')
-      loadData()
-    } else {
-      ElMessage.error(response.msg || '操作失败')
-    }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      console.error('操作失败:', error)
-      ElMessage.error('操作失败')
-    }
-  }
-}
-
-const handleClearAlarm = async (row: RealtimeAlarmDetail) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要销除"${row.hazardPointName}"的告警吗？`,
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    const response: any = await clearAlarm(row.id.toString())
-    if (response.code === 200) {
-      ElMessage.success('销警成功')
-      loadData()
-    } else {
-      ElMessage.error(response.msg || '操作失败')
-    }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      console.error('操作失败:', error)
-      ElMessage.error('操作失败')
-    }
-  }
-}
-
-const handleShowAlarmList = async (row: RealtimeAlarmDetail) => {
-  try {
-    const response: any = await getRealtimeAlarmByHazardPoint(row.hazardPointId.toString())
-    if (response.code === 200) {
-      alarmListData.value = response.data || []
-      alarmListDialogVisible.value = true
-    } else {
-      ElMessage.error(response.msg || '获取告警列表失败')
-    }
-  } catch (error) {
-    console.error('获取告警列表失败:', error)
-    ElMessage.error('获取告警列表失败')
-  }
-}
-
-const handleExport = async () => {
-  try {
-    await ElMessageBox.confirm('确定要导出告警数据吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'info'
-    })
-
-    const params: any = { ...searchForm }
-    if (alarmTimeRange.value && alarmTimeRange.value.length === 2) {
-      params.alarmStartTime = alarmTimeRange.value[0]
-      params.alarmEndTime = alarmTimeRange.value[1]
-    }
-
-    const blob: any = await exportRealtimeAlarms(params)
-    const url = window.URL.createObjectURL(new Blob([blob]))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `实时告警_${new Date().toISOString().slice(0, 10)}.xlsx`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-
-    ElMessage.success('导出成功')
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      console.error('导出失败:', error)
-      ElMessage.error('导出失败')
-    }
-  }
-}
-
-onMounted(() => {
-  loadData()
-})
->>>>>>> Stashed changes
 </script>
 
 <style scoped>
@@ -1234,7 +702,6 @@ onMounted(() => {
 
 .table-container {
   margin-bottom: 20px;
-<<<<<<< Updated upstream
   padding-bottom: 10px;
   border-bottom: 1px solid #e8e8e8;
 }
@@ -1295,12 +762,5 @@ onMounted(() => {
 .alarm-list-table {
   max-height: 400px;
   overflow: auto;
-=======
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
->>>>>>> Stashed changes
 }
 </style>
