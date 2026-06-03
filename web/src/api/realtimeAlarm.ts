@@ -62,10 +62,10 @@ const getMockData = (params?: RealtimeAlarmListParams) => {
   let data = [...mockAlarmData]
   
   if (params?.hazardPointName) {
-    data = data.filter(item => item.hazardPointName.includes(params.hazardPointName))
+    data = data.filter(item => item.hazardPointName.includes(params.hazardPointName!))
   }
   if (params?.responseUserName) {
-    data = data.filter(item => item.responseUserName.includes(params.responseUserName))
+    data = data.filter(item => item.responseUserName.includes(params.responseUserName!))
   }
   if (params?.alarmLevel !== undefined) {
     data = data.filter(item => item.alarmLevel === params.alarmLevel)
@@ -76,11 +76,11 @@ const getMockData = (params?: RealtimeAlarmListParams) => {
   if (params?.alarmStatus !== undefined) {
     data = data.filter(item => item.alarmStatus === params.alarmStatus)
   }
-  if (params?.alarmCountMin !== undefined) {
-    data = data.filter(item => item.alarmCount >= params.alarmCountMin)
+  if (params?.alarmCountMin != null) {
+    data = data.filter(item => item.alarmCount >= params.alarmCountMin!)
   }
-  if (params?.alarmCountMax !== undefined) {
-    data = data.filter(item => item.alarmCount <= params.alarmCountMax)
+  if (params?.alarmCountMax != null) {
+    data = data.filter(item => item.alarmCount <= params.alarmCountMax!)
   }
 
   const pageNum = params?.pageNum || 1

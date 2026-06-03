@@ -161,6 +161,7 @@
 <script setup lang="ts">
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
+import * as echarts from 'echarts'
 import VueApexCharts from 'vue3-apexcharts'
 import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
 import {
@@ -355,6 +356,8 @@ const loadMonitorTable = async () => {
 }
 
 // ----- 趋势图（ApexCharts）-----
+const chartRef = ref<HTMLElement>()
+let chartInstance: any = null
 const chartSeriesData = ref<ChartData[]>([])
 const chartOptions = ref<Record<string, any>>({})
 

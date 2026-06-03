@@ -12,6 +12,7 @@ COPY zwei-common/pom.xml zwei-common/
 COPY zwei-framework/pom.xml zwei-framework/
 COPY zwei-system/pom.xml zwei-system/
 COPY zwei-log/pom.xml zwei-log/
+COPY zwei-monitor/pom.xml zwei-monitor/
 COPY zwei-quartz/pom.xml zwei-quartz/
 COPY zwei-iot/pom.xml zwei-iot/
 COPY zwei-admin/pom.xml zwei-admin/
