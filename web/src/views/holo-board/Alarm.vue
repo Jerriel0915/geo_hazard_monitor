@@ -849,6 +849,10 @@ window.addEventListener('resize', handleResize)
   padding: 12px;
 }
 
+.alarm-level .panel-body {
+  padding-top: 42px;
+}
+
 .echarts-container {
   width: 100%;
   height: 180px;

@@ -32,6 +32,7 @@ const routes: RouteRecordRaw[] = [
       { path: '/report/screen', name: 'Screen', component: () => import('@/views/report/Screen.vue') },
       { path: '/iot/alarm-engine', name: 'AlarmEngine', component: () => import('@/views/iot/AlarmEngine.vue') },
       { path: '/iot/data-parse', name: 'DataParse', component: () => import('@/views/iot/DataParse.vue') },
+      { path: '/iot/service-status', name: 'ServiceStatus', component: () => import('@/views/iot/ServiceStatus.vue') },
         {
             path: '/miniprogram/hazard-point',
             name: 'MpHazardPoint',
