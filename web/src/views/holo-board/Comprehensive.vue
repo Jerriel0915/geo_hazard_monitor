@@ -1,21 +1,10 @@
 <template>
   <div class="comprehensive-view">
-    <div class="refresh-bar">
-      <span class="refresh-time">下次刷新时间：{{ nextRefreshTime }}</span>
-      <span class="refresh-icon" @click="handleRefresh" title="手动刷新">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             width="16" height="16">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <polyline points="1 20 1 14 7 14"></polyline>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-        </svg>
-      </span>
-    </div>
     <div class="left-panel">
       <div class="panel-section health-section">
         <div class="section-header">
           <span class="section-title">系统健康度</span>
-          <span class="health-question" @click="showAlgorithmDesc = true" title="健康度算法说明">
+          <span ref="healthTriggerRef" class="health-question" @mouseenter="showPopover" @mouseleave="hidePopover">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" width="16" height="16">
               <circle cx="12" cy="12" r="10"/>
@@ -23,6 +12,26 @@
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
           </span>
+          <Teleport to="body">
+            <div
+                class="algorithm-popover"
+                v-if="showAlgorithmDesc"
+                :style="popoverStyle"
+                @mouseenter="cancelHide"
+                @mouseleave="hidePopover"
+            >
+              <div class="popover-arrow"></div>
+              <p>系统健康度综合评估以下五个维度：</p>
+              <ul>
+                <li><strong>资料完善率</strong>：设备资料登记率与隐患点资料完善率的综合指标</li>
+                <li><strong>设备在线率</strong>：在线设备数/隐患点关联设备总数 × 100%</li>
+                <li><strong>设备正常率</strong>：状态正常设备数/设备总数 × 100%</li>
+                <li><strong>告警及时响应率</strong>：首次告警1小时内响应的事件数/告警事件总数 × 100%</li>
+                <li><strong>边坡稳定率</strong>：最近一个月未有效告警隐患点数/总隐患点数 × 100%</li>
+              </ul>
+              <p style="margin-top: 8px;">综合得分 = 各维度得分 × 权重之和（环形图分色展示各维度占比）</p>
+            </div>
+          </Teleport>
         </div>
         <div class="health-content">
           <div class="health-ring-container">
@@ -370,31 +379,6 @@
         </div>
       </div>
     </div>
-
-    <div class="algorithm-modal" v-if="showAlgorithmDesc" @click="showAlgorithmDesc = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <span class="modal-title">健康度算法说明</span>
-          <button class="modal-close" @click="showAlgorithmDesc = false">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" width="20" height="20">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <p>系统健康度综合评估以下五个维度：</p>
-          <ul>
-            <li><strong>资料完善率</strong>：设备资料登记率与隐患点资料完善率的综合指标</li>
-            <li><strong>设备在线率</strong>：在线设备数/隐患点关联设备总数 × 100%</li>
-            <li><strong>设备正常率</strong>：状态正常设备数/设备总数 × 100%</li>
-            <li><strong>告警及时响应率</strong>：首次告警1小时内响应的事件数/告警事件总数 × 100%</li>
-            <li><strong>边坡稳定率</strong>：最近一个月未有效告警隐患点数/总隐患点数 × 100%</li>
-          </ul>
-          <p style="margin-top: 12px;">综合得分 = 各维度得分 × 权重之和（环形图分色展示各维度占比）</p>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -434,6 +418,38 @@ interface ChartPoint {
 }
 
 const showAlgorithmDesc = ref(false)
+const healthTriggerRef = ref<HTMLElement | null>(null)
+const popoverStyle = ref<Record<string, string>>({})
+let hideTimer: ReturnType<typeof setTimeout> | null = null
+
+const showPopover = () => {
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null
+  }
+  if (healthTriggerRef.value) {
+    const rect = healthTriggerRef.value.getBoundingClientRect()
+    popoverStyle.value = {
+      position: 'fixed',
+      top: rect.bottom + 8 + 'px',
+      left: Math.min(rect.left, window.innerWidth - 320) + 'px',
+    }
+  }
+  showAlgorithmDesc.value = true
+}
+
+const hidePopover = () => {
+  hideTimer = setTimeout(() => {
+    showAlgorithmDesc.value = false
+  }, 150)
+}
+
+const cancelHide = () => {
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null
+  }
+}
 const animateStats = ref(false)
 const activeSegment = ref<number | null>(null)
 const dataFilter = ref('all')
@@ -563,30 +579,8 @@ const monitorDataPoints = computed<ChartPoint[]>(() => {
 const handleQueryData = () => {
   console.log('查询监测数据:', dataFilter.value)
 }
-const nextRefreshTime = ref('')
 const mapContainer = ref<HTMLElement | null>(null)
 let map: L.Map | null = null
-
-const formatTime = (date: Date) => {
-  const year = date.getFullYear()
-  const month = date.getMonth() + 1
-  const day = date.getDate()
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  return `${year}年${month}月${day}日 ${hours}:${minutes}`
-}
-
-const updateNextRefreshTime = () => {
-  const now = new Date()
-  now.setMinutes(now.getMinutes() + 5)
-  nextRefreshTime.value = formatTime(now)
-}
-
-const handleRefresh = () => {
-  updateNextRefreshTime()
-}
-
-updateNextRefreshTime()
 
 const initMap = () => {
   if (!mapContainer.value) return
@@ -750,14 +744,16 @@ const initHazardTrendChart = () => {
         }
       },
       axisLabel: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 14
       }
     },
     yAxis: {
       type: 'value',
       name: '新增隐患点',
       nameTextStyle: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 14
       },
       axisLine: {
         show: false
@@ -766,7 +762,8 @@ const initHazardTrendChart = () => {
         show: false
       },
       axisLabel: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 14
       },
       splitLine: {
         lineStyle: {
@@ -823,13 +820,14 @@ const initAlarmTrendChart = () => {
       data: ['一级告警', '二级告警', '三级告警', '四级告警', '合计', '预测一级', '预测二级', '预测三级', '预测四级', '预测合计'],
       bottom: 0,
       textStyle: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       }
     },
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '15%',
+      bottom: '18%',
       top: '5%',
       containLabel: true
     },
@@ -843,14 +841,16 @@ const initAlarmTrendChart = () => {
         }
       },
       axisLabel: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       }
     },
     yAxis: {
       type: 'value',
       name: '告警次数',
       nameTextStyle: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       },
       axisLine: {
         show: false
@@ -859,7 +859,8 @@ const initAlarmTrendChart = () => {
         show: false
       },
       axisLabel: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       },
       splitLine: {
         lineStyle: {
@@ -1258,47 +1259,6 @@ const trendAreaPath = computed(() => {
   position: relative;
 }
 
-.refresh-bar {
-  position: absolute;
-  top: -16px;
-  right: 34px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 12px;
-  height: auto;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 6px;
-  z-index: 100;
-}
-
-.refresh-time {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.refresh-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: #9ca3af;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.refresh-icon:hover {
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
-}
-
-.refresh-icon:active {
-  transform: rotate(180deg);
-  transition: transform 0.3s ease;
-}
-
 .left-panel, .right-panel {
   width: 320px;
   padding: 16px;
@@ -1360,13 +1320,13 @@ const trendAreaPath = computed(() => {
 }
 
 .panel-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
 }
 
 .panel-subtitle {
-  font-size: 12px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -1403,7 +1363,7 @@ const trendAreaPath = computed(() => {
 }
 
 .section-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -1414,6 +1374,7 @@ const trendAreaPath = computed(() => {
   padding: 4px;
   border-radius: 4px;
   transition: background 0.2s;
+  position: relative;
 }
 
 .health-question:hover {
@@ -1547,7 +1508,7 @@ const trendAreaPath = computed(() => {
 }
 
 .ring-label {
-  font-size: 11px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -1570,12 +1531,12 @@ const trendAreaPath = computed(() => {
 }
 
 .bar-name {
-  font-size: 12px;
+  font-size: 14px;
   color: #4b5563;
 }
 
 .bar-value {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -1708,14 +1669,14 @@ const trendAreaPath = computed(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #1f2937;
 }
 
 .total-label {
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -1757,7 +1718,7 @@ const trendAreaPath = computed(() => {
 }
 
 .breakdown-label {
-  font-size: 11px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -1767,7 +1728,7 @@ const trendAreaPath = computed(() => {
 }
 
 .type-title {
-  font-size: 12px;
+  font-size: 14px;
   color: #4b5563;
   margin-bottom: 8px;
 }
@@ -1786,12 +1747,12 @@ const trendAreaPath = computed(() => {
 }
 
 .type-bar-row .type-name {
-  font-size: 11px;
+  font-size: 14px;
   color: #6b7280;
 }
 
 .type-bar-row .type-count {
-  font-size: 11px;
+  font-size: 14px;
   color: #3b82f6;
   font-weight: 600;
 }
@@ -1888,7 +1849,7 @@ const trendAreaPath = computed(() => {
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 14px;
   color: #374151;
   font-weight: 700;
   letter-spacing: 0.3px;
@@ -1896,7 +1857,7 @@ const trendAreaPath = computed(() => {
 }
 
 .stat-desc {
-  font-size: 11px;
+  font-size: 14px;
   color: #9ca3af;
   font-weight: 500;
 }
@@ -1947,7 +1908,7 @@ const trendAreaPath = computed(() => {
 }
 
 .legend-text {
-  font-size: 12px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -2278,7 +2239,7 @@ const trendAreaPath = computed(() => {
 }
 
 .chart-y-axis span {
-  font-size: 10px;
+  font-size: 12px;
   color: #9ca3af;
 }
 
@@ -2300,7 +2261,7 @@ const trendAreaPath = computed(() => {
 }
 
 .chart-x-axis span {
-  font-size: 10px;
+  font-size: 12px;
   color: #9ca3af;
 }
 
@@ -2361,7 +2322,7 @@ const trendAreaPath = computed(() => {
 }
 
 .online-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -2388,12 +2349,12 @@ const trendAreaPath = computed(() => {
 }
 
 .total-count {
-  font-size: 18px;
+  font-size: 16px;
   color: #6b7280;
 }
 
 .online-label {
-  font-size: 12px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -2402,7 +2363,7 @@ const trendAreaPath = computed(() => {
 }
 
 .online-chart .chart-title {
-  font-size: 13px;
+  font-size: 14px;
   color: #4b5563;
   margin-bottom: 12px;
 }
@@ -2421,7 +2382,7 @@ const trendAreaPath = computed(() => {
 
 .bar-label {
   width: 50px;
-  font-size: 12px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -2442,7 +2403,7 @@ const trendAreaPath = computed(() => {
 
 .bar-count {
   width: 50px;
-  font-size: 12px;
+  font-size: 14px;
   color: #374151;
   text-align: right;
 }
@@ -2461,13 +2422,13 @@ const trendAreaPath = computed(() => {
 }
 
 .trend-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #374151;
 }
 
 .trend-subtitle {
-  font-size: 11px;
+  font-size: 14px;
   color: #9ca3af;
 }
 
@@ -2484,7 +2445,7 @@ const trendAreaPath = computed(() => {
 }
 
 .trend-y-axis span {
-  font-size: 9px;
+  font-size: 12px;
   color: #9ca3af;
 }
 
@@ -2507,7 +2468,7 @@ const trendAreaPath = computed(() => {
 }
 
 .trend-x-axis span {
-  font-size: 9px;
+  font-size: 12px;
   color: #9ca3af;
 }
 
@@ -2526,7 +2487,7 @@ const trendAreaPath = computed(() => {
 }
 
 .summary-badge {
-  font-size: 11px;
+  font-size: 14px;
   padding: 2px 8px;
   border-radius: 4px;
   margin-bottom: 8px;
@@ -2586,7 +2547,7 @@ const trendAreaPath = computed(() => {
 
 .level-name {
   flex: 1;
-  font-size: 12px;
+  font-size: 14px;
   color: #4b5563;
 }
 
@@ -2606,7 +2567,7 @@ const trendAreaPath = computed(() => {
 }
 
 .list-title {
-  font-size: 13px;
+  font-size: 14px;
   color: #4b5563;
 }
 
@@ -2659,7 +2620,7 @@ const trendAreaPath = computed(() => {
 }
 
 .alarm-title {
-  font-size: 12px;
+  font-size: 14px;
   color: #374151;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2667,89 +2628,56 @@ const trendAreaPath = computed(() => {
 }
 
 .alarm-meta {
-  font-size: 11px;
+  font-size: 14px;
   color: #9ca3af;
   margin-top: 4px;
 }
 
-.algorithm-modal {
+.algorithm-popover {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  width: 480px;
+  width: 300px;
   background: #ffffff;
-  border: 1px solid rgba(79, 172, 254, 0.3);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 14px 16px;
+  z-index: 1000;
+  cursor: default;
+  pointer-events: auto;
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+.popover-arrow {
+  position: absolute;
+  top: -6px;
+  left: 8px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+  transform: rotate(45deg);
 }
 
-.modal-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.modal-close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.06);
-  border: none;
-  border-radius: 8px;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.modal-close:hover {
-  background: rgba(0, 0, 0, 0.1);
+.algorithm-popover p {
+  font-size: 12px;
   color: #374151;
+  line-height: 1.5;
+  margin: 0;
 }
 
-.modal-body {
-  padding: 20px;
+.algorithm-popover ul {
+  margin: 6px 0 0 0;
+  padding-left: 16px;
 }
 
-.modal-body p {
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.6;
-}
-
-.modal-body ul {
-  margin: 12px 0;
-  padding-left: 20px;
-}
-
-.modal-body li {
-  font-size: 13px;
+.algorithm-popover li {
+  font-size: 12px;
   color: #4b5563;
-  margin-bottom: 8px;
+  margin-bottom: 3px;
+  line-height: 1.5;
 }
 
-.modal-body li strong {
+.algorithm-popover li strong {
   color: #3b82f6;
 }
 
@@ -2844,7 +2772,7 @@ const trendAreaPath = computed(() => {
 }
 
 .popup-status {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 4px;
@@ -2855,7 +2783,7 @@ const trendAreaPath = computed(() => {
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .device-count-label {
@@ -2874,7 +2802,7 @@ const trendAreaPath = computed(() => {
 }
 
 .popup-device-list .list-header {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #374151;
   margin-bottom: 8px;
@@ -2887,7 +2815,7 @@ const trendAreaPath = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .device-name {
@@ -2896,6 +2824,6 @@ const trendAreaPath = computed(() => {
 
 .device-status {
   font-weight: 500;
-  font-size: 11px;
+  font-size: 14px;
 }
 </style>

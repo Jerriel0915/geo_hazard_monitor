@@ -333,7 +333,8 @@ const menuList = [
       { name: 'Device', label: '设备管理' },
       { name: 'VideoDevice', label: '视频设备管理' },
       { name: 'AlarmEngine', label: '告警引擎' },
-      { name: 'DataParse', label: '数据解析' }
+      {name: 'DataParse', label: '数据解析'},
+      {name: 'ServiceStatus', label: '服务状态'}
     ]
   },
   {
@@ -370,6 +371,7 @@ const menuRouteMap: Record<string, string> = {
   Screen: '/report/screen',
   AlarmEngine: '/iot/alarm-engine',
   DataParse: '/iot/data-parse',
+  ServiceStatus: '/iot/service-status',
   Organization: '/system/organization',
   Identity: '/system/identity',
   Permission: '/system/permission',
@@ -398,6 +400,7 @@ const menuLabelMap: Record<string, string> = {
   Screen: '运营大屏',
   AlarmEngine: '告警引擎',
   DataParse: '数据解析',
+  ServiceStatus: '服务状态',
   Organization: '组织管理',
   Identity: '身份管理',
   Permission: '权限管理',

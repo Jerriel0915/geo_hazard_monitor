@@ -72,7 +72,7 @@
           <span class="panel-subtitle">近12个月告警统计及未来预测</span>
         </div>
         <div class="panel-body">
-          <div ref="trendChartRef" class="echarts-container"></div>
+          <div ref="trendChartRef" class="echarts-container echarts-container-trend"></div>
         </div>
       </div>
     </div>
@@ -83,7 +83,7 @@
           <span class="panel-title">告警来源分布</span>
         </div>
         <div class="panel-body">
-          <div ref="sourceChartRef" class="echarts-container"></div>
+          <div ref="sourceChartRef" class="echarts-container echarts-container-lg"></div>
         </div>
       </div>
 
@@ -92,7 +92,7 @@
           <span class="panel-title">高风险隐患点</span>
         </div>
         <div class="panel-body">
-          <div ref="hazardChartRef" class="echarts-container"></div>
+          <div ref="hazardChartRef" class="echarts-container echarts-container-lg"></div>
         </div>
       </div>
     </div>
@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {onMounted, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
 
 const alarmStats = ref({
@@ -274,7 +274,7 @@ const initLevelChart = () => {
       top: 'center',
       textStyle: {
         color: '#334155',
-        fontSize: 11
+        fontSize: 14
       },
       itemWidth: 12,
       itemHeight: 12,
@@ -296,7 +296,7 @@ const initLevelChart = () => {
         position: 'outside',
         formatter: '{b}\n{c}次 ({d}%)',
         color: '#334155',
-        fontSize: 11
+        fontSize: 14
       },
       labelLine: {
         show: true,
@@ -335,13 +335,14 @@ const initTrendChart = () => {
       data: ['一级告警', '二级告警', '三级告警', '四级告警', '合计', '预测一级', '预测二级', '预测三级', '预测四级', '预测合计'],
       bottom: 0,
       textStyle: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       }
     },
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '15%',
+      bottom: '18%',
       top: '5%',
       containLabel: true
     },
@@ -355,20 +356,23 @@ const initTrendChart = () => {
         }
       },
       axisLabel: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       }
     },
     yAxis: {
       type: 'value',
       name: '告警次数',
       nameTextStyle: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       },
       axisLine: {
         show: false
       },
       axisLabel: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 12
       },
       splitLine: {
         lineStyle: {
@@ -503,7 +507,7 @@ const initSourceChart = () => {
       }
     },
     grid: {
-      left: '3%',
+      left: '8%',
       right: '4%',
       bottom: '15%',
       top: '10%',
@@ -514,7 +518,7 @@ const initSourceChart = () => {
       data: sourceDistribution.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 11
+        fontSize: 14
       },
       axisLine: {
         lineStyle: {
@@ -526,11 +530,12 @@ const initSourceChart = () => {
       type: 'value',
       name: '告警次数',
       nameTextStyle: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 14
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 11
+        fontSize: 14
       },
       splitLine: {
         lineStyle: {
@@ -552,7 +557,7 @@ const initSourceChart = () => {
         position: 'top',
         formatter: '{c}次 ({d}%)',
         color: '#1e293b',
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: 600
       }
     }]
@@ -578,7 +583,7 @@ const initHazardChart = () => {
       }
     },
     grid: {
-      left: '3%',
+      left: '8%',
       right: '4%',
       bottom: '15%',
       top: '10%',
@@ -589,7 +594,7 @@ const initHazardChart = () => {
       data: hazardData.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 11
+        fontSize: 14
       },
       axisLine: {
         lineStyle: {
@@ -601,11 +606,12 @@ const initHazardChart = () => {
       type: 'value',
       name: '告警次数',
       nameTextStyle: {
-        color: '#6b7280'
+        color: '#6b7280',
+        fontSize: 14
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 11
+        fontSize: 14
       },
       splitLine: {
         lineStyle: {
@@ -626,7 +632,7 @@ const initHazardChart = () => {
         position: 'top',
         formatter: '{c}次',
         color: '#1e293b',
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: 600
       }
     }]
@@ -751,7 +757,7 @@ window.addEventListener('resize', handleResize)
 .alarm-stats-view {
   min-height: 100%;
   background: transparent;
-  padding: 0;
+  padding: 20px 0 0 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -789,7 +795,7 @@ window.addEventListener('resize', handleResize)
 }
 
 .stat-value {
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
   color: #1e293b;
   transition: all 0.3s ease;
@@ -797,11 +803,10 @@ window.addEventListener('resize', handleResize)
 
 .stat-value.highlight {
   color: #3b82f6;
-  font-size: 24px;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
   margin-top: 2px;
 }
@@ -829,13 +834,13 @@ window.addEventListener('resize', handleResize)
 }
 
 .panel-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .panel-subtitle {
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
   margin-left: 8px;
 }
@@ -844,9 +849,22 @@ window.addEventListener('resize', handleResize)
   padding: 12px;
 }
 
+.alarm-level .panel-body {
+  padding-top: 42px;
+}
+
 .echarts-container {
   width: 100%;
   height: 180px;
+}
+
+
+.echarts-container-lg {
+  height: 310px; /*  用来控制两个板块的高度 */
+}
+
+.echarts-container-trend {
+  height: 260px;
 }
 
 .alarm-list-section {
@@ -865,13 +883,13 @@ window.addEventListener('resize', handleResize)
 }
 
 .list-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .refresh-time {
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
 }
 
@@ -927,14 +945,14 @@ window.addEventListener('resize', handleResize)
 }
 
 .alarm-title {
-  font-size: 13px;
+  font-size: 14px;
   color: #1e293b;
   margin-bottom: 4px;
 }
 
 .alarm-meta {
   display: flex;
-  font-size: 11px;
+  font-size: 14px;
   color: #64748b;
 }
 
