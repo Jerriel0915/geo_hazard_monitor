@@ -190,15 +190,185 @@
     </el-dialog>
 
     <!-- 反馈弹窗 -->
-    <el-dialog v-model="feedbackDialogVisible" title="告警反馈" width="600px">
-      <el-form :model="feedbackForm" label-width="100px">
-        <el-form-item label="反馈内容">
-          <el-input v-model="feedbackForm.content" type="textarea" :rows="5" placeholder="请输入反馈内容" />
-        </el-form-item>
-      </el-form>
+    <el-dialog v-model="feedbackDialogVisible" title="告警反馈" width="850px">
+      <div v-if="currentRow && !Array.isArray(currentRow)" class="feedback-container">
+        <!-- 告警基本信息 -->
+        <div class="feedback-header">
+          <div class="header-info">
+            <div class="info-item">
+              <span class="label">告警编号：</span>
+              <span class="value">{{ currentRow.id }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">隐患点名称：</span>
+              <span class="value">{{ currentRow.hazardPointName }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">告警等级：</span>
+              <el-tag :type="getAlarmLevelType(currentRow.alarmLevel)" size="large">{{ getAlarmLevelText(currentRow.alarmLevel) }}({{ getAlarmLevelDesc(currentRow.alarmLevel) }})</el-tag>
+            </div>
+            <div class="info-item">
+              <span class="label">告警类型：</span>
+              <span class="value">{{ getAlarmTypeText(currentRow.alarmType) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 事件生命周期 -->
+        <div class="feedback-section">
+          <div class="section-title">
+            <el-icon><Clock /></el-icon>
+            事件生命周期
+          </div>
+          <div class="life-cycle">
+            <div class="cycle-step completed">
+              <div class="step-icon">
+                <el-icon><Server /></el-icon>
+              </div>
+              <div class="step-label">设备接入</div>
+            </div>
+            <div class="cycle-line completed"></div>
+            <div class="cycle-step completed">
+              <div class="step-icon">
+                <el-icon><Database /></el-icon>
+              </div>
+              <div class="step-label">数据存储</div>
+            </div>
+            <div class="cycle-line completed"></div>
+            <div class="cycle-step completed active">
+              <div class="step-icon alarm">
+                <el-icon><Bell /></el-icon>
+              </div>
+              <div class="step-label">警报级</div>
+            </div>
+            <div class="cycle-line" :class="{ completed: currentRow.status === 'processing' }"></div>
+            <div class="cycle-step" :class="{ completed: currentRow.status === 'processing' }">
+              <div class="step-icon">
+                <el-icon><Search /></el-icon>
+              </div>
+              <div class="step-label">情况核查</div>
+            </div>
+            <div class="cycle-line"></div>
+            <div class="cycle-step">
+              <div class="step-icon">
+                <el-icon><CheckCircle /></el-icon>
+              </div>
+              <div class="step-label">核查完成</div>
+            </div>
+            <div class="cycle-line"></div>
+            <div class="cycle-step">
+              <div class="step-icon">
+                <el-icon><XCircle /></el-icon>
+              </div>
+              <div class="step-label">关闭事件</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="feedback-section">
+          <div class="section-title">
+            <el-icon><FileText /></el-icon>
+            基本信息
+          </div>
+          <el-descriptions :column="3" border size="small">
+            <el-descriptions-item label="首次告警时间">{{ currentRow.firstAlarmTime }}</el-descriptions-item>
+            <el-descriptions-item label="最后告警时间">{{ currentRow.lastAlarmTime }}</el-descriptions-item>
+            <el-descriptions-item label="告警次数">{{ currentRow.alarmCount }} 次</el-descriptions-item>
+            <el-descriptions-item label="当前状态">
+              <el-tag :type="getStatusType(currentRow.status)">{{ getStatusText(currentRow.status) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="响应人员">{{ currentRow.responderName || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="响应时间">{{ currentRow.responseTime || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 告警内容 -->
+        <div class="feedback-section">
+          <div class="section-title">
+            <el-icon><AlertTriangle /></el-icon>
+            告警描述
+          </div>
+          <div class="alarm-content">{{ currentRow.alarmContent }}</div>
+        </div>
+
+        <!-- 反馈表单 -->
+        <div class="feedback-section">
+          <div class="section-title">
+            <el-icon><MessageSquare /></el-icon>
+            处理反馈
+          </div>
+          <el-form :model="feedbackForm" label-width="100px">
+            <el-form-item label="处理方式">
+              <el-select v-model="feedbackForm.handleType" placeholder="请选择处理方式">
+                <el-option label="现场勘查" value="on_site" />
+                <el-option label="远程监控" value="remote" />
+                <el-option label="技术支持" value="technical" />
+                <el-option label="专家会诊" value="expert" />
+                <el-option label="其他" value="other" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="处理状态">
+              <el-select v-model="feedbackForm.status" placeholder="请选择处理状态">
+                <el-option label="已响应，正在处理" value="processing" />
+                <el-option label="已到达现场" value="on_site" />
+                <el-option label="已处理完成" value="completed" />
+                <el-option label="需要进一步评估" value="pending" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="处理人员">
+              <el-input v-model="feedbackForm.personnel" placeholder="请输入处理人员" />
+            </el-form-item>
+            <el-form-item label="反馈内容">
+              <el-input v-model="feedbackForm.content" type="textarea" :rows="4" placeholder="请输入处理反馈内容，包括现场情况、采取的措施、后续计划等" />
+            </el-form-item>
+            <el-form-item label="附件">
+              <el-upload
+                class="upload-demo"
+                action="#"
+                :auto-upload="false"
+                :file-list="feedbackForm.attachments"
+                multiple
+                accept=".jpg,.png,.pdf,.doc,.docx"
+              >
+                <el-button size="small" type="primary">点击上传附件</el-button>
+                <template #tip>
+                  <div class="el-upload__tip">支持 jpg、png、pdf、doc、docx 格式</div>
+                </template>
+              </el-upload>
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
+      
+      <!-- 批量反馈 -->
+      <div v-else-if="Array.isArray(currentRow)" class="batch-feedback">
+        <div class="batch-info">
+          <el-icon><List /></el-icon>
+          <span>已选择 {{ currentRow.length }} 条告警记录进行批量反馈</span>
+        </div>
+        <el-form :model="feedbackForm" label-width="100px">
+          <el-form-item label="处理方式">
+            <el-select v-model="feedbackForm.handleType" placeholder="请选择处理方式">
+              <el-option label="现场勘查" value="on_site" />
+              <el-option label="远程监控" value="remote" />
+              <el-option label="技术支持" value="technical" />
+              <el-option label="专家会诊" value="expert" />
+              <el-option label="其他" value="other" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="处理人员">
+            <el-input v-model="feedbackForm.personnel" placeholder="请输入处理人员" />
+          </el-form-item>
+          <el-form-item label="反馈内容">
+            <el-input v-model="feedbackForm.content" type="textarea" :rows="5" placeholder="请输入批量处理反馈内容" />
+          </el-form-item>
+        </el-form>
+      </div>
+
       <template #footer>
         <el-button @click="feedbackDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitFeedback">确定</el-button>
+        <el-button type="primary" @click="submitFeedback">提交反馈</el-button>
       </template>
     </el-dialog>
 
@@ -225,7 +395,7 @@
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import {ChatDotRound, CircleClose, Download, View, Warning} from '@element-plus/icons-vue'
+import {ChatDotRound, CircleClose, Clock, Database, Download, List, MessageSquare, Search, Server, View, Warning, AlertTriangle, Bell, CheckCircle, FileText, XCircle} from '@element-plus/icons-vue'
 
 // 查询参数
 const queryParams = reactive({
@@ -261,7 +431,11 @@ const closeAlarmDialogVisible = ref(false)
 const currentRow = ref<any>(null)
 const currentAlarmList = ref<any[]>([])
 const feedbackForm = reactive({
-  content: ''
+  content: '',
+  handleType: '',
+  status: '',
+  personnel: '',
+  attachments: [] as any[]
 })
 
 // Mock 数据
@@ -453,6 +627,17 @@ const getAlarmLevelText = (level: string) => {
   return map[level] || level
 }
 
+// 获取告警等级描述
+const getAlarmLevelDesc = (level: string) => {
+  const map: Record<string, string> = {
+    '1': '特别严重',
+    '2': '严重',
+    '3': '较严重',
+    '4': '一般'
+  }
+  return map[level] || ''
+}
+
 // 获取告警类型文本
 const getAlarmTypeText = (type: string) => {
   const map: Record<string, string> = {
@@ -529,6 +714,10 @@ const showAlarmList = (row: any) => {
 const handleFeedback = (row: any) => {
   currentRow.value = row
   feedbackForm.content = ''
+  feedbackForm.handleType = ''
+  feedbackForm.status = ''
+  feedbackForm.personnel = ''
+  feedbackForm.attachments = []
   feedbackDialogVisible.value = true
 }
 
@@ -540,6 +729,8 @@ const handleBatchFeedback = () => {
   }
   currentRow.value = selectedRows.value
   feedbackForm.content = ''
+  feedbackForm.handleType = ''
+  feedbackForm.personnel = ''
   feedbackDialogVisible.value = true
 }
 
@@ -753,5 +944,185 @@ const handleCurrentChange = (page: number) => {
 .alarm-list-table {
   max-height: 400px;
   overflow: auto;
+}
+
+/* 反馈弹窗样式 */
+.feedback-container {
+  padding: 16px;
+}
+
+.feedback-header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.header-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-item .label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.info-item .value {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.feedback-section {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #1e3a5f;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid #2d5a87;
+}
+
+/* 事件生命周期 */
+.life-cycle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.cycle-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.step-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 20px;
+  transition: all 0.3s;
+}
+
+.step-icon.alarm {
+  background: #ef4444;
+  color: #fff;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.cycle-step.completed .step-icon {
+  background: #10b981;
+  color: #fff;
+}
+
+.cycle-step.active .step-icon {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.step-label {
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+.cycle-step.completed .step-label {
+  color: #10b981;
+}
+
+.cycle-step.active .step-label {
+  color: #f59e0b;
+  font-weight: bold;
+}
+
+.cycle-line {
+  flex: 1;
+  height: 3px;
+  background: #e2e8f0;
+  margin: 0 8px;
+  min-width: 20px;
+}
+
+.cycle-line.completed {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+/* 告警内容 */
+.alarm-content {
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  color: #856404;
+  line-height: 1.6;
+}
+
+/* 批量反馈 */
+.batch-feedback {
+  padding: 16px;
+}
+
+.batch-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.batch-info el-icon {
+  color: #3b82f6;
+}
+
+/* 表单样式 */
+.upload-demo {
+  margin-top: 8px;
+}
+
+.el-upload__tip {
+  margin-top: 8px;
 }
 </style>
