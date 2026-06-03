@@ -226,9 +226,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { View, ChatDotRound, Warning, CircleClose, Download } from '@element-plus/icons-vue'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {ElMessage} from 'element-plus'
+import {ChatDotRound, CircleClose, Download, View, Warning} from '@element-plus/icons-vue'
 
 // 查询参数
 const queryParams = reactive({
@@ -408,11 +408,11 @@ const filteredData = computed(() => {
   }
 
   // 告警次数范围筛选
-  if (queryParams.alarmCountMin !== null) {
-    result = result.filter(item => item.alarmCount >= queryParams.alarmCountMin)
+  if (queryParams.alarmCountMin != null) {
+    result = result.filter(item => item.alarmCount >= queryParams.alarmCountMin!)
   }
-  if (queryParams.alarmCountMax !== null) {
-    result = result.filter(item => item.alarmCount <= queryParams.alarmCountMax)
+  if (queryParams.alarmCountMax != null) {
+    result = result.filter(item => item.alarmCount <= queryParams.alarmCountMax!)
   }
 
   // 按最后告警时间倒序
