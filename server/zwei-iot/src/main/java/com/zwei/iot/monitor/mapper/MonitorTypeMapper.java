@@ -87,4 +87,8 @@ public interface MonitorTypeMapper {
      * @return 监测类型信息（null表示唯一）
      */
     MonitorType checkMonitorTypeCodeUnique(@Param("code") String code, @Param("id") Long id);
+
+    // ==================== 统计查询 ====================
+
+    int countAll();
 }

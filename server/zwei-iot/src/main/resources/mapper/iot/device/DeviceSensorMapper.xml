@@ -162,4 +162,26 @@
         ORDER BY ds.id ASC
     </select>
 
+    <!-- ==================== 统计查询 ==================== -->
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*)
+        FROM device_sensor
+        WHERE del_flag = 0
+    </select>
+
+    <select id="countByStatus" resultType="java.util.Map">
+        SELECT status, COUNT(*) AS cnt
+        FROM device_sensor
+        WHERE del_flag = 0
+        GROUP BY status
+    </select>
+
+    <select id="countByMonitorType" resultType="java.util.Map">
+        SELECT ds.monitor_type_id AS monitorTypeId, mt.name AS monitorTypeName, COUNT(*) AS cnt
+        FROM device_sensor ds
+                 INNER JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
+        WHERE ds.del_flag = 0
+        GROUP BY ds.monitor_type_id, mt.name
+    </select>
+
 </mapper>

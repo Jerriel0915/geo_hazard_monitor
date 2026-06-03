@@ -172,4 +172,27 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           AND del_flag = '0'
     </update>
 
+    <!-- ==================== 统计查询 ==================== -->
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*)
+        FROM hazard_point
+        WHERE del_flag = '0'
+    </select>
+
+    <select id="countByStatus" resultType="java.util.Map">
+        SELECT status, COUNT(*) AS cnt
+        FROM hazard_point
+        WHERE del_flag = '0'
+        GROUP BY status
+    </select>
+
+    <select id="countByMonth" resultType="java.util.Map">
+        SELECT DATE_FORMAT(create_time, '%Y-%m') AS month, COUNT(*) AS cnt
+        FROM hazard_point
+        WHERE del_flag = '0'
+          AND create_time >= DATE_SUB(NOW(), INTERVAL #{months} MONTH)
+        GROUP BY DATE_FORMAT(create_time, '%Y-%m')
+        ORDER BY month ASC
+    </select>
+
 </mapper>

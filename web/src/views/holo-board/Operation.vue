@@ -200,17 +200,35 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
+import {
+  type DashboardOverview,
+  getDashboardOverview,
+  getDeviceActiveRate,
+  getDeviceOnlineRate,
+  getSensorDistribution,
+  getSensorOnlineRate,
+  type RateByTypeVO,
+  type SensorDistributionVO
+} from '@/api/monitor'
 
-const stats = reactive({
-  totalDevices: 2363,
-  onlineRate: 96.91,
-  repairRate: 3.09,
-  monitorTypes: 21,
-  sensorOnlineRate: 99.2,
-  hiddenDangerCount: 156
-})
+const overview = ref<DashboardOverview | null>(null)
+const deviceOnline = ref<RateByTypeVO | null>(null)
+const deviceActive6h = ref<RateByTypeVO | null>(null)
+const deviceActive12h = ref<RateByTypeVO | null>(null)
+const deviceActive24h = ref<RateByTypeVO | null>(null)
+const sensorOnline = ref<RateByTypeVO | null>(null)
+const sensorDist = ref<SensorDistributionVO | null>(null)
+
+const stats = computed(() => ({
+  totalDevices: overview.value?.device?.total ?? 0,
+  onlineRate: deviceOnline.value?.onlineRate ?? 0,
+  repairRate: deviceOnline.value ? Math.round((100 - deviceOnline.value.onlineRate) * 100) / 100 : 0,
+  monitorTypes: overview.value?.monitorType?.total ?? 0,
+  sensorOnlineRate: sensorOnline.value?.onlineRate ?? 0,
+  hiddenDangerCount: overview.value?.hazardPoint?.total ?? 0
+}))
 
 const barChartRef = ref<HTMLDivElement>()
 let barChartInstance: echarts.ECharts | null = null
@@ -354,12 +372,10 @@ const initPieChart = () => {
             fontWeight: 'bold'
           }
         },
-        data: deviceLegend.map(item => ({
-          name: item.name,
-          value: item.value,
-          itemStyle: {
-            color: item.color
-          }
+        data: (sensorDist.value?.list ?? []).map((item, i) => ({
+          name: item.monitorTypeName,
+          value: item.sensorCount,
+          itemStyle: {color: PIE_COLORS[i % PIE_COLORS.length]}
         }))
       }
     ]
@@ -453,10 +469,25 @@ const handleResize = () => {
   pieChartInstance?.resize()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const [ov, dor, d6, d12, d24, sor, sd] = await Promise.all([
+      getDashboardOverview(), getDeviceOnlineRate(),
+      getDeviceActiveRate(360), getDeviceActiveRate(720), getDeviceActiveRate(1440),
+      getSensorOnlineRate(), getSensorDistribution()
+    ])
+    overview.value = ov.data
+    deviceOnline.value = dor.data
+    deviceActive6h.value = d6.data
+    deviceActive12h.value = d12.data
+    deviceActive24h.value = d24.data
+    sensorOnline.value = sor.data
+    sensorDist.value = sd.data
+  } catch { /* use defaults */
+  }
+  initPieChart()
   initBarChart()
   initPyramidChart()
-  initPieChart()
   window.addEventListener('resize', handleResize)
 })
 
@@ -467,25 +498,26 @@ onUnmounted(() => {
   pieChartInstance?.dispose()
 })
 
-const deviceLegend = [
-  {name: '表面水平位移', value: 22.64, color: '#3b82f6'},
-  {name: '倾角', value: 20.27, color: '#10b981'},
-  {name: '加速度', value: 17.78, color: '#f59e0b'},
-  {name: '渗压', value: 11.78, color: '#ef4444'},
-  {name: '孔隙水压力', value: 0.13, color: '#8b5cf6'}
-]
-
+const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316']
 const circumference = 2 * Math.PI * 70
 
 const devicePieData = computed(() => {
-  const total = deviceLegend.reduce((sum, item) => sum + item.value, 0)
+  const types = sensorDist.value?.list ?? []
+  if (types.length === 0) return []
+  const total = types.reduce((s, t) => s + t.sensorCount, 0)
   let offset = 0
-  return deviceLegend.map(item => {
-    const percent = item.value / total
+  return types.map((item, i) => {
+    const percent = total > 0 ? item.sensorCount / total : 0
     const dashArray = `${percent * circumference} ${circumference}`
     const currentOffset = -offset
     offset += percent * circumference
-    return {dashArray, offset: currentOffset}
+    return {
+      name: item.monitorTypeName,
+      value: Math.round(percent * 10000) / 100,
+      color: PIE_COLORS[i % PIE_COLORS.length],
+      dashArray,
+      offset: currentOffset
+    }
   })
 })
 
@@ -514,29 +546,30 @@ const pyramidData = [
   {name: '孔隙水压力', count: 3, width: 10}
 ]
 
-const online6hData = [
-  {type: 'GNSS', total: 156, online: 154, rate: 98.7},
-  {type: '裂缝计', total: 89, online: 87, rate: 97.8},
-  {type: '渗压计', total: 234, online: 230, rate: 98.3},
-  {type: '测缝计', total: 67, online: 65, rate: 97.0},
-  {type: '雨量计', total: 45, online: 44, rate: 97.8}
-]
-
-const online12hData = [
-  {type: 'GNSS', total: 156, online: 153, rate: 98.1},
-  {type: '裂缝计', total: 89, online: 86, rate: 96.6},
-  {type: '渗压计', total: 234, online: 228, rate: 97.4},
-  {type: '测缝计', total: 67, online: 64, rate: 95.5},
-  {type: '雨量计', total: 45, online: 43, rate: 95.6}
-]
-
-const online24hData = [
-  {type: 'GNSS', total: 156, online: 151, rate: 96.8},
-  {type: '裂缝计', total: 89, online: 85, rate: 95.5},
-  {type: '渗压计', total: 234, online: 225, rate: 96.2},
-  {type: '测缝计', total: 67, online: 63, rate: 94.0},
-  {type: '雨量计', total: 45, online: 42, rate: 93.3}
-]
+const online6hData = computed(() =>
+    (deviceActive6h.value?.byType ?? []).map(t => ({
+      type: t.monitorTypeName,
+      total: t.total,
+      online: t.online,
+      rate: t.onlineRate
+    }))
+)
+const online12hData = computed(() =>
+    (deviceActive12h.value?.byType ?? []).map(t => ({
+      type: t.monitorTypeName,
+      total: t.total,
+      online: t.online,
+      rate: t.onlineRate
+    }))
+)
+const online24hData = computed(() =>
+    (deviceActive24h.value?.byType ?? []).map(t => ({
+      type: t.monitorTypeName,
+      total: t.total,
+      online: t.online,
+      rate: t.onlineRate
+    }))
+)
 </script>
 
 <style scoped>

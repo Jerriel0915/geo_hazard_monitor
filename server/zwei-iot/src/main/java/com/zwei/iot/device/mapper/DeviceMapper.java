@@ -108,4 +108,14 @@ public interface DeviceMapper {
      * @return 设备信息（null表示唯一）
      */
     Device checkDeviceCodeUnique(@Param("code") String code, @Param("id") Long id);
+
+    // ==================== 统计查询 ====================
+
+    int countAll();
+
+    List<java.util.Map<String, Object>> countByStatus();
+
+    List<java.util.Map<String, Object>> countByRunStatus();
+
+    List<java.util.Map<String, Object>> countByMonitorType();
 }

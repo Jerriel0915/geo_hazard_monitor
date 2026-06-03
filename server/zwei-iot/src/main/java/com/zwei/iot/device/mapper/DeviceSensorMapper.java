@@ -85,4 +85,12 @@ public interface DeviceSensorMapper {
      * @return 传感器信息（null表示唯一）
      */
     DeviceSensor checkSensorCodeUnique(@Param("sensorCode") String sensorCode, @Param("id") Long id);
+
+    // ==================== 统计查询 ====================
+
+    int countAll();
+
+    List<java.util.Map<String, Object>> countByStatus();
+
+    List<java.util.Map<String, Object>> countByMonitorType();
 }

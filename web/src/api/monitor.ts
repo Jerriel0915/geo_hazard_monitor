@@ -187,3 +187,68 @@ export interface MqttMessageLogPageResult {
 export function getMqttMessages(params?: MqttMessageLogParams): Promise<AjaxResult<MqttMessageLogPageResult>> {
     return request.get('/monitor/mqtt/messages/page', {params})
 }
+
+// ===================== 大屏仪表盘统计 =====================
+
+export interface DashboardOverview {
+    device: { total: number; byStatus: Record<string, number>; byRunStatus: Record<string, number> }
+    sensor: { total: number; enabled: number; disabled: number; onlineRate: number }
+    deviceOnlineRate: { total: number; online: number; onlineRate: number }
+    hazardPoint: { total: number; byStatus: Record<string, number> }
+    monitorType: { total: number }
+    videoDevice: { total: number; byStatus: Record<string, number> }
+}
+
+export interface RateByTypeVO {
+    windowMinutes?: number
+    total: number
+    online: number
+    offline: number
+    onlineRate: number
+    byType: Array<{
+        monitorTypeId: number
+        monitorTypeName: string
+        total: number
+        online: number
+        offline: number
+        onlineRate: number
+    }>
+}
+
+export interface HazardPointTrendVO {
+    months: string[]
+    counts: number[]
+    cumulativeCounts: number[]
+}
+
+export interface SensorDistributionVO {
+    list: Array<{ monitorTypeId: number; monitorTypeName: string; sensorCount: number }>
+}
+
+export function getDashboardOverview(): Promise<AjaxResult<DashboardOverview>> {
+    return request.get('/monitor/dashboard/overview')
+}
+
+export function getDeviceOnlineRate(): Promise<AjaxResult<RateByTypeVO>> {
+    return request.get('/monitor/dashboard/device-online-rate')
+}
+
+export function getDeviceActiveRate(windowMinutes?: number): Promise<AjaxResult<RateByTypeVO>> {
+    return request.get('/monitor/dashboard/device-active-rate', {params: {windowMinutes}})
+}
+
+export function getSensorOnlineRate(): Promise<AjaxResult<RateByTypeVO>> {
+    return request.get('/monitor/dashboard/sensor-online-rate')
+}
+
+export function getSensorActiveRate(windowMinutes?: number): Promise<AjaxResult<RateByTypeVO>> {
+    return request.get('/monitor/dashboard/sensor-active-rate', {params: {windowMinutes}})
+}
+
+export function getHazardPointTrend(months?: number): Promise<AjaxResult<HazardPointTrendVO>> {
+    return request.get('/monitor/dashboard/hazard-point-trend', {params: {months}})
+}
+
+export function getSensorDistribution(): Promise<AjaxResult<SensorDistributionVO>> {
+    return request.get('/monitor/dashboard/sensor-distribution')
+}
