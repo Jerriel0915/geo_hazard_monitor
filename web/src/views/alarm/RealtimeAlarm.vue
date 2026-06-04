@@ -109,7 +109,7 @@
           </el-table-column>
           <el-table-column prop="responderName" label="响应人员" width="120" />
           <el-table-column prop="responseTime" label="响应时间" width="180" />
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" width="160" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click.stop="handleView(row)">
                 <el-icon><View /></el-icon>
@@ -117,15 +117,7 @@
               </el-button>
               <el-button type="success" link size="small" @click.stop="handleFeedback(row)">
                 <el-icon><ChatDotRound /></el-icon>
-                反馈
-              </el-button>
-              <el-button type="warning" link size="small" @click.stop="handleFalseAlarm(row)">
-                <el-icon><Warning /></el-icon>
-                误报
-              </el-button>
-              <el-button type="danger" link size="small" @click.stop="handleCloseAlarm(row)">
-                <el-icon><CircleClose /></el-icon>
-                销警
+                处置
               </el-button>
             </template>
           </el-table-column>
@@ -218,6 +210,29 @@
         <el-button type="danger" @click="confirmCloseAlarm">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量反馈弹窗 -->
+    <el-dialog 
+      v-model="batchFeedbackDialogVisible" 
+      :title="batchFeedbackTitle" 
+      width="500px"
+    >
+      <el-form :model="batchFeedbackForm">
+        <el-form-item label="反馈意见" label-width="80px">
+          <el-input 
+            v-model="batchFeedbackForm.remark" 
+            type="textarea" 
+            :rows="4" 
+            placeholder="请输入批量反馈意见..."
+            maxlength="500"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchFeedbackDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmBatchFeedback">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -256,6 +271,16 @@ const alarmListDialogVisible = ref(false)
 const feedbackDialogVisible = ref(false)
 const falseAlarmDialogVisible = ref(false)
 const closeAlarmDialogVisible = ref(false)
+const batchFeedbackDialogVisible = ref(false)
+
+// 批量反馈表单
+const batchFeedbackForm = reactive({
+  remark: ''
+})
+
+const batchFeedbackTitle = computed(() => {
+  return `批量反馈-${selectedRows.value.length}`
+})
 
 // 当前行
 const currentRow = ref<any>(null)
@@ -538,9 +563,26 @@ const handleBatchFeedback = () => {
     ElMessage.warning('请先选择要反馈的记录')
     return
   }
-  currentRow.value = selectedRows.value
-  feedbackForm.content = ''
-  feedbackDialogVisible.value = true
+  batchFeedbackForm.remark = ''
+  batchFeedbackDialogVisible.value = true
+}
+
+// 确认批量反馈
+const confirmBatchFeedback = () => {
+  if (!batchFeedbackForm.remark.trim()) {
+    ElMessage.warning('请输入反馈意见')
+    return
+  }
+  
+  selectedRows.value.forEach(row => {
+    row.status = 'processing'
+    row.responderName = '当前用户'
+    row.responseTime = new Date().toLocaleString()
+  })
+  
+  ElMessage.success(`成功反馈 ${selectedRows.value.length} 条告警记录`)
+  batchFeedbackDialogVisible.value = false
+  selectedRows.value = []
 }
 
 // 提交反馈

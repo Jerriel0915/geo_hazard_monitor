@@ -308,7 +308,7 @@ const allMenuItems: MenuItem[] = [
       { name: 'RealtimeAlarm', label: '待办告警' },
       { name: 'AlarmNotification', label: '历史告警' },
       { name: 'AlarmCriteria', label: '告警判据' },
-      { name: 'AlarmDisposal', label: '告警通知查询' }
+      { name: 'AlarmDisposal', label: '综合告警' }
     ]
   },
   {
@@ -399,7 +399,7 @@ const menuLabelMap: Record<string, string> = {
   RealtimeAlarm: '待办告警',
   AlarmCriteria: '告警判据',
   AlarmNotification: '历史告警',
-  AlarmDisposal: '告警通知查询',
+  AlarmDisposal: '综合告警',
   Report: '报告管理',
   Query: '查询中心',
   Analysis: '数据分析',
