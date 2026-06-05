@@ -1,6 +1,7 @@
 package com.zwei.iot.device.service.impl;
 
 import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.mapper.DeviceOnlineStatusMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.service.IDeviceStatService;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
@@ -26,18 +27,21 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     private final HazardPointMapper hazardPointMapper;
     private final MonitorTypeMapper monitorTypeMapper;
     private final VideoDeviceMapper videoDeviceMapper;
+    private final DeviceOnlineStatusMapper onlineStatusMapper;
 
     @Autowired
     public DeviceStatServiceImpl(DeviceMapper deviceMapper,
                                  DeviceSensorMapper deviceSensorMapper,
                                  HazardPointMapper hazardPointMapper,
                                  MonitorTypeMapper monitorTypeMapper,
-                                 VideoDeviceMapper videoDeviceMapper) {
+                                 VideoDeviceMapper videoDeviceMapper,
+                                 DeviceOnlineStatusMapper onlineStatusMapper) {
         this.deviceMapper = deviceMapper;
         this.deviceSensorMapper = deviceSensorMapper;
         this.hazardPointMapper = hazardPointMapper;
         this.monitorTypeMapper = monitorTypeMapper;
         this.videoDeviceMapper = videoDeviceMapper;
+        this.onlineStatusMapper = onlineStatusMapper;
     }
 
     @Override
@@ -103,5 +107,25 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     @Override
     public List<Map<String, Object>> countVideoDevicesByStatus() {
         return videoDeviceMapper.countByStatus();
+    }
+
+    @Override
+    public int countDevicesComplete() {
+        return deviceMapper.countComplete();
+    }
+
+    @Override
+    public int countDevicesNormal() {
+        return deviceMapper.countNormal();
+    }
+
+    @Override
+    public int countOnlineDevices() {
+        return onlineStatusMapper.countOnline();
+    }
+
+    @Override
+    public int countActiveDevicesInWindow(int windowMinutes) {
+        return onlineStatusMapper.countActiveInWindow(windowMinutes);
     }
 }

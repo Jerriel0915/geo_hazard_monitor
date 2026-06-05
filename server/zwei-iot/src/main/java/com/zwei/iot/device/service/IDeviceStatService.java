@@ -44,4 +44,18 @@ public interface IDeviceStatService {
     int countAllVideoDevices();
 
     List<Map<String, Object>> countVideoDevicesByStatus();
+
+    // ==================== 运维指标（新表） ====================
+
+    /** 资料完整设备数（名称+GPS+监测类型齐全） */
+    int countDevicesComplete();
+
+    /** 设备正常数（status=1） */
+    int countDevicesNormal();
+
+    /** 在线设备数（FROM device_online_status WHERE status=1） */
+    int countOnlineDevices();
+
+    /** 时间窗口内活跃设备数（有数据上报） */
+    int countActiveDevicesInWindow(int windowMinutes);
 }
