@@ -1,12 +1,12 @@
-package com.zwei.system.domain;
+package com.zwei.system.notice.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.zwei.common.core.domain.BaseEntity;
+import com.zwei.common.xss.Xss;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.zwei.common.core.domain.BaseEntity;
-import com.zwei.common.xss.Xss;
 
 /**
  * 通知公告表 sys_notice

@@ -1,10 +1,11 @@
-package com.zwei.system.mapper;
+package com.zwei.system.notice.mapper;
+
+import com.zwei.system.notice.domain.SysNotice;
+import com.zwei.system.notice.domain.SysNoticeRead;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
-import org.apache.ibatis.annotations.Param;
-import com.zwei.system.domain.SysNotice;
-import com.zwei.system.domain.SysNoticeRead;
 
 /**
  * 公告已读记录 数据层

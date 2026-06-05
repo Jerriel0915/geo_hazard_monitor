@@ -1,4 +1,4 @@
-package com.zwei.system.notify;
+package com.zwei.system.notice.notify;
 
 /**
  * 通知发送请求 — 携带通道分发所需的全部上下文。

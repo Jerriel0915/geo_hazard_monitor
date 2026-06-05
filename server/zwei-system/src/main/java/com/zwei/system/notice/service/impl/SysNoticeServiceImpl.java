@@ -1,11 +1,11 @@
-package com.zwei.system.service.impl;
+package com.zwei.system.notice.service.impl;
 
 import com.zwei.common.event.NoticeCreatedEvent;
+import com.zwei.system.notice.domain.SysNotice;
+import com.zwei.system.notice.mapper.SysNoticeMapper;
+import com.zwei.system.notice.service.ISysNoticeService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import com.zwei.system.domain.SysNotice;
-import com.zwei.system.mapper.SysNoticeMapper;
-import com.zwei.system.service.ISysNoticeService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

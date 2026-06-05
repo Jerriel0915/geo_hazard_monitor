@@ -1,7 +1,8 @@
-package com.zwei.system.mapper;
+package com.zwei.system.notice.mapper;
+
+import com.zwei.system.notice.domain.SysNotice;
 
 import java.util.List;
-import com.zwei.system.domain.SysNotice;
 
 /**
  * 通知公告表 数据层

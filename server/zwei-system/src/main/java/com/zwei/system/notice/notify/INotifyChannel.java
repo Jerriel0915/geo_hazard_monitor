@@ -1,4 +1,4 @@
-package com.zwei.system.notify;
+package com.zwei.system.notice.notify;
 
 /**
  * 通知推送通道接口。

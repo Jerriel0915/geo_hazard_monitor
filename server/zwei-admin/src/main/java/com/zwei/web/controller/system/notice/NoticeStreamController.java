@@ -1,6 +1,6 @@
-package com.zwei.web.controller.system;
+package com.zwei.web.controller.system.notice;
 
-import com.zwei.system.service.NoticeStreamPublisher;
+import com.zwei.system.notice.service.NoticeStreamPublisher;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

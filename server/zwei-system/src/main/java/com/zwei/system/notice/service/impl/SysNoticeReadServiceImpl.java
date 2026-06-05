@@ -1,13 +1,14 @@
-package com.zwei.system.service.impl;
+package com.zwei.system.notice.service.impl;
+
+import com.zwei.system.notice.domain.SysNotice;
+import com.zwei.system.notice.domain.SysNoticeRead;
+import com.zwei.system.notice.mapper.SysNoticeReadMapper;
+import com.zwei.system.notice.service.ISysNoticeReadService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import com.zwei.system.domain.SysNotice;
-import com.zwei.system.domain.SysNoticeRead;
-import com.zwei.system.mapper.SysNoticeReadMapper;
-import com.zwei.system.service.ISysNoticeReadService;
 
 /**
  * 公告已读记录 服务层实现

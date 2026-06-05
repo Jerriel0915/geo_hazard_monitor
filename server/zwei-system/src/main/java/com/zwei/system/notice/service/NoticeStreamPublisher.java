@@ -1,4 +1,4 @@
-package com.zwei.system.service;
+package com.zwei.system.notice.service;
 
 import com.zwei.common.event.NoticeCreatedEvent;
 import org.slf4j.Logger;

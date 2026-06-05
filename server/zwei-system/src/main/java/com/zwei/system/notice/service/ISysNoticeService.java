@@ -1,7 +1,8 @@
-package com.zwei.system.service;
+package com.zwei.system.notice.service;
+
+import com.zwei.system.notice.domain.SysNotice;
 
 import java.util.List;
-import com.zwei.system.domain.SysNotice;
 
 /**
  * 公告 服务层

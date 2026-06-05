@@ -1,8 +1,9 @@
-package com.zwei.system.domain;
+package com.zwei.system.notice.domain;
 
-import java.util.Date;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+
+import java.util.Date;
 
 /**
  * 公告已读记录表 sys_notice_read
