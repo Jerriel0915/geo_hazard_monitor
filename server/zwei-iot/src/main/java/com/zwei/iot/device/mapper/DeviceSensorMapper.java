@@ -99,4 +99,7 @@ public interface DeviceSensorMapper {
 
     /** 统计时间窗口内活跃传感器数（有数据上报） */
     int countActiveInWindow(@Param("windowMinutes") int windowMinutes);
+
+    /** 统计有在线设备的传感器数（device_online_status.status=1） */
+    int countByDeviceOnline();
 }

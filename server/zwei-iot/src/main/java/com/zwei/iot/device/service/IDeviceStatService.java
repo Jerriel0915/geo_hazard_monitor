@@ -61,4 +61,7 @@ public interface IDeviceStatService {
 
     /** 时间窗口内活跃传感器数（有数据上报） */
     int countActiveSensorsInWindow(int windowMinutes);
+
+    /** 传感器在线数（所属设备在线，即 device_online_status.status=1） */
+    int countSensorsByDeviceOnline();
 }

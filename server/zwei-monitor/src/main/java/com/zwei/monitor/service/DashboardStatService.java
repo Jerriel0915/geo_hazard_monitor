@@ -94,7 +94,7 @@ public class DashboardStatService {
         return vo;
     }
 
-    // ==================== 2.2 设备在线率 ====================
+    // ==================== 2.2 设备在线率（基于 device_online_status 独立表） ====================
 
     public RateByTypeVO getDeviceOnlineRate() {
         int total = deviceStatService.countAllDevices();
@@ -105,11 +105,11 @@ public class DashboardStatService {
         vo.setOnline(online);
         vo.setOffline(total - online);
         vo.setOnlineRate(total > 0 ? Math.round(online * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceStatService.countDevicesByMonitorType(), total));
+        vo.setByType(buildTypeStats(deviceStatService.countDevicesByMonitorType(), total, online));
         return vo;
     }
 
-    // ==================== 2.3 设备活跃率（基于 last_report_at 时间窗口） ====================
+    // ==================== 2.3 设备活跃率（基于 device_online_status.last_report_at 时间窗口） ====================
 
     public RateByTypeVO getDeviceActiveRate(int windowMinutes) {
         int total = deviceStatService.countAllDevices();
@@ -122,25 +122,22 @@ public class DashboardStatService {
         vo.setOnline(active);
         vo.setOffline(total - active);
         vo.setOnlineRate(total > 0 ? Math.round(active * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(typeRows, total));
+        vo.setByType(buildTypeStats(typeRows, total, active));
         return vo;
     }
 
-    // ==================== 2.4 传感器在线率 ====================
+    // ==================== 2.4 传感器在线率（传感器在线 = 所属设备已连接 MQTT） ====================
 
     public RateByTypeVO getSensorOnlineRate() {
         int total = deviceStatService.countAllSensors();
-        List<Map<String, Object>> statusRows = deviceStatService.countSensorsByStatus();
-        int enabled = statusRows.stream()
-                .filter(m -> Objects.equals(1, m.get("status")))
-                .mapToInt(m -> ((Number) m.get("cnt")).intValue()).sum();
+        int online = deviceStatService.countSensorsByDeviceOnline();
 
         RateByTypeVO vo = new RateByTypeVO();
         vo.setTotal(total);
-        vo.setOnline(enabled);
-        vo.setOffline(total - enabled);
-        vo.setOnlineRate(total > 0 ? Math.round(enabled * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total));
+        vo.setOnline(online);
+        vo.setOffline(total - online);
+        vo.setOnlineRate(total > 0 ? Math.round(online * 10000.0 / total) / 100.0 : 0);
+        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total, online));
         return vo;
     }
 
@@ -156,7 +153,7 @@ public class DashboardStatService {
         vo.setOnline(active);
         vo.setOffline(total - active);
         vo.setOnlineRate(total > 0 ? Math.round(active * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total));
+        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total, active));
         return vo;
     }
 
@@ -247,16 +244,24 @@ public class DashboardStatService {
         return result;
     }
 
-    private List<RateByTypeVO.TypeStat> buildTypeStats(List<Map<String, Object>> typeRows, int total) {
+    /**
+     * 构建按监测类型分组的统计列表。
+     * <p>
+     * 由于目前没有按类型单独统计在线/活跃数的查询，
+     * 按总体比率等比例分摊到各类型，避免对所有类型显示 100% 的假数据。
+     */
+    private List<RateByTypeVO.TypeStat> buildTypeStats(List<Map<String, Object>> typeRows, int total, int online) {
+        double ratio = total > 0 ? (double) online / total : 0;
         return typeRows.stream().map(row -> {
             RateByTypeVO.TypeStat ts = new RateByTypeVO.TypeStat();
             ts.setMonitorTypeId(((Number) row.get("monitorTypeId")).longValue());
             ts.setMonitorTypeName((String) row.get("monitorTypeName"));
             int cnt = ((Number) row.get("cnt")).intValue();
+            int typeOnline = (int) Math.round(cnt * ratio);
             ts.setTotal(cnt);
-            ts.setOnline(cnt);
-            ts.setOffline(0);
-            ts.setOnlineRate(cnt > 0 ? 100.0 : 0);
+            ts.setOnline(typeOnline);
+            ts.setOffline(cnt - typeOnline);
+            ts.setOnlineRate(cnt > 0 ? Math.round(typeOnline * 10000.0 / cnt) / 100.0 : 0);
             return ts;
         }).collect(Collectors.toList());
     }

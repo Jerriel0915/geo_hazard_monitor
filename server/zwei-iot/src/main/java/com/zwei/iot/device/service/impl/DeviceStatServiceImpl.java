@@ -133,4 +133,9 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     public int countActiveSensorsInWindow(int windowMinutes) {
         return deviceSensorMapper.countActiveInWindow(windowMinutes);
     }
+
+    @Override
+    public int countSensorsByDeviceOnline() {
+        return deviceSensorMapper.countByDeviceOnline();
+    }
 }
