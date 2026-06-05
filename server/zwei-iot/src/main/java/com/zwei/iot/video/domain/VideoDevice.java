@@ -79,6 +79,16 @@ public class VideoDevice extends BaseEntity {
     private String installTime;
 
     /**
+     * 经度
+     */
+    private Double longitude;
+
+    /**
+     * 纬度
+     */
+    private Double latitude;
+
+    /**
      * 删除标记: 0-正常, 1-删除
      */
     private Integer delFlag;

@@ -26,6 +26,8 @@
         <result property="registeredAt" column="registered_at"/>
         <result property="lastAuthTime" column="last_auth_time"/>
         <result property="lastAuthIp" column="last_auth_ip"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
         <result property="delFlag" column="del_flag"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
@@ -55,6 +57,8 @@
                d.registered_at,
                d.last_auth_time,
                d.last_auth_ip,
+               d.longitude,
+               d.latitude,
                d.del_flag,
                d.create_by,
                d.create_time,
@@ -176,6 +180,8 @@
         <if test="registeredAt != null and registeredAt != ''">registered_at,</if>
         <if test="lastAuthTime != null and lastAuthTime != ''">last_auth_time,</if>
         <if test="lastAuthIp != null and lastAuthIp != ''">last_auth_ip,</if>
+        <if test="longitude != null">longitude,</if>
+        <if test="latitude != null">latitude,</if>
         <if test="createBy != null and createBy != ''">create_by,</if>
         create_time
         ) VALUES (
@@ -196,6 +202,8 @@
         <if test="registeredAt != null and registeredAt != ''">#{registeredAt},</if>
         <if test="lastAuthTime != null and lastAuthTime != ''">#{lastAuthTime},</if>
         <if test="lastAuthIp != null and lastAuthIp != ''">#{lastAuthIp},</if>
+        <if test="longitude != null">#{longitude},</if>
+        <if test="latitude != null">#{latitude},</if>
         <if test="createBy != null and createBy != ''">#{createBy},</if>
         SYSDATE()
         )
@@ -225,6 +233,8 @@
             <if test="registeredAt != null">registered_at = #{registeredAt},</if>
             <if test="lastAuthTime != null">last_auth_time = #{lastAuthTime},</if>
             <if test="lastAuthIp != null">last_auth_ip = #{lastAuthIp},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             update_time = SYSDATE()
         </set>

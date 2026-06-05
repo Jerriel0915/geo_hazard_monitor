@@ -28,6 +28,9 @@ public class DeviceUpdateRequest {
 
     private String iconPath;
 
+    private Double longitude;
+    private Double latitude;
+
     @NotNull(message = "设备状态不能为空")
     private Integer status;
 }

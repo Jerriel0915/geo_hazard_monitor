@@ -1,7 +1,10 @@
 package com.zwei.iot.device.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
@@ -129,6 +132,16 @@ public class Device extends BaseEntity {
      * 最近鉴权IP
      */
     private String lastAuthIp;
+
+    /**
+     * 经度
+     */
+    private Double longitude;
+
+    /**
+     * 纬度
+     */
+    private Double latitude;
 
     /**
      * 删除标记: 0-正常, 1-删除

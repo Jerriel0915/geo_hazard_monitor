@@ -16,6 +16,8 @@
         <result property="status" column="status"/>
         <result property="lastOnlineTime" column="last_online_time"/>
         <result property="installTime" column="install_time"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
         <result property="updateBy" column="update_by"/>
@@ -35,6 +37,8 @@
                status,
                last_online_time,
                install_time,
+               longitude,
+               latitude,
                create_by,
                create_time,
                update_by,
@@ -86,6 +90,8 @@
             <if test="streamUrl != null">stream_url,</if>
             <if test="status != null">status,</if>
             <if test="installTime != null">install_time,</if>
+            <if test="longitude != null">longitude,</if>
+            <if test="latitude != null">latitude,</if>
             <if test="createBy != null">create_by,</if>
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
@@ -98,6 +104,8 @@
             <if test="streamUrl != null">#{streamUrl},</if>
             <if test="status != null">#{status},</if>
             <if test="installTime != null">#{installTime},</if>
+            <if test="longitude != null">#{longitude},</if>
+            <if test="latitude != null">#{latitude},</if>
             <if test="createBy != null">#{createBy},</if>
         </trim>
     </insert>
@@ -114,6 +122,8 @@
             <if test="status != null">status = #{status},</if>
             <if test="lastOnlineTime != null">last_online_time = #{lastOnlineTime},</if>
             <if test="installTime != null">install_time = #{installTime},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
         </trim>
         WHERE id = #{id}
