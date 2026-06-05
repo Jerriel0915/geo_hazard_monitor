@@ -453,9 +453,10 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, reactive, ref} from 'vue'
+import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import type {FormInstance, FormRules, UploadFile} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
+import {getLogCleanupConfig, updateLogCleanupConfig} from '@/api/system'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-draw/dist/leaflet.draw.css'
@@ -776,12 +777,31 @@ const getParamsByCategory = (category: string) => {
   return paramList.value.filter(p => p.category === category)
 }
 
-const handleSaveParams = () => {
+// 页面加载时从后端拉取日志清理配置
+onMounted(async () => {
+  try {
+    const cfg = await getLogCleanupConfig()
+    paramsFormData['auto_cleanup'] = cfg.enabled
+    paramsFormData['log_keep_days'] = cfg.retentionDays
+    paramsFormData['cleanup_time'] = cfg.cron
+  } catch { /* 使用默认值 */
+  }
+})
+
+const handleSaveParams = async () => {
   saveLoading.value = true
-  setTimeout(() => {
-    saveLoading.value = false
+  try {
+    await updateLogCleanupConfig({
+      enabled: paramsFormData['auto_cleanup'],
+      retentionDays: paramsFormData['log_keep_days'],
+      cron: paramsFormData['cleanup_time']
+    })
     ElMessage.success('系统参数保存成功')
-  }, 800)
+  } catch {
+    ElMessage.error('保存失败，请稍后重试')
+  } finally {
+    saveLoading.value = false
+  }
 }
 
 const handleResetParams = () => {

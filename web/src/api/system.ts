@@ -291,3 +291,17 @@ export const getPermissionCoverage = () =>
 
 export const batchRegisterPermissions = (perms: string[]) =>
   request.post<AjaxResult<string>>('/menus/batch-register', perms)
+
+// ===================== 日志清理配置 =====================
+
+export interface LogCleanupConfig {
+    enabled: boolean
+    retentionDays: number
+    cron: string
+}
+
+export const getLogCleanupConfig = () =>
+    unwrap<LogCleanupConfig>(request.get('/logs/cleanup-config'))
+
+export const updateLogCleanupConfig = (data: Partial<LogCleanupConfig>) =>
+    unwrap<null>(request.put('/logs/cleanup-config', data))
