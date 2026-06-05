@@ -12,7 +12,7 @@
           <div
               v-for="group in displayGroupList"
               :key="group.id"
-              :class="['group-item', { active: selectedGroupId === group.id }]"
+              :class="['group-item', { active: selectedGroupId === group.id, 'group-all': group.id === 'all' }]"
               @click="handleSelectGroup(group)"
           >
             <span class="group-name">{{ group.name }}</span>
@@ -3003,22 +3003,33 @@ onUnmounted(() => {
 }
 
 .group-item:hover {
-  background: #f8fafc;
+  background: #e6f7ff;
 }
 
 .group-item.active {
-  background: rgba(59, 130, 246, 0.06);
-  color: #3b82f6;
+  background: #bae7ff;
+  color: #1890ff;
   font-weight: 500;
 }
 
 .group-item.active::before {
-  background: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  background: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.2);
+}
+
+.group-all .group-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.group-all::before {
+  width: 8px;
+  height: 8px;
 }
 
 .group-name {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3032,17 +3043,29 @@ onUnmounted(() => {
   border-radius: 10px;
   font-weight: 500;
   flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.group-item:hover .group-count {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .group-actions {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   gap: 4px;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s;
 }
 
 .group-item:hover .group-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .action-btn {
@@ -3052,15 +3075,12 @@ onUnmounted(() => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
+  background: #f1f5f9;
 }
 
-.group-item:hover {
-  background: #e6f7ff;
-}
-
-.group-item.active {
-  background: #bae7ff;
+.action-btn:hover {
   color: #1890ff;
+  background: #e6f7ff;
 }
 
 .action-btn.delete-btn:hover {

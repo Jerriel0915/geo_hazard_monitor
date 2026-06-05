@@ -42,7 +42,7 @@
         <el-table-column prop="realName" label="真实姓名" width="120" />
         <el-table-column prop="orgName" label="所属组织" width="150" />
         <el-table-column prop="phone" label="联系电话" width="140" />
-        <el-table-column prop="email" label="邮箱" width="180" />
+        <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
@@ -52,9 +52,11 @@
         <el-table-column prop="createTime" label="创建时间" width="160" />
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <span class="action-link" @click="handleEdit(row)">编辑</span>
-            <span class="action-link" @click="handleChangePwd(row)">修改密码</span>
-            <span class="action-link action-danger" @click="handleDelete(row)">删除</span>
+            <div class="op-cell">
+              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button type="primary" text size="small" @click="handleChangePwd(row)">修改密码</el-button>
+              <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>

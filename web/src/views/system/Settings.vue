@@ -12,7 +12,7 @@
                 :key="cat.key"
                 class="category-item"
                 :class="{ active: currentCategory === cat.key }"
-                @click="currentCategory = cat.key"
+                @click="scrollToCategory(cat.key)"
               >
                 {{ cat.label }}
               </div>
@@ -235,7 +235,7 @@
               </el-table-column>
               <el-table-column prop="status" label="状态" width="80" align="center">
                 <template #default="{ row }">
-                  <el-switch v-model="row.status" @change="handleToggleAlarmStatus(row)" />
+                  <el-switch v-model="row.status" :active-value="1" :inactive-value="0" />
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="100" fixed="right">
@@ -529,17 +529,11 @@ const paramList = ref<ParamItem[]>([
   { code: 'single_hazard_entry', name: '单一隐患点直接进入', type: 'switch', category: 'basic', value: false, remark: '只有一个隐患点时是否直接进入详情页' },
   { code: 'sys_focus_area', name: '系统关注范围区域', type: 'geojson', category: 'basic', value: null, remark: '系统在地图上关注的地理范围，支持GeoJSON格式' },
 
-  { code: 'data_keep_days', name: '数据保留时长(天)', type: 'number', category: 'data', value: 365, min: 30, max: 3650, step: 30, remark: '监测数据保留天数，超期自动清理' },
   { code: 'log_keep_days', name: '日志保留时长(天)', type: 'number', category: 'data', value: 365, min: 90, max: 3650, step: 30, remark: '系统日志保留天数' },
   { code: 'auto_cleanup', name: '自动清理', type: 'switch', category: 'data', value: true, remark: '是否启用数据自动清理' },
   { code: 'cleanup_time', name: '清理执行时间', type: 'string', category: 'data', value: '02:00', placeholder: '如: 02:00', maxLength: 10, remark: '每日自动清理执行时间' },
 
   { code: 'alarm_enable', name: '告警总开关', type: 'switch', category: 'alarm', value: true, remark: '是否启用系统告警功能' },
-  { code: 'alarm_level_default', name: '默认告警等级', type: 'select', category: 'alarm', value: '一般', remark: '新告警默认等级',
-    options: [{ label: '紧急', value: '紧急' }, { label: '重要', value: '重要' }, { label: '一般', value: '一般' }, { label: '提示', value: '提示' }] },
-  { code: 'alarm_retry_times', name: '告警重试次数', type: 'number', category: 'alarm', value: 3, min: 0, max: 10, remark: '通知发送失败时的重试次数' },
-  { code: 'alarm_interval', name: '告警间隔(分钟)', type: 'number', category: 'alarm', value: 30, min: 5, max: 1440, step: 5, remark: '同一告警的最小通知间隔' },
-
   { code: 'login_fail_lock', name: '登录失败锁定', type: 'switch', category: 'security', value: true, remark: '登录失败多次后是否锁定账号' },
   { code: 'login_fail_times', name: '允许失败次数', type: 'number', category: 'security', value: 5, min: 3, max: 10, remark: '允许的最大登录失败次数' },
   { code: 'lock_duration', name: '锁定时长(分钟)', type: 'number', category: 'security', value: 30, min: 5, max: 1440, step: 5, remark: '账号锁定后自动解锁时间' },
@@ -768,6 +762,14 @@ const handleConfirmDraw = () => {
   paramsFormData.sys_focus_area = geojson
   mapDialogVisible.value = false
   ElMessage.success('关注区域已保存')
+}
+
+const scrollToCategory = (key: string) => {
+  currentCategory.value = key
+  nextTick(() => {
+    const el = document.getElementById(`category-${key}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 const getParamsByCategory = (category: string) => {
@@ -1068,11 +1070,6 @@ const handleDeleteAlarmRule = (row: AlarmRule) => {
     if (index !== -1) allAlarmRules.value.splice(index, 1)
     ElMessage.success('删除成功')
   }).catch(() => {})
-}
-
-const handleToggleAlarmStatus = (row: AlarmRule) => {
-  row.status = row.status === 1 ? 0 : 1
-  ElMessage.success(row.status === 1 ? '启用成功' : '禁用成功')
 }
 
 const resetAlarmForm = () => {

@@ -4,7 +4,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2"
-               width="20" height="20">
+               width="28" height="28">
             <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
           </svg>
         </div>
@@ -16,7 +16,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2"
-               width="20" height="20">
+               width="28" height="28">
             <path
                 d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7m16 0v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5m16 0h-2.586a1 1 0 0 0-.707.293l-2.414 2.414a1 1 0 0 1-.707.293h-3.172a1 1 0 0 1-.707-.293l-2.414-2.414A1 1 0 0 0 6.586 13H4"/>
           </svg>
@@ -29,7 +29,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"
-               width="20" height="20">
+               width="28" height="28">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
@@ -42,7 +42,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"
-               width="20" height="20">
+               width="28" height="28">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
             <line x1="16" y1="13" x2="8" y2="13"/>
@@ -58,7 +58,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"
-               width="20" height="20">
+               width="28" height="28">
             <path d="M12 20V10"/>
             <path d="M18 20V4"/>
             <path d="M6 20v-6"/>
@@ -72,7 +72,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2"
-               width="20" height="20">
+               width="28" height="28">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
@@ -267,7 +267,7 @@ const initBarChart = () => {
         interval: 0,
         rotate: 30,
         color: '#64748b',
-        fontSize: 14
+        fontSize: 16
       },
       axisLine: {
         lineStyle: {
@@ -281,7 +281,7 @@ const initBarChart = () => {
       axisLabel: {
         formatter: '{value}%',
         color: '#64748b',
-        fontSize: 14
+        fontSize: 16
       },
       splitLine: {
         lineStyle: {
@@ -308,7 +308,7 @@ const initBarChart = () => {
           position: 'top',
           formatter: '{c}%',
           color: '#1e293b',
-          fontSize: 14,
+          fontSize: 16,
           fontWeight: 600
         }
       }
@@ -334,17 +334,17 @@ const initPieChart = () => {
       top: 'center',
       textStyle: {
         color: '#334155',
-        fontSize: 14
+        fontSize: 16
       },
-      itemWidth: 12,
-      itemHeight: 12,
-      itemGap: 8
+      itemWidth: 14,
+      itemHeight: 14,
+      itemGap: 10
     },
     series: [
       {
         name: '设备占比',
         type: 'pie',
-        radius: ['40%', '65%'],
+        radius: ['45%', '70%'],
         center: ['35%', '50%'],
         avoidLabelOverlap: true,
         itemStyle: {
@@ -357,7 +357,7 @@ const initPieChart = () => {
           position: 'outside',
           formatter: '{b}\n{c}%',
           color: '#334155',
-          fontSize: 14
+          fontSize: 16
         },
         labelLine: {
           show: true,
@@ -411,7 +411,7 @@ const initPyramidChart = () => {
       type: 'value',
       axisLabel: {
         color: '#64748b',
-        fontSize: 14
+        fontSize: 16
       },
       axisLine: {
         lineStyle: {
@@ -429,7 +429,7 @@ const initPyramidChart = () => {
       data: pyramidData.map(item => item.name).reverse(),
       axisLabel: {
         color: '#334155',
-        fontSize: 14
+        fontSize: 16
       },
       axisLine: {
         lineStyle: {
@@ -453,7 +453,7 @@ const initPyramidChart = () => {
           position: 'right',
           formatter: '{c}',
           color: '#1e293b',
-          fontSize: 14,
+          fontSize: 16,
           fontWeight: 600
         }
       }
@@ -576,36 +576,41 @@ const online24hData = computed(() =>
 .operation-view {
   min-height: 100%;
   background: transparent;
-  padding: 20px 0 0 0;
+  padding: 24px 0 0 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .stats-row {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .stat-card {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 16px;
+  padding: 20px 24px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .stat-icon {
-  width: 40px;
-  height: 40px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 212, 255, 0.1);
-  border-radius: 8px;
+  border-radius: 10px;
+}
+
+.stat-icon svg {
+  width: 28px;
+  height: 28px;
 }
 
 .stat-content {
@@ -614,61 +619,62 @@ const online24hData = computed(() =>
 }
 
 .stat-value {
-  font-size: 16px;
+  font-size: 32px;
   font-weight: 700;
   color: #1e293b;
+  line-height: 1.1;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 16px;
   color: #64748b;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .charts-row {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .chart-panel {
   flex: 1;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .panel-header {
-  padding: 10px 14px;
+  padding: 14px 18px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .panel-body {
-  padding: 12px;
+  padding: 16px;
 }
 
 .pie-echarts-container {
   width: 100%;
-  height: 200px;
+  height: 320px;
 }
 
 .echarts-container {
   width: 100%;
-  height: 180px;
+  height: 320px;
 }
 
 .table-row {
   display: flex;
-  gap: 12px;
+  gap: 16px;
 }
 
 .table-panel {
@@ -677,7 +683,7 @@ const online24hData = computed(() =>
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .online-table {
@@ -686,18 +692,18 @@ const online24hData = computed(() =>
 }
 
 .online-table th {
-  padding: 8px 10px;
+  padding: 12px 12px;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
   color: #64748b;
   font-weight: 600;
   border-bottom: 2px solid #e2e8f0;
 }
 
 .online-table td {
-  padding: 8px 10px;
+  padding: 12px 12px;
   text-align: center;
-  font-size: 14px;
+  font-size: 16px;
   color: #334155;
   border-bottom: 1px solid #f1f5f9;
 }
@@ -707,9 +713,9 @@ const online24hData = computed(() =>
 }
 
 .rate-badge {
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
 }
 
