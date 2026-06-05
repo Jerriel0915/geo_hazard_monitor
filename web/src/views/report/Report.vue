@@ -37,11 +37,23 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="生成时间" width="180" align="center" />
-        <el-table-column label="操作" width="220" fixed="right" align="center">
+        <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
-            <el-button type="primary" text size="small" @click="handleExportPdf(row)">下载PDF</el-button>
-            <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
+            <div class="op-cell">
+              <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                <el-button type="primary" text size="small">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="pdf">下载PDF</el-dropdown-item>
+                    <el-dropdown-item command="print">打印</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>
+                      <span style="color: #f56c6c">删除</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -82,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -155,6 +167,18 @@ const handleDelete = async (row: ReportItem) => {
     ElMessage.success('删除成功')
     loadTableData()
   } catch { /* cancelled */ }
+}
+
+const handleMoreCommand = (cmd: string, row: ReportItem) => {
+  if (cmd === 'pdf') {
+    handleExportPdf(row)
+  } else if (cmd === 'print') {
+    handleView(row).then(() => {
+      nextTick(() => handlePrint())
+    })
+  } else if (cmd === 'delete') {
+    handleDelete(row)
+  }
 }
 
 const handlePrint = () => {
@@ -288,5 +312,11 @@ onMounted(() => {
 }
 .report-content :deep(p) {
   margin: 8px 0;
+}
+.op-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
 }
 </style>

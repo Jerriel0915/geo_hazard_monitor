@@ -350,11 +350,14 @@ const generateCorrelationChart = async () => {
   if (!selectedSensors.value.length) return
   chartLoading.value = true
   try {
-    const startTime =
-      correlationTimeRange.value?.[0] ||
-      new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-    const endTime =
-      correlationTimeRange.value?.[1] || new Date().toISOString().slice(0, 19).replace('T', ' ')
+    // Build start/end time as ISO string with 'T' separator for safe Date parsing
+    const now = new Date()
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const toIsoStr = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    const startTime = correlationTimeRange.value?.[0]?.replace(' ', 'T') || toIsoStr(sevenDaysAgo)
+    const endTime = correlationTimeRange.value?.[1]?.replace(' ', 'T') || toIsoStr(now)
 
     // Fetch data for each sensor
     const allSeriesData: { sensor: SensorSeriesItem; chartData: ChartDataItem }[] = []
@@ -368,12 +371,21 @@ const generateCorrelationChart = async () => {
       allSeriesData.push({ sensor, chartData: data })
     }
 
-    // Build ECharts option
-    if (!correlationChartRef.value) return
+    // Ensure chart container exists and has dimensions
+    const container = correlationChartRef.value
+    if (!container) {
+      ElMessage.error('图表容器未就绪，请重试')
+      return
+    }
     if (correlationChartInstance.value) {
       correlationChartInstance.value.dispose()
+      correlationChartInstance.value = null
     }
-    const chart = echarts.init(correlationChartRef.value)
+    // Force container to have height if flex didn't resolve
+    if (container.clientHeight < 10) {
+      container.style.height = '450px'
+    }
+    const chart = echarts.init(container)
     correlationChartInstance.value = chart
 
     // Merge all time points
@@ -381,21 +393,20 @@ const generateCorrelationChart = async () => {
     allSeriesData.forEach(({ chartData }) => chartData.times.forEach((t) => allTimes.add(t)))
     const sortedTimes = [...allTimes].sort()
 
-    // Build series and y-axes
+    // Build series and y-axes — MUST be array for ECharts multi-axis
     const series: any[] = []
-    const yAxes: Record<string, any> = {}
+    const yAxesArray: any[] = []
     const statisticsRows: (typeof statisticsData.value)[number][] = []
 
     allSeriesData.forEach(({ sensor, chartData }, idx) => {
-      const yAxisName = `yAxis_${idx}`
-      yAxes[yAxisName] = {
+      yAxesArray.push({
         type: 'value',
         name: `${sensor.attrName}(${sensor.unit})`,
         position: idx % 2 === 0 ? 'left' : 'right',
         offset: Math.floor(idx / 2) * 60,
         axisLabel: { fontSize: 11 },
         nameTextStyle: { fontSize: 11 },
-      }
+      })
 
       // Map data
       const dataMap = new Map(chartData.times.map((t, i) => [t, chartData.values[i]]))
@@ -422,7 +433,8 @@ const generateCorrelationChart = async () => {
           const sumY = validData.reduce((a, b) => a + b, 0)
           const sumXY = xArr.reduce((a, x, i) => a + x * validData[i], 0)
           const sumXX = xArr.reduce((a, x) => a + x * x, 0)
-          const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
+          const denom = n * sumXX - sumX * sumX
+          const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0
           const intercept = (sumY - slope * sumX) / n
           const trendData = seriesData.map((v, i) =>
             v !== null ? Number((slope * i + intercept).toFixed(4)) : null
@@ -472,20 +484,19 @@ const generateCorrelationChart = async () => {
           const prev = seriesData[i - 1] as number
           return prev !== 0 ? Number(((v - prev) / prev) * 100).toFixed(2) : 0
         })
-        const yIdx = Object.keys(yAxes).length
-        const rateAxisName = `yAxis_rate_${idx}`
-        yAxes[rateAxisName] = {
+        const rateAxisIdx = yAxesArray.length
+        yAxesArray.push({
           type: 'value',
           name: '变化率(%)',
           position: 'right',
           offset: (Math.floor(idx / 2) + allSeriesData.length) * 60,
           axisLabel: { fontSize: 11, formatter: '{value}%' },
           nameTextStyle: { fontSize: 11 },
-        }
+        })
         series.push({
           name: `${sensor.attrName}-变化率`,
           type: 'line',
-          yAxisIndex: yIdx,
+          yAxisIndex: rateAxisIdx,
           data: rates,
           lineStyle: { width: 1, type: 'dotted', color: sensor.color },
           itemStyle: { color: sensor.color, opacity: 0.6 },
@@ -500,7 +511,7 @@ const generateCorrelationChart = async () => {
       legend: { type: 'scroll', bottom: 0 },
       grid: { left: 80, right: 80, top: 30, bottom: 60, containLabel: true },
       xAxis: { type: 'category', data: sortedTimes, axisLabel: { fontSize: 11, rotate: 30 } },
-      yAxis: yAxes,
+      yAxis: yAxesArray,
       series,
       dataZoom: [{ type: 'inside' }, { type: 'slider' }],
     }
@@ -801,6 +812,7 @@ onBeforeUnmount(() => {
 .chart-main {
   flex: 1;
   min-height: 400px;
+  height: 450px;
 }
 .chart-toolbar {
   display: flex;

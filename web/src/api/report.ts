@@ -1,5 +1,4 @@
-import request from '@/utils/request'
-import type { AjaxResult, PageResult } from './system'
+import type { PageResult } from './system'
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -85,15 +84,6 @@ export interface GridChartItem {
   attrCode?: string
   attrName?: string
   unit?: string
-}
-
-// ---------------------------------------------------------------------------
-// Unwrap helper
-// ---------------------------------------------------------------------------
-
-const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
-  const response = await promise
-  return response.data
 }
 
 // ---------------------------------------------------------------------------
@@ -504,7 +494,8 @@ function getMockChartData(
 ): ChartDataItem {
   const rng = seededRandom(deviceId * 31 + attrCode.charCodeAt(0) * 17 + startTime.charCodeAt(5) * 3)
 
-  const start = new Date(startTime)
+  // Parse startTime safely — replace space with 'T' for ISO 8601 compatibility
+  const start = new Date(startTime.replace(' ', 'T'))
   const times: string[] = []
   const values: number[] = []
 
@@ -549,121 +540,82 @@ function getMockChartData(
 // API functions (try real API, fall back to mock)
 // ---------------------------------------------------------------------------
 
-/** Fetch a page of reports */
+/** Fetch a page of reports (mock) */
 export async function getReportPage(params: ReportPageParams): Promise<PageResult<ReportItem>> {
-  try {
-    return await unwrap<PageResult<ReportItem>>(request.get('/reports/page', { params }))
-  } catch {
-    const all = generateMockReports()
-    // Filter by keyword
-    let filtered = all
-    if (params.keyword) {
-      const kw = params.keyword.toLowerCase()
-      filtered = filtered.filter((r) => r.title.toLowerCase().includes(kw))
-    }
-    // Filter by type
-    if (params.type) {
-      filtered = filtered.filter((r) => r.type === params.type)
-    }
-    // Filter by date range
-    if (params.startDate) {
-      filtered = filtered.filter((r) => r.periodStart >= params.startDate!)
-    }
-    if (params.endDate) {
-      filtered = filtered.filter((r) => r.periodEnd <= params.endDate!)
-    }
-    const start = (params.pageNum - 1) * params.pageSize
-    const rows = filtered.slice(start, start + params.pageSize)
-    return { rows, total: filtered.length, pageNum: params.pageNum, pageSize: params.pageSize }
+  const all = generateMockReports()
+  let filtered = all
+  if (params.keyword) {
+    const kw = params.keyword.toLowerCase()
+    filtered = filtered.filter((r) => r.title.toLowerCase().includes(kw))
   }
+  if (params.type) {
+    filtered = filtered.filter((r) => r.type === params.type)
+  }
+  if (params.startDate) {
+    filtered = filtered.filter((r) => r.periodStart >= params.startDate!)
+  }
+  if (params.endDate) {
+    filtered = filtered.filter((r) => r.periodEnd <= params.endDate!)
+  }
+  const start = (params.pageNum - 1) * params.pageSize
+  const rows = filtered.slice(start, start + params.pageSize)
+  return { rows, total: filtered.length, pageNum: params.pageNum, pageSize: params.pageSize }
 }
 
-/** Fetch a single report detail */
+/** Fetch a single report detail (mock) */
 export async function getReportDetail(id: number): Promise<ReportItem> {
-  try {
-    return await unwrap<ReportItem>(request.get(`/reports/${id}`))
-  } catch {
-    const all = generateMockReports()
-    const found = all.find((r) => r.id === id)
-    if (found) return found
-    throw new Error(`Report ${id} not found in mock data`)
-  }
+  const all = generateMockReports()
+  const found = all.find((r) => r.id === id)
+  if (found) return found
+  throw new Error(`Report ${id} not found`)
 }
 
-/** Delete a report */
-export async function deleteReport(id: number): Promise<void> {
-  try {
-    await unwrap<null>(request.delete(`/reports/${id}`))
-  } catch {
-    // Mock: no-op
-  }
-}
+/** Delete a report (mock: no-op) */
+export async function deleteReport(_id: number): Promise<void> {}
 
-/** Fetch hazard point options */
+/** Fetch hazard point options (mock) */
 export async function getHazardPointOptions(): Promise<HazardPointOption[]> {
-  try {
-    return await unwrap<HazardPointOption[]>(request.get('/reports/options/hazard-points'))
-  } catch {
-    return HAZARD_POINTS
-  }
+  return HAZARD_POINTS
 }
 
-/** Fetch device type options with attributes */
+/** Fetch device type options with attributes (mock) */
 export async function getDeviceTypeOptions(): Promise<DeviceTypeOption[]> {
-  try {
-    return await unwrap<DeviceTypeOption[]>(request.get('/reports/options/device-types'))
-  } catch {
-    return DEVICE_TYPES
-  }
+  return DEVICE_TYPES
 }
 
-/** Fetch device options, optionally filtered */
+/** Fetch device options, optionally filtered (mock) */
 export async function getDeviceOptions(params: {
   hazardPointId?: number
   deviceType?: number
 }): Promise<DeviceOption[]> {
-  try {
-    return await unwrap<DeviceOption[]>(request.get('/reports/options/devices', { params }))
-  } catch {
-    let filtered = [...DEVICES]
-    if (params.hazardPointId) {
-      filtered = filtered.filter((d) => d.hazardPointId === params.hazardPointId)
-    }
-    if (params.deviceType) {
-      filtered = filtered.filter((d) => d.deviceType === params.deviceType)
-    }
-    return filtered
+  let filtered = [...DEVICES]
+  if (params.hazardPointId) {
+    filtered = filtered.filter((d) => d.hazardPointId === params.hazardPointId)
   }
+  if (params.deviceType) {
+    filtered = filtered.filter((d) => d.deviceType === params.deviceType)
+  }
+  return filtered
 }
 
-/** Fetch paginated monitor query data */
+/** Fetch paginated monitor query data (mock) */
 export async function getMonitorQueryData(
   params: MonitorQueryParams
 ): Promise<PageResult<Record<string, any>>> {
-  try {
-    return await unwrap<PageResult<Record<string, any>>>(
-      request.get('/reports/query/data', { params })
-    )
-  } catch {
-    return getMockQueryData(params)
-  }
+  return getMockQueryData(params)
 }
 
-/** Fetch chart data for a single device+attribute */
+/** Fetch chart data for a single device+attribute (mock) */
 export async function getChartData(params: {
   deviceId: number
   attrCode: string
   startTime: string
   endTime: string
 }): Promise<ChartDataItem> {
-  try {
-    return await unwrap<ChartDataItem>(request.get('/reports/query/chart', { params }))
-  } catch {
-    return getMockChartData(params.deviceId, params.attrCode, params.startTime, params.endTime)
-  }
+  return getMockChartData(params.deviceId, params.attrCode, params.startTime, params.endTime)
 }
 
-/** Fetch chart data for multiple grid items */
+/** Fetch chart data for multiple grid items (mock) */
 export async function getGridChartData(
   items: GridChartItem[],
   startTime: string,
@@ -672,19 +624,7 @@ export async function getGridChartData(
   const result = new Map<number, ChartDataItem>()
   for (const item of items) {
     if (item.deviceId && item.attrCode) {
-      try {
-        const data = await unwrap<ChartDataItem>(
-          request.get('/reports/query/chart', {
-            params: { deviceId: item.deviceId, attrCode: item.attrCode, startTime, endTime },
-          })
-        )
-        result.set(item.index, data)
-      } catch {
-        result.set(
-          item.index,
-          getMockChartData(item.deviceId, item.attrCode, startTime, endTime)
-        )
-      }
+      result.set(item.index, getMockChartData(item.deviceId, item.attrCode, startTime, endTime))
     }
   }
   return result
