@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -146,7 +147,8 @@ class MqttAuthCenterIntegrationTest {
                     new org.springframework.beans.factory.support.StaticListableBeanFactory() {{
                         addBean("mqttServer", mqttServer);
                     }}.getBeanProvider(MqttServer.class),
-                    mqttExceptionReporter
+                    mqttExceptionReporter,
+                    mock(ApplicationEventPublisher.class)
             );
         }
 
@@ -164,7 +166,7 @@ class MqttAuthCenterIntegrationTest {
 
         @Bean
         MqttConnectStatusListener mqttConnectStatusListener(MqttDeviceAuthService authService) {
-            return new MqttConnectStatusListener(authService);
+            return new MqttConnectStatusListener(authService, mock(ApplicationEventPublisher.class));
         }
     }
 }

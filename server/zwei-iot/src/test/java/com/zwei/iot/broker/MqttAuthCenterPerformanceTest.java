@@ -23,6 +23,8 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import org.springframework.context.ApplicationEventPublisher;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -55,7 +57,8 @@ class MqttAuthCenterPerformanceTest {
                 new StaticListableBeanFactory() {{
                     addBean("mqttServer", mqttServer);
                 }}.getBeanProvider(MqttServer.class),
-                mqttExceptionReporter
+                mqttExceptionReporter,
+                mock(ApplicationEventPublisher.class)
         );
         MqttServerAuthHandler authHandler = new MqttServerAuthHandler(authService, mqttExceptionReporter);
 

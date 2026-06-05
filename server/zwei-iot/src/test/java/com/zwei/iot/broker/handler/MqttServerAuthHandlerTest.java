@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -65,7 +66,8 @@ class MqttServerAuthHandlerTest {
                 failureGuard,
                 properties,
                 mqttServerProvider,
-                mqttExceptionReporter
+                mqttExceptionReporter,
+                mock(ApplicationEventPublisher.class)
         );
         authHandler = new MqttServerAuthHandler(authService, mqttExceptionReporter);
         when(channelContext.getClientNode()).thenReturn(new Node("127.0.0.1", 1883));
