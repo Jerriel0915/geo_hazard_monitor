@@ -387,12 +387,11 @@ import {computed, onMounted, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
 import L from 'leaflet'
 import {
+  type DashboardFullVO,
   type DashboardOverview,
-  getDashboardOverview,
-  getDeviceOnlineRate,
-  getHazardPointTrend,
-  getSensorDistribution,
+  getDashboardFull,
   type HazardPointTrendVO,
+  type HealthScoreVO,
   type RateByTypeVO,
   type SensorDistributionVO
 } from '@/api/monitor'
@@ -699,16 +698,13 @@ const zoomOut = () => {
 
 onMounted(async () => {
   try {
-    const [ov, dor, ht, sd] = await Promise.all([
-      getDashboardOverview(),
-      getDeviceOnlineRate(),
-      getHazardPointTrend(12),
-      getSensorDistribution()
-    ])
-    overview.value = ov.data
-    deviceOnlineRate.value = dor.data
-    hazardTrend.value = ht.data
-    sensorDist.value = sd.data
+    const full = await getDashboardFull(60)
+    const d = full.data
+    overview.value = d.overview
+    deviceOnlineRate.value = d.deviceOnlineRate
+    hazardTrend.value = d.hazardPointTrend
+    sensorDist.value = d.sensorDistribution
+    healthStats.value = d.healthScore
   } catch { /* use defaults */
   }
   initHazardTrendChart()
@@ -1013,14 +1009,14 @@ const chartTabs = [
   {key: 'inclination', label: '倾斜监测'}
 ]
 
-const healthStats = ref({
-  overallScore: 95,
+const healthStats = ref<HealthScoreVO>({
+  overallScore: 0,
   items: [
-    {name: '资料完善率', value: 95, weight: 0.2, color: '#52c41a'},
-    {name: '设备在线率', value: 96, weight: 0.15, color: '#1890ff'},
-    {name: '设备正常率', value: 94, weight: 0.15, color: '#722ed1'},
-    {name: '告警及时响应率', value: 90, weight: 0.2, color: '#fa8c16'},
-    {name: '边坡稳定率', value: 97, weight: 0.3, color: '#eb2f96'}
+    {name: '资料完善率', value: 0, weight: 0.2, color: '#52c41a', dataSource: 'computed'},
+    {name: '设备在线率', value: 0, weight: 0.15, color: '#1890ff', dataSource: 'computed'},
+    {name: '设备正常率', value: 0, weight: 0.15, color: '#722ed1', dataSource: 'computed'},
+    {name: '告警及时响应率', value: 0, weight: 0.2, color: '#fa8c16', dataSource: 'placeholder'},
+    {name: '边坡稳定率', value: 0, weight: 0.3, color: '#eb2f96', dataSource: 'placeholder'}
   ]
 })
 

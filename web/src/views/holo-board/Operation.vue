@@ -203,12 +203,10 @@
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
 import {
+  type DashboardFullVO,
   type DashboardOverview,
-  getDashboardOverview,
+  getDashboardFull,
   getDeviceActiveRate,
-  getDeviceOnlineRate,
-  getSensorDistribution,
-  getSensorOnlineRate,
   type RateByTypeVO,
   type SensorDistributionVO
 } from '@/api/monitor'
@@ -471,18 +469,20 @@ const handleResize = () => {
 
 onMounted(async () => {
   try {
-    const [ov, dor, d6, d12, d24, sor, sd] = await Promise.all([
-      getDashboardOverview(), getDeviceOnlineRate(),
-      getDeviceActiveRate(360), getDeviceActiveRate(720), getDeviceActiveRate(1440),
-      getSensorOnlineRate(), getSensorDistribution()
+    const [full, d6, d12, d24] = await Promise.all([
+      getDashboardFull(60),
+      getDeviceActiveRate(360),
+      getDeviceActiveRate(720),
+      getDeviceActiveRate(1440)
     ])
-    overview.value = ov.data
-    deviceOnline.value = dor.data
+    const d = full.data
+    overview.value = d.overview
+    deviceOnline.value = d.deviceOnlineRate
     deviceActive6h.value = d6.data
     deviceActive12h.value = d12.data
     deviceActive24h.value = d24.data
-    sensorOnline.value = sor.data
-    sensorDist.value = sd.data
+    sensorOnline.value = d.sensorOnlineRate
+    sensorDist.value = d.sensorDistribution
   } catch { /* use defaults */
   }
   initPieChart()
