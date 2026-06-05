@@ -26,17 +26,20 @@
                 <span class="menu-icon" v-html="menu.icon"></span>
                 <span>{{ menu.label }}</span>
               </template>
-              <template v-for="child in menu.children" :key="child.name">
-                <template v-if="child.children && child.children.length > 0">
-                  <el-sub-menu :index="child.name">
-                    <template #title>{{ child.label }}</template>
-                    <el-menu-item v-for="subChild in child.children" :key="subChild.name" :index="subChild.name">
+              <template v-for="(child, index) in menu.children" :key="index">
+                <template v-if="(child as any).divider">
+                  <div class="menu-divider"></div>
+                </template>
+                <template v-else-if="(child as any).children && (child as any).children.length > 0">
+                  <el-sub-menu :index="(child as any).name">
+                    <template #title>{{ (child as any).label }}</template>
+                    <el-menu-item v-for="subChild in (child as any).children" :key="subChild.name" :index="subChild.name">
                       {{ subChild.label }}
                     </el-menu-item>
                   </el-sub-menu>
                 </template>
-                <el-menu-item v-else :index="child.name">
-                  {{ child.label }}
+                <el-menu-item v-else :index="(child as any).name">
+                  {{ (child as any).label }}
                 </el-menu-item>
               </template>
             </el-sub-menu>
@@ -303,15 +306,13 @@ const menuList = [
     label: '告警中心',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     children: [
-      { 
-        name: 'RealtimeAlarm', 
-        label: '待办告警',
-        children: [
-          { name: 'AlarmNotification', label: '历史告警' }
-        ]
-      },
+      { name: 'RealtimeAlarm', label: '待办告警' },
+      { name: 'AlarmNotification', label: '历史告警' },
+      { divider: true },
       { name: 'AlarmCriteria', label: '告警判据' },
-      { name: 'AlarmDisposal', label: '告警通知查询' }
+      { name: 'AlarmDisposal', label: '综合告警' },
+      { divider: true },
+      { name: 'NotificationSetting', label: '通知设置' }
     ]
   },
   {
@@ -378,6 +379,7 @@ const menuRouteMap: Record<string, string> = {
   AlarmCriteria: '/alarm/criteria',
   AlarmNotification: '/alarm/notification',
   AlarmDisposal: '/alarm/disposal',
+  NotificationSetting: '/alarm/notification-setting',
   Report: '/report/report',
   Query: '/report/query',
   Analysis: '/report/analysis',
@@ -405,7 +407,8 @@ const menuLabelMap: Record<string, string> = {
   RealtimeAlarm: '待办告警',
   AlarmCriteria: '告警判据',
   AlarmNotification: '历史告警',
-  AlarmDisposal: '告警通知查询',
+  AlarmDisposal: '综合告警',
+  NotificationSetting: '通知设置',
   Report: '报告管理',
   Query: '查询中心',
   Analysis: '数据分析',
@@ -720,6 +723,12 @@ const goToDashboard = () => {
   padding: 0 20px;
   transition: all 0.25s ease;
   background-color: transparent;
+}
+
+.nav-menu :deep(.menu-divider) {
+  height: 1px;
+  margin: 8px 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
 }
 
 .nav-menu :deep(.el-menu-item:hover) {
