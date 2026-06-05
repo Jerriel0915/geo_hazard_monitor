@@ -246,9 +246,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Clock, Bell, MapPin, Monitor, AlertTriangle, FileText, List, MessageSquare, Warning, CircleClose, X } from '@element-plus/icons-vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {ElMessage} from 'element-plus'
+import {Bell, CircleClose, Clock, List, Monitor, Warning} from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 
 const props = defineProps<{
