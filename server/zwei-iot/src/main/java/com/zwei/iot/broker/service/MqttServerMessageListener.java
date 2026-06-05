@@ -1,16 +1,17 @@
 package com.zwei.iot.broker.service;
 
+import com.zwei.common.event.MqttMessageReceivedEvent;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.component.MqttDeviceSessionRegistry;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.timeseries.service.MonitorIngestFacade;
-import com.zwei.log.mqtt.MqttMessageLogService;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
 import org.dromara.mica.mqtt.codec.message.MqttPublishMessage;
 import org.dromara.mica.mqtt.core.annotation.MqttServerFunction;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -18,22 +19,23 @@ import java.util.Optional;
 /**
  * 消息监听。
  *
- * <p>为设备接入闭环增加正式监测主题转发逻辑，统一路由到时序写入链路。</p>
+ * <p>为设备接入闭环增加正式监测主题转发逻辑，统一路由到时序写入链路。
+ * MQTT 消息日志通过 Spring 事件机制异步记录，实现 iot → log 的解耦。</p>
  */
 @Slf4j
 @Service
 public class MqttServerMessageListener {
     private final MonitorIngestFacade monitorIngestFacade;
     private final MqttDeviceSessionRegistry sessionRegistry;
-    private final MqttMessageLogService messageLogService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
     public MqttServerMessageListener(MonitorIngestFacade monitorIngestFacade,
                                      MqttDeviceSessionRegistry sessionRegistry,
-                                     MqttMessageLogService messageLogService) {
+                                     ApplicationEventPublisher eventPublisher) {
         this.monitorIngestFacade = monitorIngestFacade;
         this.sessionRegistry = sessionRegistry;
-        this.messageLogService = messageLogService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -66,7 +68,8 @@ public class MqttServerMessageListener {
         String username = session.get().authUsername();
         log.debug("收到监测主题消息 clientNode={}, topic={}", clientNode, topic);
         try {
-            messageLogService.record(clientId, username, topic, message);
+            eventPublisher.publishEvent(new MqttMessageReceivedEvent(
+                    clientId, username, topic, message, System.currentTimeMillis()));
             monitorIngestFacade.ingest(topic, message, deviceId);
         } catch (Exception e) {
             log.error("监测消息处理失败。topic={}, deviceId={}, clientId={}", topic, deviceId, clientId, e);

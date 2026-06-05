@@ -1,6 +1,8 @@
 package com.zwei.log.mqtt;
 
+import com.zwei.common.event.MqttMessageReceivedEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -15,6 +17,9 @@ import java.util.stream.Collectors;
  * <p>
  * 使用内存环形缓冲区记录最近通过的设备监测消息元数据，
  * 供管理后台实时查看消息流量和排查异常。
+ * <p>
+ * 消息记录通过 Spring 事件驱动：iot 模块发布 {@link MqttMessageReceivedEvent}，
+ * 本服务通过 {@link #onMqttMessageReceived(MqttMessageReceivedEvent)} 异步监听并记录。
  * <p>
  * 为避免内存溢出，缓冲区最多保留 {@link #MAX_CAPACITY} 条记录，
  * 达到上限后自动淘汰最早写入的条目。
@@ -33,6 +38,16 @@ public class MqttMessageLogService {
     private static final int PAYLOAD_TRUNCATE_CHARS = 500;
 
     private final ConcurrentLinkedDeque<MqttMessageLog> buffer = new ConcurrentLinkedDeque<>();
+
+    /**
+     * Spring 事件监听：从 iot 模块异步接收 MQTT 消息事件并记录。
+     * <p>
+     * 通过事件机制替代 iot → log 的直接方法调用，实现模块间的发布-订阅解耦。
+     */
+    @EventListener
+    public void onMqttMessageReceived(MqttMessageReceivedEvent event) {
+        record(event.getClientId(), event.getUsername(), event.getTopic(), event.getPayload());
+    }
 
     /**
      * 记录一条消息日志。
