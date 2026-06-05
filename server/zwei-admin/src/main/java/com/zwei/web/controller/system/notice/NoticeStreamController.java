@@ -23,7 +23,7 @@ public class NoticeStreamController {
     }
 
     /**
-     * 订阅通知公告 SSE 流。
+     * 订阅通知公告 SSE 流
      * <p>
      * 连接建立后发送 ready 事件，后续有新通知时推送 notice 事件。
      * 超时时间 5 分钟，超时后前端自动重连。

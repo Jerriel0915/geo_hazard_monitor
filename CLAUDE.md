@@ -60,7 +60,8 @@ server/
 ├── zwei-framework/   Cross-cutting: JWT auth filter, RBAC security (Spring Security),
 │                     MyBatis/Redis/Druid config, AOP aspects (logging, rate limiting, data scope),
 │                     global exception handler, server monitoring
-├── zwei-system/      RBAC implementation: users, roles, menus, departments, dicts, notices
+├── zwei-system/      RBAC implementation: users, roles, menus, departments, dicts
+│                     └── notice/  通知公告子包（包级隔离，含SSE推送+多通道架构预留）
 ├── zwei-iot/         **Core business module** — see below
 ├── zwei-monitor/     System monitoring — unified monitoring API & MQTT broker status
 ├── zwei-quartz/      Scheduled tasks (quartz job framework)
@@ -89,13 +90,34 @@ Unified monitoring layer that wraps the mica-mqtt HTTP API (port 18083) and aggr
 | `MqttStatsController`                      | `/api/v1/monitor/mqtt`          | MQTT server stats, listener config, runtime parameters                                                        |
 | `MqttClientController`                     | `/api/v1/monitor/mqtt/clients`  | Connected client list (enriched with device/hazard-point names), client detail (with subscriptions), kick/ban |
 | `MonitorOverviewController`                | `/api/v1/monitor`               | Aggregated overview: server health + Redis + online users + MQTT + uptime                                     |
+| `DashboardStatController`                  | `/api/v1/monitor/dashboard`     | Dashboard metrics: health score, online/active rates, trend, distribution + /full aggregation                 |
 | `MqttMessageLogController` *(in zwei-log)* | `/api/v1/monitor/mqtt/messages` | Real-time device message log query (receive time, clientId, topic, payload, size)                             |
 
 Key infrastructure:
 
 - `MqttHttpApiClient` — wraps mica-mqtt HTTP API calls (stats, clients, subscriptions, kick)
-- `MqttSessionEnrichService` — enriches raw client data with Device/HazardPoint names from the IoT module
+- `MqttSessionEnrichService` — enriches raw MQTT client data with Device/HazardPoint names via `IDeviceQueryService` (
+  not via Mapper)
 - `MqttHttpApiProperties` — binds `mqtt.server.http-listener.*` config for internal HTTP calls
+- `DashboardStatService` — aggregates dashboard metrics via `IDeviceStatService` (Service interface, not Mapper)
+
+**Cross-module dependency rules:**
+
+- `zwei-monitor` depends on `zwei-iot` **only through Service interfaces** (`IDeviceStatService`,
+  `IDeviceQueryService`), never through Mapper or Domain classes directly.
+- `zwei-iot` publishes events to `zwei-common` event classes (`MqttMessageReceivedEvent`, `DeviceOnlineEvent`,
+  `DeviceOfflineEvent`) — no direct Maven dependency on `zwei-log` for event consumption.
+- `zwei-log` listens to common events via `@EventListener`, fully decoupled from source modules.
+
+**Device online status infrastructure:**
+
+- `device_online_status` table — separate from `device` business table, stores real-time online/offline/last_report_at
+  as a fast lookup
+- `device_online_event_log` table — append-only history of every connect/disconnect with reason
+- `DeviceOnlineStatusService` — `@EventListener` on `DeviceOnlineEvent`/`DeviceOfflineEvent`, UPSERTs status + INSERTs
+  event log
+- `device_sensor.last_report_time` — sensor-level reporting timestamp, updated in
+  `MonitorIngestConsumerService.processRecord()` after IoTDB write succeeds
 
 > **Deprecation note:** The legacy monitoring endpoints under `/sys/v1/monitor/*` (ServerController, CacheController,
 > SysUserOnlineController) remain operational but are superseded by `/api/v1/monitor/overview`. New development should use
@@ -104,10 +126,20 @@ Key infrastructure:
 ### Data Flow
 
 ```
-Field sensors → MQTT (mica-mqtt) → MonitorIngestStreamService
-    → payload parser (GbMonitorPayloadParser / SysMonitorPayloadParser)
-    → IotdbJdbcClient → Apache IoTDB (time-series storage)
-    → Alarm engine evaluates thresholds → generates alarm records → notifications (SMS/H5)
+Field sensors → MQTT (mica-mqtt) → MonitorIngestFacade
+    → MonitorTopicParser → MonitorMetadataService → payload parser (sys/gb)
+    → Redis Stream (stream:monitor:ingest)
+    → MonitorIngestConsumerService (async)
+        → IotdbTimeSeriesService → IoTDB (time-series storage)
+        → DeviceOnlineStatusService → device_online_status.last_report_at  (运维指标)
+        → DeviceSensorService → device_sensor.last_report_time            (传感器活跃率)
+        → DeviceMapper → device.lastReportTime (兼容保留)
+
+MQTT Connect/Disconnect:
+    → MqttDeviceAuthService.authenticate() → publishEvent(DeviceOnlineEvent)
+    → MqttConnectStatusListener → publishEvent(DeviceOnlineEvent / DeviceOfflineEvent)
+    → DeviceOnlineStatusService (EventListener) → device_online_status 表 (UPSERT)
+    → device_online_event_log 表 (INSERT 历史明细)
 ```
 
 ### Frontend Structure
@@ -123,7 +155,7 @@ web/src/
 │   ├── report/          # Reports, query center, data analysis, large screen
 │   ├── iot/             # Alarm engine, data parsing
 │   ├── miniprogram/     # Mini-program facing views
-│   ├── system/          # Organization, identity, permission, logs, settings
+│   ├── system/          # Organization, identity, permission, logs, settings, notice
 │   └── user/            # User profile
 ├── layout/       # Main layout shell with sidebar navigation
 ├── router/       # Vue Router config — all routes except /login require token auth
@@ -152,8 +184,40 @@ web/src/
 ## Database Notes
 
 - MySQL schema initializes from `db/geo_hazard_monitor_v1.8.sql` on first container start
-- Upgrade scripts live in `db/upgrade/`
+- Upgrade scripts live in `db/upgrade/`:
+    - `device_online_status.sql` — device online status table + event log + sensor last_report_time column
+    - `sys_notify_template.sql` — notification template/instance/target tables (Phase 3 design)
 - IoTDB stores time-series data — tables (sequences) created dynamically on first write per device
+
+## Shared Events (`zwei-common`)
+
+Event classes in `com.zwei.common.event` serve as contracts between modules without direct Maven dependencies:
+
+| Event                      | Publisher                                                   | Consumer                                  |
+|----------------------------|-------------------------------------------------------------|-------------------------------------------|
+| `MqttMessageReceivedEvent` | zwei-iot (MqttServerMessageListener)                        | zwei-log (MqttMessageLogService)          |
+| `DeviceOnlineEvent`        | zwei-iot (MqttDeviceAuthService, MqttConnectStatusListener) | zwei-iot (DeviceOnlineStatusService)      |
+| `DeviceOfflineEvent`       | zwei-iot (MqttConnectStatusListener)                        | zwei-iot (DeviceOnlineStatusService)      |
+| `NoticeCreatedEvent`       | zwei-system (SysNoticeServiceImpl)                          | zwei-system (NoticeStreamPublisher → SSE) |
+
+## Notification Module (`zwei-system/notice/`)
+
+Package-isolated at `com.zwei.system.notice.*` (16 files renamed from `zwei-system`, zero business code changes):
+
+| Subpackage      | Contents                                                                                |
+|-----------------|-----------------------------------------------------------------------------------------|
+| `domain/`       | SysNotice, SysNoticeRead                                                                |
+| `mapper/`       | SysNoticeMapper, SysNoticeReadMapper                                                    |
+| `service/`      | ISysNoticeService, ISysNoticeReadService, NoticeStreamPublisher (SSE)                   |
+| `service/impl/` | SysNoticeServiceImpl, SysNoticeReadServiceImpl                                          |
+| `notify/`       | INotifyChannel, NotifyChannelDispatcher, NotifySendRequest (multi-channel architecture) |
+
+Controllers in `zwei-admin/web/controller/system/notice/`:
+
+- `SysNoticeController` — CRUD + read/unread status at `/api/v1/system/notice/*`
+- `NoticeStreamController` — SSE endpoint at `/api/v1/system/notice/stream`
+
+Frontend: `web/src/api/notice.ts` + `web/src/layout/index.vue` (notification bell with real data + SSE real-time push).
 
 ## Security Model
 
