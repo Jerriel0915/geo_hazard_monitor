@@ -29,3 +29,10 @@ CREATE TABLE IF NOT EXISTS device_online_event_log (
     INDEX idx_device_time (device_id, event_time),
     INDEX idx_event_time (event_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='设备上下线事件日志';
+
+-- 传感器最后上报时间（用于活跃率统计与运维查询）
+ALTER TABLE device_sensor
+    ADD COLUMN IF NOT EXISTS last_report_time DATETIME COMMENT '最后数据上报时间';
+
+CREATE INDEX IF NOT EXISTS idx_sensor_last_report
+    ON device_sensor (last_report_time);

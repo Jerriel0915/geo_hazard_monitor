@@ -69,4 +69,11 @@ public interface IDeviceSensorService {
      * @return true-唯一，false-已存在
      */
     boolean checkSensorCodeUnique(String sensorCode, Long id);
+
+    /**
+     * 更新传感器最后上报时间。
+     * @param sensorId 传感器ID
+     * @param lastReportTime 最后上报时间 (yyyy-MM-dd HH:mm:ss)
+     */
+    void updateLastReportTime(Long sensorId, String lastReportTime);
 }

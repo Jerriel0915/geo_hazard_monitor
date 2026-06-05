@@ -58,4 +58,7 @@ public interface IDeviceStatService {
 
     /** 时间窗口内活跃设备数（有数据上报） */
     int countActiveDevicesInWindow(int windowMinutes);
+
+    /** 时间窗口内活跃传感器数（有数据上报） */
+    int countActiveSensorsInWindow(int windowMinutes);
 }

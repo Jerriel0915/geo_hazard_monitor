@@ -144,11 +144,19 @@ public class DashboardStatService {
         return vo;
     }
 
-    // ==================== 2.5 传感器活跃率（IoTDB 窗口，待 IoTDB 查询服务增强后改为真实值） ====================
+    // ==================== 2.5 传感器活跃率（基于 device_sensor.last_report_time 时间窗口） ====================
 
     public RateByTypeVO getSensorActiveRate(int windowMinutes) {
-        RateByTypeVO vo = getSensorOnlineRate();
+        int total = deviceStatService.countAllSensors();
+        int active = deviceStatService.countActiveSensorsInWindow(windowMinutes);
+
+        RateByTypeVO vo = new RateByTypeVO();
         vo.setWindowMinutes(windowMinutes);
+        vo.setTotal(total);
+        vo.setOnline(active);
+        vo.setOffline(total - active);
+        vo.setOnlineRate(total > 0 ? Math.round(active * 10000.0 / total) / 100.0 : 0);
+        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total));
         return vo;
     }
 

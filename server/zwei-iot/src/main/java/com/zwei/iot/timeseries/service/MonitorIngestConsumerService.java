@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceOnlineStatusService;
+import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
 import jakarta.annotation.PreDestroy;
@@ -35,6 +36,7 @@ public class MonitorIngestConsumerService {
     private final MonitorIngestStreamService streamService;
     private final DeviceMapper deviceMapper;
     private final DeviceOnlineStatusService deviceOnlineStatusService;
+    private final IDeviceSensorService deviceSensorService;
     private final ExecutorService executorService;
     private volatile boolean running = true;
 
@@ -54,13 +56,15 @@ public class MonitorIngestConsumerService {
                                         IotdbTimeSeriesService iotdbTimeSeriesService,
                                         MonitorIngestStreamService streamService,
                                         DeviceMapper deviceMapper,
-                                        DeviceOnlineStatusService deviceOnlineStatusService) {
+                                        DeviceOnlineStatusService deviceOnlineStatusService,
+                                        IDeviceSensorService deviceSensorService) {
         this.redisTemplate = redisTemplate;
         this.properties = properties;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
         this.streamService = streamService;
         this.deviceMapper = deviceMapper;
         this.deviceOnlineStatusService = deviceOnlineStatusService;
+        this.deviceSensorService = deviceSensorService;
         this.executorService = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "monitor-ingest-consumer");
             thread.setDaemon(true);
@@ -140,8 +144,13 @@ public class MonitorIngestConsumerService {
                 return;
             }
             iotdbTimeSeriesService.writePoints(List.of(point));
-            // IoTDB 写入成功 → 更新运维指标表 last_report_at
+            // IoTDB 写入成功 → 更新运维指标
             deviceOnlineStatusService.updateLastReportAt(point.deviceId());
+            if (point.sensorId() != null) {
+                String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                        .format(new java.util.Date(point.dataTime()));
+                deviceSensorService.updateLastReportTime(point.sensorId(), now);
+            }
             // 同步回写设备主表 lastReportTime（保留兼容，后续可逐步移除）
             deviceMapper.updateDevice(Device.builder()
                     .id(point.deviceId())

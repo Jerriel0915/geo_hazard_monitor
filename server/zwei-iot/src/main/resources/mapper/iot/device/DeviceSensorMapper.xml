@@ -184,4 +184,18 @@
         GROUP BY ds.monitor_type_id, mt.name
     </select>
 
+    <update id="updateLastReportTime">
+        UPDATE device_sensor
+        SET last_report_time = #{lastReportTime}
+        WHERE id = #{id}
+    </update>
+
+    <select id="countActiveInWindow" resultType="int">
+        SELECT COUNT(*)
+        FROM device_sensor
+        WHERE del_flag = 0
+          AND status = 1
+          AND last_report_time >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE)
+    </select>
+
 </mapper>
