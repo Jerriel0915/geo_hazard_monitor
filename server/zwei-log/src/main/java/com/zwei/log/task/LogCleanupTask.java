@@ -1,16 +1,17 @@
 package com.zwei.log.task;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import com.zwei.log.infrastructure.config.LogModuleProperties;
 import com.zwei.log.infrastructure.persistence.mysql.AuthLogMapper;
 import com.zwei.log.infrastructure.persistence.mysql.LogStreamCheckpointMapper;
 import com.zwei.log.infrastructure.persistence.mysql.OperationLogMapper;
 import com.zwei.log.infrastructure.persistence.mysql.RuntimeLogMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 
 /**
  * 日志清理任务

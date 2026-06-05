@@ -243,7 +243,7 @@
     <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' }">
       <div class="left-panel" v-if="currentView === 'system'">
         <div class="panel-content">
-          <div class="panel-section health-section">
+          <div v-if="isWidgetOnLeft('systemHealth')" class="panel-section health-section">
             <div class="section-header">
               <span class="section-title">系统健康度</span>
               <span class="health-question" @click="showAlgorithmDesc = true" title="健康度算法说明">
@@ -304,7 +304,7 @@
             </div>
           </div>
 
-          <div class="panel-section resource-section">
+          <div v-if="isWidgetOnLeft('assetInfo')" class="panel-section resource-section">
             <div class="section-header">
               <span class="section-title">资产情况</span>
             </div>
@@ -358,6 +358,43 @@
                   <div v-for="type in resourceStats.deviceTypes" :key="type.name" class="type-bar-row">
                     <span class="type-name">{{ type.name }}</span>
                     <span class="type-count">{{ type.count }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="isWidgetOnLeft('alarmStatus')" class="panel-section alarm-section">
+            <div class="section-header">
+              <span class="section-title">告警态势</span>
+            </div>
+            <div class="alarm-summary">
+              <div class="alarm-summary-item">
+                <div class="summary-badge pending">待办告警</div>
+                <div class="summary-count">{{ alarmStats.pendingCount }}</div>
+              </div>
+              <div class="alarm-summary-item">
+                <div class="summary-badge history">历史告警</div>
+                <div class="summary-count">{{ alarmStats.historyCount }}</div>
+              </div>
+            </div>
+            <div class="alarm-level-stats">
+              <div class="level-stat" v-for="level in alarmStats.levelStats" :key="level.name">
+                <div class="level-dot" :class="level.key"></div>
+                <span class="level-name">{{ level.name }}</span>
+                <span class="level-count">{{ level.count }}</span>
+              </div>
+            </div>
+            <div class="alarm-list-section">
+              <div class="list-header">
+                <span class="list-title">实时告警事件</span>
+              </div>
+              <div class="alarm-list">
+                <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
+                  <div class="alarm-level-dot" :class="alarm.level"></div>
+                  <div class="alarm-content">
+                    <div class="alarm-title">{{ alarm.title }}</div>
+                    <div class="alarm-meta">{{ alarm.source }} · {{ alarm.time }}</div>
                   </div>
                 </div>
               </div>
@@ -582,6 +619,16 @@
               📋
             </button>
           </div>
+
+          <!-- 面板布局修改按钮 -->
+          <button
+              class="tool-btn edit-btn"
+              @click="showLayoutDialog = true"
+              :class="{ active: showLayoutDialog }"
+              title="修改面板布局"
+          >
+            ⚙
+          </button>
         </div>
       </div>
 
@@ -590,7 +637,107 @@
       </button>
       <div class="right-panel">
         <div class="panel-content">
-          <div class="panel-section alarm-section">
+          <div v-if="isWidgetOnRight('systemHealth')" class="panel-section health-section">
+            <div class="section-header">
+              <span class="section-title">系统健康度</span>
+              <span class="health-question" @click="showAlgorithmDesc = true" title="健康度算法说明">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path
+                    d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </span>
+            </div>
+            <div class="health-content">
+              <div class="health-ring-container">
+                <svg class="health-ring" viewBox="0 0 120 120">
+                  <circle class="ring-bg" cx="60" cy="60" r="50"/>
+                  <circle v-for="(segment, index) in ringSegments" :key="index" class="ring-segment"
+                          :class="{ active: activeSegment === index }" cx="60" cy="60" r="50" :stroke="segment.color"
+                          :stroke-dasharray="segment.dashArray" :stroke-dashoffset="segment.dashOffset"
+                          :style="{ transform: 'rotate(' + segment.rotate + 'deg)', transformOrigin: 'center' }"
+                          @mouseenter="activeSegment = index" @mouseleave="activeSegment = null"/>
+                </svg>
+                <div class="ring-center">
+                  <div class="ring-score">{{ healthStats.overallScore }}%</div>
+                  <div class="ring-label">综合健康度</div>
+                </div>
+              </div>
+              <div class="health-bars">
+                <div v-for="(item, index) in healthStats.items" :key="item.name" class="health-bar-item"
+                     :class="{ active: activeSegment === index }" @mouseenter="activeSegment = index"
+                     @mouseleave="activeSegment = null">
+                  <div class="bar-info">
+                    <span class="bar-name">{{ item.name }}</span>
+                    <span class="bar-value" :style="{ color: item.color }">{{ item.value }}%</span>
+                  </div>
+                  <div class="bar-track">
+                    <div class="bar-progress" :style="{ width: item.value + '%', backgroundColor: item.color }"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="isWidgetOnRight('assetInfo')" class="panel-section resource-section">
+            <div class="section-header">
+              <span class="section-title">资产情况</span>
+            </div>
+            <div class="resource-compact">
+              <div class="resource-main">
+                <div class="resource-total">
+                  <div class="total-circle">
+                    <svg class="total-ring" viewBox="0 0 80 80">
+                      <circle class="ring-bg" cx="40" cy="40" r="35"/>
+                      <circle class="ring-hazard" cx="40" cy="40" r="35" :stroke-dasharray="`113 170`"
+                              stroke-dashoffset="0"/>
+                      <circle class="ring-device" cx="40" cy="40" r="35" :stroke-dasharray="`142 141`"
+                              stroke-dashoffset="-113"/>
+                    </svg>
+                    <div class="total-value">{{ resourceStats.totalResources }}</div>
+                  </div>
+                  <div class="total-label">资源总数</div>
+                </div>
+                <div class="resource-breakdown">
+                  <div class="breakdown-item hazard">
+                    <div class="breakdown-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14"
+                           stroke-width="2" width="14" height="14">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                      </svg>
+                    </div>
+                    <div class="breakdown-info">
+                      <span class="breakdown-value">{{ resourceStats.hazardTotal }}</span>
+                      <span class="breakdown-label">隐患点</span>
+                    </div>
+                  </div>
+                  <div class="breakdown-item device">
+                    <div class="breakdown-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a"
+                           stroke-width="2" width="14" height="14">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                      </svg>
+                    </div>
+                    <div class="breakdown-info">
+                      <span class="breakdown-value">{{ resourceStats.deviceTotal }}</span>
+                      <span class="breakdown-label">设备</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="device-type-section">
+                <div class="type-title">设备分类</div>
+                <div class="type-bars">
+                  <div v-for="type in resourceStats.deviceTypes" :key="type.name" class="type-bar-row">
+                    <span class="type-name">{{ type.name }}</span>
+                    <span class="type-count">{{ type.count }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="isWidgetOnRight('alarmStatus')" class="panel-section alarm-section">
             <div class="section-header">
               <span class="section-title">告警态势</span>
             </div>
@@ -629,16 +776,83 @@
         </div>
       </div>
     </div>
+
+    <!-- 面板布局配置弹窗 -->
+    <div class="layout-config-overlay" v-if="showLayoutDialog" @click="showLayoutDialog = false">
+      <div class="layout-config-dialog" @click.stop>
+        <div class="layout-config-header">
+          <span class="layout-config-title">面板布局配置</span>
+          <button class="layout-config-close" @click="showLayoutDialog = false">✕</button>
+        </div>
+        <div class="layout-config-body">
+          <p class="layout-config-desc">拖拽调整各模块在左右两侧面板的显示位置</p>
+          <div class="layout-columns">
+            <div class="layout-column">
+              <div class="column-header left-header">左侧面板</div>
+              <div class="column-drop-zone" @dragover.prevent @drop="onDrop($event, 'left')">
+                <div
+                    v-for="widget in leftWidgets"
+                    :key="widget.key"
+                    class="widget-chip"
+                    draggable="true"
+                    @dragstart="onDragStart($event, widget.key)"
+                >
+                  <span class="widget-drag-handle">⠿</span>
+                  <span>{{ widget.label }}</span>
+                  <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏">✕</button>
+                </div>
+                <div v-if="leftWidgets.length === 0" class="drop-hint">拖拽模块到此处</div>
+              </div>
+            </div>
+            <div class="layout-column">
+              <div class="column-header right-header">右侧面板</div>
+              <div class="column-drop-zone" @dragover.prevent @drop="onDrop($event, 'right')">
+                <div
+                    v-for="widget in rightWidgets"
+                    :key="widget.key"
+                    class="widget-chip"
+                    draggable="true"
+                    @dragstart="onDragStart($event, widget.key)"
+                >
+                  <span class="widget-drag-handle">⠿</span>
+                  <span>{{ widget.label }}</span>
+                  <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏">✕</button>
+                </div>
+                <div v-if="rightWidgets.length === 0" class="drop-hint">拖拽模块到此处</div>
+              </div>
+            </div>
+          </div>
+          <div class="hidden-widgets" v-if="hiddenWidgets.length > 0">
+            <div class="hidden-header">已隐藏的模块（点击恢复）</div>
+            <div class="hidden-list">
+              <span
+                  v-for="widget in hiddenWidgets"
+                  :key="widget.key"
+                  class="hidden-chip"
+                  @click="restoreWidget(widget.key)"
+              >
+                {{ widget.label }}
+                <span class="restore-icon">↩</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="layout-config-footer">
+          <button class="reset-btn" @click="resetLayoutConfig">恢复默认</button>
+          <button class="confirm-btn" @click="showLayoutDialog = false">完成</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import * as echarts from 'echarts'
-import { getHazardPointPage, getHazardPointGroups } from '@/api/hazardPoint'
-import { getDeviceSensors } from '@/api/sensor'
+import {getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {getDeviceSensors} from '@/api/sensor'
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -710,6 +924,94 @@ const resourceStats = ref({
 })
 
 const isRightPanelCollapsed = ref(false)
+
+// ========== 面板布局配置 ==========
+interface WidgetDef {
+  key: string
+  label: string
+}
+
+const ALL_WIDGETS: WidgetDef[] = [
+  {key: 'systemHealth', label: '系统健康度'},
+  {key: 'assetInfo', label: '资产情况'},
+  {key: 'alarmStatus', label: '告警态势'}
+]
+
+const DEFAULT_LAYOUT = {
+  left: ['systemHealth', 'assetInfo'],
+  right: ['alarmStatus'],
+  hidden: [] as string[]
+}
+
+const showLayoutDialog = ref(false)
+const dragKey = ref<string | null>(null)
+
+const layoutConfig = ref<{ left: string[]; right: string[]; hidden: string[] }>(DEFAULT_LAYOUT)
+
+const loadLayoutConfig = () => {
+  try {
+    const saved = localStorage.getItem('dashboard_layout')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (parsed.left && parsed.right && parsed.hidden) layoutConfig.value = parsed
+    }
+  } catch { /* keep defaults */
+  }
+}
+
+const saveLayoutConfig = () => {
+  localStorage.setItem('dashboard_layout', JSON.stringify(layoutConfig.value))
+}
+
+const leftWidgets = computed(() =>
+    layoutConfig.value.left.map(k => ALL_WIDGETS.find(w => w.key === k)!).filter(Boolean)
+)
+const rightWidgets = computed(() =>
+    layoutConfig.value.right.map(k => ALL_WIDGETS.find(w => w.key === k)!).filter(Boolean)
+)
+const hiddenWidgets = computed(() =>
+    layoutConfig.value.hidden.map(k => ALL_WIDGETS.find(w => w.key === k)!).filter(Boolean)
+)
+
+const onDragStart = (e: DragEvent, key: string) => {
+  dragKey.value = key
+  e.dataTransfer!.effectAllowed = 'move'
+}
+
+const onDrop = (e: DragEvent, side: 'left' | 'right') => {
+  const key = dragKey.value
+  if (!key) return
+  moveWidget(key, side)
+  dragKey.value = null
+}
+
+const moveWidget = (key: string, side: 'left' | 'right' | null) => {
+  // Remove from current position
+  layoutConfig.value.left = layoutConfig.value.left.filter(k => k !== key)
+  layoutConfig.value.right = layoutConfig.value.right.filter(k => k !== key)
+  layoutConfig.value.hidden = layoutConfig.value.hidden.filter(k => k !== key)
+  // Add to target
+  if (side === 'left') layoutConfig.value.left.push(key)
+  else if (side === 'right') layoutConfig.value.right.push(key)
+  else layoutConfig.value.hidden.push(key)
+  saveLayoutConfig()
+}
+
+const restoreWidget = (key: string) => {
+  // Restore hidden widget to its default side
+  const defaultSide = DEFAULT_LAYOUT.left.includes(key) ? 'left' : 'right'
+  moveWidget(key, defaultSide)
+}
+
+const resetLayoutConfig = () => {
+  layoutConfig.value = {...DEFAULT_LAYOUT, hidden: []}
+  saveLayoutConfig()
+}
+
+const isWidgetOnLeft = (key: string) => layoutConfig.value.left.includes(key)
+const isWidgetOnRight = (key: string) => layoutConfig.value.right.includes(key)
+
+// ========== /面板布局配置 ==========
 
 // 视图模式
 const currentView = ref<'system' | 'hazard'>('system')
@@ -1684,6 +1986,7 @@ const loadHazardPointGroups = async () => {
 }
 
 onMounted(async () => {
+  loadLayoutConfig()
   initMap()
   window.addEventListener('resize', handleResize)
   
@@ -3619,5 +3922,256 @@ onUnmounted(() => {
 .status-badge.warning {
   background: rgba(250, 173, 20, 0.1);
   color: #faad14;
+}
+
+/* 面板布局修改按钮 */
+.edit-btn {
+  font-size: 16px;
+}
+
+/* 面板布局配置弹窗 */
+.layout-config-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layout-config-dialog {
+  width: 580px;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.layout-config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.layout-config-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.layout-config-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: #999;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layout-config-close:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.layout-config-body {
+  padding: 20px;
+}
+
+.layout-config-desc {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #999;
+}
+
+.layout-columns {
+  display: flex;
+  gap: 16px;
+}
+
+.layout-column {
+  flex: 1;
+}
+
+.column-header {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px 6px 0 0;
+  margin-bottom: 0;
+}
+
+.column-header.left-header {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.column-header.right-header {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.column-drop-zone {
+  min-height: 120px;
+  border: 2px dashed #e8e8e8;
+  border-radius: 0 0 6px 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+
+.column-drop-zone:hover {
+  border-color: #1890ff;
+}
+
+.drop-hint {
+  color: #ccc;
+  font-size: 12px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.widget-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #334155;
+  cursor: grab;
+  transition: all 0.15s;
+}
+
+.widget-chip:hover {
+  background: #f0f5ff;
+  border-color: #91caff;
+}
+
+.widget-chip:active {
+  cursor: grabbing;
+}
+
+.widget-drag-handle {
+  color: #bbb;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.widget-remove {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.widget-remove:hover {
+  background: #fff1f0;
+  color: #ff4d4f;
+}
+
+.hidden-widgets {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.hidden-header {
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.hidden-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hidden-chip {
+  padding: 6px 12px;
+  background: #f5f5f5;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hidden-chip:hover {
+  color: #1890ff;
+  border-color: #91caff;
+  background: #e6f7ff;
+}
+
+.restore-icon {
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.layout-config-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.layout-config-footer .reset-btn {
+  padding: 8px 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #595959;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.layout-config-footer .reset-btn:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.layout-config-footer .confirm-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #1890ff;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.layout-config-footer .confirm-btn:hover {
+  background: #40a9ff;
+}
+
+/* 右侧面板隐藏时工具栏仍可见 */
+.right-panel-wrapper.collapsed .right-panel {
+  display: none;
 }
 </style>

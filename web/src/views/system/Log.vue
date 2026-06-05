@@ -1,30 +1,5 @@
 <template>
   <div class="page-content">
-    <div class="hero-card">
-      <div class="hero-copy">
-        <div class="page-title">系统日志中心</div>
-        <div class="page-subtitle">
-          统一查看接口调用、身份认证、运行期控制台日志，并支持 SSE 实时订阅与断线续传。
-        </div>
-      </div>
-      <div class="hero-stats">
-        <div class="stat-card">
-          <div class="stat-label">当前页签</div>
-          <div class="stat-value">{{ tabLabelMap[activeTab] }}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">SSE状态</div>
-          <div class="stat-value">
-            <el-tag :type="sseStatusTagType" effect="dark">{{ sseStatusText }}</el-tag>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">最后事件ID</div>
-          <div class="stat-value event-id">{{ lastEventId || '--' }}</div>
-        </div>
-      </div>
-    </div>
-
     <div class="dashboard-grid">
       <section class="main-panel">
         <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
@@ -330,7 +305,7 @@
 import axios from 'axios'
 import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import { handleAuthFailure } from '@/utils/auth'
+import {handleAuthFailure} from '@/utils/auth'
 
 type TabKey = 'operation' | 'auth' | 'runtime'
 type StreamStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -1004,65 +979,6 @@ onBeforeUnmount(() => {
   gap: 20px;
 }
 
-.hero-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px 28px;
-  border-radius: 22px;
-  background: radial-gradient(circle at top left, rgba(86, 125, 244, 0.16), transparent 34%),
-  linear-gradient(135deg, #0f172a 0%, #16213a 45%, #1e293b 100%);
-  color: #f8fafc;
-  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
-}
-
-.hero-copy {
-  max-width: 680px;
-}
-
-.page-title {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.page-subtitle {
-  margin-top: 10px;
-  line-height: 1.7;
-  color: rgba(226, 232, 240, 0.82);
-}
-
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
-  gap: 12px;
-  min-width: 360px;
-}
-
-.stat-card {
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-}
-
-.stat-label {
-  font-size: 12px;
-  color: rgba(226, 232, 240, 0.74);
-}
-
-.stat-value {
-  margin-top: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.event-id {
-  font-size: 14px;
-  word-break: break-all;
-}
-
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -1267,15 +1183,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
-  .hero-card {
-    flex-direction: column;
-  }
-
-  .hero-stats {
-    min-width: 0;
-    grid-template-columns: 1fr;
-  }
-
   .stream-meta {
     grid-template-columns: 1fr;
   }
