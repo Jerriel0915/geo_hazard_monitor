@@ -219,18 +219,20 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {getAuthInfo, getUserInfo} from '@/utils/userApi'
+import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
 
 
-interface Message {
+/** 通知消息（来自 SysNotice 后端） */
+interface NoticeMessage {
   id: number
-  type: 'alarm' | 'system' | 'other'
   title: string
   content: string
   time: string
   read: boolean
+  type: string
 }
 
 const router = useRouter()
@@ -242,17 +244,9 @@ const pwdDialogVisible = ref(false)
 
 const messagePanelVisible = ref(false)
 const messageTab = ref<'unread' | 'read'>('unread')
-
-const messages = ref<Message[]>([
-  { id: 1, type: 'alarm', title: '一级警报', content: '龙潭寺滑坡隐患点监测数据异常，位移超过警戒值，请及时处理。', time: '2024-01-20 14:30', read: false },
-  { id: 2, type: 'system', title: '系统维护通知', content: '系统将于今晚22:00-24:00进行例行维护，届时将暂停服务，请提前做好准备。', time: '2024-01-20 10:00', read: false },
-  { id: 3, type: 'alarm', title: '设备离线告警', content: 'GNSS接收机-A1设备离线超过30分钟，请检查设备状态。', time: '2024-01-19 16:45', read: false },
-  { id: 4, type: 'other', title: '周报已生成', content: '本周监测数据周报已生成，包含各项监测指标统计分析。', time: '2024-01-19 09:00', read: true },
-  { id: 5, type: 'system', title: '权限变更通知', content: '您的系统管理员权限已更新，新增了数据导出权限。', time: '2024-01-18 15:30', read: true },
-  { id: 6, type: 'alarm', title: '雨量告警', content: 'ZZ水库坝体监测点24小时雨量达到警戒值，请注意防范。', time: '2024-01-18 08:20', read: true }
-])
-
-const unreadMessageCount = computed(() => messages.value.filter(m => !m.read).length)
+const messages = ref<NoticeMessage[]>([])
+const unreadMessageCount = ref(0)
+let noticePollTimer: ReturnType<typeof setInterval> | null = null
 
 const filteredMessages = computed(() => {
   if (messageTab.value === 'unread') {
@@ -260,6 +254,26 @@ const filteredMessages = computed(() => {
   }
   return messages.value.filter(m => m.read)
 })
+
+function toNoticeMessage(n: SysNotice): NoticeMessage {
+  return {
+    id: n.noticeId,
+    title: n.noticeTitle,
+    content: n.noticeContent?.replace(/<[^>]*>/g, '') ?? '',
+    time: n.createTime ?? '',
+    read: n.isRead ?? false,
+    type: n.noticeType === '1' ? 'system' : 'other'
+  }
+}
+
+async function fetchNotices() {
+  try {
+    const res = await getTopNotices()
+    const data = res.data
+    messages.value = (data.list ?? []).map(toNoticeMessage)
+    unreadMessageCount.value = data.unreadCount ?? 0
+  } catch { /* keep previous data */ }
+}
 
 const currentUser = reactive({
   name: '管理员'
@@ -501,14 +515,22 @@ const toggleMessagePanel = () => {
   messagePanelVisible.value = !messagePanelVisible.value
 }
 
-const markMessageAsRead = (msg: Message) => {
-  msg.read = true
+const markMessageAsRead = async (msg: NoticeMessage) => {
+  try {
+    await markRead(msg.id)
+    msg.read = true
+    unreadMessageCount.value = Math.max(0, unreadMessageCount.value - 1)
+  } catch { /* ignore */ }
 }
 
-const markAllAsRead = () => {
-  messages.value.forEach(msg => {
-    msg.read = true
-  })
+const markAllAsRead = async () => {
+  const unreadIds = messages.value.filter(m => !m.read).map(m => m.id)
+  if (unreadIds.length === 0) return
+  try {
+    await markReadAll(unreadIds.join(','))
+    messages.value.forEach(m => { m.read = true })
+    unreadMessageCount.value = 0
+  } catch { /* ignore */ }
 }
 
 onMounted(async () => {
@@ -524,6 +546,16 @@ onMounted(async () => {
     currentUser.name = user.username || user.realName || '管理员'
   } catch {
     // keep default
+  }
+  // 首次加载通知 + 每30秒轮询
+  fetchNotices()
+  noticePollTimer = setInterval(fetchNotices, 30000)
+})
+
+onUnmounted(() => {
+  if (noticePollTimer) {
+    clearInterval(noticePollTimer)
+    noticePollTimer = null
   }
 })
 
