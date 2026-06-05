@@ -151,7 +151,7 @@ web/src/
 
 ## Database Notes
 
-- MySQL schema initializes from `db/geo_hazard_monitor_v1.5.sql` on first container start
+- MySQL schema initializes from `db/geo_hazard_monitor_v1.8.sql` on first container start
 - Upgrade scripts live in `db/upgrade/`
 - IoTDB stores time-series data — tables (sequences) created dynamically on first write per device
 
@@ -166,7 +166,6 @@ web/src/
 ### Permission Convention
 
 All `@PreAuthorize` annotations follow the pattern `module:entity:action` (e.g. `system:user:list`).
-New permissions are registered via `db/upgrade/upgrade_v1.6_permissions.sql` as `sys_menu` rows.
 
 **Permissions added by zwei-monitor / log hardening:**
 

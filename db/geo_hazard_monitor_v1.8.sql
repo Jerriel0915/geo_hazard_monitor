@@ -232,6 +232,8 @@ CREATE TABLE `device`
     `registered_at`    datetime              DEFAULT NULL COMMENT '注册时间',
     `last_auth_time`   datetime              DEFAULT NULL COMMENT '最近鉴权时间',
     `last_auth_ip`     varchar(64)           DEFAULT NULL COMMENT '最近鉴权IP',
+    `longitude` double DEFAULT NULL COMMENT '经度',
+    `latitude`  double DEFAULT NULL COMMENT '纬度',
     `create_by`        varchar(64)           DEFAULT NULL COMMENT '创建者',
     `create_time`      datetime              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_by`        varchar(64)           DEFAULT NULL COMMENT '更新者',
@@ -246,6 +248,7 @@ CREATE TABLE `device`
     KEY `idx_device_register_source` (`register_source`),
     KEY `idx_device_auth_status` (`auth_status`)
 ) ENGINE = InnoDB
+  AUTO_INCREMENT = 2
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -257,6 +260,10 @@ CREATE TABLE `device`
 LOCK TABLES `device` WRITE;
 /*!40000 ALTER TABLE `device`
     DISABLE KEYS */;
+INSERT INTO `device`
+VALUES (1, 'test_device_001', '123456789', '测试设备001', 0, 0, 'MQTT', 'MANUAL', NULL, 'NZMX40', 'FSg4n5Z2', 1, 'bsw',
+        '/jc-icon/green/bsw_green.png', 1, 2, '2026-05-30 15:13:51', '2026-05-28 19:12:53', '2026-06-03 14:52:11',
+        '127.0.0.1', NULL, NULL, 'admin', '2026-05-28 19:12:53', 'admin', '2026-06-03 14:52:37', 0);
 /*!40000 ALTER TABLE `device`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -281,6 +288,7 @@ CREATE TABLE `device_auth_log`
     PRIMARY KEY (`id`),
     KEY `idx_device_auth_log_device` (`device_id`, `create_time`)
 ) ENGINE = InnoDB
+  AUTO_INCREMENT = 42
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备认证日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -327,6 +335,7 @@ CREATE TABLE `device_hazard_point`
     CONSTRAINT `chk_dhp_lng` CHECK (((`install_longitude` is null) or
                                      ((`install_longitude` >= -(180)) and (`install_longitude` <= 180))))
 ) ENGINE = InnoDB
+  AUTO_INCREMENT = 3
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备隐患点关联表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -338,6 +347,8 @@ CREATE TABLE `device_hazard_point`
 LOCK TABLES `device_hazard_point` WRITE;
 /*!40000 ALTER TABLE `device_hazard_point`
     DISABLE KEYS */;
+INSERT INTO `device_hazard_point`
+VALUES (2, 1, 15, NULL, NULL, '2026-05-30 16:00:37', 'admin', '2026-05-30 16:00:37', 'admin', '2026-05-30 16:00:37');
 /*!40000 ALTER TABLE `device_hazard_point`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -413,6 +424,7 @@ CREATE TABLE `device_sensor`
     KEY `idx_device_sensor_status` (`status`),
     KEY `idx_device_sensor_del_flag` (`del_flag`)
 ) ENGINE = InnoDB
+  AUTO_INCREMENT = 3
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='传感器表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -424,6 +436,9 @@ CREATE TABLE `device_sensor`
 LOCK TABLES `device_sensor` WRITE;
 /*!40000 ALTER TABLE `device_sensor`
     DISABLE KEYS */;
+INSERT INTO `device_sensor`
+VALUES (2, 1, 'test_device_001', 'test_sensor_001', 'test_sensor_001', '测试传感器001', 1, 'JCLX001', '雨量监测', 1,
+        'admin', '2026-05-29 15:32:42', NULL, '2026-05-29 23:57:09', 0);
 /*!40000 ALTER TABLE `device_sensor`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -462,6 +477,102 @@ LOCK TABLES `device_status_log` WRITE;
 /*!40000 ALTER TABLE `device_status_log`
     DISABLE KEYS */;
 /*!40000 ALTER TABLE `device_status_log`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `gen_table`
+--
+
+DROP TABLE IF EXISTS `gen_table`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `gen_table`
+(
+    `table_id`          bigint NOT NULL AUTO_INCREMENT COMMENT '编号',
+    `table_name`        varchar(200)  DEFAULT '' COMMENT '表名称',
+    `table_comment`     varchar(500)  DEFAULT '' COMMENT '表描述',
+    `sub_table_name`    varchar(64)   DEFAULT NULL COMMENT '关联子表的表名',
+    `sub_table_fk_name` varchar(64)   DEFAULT NULL COMMENT '子表关联的外键名',
+    `class_name`        varchar(100)  DEFAULT '' COMMENT '实体类名称',
+    `tpl_category`      varchar(200)  DEFAULT 'crud' COMMENT '使用的模板（crud单表操作 tree树表操作）',
+    `tpl_web_type`      varchar(30)   DEFAULT '' COMMENT '前端模板类型',
+    `package_name`      varchar(100)  DEFAULT NULL COMMENT '生成包路径',
+    `module_name`       varchar(30)   DEFAULT NULL COMMENT '生成模块名',
+    `business_name`     varchar(30)   DEFAULT NULL COMMENT '生成业务名',
+    `function_name`     varchar(50)   DEFAULT NULL COMMENT '生成功能名',
+    `function_author`   varchar(50)   DEFAULT NULL COMMENT '生成功能作者',
+    `form_col_num`      int           DEFAULT '1' COMMENT '表单布局（单列 双列 三列）',
+    `gen_type`          char(1)       DEFAULT '0' COMMENT '生成代码方式（0zip压缩包 1自定义路径）',
+    `gen_path`          varchar(200)  DEFAULT '/' COMMENT '生成路径（不填默认项目路径）',
+    `options`           varchar(1000) DEFAULT NULL COMMENT '其它生成选项',
+    `create_by`         varchar(64)   DEFAULT '' COMMENT '创建者',
+    `create_time`       datetime      DEFAULT NULL COMMENT '创建时间',
+    `update_by`         varchar(64)   DEFAULT '' COMMENT '更新者',
+    `update_time`       datetime      DEFAULT NULL COMMENT '更新时间',
+    `remark`            varchar(500)  DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (`table_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='代码生成业务表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `gen_table`
+--
+
+LOCK TABLES `gen_table` WRITE;
+/*!40000 ALTER TABLE `gen_table`
+    DISABLE KEYS */;
+/*!40000 ALTER TABLE `gen_table`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `gen_table_column`
+--
+
+DROP TABLE IF EXISTS `gen_table_column`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `gen_table_column`
+(
+    `column_id`      bigint NOT NULL AUTO_INCREMENT COMMENT '编号',
+    `table_id`       bigint       DEFAULT NULL COMMENT '归属表编号',
+    `column_name`    varchar(200) DEFAULT NULL COMMENT '列名称',
+    `column_comment` varchar(500) DEFAULT NULL COMMENT '列描述',
+    `column_type`    varchar(100) DEFAULT NULL COMMENT '列类型',
+    `java_type`      varchar(500) DEFAULT NULL COMMENT 'JAVA类型',
+    `java_field`     varchar(200) DEFAULT NULL COMMENT 'JAVA字段名',
+    `is_pk`          char(1)      DEFAULT NULL COMMENT '是否主键（1是）',
+    `is_increment`   char(1)      DEFAULT NULL COMMENT '是否自增（1是）',
+    `is_required`    char(1)      DEFAULT NULL COMMENT '是否必填（1是）',
+    `is_insert`      char(1)      DEFAULT NULL COMMENT '是否为插入字段（1是）',
+    `is_edit`        char(1)      DEFAULT NULL COMMENT '是否编辑字段（1是）',
+    `is_list`        char(1)      DEFAULT NULL COMMENT '是否列表字段（1是）',
+    `is_query`       char(1)      DEFAULT NULL COMMENT '是否查询字段（1是）',
+    `query_type`     varchar(200) DEFAULT 'EQ' COMMENT '查询方式（等于、不等于，大于、小于、范围）',
+    `html_type`      varchar(200) DEFAULT NULL COMMENT '显示类型（文本框、文本域、下拉框、复选框、单选框、日期控件）',
+    `dict_type`      varchar(200) DEFAULT '' COMMENT '字典类型',
+    `sort`           int          DEFAULT NULL COMMENT '排序',
+    `create_by`      varchar(64)  DEFAULT '' COMMENT '创建者',
+    `create_time`    datetime     DEFAULT NULL COMMENT '创建时间',
+    `update_by`      varchar(64)  DEFAULT '' COMMENT '更新者',
+    `update_time`    datetime     DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`column_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='代码生成业务表字段';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `gen_table_column`
+--
+
+LOCK TABLES `gen_table_column` WRITE;
+/*!40000 ALTER TABLE `gen_table_column`
+    DISABLE KEYS */;
+/*!40000 ALTER TABLE `gen_table_column`
     ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -537,8 +648,8 @@ VALUES (1, 'HP001', '隐患点A修改', 2, 104.156790, 30.678902, 50.00, '修改
         '2026-05-28 11:37:30', 1),
        (13, 'HP008', 'test', 2, 104.060000, 30.670000, 0.00, '', 1, 0, 'admin', '2026-05-23 16:06:12', NULL,
         '2026-05-28 11:37:30', 1),
-       (15, 'HP009', 'test123', NULL, 104.060000, 30.670000, 0.00, '', 1, 0, 'admin', '2026-05-23 16:07:23', 'admin',
-        '2026-05-24 10:59:45', 0);
+       (15, 'HP009', 'test123', NULL, 104.060000, 30.670000, 0.00, '', 1, 1, 'admin', '2026-05-23 16:07:23', 'admin',
+        '2026-05-30 16:00:37', 0);
 /*!40000 ALTER TABLE `hazard_point`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -638,7 +749,7 @@ CREATE TABLE `log_auth_record`
     KEY `idx_log_auth_status_time` (`result_status`, `occurred_at` DESC),
     KEY `idx_log_auth_trace` (`trace_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 81
+  AUTO_INCREMENT = 117
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='认证日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -694,7 +805,7 @@ CREATE TABLE `log_operation_record`
     KEY `idx_log_operation_api_time` (`api_path`, `occurred_at` DESC),
     KEY `idx_log_operation_trace` (`trace_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 145
+  AUTO_INCREMENT = 539
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='接口调用日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1091,6 +1202,7 @@ CREATE TABLE `sensor_attribute`
     KEY `idx_sensor_attr_sensor_id` (`sensor_id`),
     KEY `idx_sensor_attr_attr_code` (`attr_code`)
 ) ENGINE = InnoDB
+  AUTO_INCREMENT = 6
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='传感器属性表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1102,6 +1214,11 @@ CREATE TABLE `sensor_attribute`
 LOCK TABLES `sensor_attribute` WRITE;
 /*!40000 ALTER TABLE `sensor_attribute`
     DISABLE KEYS */;
+INSERT INTO `sensor_attribute`
+VALUES (4, 2, 'rainfall_hour', '小时雨量', 'yl', '压力', 0.00, 'mm', 0.00, 500.00, NULL, 'admin', '2026-05-29 15:32:42',
+        NULL, '2026-05-29 15:32:42'),
+       (5, 2, 'rainfall_day', '日雨量', 'yl', '压力', 0.00, 'mm', 0.00, 1000.00, NULL, 'admin', '2026-05-29 15:32:42',
+        NULL, '2026-05-29 15:32:42');
 /*!40000 ALTER TABLE `sensor_attribute`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -1127,7 +1244,7 @@ CREATE TABLE `sys_config`
     `remark`       varchar(500) DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`config_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 100
+  AUTO_INCREMENT = 103
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='参数配置表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1158,7 +1275,13 @@ VALUES (1, '主框架页-默认皮肤样式名称', 'sys.index.skinName', 'skin-
         '', NULL,
         '密码更新周期（填写数字，数据初始化值为0不限制，若修改必须为大于0小于365的正整数），如果超过这个周期登录系统时，则在登录时就会提醒修改密码对话框'),
        (9, '用户管理-密码字符范围', 'sys.account.chrtype', '0', 'Y', 'admin', '2026-05-08 22:06:00', '', NULL,
-        '默认任意字符范围，0任意（密码可以输入任意字符），1数字（密码只能为0-9数字），2英文字母（密码只能为a-z和A-Z字母），3字母和数字（密码必须包含字母，数字）,4字母数字和特殊字符（目前支持的特殊字符包括：~!@#$%^&*()-=_+）');
+        '默认任意字符范围，0任意（密码可以输入任意字符），1数字（密码只能为0-9数字），2英文字母（密码只能为a-z和A-Z字母），3字母和数字（密码必须包含字母，数字）,4字母数字和特殊字符（目前支持的特殊字符包括：~!@#$%^&*()-=_+）'),
+       (100, '日志自动清理开关', 'log.cleanup.enabled', 'true', 'Y', 'admin', '2026-06-05 11:24:46', '', NULL,
+        '是否启用日志定时清理任务'),
+       (101, '日志保留天数', 'log.cleanup.retention-days', '30', 'Y', 'admin', '2026-06-05 11:24:46', '', NULL,
+        '超过此天数的操作日志/认证日志/运行日志将被清理'),
+       (102, '清理执行时间', 'log.cleanup.cron', '0 0 3 * * ?', 'Y', 'admin', '2026-06-05 11:24:46', '', NULL,
+        'Quartz cron 表达式，默认每天凌晨3点');
 /*!40000 ALTER TABLE `sys_config`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -1526,7 +1649,7 @@ CREATE TABLE `sys_menu`
     `remark`      varchar(500) DEFAULT '' COMMENT '备注',
     PRIMARY KEY (`menu_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 2006
+  AUTO_INCREMENT = 2012
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='菜单权限表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1579,6 +1702,8 @@ VALUES (1, '系统管理', 0, 1, 'system', NULL, '', '', 1, 0, 'M', '0', '0', ''
         'redis-list', 'admin', '2026-05-08 22:05:54', '', NULL, '缓存列表菜单'),
        (115, '表单构建', 3, 1, 'build', 'tool/build/index', '', '', 1, 0, 'C', '0', '0', 'tool:build:list', 'build',
         'admin', '2026-05-08 22:05:54', '', NULL, '表单构建菜单'),
+       (116, '代码生成', 3, 2, 'gen', 'tool/gen/index', '', '', 1, 0, 'C', '0', '0', 'tool:gen:list', 'code', 'admin',
+        '2026-05-08 22:05:54', '', NULL, '代码生成菜单'),
        (117, '系统接口', 3, 3, 'swagger', 'tool/swagger/index', '', '', 1, 0, 'C', '0', '0', 'tool:swagger:list',
         'swagger', 'admin', '2026-05-08 22:05:54', '', NULL, '系统接口菜单'),
        (500, '操作日志', 108, 1, 'operlog', 'monitor/operlog/index', '', '', 1, 0, 'C', '0', '0',
@@ -1611,7 +1736,19 @@ VALUES (1, '系统管理', 0, 1, 'system', NULL, '', '', 1, 0, 'M', '0', '0', ''
        (2004, '分组修改', 2001, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:hazardPointGroup:edit', '#', 'admin',
         '2026-05-24 18:00:00', '', NULL, ''),
        (2005, '分组删除', 2001, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:hazardPointGroup:remove', '#', 'admin',
-        '2026-05-24 18:00:00', '', NULL, '');
+        '2026-05-24 18:00:00', '', NULL, ''),
+       (2006, 'MQTT监控', 2, 7, 'mqtt-monitor', 'iot/ServiceStatus', '', '', 1, 0, 'C', '0', '0', 'monitor:mqtt:list',
+        'monitor', 'admin', '2026-06-03 10:00:00', '', NULL, 'MQTT服务器监控'),
+       (2007, 'MQTT踢出', 2006, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'monitor:mqtt:kick', '#', 'admin',
+        '2026-06-03 10:00:00', '', NULL, ''),
+       (2008, '监控总览', 2, 0, 'monitor-overview', 'monitor/overview', '', '', 1, 0, 'C', '0', '0',
+        'monitor:overview:list', 'dashboard', 'admin', '2026-06-03 10:00:00', '', NULL, '系统监控总览'),
+       (2009, '日志查询', 108, 3, 'log-query', 'monitor/log-query/index', '', '', 1, 0, 'C', '0', '0',
+        'monitor:operlog:list', 'log', 'admin', '2026-06-03 10:00:00', '', NULL, '操作/认证/运行日志查询'),
+       (2010, '文件上传', 3, 4, 'file-upload', '', '', '', 1, 0, 'F', '0', '0', 'common:file:upload', 'upload', 'admin',
+        '2026-06-03 10:00:00', '', NULL, ''),
+       (2011, '文件下载', 3, 5, 'file-download', '', '', '', 1, 0, 'F', '0', '0', 'common:file:query', 'download',
+        'admin', '2026-06-03 10:00:00', '', NULL, '');
 /*!40000 ALTER TABLE `sys_menu`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -1921,7 +2058,17 @@ VALUES (2, 1),
        (2, 1003),
        (2, 1004),
        (2, 1005),
-       (2, 1006);
+       (2, 1006),
+       (2, 2006),
+       (2, 2007),
+       (2, 2008),
+       (2, 2009),
+       (2, 2010),
+       (2, 2011),
+       (100, 2006),
+       (100, 2007),
+       (100, 2008),
+       (100, 2009);
 /*!40000 ALTER TABLE `sys_role_menu`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -1975,10 +2122,10 @@ LOCK TABLES `sys_user` WRITE;
     DISABLE KEYS */;
 INSERT INTO `sys_user`
 VALUES (1, 103, 'admin', '若依', '00', 'ry@163.com', '15888888888', '1', '',
-        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-05-24 19:41:29',
+        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-03 19:28:29',
         '2026-05-08 22:05:52', 'admin', '2026-05-08 22:05:52', '', NULL, '管理员'),
        (2, 105, 'ry', '若依', '00', 'ry@qq.com', '15666666666', '1', '',
-        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-05-08 22:05:52',
+        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-03 17:06:03',
         '2026-05-08 22:05:52', 'admin', '2026-05-08 22:05:52', '', NULL, '测试员');
 /*!40000 ALTER TABLE `sys_user`
     ENABLE KEYS */;
@@ -2069,6 +2216,8 @@ CREATE TABLE `video_device`
     `status`           tinyint      DEFAULT '1' COMMENT '状态: 0-离线, 1-在线, 2-故障',
     `last_online_time` datetime     DEFAULT NULL COMMENT '最近在线时间',
     `install_time`     datetime     DEFAULT NULL COMMENT '安装时间',
+    `longitude` double DEFAULT NULL COMMENT '经度',
+    `latitude`  double DEFAULT NULL COMMENT '纬度',
     `create_by`        varchar(64)  DEFAULT NULL COMMENT '创建者',
     `create_time`      datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_by`        varchar(64)  DEFAULT NULL COMMENT '更新者',
@@ -2079,6 +2228,7 @@ CREATE TABLE `video_device`
     KEY `idx_video_device_status` (`status`),
     KEY `idx_video_device_del_flag` (`del_flag`)
 ) ENGINE = InnoDB
+  AUTO_INCREMENT = 2
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='视频设备表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2090,6 +2240,10 @@ CREATE TABLE `video_device`
 LOCK TABLES `video_device` WRITE;
 /*!40000 ALTER TABLE `video_device`
     DISABLE KEYS */;
+INSERT INTO `video_device`
+VALUES (1, 'test_video_device001', '测试视频设备001', 'vidio1', '/jc-icon/green/vidio1_green.png', 'RTMP', NULL,
+        'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 1, NULL, NULL, NULL, NULL, 'admin', '2026-05-28 19:15:12',
+        'admin', '2026-05-28 19:16:56', 0);
 /*!40000 ALTER TABLE `video_device`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -2125,6 +2279,7 @@ CREATE TABLE `video_device_hazard_point`
     CONSTRAINT `chk_vdhp_lng` CHECK (((`install_longitude` is null) or
                                       ((`install_longitude` >= -(180)) and (`install_longitude` <= 180))))
 ) ENGINE = InnoDB
+  AUTO_INCREMENT = 2
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='视频设备隐患点关联表';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2136,6 +2291,9 @@ CREATE TABLE `video_device_hazard_point`
 LOCK TABLES `video_device_hazard_point` WRITE;
 /*!40000 ALTER TABLE `video_device_hazard_point`
     DISABLE KEYS */;
+INSERT INTO `video_device_hazard_point`
+VALUES (1, 1, 15, 104.060000, 30.670000, '2026-05-28 19:17:42', 'admin', '2026-05-28 19:17:42', NULL,
+        '2026-05-28 19:17:42');
 /*!40000 ALTER TABLE `video_device_hazard_point`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -2149,4 +2307,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION = @OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES = @OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-28 17:41:57
+-- Dump completed on 2026-06-05 11:26:16
