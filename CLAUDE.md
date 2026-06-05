@@ -183,10 +183,8 @@ web/src/
 
 ## Database Notes
 
-- MySQL schema initializes from `db/geo_hazard_monitor_v1.8.sql` on first container start
-- Upgrade scripts live in `db/upgrade/`:
-    - `device_online_status.sql` — device online status table + event log + sensor last_report_time column
-    - `sys_notify_template.sql` — notification template/instance/target tables (Phase 3 design)
+- MySQL schema initializes from `db/geo_hazard_monitor_v1.9.sql` on first container start
+- Upgrade scripts live in `db/upgrade/`
 - IoTDB stores time-series data — tables (sequences) created dynamically on first write per device
 
 ## Shared Events (`zwei-common`)

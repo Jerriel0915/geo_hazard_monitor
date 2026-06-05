@@ -65,7 +65,7 @@ zwei/
 │   │   └── components/           # 公共组件
 │   └── vite.config.ts
 ├── db/                           # 数据库初始化脚本
-│   ├── geo_hazard_monitor_v1.8.sql   # 完整建库脚本
+│   ├── geo_hazard_monitor_v1.9sql   # 完整建库脚本
 │   └── upgrade/                  # 增量升级脚本
 ├── docs/                         # 项目文档
 ├── docker-compose.yml            # 生产环境编排
@@ -89,7 +89,7 @@ zwei/
 
 ```bash
 # 初始化 MySQL
-mysql -u root -p < db/geo_hazard_monitor_v1.8.sql
+mysql -u root -p < db/geo_hazard_monitor_v1.9.sql
 
 # 如有增量升级，依次执行
 mysql -u root -p < db/upgrade/*.sql

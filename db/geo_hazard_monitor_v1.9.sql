@@ -232,8 +232,8 @@ CREATE TABLE `device`
     `registered_at`    datetime              DEFAULT NULL COMMENT '注册时间',
     `last_auth_time`   datetime              DEFAULT NULL COMMENT '最近鉴权时间',
     `last_auth_ip`     varchar(64)           DEFAULT NULL COMMENT '最近鉴权IP',
-    `longitude` double DEFAULT NULL COMMENT '经度',
-    `latitude`  double DEFAULT NULL COMMENT '纬度',
+    `longitude`        double                DEFAULT NULL COMMENT '经度',
+    `latitude`         double                DEFAULT NULL COMMENT '纬度',
     `create_by`        varchar(64)           DEFAULT NULL COMMENT '创建者',
     `create_time`      datetime              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_by`        varchar(64)           DEFAULT NULL COMMENT '更新者',
@@ -262,8 +262,8 @@ LOCK TABLES `device` WRITE;
     DISABLE KEYS */;
 INSERT INTO `device`
 VALUES (1, 'test_device_001', '123456789', '测试设备001', 0, 0, 'MQTT', 'MANUAL', NULL, 'NZMX40', 'FSg4n5Z2', 1, 'bsw',
-        '/jc-icon/green/bsw_green.png', 1, 2, '2026-05-30 15:13:51', '2026-05-28 19:12:53', '2026-06-03 14:52:11',
-        '127.0.0.1', NULL, NULL, 'admin', '2026-05-28 19:12:53', 'admin', '2026-06-03 14:52:37', 0);
+        '/jc-icon/green/bsw_green.png', 1, 2, '2026-06-05 20:07:40', '2026-05-28 19:12:53', '2026-06-05 20:07:27',
+        '127.0.0.1', NULL, NULL, 'admin', '2026-05-28 19:12:53', 'admin', '2026-06-05 20:08:08', 0);
 /*!40000 ALTER TABLE `device`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -288,7 +288,7 @@ CREATE TABLE `device_auth_log`
     PRIMARY KEY (`id`),
     KEY `idx_device_auth_log_device` (`device_id`, `create_time`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 42
+  AUTO_INCREMENT = 52
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备认证日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -350,6 +350,83 @@ LOCK TABLES `device_hazard_point` WRITE;
 INSERT INTO `device_hazard_point`
 VALUES (2, 1, 15, NULL, NULL, '2026-05-30 16:00:37', 'admin', '2026-05-30 16:00:37', 'admin', '2026-05-30 16:00:37');
 /*!40000 ALTER TABLE `device_hazard_point`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `device_online_event_log`
+--
+
+DROP TABLE IF EXISTS `device_online_event_log`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `device_online_event_log`
+(
+    `id`         bigint      NOT NULL AUTO_INCREMENT,
+    `device_id`  bigint      NOT NULL COMMENT '设备ID',
+    `event_type` varchar(16) NOT NULL COMMENT '事件类型: ONLINE / OFFLINE / HEARTBEAT',
+    `client_id`  varchar(128) DEFAULT NULL COMMENT 'MQTT clientId',
+    `client_ip`  varchar(64)  DEFAULT NULL COMMENT '客户端IP',
+    `event_time` datetime    NOT NULL COMMENT '事件发生时间',
+    `reason`     varchar(255) DEFAULT NULL COMMENT '掉线原因',
+    PRIMARY KEY (`id`),
+    KEY `idx_device_time` (`device_id`, `event_time`),
+    KEY `idx_event_time` (`event_time`)
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 27
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备上下线事件日志';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `device_online_event_log`
+--
+
+LOCK TABLES `device_online_event_log` WRITE;
+/*!40000 ALTER TABLE `device_online_event_log`
+    DISABLE KEYS */;
+/*!40000 ALTER TABLE `device_online_event_log`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `device_online_status`
+--
+
+DROP TABLE IF EXISTS `device_online_status`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `device_online_status`
+(
+    `id`                   bigint NOT NULL AUTO_INCREMENT,
+    `device_id`            bigint NOT NULL COMMENT '设备ID',
+    `client_id`            varchar(128) DEFAULT NULL COMMENT '当前MQTT clientId',
+    `status`               tinyint      DEFAULT '0' COMMENT '0=离线 1=在线',
+    `online_at`            datetime     DEFAULT NULL COMMENT '本次上线时间',
+    `offline_at`           datetime     DEFAULT NULL COMMENT '上次离线时间',
+    `last_report_at`       datetime     DEFAULT NULL COMMENT '最后数据上报时间',
+    `session_duration_sec` int          DEFAULT NULL COMMENT '最近会话持续秒数',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `device_id` (`device_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_last_report` (`last_report_at`)
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 19
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='设备在线状态（运维指标独立存储）';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `device_online_status`
+--
+
+LOCK TABLES `device_online_status` WRITE;
+/*!40000 ALTER TABLE `device_online_status`
+    DISABLE KEYS */;
+INSERT INTO `device_online_status`
+VALUES (1, 1, 'mqttx_f93a890d', 1, '2026-06-05 20:07:28', NULL, '2026-06-05 20:07:49', NULL),
+       (2, 0, 'mqttx_f93a890d', 0, '2026-06-05 20:07:28', '2026-06-05 20:08:08', NULL, 40);
+/*!40000 ALTER TABLE `device_online_status`
     ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -416,13 +493,15 @@ CREATE TABLE `device_sensor`
     `update_by`         varchar(64)  DEFAULT NULL COMMENT '更新者',
     `update_time`       datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `del_flag`          tinyint      DEFAULT '0' COMMENT '删除标记: 0-正常, 1-删除',
+    `last_report_time`  datetime     DEFAULT NULL COMMENT '最后数据上报时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_device_sensor_code` (`sensor_code`),
     UNIQUE KEY `uk_device_sensor_no` (`device_id`, `sensor_no`),
     KEY `idx_device_sensor_device_id` (`device_id`),
     KEY `idx_device_sensor_type_id` (`monitor_type_id`),
     KEY `idx_device_sensor_status` (`status`),
-    KEY `idx_device_sensor_del_flag` (`del_flag`)
+    KEY `idx_device_sensor_del_flag` (`del_flag`),
+    KEY `idx_sensor_last_report` (`last_report_time`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 3
   DEFAULT CHARSET = utf8mb4
@@ -438,7 +517,7 @@ LOCK TABLES `device_sensor` WRITE;
     DISABLE KEYS */;
 INSERT INTO `device_sensor`
 VALUES (2, 1, 'test_device_001', 'test_sensor_001', 'test_sensor_001', '测试传感器001', 1, 'JCLX001', '雨量监测', 1,
-        'admin', '2026-05-29 15:32:42', NULL, '2026-05-29 23:57:09', 0);
+        'admin', '2026-05-29 15:32:42', NULL, '2026-06-05 20:07:49', 0, '2026-06-05 20:07:40');
 /*!40000 ALTER TABLE `device_sensor`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -749,7 +828,7 @@ CREATE TABLE `log_auth_record`
     KEY `idx_log_auth_status_time` (`result_status`, `occurred_at` DESC),
     KEY `idx_log_auth_trace` (`trace_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 117
+  AUTO_INCREMENT = 389
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='认证日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -805,7 +884,7 @@ CREATE TABLE `log_operation_record`
     KEY `idx_log_operation_api_time` (`api_path`, `occurred_at` DESC),
     KEY `idx_log_operation_trace` (`trace_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 539
+  AUTO_INCREMENT = 752
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='接口调用日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1827,6 +1906,137 @@ LOCK TABLES `sys_notice_read` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `sys_notify_instance`
+--
+
+DROP TABLE IF EXISTS `sys_notify_instance`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sys_notify_instance`
+(
+    `instance_id`   bigint       NOT NULL AUTO_INCREMENT,
+    `template_code` varchar(64) DEFAULT NULL COMMENT '模板编码，NULL表示自定义通知',
+    `notify_type`   varchar(32)  NOT NULL COMMENT 'alarm / business / system',
+    `title`         varchar(255) NOT NULL COMMENT '通知标题',
+    `content`       text COMMENT '通知内容',
+    `priority`      tinyint     DEFAULT '0' COMMENT '优先级',
+    `source_type`   varchar(32) DEFAULT NULL COMMENT '触发来源: alarm_engine / device_event / manual',
+    `source_id`     varchar(64) DEFAULT NULL COMMENT '触发来源ID（链路追踪）',
+    `create_by`     varchar(64) DEFAULT '' COMMENT '创建者',
+    `create_time`   datetime    DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`instance_id`),
+    KEY `idx_type_time` (`notify_type`, `create_time`),
+    KEY `idx_source` (`source_type`, `source_id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='通知实例';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sys_notify_instance`
+--
+
+LOCK TABLES `sys_notify_instance` WRITE;
+/*!40000 ALTER TABLE `sys_notify_instance`
+    DISABLE KEYS */;
+/*!40000 ALTER TABLE `sys_notify_instance`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sys_notify_target`
+--
+
+DROP TABLE IF EXISTS `sys_notify_target`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sys_notify_target`
+(
+    `target_id`    bigint NOT NULL AUTO_INCREMENT,
+    `instance_id`  bigint NOT NULL COMMENT '通知实例ID',
+    `user_id`      bigint NOT NULL COMMENT '目标用户ID',
+    `channel`      varchar(16)  DEFAULT 'in_app' COMMENT '推送通道: in_app / email / sms',
+    `send_status`  tinyint      DEFAULT '0' COMMENT '0=待发送 1=已发送 2=发送失败 3=已读 4=已归档',
+    `send_time`    datetime     DEFAULT NULL COMMENT '发送时间',
+    `read_time`    datetime     DEFAULT NULL COMMENT '阅读时间（in_app通道）',
+    `archive_time` datetime     DEFAULT NULL COMMENT '归档时间',
+    `retry_count`  int          DEFAULT '0' COMMENT '重试次数',
+    `error_msg`    varchar(500) DEFAULT NULL COMMENT '发送失败原因',
+    PRIMARY KEY (`target_id`),
+    KEY `idx_user_status` (`user_id`, `send_status`),
+    KEY `idx_instance` (`instance_id`),
+    KEY `idx_channel_status` (`channel`, `send_status`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='通知目标（下发/处理/归档全生命周期）';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sys_notify_target`
+--
+
+LOCK TABLES `sys_notify_target` WRITE;
+/*!40000 ALTER TABLE `sys_notify_target`
+    DISABLE KEYS */;
+/*!40000 ALTER TABLE `sys_notify_target`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sys_notify_template`
+--
+
+DROP TABLE IF EXISTS `sys_notify_template`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sys_notify_template`
+(
+    `template_id`   bigint       NOT NULL AUTO_INCREMENT,
+    `template_code` varchar(64)  NOT NULL COMMENT '模板编码: alarm_threshold / device_offline / system_maintenance',
+    `template_name` varchar(100) NOT NULL COMMENT '模板名称',
+    `notify_type`   varchar(32)  NOT NULL COMMENT '通知分类: alarm / business / system',
+    `title_tpl`     varchar(255) DEFAULT NULL COMMENT '标题模板，支持 {变量} 替换',
+    `content_tpl`   text COMMENT '内容模板，支持 {变量} 替换',
+    `channels`      varchar(128) DEFAULT 'in_app' COMMENT '推送通道列表，逗号分隔: in_app,email,sms',
+    `priority`      tinyint      DEFAULT '0' COMMENT '优先级: 0=普通 1=重要 2=紧急',
+    `status`        char(1)      DEFAULT '0' COMMENT '状态: 0=启用 1=禁用',
+    `create_by`     varchar(64)  DEFAULT '' COMMENT '创建者',
+    `create_time`   datetime     DEFAULT NULL COMMENT '创建时间',
+    `update_by`     varchar(64)  DEFAULT '' COMMENT '更新者',
+    `update_time`   datetime     DEFAULT NULL COMMENT '更新时间',
+    `remark`        varchar(255) DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (`template_id`),
+    UNIQUE KEY `template_code` (`template_code`),
+    KEY `idx_code` (`template_code`),
+    KEY `idx_type` (`notify_type`)
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 4
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='通知模板';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sys_notify_template`
+--
+
+LOCK TABLES `sys_notify_template` WRITE;
+/*!40000 ALTER TABLE `sys_notify_template`
+    DISABLE KEYS */;
+INSERT INTO `sys_notify_template`
+VALUES (1, 'alarm_threshold', '监测数据超阈值告警', 'alarm', '{hazardPointName}监测{attrName}超过阈值',
+        '{hazardPointName}（{hazardPointCode}）的{deviceName}设备{attrName}监测值({value}{unit})超过阈值范围[{rangeMin}{unit}, {rangeMax}{unit}]，请及时处理。',
+        'in_app,sms', 2, '0', '', NULL, '', NULL, NULL),
+       (2, 'device_offline', '设备离线告警', 'alarm', '{deviceName}设备离线',
+        '{deviceName}（{deviceCode}）离线超过{offlineMinutes}分钟，请检查设备状态。', 'in_app', 1, '0', '', NULL, '', NULL,
+        NULL),
+       (3, 'system_maintenance', '系统维护通知', 'system', '系统维护通知',
+        '系统将于{maintenanceTime}进行维护，预计持续{duration}分钟，届时部分功能可能不可用。', 'in_app,email', 0, '0', '',
+        NULL, '', NULL, NULL);
+/*!40000 ALTER TABLE `sys_notify_template`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `sys_organization`
 --
 
@@ -2122,7 +2332,7 @@ LOCK TABLES `sys_user` WRITE;
     DISABLE KEYS */;
 INSERT INTO `sys_user`
 VALUES (1, 103, 'admin', '若依', '00', 'ry@163.com', '15888888888', '1', '',
-        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-03 19:28:29',
+        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-05 19:22:28',
         '2026-05-08 22:05:52', 'admin', '2026-05-08 22:05:52', '', NULL, '管理员'),
        (2, 105, 'ry', '若依', '00', 'ry@qq.com', '15666666666', '1', '',
         '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-03 17:06:03',
@@ -2216,8 +2426,8 @@ CREATE TABLE `video_device`
     `status`           tinyint      DEFAULT '1' COMMENT '状态: 0-离线, 1-在线, 2-故障',
     `last_online_time` datetime     DEFAULT NULL COMMENT '最近在线时间',
     `install_time`     datetime     DEFAULT NULL COMMENT '安装时间',
-    `longitude` double DEFAULT NULL COMMENT '经度',
-    `latitude`  double DEFAULT NULL COMMENT '纬度',
+    `longitude`        double       DEFAULT NULL COMMENT '经度',
+    `latitude`         double       DEFAULT NULL COMMENT '纬度',
     `create_by`        varchar(64)  DEFAULT NULL COMMENT '创建者',
     `create_time`      datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_by`        varchar(64)  DEFAULT NULL COMMENT '更新者',
@@ -2307,4 +2517,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION = @OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES = @OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-05 11:26:16
+-- Dump completed on 2026-06-05 20:13:03
