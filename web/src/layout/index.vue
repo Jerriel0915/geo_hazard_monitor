@@ -217,6 +217,7 @@
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
+import {hasPermission, loadPermissions} from '@/utils/permission'
 
 
 interface Message {
@@ -277,7 +278,9 @@ const pwdForm = reactive({
 
 const activeMenu = ref('')
 
-const menuList = [
+interface MenuItem { name: string; label: string; icon?: string; perm?: string; children?: MenuItem[] }
+
+const allMenuItems: MenuItem[] = [
   {
     name: 'Dashboard',
     label: '全息看板',
@@ -294,7 +297,7 @@ const menuList = [
     label: '基础管理',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
     children: [
-      { name: 'HazardPoint', label: '隐患点管理' }
+      { name: 'HazardPoint', label: '隐患点管理', perm: 'iot:hazard-point:list' }
     ]
   },
   {
@@ -302,15 +305,10 @@ const menuList = [
     label: '告警中心',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     children: [
-      { 
-        name: 'RealtimeAlarm', 
-        label: '待办告警',
-        children: [
-          { name: 'AlarmNotification', label: '历史告警' }
-        ]
-      },
+      { name: 'RealtimeAlarm', label: '待办告警' },
+      { name: 'AlarmNotification', label: '历史告警' },
       { name: 'AlarmCriteria', label: '告警判据' },
-      { name: 'AlarmDisposal', label: '告警通知查询' }
+      { name: 'AlarmDisposal', label: '综合告警' }
     ]
   },
   {
@@ -329,12 +327,12 @@ const menuList = [
     label: '物联网',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
     children: [
-      { name: 'MonitorType', label: '监测类型' },
-      { name: 'Device', label: '设备管理' },
-      { name: 'VideoDevice', label: '视频设备管理' },
+      { name: 'MonitorType', label: '监测类型', perm: 'basic:monitorType:list' },
+      { name: 'Device', label: '设备管理', perm: 'basic:device:list' },
+      { name: 'VideoDevice', label: '视频设备管理', perm: 'basic:videoDevice:list' },
       { name: 'AlarmEngine', label: '告警引擎' },
       {name: 'DataParse', label: '数据解析'},
-      {name: 'ServiceStatus', label: '服务状态'}
+      {name: 'ServiceStatus', label: '服务状态', perm: 'monitor:mqtt:list'}
     ]
   },
   {
@@ -342,14 +340,22 @@ const menuList = [
     label: '系统管理',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
     children: [
-      { name: 'Organization', label: '组织管理' },
-      { name: 'Identity', label: '身份管理' },
-      { name: 'Permission', label: '权限管理' },
-      { name: 'Log', label: '日志管理' },
-      { name: 'Settings', label: '系统设置' }
+      { name: 'Organization', label: '组织管理', perm: 'system:dept:list' },
+      { name: 'Identity', label: '身份管理', perm: 'system:user:list' },
+      { name: 'Permission', label: '权限管理', perm: 'system:role:list' },
+      { name: 'Log', label: '日志管理', perm: 'monitor:operlog:list' },
+      { name: 'Settings', label: '系统设置', perm: 'system:config:list' }
     ]
   }
 ]
+
+function filterMenu(items: MenuItem[]): MenuItem[] {
+  return items
+    .map(item => ({ ...item, children: item.children ? filterMenu(item.children) : undefined }))
+    .filter(item => !item.perm || hasPermission(item.perm))
+}
+
+const menuList = computed(() => filterMenu(allMenuItems))
 
 const menuRouteMap: Record<string, string> = {
   Dashboard: '/dashboard',
@@ -393,7 +399,7 @@ const menuLabelMap: Record<string, string> = {
   RealtimeAlarm: '待办告警',
   AlarmCriteria: '告警判据',
   AlarmNotification: '历史告警',
-  AlarmDisposal: '告警通知查询',
+  AlarmDisposal: '综合告警',
   Report: '报告管理',
   Query: '查询中心',
   Analysis: '数据分析',
@@ -495,7 +501,8 @@ const markAllAsRead = () => {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadPermissions()
   tabs.value = [{ name: 'Dashboard', label: '首页' }]
 })
 

@@ -2,8 +2,9 @@ package com.zwei.iot.hazardpoint.mapper;
 
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import org.apache.ibatis.annotations.Mapper;
-import java.util.List;
 import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * 隐患点Mapper接口
@@ -102,4 +103,12 @@ public interface HazardPointMapper
      * @return 结果
      */
     int refreshDeviceCountById(@Param("id") Long id);
+
+    // ==================== 统计查询 ====================
+
+    int countAll();
+
+    List<java.util.Map<String, Object>> countByStatus();
+
+    List<java.util.Map<String, Object>> countByMonth(@Param("months") int months);
 }

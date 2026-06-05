@@ -160,4 +160,11 @@
         </foreach>
     </delete>
 
+    <!-- ==================== 统计查询 ==================== -->
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*)
+        FROM monitor_type
+        WHERE del_flag = 0
+    </select>
+
 </mapper>

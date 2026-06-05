@@ -1,7 +1,7 @@
 <template>
   <div class="service-status-view">
     <!-- 无权限 -->
-    <div v-if="!isAdmin" class="no-permission">
+    <div v-if="!canViewMqtt" class="no-permission">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
            width="48" height="48">
         <circle cx="12" cy="12" r="10"/>
@@ -11,7 +11,7 @@
     </div>
 
     <!-- 管理员 -->
-    <template v-if="isAdmin">
+    <template v-if="canViewMqtt">
       <div class="page-title">MQTT监控</div>
 
       <div class="tabs-row">
@@ -298,7 +298,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
-import {getAuthInfo} from '@/utils/userApi'
+import {hasPermission} from '@/utils/permission'
 import {
   getMqttClientDetail,
   getMqttClients,
@@ -317,16 +317,10 @@ import {
 } from '@/api/monitor'
 
 // ===== 权限 =====
-const isAdmin = ref(false)
+const canViewMqtt = hasPermission('monitor:mqtt:list')
 
-onMounted(async () => {
-  try {
-    const auth = await getAuthInfo()
-    isAdmin.value = auth.roles.includes('admin') || auth.roles.includes('ROOT')
-  } catch {
-    isAdmin.value = false
-  }
-  if (isAdmin.value) {
+onMounted(() => {
+  if (canViewMqtt) {
     fetchStats()
     fetchListeners()
     fetchConfig()

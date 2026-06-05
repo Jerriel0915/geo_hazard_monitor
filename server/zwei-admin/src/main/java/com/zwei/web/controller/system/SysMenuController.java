@@ -10,6 +10,7 @@ import com.zwei.common.core.domain.model.SysMenuResponse;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.system.service.ISysMenuService;
+import com.zwei.system.service.impl.PermissionCoverageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -30,6 +31,9 @@ public class SysMenuController extends BaseController
 {
     @Autowired
     private ISysMenuService menuService;
+
+    @Autowired
+    private PermissionCoverageService permissionCoverageService;
 
     /**
      * 获取菜单列表（树形）
@@ -75,6 +79,7 @@ public class SysMenuController extends BaseController
     /**
      * 加载对应角色菜单列表树
      */
+    @PreAuthorize("@ss.hasPermi('system:role:query')")
     @GetMapping(value = "/roleMenuTreeselect/{roleId}")
     public AjaxResult roleMenuTreeselect(@PathVariable("roleId") Long roleId)
     {
@@ -211,5 +216,24 @@ public class SysMenuController extends BaseController
             result += menuService.deleteMenuById(id);
         }
         return result > 0 ? success() : error();
+    }
+
+    /**
+     * 权限覆盖报告：代码 @PreAuthorize vs 数据库 sys_menu.perms
+     */
+    @PreAuthorize("@ss.hasPermi('system:role:query')")
+    @GetMapping("/permission-coverage")
+    public AjaxResult permissionCoverage() {
+        return AjaxResult.success("成功", permissionCoverageService.getCoverageReport());
+    }
+
+    /**
+     * 批量注册缺失权限到菜单表
+     */
+    @PreAuthorize("@ss.hasPermi('system:role:edit')")
+    @PostMapping("/batch-register")
+    public AjaxResult batchRegister(@RequestBody List<String> perms) {
+        int count = permissionCoverageService.batchRegister(perms);
+        return AjaxResult.success("成功注册 " + count + " 条权限");
     }
 }

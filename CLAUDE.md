@@ -161,3 +161,29 @@ web/src/
 - `@DataScope` annotation filters SQL queries by user's department hierarchy (up to 5 levels)
 - `@RateLimiter` / `@RepeatSubmit` for abuse prevention
 - `@Sensitive` annotation for automatic data masking in JSON serialization
+- Admin user (user_id=1) gets `*:*:*` wildcard permission; all others derive permissions from `sys_role_menu` + `sys_menu.perms`
+
+### Permission Convention
+
+All `@PreAuthorize` annotations follow the pattern `module:entity:action` (e.g. `system:user:list`).
+New permissions are registered via `db/upgrade/upgrade_v1.6_permissions.sql` as `sys_menu` rows.
+
+**Permissions added by zwei-monitor / log hardening:**
+
+| String | Purpose |
+|--------|---------|
+| `monitor:overview:list` | System monitoring overview dashboard |
+| `monitor:mqtt:list` | MQTT broker stats, clients, listeners, message logs |
+| `monitor:mqtt:kick` | Kick/ban MQTT clients |
+| `monitor:operlog:list` | Query operation/auth/runtime logs and SSE stream |
+| `common:file:upload` | File upload (single + batch) |
+| `common:file:query` | File download |
+
+**Permission management endpoints (SysMenuController):**
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/menus/permission-coverage` | Compare `@PreAuthorize` annotations vs `sys_menu.perms` — returns `{ codePerms, dbPerms, missingInDb }` |
+| `POST` | `/api/v1/menus/batch-register` | Bulk register missing permissions as menu entries under parent_id=2 (系统监控) |
+
+Use these to identify and fix permission gaps after adding new `@PreAuthorize` annotations.

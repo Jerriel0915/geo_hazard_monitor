@@ -386,6 +386,16 @@
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
 import L from 'leaflet'
+import {
+  type DashboardOverview,
+  getDashboardOverview,
+  getDeviceOnlineRate,
+  getHazardPointTrend,
+  getSensorDistribution,
+  type HazardPointTrendVO,
+  type RateByTypeVO,
+  type SensorDistributionVO
+} from '@/api/monitor'
 
 const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
@@ -460,13 +470,18 @@ const alarmTrendChart = ref<HTMLDivElement | null>(null)
 let hazardTrendChartInstance: echarts.ECharts | null = null
 let alarmTrendChartInstance: echarts.ECharts | null = null
 
-const summaryStats = ref({
-  recentThreeMonthsAlarms: 156,
-  totalAlarms: 892,
-  totalMonitorCount: 125680,
-  hazardPointCount: 28,
-  deviceCount: 156
-})
+const overview = ref<DashboardOverview | null>(null)
+const deviceOnlineRate = ref<RateByTypeVO | null>(null)
+const hazardTrend = ref<HazardPointTrendVO | null>(null)
+const sensorDist = ref<SensorDistributionVO | null>(null)
+
+const summaryStats = computed(() => ({
+  recentThreeMonthsAlarms: 0,
+  totalAlarms: 0,
+  totalMonitorCount: 0,
+  hazardPointCount: overview.value?.hazardPoint?.total ?? 0,
+  deviceCount: overview.value?.device?.total ?? 0
+}))
 
 interface SensorInfo {
   id: string
@@ -474,10 +489,10 @@ interface SensorInfo {
   type: string
 }
 
-const hazardTrendData = ref({
-  months: ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
-  values: [2, 3, 5, 4, 6, 3, 4, 5, 3, 4, 2, 3]
-})
+const hazardTrendData = computed(() => ({
+  months: hazardTrend.value?.months ?? [],
+  values: hazardTrend.value?.counts ?? []
+}))
 
 const alarmTrendData = ref({
   months: ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
@@ -682,7 +697,20 @@ const zoomOut = () => {
   if (map) map.zoomOut()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const [ov, dor, ht, sd] = await Promise.all([
+      getDashboardOverview(),
+      getDeviceOnlineRate(),
+      getHazardPointTrend(12),
+      getSensorDistribution()
+    ])
+    overview.value = ov.data
+    deviceOnlineRate.value = dor.data
+    hazardTrend.value = ht.data
+    sensorDist.value = sd.data
+  } catch { /* use defaults */
+  }
   initHazardTrendChart()
   initAlarmTrendChart()
   setTimeout(() => {
@@ -1019,36 +1047,33 @@ const getHealthColor = (value: number) => {
   return '#f5222d'
 }
 
-const resourceStats = ref({
-  totalResources: 156,
-  deviceTotal: 98,
-  hazardTotal: 45,
-  deviceTypes: [
-    {name: 'GNSS接收机', count: 25},
-    {name: '雨量计', count: 18},
-    {name: '渗压计', count: 15},
-    {name: '位移计', count: 20},
-    {name: '视频设备', count: 20}
-  ]
+const resourceStats = computed(() => {
+  const types = sensorDist.value?.list?.map(t => ({name: t.monitorTypeName, count: t.sensorCount})) ?? []
+  const total = (overview.value?.device?.total ?? 0) + (overview.value?.videoDevice?.total ?? 0) + (overview.value?.hazardPoint?.total ?? 0)
+  return {
+    totalResources: total,
+    deviceTotal: overview.value?.device?.total ?? 0,
+    hazardTotal: overview.value?.hazardPoint?.total ?? 0,
+    deviceTypes: types.length > 0 ? types : [{name: '加载中...', count: 0}]
+  }
 })
 
-const onlineStats = ref({
-  onlineRate: 91,
-  onlineCount: 89,
-  totalCount: 98,
-  offlineCount: 9,
-  typeStats: [
-    {name: 'GNSS', online: 24, total: 25},
-    {name: '雨量计', online: 17, total: 18},
-    {name: '渗压计', online: 14, total: 15},
-    {name: '位移计', online: 19, total: 20},
-    {name: '视频', online: 15, total: 20}
-  ]
+const onlineStats = computed(() => {
+  const dor = deviceOnlineRate.value
+  const total = dor?.total ?? 0
+  const online = dor?.online ?? 0
+  return {
+    onlineRate: dor?.onlineRate ?? 0,
+    onlineCount: online,
+    totalCount: total,
+    offlineCount: total - online,
+    typeStats: dor?.byType?.map(t => ({name: t.monitorTypeName, online: t.online, total: t.total})) ?? []
+  }
 })
 
 const alarmStats = ref({
-  pendingCount: 8,
-  historyCount: 156,
+  pendingCount: 0,
+  historyCount: 0,
   levelStats: [
     {name: '红色告警', key: 'red', count: 2},
     {name: '橙色告警', key: 'orange', count: 3},

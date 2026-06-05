@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,6 +43,7 @@ public class CommonController
      * @param fileName 文件名称
      * @param delete 是否删除
      */
+    @PreAuthorize("@ss.hasPermi('common:file:query')")
     @GetMapping("/download")
     public void fileDownload(String fileName, Boolean delete, HttpServletResponse response, HttpServletRequest request)
     {
@@ -71,6 +73,7 @@ public class CommonController
     /**
      * 通用上传请求（单个）
      */
+    @PreAuthorize("@ss.hasPermi('common:file:upload')")
     @PostMapping("/upload")
     public AjaxResult uploadFile(MultipartFile file) throws Exception
     {
@@ -97,6 +100,7 @@ public class CommonController
     /**
      * 通用上传请求（多个）
      */
+    @PreAuthorize("@ss.hasPermi('common:file:upload')")
     @PostMapping("/uploads")
     public AjaxResult uploadFiles(List<MultipartFile> files) throws Exception
     {

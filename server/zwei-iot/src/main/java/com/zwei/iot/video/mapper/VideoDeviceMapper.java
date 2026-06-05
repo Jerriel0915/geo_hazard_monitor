@@ -76,4 +76,10 @@ public interface VideoDeviceMapper {
      * @return 视频设备
      */
     VideoDevice checkVideoDeviceCodeUnique(@Param("code") String code, @Param("id") Long id);
+
+    // ==================== 统计查询 ====================
+
+    int countAll();
+
+    List<java.util.Map<String, Object>> countByStatus();
 }
