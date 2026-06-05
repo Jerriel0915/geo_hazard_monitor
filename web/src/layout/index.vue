@@ -277,7 +277,9 @@ async function fetchNotices() {
 
 function startNoticeSSE() {
   if (noticeEventSource) noticeEventSource.close()
-  noticeEventSource = new EventSource('/api/v1/system/notice/stream')
+  const token = localStorage.getItem('token')
+  if (!token) return
+  noticeEventSource = new EventSource(`/api/v1/system/notice/stream?token=${encodeURIComponent(token)}`)
   noticeEventSource.addEventListener('notice', (event) => {
     try {
       const data = JSON.parse(event.data)

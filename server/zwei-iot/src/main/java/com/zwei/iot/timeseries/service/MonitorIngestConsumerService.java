@@ -81,10 +81,13 @@ public class MonitorIngestConsumerService {
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
         if (!properties.isEnabled()) {
+            log.warn("监测数据消费已禁用（iot.monitor-ingest.enabled=false），MQTT 数据将仅入栈 Redis Stream 不落库 IoTDB");
             return;
         }
         initConsumerGroup();
         executorService.submit(this::consume);
+        log.info("监测数据消费已启动。stream={}, group={}, consumer={}",
+                properties.getStreamKey(), properties.getConsumerGroup(), properties.getConsumerName());
     }
 
     /**

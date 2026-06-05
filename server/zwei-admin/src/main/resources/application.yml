@@ -130,7 +130,7 @@ iot:
       thread-size: 4
   # 监测数据 Redis Stream 接入配置，用于支撑 MQTT 报文缓冲、去重与异步写入 IoTDB。
   monitor-ingest:
-    enabled: false
+    enabled: true
     stream-key: stream:monitor:ingest
     dead-letter-stream-key: stream:monitor:dlq
     consumer-group: monitor-ingest-group
@@ -145,7 +145,7 @@ iot:
       - 120
   # 新增 IoTDB 基础连接参数，用于工业监测数据的时序化落库与查询。
   iotdb:
-    enabled: false
+    enabled: true
     host: localhost
     port: 6667
     username: root
