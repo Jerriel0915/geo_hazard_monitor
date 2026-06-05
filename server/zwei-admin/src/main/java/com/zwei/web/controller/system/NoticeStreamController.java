@@ -13,7 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * 即可在新通知发布时实时收到推送，无需轮询。
  */
 @RestController
-@RequestMapping("/system/notice")
+@RequestMapping("/api/v1/system/notice")
 public class NoticeStreamController {
 
     private final NoticeStreamPublisher publisher;

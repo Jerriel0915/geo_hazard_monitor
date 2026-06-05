@@ -277,7 +277,7 @@ async function fetchNotices() {
 
 function startNoticeSSE() {
   if (noticeEventSource) noticeEventSource.close()
-  noticeEventSource = new EventSource('/api/system/notice/stream')
+  noticeEventSource = new EventSource('/api/v1/system/notice/stream')
   noticeEventSource.addEventListener('notice', (event) => {
     try {
       const data = JSON.parse(event.data)

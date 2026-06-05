@@ -29,7 +29,7 @@ import com.zwei.system.service.ISysNoticeService;
  * @author zwei
  */
 @RestController
-@RequestMapping("/system/notice")
+@RequestMapping("/api/v1/system/notice")
 public class SysNoticeController extends BaseController
 {
     @Autowired
