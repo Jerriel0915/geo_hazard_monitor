@@ -246,7 +246,7 @@ const messagePanelVisible = ref(false)
 const messageTab = ref<'unread' | 'read'>('unread')
 const messages = ref<NoticeMessage[]>([])
 const unreadMessageCount = ref(0)
-let noticePollTimer: ReturnType<typeof setInterval> | null = null
+let noticeEventSource: EventSource | null = null
 
 const filteredMessages = computed(() => {
   if (messageTab.value === 'unread') {
@@ -273,6 +273,31 @@ async function fetchNotices() {
     messages.value = (data.list ?? []).map(toNoticeMessage)
     unreadMessageCount.value = data.unreadCount ?? 0
   } catch { /* keep previous data */ }
+}
+
+function startNoticeSSE() {
+  if (noticeEventSource) noticeEventSource.close()
+  noticeEventSource = new EventSource('/api/system/notice/stream')
+  noticeEventSource.addEventListener('notice', (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      const msg: NoticeMessage = {
+        id: data.noticeId,
+        title: data.title,
+        content: data.content ?? '',
+        time: data.createTime ?? '',
+        read: false,
+        type: data.type === '1' ? 'system' : 'other'
+      }
+      messages.value.unshift(msg)
+      if (messages.value.length > 20) messages.value.pop()
+      unreadMessageCount.value++
+    } catch { /* ignore malformed event */ }
+  })
+  noticeEventSource.onerror = () => {
+    noticeEventSource?.close()
+    setTimeout(startNoticeSSE, 3000)
+  }
 }
 
 const currentUser = reactive({
@@ -547,15 +572,15 @@ onMounted(async () => {
   } catch {
     // keep default
   }
-  // 首次加载通知 + 每30秒轮询
+  // 首次加载通知 + SSE 实时推送
   fetchNotices()
-  noticePollTimer = setInterval(fetchNotices, 30000)
+  startNoticeSSE()
 })
 
 onUnmounted(() => {
-  if (noticePollTimer) {
-    clearInterval(noticePollTimer)
-    noticePollTimer = null
+  if (noticeEventSource) {
+    noticeEventSource.close()
+    noticeEventSource = null
   }
 })
 
