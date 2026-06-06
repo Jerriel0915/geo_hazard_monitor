@@ -43,16 +43,6 @@ public class SensorAttribute extends BaseEntity {
     private String attrName;
 
     /**
-     * 指标类型
-     */
-    private String indicatorType;
-
-    /**
-     * 指标类型名称
-     */
-    private String indicatorTypeName;
-
-    /**
      * 初始值
      */
     private BigDecimal initialValue;
@@ -84,8 +74,6 @@ public class SensorAttribute extends BaseEntity {
                 ", sensorId=" + sensorId +
                 ", attrCode='" + attrCode + '\'' +
                 ", attrName='" + attrName + '\'' +
-                ", indicatorType='" + indicatorType + '\'' +
-                ", indicatorTypeName='" + indicatorTypeName + '\'' +
                 ", initialValue=" + initialValue +
                 ", unit='" + unit + '\'' +
                 ", rangeMin=" + rangeMin +

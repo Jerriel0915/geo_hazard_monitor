@@ -45,16 +45,6 @@ public class MonitorType extends BaseEntity {
     private String name;
 
     /**
-     * 设备类型: 1-直连设备, 2-传感器, 3-RTU
-     */
-    private Integer deviceType;
-
-    /**
-     * 设备类型名称（查询时返回）
-     */
-    private String deviceTypeName;
-
-    /**
      * 图标路径
      */
     private String icon;
@@ -90,8 +80,6 @@ public class MonitorType extends BaseEntity {
                 "id=" + id +
                 ", code='" + code + '\'' +
                 ", name='" + name + '\'' +
-                ", deviceType=" + deviceType +
-                ", deviceTypeName='" + deviceTypeName + '\'' +
                 ", icon='" + icon + '\'' +
                 ", description='" + description + '\'' +
                 ", sortOrder=" + sortOrder +

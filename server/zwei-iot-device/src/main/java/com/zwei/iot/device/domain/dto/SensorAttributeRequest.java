@@ -30,12 +30,6 @@ public class SensorAttributeRequest implements Serializable {
     @Size(max = 200, message = "属性名称长度不能超过200个字符")
     private String attrName;
 
-    @Size(max = 50, message = "指标类型长度不能超过50个字符")
-    private String indicatorType;
-
-    @Size(max = 100, message = "指标类型名称长度不能超过100个字符")
-    private String indicatorTypeName;
-
     @Digits(integer = 10, fraction = 2, message = "初始值最多支持10位整数和2位小数")
     private BigDecimal initialValue;
 

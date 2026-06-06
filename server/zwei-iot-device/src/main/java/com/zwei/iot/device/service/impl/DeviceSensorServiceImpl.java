@@ -87,7 +87,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         }
         fillDeviceFields(sensor, device);
         fillMonitorTypeFields(sensor, requireSensorMonitorType(sensor.getMonitorTypeId()));
-        populateIndicatorTypeFromContent(attrList);
+        populateFromContent(attrList);
         validateAttributeList(attrList);
 
         sensorMapper.insertSensor(sensor);
@@ -206,13 +206,11 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         return monitorType;
     }
 
-    private void populateIndicatorTypeFromContent(List<SensorAttribute> attrList) {
+    private void populateFromContent(List<SensorAttribute> attrList) {
         for (SensorAttribute attr : attrList) {
             if (attr.getMonitorContentId() == null) continue;
             MonitorContent mc = monitorContentService.selectMonitorContentById(attr.getMonitorContentId());
             if (mc == null) continue;
-            if (attr.getIndicatorType() == null || attr.getIndicatorType().isBlank()) attr.setIndicatorType(mc.getIndicatorType());
-            if (attr.getIndicatorTypeName() == null || attr.getIndicatorTypeName().isBlank()) attr.setIndicatorTypeName(mc.getName());
             if (attr.getUnit() == null || attr.getUnit().isBlank()) attr.setUnit(mc.getUnit());
         }
     }

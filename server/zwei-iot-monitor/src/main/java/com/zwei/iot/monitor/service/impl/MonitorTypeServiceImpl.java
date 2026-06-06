@@ -41,7 +41,6 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     @Override
     public List<MonitorType> selectMonitorTypePage(MonitorType monitorType, int pageNum, int pageSize) {
         List<MonitorType> monitorTypes = monitorTypeMapper.selectMonitorTypeList(monitorType);
-        monitorTypes.forEach(this::populateDerivedFields);
         return monitorTypes;
     }
 
@@ -52,7 +51,6 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     @Cacheable(value = "monitorTypeList", key = "'all'")
     public List<MonitorType> selectMonitorTypeAll() {
         List<MonitorType> monitorTypes = monitorTypeMapper.selectMonitorTypeAll();
-        monitorTypes.forEach(this::populateDerivedFields);
         return monitorTypes;
     }
 
@@ -66,7 +64,6 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
         if (monitorType == null) {
             return null;
         }
-        populateDerivedFields(monitorType);
         monitorType.setContents(monitorContentService.selectMonitorContentAll(id));
         return monitorType;
     }
@@ -81,7 +78,6 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     @Cacheable(value = "monitorTypeList", key = "'withContents'")
     public List<MonitorType> selectMonitorTypeAllWithContents() {
         List<MonitorType> monitorTypes = monitorTypeMapper.selectMonitorTypeAll();
-        monitorTypes.forEach(this::populateDerivedFields);
         List<MonitorContent> allContents = monitorContentService.selectMonitorContentAll(null);
         Map<Long, List<MonitorContent>> contentsByTypeId = allContents.stream()
                 .collect(Collectors.groupingBy(
@@ -168,21 +164,5 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
         Long id = monitorType.getId() == null ? 0L : monitorType.getId();
         MonitorType exist = monitorTypeMapper.checkMonitorTypeCodeUnique(monitorType.getCode(), id);
         return exist == null;
-    }
-
-    private void populateDerivedFields(MonitorType monitorType) {
-        monitorType.setDeviceTypeName(resolveDeviceTypeName(monitorType.getDeviceType()));
-    }
-
-    private String resolveDeviceTypeName(Integer deviceType) {
-        if (deviceType == null) {
-            return null;
-        }
-        return switch (deviceType) {
-            case 1 -> "直连设备";
-            case 2 -> "传感器";
-            case 3 -> "RTU";
-            default -> null;
-        };
     }
 }

@@ -134,10 +134,9 @@ public class SensorController extends BaseController {
     private SensorAttribute buildAttribute(SensorAttributeRequest request) {
         SensorAttribute attribute = new SensorAttribute();
         attribute.setId(request.getId());
+        attribute.setMonitorContentId(request.getMonitorContentId());
         attribute.setAttrCode(request.getAttrCode().trim());
         attribute.setAttrName(request.getAttrName().trim());
-        attribute.setIndicatorType(trimToNull(request.getIndicatorType()));
-        attribute.setIndicatorTypeName(trimToNull(request.getIndicatorTypeName()));
         attribute.setInitialValue(request.getInitialValue());
         attribute.setUnit(trimToNull(request.getUnit()));
         attribute.setRangeMin(request.getRangeMin());

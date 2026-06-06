@@ -29,10 +29,6 @@ public class MonitorTypeCreateRequest implements Serializable {
     @Size(max = 200, message = "监测类型名称长度不能超过200个字符")
     private String name;
 
-    @Min(value = 1, message = "设备类型值不合法")
-    @Max(value = 3, message = "设备类型值不合法")
-    private Integer deviceType;
-
     @Size(max = 200, message = "图标路径长度不能超过200个字符")
     private String icon;
 

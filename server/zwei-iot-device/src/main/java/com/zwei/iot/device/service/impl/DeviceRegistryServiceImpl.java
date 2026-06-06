@@ -225,10 +225,9 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         for (MonitorContent content : contents) {
             SensorAttribute attribute = SensorAttribute.builder()
                     .sensorId(sensor.getId())
+                    .monitorContentId(content.getId())
                     .attrCode(content.getCode())
                     .attrName(content.getName())
-                    .indicatorType(content.getIndicatorType())
-                    .indicatorTypeName(resolveIndicatorTypeName(content.getIndicatorType()))
                     .initialValue(BigDecimal.ZERO)
                     .unit(content.getUnit())
                     .rangeMin(content.getRangeMin())
@@ -339,28 +338,6 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
             case "1", "HTTP" -> "HTTP";
             case "2", "COAP" -> "COAP";
             default -> throw new ServiceException("protocol非法", 400);
-        };
-    }
-
-    private String resolveIndicatorTypeName(String indicatorType) {
-        if (indicatorType == null) {
-            return null;
-        }
-        return switch (indicatorType) {
-            case "wy" -> "位移";
-            case "wd" -> "温度";
-            case "jd" -> "角度";
-            case "yl" -> "压力";
-            case "sw" -> "水位";
-            case "jsd" -> "加速度";
-            case "hsl" -> "含水率";
-            case "ljn" -> "力矩";
-            case "zdl" -> "震动频率";
-            case "dl" -> "电量";
-            case "dx" -> "断线";
-            case "sg" -> "声光";
-            case "sp" -> "视频";
-            default -> indicatorType;
         };
     }
 

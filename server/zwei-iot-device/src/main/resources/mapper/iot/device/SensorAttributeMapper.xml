@@ -10,8 +10,6 @@
         <result property="sensorId" column="sensor_id"/>
         <result property="attrCode" column="attr_code"/>
         <result property="attrName" column="attr_name"/>
-        <result property="indicatorType" column="indicator_type"/>
-        <result property="indicatorTypeName" column="indicator_type_name"/>
         <result property="initialValue" column="initial_value"/>
         <result property="unit" column="unit"/>
         <result property="rangeMin" column="range_min"/>
@@ -31,8 +29,6 @@
                sa.monitor_content_id,
                sa.attr_code,
                sa.attr_name,
-               sa.indicator_type,
-               sa.indicator_type_name,
                sa.initial_value,
                sa.unit,
                sa.range_min,
@@ -77,8 +73,6 @@
         monitor_content_id,</if>
         <if test="attrCode != null and attrCode != ''">attr_code,</if>
         <if test="attrName != null and attrName != ''">attr_name,</if>
-        <if test="indicatorType != null">indicator_type,</if>
-        <if test="indicatorTypeName != null">indicator_type_name,</if>
         <if test="initialValue != null">initial_value,</if>
         <if test="unit != null">unit,</if>
         <if test="rangeMin != null">range_min,</if>
@@ -91,8 +85,6 @@
         <if test="sensorId != null">#{sensorId},</if>
         <if test="attrCode != null and attrCode != ''">#{attrCode},</if>
         <if test="attrName != null and attrName != ''">#{attrName},</if>
-        <if test="indicatorType != null">#{indicatorType},</if>
-        <if test="indicatorTypeName != null">#{indicatorTypeName},</if>
         <if test="initialValue != null">#{initialValue},</if>
         <if test="unit != null">#{unit},</if>
         <if test="rangeMin != null">#{rangeMin},</if>
@@ -110,8 +102,6 @@
         monitor_content_id,
         attr_code,
         attr_name,
-        indicator_type,
-        indicator_type_name,
         initial_value,
         unit,
         range_min,
@@ -126,8 +116,6 @@
             #{item.monitorContentId},
             #{item.attrCode},
             #{item.attrName},
-            #{item.indicatorType},
-            #{item.indicatorTypeName},
             #{item.initialValue},
             #{item.unit},
             #{item.rangeMin},
@@ -148,8 +136,6 @@
             <if test="monitorContentId != null">monitor_content_id = #{monitorContentId},</if>
             <if test="attrCode != null and attrCode != ''">attr_code = #{attrCode},</if>
             <if test="attrName != null and attrName != ''">attr_name = #{attrName},</if>
-            <if test="indicatorType != null">indicator_type = #{indicatorType},</if>
-            <if test="indicatorTypeName != null">indicator_type_name = #{indicatorTypeName},</if>
             <if test="initialValue != null">initial_value = #{initialValue},</if>
             <if test="unit != null">unit = #{unit},</if>
             <if test="rangeMin != null">range_min = #{rangeMin},</if>

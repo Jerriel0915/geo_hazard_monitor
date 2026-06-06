@@ -79,7 +79,6 @@ class DeviceSensorServiceImplTest {
         monitorType.setId(4L);
         monitorType.setCode("JCLX004");
         monitorType.setName("水位监测");
-        monitorType.setDeviceType(2);
         when(monitorTypeService.selectMonitorTypeById(4L)).thenReturn(monitorType);
 
         Long result = service.insertSensor(sensor, List.of(attr));
@@ -119,7 +118,6 @@ class DeviceSensorServiceImplTest {
         monitorType.setId(4L);
         monitorType.setCode("JCLX004");
         monitorType.setName("水位监测");
-        monitorType.setDeviceType(1);
         when(monitorTypeService.selectMonitorTypeById(4L)).thenReturn(monitorType);
 
         Long result = service.insertSensor(sensor, List.of(attr));
@@ -154,7 +152,6 @@ class DeviceSensorServiceImplTest {
         monitorType.setId(4L);
         monitorType.setCode("JCLX004");
         monitorType.setName("水位监测");
-        monitorType.setDeviceType(2);
         when(monitorTypeService.selectMonitorTypeById(4L)).thenReturn(monitorType);
         when(sensorMapper.updateSensor(any(DeviceSensor.class))).thenReturn(1);
 

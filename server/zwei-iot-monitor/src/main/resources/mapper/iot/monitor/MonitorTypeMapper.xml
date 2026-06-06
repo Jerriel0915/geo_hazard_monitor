@@ -9,7 +9,6 @@
         <id property="id" column="id"/>
         <result property="code" column="code"/>
         <result property="name" column="name"/>
-        <result property="deviceType" column="device_type"/>
         <result property="icon" column="icon"/>
         <result property="description" column="description"/>
         <result property="sortOrder" column="sort_order"/>
@@ -26,7 +25,6 @@
         SELECT id,
                code,
                name,
-               device_type,
                icon,
                description,
                sort_order,
@@ -53,8 +51,6 @@
             <if test="name != null and name != ''">
                 AND name LIKE CONCAT('%', #{name}, '%')
             </if>
-            <if test="deviceType != null">
-                AND device_type = #{deviceType}
             </if>
             <if test="status != null">
                 AND status = #{status}
@@ -96,7 +92,6 @@
         INSERT INTO monitor_type(
         <if test="code != null and code != ''">code,</if>
         <if test="name != null and name != ''">name,</if>
-        <if test="deviceType != null">device_type,</if>
         <if test="icon != null">icon,</if>
         <if test="description != null">description,</if>
         <if test="sortOrder != null">sort_order,</if>
@@ -106,7 +101,6 @@
         ) VALUES (
         <if test="code != null and code != ''">#{code},</if>
         <if test="name != null and name != ''">#{name},</if>
-        <if test="deviceType != null">#{deviceType},</if>
         <if test="icon != null">#{icon},</if>
         <if test="description != null">#{description},</if>
         <if test="sortOrder != null">#{sortOrder},</if>
@@ -124,7 +118,6 @@
         <set>
             <if test="code != null and code != ''">code = #{code},</if>
             <if test="name != null and name != ''">name = #{name},</if>
-            <if test="deviceType != null">device_type = #{deviceType},</if>
             <if test="icon != null">icon = #{icon},</if>
             <if test="description != null">description = #{description},</if>
             <if test="sortOrder != null">sort_order = #{sortOrder},</if>
