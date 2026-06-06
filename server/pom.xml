@@ -158,7 +158,13 @@
                 <version>${zwei.version}</version>
             </dependency>
 
-            <!-- IOT模块-->
+            <!-- IOT模块（拆分后） -->
+            <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-monitor</artifactId><version>${zwei.version}</version></dependency>
+            <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-device</artifactId><version>${zwei.version}</version></dependency>
+            <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-timeseries</artifactId><version>${zwei.version}</version></dependency>
+            <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-broker</artifactId><version>${zwei.version}</version></dependency>
+            <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-hazard</artifactId><version>${zwei.version}</version></dependency>
+            <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-video</artifactId><version>${zwei.version}</version></dependency>
             <dependency>
                 <groupId>com.zwei</groupId>
                 <artifactId>zwei-iot</artifactId>
@@ -211,6 +217,12 @@
         <module>zwei-system</module>
         <module>zwei-quartz</module>
         <module>zwei-common</module>
+        <module>zwei-iot-monitor</module>
+        <module>zwei-iot-device</module>
+        <module>zwei-iot-timeseries</module>
+        <module>zwei-iot-broker</module>
+        <module>zwei-iot-hazard</module>
+        <module>zwei-iot-video</module>
         <module>zwei-iot</module>
         <module>zwei-monitor</module>
     </modules>

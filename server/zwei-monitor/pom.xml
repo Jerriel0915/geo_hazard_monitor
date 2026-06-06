@@ -29,6 +29,7 @@
         </dependency>
 
         <!-- IoT 模块（设备/隐患点 Mapper，MQTT 会话注册表） -->
+        <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-device</artifactId></dependency>
         <dependency>
             <groupId>com.zwei</groupId>
             <artifactId>zwei-iot</artifactId>
