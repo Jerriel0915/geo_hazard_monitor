@@ -45,9 +45,6 @@
               <el-select v-model="queryParams.status" placeholder="请选择" clearable multiple style="width: 120px">
                 <el-option label="待处理" value="pending"/>
                 <el-option label="处理中" value="processing"/>
-                <el-option label="已处理" value="handled"/>
-                <el-option label="误报" value="false_alarm"/>
-                <el-option label="已销警" value="closed"/>
               </el-select>
             </el-form-item>
             <el-form-item>
@@ -262,7 +259,7 @@ const mockData = [
     lastAlarmTime: '2024-06-02 20:30:00',
     alarmCount: 25,
     alarmType: 'threshold',
-    status: 'handled',
+    status: 'processing',
     responderName: '李四',
     responseTime: '2024-05-28 17:00:00',
     alarmContent: '山体倾斜角度超过阈值5度，当前值为6.2度',
@@ -279,7 +276,7 @@ const mockData = [
     lastAlarmTime: '2024-06-02 00:00:00',
     alarmCount: 3,
     alarmType: 'threshold',
-    status: 'false_alarm',
+    status: 'processing',
     responderName: '王五',
     responseTime: '2024-06-01 08:00:00',
     alarmContent: '桥墩沉降超过阈值2mm，经核查为传感器故障',
@@ -313,7 +310,7 @@ const mockData = [
     lastAlarmTime: '2024-06-01 18:00:00',
     alarmCount: 12,
     alarmType: 'threshold',
-    status: 'closed',
+    status: 'processing',
     responderName: '赵六',
     responseTime: '2024-06-01 20:00:00',
     alarmContent: '水库水位超过警戒水位50cm，当前已降至安全范围',
@@ -419,10 +416,7 @@ const getAlarmTypeText = (type: string) => {
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
     'pending': 'danger',
-    'processing': 'warning',
-    'handled': 'success',
-    'false_alarm': 'info',
-    'closed': 'info'
+    'processing': 'warning'
   }
   return map[status] || 'info'
 }
@@ -431,10 +425,7 @@ const getStatusType = (status: string) => {
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
     'pending': '待处理',
-    'processing': '处理中',
-    'handled': '已处理',
-    'false_alarm': '误报',
-    'closed': '已销警'
+    'processing': '处理中'
   }
   return map[status] || status
 }
