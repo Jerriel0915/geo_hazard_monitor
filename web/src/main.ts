@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import axios from 'axios'
 import './style.css'
+import './assets/custom-icon/iconfont.css'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus'
