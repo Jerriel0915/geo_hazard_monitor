@@ -6,9 +6,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# 安装 git 并配置 HTTPS 替代 SSH（mpegts.js 的 git 依赖）
+RUN apk add --no-cache git \
+    && git config --global url."https://github.com/".insteadOf git@github.com: \
+    && git config --global url."https://".insteadOf git:// \
+    && git config --global url."https://".insteadOf ssh://git@
+
 # 复制依赖文件
 COPY package.json package-lock.json* ./
-
 
 # 安装依赖
 RUN npm install
@@ -31,7 +36,7 @@ COPY nginx.conf /etc/nginx/conf.d/
 # 复制构建产物
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 创建日志目录
+# 创建日志目录并修复权限（nginx 以 nginx 用户运行 + read_only 容器）
 RUN mkdir -p /var/log/nginx && touch /var/log/nginx/nginx.pid && chown -R nginx:nginx /var/log/nginx
 
 EXPOSE 80
