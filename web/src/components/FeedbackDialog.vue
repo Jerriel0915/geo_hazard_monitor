@@ -18,7 +18,9 @@
             <div class="lifecycle-item">
               <div class="node-wrapper">
                 <div class="lifecycle-node">
-                  <span class="node-icon">📦</span>
+                  <el-icon>
+                    <Box/>
+                  </el-icon>
                 </div>
                 <div class="lifecycle-line"></div>
               </div>
@@ -27,7 +29,9 @@
             <div class="lifecycle-item">
               <div class="node-wrapper">
                 <div class="lifecycle-node">
-                  <span class="node-icon">🔌</span>
+                  <el-icon>
+                    <Connection/>
+                  </el-icon>
                 </div>
                 <div class="lifecycle-line"></div>
               </div>
@@ -36,7 +40,9 @@
             <div class="lifecycle-item">
               <div class="node-wrapper">
                 <div class="lifecycle-node">
-                  <span class="node-icon">💾</span>
+                  <el-icon>
+                    <Coin/>
+                  </el-icon>
                 </div>
                 <div class="lifecycle-line"></div>
               </div>
@@ -54,7 +60,9 @@
             <div class="lifecycle-item">
               <div class="node-wrapper">
                 <div class="lifecycle-node">
-                  <span class="node-icon">👁️</span>
+                  <el-icon>
+                    <View/>
+                  </el-icon>
                 </div>
                 <div class="lifecycle-line"></div>
               </div>
@@ -63,7 +71,9 @@
             <div class="lifecycle-item">
               <div class="node-wrapper">
                 <div class="lifecycle-node">
-                  <span class="node-icon">✓</span>
+                  <el-icon>
+                    <Check/>
+                  </el-icon>
                 </div>
                 <div class="lifecycle-line"></div>
               </div>
@@ -72,7 +82,11 @@
             <div class="lifecycle-item">
               <div class="node-wrapper">
                 <div class="lifecycle-node">
-                  <span class="node-icon">✕</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
                 </div>
               </div>
               <div class="node-label">关闭事件</div>
@@ -199,7 +213,9 @@
                   </div>
                 </div>
                 <div v-else class="timeline-empty">
-                  <span class="empty-icon">📋</span>
+                  <el-icon class="empty-icon">
+                    <List/>
+                  </el-icon>
                   <p>暂无处置记录</p>
                 </div>
               </div>
@@ -248,7 +264,19 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
-import {Bell, CircleClose, Clock, List, Monitor, Warning} from '@element-plus/icons-vue'
+import {
+  Bell,
+  Box,
+  Check,
+  CircleClose,
+  Clock,
+  Coin,
+  Connection,
+  List,
+  Monitor,
+  View,
+  Warning
+} from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 
 const props = defineProps<{

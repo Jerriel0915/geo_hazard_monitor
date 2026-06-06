@@ -4,6 +4,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round"
                width="20" height="20">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z"/>
             <line x1="12" y1="4" x2="12" y2="8"/>
@@ -17,6 +18,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round"
                width="20" height="20">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
@@ -31,6 +33,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round"
                width="20" height="20">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
@@ -43,6 +46,7 @@
       <div class="stat-card">
         <div class="stat-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round"
                width="20" height="20">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
             <line x1="8" y1="21" x2="16" y2="21"/>

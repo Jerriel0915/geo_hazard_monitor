@@ -264,7 +264,15 @@ const paramList = ref<ParamItem[]>([
 
   { code: 'log_keep_days', name: '日志保留时长(天)', type: 'number', category: 'data', value: 365, min: 90, max: 3650, step: 30, remark: '系统日志保留天数' },
   { code: 'auto_cleanup', name: '自动清理', type: 'switch', category: 'data', value: true, remark: '是否启用数据自动清理' },
-  { code: 'cleanup_time', name: '清理执行时间', type: 'string', category: 'data', value: '02:00', placeholder: '如: 02:00', maxLength: 10, remark: '每日自动清理执行时间' },
+  {
+    code: 'cleanup_time',
+    name: '清理执行时间',
+    type: 'string',
+    category: 'data',
+    value: '02:00',
+    placeholder: '如: 02:00',
+    remark: '每日自动清理执行时间'
+  },
 
   { code: 'alarm_enable', name: '告警总开关', type: 'switch', category: 'alarm', value: true, remark: '是否启用系统告警功能' },
   { code: 'login_fail_lock', name: '登录失败锁定', type: 'switch', category: 'security', value: true, remark: '登录失败多次后是否锁定账号' },
