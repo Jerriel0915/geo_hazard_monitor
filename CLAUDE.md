@@ -54,32 +54,42 @@ docker compose up -d --build
 
 ```
 server/
-├── zwei-admin/       Entry point — Spring Boot app, REST controllers
-├── zwei-common/      Shared: domain models, annotations (@Log, @RateLimiter, @DataScope),
-│                     base classes (BaseController, BaseEntity), AJAX response envelope
-├── zwei-framework/   Cross-cutting: JWT auth filter, RBAC security (Spring Security),
-│                     MyBatis/Redis/Druid config, AOP aspects (logging, rate limiting, data scope),
-│                     global exception handler, server monitoring
-├── zwei-system/      RBAC implementation: users, roles, menus, departments, dicts
-│                     └── notice/  通知公告子包（包级隔离，含SSE推送+多通道架构预留）
-├── zwei-iot/         **Core business module** — see below
-├── zwei-monitor/     System monitoring — unified monitoring API & MQTT broker status
-├── zwei-quartz/      Scheduled tasks (quartz job framework)
-└── zwei-log/         Audit/operation logging, SSE streaming, MQTT message logs
+├── zwei-admin/            Entry point — Spring Boot app, REST controllers
+├── zwei-common/           Shared: domain models, annotations (@Log, @RateLimiter, @DataScope),
+│                          base classes (BaseController, BaseEntity), AJAX response envelope
+├── zwei-framework/        Cross-cutting: JWT auth filter, RBAC security (Spring Security),
+│                          MyBatis/Redis/Druid config, AOP aspects, global exception handler
+├── zwei-system/           RBAC implementation: users, roles, menus, departments, dicts
+│                          └── notice/  通知公告子包（包级隔离，含SSE推送+多通道架构预留）
+├── zwei-iot-monitor/      IoT — 监测字典: 监测大类(category) + 监测类型(type) + 监测内容(content)
+├── zwei-iot-device/       IoT — 设备全生命周期 + 传感器 + 注册中心 + 跨模块 Service 接口定义
+├── zwei-iot-timeseries/   IoT — IoTDB 读写 + MQTT 数据解析 + 监测数据查询
+├── zwei-iot-broker/       IoT — MQTT 设备鉴权 + 会话管理 + 发布订阅 ACL
+├── zwei-iot-hazard/       IoT — 隐患点管理 + 分组 + 设备/视频设备绑定
+├── zwei-iot-video/        IoT — 视频设备管理 + 隐患点关联
+├── zwei-iot/              (空壳，保留兼容旧依赖)
+├── zwei-monitor/          System monitoring — unified monitoring API & MQTT broker status
+├── zwei-quartz/           Scheduled tasks (quartz job framework)
+└── zwei-log/              Audit/operation logging, SSE streaming, MQTT message logs
 ```
 
-### IoT Module (`zwei-iot/`) — Core Business Logic
+### IoT Modules — Core Business Logic (拆分后)
 
-This is where the domain-specific logic lives, organized into sub-packages:
+Previously a single `zwei-iot` module. Now split into 6 independent Maven modules:
 
-| Package        | Responsibility                                                                                                      |
-|----------------|---------------------------------------------------------------------------------------------------------------------|
-| `broker/`      | MQTT broker integration — device auth, session registry, publish/subscribe ACL, connect status listener             |
-| `device/`      | Device lifecycle — CRUD, sensor attributes, device registration/activation with auto-generated MQTT credentials     |
-| `hazardpoint/` | Hazard point management — CRUD, device binding, map positioning (lat/lng), groups                                   |
-| `monitor/`     | Monitor type & content definitions — standardized sensor measurement specs                                          |
-| `timeseries/`  | IoTDB integration — data ingestion (MQTT → IoTDB), query service, payload parsers (GB/SYS protocols), topic routing |
-| `video/`       | Video device management — CRUD, hazard point association                                                            |
+| Module                | Package                     | Responsibility                                                                              |
+|-----------------------|-----------------------------|---------------------------------------------------------------------------------------------|
+| `zwei-iot-monitor`    | `com.zwei.iot.monitor`      | Monitor category/type/content CRUD. Pure dictionary, no IoT dependencies.                   |
+| `zwei-iot-device`     | `com.zwei.iot.device`       | Device & sensor lifecycle, registration, MQTT auth accounts, cross-module service interfaces |
+| `zwei-iot-timeseries` | `com.zwei.iot.timeseries`   | IoTDB read/write, MQTT payload parsing (sys/gb), monitor data query API (latest/page/chart) |
+| `zwei-iot-broker`     | `com.zwei.iot.broker`       | MQTT CONNECT auth, session registry, publish/subscribe ACL, connect/disconnect listeners    |
+| `zwei-iot-hazard`     | `com.zwei.iot.hazardpoint`  | Hazard point & group CRUD, device/video binding, implements IDeviceHazardRelationService    |
+| `zwei-iot-video`      | `com.zwei.iot.video`        | Video device CRUD, hazard point association, implements IVideoDeviceStatService             |
+
+**Cross-module dependency rules:**
+- `zwei-iot-device` defines all cross-module service interfaces (IDeviceAuthQueryService, IDeviceSensorQueryService, etc.)
+- All other IoT modules depend on `zwei-iot-device` only through its service interfaces, never through Mapper directly
+- `zwei-iot-monitor` is the leaf module — no IoT dependencies
 
 ### Monitor Module (`zwei-monitor/`) — System & MQTT Monitoring
 
@@ -103,9 +113,9 @@ Key infrastructure:
 
 **Cross-module dependency rules:**
 
-- `zwei-monitor` depends on `zwei-iot` **only through Service interfaces** (`IDeviceStatService`,
+- `zwei-monitor` depends on `zwei-iot-device` **only through Service interfaces** (`IDeviceStatService`,
   `IDeviceQueryService`), never through Mapper or Domain classes directly.
-- `zwei-iot` publishes events to `zwei-common` event classes (`MqttMessageReceivedEvent`, `DeviceOnlineEvent`,
+- IoT modules publish events to `zwei-common` event classes (`MqttMessageReceivedEvent`, `DeviceOnlineEvent`,
   `DeviceOfflineEvent`) — no direct Maven dependency on `zwei-log` for event consumption.
 - `zwei-log` listens to common events via `@EventListener`, fully decoupled from source modules.
 
