@@ -18,6 +18,8 @@ export interface VideoDeviceItem {
     status: number
     installTime: string
     lastOnlineTime?: string
+    longitude?: number | null
+    latitude?: number | null
 }
 
 /** 视频设备分页查询参数 */
@@ -46,6 +48,8 @@ export interface VideoDeviceFormData {
     iconPath: string
     protocolCode: string
     streamUrl: string
+    longitude?: number | null
+    latitude?: number | null
     status?: number
 }
 

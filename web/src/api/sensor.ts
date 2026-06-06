@@ -17,6 +17,7 @@ export interface SensorAttrItem {
 export interface SensorItem {
   id?: number
   sensorCode: string
+  sensorNo?: string
   sensorName: string
   monitorTypeId: number
   monitorTypeCode?: string
@@ -29,6 +30,7 @@ export interface SensorItem {
 
 export interface SensorCreatePayload {
   sensorCode: string
+  sensorNo?: string
   sensorName: string
   monitorTypeId: number
   status: number

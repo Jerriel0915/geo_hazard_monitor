@@ -24,6 +24,8 @@ export interface DeviceItem {
   registeredAt?: string
   lastAuthTime?: string
   lastAuthIp?: string
+  longitude?: number | null
+  latitude?: number | null
   createTime?: string
   longitude?: number | null
   latitude?: number | null
@@ -40,6 +42,8 @@ export interface DeviceCreatePayload {
   vendorName?: string
   icon?: string
   iconPath?: string
+  longitude?: number | null
+  latitude?: number | null
   status: number
   longitude?: number | null
   latitude?: number | null
@@ -54,6 +58,8 @@ export interface DeviceUpdatePayload {
   vendorName?: string
   icon?: string
   iconPath?: string
+  longitude?: number | null
+  latitude?: number | null
   status: number
   longitude?: number | null
   latitude?: number | null

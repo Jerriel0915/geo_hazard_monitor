@@ -163,6 +163,18 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="经度">
+              <el-input-number v-model="formData.longitude" :precision="6" :min="-180" :max="180" style="width: 100%" placeholder="请输入经度" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="纬度">
+              <el-input-number v-model="formData.latitude" :precision="6" :min="-90" :max="90" style="width: 100%" placeholder="请输入纬度" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="视频流地址" prop="streamUrl">
           <el-input v-model="formData.streamUrl" placeholder="请输入视频流地址" type="textarea" :rows="3" />
         </el-form-item>
@@ -313,6 +325,8 @@ interface VideoDeviceItem {
   status: number
   installTime: string
   lastOnlineTime?: string
+  longitude?: number | null
+  latitude?: number | null
 }
 
 interface HazardPointItem {
@@ -386,13 +400,17 @@ const formData = reactive<{
   iconPath: string
   protocolCode: string
   streamUrl: string
+  longitude: number | null
+  latitude: number | null
 }>({
   code: '',
   name: '',
   icon: '',
   iconPath: '',
   protocolCode: '',
-  streamUrl: ''
+  streamUrl: '',
+  longitude: null,
+  latitude: null
 })
 
 const formRules = {
@@ -523,6 +541,8 @@ const createVideoDevice = async () => {
       iconPath: formData.iconPath,
       protocolCode: formData.protocolCode,
       streamUrl: formData.streamUrl,
+      longitude: formData.longitude,
+      latitude: formData.latitude,
       status: 1
     }, {
       headers: {Authorization: `Bearer ${token}`}
@@ -553,7 +573,9 @@ const updateVideoDevice = async () => {
       icon: formData.icon,
       iconPath: formData.iconPath,
       protocolCode: formData.protocolCode,
-      streamUrl: formData.streamUrl
+      streamUrl: formData.streamUrl,
+      longitude: formData.longitude,
+      latitude: formData.latitude
     }, {
       headers: {Authorization: `Bearer ${token}`}
     })
@@ -665,7 +687,9 @@ const handleAdd = () => {
     icon: '',
     iconPath: '',
     protocolCode: '',
-    streamUrl: ''
+    streamUrl: '',
+    longitude: null,
+    latitude: null
   })
   dialogVisible.value = true
 }
@@ -682,7 +706,9 @@ const handleEdit = async (row: VideoDeviceItem) => {
       icon: detail.icon || '',
       iconPath: detail.iconPath || '',
       protocolCode: detail.protocolCode,
-      streamUrl: detail.streamUrl
+      streamUrl: detail.streamUrl,
+      longitude: detail.longitude ?? null,
+      latitude: detail.latitude ?? null
     })
   }
   dialogVisible.value = true

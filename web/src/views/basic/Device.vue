@@ -171,6 +171,18 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="经度" prop="longitude">
+              <el-input-number v-model="formData.longitude" :disabled="isView" :precision="6" :min="-180" :max="180" style="width: 100%" placeholder="请输入经度" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="纬度" prop="latitude">
+              <el-input-number v-model="formData.latitude" :disabled="isView" :precision="6" :min="-90" :max="90" style="width: 100%" placeholder="请输入纬度" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="设备类型" prop="deviceType">
               <el-select v-model="formData.deviceType" placeholder="请选择设备类型" :disabled="isView">
                 <el-option label="单参数" :value="0" />
@@ -324,6 +336,7 @@
       <el-table :data="sensorList" border size="small" v-loading="sensorLoading">
         <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center" />
         <el-table-column prop="sensorName" label="传感器名称" width="150" align="center" />
+        <el-table-column prop="sensorNo" label="主题编号" width="120" align="center" />
         <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
         <el-table-column label="属性配置" min-width="250" align="center">
           <template #default="{ row }">
@@ -357,6 +370,7 @@
       <el-table :data="sensorTableData" border size="small" v-loading="sensorLoading">
         <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center" />
         <el-table-column prop="sensorName" label="传感器名称" width="150" align="center" />
+        <el-table-column prop="sensorNo" label="主题编号" width="120" align="center" />
         <el-table-column prop="monitorTypeName" label="监测类型" width="180" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -411,6 +425,13 @@
           <el-col :span="12">
             <el-form-item label="传感器名称" prop="sensorName">
               <el-input v-model="sensorFormData.sensorName" placeholder="请输入传感器名称" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="主题编号" prop="sensorNo">
+              <el-input v-model="sensorFormData.sensorNo" placeholder="请输入主题编号（默认同编号）" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -564,6 +585,7 @@ interface SensorAttrItem {
 interface SensorFormModel {
   id?: number
   sensorCode: string
+  sensorNo: string
   sensorName: string
   monitorTypeId: number | null
   monitorTypeName: string
@@ -765,6 +787,8 @@ const formData = reactive<{
   vendorName: string
   icon: string
   iconPath: string
+  longitude: number | null
+  latitude: number | null
   status: number
   longitude: number | null
   latitude: number | null
@@ -779,6 +803,8 @@ const formData = reactive<{
   vendorName: '',
   icon: '',
   iconPath: '',
+  longitude: null,
+  latitude: null,
   status: 1,
   longitude: null,
   latitude: null,
@@ -787,6 +813,7 @@ const formData = reactive<{
 
 const sensorFormData = reactive<SensorFormModel>({
   sensorCode: '',
+  sensorNo: '',
   sensorName: '',
   monitorTypeId: null,
   monitorTypeName: '',
@@ -875,9 +902,9 @@ const createDevice = async () => {
       vendorName: formData.vendorName || undefined,
       icon: formData.icon,
       iconPath: formData.iconPath,
-      status: formData.status,
       longitude: formData.longitude,
-      latitude: formData.latitude
+      latitude: formData.latitude,
+      status: formData.status
     })
     ElMessage.success('新增成功')
     dialogVisible.value = false
@@ -915,9 +942,9 @@ const updateDevice = async () => {
       vendorName: formData.vendorName || undefined,
       icon: formData.icon,
       iconPath: formData.iconPath,
-      status: formData.status,
       longitude: formData.longitude,
-      latitude: formData.latitude
+      latitude: formData.latitude,
+      status: formData.status
     })
     ElMessage.success('修改成功')
     dialogVisible.value = false
@@ -1036,6 +1063,8 @@ const handleAdd = () => {
     vendorName: '',
     icon: '',
     iconPath: '',
+    longitude: null,
+    latitude: null,
     status: 1,
     longitude: null,
     latitude: null,
@@ -1060,6 +1089,8 @@ const handleEdit = async (row: DeviceItem) => {
     vendorName: row.vendorName || '',
     icon: row.icon || '',
     iconPath: row.iconPath || '',
+    longitude: row.longitude ?? null,
+    latitude: row.latitude ?? null,
     status: row.status,
     longitude: row.longitude ?? null,
     latitude: row.latitude ?? null,
@@ -1235,6 +1266,7 @@ const resetSensorForm = () => {
   Object.assign(sensorFormData, {
     id: undefined,
     sensorCode: '',
+    sensorNo: '',
     sensorName: '',
     monitorTypeId: null,
     monitorTypeName: '',
@@ -1259,6 +1291,7 @@ const handleEditSensor = async (row: SensorItem) => {
     Object.assign(sensorFormData, {
       id: detail.id,
       sensorCode: detail.sensorCode,
+      sensorNo: detail.sensorNo || '',
       sensorName: detail.sensorName,
       monitorTypeId: detail.monitorTypeId,
       monitorTypeName: detail.monitorTypeName || '',
@@ -1348,6 +1381,7 @@ const validateSensorAttrs = () => {
 
 const buildSensorPayload = () => ({
   sensorCode: sensorFormData.sensorCode.trim(),
+  sensorNo: sensorFormData.sensorNo.trim() || undefined,
   sensorName: sensorFormData.sensorName.trim(),
   monitorTypeId: Number(sensorFormData.monitorTypeId),
   status: sensorFormData.status,
