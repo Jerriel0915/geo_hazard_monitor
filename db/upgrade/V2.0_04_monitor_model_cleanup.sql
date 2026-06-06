@@ -1,7 +1,10 @@
 -- ============================================================
 -- V2.0_04_monitor_model_cleanup.sql
 -- 监测模型重构 — 废弃列清理
--- 执行时机: 确认所有代码已不再引用以下列后执行（建议 3 个月后）
+-- 执行状态: ✅ 已就绪（代码引用已于 2026-06-06 全部清理）
+-- 执行前提:
+--   1. V2.0_01 + V2.0_02 已执行（新增 monitor_category 表 + 数据迁移）
+--   2. 已部署 feature/260606-module-split 分支代码（移除了所有 Java/Mapper XML 引用）
 -- 废弃列:
 --   1. monitor_type.device_type — 设备类型，已迁移到 device 表语义
 --   2. sensor_attribute.indicator_type — 指标类型，改为通过 monitor_content 获取

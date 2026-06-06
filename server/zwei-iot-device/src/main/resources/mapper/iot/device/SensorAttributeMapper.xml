@@ -10,6 +10,7 @@
         <result property="sensorId" column="sensor_id"/>
         <result property="attrCode" column="attr_code"/>
         <result property="attrName" column="attr_name"/>
+        <result property="monitorContentId" column="monitor_content_id"/>
         <result property="initialValue" column="initial_value"/>
         <result property="unit" column="unit"/>
         <result property="rangeMin" column="range_min"/>
@@ -25,7 +26,6 @@
     <sql id="selectAttributeVo">
         SELECT sa.id,
                sa.sensor_id,
-        monitor_content_id,
                sa.monitor_content_id,
                sa.attr_code,
                sa.attr_name,
@@ -68,9 +68,8 @@
     <insert id="insertAttribute" parameterType="com.zwei.iot.device.domain.SensorAttribute" useGeneratedKeys="true"
             keyProperty="id">
         INSERT INTO sensor_attribute(
-<if test="monitorContentId != null">monitor_content_id,</
-        <if test="sensorId != null">sensor_id,
-        monitor_content_id,</if>
+        <if test="sensorId != null">sensor_id,</if>
+        <if test="monitorContentId != null">monitor_content_id,</if>
         <if test="attrCode != null and attrCode != ''">attr_code,</if>
         <if test="attrName != null and attrName != ''">attr_name,</if>
         <if test="initialValue != null">initial_value,</if>
@@ -81,8 +80,8 @@
         <if test="createBy != null and createBy != ''">create_by,</if>
         create_time
         ) VALUES (
-<if test="monitorContentId != null">#{monitorContentId},</
         <if test="sensorId != null">#{sensorId},</if>
+        <if test="monitorContentId != null">#{monitorContentId},</if>
         <if test="attrCode != null and attrCode != ''">#{attrCode},</if>
         <if test="attrName != null and attrName != ''">#{attrName},</if>
         <if test="initialValue != null">#{initialValue},</if>
@@ -133,9 +132,9 @@
     <update id="updateAttribute" parameterType="com.zwei.iot.device.domain.SensorAttribute">
         UPDATE sensor_attribute
         <set>
-            <if test="monitorContentId != null">monitor_content_id = #{monitorContentId},</if>
             <if test="attrCode != null and attrCode != ''">attr_code = #{attrCode},</if>
             <if test="attrName != null and attrName != ''">attr_name = #{attrName},</if>
+            <if test="monitorContentId != null">monitor_content_id = #{monitorContentId},</if>
             <if test="initialValue != null">initial_value = #{initialValue},</if>
             <if test="unit != null">unit = #{unit},</if>
             <if test="rangeMin != null">range_min = #{rangeMin},</if>

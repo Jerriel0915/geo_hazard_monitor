@@ -51,7 +51,6 @@
             <if test="name != null and name != ''">
                 AND name LIKE CONCAT('%', #{name}, '%')
             </if>
-            </if>
             <if test="status != null">
                 AND status = #{status}
             </if>
