@@ -57,18 +57,6 @@
           </el-form>
         </div>
         <div class="action-buttons">
-          <el-button type="success" :disabled="selectedRows.length === 0" @click="handleBatchFeedback">
-            <el-icon><ChatDotRound /></el-icon>
-            批量反馈
-          </el-button>
-          <el-button type="warning" :disabled="selectedRows.length === 0" @click="handleBatchFalseAlarm">
-            <el-icon><Warning /></el-icon>
-            批量误报
-          </el-button>
-          <el-button type="danger" :disabled="selectedRows.length === 0" @click="handleBatchCloseAlarm">
-            <el-icon><CircleClose /></el-icon>
-            批量销警
-          </el-button>
           <el-button type="info" @click="handleExport">
             <el-icon><Download /></el-icon>
             导出
@@ -81,12 +69,10 @@
         <el-table
           :data="tableData"
           style="width: 100%"
-          @selection-change="handleSelectionChange"
           @row-click="handleRowClick"
           border
           stripe
         >
-          <el-table-column type="selection" width="55" />
           <el-table-column prop="hazardPointName" label="隐患点名称" min-width="180" />
           <el-table-column prop="alarmLevel" label="告警等级" width="100">
             <template #default="{ row }">
@@ -112,27 +98,15 @@
           </el-table-column>
           <el-table-column prop="responderName" label="响应人员" width="120" />
           <el-table-column prop="responseTime" label="响应时间" width="180" />
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" width="160" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click.stop="handleView(row)">
                 <el-icon><View /></el-icon>
                 查看
               </el-button>
-              <el-button type="success" link size="small" @click.stop="handleFeedback(row)">
+              <el-button type="success" link size="small" @click.stop="handleHandle(row)">
                 <el-icon><ChatDotRound /></el-icon>
-                反馈
-              </el-button>
-              <el-button type="warning" link size="small" @click.stop="handleFalseAlarm(row)">
-                <el-icon>
-                  <Warning/>
-                </el-icon>
-                误报
-              </el-button>
-              <el-button type="danger" link size="small" @click.stop="handleCloseAlarm(row)">
-                <el-icon>
-                  <CircleClose/>
-                </el-icon>
-                销警
+                处置
               </el-button>
             </template>
           </el-table-column>
@@ -196,43 +170,21 @@
       </template>
     </el-dialog>
 
-    <!-- 反馈弹窗 -->
-    <el-dialog v-model="feedbackDialogVisible" title="告警反馈" width="600px">
-      <el-form :model="feedbackForm" label-width="100px">
-        <el-form-item label="反馈内容">
-          <el-input v-model="feedbackForm.content" type="textarea" :rows="5" placeholder="请输入反馈内容"/>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="feedbackDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitFeedback">确定</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 误报确认弹窗 -->
-    <el-dialog v-model="falseAlarmDialogVisible" title="误报确认" width="500px">
-      <p>确定将选中的告警标记为误报吗？</p>
-      <template #footer>
-        <el-button @click="falseAlarmDialogVisible = false">取消</el-button>
-        <el-button type="warning" @click="confirmFalseAlarm">确定</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 销警确认弹窗 -->
-    <el-dialog v-model="closeAlarmDialogVisible" title="销警确认" width="500px">
-      <p>确定要销警吗？</p>
-      <template #footer>
-        <el-button @click="closeAlarmDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="confirmCloseAlarm">确定</el-button>
-      </template>
-    </el-dialog>
+    <!-- 处置弹窗 -->
+    <FeedbackDialog
+      v-model="feedbackDialogVisible"
+      :data="currentRow"
+      @submit="handleSubmitFeedback"
+      @close="feedbackDialogVisible = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import {ChatDotRound, CircleClose, Download, View, Warning} from '@element-plus/icons-vue'
+import {ChatDotRound, Download, View} from '@element-plus/icons-vue'
+import FeedbackDialog from '@/components/FeedbackDialog.vue'
 
 // 查询参数
 const queryParams = reactive({
@@ -255,21 +207,15 @@ const pagination = reactive({
 
 // 表格数据
 const tableData = ref<any[]>([])
-const selectedRows = ref<any[]>([])
 
 // 弹窗
 const detailDialogVisible = ref(false)
 const alarmListDialogVisible = ref(false)
 const feedbackDialogVisible = ref(false)
-const falseAlarmDialogVisible = ref(false)
-const closeAlarmDialogVisible = ref(false)
 
 // 当前行
 const currentRow = ref<any>(null)
 const currentAlarmList = ref<any[]>([])
-const feedbackForm = reactive({
-  content: ''
-})
 
 // Mock 数据
 const mockData = [
@@ -514,11 +460,6 @@ const handleReset = () => {
   handleQuery()
 }
 
-// 表格选择变化
-const handleSelectionChange = (rows: any[]) => {
-  selectedRows.value = rows
-}
-
 // 行点击 - 查看详情
 const handleRowClick = (row: any) => {
   currentRow.value = row
@@ -538,118 +479,22 @@ const showAlarmList = (row: any) => {
   alarmListDialogVisible.value = true
 }
 
-// 反馈
-const handleFeedback = (row: any) => {
+// 处置
+const handleHandle = (row: any) => {
   currentRow.value = row
-  feedbackForm.content = ''
   feedbackDialogVisible.value = true
 }
 
-// 批量反馈
-const handleBatchFeedback = () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要反馈的记录')
-    return
-  }
-  currentRow.value = selectedRows.value
-  feedbackForm.content = ''
-  feedbackDialogVisible.value = true
-}
-
-// 提交反馈
-const submitFeedback = () => {
-  if (!feedbackForm.content.trim()) {
-    ElMessage.warning('请输入反馈内容')
-    return
-  }
-  
-  if (Array.isArray(currentRow.value)) {
-    currentRow.value.forEach(row => {
-      row.status = 'processing'
-      row.responderName = '当前用户'
-      row.responseTime = new Date().toLocaleString()
-    })
-  } else {
+// 提交处置
+const handleSubmitFeedback = () => {
+  if (currentRow.value) {
     currentRow.value.status = 'processing'
     currentRow.value.responderName = '当前用户'
     currentRow.value.responseTime = new Date().toLocaleString()
+    ElMessage.success('处置成功')
+    feedbackDialogVisible.value = false
+    tableData.value = paginatedData.value
   }
-  
-  ElMessage.success('反馈成功')
-  feedbackDialogVisible.value = false
-  tableData.value = paginatedData.value
-}
-
-// 误报
-const handleFalseAlarm = (row: any) => {
-  currentRow.value = row
-  falseAlarmDialogVisible.value = true
-}
-
-// 批量误报
-const handleBatchFalseAlarm = () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要标记为误报的记录')
-    return
-  }
-  currentRow.value = selectedRows.value
-  falseAlarmDialogVisible.value = true
-}
-
-// 确认误报
-const confirmFalseAlarm = () => {
-  if (Array.isArray(currentRow.value)) {
-    currentRow.value.forEach(row => {
-      row.status = 'false_alarm'
-      row.responderName = '当前用户'
-      row.responseTime = new Date().toLocaleString()
-    })
-  } else {
-    currentRow.value.status = 'false_alarm'
-    currentRow.value.responderName = '当前用户'
-    currentRow.value.responseTime = new Date().toLocaleString()
-  }
-  
-  ElMessage.success('已标记为误报')
-  falseAlarmDialogVisible.value = false
-  selectedRows.value = []
-  tableData.value = paginatedData.value
-}
-
-// 销警
-const handleCloseAlarm = (row: any) => {
-  currentRow.value = row
-  closeAlarmDialogVisible.value = true
-}
-
-// 批量销警
-const handleBatchCloseAlarm = () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要销警的记录')
-    return
-  }
-  currentRow.value = selectedRows.value
-  closeAlarmDialogVisible.value = true
-}
-
-// 确认销警
-const confirmCloseAlarm = () => {
-  if (Array.isArray(currentRow.value)) {
-    currentRow.value.forEach(row => {
-      row.status = 'closed'
-      row.responderName = '当前用户'
-      row.responseTime = new Date().toLocaleString()
-    })
-  } else {
-    currentRow.value.status = 'closed'
-    currentRow.value.responderName = '当前用户'
-    currentRow.value.responseTime = new Date().toLocaleString()
-  }
-  
-  ElMessage.success('销警成功')
-  closeAlarmDialogVisible.value = false
-  selectedRows.value = []
-  tableData.value = paginatedData.value
 }
 
 // 导出
