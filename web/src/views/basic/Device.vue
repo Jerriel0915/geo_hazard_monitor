@@ -82,10 +82,10 @@
             <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="runStatus" label="运行状态" width="100" align="center">
+        <el-table-column prop="runStatusName" label="运行状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.runStatus === 1 ? 'success' : 'danger'" effect="plain">
-              {{ row.runStatus === 1 ? '在线' : '离线' }}
+            <el-tag :type="getRunStatusTag(row.runStatus)" effect="plain">
+              {{ row.runStatusName || getRunStatusLabel(row.runStatus) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -213,8 +213,7 @@
               <el-select v-model="formData.status" placeholder="请选择设备状态" :disabled="isView">
                 <el-option label="正常" :value="1" />
                 <el-option label="故障" :value="2" />
-                <el-option label="维修" :value="3" />
-                <el-option label="离线" :value="4" />
+                <el-option label="离线" :value="3" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -310,8 +309,8 @@
           <el-tag :type="getStatusType(currentRow?.status || 0)" size="small">{{ currentRow?.statusName }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="运行状态">
-          <el-tag :type="currentRow?.runStatus === 1 ? 'success' : 'danger'" size="small">
-            {{ currentRow?.runStatus === 1 ? '在线' : '离线' }}
+          <el-tag :type="getRunStatusTag(currentRow?.runStatus)" size="small">
+            {{ getRunStatusLabel(currentRow?.runStatus) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="最近上报时间">{{ currentRow?.lastReportTime || '-' }}</el-descriptions-item>
@@ -808,13 +807,18 @@ const sensorFormRules = {
 }
 
 const getStatusType = (status: number) => {
-  const types: Record<number, string> = {
-    1: 'success',
-    2: 'danger',
-    3: 'warning',
-    4: 'info'
-  }
+  const types: Record<number, string> = { 1: 'success', 2: 'danger', 3: 'warning' }
   return types[status] || 'default'
+}
+
+const getRunStatusLabel = (runStatus?: number) => {
+  const labels: Record<number, string> = { 0: '未知', 1: '运行中', 2: '停止' }
+  return runStatus != null ? labels[runStatus] || '-' : '-'
+}
+
+const getRunStatusTag = (runStatus?: number) => {
+  const tags: Record<number, string> = { 0: 'info', 1: 'success', 2: 'danger' }
+  return runStatus != null ? tags[runStatus] || 'info' : 'info'
 }
 
 // ==================== API 请求 ====================
