@@ -484,6 +484,11 @@
             </template>
           </el-table-column>
           <el-table-column prop="unit" label="单位" width="80" align="center" />
+          <el-table-column label="操作" width="80" align="center">
+            <template #default="{ $index }">
+              <el-button type="danger" text size="small" @click="handleDeleteAttr($index)">删除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-form>
 
@@ -562,6 +567,7 @@ import {
   createSensor,
   deleteSensor,
   getDeviceSensors,
+  deleteSensorAttribute,
   getSensorDetail,
   type SensorItem,
   updateSensor
@@ -1396,6 +1402,16 @@ const buildSensorPayload = () => ({
     icon: attr.icon || undefined
   }))
 })
+
+const handleDeleteAttr = async (index: number) => {
+  const attr = sensorFormData.attrList[index]
+  if (attr.id) {
+    try {
+      await deleteSensorAttribute(sensorFormData.id!, attr.id)
+    } catch { /* ignore, frontend already removed */ }
+  }
+  sensorFormData.attrList.splice(index, 1)
+}
 
 const handleSensorSubmit = () => {
   sensorFormRef.value.validate(async (valid: boolean) => {

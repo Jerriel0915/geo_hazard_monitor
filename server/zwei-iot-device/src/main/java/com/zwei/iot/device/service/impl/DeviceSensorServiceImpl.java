@@ -149,10 +149,11 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             attributeMapper.updateAttribute(attr);
         }
 
-        for (SensorAttribute existingAttr : existingAttrs) {
-            if (!retainedIds.contains(existingAttr.getId())) {
-                attributeMapper.deleteAttributeById(existingAttr.getId());
-            }
+        // 校验：请求中的 attrList 必须包含所有已有属性 ID，不允许隐式删除
+        Set<Long> existingIds = existingAttrMap.keySet();
+        if (!retainedIds.containsAll(existingIds)) {
+            existingIds.removeAll(retainedIds);
+            throw new ServiceException("属性列表不完整，缺少属性 ID: " + existingIds + "，删除属性请使用 DELETE /api/v1/sensors/{sensorId}/attributes/{attrId}");
         }
         return rows;
     }
@@ -256,5 +257,14 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     public void updateLastReportTime(Long sensorId, String lastReportTime) {
         sensorMapper.updateLastReportTime(sensorId, lastReportTime);
+    }
+
+    @Override
+    public void deleteSensorAttribute(Long sensorId, Long attrId) {
+        SensorAttribute attr = attributeMapper.selectAttributeById(attrId);
+        if (attr == null || !Objects.equals(attr.getSensorId(), sensorId)) {
+            throw new ServiceException("属性不存在或不属于当前传感器");
+        }
+        attributeMapper.deleteAttributeById(attrId);
     }
 }

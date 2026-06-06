@@ -88,6 +88,17 @@ public class SensorController extends BaseController {
     }
 
     /**
+     * 删除传感器属性（显式删除，替代 update 中的隐式删除）
+     */
+    @PreAuthorize("@ss.hasPermi('basic:sensor:edit')")
+    @Log(title = "传感器属性", businessType = BusinessType.DELETE)
+    @DeleteMapping("/sensors/{sensorId}/attributes/{attrId}")
+    public AjaxResult removeAttribute(@PathVariable Long sensorId, @PathVariable Long attrId) {
+        sensorService.deleteSensorAttribute(sensorId, attrId);
+        return AjaxResult.success("删除成功");
+    }
+
+    /**
      * 新增传感器（为设备添加传感器）
      *
      * @param deviceId 设备ID

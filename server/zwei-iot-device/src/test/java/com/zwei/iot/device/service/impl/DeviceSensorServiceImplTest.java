@@ -24,6 +24,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -129,7 +130,7 @@ class DeviceSensorServiceImplTest {
     }
 
     @Test
-    @DisplayName("修改传感器时应增量更新属性并删除被移除项")
+    @DisplayName("修改传感器时应增量更新属性，必须包含所有已有属性 ID")
     void updateSensor_shouldUpdateAttributesIncrementally() {
         DeviceSensor incoming = new DeviceSensor();
         incoming.setId(1L);
@@ -161,13 +162,13 @@ class DeviceSensorServiceImplTest {
         existingAttr.setAttrCode("water_level");
         existingAttr.setAttrName("水位");
 
-        SensorAttribute removedAttr = new SensorAttribute();
-        removedAttr.setId(102L);
-        removedAttr.setSensorId(1L);
-        removedAttr.setAttrCode("water_temp");
-        removedAttr.setAttrName("水温");
+        SensorAttribute keptAttr = new SensorAttribute();
+        keptAttr.setId(102L);
+        keptAttr.setSensorId(1L);
+        keptAttr.setAttrCode("water_temp");
+        keptAttr.setAttrName("水温");
 
-        when(attributeMapper.selectAttributeListBySensorId(1L)).thenReturn(List.of(existingAttr, removedAttr));
+        when(attributeMapper.selectAttributeListBySensorId(1L)).thenReturn(List.of(existingAttr, keptAttr));
 
         SensorAttribute updatedAttr = new SensorAttribute();
         updatedAttr.setId(101L);
@@ -182,11 +183,73 @@ class DeviceSensorServiceImplTest {
         newAttr.setRangeMin(BigDecimal.ZERO);
         newAttr.setRangeMax(new BigDecimal("50"));
 
-        int rows = service.updateSensor(incoming, List.of(updatedAttr, newAttr));
+        // 必须包含所有已有属性（101 + 102），否则抛异常
+        int rows = service.updateSensor(incoming, List.of(updatedAttr, keptAttr, newAttr));
 
         assertEquals(1, rows);
         verify(attributeMapper).updateAttribute(updatedAttr);
         verify(attributeMapper).insertAttribute(newAttr);
-        verify(attributeMapper).deleteAttributeById(102L);
+        verify(attributeMapper, never()).deleteAttributeById(any());
+    }
+
+    @Test
+    @DisplayName("修改传感器时缺少已有属性 ID 应抛出异常")
+    void updateSensor_shouldThrowWhenExistingAttrIdsMissing() {
+        DeviceSensor incoming = new DeviceSensor();
+        incoming.setId(1L);
+        incoming.setSensorName("测试");
+        incoming.setStatus(1);
+
+        DeviceSensor existing = new DeviceSensor();
+        existing.setId(1L);
+        existing.setDeviceId(10L);
+        existing.setMonitorTypeId(4L);
+        when(sensorMapper.selectSensorById(1L)).thenReturn(existing);
+        Device dev = new Device(); dev.setId(10L); dev.setCode("D01");
+        when(deviceMapper.selectDeviceById(10L)).thenReturn(dev);
+        when(sensorMapper.updateSensor(any(DeviceSensor.class))).thenReturn(1);
+        MonitorType mt = new MonitorType(); mt.setId(4L); mt.setCode("T1"); mt.setName("T1");
+        when(monitorTypeService.selectMonitorTypeById(4L)).thenReturn(mt);
+
+        SensorAttribute attr1 = new SensorAttribute();
+        attr1.setId(201L);
+        attr1.setSensorId(1L);
+        attr1.setAttrCode("a1");
+        attr1.setAttrName("A1");
+        when(attributeMapper.selectAttributeListBySensorId(1L)).thenReturn(List.of(attr1));
+
+        // 只传了一个新属性，没有包含已有的 attr1(id=201)
+        SensorAttribute newAttr = new SensorAttribute();
+        newAttr.setAttrCode("a2");
+        newAttr.setAttrName("A2");
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.updateSensor(incoming, List.of(newAttr)));
+        assertTrue(ex.getMessage().contains("缺少属性 ID"));
+    }
+
+    @Test
+    @DisplayName("显式删除传感器属性应校验归属关系")
+    void deleteSensorAttribute_shouldValidateOwnership() {
+        SensorAttribute attr = new SensorAttribute();
+        attr.setId(301L);
+        attr.setSensorId(10L);
+        when(attributeMapper.selectAttributeById(301L)).thenReturn(attr);
+
+        service.deleteSensorAttribute(10L, 301L);
+        verify(attributeMapper).deleteAttributeById(301L);
+    }
+
+    @Test
+    @DisplayName("删除不属于当前传感器的属性应抛出异常")
+    void deleteSensorAttribute_shouldThrowWhenNotOwned() {
+        SensorAttribute attr = new SensorAttribute();
+        attr.setId(301L);
+        attr.setSensorId(99L);
+        when(attributeMapper.selectAttributeById(301L)).thenReturn(attr);
+
+        assertThrows(ServiceException.class,
+                () -> service.deleteSensorAttribute(10L, 301L));
+        verify(attributeMapper, never()).deleteAttributeById(any());
     }
 }

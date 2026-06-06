@@ -65,6 +65,9 @@ export const updateSensor = (id: number, payload: SensorUpdatePayload) =>
 export const deleteSensor = (id: number) =>
   unwrap<null>(request.delete(`/sensors/${id}`))
 
+export const deleteSensorAttribute = (sensorId: number, attrId: number) =>
+  unwrap<null>(request.delete(`/sensors/${sensorId}/attributes/${attrId}`))
+
 export const getSensorMonitorTypes = async () => {
   const list = await unwrap<MonitorTypeItem[]>(request.get('/monitor-types'))
   return list

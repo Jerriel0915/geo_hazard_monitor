@@ -76,4 +76,11 @@ public interface IDeviceSensorService {
      * @param lastReportTime 最后上报时间 (yyyy-MM-dd HH:mm:ss)
      */
     void updateLastReportTime(Long sensorId, String lastReportTime);
+
+    /**
+     * 删除传感器属性（显式删除，替代 updateSensor 中的隐式删除）。
+     * @param sensorId 传感器ID
+     * @param attrId   属性ID
+     */
+    void deleteSensorAttribute(Long sensorId, Long attrId);
 }
