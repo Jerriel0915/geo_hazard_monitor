@@ -48,6 +48,13 @@
         </el-menu>
       </nav>
       <div class="header-right">
+        <div class="header-icon-btn" @click="openBigScreen" title="大屏展示">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="header-svg-icon">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
         <div class="message-icon-wrapper" @click="toggleMessagePanel">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="message-icon">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -553,6 +560,10 @@ const toggleMessagePanel = () => {
   messagePanelVisible.value = !messagePanelVisible.value
 }
 
+const openBigScreen = () => {
+  window.open('/report/screen', '_blank')
+}
+
 const markMessageAsRead = async (msg: NoticeMessage) => {
   try {
     await markRead(msg.id)
@@ -861,6 +872,27 @@ const goToDashboard = () => {
 
 .user-info:hover .arrow-icon {
   transform: rotate(180deg);
+}
+
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  border-radius: 50%;
+  margin-right: 4px;
+  transition: all 0.3s ease;
+}
+
+.header-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.header-svg-icon {
+  width: 22px;
+  height: 22px;
 }
 
 .message-icon-wrapper {

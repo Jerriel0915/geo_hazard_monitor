@@ -206,6 +206,8 @@
               </div>
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="设备状态" prop="status">
               <el-select v-model="formData.status" placeholder="请选择设备状态" :disabled="isView">
@@ -214,6 +216,32 @@
                 <el-option label="维修" :value="3" />
                 <el-option label="离线" :value="4" />
               </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="安装位置">
+              <div class="install-location-wrap">
+                <el-input
+                    v-model="locationText"
+                    size="small"
+                    :disabled="isView"
+                    class="location-input"
+                    @blur="onLocationBlur"
+                />
+                <el-button
+                    size="small"
+                    :disabled="isView"
+                    class="map-pick-btn"
+                    @click="openMapPicker"
+                    title="在地图上获取坐标"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                </el-button>
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -462,13 +490,39 @@
         <el-button @click="deviceIconDialogVisible = false">取消</el-button>
       </template>
     </el-dialog>
+
+    <!-- 地图坐标选择弹窗 -->
+    <el-dialog
+        v-model="mapDialogVisible"
+        title="在地图上选择安装位置"
+        width="680px"
+        :close-on-click-modal="false"
+        destroy-on-close
+        @opened="initMapPicker"
+    >
+      <div class="map-picker-container">
+        <div ref="mapPickerRef" class="map-picker-inner"></div>
+        <div class="map-picker-info">
+          <span v-if="pickerLng != null && pickerLat != null" class="picker-coord">
+            已选坐标：经度 {{ pickerLng!.toFixed(6) }}，纬度 {{ pickerLat!.toFixed(6) }}
+          </span>
+          <span v-else class="picker-coord picker-hint">点击地图选择坐标</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="mapDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="pickerLng == null" @click="confirmMapPicker">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import {onMounted, reactive, ref} from 'vue'
+import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Search} from '@element-plus/icons-vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import {
   changeDeviceAuthStatus,
   copyDevice as copyDeviceApi,
@@ -588,6 +642,136 @@ const sensorFormTitle = ref('新增传感器')
 const sensorFormMode = ref<'add' | 'edit'>('add')
 
 const deviceIconDialogVisible = ref(false)
+
+// 地图坐标选择
+const mapDialogVisible = ref(false)
+const mapPickerRef = ref<HTMLDivElement | null>(null)
+const pickerLng = ref<number | null>(null)
+const pickerLat = ref<number | null>(null)
+
+// 安装位置的输入框文本（格式：经度,纬度）
+const locationText = ref('')
+
+const syncFormToText = () => {
+  if (formData.longitude != null && formData.latitude != null) {
+    locationText.value = `${formData.longitude}, ${formData.latitude}`
+  } else {
+    locationText.value = ''
+  }
+}
+
+const onLocationBlur = () => {
+  const raw = locationText.value.trim()
+  if (!raw) {
+    formData.longitude = null
+    formData.latitude = null
+    locationText.value = ''
+    return
+  }
+  // 支持逗号或空格分隔
+  const parts = raw.split(/[,，\s]+/)
+  if (parts.length >= 2) {
+    const lng = parseFloat(parts[0])
+    const lat = parseFloat(parts[1])
+    if (!isNaN(lng) && !isNaN(lat)) {
+      formData.longitude = lng
+      formData.latitude = lat
+      locationText.value = `${lng}, ${lat}`
+      return
+    }
+  }
+  // 无法解析，清空
+  formData.longitude = null
+  formData.latitude = null
+  locationText.value = ''
+}
+let mapPickerInstance: L.Map | null = null
+let mapPickerMarker: L.Marker | null = null
+const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
+
+const openMapPicker = () => {
+  onLocationBlur()
+  pickerLng.value = formData.longitude
+  pickerLat.value = formData.latitude
+  mapDialogVisible.value = true
+}
+
+const initMapPicker = () => {
+  nextTick(() => {
+    if (!mapPickerRef.value) return
+    if (mapPickerInstance) {
+      mapPickerInstance.invalidateSize()
+      return
+    }
+
+    const center: [number, number] = pickerLat.value != null && pickerLng.value != null
+      ? [pickerLat.value, pickerLng.value]
+      : [30.65, 104.10]
+
+    mapPickerInstance = L.map(mapPickerRef.value, {
+      center,
+      zoom: pickerLat.value != null ? 15 : 12,
+      zoomControl: true
+    })
+
+    L.tileLayer(
+      `https://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`,
+      { maxZoom: 18, minZoom: 3 }
+    ).addTo(mapPickerInstance)
+
+    L.tileLayer(
+      `https://t0.tianditu.gov.cn/cia_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cia&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`,
+      { maxZoom: 18, minZoom: 3 }
+    ).addTo(mapPickerInstance)
+
+    mapPickerInstance.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng
+      pickerLng.value = lng
+      pickerLat.value = lat
+      if (!mapPickerInstance) return
+      if (mapPickerMarker) {
+        mapPickerMarker.setLatLng([lat, lng])
+      } else {
+        mapPickerMarker = L.marker([lat, lng], {
+          icon: L.icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41]
+          })
+        }).addTo(mapPickerInstance)
+      }
+    })
+
+    // 如果已有坐标，放一个标记
+    if (pickerLat.value != null && pickerLng.value != null) {
+      mapPickerMarker = L.marker([pickerLat.value, pickerLng.value], {
+        icon: L.icon({
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41]
+        })
+      }).addTo(mapPickerInstance)
+    }
+  })
+}
+
+const confirmMapPicker = () => {
+  formData.longitude = pickerLng.value
+  formData.latitude = pickerLat.value
+  syncFormToText()
+  mapDialogVisible.value = false
+}
+
+const clearLocation = () => {
+  formData.longitude = null
+  formData.latitude = null
+  locationText.value = ''
+}
+
 const sensorFormRef = ref()
 
 const formData = reactive<{
@@ -602,6 +786,8 @@ const formData = reactive<{
   icon: string
   iconPath: string
   status: number
+  longitude: number | null
+  latitude: number | null
   sensorList: SensorItem[]
 }>({
   code: '',
@@ -614,6 +800,8 @@ const formData = reactive<{
   icon: '',
   iconPath: '',
   status: 1,
+  longitude: null,
+  latitude: null,
   sensorList: []
 })
 
@@ -702,7 +890,9 @@ const createDevice = async () => {
       vendorName: formData.vendorName || undefined,
       icon: formData.icon,
       iconPath: formData.iconPath,
-      status: formData.status
+      status: formData.status,
+      longitude: formData.longitude,
+      latitude: formData.latitude
     })
     ElMessage.success('新增成功')
     dialogVisible.value = false
@@ -740,7 +930,9 @@ const updateDevice = async () => {
       vendorName: formData.vendorName || undefined,
       icon: formData.icon,
       iconPath: formData.iconPath,
-      status: formData.status
+      status: formData.status,
+      longitude: formData.longitude,
+      latitude: formData.latitude
     })
     ElMessage.success('修改成功')
     dialogVisible.value = false
@@ -863,8 +1055,11 @@ const handleAdd = () => {
     icon: '',
     iconPath: '',
     status: 1,
+    longitude: null,
+    latitude: null,
     sensorList: []
   })
+  syncFormToText()
   dialogVisible.value = true
 }
 
@@ -884,8 +1079,11 @@ const handleEdit = async (row: DeviceItem) => {
     icon: row.icon || '',
     iconPath: row.iconPath || '',
     status: row.status,
+    longitude: row.longitude ?? null,
+    latitude: row.latitude ?? null,
     sensorList: []
   })
+  syncFormToText()
   dialogVisible.value = true
 }
 
@@ -1447,5 +1645,54 @@ onMounted(() => {
 
 :deep(.el-descriptions) {
   margin-bottom: 20px;
+}
+
+/* 安装位置 */
+.install-location-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.install-location-wrap :deep(.el-input) {
+  width: 100%;
+}
+
+.map-pick-btn {
+  flex-shrink: 0;
+}
+
+/* 地图坐标选择器 */
+.map-picker-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.map-picker-inner {
+  width: 100%;
+  height: 380px;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+  border: 1px solid #e8e8e8;
+  border-bottom: none;
+}
+
+.map-picker-info {
+  background: #f5f7fa;
+  border: 1px solid #e8e8e8;
+  border-radius: 0 0 6px 6px;
+  padding: 10px 14px;
+}
+
+.picker-coord {
+  font-size: 13px;
+  color: #303133;
+}
+
+.picker-hint {
+  color: #909399;
+  font-style: italic;
 }
 </style>

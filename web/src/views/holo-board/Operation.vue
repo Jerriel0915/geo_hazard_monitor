@@ -1,91 +1,75 @@
 <template>
   <div class="operation-view">
     <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round"
-               width="28" height="28">
+      <div
+        v-for="card in statCards"
+        :key="card.key"
+        class="stat-card"
+        :style="{ '--tc': card.color }"
+      >
+        <div class="stat-left">
+          <svg
+            v-if="card.key === 'totalDevices'"
+            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            width="28" height="28"
+          >
             <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
           </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ stats.totalDevices }}</span>
-          <span class="stat-label">设备总数</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round"
-               width="28" height="28">
-            <path
-                d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7m16 0v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5m16 0h-2.586a1 1 0 0 0-.707.293l-2.414 2.414a1 1 0 0 1-.707.293h-3.172a1 1 0 0 1-.707-.293l-2.414-2.414A1 1 0 0 0 6.586 13H4"/>
+          <svg
+            v-else-if="card.key === 'onlineRate'"
+            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            width="28" height="28"
+          >
+            <path d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7m16 0v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5m16 0h-2.586a1 1 0 0 0-.707.293l-2.414 2.414a1 1 0 0 1-.707.293h-3.172a1 1 0 0 1-.707-.293l-2.414-2.414A1 1 0 0 0 6.586 13H4"/>
           </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ stats.onlineRate }}%</span>
-          <span class="stat-label">设备在线率</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round"
-               width="28" height="28">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-            <circle cx="12" cy="10" r="3"/>
+          <svg
+            v-else-if="card.key === 'repairRate'"
+            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            width="28" height="28"
+          >
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ stats.repairRate }}%</span>
-          <span class="stat-label">设备报修率</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round"
-               width="28" height="28">
+          <svg
+            v-else-if="card.key === 'monitorTypes'"
+            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            width="28" height="28"
+          >
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
             <line x1="16" y1="13" x2="8" y2="13"/>
             <line x1="16" y1="17" x2="8" y2="17"/>
             <polyline points="10 9 9 9 8 9"/>
           </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ stats.monitorTypes }}</span>
-          <span class="stat-label">监测种类</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round"
-               width="28" height="28">
+          <svg
+            v-else-if="card.key === 'sensorOnlineRate'"
+            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            width="28" height="28"
+          >
             <path d="M12 20V10"/>
             <path d="M18 20V4"/>
             <path d="M6 20v-6"/>
           </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ stats.sensorOnlineRate }}%</span>
-          <span class="stat-label">传感器在线率</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round"
-               width="28" height="28">
+          <svg
+            v-else-if="card.key === 'hiddenDangerCount'"
+            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            width="28" height="28"
+          >
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
         </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ stats.hiddenDangerCount }}</span>
-          <span class="stat-label">隐患点总数</span>
+        <div class="stat-right">
+          <span v-if="card.auxiliary != null" class="stat-aux">{{ card.auxiliary }}</span>
+          <span class="stat-value">{{ card.value }}</span>
+          <span class="stat-label">{{ card.label }}</span>
         </div>
       </div>
     </div>
@@ -232,6 +216,22 @@ const stats = computed(() => ({
   sensorOnlineRate: sensorOnline.value?.onlineRate ?? 0,
   hiddenDangerCount: overview.value?.hazardPoint?.total ?? 0
 }))
+
+const statCards = computed(() => {
+  const onlineCount = deviceOnline.value?.online ?? 0
+  const totalCount = deviceOnline.value?.total ?? 0
+  const repairCount = totalCount - onlineCount
+  const sensorOnlineCount = sensorOnline.value?.online ?? 0
+
+  return [
+    { key: 'totalDevices', label: '设备总数', color: '#00b8d4', value: stats.value.totalDevices.toLocaleString(), auxiliary: null },
+    { key: 'onlineRate', label: '设备在线率', color: '#10b981', value: stats.value.onlineRate + '%', auxiliary: onlineCount.toLocaleString() },
+    { key: 'repairRate', label: '设备报修率', color: '#f59e0b', value: stats.value.repairRate + '%', auxiliary: repairCount.toLocaleString() },
+    { key: 'monitorTypes', label: '监测种类', color: '#ef4444', value: stats.value.monitorTypes.toLocaleString(), auxiliary: null },
+    { key: 'sensorOnlineRate', label: '传感器在线率', color: '#8b5cf6', value: stats.value.sensorOnlineRate + '%', auxiliary: sensorOnlineCount.toLocaleString() },
+    { key: 'hiddenDangerCount', label: '隐患点总数', color: '#ec4899', value: stats.value.hiddenDangerCount.toLocaleString(), auxiliary: null },
+  ]
+})
 
 const barChartRef = ref<HTMLDivElement>()
 let barChartInstance: echarts.ECharts | null = null
@@ -594,46 +594,65 @@ const online24hData = computed(() =>
 .stat-card {
   flex: 1;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 24px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  /* 弱化阴影，靠色块和边框区分 */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-.stat-icon {
-  width: 52px;
-  height: 52px;
+/* ---- 左侧色块 ---- */
+.stat-left {
+  width: 38%;
+  min-width: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 212, 255, 0.1);
-  border-radius: 10px;
+  background: var(--tc);
+  border-radius: 10px 0 0 10px;
 }
 
-.stat-icon svg {
+.stat-left svg {
   width: 28px;
   height: 28px;
 }
 
-.stat-content {
+/* ---- 右侧白色内容区 ---- */
+.stat-right {
+  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1.5px solid var(--tc);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  padding: 14px 10px;
+  text-align: center;
 }
 
 .stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1e293b;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--tc);
   line-height: 1.1;
 }
 
 .stat-label {
-  font-size: 16px;
-  color: #64748b;
-  margin-top: 4px;
+  font-size: 13px;
+  color: var(--tc);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.stat-aux {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .charts-row {

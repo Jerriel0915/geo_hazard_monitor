@@ -34,7 +34,6 @@ const routes: RouteRecordRaw[] = [
       { path: '/report/report', name: 'Report', component: () => import('@/views/report/Report.vue') },
       { path: '/report/query', name: 'Query', component: () => import('@/views/report/Query.vue') },
       { path: '/report/analysis', name: 'Analysis', component: () => import('@/views/report/Analysis.vue') },
-      { path: '/report/screen', name: 'Screen', component: () => import('@/views/report/Screen.vue') },
       { path: '/iot/data-parse', name: 'DataParse', component: () => import('@/views/iot/DataParse.vue') },
         {path: '/iot/service-status', name: 'ServiceStatus', component: () => import('@/views/iot/ServiceStatus.vue')},
         {
@@ -56,6 +55,11 @@ const routes: RouteRecordRaw[] = [
       { path: '/system/notice', name: 'SysNotice', component: () => import('@/views/system/SysNotice.vue') },
       { path: '/user/profile', name: 'UserProfile', component: () => import('@/views/user/UserProfile.vue') }
     ]
+  },
+  {
+    path: '/report/screen',
+    name: 'Screen',
+    component: () => import('@/views/report/Screen.vue')
   }
 ]
 

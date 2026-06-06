@@ -641,36 +641,75 @@ const initMap = () => {
     }).addTo(leafletMap)
 
     const statusText = point.hasAlarm ? '待办告警' : '正常监测'
+    const statusBg = point.hasAlarm ? 'rgba(245,34,45,0.1)' : 'rgba(82,196,26,0.1)'
+    const statusColor = point.hasAlarm ? '#f5222d' : '#52c41a'
+
+    // 预警等级映射
+    const levelMap: Record<string, { text: string; bg: string; color: string }> = {
+      high: { text: '高', bg: 'rgba(245,34,45,0.1)', color: '#f5222d' },
+      medium: { text: '中', bg: 'rgba(250,173,20,0.1)', color: '#fa8c16' },
+      low: { text: '低', bg: 'rgba(82,196,26,0.1)', color: '#52c41a' }
+    }
+    const levelInfo = levelMap[point.level] || { text: point.level, bg: 'rgba(24,144,255,0.1)', color: '#1890ff' }
+
+    // 设备列表 HTML
     const devicesHtml = point.devices.map(device => {
-      const statusColor = device.status === 'online' ? '#52c41a' : device.status === 'warning' ? '#faad14' : '#f5222d'
-      const statusText = device.status === 'online' ? '在线' : device.status === 'warning' ? '异常' : '离线'
-      return `
-        <div class="device-item">
-          <span class="device-name">${device.name}</span>
-          <span class="device-status" style="color: ${statusColor};">${statusText}</span>
-        </div>
-      `
+      const dsColor = device.status === 'online' ? '#52c41a' : device.status === 'warning' ? '#faad14' : '#f5222d'
+      const dsText = device.status === 'online' ? '在线' : device.status === 'warning' ? '异常' : '离线'
+      return `<div class="hpv2-device"><span class="hpv2-dn">${device.name}</span><span class="hpv2-ds" style="color:${dsColor}">${dsText}</span></div>`
     }).join('')
 
     const popupContent = `
-      <div class="hazard-popup">
-        <div class="popup-header">
-          <span class="popup-title">${point.name}</span>
-          <span class="popup-status" style="color: ${color};">${statusText}</span>
+      <div class="hpv2-card">
+        <div class="hpv2-header">
+          <span class="hpv2-title">${point.name}</span>
         </div>
-        <div class="popup-device-info">
-          <span class="device-count-label">设备总数：</span>
-          <span class="device-count-value">${point.deviceCount}台（含视频设备）</span>
-        </div>
-        <div class="popup-device-list">
-          <div class="list-header">设备清单</div>
-          ${devicesHtml}
+        <div class="hpv2-dash"></div>
+        <div class="hpv2-body">
+          <div class="hpv2-row">
+            <div class="hpv2-cell">
+              <span class="hpv2-label">编号</span>
+              <span class="hpv2-val">${point.code}</span>
+            </div>
+            <div class="hpv2-cell">
+              <span class="hpv2-label">类型</span>
+              <span class="hpv2-val">${point.type}</span>
+            </div>
+          </div>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row">
+            <div class="hpv2-cell">
+              <span class="hpv2-label">位置</span>
+              <span class="hpv2-val">${point.location}</span>
+            </div>
+            <div class="hpv2-cell">
+              <span class="hpv2-label">状态</span>
+              <span class="hpv2-badge" style="background:${statusBg};color:${statusColor}">${statusText}</span>
+            </div>
+          </div>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row single">
+            <div class="hpv2-cell full">
+              <span class="hpv2-label">预警等级</span>
+              <span class="hpv2-level" style="background:${levelInfo.bg};color:${levelInfo.color}">${levelInfo.text}</span>
+            </div>
+          </div>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row single">
+            <div class="hpv2-cell full">
+              <span class="hpv2-label">绑定设备</span>
+              <span class="hpv2-val">${point.deviceCount} 台</span>
+            </div>
+          </div>
+          <div class="hpv2-devices">
+            ${devicesHtml}
+          </div>
         </div>
       </div>
     `
 
     marker.bindPopup(popupContent, {
-      maxWidth: 280,
+      maxWidth: 240,
       className: 'hazard-popup-container'
     })
 
@@ -2756,94 +2795,116 @@ const trendAreaPath = computed(() => {
   background: #0ea5e9;
 }
 
-/* 隐患点弹窗样式 */
+
+</style>
+
+<style>
+/* ========== 隐患点悬浮窗 V2（全局样式，Leaflet popup 动态渲染） ========== */
 .hazard-popup-container .leaflet-popup-content-wrapper {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(79, 172, 254, 0.2);
+  border: none;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.hazard-popup-container .leaflet-popup-content {
+  margin: 0;
+  min-width: 220px;
 }
 
 .hazard-popup-container .leaflet-popup-tip {
   background: #ffffff;
-  border-color: rgba(79, 172, 254, 0.2);
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.hazard-popup {
-  padding: 16px;
-  min-width: 260px;
+.hpv2-card { padding: 0; }
+
+.hpv2-header { padding: 8px 12px 6px; }
+
+.hpv2-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1677ff;
 }
 
-.popup-header {
+.hpv2-dash {
+  margin: 0 12px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.18);
+}
+
+.hpv2-body { padding: 4px 12px 8px; }
+
+.hpv2-row {
   display: flex;
+  padding: 4px 0;
+}
+
+.hpv2-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hpv2-cell:not(:last-child) { padding-right: 12px; }
+
+.hpv2-cell.full {
+  flex-direction: row;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.popup-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1f2937;
+.hpv2-label {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
-.popup-status {
-  font-size: 14px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.popup-device-info {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.device-count-label {
-  color: #6b7280;
-}
-
-.device-count-value {
+.hpv2-val {
+  font-size: 12px;
   color: #374151;
   font-weight: 500;
 }
 
-.popup-device-list {
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 8px;
-  padding: 10px;
+.hpv2-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 3px;
+  width: fit-content;
 }
 
-.popup-device-list .list-header {
-  font-size: 14px;
+.hpv2-level {
+  display: inline-block;
+  font-size: 11px;
   font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 1px 8px;
+  border-radius: 3px;
+  width: fit-content;
 }
 
-.device-item {
+.hpv2-devices {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.18);
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.hpv2-device {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
-  font-size: 14px;
+  padding: 3px 0;
 }
 
-.device-name {
-  color: #4b5563;
-}
+.hpv2-device + .hpv2-device { border-top: 1px solid rgba(0, 0, 0, 0.05); }
 
-.device-status {
-  font-weight: 500;
-  font-size: 14px;
-}
+.hpv2-dn { font-size: 11px; color: #4b5563; }
+
+.hpv2-ds { font-size: 11px; font-weight: 500; }
 </style>

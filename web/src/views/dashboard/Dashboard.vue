@@ -1597,33 +1597,43 @@ const addHazardPoints = () => {
       startRipple(point)
     }
 
+    const alarmLvMap: Record<string, { text: string; bg: string; color: string }> = {
+      critical: { text: '严重', bg: 'rgba(245,34,45,0.1)', color: '#f5222d' },
+      major: { text: '重要', bg: 'rgba(250,173,20,0.1)', color: '#fa8c16' },
+      minor: { text: '一般', bg: 'rgba(250,215,64,0.1)', color: '#d4a017' },
+      info: { text: '提示', bg: 'rgba(82,196,26,0.1)', color: '#52c41a' }
+    }
+    const alv = alarmLvMap[point.alarmLevel] || { text: point.alarmLevel||'--', bg: 'rgba(24,144,255,0.1)', color: '#1890ff' }
+    const desc = point.description ? `<div class="hpv2-dash"></div><div class="hpv2-row single"><div class="hpv2-cell full"><span class="hpv2-label">描述</span><span class="hpv2-val">${point.description}</span></div></div>` : ''
+
     const popupContent = `
-      <div class="hazard-popup">
-        <div class="popup-title">${point.name}</div>
-        <div class="popup-code">${point.code}</div>
-        <div class="popup-info">
-          <div class="info-row">
-            <span class="info-label">坐标位置:</span>
-            <span class="info-value">${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}</span>
+      <div class="hpv2-card">
+        <div class="hpv2-header"><span class="hpv2-title">${point.name}</span></div>
+        <div class="hpv2-dash"></div>
+        <div class="hpv2-body">
+          <div class="hpv2-row">
+            <div class="hpv2-cell"><span class="hpv2-label">编号</span><span class="hpv2-val">${point.code}</span></div>
+            <div class="hpv2-cell"><span class="hpv2-label">分组</span><span class="hpv2-val">${point.groupName||'--'}</span></div>
           </div>
-          <div class="info-row">
-            <span class="info-label">所属分组:</span>
-            <span class="info-value">${point.groupName}</span>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row">
+            <div class="hpv2-cell"><span class="hpv2-label">坐标</span><span class="hpv2-val">${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}</span></div>
+            <div class="hpv2-cell"><span class="hpv2-label">设备</span><span class="hpv2-val">${point.deviceCount} 台</span></div>
           </div>
-          <div class="info-row">
-            <span class="info-label">绑定设备:</span>
-            <span class="info-value">${point.deviceCount}台</span>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row single">
+            <div class="hpv2-cell full">
+              <span class="hpv2-label">预警等级</span>
+              <span class="hpv2-level" style="background:${alv.bg};color:${alv.color}">${alv.text}</span>
+            </div>
           </div>
-          <div class="info-row">
-            <span class="info-label">描述:</span>
-            <span class="info-value">${point.description}</span>
-          </div>
+          ${desc}
         </div>
       </div>
     `
 
     marker.bindPopup(popupContent, {
-      maxWidth: 280,
+      maxWidth: 240,
       closeButton: false,
       autoClose: true,
       offset: L.point(0, -15)
@@ -1763,16 +1773,23 @@ const showHazardOnMap = async (point: typeof hazardPoints.value[0]) => {
         const icon = createDeviceIcon(device.status)
         L.marker([device.latitude, device.longitude], {icon})
             .addTo(hazardMarkerLayer!)
-            .bindPopup(`
-            <div style="padding: 8px; min-width: 180px;">
-              <div style="font-weight: 600; margin-bottom: 8px;">${device.name}</div>
-              <div style="font-size: 12px; color: #666;">
-                <div>类型: ${device.typeName}</div>
-                <div>传感器: ${device.sensorCount}个</div>
-                <div>状态: ${getStatusText(device.status)}</div>
+            .bindPopup(`<div class="hpv2-card">
+            <div class="hpv2-header"><span class="hpv2-title">${device.name}</span></div>
+            <div class="hpv2-dash"></div>
+            <div class="hpv2-body">
+              <div class="hpv2-row single">
+                <div class="hpv2-cell full"><span class="hpv2-label">类型</span><span class="hpv2-val">${device.typeName}</span></div>
+              </div>
+              <div class="hpv2-dash"></div>
+              <div class="hpv2-row single">
+                <div class="hpv2-cell full"><span class="hpv2-label">传感器</span><span class="hpv2-val">${device.sensorCount} 个</span></div>
+              </div>
+              <div class="hpv2-dash"></div>
+              <div class="hpv2-row single">
+                <div class="hpv2-cell full"><span class="hpv2-label">状态</span><span class="hpv2-val">${getStatusText(device.status)}</span></div>
               </div>
             </div>
-          `)
+          </div>`)
       })
     }
   } catch (error) {
@@ -2063,16 +2080,23 @@ const addDeviceMarkers = async (hazardId: number) => {
         const icon = createDeviceIcon(device.status)
         const marker = L.marker([device.latitude, device.longitude], {icon})
             .addTo(hazardMarkerLayer!)
-            .bindPopup(`
-            <div style="padding: 8px; min-width: 180px;">
-              <div style="font-weight: 600; margin-bottom: 8px;">${device.name}</div>
-              <div style="font-size: 12px; color: #666;">
-                <div>类型: ${device.typeName}</div>
-                <div>传感器: ${device.sensorCount}个</div>
-                <div>状态: ${getStatusText(device.status)}</div>
+            .bindPopup(`<div class="hpv2-card">
+            <div class="hpv2-header"><span class="hpv2-title">${device.name}</span></div>
+            <div class="hpv2-dash"></div>
+            <div class="hpv2-body">
+              <div class="hpv2-row single">
+                <div class="hpv2-cell full"><span class="hpv2-label">类型</span><span class="hpv2-val">${device.typeName}</span></div>
+              </div>
+              <div class="hpv2-dash"></div>
+              <div class="hpv2-row single">
+                <div class="hpv2-cell full"><span class="hpv2-label">传感器</span><span class="hpv2-val">${device.sensorCount} 个</span></div>
+              </div>
+              <div class="hpv2-dash"></div>
+              <div class="hpv2-row single">
+                <div class="hpv2-cell full"><span class="hpv2-label">状态</span><span class="hpv2-val">${getStatusText(device.status)}</span></div>
               </div>
             </div>
-          `)
+          </div>`)
       })
     }
   } catch (error) {
@@ -3219,58 +3243,6 @@ onUnmounted(() => {
   font-size: 11px;
   color: #909399;
   margin-top: 2px;
-}
-
-.hazard-popup {
-  padding: 12px;
-  font-size: 13px;
-}
-
-.hazard-popup .popup-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 4px;
-}
-
-.hazard-popup .popup-code {
-  font-size: 11px;
-  color: #909399;
-  margin-bottom: 10px;
-}
-
-.hazard-popup .popup-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hazard-popup .info-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.hazard-popup .info-label {
-  font-size: 12px;
-  color: #909399;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.hazard-popup .info-value {
-  font-size: 12px;
-  color: #303133;
-}
-
-:deep(.leaflet-popup-content-wrapper) {
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  border: none;
-}
-
-:deep(.leaflet-popup-tip-container) {
-  display: none;
 }
 
 :deep(.leaflet-control-attribution) {
@@ -4841,4 +4813,38 @@ onUnmounted(() => {
 }
 
 /* ========== /隐患点详情部件样式 ========== */
+</style>
+
+<style>
+/* ========== 隐患点悬浮窗 V2（全局样式，Leaflet popup 动态渲染） ========== */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+  border: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+}
+
+.hpv2-card{padding:0}
+.hpv2-header{padding:8px 12px 6px}
+.hpv2-title{font-size:13px;font-weight:700;color:#1677ff}
+.hpv2-dash{margin:0 12px;border-bottom:1px dashed rgba(0,0,0,.18)}
+.hpv2-body{padding:4px 12px 8px}
+.hpv2-row{display:flex;padding:4px 0}
+.hpv2-cell{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.hpv2-cell:not(:last-child){padding-right:12px}
+.hpv2-cell.full{flex-direction:row;align-items:center;justify-content:space-between}
+.hpv2-label{font-size:11px;color:#9ca3af;white-space:nowrap}
+.hpv2-val{font-size:12px;color:#374151;font-weight:500}
+.hpv2-badge{display:inline-block;font-size:11px;font-weight:500;padding:1px 8px;border-radius:3px;width:fit-content}
+.hpv2-level{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:3px;width:fit-content}
+.hpv2-devices{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(0,0,0,.18);max-height:100px;overflow-y:auto}
+.hpv2-device{display:flex;justify-content:space-between;align-items:center;padding:3px 0}
+.hpv2-device+.hpv2-device{border-top:1px solid rgba(0,0,0,.05)}
+.hpv2-dn{font-size:11px;color:#4b5563}
+.hpv2-ds{font-size:11px;font-weight:500}
 </style>
