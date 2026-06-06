@@ -15,8 +15,10 @@
     "blockly": "^12.5.1",
     "echarts": "^6.0.0",
     "element-plus": "^2.6.1",
+    "hls.js": "^1.6.16",
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
+    "mpegts.js": "^1.8.0",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "vue3-apexcharts": "^1.11.1"

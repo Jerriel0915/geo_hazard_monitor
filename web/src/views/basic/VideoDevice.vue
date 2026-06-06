@@ -249,68 +249,36 @@
     <!-- 视频播放弹窗 -->
     <el-dialog
         v-model="playDialogVisible"
-        title="视频播放"
+        :title="`视频播放 — ${currentPlayRow?.name || ''}`"
         width="900px"
         :close-on-click-modal="false"
         destroy-on-close
         class="video-play-dialog"
     >
-      <div class="video-container">
-        <div class="video-wrapper" ref="videoWrapper">
-          <video
-              ref="videoRef"
-              :src="playUrl"
-              controls
-              class="video-player"
-              @loadedmetadata="onVideoLoaded"
-              @error="onVideoError"
-          ></video>
-          <div v-if="!videoLoaded" class="video-loading">
-            <el-spinner type="dots" />
-            <span>加载中...</span>
-          </div>
-          <div v-if="videoError" class="video-error">
-            <span>视频加载失败</span>
-          </div>
-        </div>
-        <div class="video-controls">
-          <el-button type="primary" size="small" @click="handlePlayPause">
-            {{ isPlaying ? '暂停' : '播放' }}
-          </el-button>
-          <el-button size="small" @click="handleFullscreen">全屏</el-button>
-          <el-button size="small" @click="handleScreenshot">截图</el-button>
-          <el-button size="small" @click="handleRefresh">刷新</el-button>
-        </div>
-      </div>
+      <VideoPlayer
+          v-if="playDialogVisible"
+          :stream-url="playUrl"
+      />
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import {nextTick, onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-
-// 获取token
-const getToken = () => localStorage.getItem('token')
-
-interface VideoDeviceItem {
-  id: string
-  code: string
-  name: string
-  icon: string
-  iconPath: string
-  protocolCode: string
-  protocolName: string
-  streamUrl: string
-  hazardPointIds?: string
-  hazardPointNames: string
-  status: number
-  installTime: string
-  lastOnlineTime?: string
-}
+import VideoPlayer from '@/components/VideoPlayer.vue'
+import {
+  createVideoDevice,
+  deleteVideoDevice,
+  getVideoDeviceDetail,
+  getVideoDevicePage,
+  updateVideoDevice,
+  type VideoDeviceItem,
+  type VideoDevicePageParams
+} from '@/api/video'
+import request from '@/utils/request'
 
 interface HazardPointItem {
   id: string
@@ -357,11 +325,7 @@ const bindFormData = reactive({
 
 const playDialogVisible = ref(false)
 const playUrl = ref('')
-const videoRef = ref<HTMLVideoElement | null>(null)
-const videoWrapper = ref<HTMLDivElement | null>(null)
-const videoLoaded = ref(false)
-const videoError = ref(false)
-const isPlaying = ref(false)
+const currentPlayRow = ref<VideoDeviceItem | null>(null)
 
 const hazardPointList = ref<HazardPointItem[]>([])
 const currentBindRow = ref<VideoDeviceItem | null>(null)
@@ -432,33 +396,21 @@ const getStatusLabel = (status: number) => {
 const loadTableData = async () => {
   loading.value = true
   try {
-    const token = getToken()
-    const params: any = {
+    const params: VideoDevicePageParams = {
       pageNum: currentPage.value,
-      pageSize: pageSize.value
+      pageSize: pageSize.value,
+      ...(searchKeyword.value && {code: searchKeyword.value, name: searchKeyword.value}),
+      ...(searchProtocol.value && {protocolCode: searchProtocol.value})
     }
-    if (searchKeyword.value) {
-      params.code = searchKeyword.value
-      params.name = searchKeyword.value
-    }
-    if (searchProtocol.value) {
-      params.protocolCode = searchProtocol.value
-    }
-
-    const response = await axios.get('/api/v1/video-devices/page', {
-      params,
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      const data = response.data.data
+    const res = await getVideoDevicePage(params)
+    if (res.code === 200) {
+      const data = res.data
       tableData.value = data.rows || []
       total.value = data.total || 0
     } else {
-      ElMessage.error(response.data.msg || '获取数据失败')
+      ElMessage.error(res.msg || '获取数据失败')
     }
-  } catch (error) {
-    console.error('请求失败:', error)
+  } catch {
     ElMessage.error('网络请求失败')
   } finally {
     loading.value = false
@@ -468,52 +420,37 @@ const loadTableData = async () => {
 // 获取隐患点列表
 const loadHazardPointList = async () => {
   try {
-    const token = getToken()
-    const response = await axios.get('/api/v1/hazard-points/page', {
-      params: {
-        pageNum: 1,
-        pageSize: 1000
-      },
-      headers: { Authorization: `Bearer ${token}` }
+    const response = await request.raw.get('/hazard-points/page', {
+      params: {pageNum: 1, pageSize: 1000}
     })
-
     if (response.data.code === 200) {
       hazardPointList.value = response.data.data?.rows || []
-    } else {
-      console.error('获取隐患点列表失败:', response.data.msg)
     }
-  } catch (error) {
-    console.error('获取隐患点列表失败:', error)
+  } catch {
+    // 非关键数据，静默处理
   }
 }
 
 // 获取视频设备详情
 const fetchDetail = async (id: string) => {
   try {
-    const token = getToken()
-    const response = await axios.get(`/api/v1/video-devices/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
-      return response.data.data
-    } else {
-      ElMessage.error(response.data.msg || '获取详情失败')
-      return null
+    const res = await getVideoDeviceDetail(id)
+    if (res.code === 200) {
+      return res.data
     }
-  } catch (error) {
-    console.error('获取详情失败:', error)
+    ElMessage.error(res.msg || '获取详情失败')
+    return null
+  } catch {
     ElMessage.error('网络请求失败')
     return null
   }
 }
 
 // 新增视频设备
-const createVideoDevice = async () => {
+const createDevice = async () => {
   submitLoading.value = true
   try {
-    const token = getToken()
-    const response = await axios.post('/api/v1/video-devices', {
+    const res = await createVideoDevice({
       code: formData.code,
       name: formData.name,
       icon: formData.icon,
@@ -521,19 +458,15 @@ const createVideoDevice = async () => {
       protocolCode: formData.protocolCode,
       streamUrl: formData.streamUrl,
       status: 1
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
     })
-
-    if (response.data.code === 200) {
+    if (res.code === 200) {
       ElMessage.success('新增成功')
       dialogVisible.value = false
       loadTableData()
     } else {
-      ElMessage.error(response.data.msg || '新增失败')
+      ElMessage.error(res.msg || '新增失败')
     }
-  } catch (error) {
-    console.error('新增失败:', error)
+  } catch {
     ElMessage.error('网络请求失败')
   } finally {
     submitLoading.value = false
@@ -541,29 +474,24 @@ const createVideoDevice = async () => {
 }
 
 // 修改视频设备
-const updateVideoDevice = async () => {
+const updateDevice = async () => {
   submitLoading.value = true
   try {
-    const token = getToken()
-    const response = await axios.put(`/api/v1/video-devices/${formData.id}`, {
+    const res = await updateVideoDevice(formData.id!, {
       name: formData.name,
       icon: formData.icon,
       iconPath: formData.iconPath,
       protocolCode: formData.protocolCode,
       streamUrl: formData.streamUrl
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
     })
-
-    if (response.data.code === 200) {
+    if (res.code === 200) {
       ElMessage.success('修改成功')
       dialogVisible.value = false
       loadTableData()
     } else {
-      ElMessage.error(response.data.msg || '修改失败')
+      ElMessage.error(res.msg || '修改失败')
     }
-  } catch (error) {
-    console.error('修改失败:', error)
+  } catch {
     ElMessage.error('网络请求失败')
   } finally {
     submitLoading.value = false
@@ -571,21 +499,16 @@ const updateVideoDevice = async () => {
 }
 
 // 删除视频设备
-const deleteVideoDevice = async (id: string) => {
+const deleteDevice = async (id: string) => {
   try {
-    const token = getToken()
-    const response = await axios.delete(`/api/v1/video-devices/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (response.data.code === 200) {
+    const res = await deleteVideoDevice(id)
+    if (res.code === 200) {
       ElMessage.success('删除成功')
       loadTableData()
     } else {
-      ElMessage.error(response.data.msg || '删除失败')
+      ElMessage.error(res.msg || '删除失败')
     }
-  } catch (error) {
-    console.error('删除失败:', error)
+  } catch {
     ElMessage.error('网络请求失败')
   }
 }
@@ -593,23 +516,16 @@ const deleteVideoDevice = async (id: string) => {
 // 绑定视频设备到隐患点（批量）
 const bindToHazardPoints = async (hpId: string, videoDeviceId: string, installLng: number, installLat: number) => {
   try {
-    const token = getToken()
-    const response = await axios.post(`/api/v1/hazard-points/${hpId}/bind-video-devices`, {
+    const response = await request.raw.post(`/hazard-points/${hpId}/bind-video-devices`, {
       videoDeviceIds: [parseInt(videoDeviceId)],
-      installPositions: [
-        {
-          videoDeviceId: parseInt(videoDeviceId),
-          installLongitude: installLng,
-          installLatitude: installLat
-        }
-      ]
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
+      installPositions: [{
+        videoDeviceId: parseInt(videoDeviceId),
+        installLongitude: installLng,
+        installLatitude: installLat
+      }]
     })
-
     return response.data.code === 200
-  } catch (error) {
-    console.error('绑定失败:', error)
+  } catch {
     return false
   }
 }
@@ -617,15 +533,11 @@ const bindToHazardPoints = async (hpId: string, videoDeviceId: string, installLn
 // 解绑视频设备
 const unbindVideoDevice = async (hpId: string, videoDeviceId: string) => {
   try {
-    const token = getToken()
-    const response = await axios.delete(`/api/v1/hazard-points/${hpId}/unbind-video-devices`, {
-      data: { videoDeviceIds: [parseInt(videoDeviceId)] },
-      headers: { Authorization: `Bearer ${token}` }
+    const response = await request.raw.delete(`/hazard-points/${hpId}/unbind-video-devices`, {
+      data: {videoDeviceIds: [parseInt(videoDeviceId)]}
     })
-
     return response.data.code === 200
-  } catch (error) {
-    console.error('解绑失败:', error)
+  } catch {
     return false
   }
 }
@@ -706,7 +618,7 @@ const handleDelete = (row: VideoDeviceItem) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    deleteVideoDevice(row.id)
+    deleteDevice(row.id)
   }).catch(() => {})
 }
 
@@ -721,9 +633,9 @@ const handleSubmit = () => {
   formRef.value.validate((valid: boolean) => {
     if (valid) {
       if (formData.id) {
-        updateVideoDevice()
+        updateDevice()
       } else {
-        createVideoDevice()
+        createDevice()
       }
     }
   })
@@ -846,94 +758,9 @@ const handleMapConfirm = () => {
 }
 
 const handlePlay = (row: VideoDeviceItem) => {
+  currentPlayRow.value = row
   playUrl.value = row.streamUrl
-  videoLoaded.value = false
-  videoError.value = false
   playDialogVisible.value = true
-}
-
-const handlePlayPause = () => {
-  if (videoRef.value) {
-    if (isPlaying.value) {
-      videoRef.value.pause()
-    } else {
-      videoRef.value.play()
-    }
-    isPlaying.value = !isPlaying.value
-  }
-}
-
-const handleFullscreen = () => {
-  if (videoWrapper.value) {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      videoWrapper.value.requestFullscreen()
-    }
-  }
-}
-
-const handleScreenshot = () => {
-  if (!videoRef.value) {
-    ElMessage.warning('视频未加载')
-    return
-  }
-
-  const video = videoRef.value
-
-  if (video.videoWidth === 0 || video.videoHeight === 0) {
-    ElMessage.warning('视频未开始播放或尺寸无效，请先播放视频')
-    return
-  }
-
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      ElMessage.error('无法创建截图')
-      return
-    }
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // 尝试导出，捕获安全错误
-    try {
-      const dataUrl = canvas.toDataURL('image/png')
-      const link = document.createElement('a')
-      link.download = `screenshot_${new Date().getTime()}.png`
-      link.href = dataUrl
-      link.click()
-      ElMessage.success('截图已保存')
-    } catch (securityError) {
-      // 如果是跨域问题，提示用户
-      ElMessage.error('由于浏览器安全限制，无法截取跨域视频，请使用浏览器截图工具')
-      console.error('跨域截图失败:', securityError)
-    }
-  } catch (error) {
-    console.error('截图失败:', error)
-    ElMessage.error('截图失败')
-  }
-}
-
-const handleRefresh = () => {
-  if (videoRef.value) {
-    videoLoaded.value = false
-    videoError.value = false
-    videoRef.value.load()
-  }
-}
-
-const onVideoLoaded = () => {
-  videoLoaded.value = true
-  videoError.value = false
-}
-
-const onVideoError = () => {
-  videoLoaded.value = false
-  videoError.value = true
 }
 
 onMounted(() => {
@@ -1138,47 +965,6 @@ onMounted(() => {
 
 .video-play-dialog :deep(.el-dialog__body) {
   padding: 10px;
-}
-
-.video-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.video-wrapper {
-  width: 100%;
-  height: 480px;
-  background: #000;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.video-player {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.video-loading,
-.video-error {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #fff;
-}
-
-.video-loading {
-  gap: 10px;
-}
-
-.video-controls {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
 }
 
 :deep(.el-form-item) {
