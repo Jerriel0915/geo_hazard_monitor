@@ -225,7 +225,7 @@
               <el-select v-model="formData.status" placeholder="请选择设备状态" :disabled="isView">
                 <el-option label="正常" :value="1" />
                 <el-option label="故障" :value="2" />
-                <el-option label="离线" :value="3" />
+                <el-option label="停用" :value="3" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -834,7 +834,7 @@ const sensorFormRules = {
 }
 
 const getStatusType = (status: number) => {
-  const types: Record<number, string> = { 1: 'success', 2: 'danger', 3: 'warning' }
+  const types: Record<number, string> = { 1: 'success', 2: 'danger', 3: 'info' }
   return types[status] || 'default'
 }
 

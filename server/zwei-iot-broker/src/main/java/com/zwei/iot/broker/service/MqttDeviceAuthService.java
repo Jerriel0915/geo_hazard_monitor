@@ -59,8 +59,6 @@ public class MqttDeviceAuthService {
     private static final Pattern GB_TOPIC_PATTERN = Pattern.compile("^gb/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
     private static final String PROTOCOL_MQTT = "MQTT";
     private static final int AUTH_STATUS_ENABLED = 1;
-    private static final int DEVICE_RUN_STATUS_RUNNING = 1;
-    private static final int DEVICE_RUN_STATUS_STOPPED = 2;
     private static final int AUTH_SUCCESS = 1;
     private static final int AUTH_FAILED = 0;
 
@@ -166,7 +164,6 @@ public class MqttDeviceAuthService {
                 .id(device.getId())
                 .lastAuthTime(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, DateUtils.toDate(now)))
                 .lastAuthIp(clientIp)
-                .runStatus(DEVICE_RUN_STATUS_RUNNING)
                 .build());
 
         MqttDeviceSession session = new MqttDeviceSession(
@@ -247,7 +244,6 @@ public class MqttDeviceAuthService {
         sessionRegistry.getByClientId(clientId).ifPresentOrElse(session -> {
             Device update = new Device();
             update.setId(session.deviceId());
-            update.setRunStatus(DEVICE_RUN_STATUS_RUNNING);
             if (StringUtils.isNotBlank(clientIp)) {
                 update.setLastAuthIp(clientIp);
             }
@@ -270,18 +266,10 @@ public class MqttDeviceAuthService {
     public void handleClientOffline(ChannelContext context, String clientId, String username, String reason) {
         Optional<MqttDeviceSession> removedSession = sessionRegistry.removeByClientId(clientId);
         if (removedSession.isPresent()) {
-            Device update = new Device();
-            update.setId(removedSession.get().deviceId());
-            update.setRunStatus(DEVICE_RUN_STATUS_STOPPED);
-            deviceAuthQueryService.updateDevice(update);
             return;
         }
         Device device = deviceAuthQueryService.findByAuthUsername(normalize(username));
         if (device != null) {
-            Device update = new Device();
-            update.setId(device.getId());
-            update.setRunStatus(DEVICE_RUN_STATUS_STOPPED);
-            deviceAuthQueryService.updateDevice(update);
             log.debug("[MQTT-AUTH] Offline event fallback by username. clientId:{}, username:{}, reason:{}",
                     clientId, username, reason);
         }

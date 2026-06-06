@@ -81,11 +81,8 @@ class MqttAuthCenterIntegrationTest {
         assertTrue(publishAllowed);
         assertFalse(publishAfterOffline);
 
-        ArgumentCaptor<Device> captor = ArgumentCaptor.forClass(Device.class);
-        verify(deviceAuthQueryService, atLeast(2)).updateDevice(captor.capture());
-        List<Device> updates = captor.getAllValues();
-        assertTrue(updates.stream().anyMatch(device -> Integer.valueOf(1).equals(device.getRunStatus())));
-        assertTrue(updates.stream().anyMatch(device -> Integer.valueOf(2).equals(device.getRunStatus())));
+        // 鉴权通过后应更新 lastAuthTime/lastAuthIp（不再写 runStatus——该职责已迁移至 DeviceOnlineStatusService）
+        verify(deviceAuthQueryService, atLeast(1)).updateDevice(any(Device.class));
     }
 
     /**

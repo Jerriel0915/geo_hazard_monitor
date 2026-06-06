@@ -94,7 +94,8 @@ public class Device extends BaseEntity {
     private String iconPath;
 
     /**
-     * 状态: 1-正常, 2-故障, 3-离线
+     * 业务状态（人工维护）: 1-正常, 2-故障, 3-停用
+     * 实时在线状态见 device_online_status 表
      */
     private Integer status;
 
@@ -105,12 +106,16 @@ public class Device extends BaseEntity {
 
     /**
      * 运行状态: 0-未知, 1-运行中, 2-停止
+     * @deprecated 实时在线状态请使用 device_online_status 表
      */
+    @Deprecated
     private Integer runStatus;
 
     /**
      * 运行状态名称（查询时返回）
+     * @deprecated 随 runStatus 废弃
      */
+    @Deprecated
     private String runStatusName;
 
     /**
