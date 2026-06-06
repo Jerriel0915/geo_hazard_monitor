@@ -8,9 +8,11 @@ import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.device.service.ITimeSeriesSchemaService;
+import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
+import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
-import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,25 +26,27 @@ import java.util.*;
  */
 @Service
 public class DeviceSensorServiceImpl implements IDeviceSensorService {
-    private static final int SENSOR_MONITOR_DEVICE_TYPE = 2;
 
     private final DeviceMapper deviceMapper;
     private final DeviceSensorMapper sensorMapper;
     private final SensorAttributeMapper attributeMapper;
     private final IMonitorTypeService monitorTypeService;
-    private final IotdbTimeSeriesService iotdbTimeSeriesService;
+    private final IMonitorContentService monitorContentService;
+    private final ITimeSeriesSchemaService timeSeriesSchemaService;
 
     @Autowired
     public DeviceSensorServiceImpl(DeviceMapper deviceMapper,
                                    DeviceSensorMapper sensorMapper,
                                    SensorAttributeMapper attributeMapper,
                                    IMonitorTypeService monitorTypeService,
-                                   IotdbTimeSeriesService iotdbTimeSeriesService) {
+                                   IMonitorContentService monitorContentService,
+                                   ITimeSeriesSchemaService timeSeriesSchemaService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
         this.monitorTypeService = monitorTypeService;
-        this.iotdbTimeSeriesService = iotdbTimeSeriesService;
+        this.monitorContentService = monitorContentService;
+        this.timeSeriesSchemaService = timeSeriesSchemaService;
     }
 
     /**
@@ -83,6 +87,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         }
         fillDeviceFields(sensor, device);
         fillMonitorTypeFields(sensor, requireSensorMonitorType(sensor.getMonitorTypeId()));
+        populateIndicatorTypeFromContent(attrList);
         validateAttributeList(attrList);
 
         sensorMapper.insertSensor(sensor);
@@ -92,7 +97,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             attributeMapper.insertAttribute(attr);
         }
         // 注册时预创建 IoTDB 时序 schema，将 DDL 从写入热路径提前到注册冷路径
-        iotdbTimeSeriesService.createSensorSchema(sensor.getDeviceId(), sensor.getSensorNo(),
+        timeSeriesSchemaService.createSensorSchema(sensor.getDeviceId(), sensor.getSensorNo(),
                 attrList.stream().map(SensorAttribute::getAttrCode).toList());
         return sensor.getId();
     }
@@ -198,10 +203,18 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         if (monitorType == null) {
             throw new ServiceException("监测类型不存在");
         }
-        if (!Objects.equals(monitorType.getDeviceType(), SENSOR_MONITOR_DEVICE_TYPE)) {
-            throw new ServiceException("仅允许选择设备类型为传感器的监测类型");
-        }
         return monitorType;
+    }
+
+    private void populateIndicatorTypeFromContent(List<SensorAttribute> attrList) {
+        for (SensorAttribute attr : attrList) {
+            if (attr.getMonitorContentId() == null) continue;
+            MonitorContent mc = monitorContentService.selectMonitorContentById(attr.getMonitorContentId());
+            if (mc == null) continue;
+            if (attr.getIndicatorType() == null || attr.getIndicatorType().isBlank()) attr.setIndicatorType(mc.getIndicatorType());
+            if (attr.getIndicatorTypeName() == null || attr.getIndicatorTypeName().isBlank()) attr.setIndicatorTypeName(mc.getName());
+            if (attr.getUnit() == null || attr.getUnit().isBlank()) attr.setUnit(mc.getUnit());
+        }
     }
 
     private void fillDeviceFields(DeviceSensor sensor, Device device) {

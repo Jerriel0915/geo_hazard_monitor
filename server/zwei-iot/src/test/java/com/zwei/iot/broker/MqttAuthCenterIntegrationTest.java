@@ -9,7 +9,7 @@ import com.zwei.iot.broker.handler.MqttServerAuthHandler;
 import com.zwei.iot.broker.service.MqttConnectStatusListener;
 import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
@@ -45,7 +45,7 @@ class MqttAuthCenterIntegrationTest {
     private MqttConnectStatusListener connectStatusListener;
 
     @Autowired
-    private DeviceMapper deviceMapper;
+    private IDeviceAuthQueryService deviceAuthQueryService;
 
     private final ChannelContext channelContext = mock(ChannelContext.class);
 
@@ -63,7 +63,7 @@ class MqttAuthCenterIntegrationTest {
         device.setAuthPassword("m4T9x2Q8");
         device.setAuthStatus(1);
         device.setProtocolType("MQTT");
-        when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(device);
+        when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(device);
         when(channelContext.getClientNode()).thenReturn(new Node("127.0.0.1", 1883));
     }
 
@@ -82,7 +82,7 @@ class MqttAuthCenterIntegrationTest {
         assertFalse(publishAfterOffline);
 
         ArgumentCaptor<Device> captor = ArgumentCaptor.forClass(Device.class);
-        verify(deviceMapper, atLeast(2)).updateDevice(captor.capture());
+        verify(deviceAuthQueryService, atLeast(2)).updateDevice(captor.capture());
         List<Device> updates = captor.getAllValues();
         assertTrue(updates.stream().anyMatch(device -> Integer.valueOf(1).equals(device.getRunStatus())));
         assertTrue(updates.stream().anyMatch(device -> Integer.valueOf(2).equals(device.getRunStatus())));
@@ -101,8 +101,8 @@ class MqttAuthCenterIntegrationTest {
         }
 
         @Bean
-        DeviceMapper deviceMapper() {
-            return mock(DeviceMapper.class);
+        IDeviceAuthQueryService deviceAuthQueryService() {
+            return mock(IDeviceAuthQueryService.class);
         }
 
         @Bean
@@ -131,7 +131,7 @@ class MqttAuthCenterIntegrationTest {
         }
 
         @Bean
-        MqttDeviceAuthService mqttDeviceAuthService(DeviceMapper deviceMapper,
+        MqttDeviceAuthService mqttDeviceAuthService(IDeviceAuthQueryService deviceAuthQueryService,
                                                     DeviceAuthLogService deviceAuthLogService,
                                                     MqttDeviceSessionRegistry registry,
                                                     MqttAuthFailureGuard failureGuard,
@@ -139,7 +139,7 @@ class MqttAuthCenterIntegrationTest {
                                                     MqttServer mqttServer,
                                                     MqttExceptionReporter mqttExceptionReporter) {
             return new MqttDeviceAuthService(
-                    deviceMapper,
+                    deviceAuthQueryService,
                     deviceAuthLogService,
                     registry,
                     failureGuard,

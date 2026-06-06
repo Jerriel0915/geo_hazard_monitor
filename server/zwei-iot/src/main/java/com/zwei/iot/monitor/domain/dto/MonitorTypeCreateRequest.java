@@ -22,6 +22,8 @@ public class MonitorTypeCreateRequest implements Serializable {
     @NotBlank(message = "监测类型编码不能为空")
     @Size(max = 100, message = "监测类型编码长度不能超过100个字符")
     private String code;
+    @Min(value = 1, message = "监测大类ID不合法")
+    private Long categoryId;
 
     @NotBlank(message = "监测类型名称不能为空")
     @Size(max = 200, message = "监测类型名称长度不能超过200个字符")

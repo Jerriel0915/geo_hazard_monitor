@@ -13,7 +13,7 @@ import com.zwei.iot.broker.exception.MqttProtocolException;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceAuthLog;
-import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
@@ -64,7 +64,7 @@ public class MqttDeviceAuthService {
     private static final int AUTH_SUCCESS = 1;
     private static final int AUTH_FAILED = 0;
 
-    private final DeviceMapper deviceMapper;
+    private final IDeviceAuthQueryService deviceAuthQueryService;
     private final DeviceAuthLogService deviceAuthLogService;
     private final MqttDeviceSessionRegistry sessionRegistry;
     private final MqttAuthFailureGuard failureGuard;
@@ -74,7 +74,7 @@ public class MqttDeviceAuthService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public MqttDeviceAuthService(DeviceMapper deviceMapper,
+    public MqttDeviceAuthService(IDeviceAuthQueryService deviceAuthQueryService,
                                  DeviceAuthLogService deviceAuthLogService,
                                  MqttDeviceSessionRegistry sessionRegistry,
                                  MqttAuthFailureGuard failureGuard,
@@ -82,7 +82,7 @@ public class MqttDeviceAuthService {
                                  ObjectProvider<MqttServer> mqttServerProvider,
                                  MqttExceptionReporter mqttExceptionReporter,
                                  ApplicationEventPublisher eventPublisher) {
-        this.deviceMapper = deviceMapper;
+        this.deviceAuthQueryService = deviceAuthQueryService;
         this.deviceAuthLogService = deviceAuthLogService;
         this.sessionRegistry = sessionRegistry;
         this.failureGuard = failureGuard;
@@ -125,20 +125,20 @@ public class MqttDeviceAuthService {
         }
         // 密码格式错误直接拒绝，并记入失败次数，避免无意义访问继续穿透到业务流程。
         if (!isPasswordValid(normalizedPassword)) {
-            Device device = deviceMapper.selectDeviceByAuthUsername(normalizedUsername);
+            Device device = deviceAuthQueryService.findByAuthUsername(normalizedUsername);
             logFailure(device, normalizedUsername, normalizedClientId, clientIp, "PASSWORD_FORMAT_INVALID");
             failureGuard.recordFailure(normalizedUsername);
             return false;
         }
         // 被临时封禁的账号不再继续访问数据库校验，直接返回剩余封禁信息。
         if (failureGuard.isBlocked(normalizedUsername)) {
-            Device blockedDevice = deviceMapper.selectDeviceByAuthUsername(normalizedUsername);
+            Device blockedDevice = deviceAuthQueryService.findByAuthUsername(normalizedUsername);
             long remaining = failureGuard.getRemainingBlockSeconds(normalizedUsername);
             logFailure(blockedDevice, normalizedUsername, normalizedClientId, clientIp, "AUTH_TEMP_BLOCKED_" + remaining + "S");
             return false;
         }
 
-        Device device = deviceMapper.selectDeviceByAuthUsername(normalizedUsername);
+        Device device = deviceAuthQueryService.findByAuthUsername(normalizedUsername);
         if (device == null) {
             mqttExceptionReporter.rejectWithWarn(new MqttConnectionException.AuthenticationFailed(baseContext, "设备不存在"));
             failureGuard.recordFailure(normalizedUsername);
@@ -162,7 +162,7 @@ public class MqttDeviceAuthService {
 
         // 鉴权通过后优先回写设备最近一次接入信息，便于后台排查连接来源。
         LocalDateTime now = LocalDateTime.now();
-        deviceMapper.updateDevice(Device.builder()
+        deviceAuthQueryService.updateDevice(Device.builder()
                 .id(device.getId())
                 .lastAuthTime(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, DateUtils.toDate(now)))
                 .lastAuthIp(clientIp)
@@ -251,7 +251,7 @@ public class MqttDeviceAuthService {
             if (StringUtils.isNotBlank(clientIp)) {
                 update.setLastAuthIp(clientIp);
             }
-            deviceMapper.updateDevice(update);
+            deviceAuthQueryService.updateDevice(update);
         }, () -> log.debug("[MQTT-AUTH] Online event ignored because no authenticated session was found. clientId:{}, username:{}",
                 clientId, username));
     }
@@ -273,15 +273,15 @@ public class MqttDeviceAuthService {
             Device update = new Device();
             update.setId(removedSession.get().deviceId());
             update.setRunStatus(DEVICE_RUN_STATUS_STOPPED);
-            deviceMapper.updateDevice(update);
+            deviceAuthQueryService.updateDevice(update);
             return;
         }
-        Device device = deviceMapper.selectDeviceByAuthUsername(normalize(username));
+        Device device = deviceAuthQueryService.findByAuthUsername(normalize(username));
         if (device != null) {
             Device update = new Device();
             update.setId(device.getId());
             update.setRunStatus(DEVICE_RUN_STATUS_STOPPED);
-            deviceMapper.updateDevice(update);
+            deviceAuthQueryService.updateDevice(update);
             log.debug("[MQTT-AUTH] Offline event fallback by username. clientId:{}, username:{}, reason:{}",
                     clientId, username, reason);
         }

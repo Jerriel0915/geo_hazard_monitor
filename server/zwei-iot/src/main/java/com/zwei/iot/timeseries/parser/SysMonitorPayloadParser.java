@@ -6,7 +6,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.device.domain.SensorAttribute;
-import com.zwei.iot.timeseries.domain.SensorMetadata;
+import com.zwei.iot.device.domain.SensorMetadata;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
 import com.zwei.iot.timeseries.support.MonitorTopic;
 import org.springframework.stereotype.Component;

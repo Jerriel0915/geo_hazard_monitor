@@ -6,7 +6,7 @@ import com.zwei.iot.broker.config.MqttAuthCenterProperties;
 import com.zwei.iot.broker.exception.MqttExceptionReporter;
 import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 class MqttServerAuthHandlerTest {
 
     @Mock
-    private DeviceMapper deviceMapper;
+    private IDeviceAuthQueryService deviceAuthQueryService;
 
     @Mock
     private DeviceAuthLogService deviceAuthLogService;
@@ -60,7 +60,7 @@ class MqttServerAuthHandlerTest {
         beanFactory.addBean("mqttServer", mqttServer);
         ObjectProvider<MqttServer> mqttServerProvider = beanFactory.getBeanProvider(MqttServer.class);
         MqttDeviceAuthService authService = new MqttDeviceAuthService(
-                deviceMapper,
+                deviceAuthQueryService,
                 deviceAuthLogService,
                 registry,
                 failureGuard,
@@ -77,12 +77,12 @@ class MqttServerAuthHandlerTest {
     @DisplayName("正确用户名密码应通过鉴权并写入上下文")
     void authenticate_shouldPassWhenCredentialIsCorrect() {
         Device device = buildDevice();
-        when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(device);
+        when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(device);
 
         boolean result = authHandler.authenticate(channelContext, "client-1", "client-1", "A7K9P2", "m4T9x2Q8");
 
         assertTrue(result);
-        verify(deviceMapper).updateDevice(any(Device.class));
+        verify(deviceAuthQueryService).updateDevice(any(Device.class));
         verify(deviceAuthLogService).save(any());
         verify(channelContext).setUserId("101");
         verify(channelContext).setToken("A7K9P2");
@@ -93,7 +93,7 @@ class MqttServerAuthHandlerTest {
     @DisplayName("相同设备重复接入时应踢掉旧连接")
     void authenticate_shouldDisconnectPreviousClientWhenDeviceReconnects() {
         Device device = buildDevice();
-        when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(device);
+        when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(device);
         when(mqttServer.disconnect("client-old")).thenReturn(true);
 
         assertTrue(authHandler.authenticate(channelContext, "client-old", "client-old", "A7K9P2", "m4T9x2Q8"));
@@ -107,7 +107,7 @@ class MqttServerAuthHandlerTest {
     @DisplayName("连续失败达到阈值后应进入临时封禁")
     void authenticate_shouldBlockWhenFailuresReachThreshold() {
         Device device = buildDevice();
-        when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(device);
+        when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(device);
 
         for (int i = 0; i < 5; i++) {
             boolean failed = authHandler.authenticate(channelContext, "client-" + i, "client-" + i, "A7K9P2", "badPwd01");
@@ -118,7 +118,7 @@ class MqttServerAuthHandlerTest {
 
         assertFalse(blocked);
         verify(deviceAuthLogService, atLeastOnce()).save(any());
-        verify(deviceMapper, times(6)).selectDeviceByAuthUsername(eq("A7K9P2"));
+        verify(deviceAuthQueryService, times(6)).findByAuthUsername(eq("A7K9P2"));
     }
 
     @Test
@@ -126,12 +126,12 @@ class MqttServerAuthHandlerTest {
     void authenticate_shouldRejectWhenProtocolIsNotMqtt() {
         Device device = buildDevice();
         device.setProtocolType("HTTP");
-        when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(device);
+        when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(device);
 
         boolean result = authHandler.authenticate(channelContext, "client-1", "client-1", "A7K9P2", "m4T9x2Q8");
 
         assertFalse(result);
-        verify(deviceMapper, times(1)).selectDeviceByAuthUsername("A7K9P2");
+        verify(deviceAuthQueryService, times(1)).findByAuthUsername("A7K9P2");
     }
 
     /**

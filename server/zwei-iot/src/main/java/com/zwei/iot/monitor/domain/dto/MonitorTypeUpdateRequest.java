@@ -17,6 +17,7 @@ import java.io.Serializable;
 public class MonitorTypeUpdateRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
+    private Long categoryId;
 
     @Size(max = 200, message = "监测类型名称长度不能超过200个字符")
     private String name;

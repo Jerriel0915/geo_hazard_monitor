@@ -1,6 +1,6 @@
 package com.zwei.iot.timeseries.parser;
 
-import com.zwei.iot.timeseries.domain.SensorMetadata;
+import com.zwei.iot.device.domain.SensorMetadata;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
 import com.zwei.iot.timeseries.service.MonitorIngestFacade;
 import com.zwei.iot.timeseries.support.MonitorTopic;

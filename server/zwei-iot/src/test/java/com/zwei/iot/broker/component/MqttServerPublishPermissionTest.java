@@ -4,7 +4,7 @@ import com.zwei.iot.broker.config.MqttAuthCenterProperties;
 import com.zwei.iot.broker.exception.MqttExceptionReporter;
 import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import org.dromara.mica.mqtt.codec.MqttQoS;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 class MqttServerPublishPermissionTest {
 
     @Mock
-    private DeviceMapper deviceMapper;
+    private IDeviceAuthQueryService deviceAuthQueryService;
 
     @Mock
     private DeviceAuthLogService deviceAuthLogService;
@@ -53,7 +53,7 @@ class MqttServerPublishPermissionTest {
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("mqttServer", org.mockito.Mockito.mock(MqttServer.class));
         authService = new MqttDeviceAuthService(
-                deviceMapper,
+                deviceAuthQueryService,
                 deviceAuthLogService,
                 registry,
                 failureGuard,
@@ -63,7 +63,7 @@ class MqttServerPublishPermissionTest {
                 mock(ApplicationEventPublisher.class)
         );
         publishPermission = new MqttServerPublishPermission(authService, mqttExceptionReporter);
-        when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(buildDevice());
+        when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(buildDevice());
         authService.authenticate(channelContext, "client-1", "client-1", "A7K9P2", "m4T9x2Q8");
     }
 

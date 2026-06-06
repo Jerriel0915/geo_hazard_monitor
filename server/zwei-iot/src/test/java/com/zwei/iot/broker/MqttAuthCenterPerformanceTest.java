@@ -7,7 +7,7 @@ import com.zwei.iot.broker.exception.MqttExceptionReporter;
 import com.zwei.iot.broker.handler.MqttServerAuthHandler;
 import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import org.dromara.mica.mqtt.core.server.MqttServer;
@@ -34,7 +34,7 @@ class MqttAuthCenterPerformanceTest {
     @Test
     @DisplayName("200 并发鉴权应全部成功且耗时可接受")
     void authenticate_shouldHandleBurstTraffic() throws Exception {
-        DeviceMapper deviceMapper = mock(DeviceMapper.class);
+        IDeviceAuthQueryService deviceAuthQueryService = mock(IDeviceAuthQueryService.class);
         DeviceAuthLogService deviceAuthLogService = mock(DeviceAuthLogService.class);
         MqttServer mqttServer = mock(MqttServer.class);
         Device device = new Device();
@@ -43,13 +43,13 @@ class MqttAuthCenterPerformanceTest {
         device.setAuthPassword("m4T9x2Q8");
         device.setAuthStatus(1);
         device.setProtocolType("MQTT");
-        when(deviceMapper.selectDeviceByAuthUsername(anyString())).thenReturn(device);
+        when(deviceAuthQueryService.findByAuthUsername(anyString())).thenReturn(device);
 
         MqttAuthCenterProperties properties = new MqttAuthCenterProperties();
         properties.setDisconnectPreviousClient(false);
         MqttExceptionReporter mqttExceptionReporter = new MqttExceptionReporter();
         MqttDeviceAuthService authService = new MqttDeviceAuthService(
-                deviceMapper,
+                deviceAuthQueryService,
                 deviceAuthLogService,
                 new MqttDeviceSessionRegistry(),
                 new MqttAuthFailureGuard(properties),

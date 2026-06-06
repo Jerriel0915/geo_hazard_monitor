@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.monitor.mapper.MonitorCategoryMapper">
+    <resultMap type="com.zwei.iot.monitor.domain.MonitorCategory" id="MonitorCategoryResult">
+        <id property="id" column="id"/>
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="icon" column="icon"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+    <sql id="selectVo">
+        SELECT id,code,name,icon,sort_order,status,del_flag,create_by,create_time,update_by,update_time FROM monitor_category
+    </sql>
+    <select id="selectMonitorCategoryList" resultMap="MonitorCategoryResult">
+        <include refid="selectVo"/> <where>del_flag = 0
+            <if test="code != null and code != ''">AND code LIKE CONCAT('%',#{code},'%')</if>
+            <if test="name != null and name != ''">AND name LIKE CONCAT('%',#{name},'%')</if>
+            <if test="status != null">AND status = #{status}</if>
+        </where> ORDER BY sort_order ASC, id ASC
+    </select>
+    <select id="selectMonitorCategoryAll" resultMap="MonitorCategoryResult"><include refid="selectVo"/> WHERE del_flag = 0 ORDER BY sort_order ASC, id ASC</select>
+    <select id="selectMonitorCategoryById" resultMap="MonitorCategoryResult"><include refid="selectVo"/> WHERE id = #{id} AND del_flag = 0</select>
+    <select id="selectMonitorCategoryByCode" resultMap="MonitorCategoryResult"><include refid="selectVo"/> WHERE code = #{code} AND del_flag = 0</select>
+    <select id="checkMonitorCategoryCodeUnique" resultMap="MonitorCategoryResult"><include refid="selectVo"/> WHERE code = #{code} AND del_flag = 0 AND id != #{id} LIMIT 1</select>
+    <insert id="insertMonitorCategory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO monitor_category(<if test="code != null and code != ''">code,</if><if test="name != null and name != ''">name,</if><if test="icon != null">icon,</if><if test="sortOrder != null">sort_order,</if><if test="status != null">status,</if><if test="createBy != null and createBy != ''">create_by,</if>create_time)
+        VALUES (<if test="code != null and code != ''">#{code},</if><if test="name != null and name != ''">#{name},</if><if test="icon != null">#{icon},</if><if test="sortOrder != null">#{sortOrder},</if><if test="status != null">#{status},</if><if test="createBy != null and createBy != ''">#{createBy},</if>SYSDATE())
+    </insert>
+    <update id="updateMonitorCategory">
+        UPDATE monitor_category <set><if test="code != null and code != ''">code = #{code},</if><if test="name != null and name != ''">name = #{name},</if><if test="icon != null">icon = #{icon},</if><if test="sortOrder != null">sort_order = #{sortOrder},</if><if test="status != null">status = #{status},</if><if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>update_time = SYSDATE()</set> WHERE id = #{id}
+    </update>
+    <delete id="deleteMonitorCategoryById">UPDATE monitor_category SET code = CONCAT(LEFT(code, 75), '#DEL#', id), del_flag = 1, update_time = SYSDATE() WHERE id = #{id} AND del_flag = 0</delete>
+    <delete id="deleteMonitorCategoryByIds">UPDATE monitor_category SET code = CONCAT(LEFT(code, 75), '#DEL#', id), del_flag = 1, update_time = SYSDATE() WHERE del_flag = 0 AND id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></delete>
+</mapper>

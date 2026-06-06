@@ -30,6 +30,7 @@ public class SensorAttribute extends BaseEntity {
      * 传感器ID
      */
     private Long sensorId;
+    private Long monitorContentId;
 
     /**
      * 属性编码

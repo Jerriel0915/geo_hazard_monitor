@@ -20,6 +20,7 @@ public class SensorAttributeRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long id;
+    private Long monitorContentId;
 
     @NotBlank(message = "属性编码不能为空")
     @Size(max = 100, message = "属性编码长度不能超过100个字符")

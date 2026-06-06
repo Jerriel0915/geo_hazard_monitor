@@ -7,9 +7,11 @@ import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
+import com.zwei.iot.device.service.ITimeSeriesSchemaService;
+import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
+import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
-import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +44,10 @@ class DeviceSensorServiceImplTest {
     private IMonitorTypeService monitorTypeService;
 
     @Mock
-    private IotdbTimeSeriesService iotdbTimeSeriesService;
+    private IMonitorContentService monitorContentService;
+
+    @Mock
+    private ITimeSeriesSchemaService timeSeriesSchemaService;
 
     @InjectMocks
     private DeviceSensorServiceImpl service;
@@ -88,34 +93,41 @@ class DeviceSensorServiceImplTest {
     }
 
     @Test
-    @DisplayName("新增传感器时监测类型不是传感器类型应抛出异常")
-    void insertSensor_shouldThrowWhenMonitorTypeIsNotSensorType() {
+    @DisplayName("新增传感器时任意 deviceType 的监测类型均可使用（已移除硬编码约束）")
+    void insertSensor_shouldAcceptAnyMonitorTypeRegardlessOfDeviceType() {
         DeviceSensor sensor = new DeviceSensor();
         sensor.setDeviceId(10L);
         sensor.setSensorCode("SENSOR001");
         sensor.setSensorName("水位传感器");
         sensor.setMonitorTypeId(4L);
         sensor.setStatus(1);
+        sensor.setCreateBy("admin");
 
         SensorAttribute attr = new SensorAttribute();
         attr.setAttrCode("water_level");
         attr.setAttrName("水位");
+        attr.setRangeMin(BigDecimal.ZERO);
+        attr.setRangeMax(new BigDecimal("100"));
 
         Device device = new Device();
         device.setId(10L);
+        device.setCode("DEVICE001");
         when(deviceMapper.selectDeviceById(10L)).thenReturn(device);
         when(sensorMapper.checkSensorCodeUnique("SENSOR001", 0L)).thenReturn(null);
 
         MonitorType monitorType = new MonitorType();
         monitorType.setId(4L);
+        monitorType.setCode("JCLX004");
+        monitorType.setName("水位监测");
         monitorType.setDeviceType(1);
         when(monitorTypeService.selectMonitorTypeById(4L)).thenReturn(monitorType);
 
-        ServiceException exception = assertThrows(ServiceException.class,
-                () -> service.insertSensor(sensor, List.of(attr)));
+        Long result = service.insertSensor(sensor, List.of(attr));
 
-        assertEquals("仅允许选择设备类型为传感器的监测类型", exception.getMessage());
-        verify(sensorMapper, never()).insertSensor(any(DeviceSensor.class));
+        assertEquals(sensor.getId(), result);
+        assertEquals("JCLX004", sensor.getMonitorTypeCode());
+        verify(sensorMapper).insertSensor(sensor);
+        verify(attributeMapper).insertAttribute(any(SensorAttribute.class));
     }
 
     @Test
