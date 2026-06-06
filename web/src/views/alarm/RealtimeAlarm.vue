@@ -54,6 +54,18 @@
           </el-form>
         </div>
         <div class="action-buttons">
+          <el-button type="success" :disabled="selectedRows.length === 0" @click="handleBatchFeedback">
+            <el-icon><ChatDotRound /></el-icon>
+            批量反馈
+          </el-button>
+          <el-button type="warning" :disabled="selectedRows.length === 0" @click="handleBatchFalseAlarm">
+            <el-icon><Warning /></el-icon>
+            批量误报
+          </el-button>
+          <el-button type="danger" :disabled="selectedRows.length === 0" @click="handleBatchCloseAlarm">
+            <el-icon><CircleClose /></el-icon>
+            批量销警
+          </el-button>
           <el-button type="info" @click="handleExport">
             <el-icon><Download /></el-icon>
             导出
@@ -66,10 +78,12 @@
         <el-table
           :data="tableData"
           style="width: 100%"
+          @selection-change="handleSelectionChange"
           @row-click="handleRowClick"
           border
           stripe
         >
+          <el-table-column type="selection" width="55" />
           <el-table-column prop="hazardPointName" label="隐患点名称" min-width="180" />
           <el-table-column prop="alarmLevel" label="告警等级" width="100">
             <template #default="{ row }">
@@ -101,7 +115,7 @@
                 <el-icon><View /></el-icon>
                 查看
               </el-button>
-              <el-button type="success" link size="small" @click.stop="handleHandle(row)">
+              <el-button type="success" link size="small" @click.stop="handleFeedback(row)">
                 <el-icon><ChatDotRound /></el-icon>
                 处置
               </el-button>
@@ -167,20 +181,38 @@
       </template>
     </el-dialog>
 
-    <!-- 处置弹窗 -->
+    <!-- 反馈弹窗 -->
     <FeedbackDialog
       v-model="feedbackDialogVisible"
       :data="currentRow"
-      @submit="handleSubmitFeedback"
-      @close="feedbackDialogVisible = false"
+      @submit="handleFeedbackSubmit"
+      @update:model-value="feedbackDialogVisible = $event"
     />
+
+    <!-- 误报确认弹窗 -->
+    <el-dialog v-model="falseAlarmDialogVisible" title="误报确认" width="500px">
+      <p>确定将选中的告警标记为误报吗？</p>
+      <template #footer>
+        <el-button @click="falseAlarmDialogVisible = false">取消</el-button>
+        <el-button type="warning" @click="confirmFalseAlarm">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 销警确认弹窗 -->
+    <el-dialog v-model="closeAlarmDialogVisible" title="销警确认" width="500px">
+      <p>确定要销警吗？</p>
+      <template #footer>
+        <el-button @click="closeAlarmDialogVisible = false">取消</el-button>
+        <el-button type="danger" @click="confirmCloseAlarm">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import {ChatDotRound, Download, View} from '@element-plus/icons-vue'
+import {ChatDotRound, CircleClose, Download, View, Warning} from '@element-plus/icons-vue'
 import FeedbackDialog from '@/components/FeedbackDialog.vue'
 
 // 查询参数
@@ -204,11 +236,14 @@ const pagination = reactive({
 
 // 表格数据
 const tableData = ref<any[]>([])
+const selectedRows = ref<any[]>([])
 
 // 弹窗
 const detailDialogVisible = ref(false)
 const alarmListDialogVisible = ref(false)
 const feedbackDialogVisible = ref(false)
+const falseAlarmDialogVisible = ref(false)
+const closeAlarmDialogVisible = ref(false)
 
 // 当前行
 const currentRow = ref<any>(null)
@@ -276,10 +311,10 @@ const mockData = [
     lastAlarmTime: '2024-06-02 00:00:00',
     alarmCount: 3,
     alarmType: 'threshold',
-    status: 'processing',
-    responderName: '王五',
-    responseTime: '2024-06-01 08:00:00',
-    alarmContent: '桥墩沉降超过阈值2mm，经核查为传感器故障',
+    status: 'pending',
+    responderName: '',
+    responseTime: '',
+    alarmContent: '桥墩沉降超过阈值2mm，当前值为2.3mm',
     alarmList: [
       {alarmTime: '2024-06-01 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.1mm'},
       {alarmTime: '2024-06-02 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.3mm'}
@@ -312,8 +347,8 @@ const mockData = [
     alarmType: 'threshold',
     status: 'processing',
     responderName: '赵六',
-    responseTime: '2024-06-01 20:00:00',
-    alarmContent: '水库水位超过警戒水位50cm，当前已降至安全范围',
+    responseTime: '2024-05-25 08:00:00',
+    alarmContent: '水库水位超过警戒水位，当前水位超出安全范围',
     alarmList: [
       {alarmTime: '2024-05-25 06:00:00', alarmLevel: '2', alarmContent: '水库水位超限30cm'},
       {alarmTime: '2024-06-01 18:00:00', alarmLevel: '2', alarmContent: '水库水位超限50cm'}
@@ -451,6 +486,11 @@ const handleReset = () => {
   handleQuery()
 }
 
+// 表格选择变化
+const handleSelectionChange = (rows: any[]) => {
+  selectedRows.value = rows
+}
+
 // 行点击 - 查看详情
 const handleRowClick = (row: any) => {
   currentRow.value = row
@@ -470,27 +510,92 @@ const showAlarmList = (row: any) => {
   alarmListDialogVisible.value = true
 }
 
-// 处置
-const handleHandle = (row: any) => {
+// 反馈（处置）
+const handleFeedback = (row: any) => {
   currentRow.value = row
   feedbackDialogVisible.value = true
 }
 
-// 提交处置
-const handleSubmitFeedback = () => {
-  if (currentRow.value) {
-    currentRow.value.status = 'processing'
-    currentRow.value.responderName = '当前用户'
-    currentRow.value.responseTime = new Date().toLocaleString()
-    ElMessage.success('处置成功')
-    feedbackDialogVisible.value = false
-    tableData.value = paginatedData.value
+// 处置提交回调
+const handleFeedbackSubmit = () => {
+  ElMessage.success('处置成功')
+  feedbackDialogVisible.value = false
+  tableData.value = paginatedData.value
+}
+
+// 批量反馈
+const handleBatchFeedback = () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要反馈的记录')
+    return
   }
+  currentRow.value = selectedRows.value
+  feedbackDialogVisible.value = true
 }
 
 // 导出
 const handleExport = () => {
   ElMessage.success('导出功能已触发（模拟）')
+}
+
+// 批量误报
+const handleBatchFalseAlarm = () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要标记为误报的记录')
+    return
+  }
+  currentRow.value = selectedRows.value
+  falseAlarmDialogVisible.value = true
+}
+
+// 确认误报
+const confirmFalseAlarm = () => {
+  if (Array.isArray(currentRow.value)) {
+    currentRow.value.forEach(row => {
+      row.status = 'false_alarm'
+      row.responderName = '当前用户'
+      row.responseTime = new Date().toLocaleString()
+    })
+  } else {
+    currentRow.value.status = 'false_alarm'
+    currentRow.value.responderName = '当前用户'
+    currentRow.value.responseTime = new Date().toLocaleString()
+  }
+
+  ElMessage.success('已标记为误报')
+  falseAlarmDialogVisible.value = false
+  selectedRows.value = []
+  tableData.value = paginatedData.value
+}
+
+// 批量销警
+const handleBatchCloseAlarm = () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要销警的记录')
+    return
+  }
+  currentRow.value = selectedRows.value
+  closeAlarmDialogVisible.value = true
+}
+
+// 确认销警
+const confirmCloseAlarm = () => {
+  if (Array.isArray(currentRow.value)) {
+    currentRow.value.forEach(row => {
+      row.status = 'closed'
+      row.responderName = '当前用户'
+      row.responseTime = new Date().toLocaleString()
+    })
+  } else {
+    currentRow.value.status = 'closed'
+    currentRow.value.responderName = '当前用户'
+    currentRow.value.responseTime = new Date().toLocaleString()
+  }
+
+  ElMessage.success('销警成功')
+  closeAlarmDialogVisible.value = false
+  selectedRows.value = []
+  tableData.value = paginatedData.value
 }
 
 // 分页大小变化
