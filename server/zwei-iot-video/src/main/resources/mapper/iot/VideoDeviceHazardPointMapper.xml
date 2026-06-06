@@ -5,7 +5,7 @@
 <mapper namespace="com.zwei.iot.video.mapper.VideoDeviceHazardPointMapper">
 
     <select id="selectBoundVideoDevicesByHazardPointId"
-            resultType="com.zwei.iot.hazardpoint.domain.dto.BoundVideoDeviceVO">
+            resultType="com.zwei.iot.video.domain.BoundVideoDeviceVO">
         SELECT vdhp.id,
                vdhp.video_device_id AS videoDeviceId,
                vd.code AS deviceCode,
