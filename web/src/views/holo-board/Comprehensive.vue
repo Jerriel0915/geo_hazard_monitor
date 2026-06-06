@@ -6,7 +6,7 @@
           <span class="section-title">系统健康度</span>
           <span ref="healthTriggerRef" class="health-question" @mouseenter="showPopover" @mouseleave="hidePopover">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" width="16" height="16">
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -109,7 +109,7 @@
               <div class="breakdown-item hazard">
                 <div class="breakdown-icon">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14"
-                       stroke-width="2" width="16" height="16">
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                   </svg>
                 </div>
@@ -121,7 +121,7 @@
               <div class="breakdown-item device">
                 <div class="breakdown-icon">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a"
-                       stroke-width="2" width="16" height="16">
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                     <circle cx="12" cy="12" r="3"/>
                     <path
                         d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -153,7 +153,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper alarm">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
@@ -172,7 +172,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper warning">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -192,7 +192,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper monitor">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
               </svg>
             </div>
@@ -210,7 +210,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper hazard">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
             </div>
@@ -228,7 +228,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper device">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                 <line x1="8" y1="21" x2="16" y2="21"/>
                 <line x1="12" y1="17" x2="12" y2="21"/>

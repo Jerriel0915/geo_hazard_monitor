@@ -22,7 +22,7 @@
         </div>
       </div>
       <button class="close-hazard-view-btn" @click="exitHazardView" title="返回系统视图">
-        ✕
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
 
@@ -70,9 +70,7 @@
           >
             <div class="device-info">
               <div class="device-type-icon">
-                {{
-                  device.type === 'GNSS' ? '📡' : device.type === 'RAIN' ? '🌧️' : device.type === 'PRESSURE' ? '💧' : '📏'
-                }}
+                <el-icon :size="24"><component :is="getDeviceTypeIcon(device.type)" /></el-icon>
               </div>
               <div class="device-details">
                 <div class="device-name">{{ device.name }}</div>
@@ -96,10 +94,10 @@
       <div class="modal-container" @click.stop>
         <div class="modal-header">
           <div class="modal-title">
-            <span class="device-icon">📊</span>
+            <el-icon class="device-icon"><DataAnalysis /></el-icon>
             <span>{{ selectedDevice?.name }} - 传感器数据</span>
           </div>
-          <button class="modal-close-btn" @click="closeDeviceDataModal">✕</button>
+          <button class="modal-close-btn" @click="closeDeviceDataModal"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
 
         <div class="modal-body">
@@ -118,7 +116,7 @@
                 @click="selectModalSensor(sensor)"
               >
                 <div class="sensor-icon-wrapper">
-                  {{ sensor.type === 'GNSS' ? '📍' : sensor.type === 'RAIN' ? '🌧️' : sensor.type === 'PRESSURE' ? '💧' : '📏' }}
+                  <el-icon :size="24"><component :is="getDeviceTypeIcon(sensor.type)" /></el-icon>
                 </div>
                 <div class="sensor-details">
                   <div class="sensor-name">{{ sensor.name }}</div>
@@ -191,11 +189,11 @@
 
                 <div class="data-actions">
                   <button class="action-btn" @click="handleImport">
-                    <span class="btn-icon">📥</span>
+                    <el-icon class="btn-icon"><Download /></el-icon>
                     导入
                   </button>
                   <button class="action-btn" @click="handleExport">
-                    <span class="btn-icon">📤</span>
+                    <el-icon class="btn-icon"><Upload /></el-icon>
                     导出
                   </button>
                 </div>
@@ -212,19 +210,13 @@
                   <thead>
                     <tr>
                       <th>时间</th>
-                      <th>采集值</th>
-                      <th>变化量</th>
-                      <th>状态</th>
+                      <th v-for="s in chartDataResult" :key="s.seriesName">{{ s.seriesName }}({{ s.unit || '' }})</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(row, index) in tableData" :key="index">
                       <td>{{ row.time }}</td>
-                      <td>{{ row.value.toFixed(3) }}</td>
-                      <td>{{ row.change.toFixed(3) }}</td>
-                      <td>
-                        <span class="status-badge" :class="row.status">{{ row.status === 'normal' ? '正常' : '预警' }}</span>
-                      </td>
+                      <td v-for="s in chartDataResult" :key="s.seriesName">{{ row[s.seriesName]?.toFixed(3) ?? '--' }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -232,7 +224,7 @@
             </div>
 
             <div v-else class="empty-state">
-              <div class="empty-icon">📊</div>
+              <el-icon size="64"><DataAnalysis /></el-icon>
               <div class="empty-text">请从左侧选择一个传感器查看数据</div>
             </div>
           </div>
@@ -242,13 +234,22 @@
 
     <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' }">
       <div class="left-panel" v-if="currentView === 'system'">
+        <div class="panel-header">
+          <button class="panel-collapse-btn" @click="togglePanel">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <polyline v-if="isPanelCollapsed" points="9 18 15 12 9 6"/>
+              <polyline v-else points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+        </div>
         <div class="panel-content">
           <div v-if="isWidgetOnLeft('systemHealth')" class="panel-section health-section">
             <div class="section-header">
               <span class="section-title">系统健康度</span>
-              <span class="health-question" @click="showAlgorithmDesc = true" title="健康度算法说明">
+              <span class="health-question" @mouseenter="showHealthPopover" @mouseleave="hideHealthPopover">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" width="16" height="16">
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                   <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -327,7 +328,7 @@
                   <div class="breakdown-item hazard">
                     <div class="breakdown-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14"
-                           stroke-width="2" width="14" height="14">
+                           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                       </svg>
                     </div>
@@ -339,7 +340,7 @@
                   <div class="breakdown-item device">
                     <div class="breakdown-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a"
-                           stroke-width="2" width="14" height="14">
+                           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                         <circle cx="12" cy="12" r="3"/>
                         <path
                             d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -400,42 +401,116 @@
               </div>
             </div>
           </div>
+
+          <!-- 隐患点详情部件 -->
+          <div v-if="isWidgetOnLeft('hazardPointDetail') && currentView === 'system'" class="panel-section hazard-detail-section">
+            <div class="section-header">
+              <span class="section-title">隐患点详情</span>
+              <button v-if="selectedHazardPoint" class="clear-selection-btn" @click="clearWidgetSelection" title="清除选择">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-if="!selectedHazardPoint" class="widget-empty-state">
+              <span class="empty-hint">点击地图标记查看隐患点详情</span>
+            </div>
+
+            <!-- 已选择隐患点 -->
+            <div v-else class="hazard-widget-content">
+              <div class="widget-hazard-name">{{ selectedHazardPoint.name }}</div>
+
+              <div class="hazard-detail-info">
+                <div class="detail-row">
+                  <span class="detail-label">编号</span>
+                  <span class="detail-value">{{ selectedHazardPoint.code }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">坐标</span>
+                  <span class="detail-value">{{ selectedHazardPoint.latitude.toFixed(6) }}, {{ selectedHazardPoint.longitude.toFixed(6) }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">分组</span>
+                  <span class="detail-value">{{ selectedHazardPoint.groupName || '--' }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">备注</span>
+                  <span class="detail-value detail-description">{{ selectedHazardPoint.description || '--' }}</span>
+                </div>
+              </div>
+
+              <!-- 绑定设备列表 -->
+              <div class="widget-device-list">
+                <div class="device-list-header">
+                  <span class="device-list-title">绑定设备</span>
+                  <span class="device-count">{{ widgetBoundDevices.length }}台</span>
+                </div>
+                <div v-if="widgetDevicesLoading" class="device-loading">加载中...</div>
+                <div v-else class="widget-device-cards">
+                  <div
+                    v-for="device in widgetBoundDevices"
+                    :key="device.id"
+                    class="device-card"
+                    @click="openDeviceDataModal(device)"
+                  >
+                    <div class="device-card-icon">
+                      <el-icon :size="22"><component :is="getDeviceTypeIcon(device.type)" /></el-icon>
+                    </div>
+                    <div class="device-card-body">
+                      <div class="device-card-name">{{ device.name }}</div>
+                      <div class="device-card-meta">
+                        <span class="device-card-type">{{ device.typeName }}</span>
+                        <span class="device-card-sensors">{{ device.sensorCount }}个传感器</span>
+                      </div>
+                    </div>
+                    <div class="device-card-status" :class="device.status">
+                      <span class="status-dot"></span>
+                      <span class="status-text">{{ device.status === 'online' ? '在线' : device.status === 'warning' ? '预警' : '离线' }}</span>
+                    </div>
+                  </div>
+                  <div v-if="widgetBoundDevices.length === 0" class="no-devices">暂无绑定设备</div>
+                </div>
+              </div>
+
+              <button class="view-detail-btn" @click="openHazardDetailFromWidget">
+                查看详情
+              </button>
+            </div>
+          </div>
+          <!-- /隐患点详情部件 -->
+
         </div>
       </div>
-      <button class="panel-toggle-btn" @click="togglePanel">
-        <span class="toggle-icon">{{ isPanelCollapsed ? '›' : '‹' }}</span>
-      </button>
     </div>
 
-    <div class="algorithm-modal" v-if="showAlgorithmDesc" @click="showAlgorithmDesc = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <span class="modal-title">健康度算法说明</span>
-          <button class="modal-close" @click="showAlgorithmDesc = false">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" width="20" height="20">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <p>系统健康度综合评估以下五个维度：</p>
-          <ul>
-            <li><strong>资料完善率</strong>：设备资料登记率与隐患点资料完善率的综合指标</li>
-            <li><strong>设备在线率</strong>：在线设备数/隐患点关联设备总数 × 100%</li>
-            <li><strong>设备正常率</strong>：状态正常设备数/设备总数 × 100%</li>
-            <li><strong>告警及时响应率</strong>：首次告警1小时内响应的事件数/告警事件总数 × 100%</li>
-            <li><strong>边坡稳定率</strong>：最近一个月未有效告警隐患点数/总隐患点数 × 100%</li>
-          </ul>
-          <p style="margin-top: 12px;">综合得分 = 各维度得分 × 权重之和（环形图分色展示各维度占比）</p>
-        </div>
+    <Teleport to="body">
+      <div
+          class="algorithm-popover"
+          v-if="showAlgorithmDesc"
+          :style="healthPopoverStyle"
+          @mouseenter="cancelHealthPopoverHide"
+          @mouseleave="hideHealthPopover"
+      >
+        <div class="popover-arrow"></div>
+        <p>系统健康度综合评估以下五个维度：</p>
+        <ul>
+          <li><strong>资料完善率</strong>：设备资料登记率与隐患点资料完善率的综合指标</li>
+          <li><strong>设备在线率</strong>：在线设备数/隐患点关联设备总数 × 100%</li>
+          <li><strong>设备正常率</strong>：状态正常设备数/设备总数 × 100%</li>
+          <li><strong>告警及时响应率</strong>：首次告警1小时内响应的事件数/告警事件总数 × 100%</li>
+          <li><strong>边坡稳定率</strong>：最近一个月未有效告警隐患点数/总隐患点数 × 100%</li>
+        </ul>
+        <p style="margin-top: 8px;">综合得分 = 各维度得分 × 权重之和（环形图分色展示各维度占比）</p>
       </div>
-    </div>
+    </Teleport>
 
     <div class="right-panel-wrapper" :class="{ collapsed: isRightPanelCollapsed }">
       <div class="layer-switcher-wrapper">
         <button class="layer-toggle-btn" @click="toggleLayerList">
-          <span class="btn-icon">🗺️</span>
+          <el-icon><MapLocation /></el-icon>
           <span>{{ currentLayerName }}</span>
           <span class="arrow" :class="{ expanded: showLayerList }">▼</span>
         </button>
@@ -457,192 +532,25 @@
           <button class="zoom-btn zoom-in" @click="handleZoomIn">+</button>
           <button class="zoom-btn zoom-out" @click="handleZoomOut">−</button>
         </div>
-
-        <div class="tool-buttons">
-          <!-- 查询按钮 -->
-          <div class="tool-button-wrapper">
-            <div v-show="showSearchPanel" class="tool-panel search-panel">
-              <div class="search-input-wrapper">
-                <input
-                    v-model="searchQuery"
-                    type="text"
-                    class="search-input"
-                    placeholder="输入隐患点名称..."
-                    @input="handleSearch"
-                />
-                <button class="search-btn" @click="handleSearch">🔍</button>
-              </div>
-              <div v-show="searchResults.length" class="search-dropdown">
-                <div
-                    v-for="point in searchResults"
-                    :key="point.id"
-                    class="search-result-item"
-                    @click="selectSearchResult(point)"
-                >
-                  <span class="result-name">{{ point.name }}</span>
-                  <span class="result-code">{{ point.code }}</span>
-                </div>
-              </div>
-            </div>
-            <button
-                class="tool-btn"
-                @click="toggleSearchPanel"
-                :class="{ active: showSearchPanel }"
-                title="查询隐患点"
-            >
-              🔍
-            </button>
-          </div>
-
-          <!-- 图层管理按钮 -->
-          <div class="tool-button-wrapper">
-            <div v-show="showLayerPanel" class="tool-panel layer-panel">
-              <div class="panel-title">图层管理</div>
-
-              <div class="layer-group">
-                <div class="layer-group-title">地图图层</div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showLabels" @change="toggleLayer('showLabels')">
-                  <span>名称标注</span>
-                </div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showWater" @change="toggleLayer('showWater')">
-                  <span>水系图</span>
-                </div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showRoad" @change="toggleLayer('showRoad')">
-                  <span>道路图</span>
-                </div>
-              </div>
-
-              <div class="layer-group">
-                <div class="layer-group-title">隐患点分组</div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showGroup1" @change="toggleLayer('showGroup1')">
-                  <span>第一监测组</span>
-                </div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showGroup2" @change="toggleLayer('showGroup2')">
-                  <span>第二监测组</span>
-                </div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showGroup3" @change="toggleLayer('showGroup3')">
-                  <span>第三监测组</span>
-                </div>
-              </div>
-
-              <div class="layer-group">
-                <div class="layer-group-title">隐患点状态</div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showMonitoring" @change="toggleLayer('showMonitoring')">
-                  <span>监测中</span>
-                </div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showStopped" @change="toggleLayer('showStopped')">
-                  <span>停测</span>
-                </div>
-                <div class="layer-item">
-                  <input type="checkbox" v-model="layerSettings.showCompleted" @change="toggleLayer('showCompleted')">
-                  <span>完结</span>
-                </div>
-              </div>
-            </div>
-            <button
-                class="tool-btn"
-                @click="toggleLayerPanel"
-                :class="{ active: showLayerPanel }"
-                title="图层管理"
-            >
-              📊
-            </button>
-          </div>
-
-          <!-- 图例说明按钮 -->
-          <div class="tool-button-wrapper">
-            <div v-show="showLegendPanel" class="tool-panel legend-panel">
-              <div class="panel-title">图例说明</div>
-
-              <div class="legend-group">
-                <div class="legend-group-title">隐患点状态</div>
-                <div class="legend-item">
-                  <div class="legend-icon" style="background: #1890ff;"></div>
-                  <span>正常</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-icon" style="background: #faad14;"></div>
-                  <span>预警</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-icon" style="background: #f5222d;"></div>
-                  <span>告警</span>
-                </div>
-              </div>
-
-              <div class="legend-group">
-                <div class="legend-group-title">告警级别</div>
-                <div class="legend-item">
-                  <div class="legend-ripple" style="border-color: #f5222d;"></div>
-                  <span>严重告警</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-ripple" style="border-color: #faad14;"></div>
-                  <span>重要告警</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-ripple" style="border-color: #722ed1;"></div>
-                  <span>一般告警</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-ripple" style="border-color: #1890ff;"></div>
-                  <span>提示告警</span>
-                </div>
-              </div>
-
-              <div class="legend-group">
-                <div class="legend-group-title">其他图标</div>
-                <div class="legend-item">
-                  <span class="legend-text">📍</span>
-                  <span>隐患点位置</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-text">⚡</span>
-                  <span>有告警</span>
-                </div>
-              </div>
-            </div>
-            <button
-                class="tool-btn"
-                @click="toggleLegendPanel"
-                :class="{ active: showLegendPanel }"
-                title="图例说明"
-            >
-              📋
-            </button>
-          </div>
-
-          <!-- 面板布局修改按钮 -->
-          <button
-              class="tool-btn edit-btn"
-              @click="showLayoutDialog = true"
-              :class="{ active: showLayoutDialog }"
-              title="修改面板布局"
-          >
-            ⚙
-          </button>
-        </div>
       </div>
 
-      <button class="right-panel-toggle-btn" @click="toggleRightPanel">
-        <span class="toggle-icon">{{ isRightPanelCollapsed ? '‹' : '›' }}</span>
-      </button>
       <div class="right-panel">
+        <div class="panel-header right-panel-header">
+          <button class="panel-collapse-btn" @click="toggleRightPanel">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <polyline v-if="isRightPanelCollapsed" points="15 18 9 12 15 6"/>
+              <polyline v-else points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
         <div class="panel-content">
           <div v-if="isWidgetOnRight('systemHealth')" class="panel-section health-section">
             <div class="section-header">
               <span class="section-title">系统健康度</span>
-              <span class="health-question" @click="showAlgorithmDesc = true" title="健康度算法说明">
+              <span class="health-question" @mouseenter="showHealthPopover" @mouseleave="hideHealthPopover">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><path
                     d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               </span>
             </div>
@@ -700,7 +608,7 @@
                   <div class="breakdown-item hazard">
                     <div class="breakdown-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14"
-                           stroke-width="2" width="14" height="14">
+                           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                       </svg>
                     </div>
@@ -712,7 +620,7 @@
                   <div class="breakdown-item device">
                     <div class="breakdown-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a"
-                           stroke-width="2" width="14" height="14">
+                           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                         <circle cx="12" cy="12" r="3"/>
                         <path
                             d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -773,6 +681,84 @@
               </div>
             </div>
           </div>
+
+          <!-- 隐患点详情部件 -->
+          <div v-if="isWidgetOnRight('hazardPointDetail') && currentView === 'system'" class="panel-section hazard-detail-section">
+            <div class="section-header">
+              <span class="section-title">隐患点详情</span>
+              <button v-if="selectedHazardPoint" class="clear-selection-btn" @click="clearWidgetSelection" title="清除选择">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div v-if="!selectedHazardPoint" class="widget-empty-state">
+              <span class="empty-hint">点击地图标记查看隐患点详情</span>
+            </div>
+
+            <div v-else class="hazard-widget-content">
+              <div class="widget-hazard-name">{{ selectedHazardPoint.name }}</div>
+
+              <div class="hazard-detail-info">
+                <div class="detail-row">
+                  <span class="detail-label">编号</span>
+                  <span class="detail-value">{{ selectedHazardPoint.code }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">坐标</span>
+                  <span class="detail-value">{{ selectedHazardPoint.latitude.toFixed(6) }}, {{ selectedHazardPoint.longitude.toFixed(6) }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">分组</span>
+                  <span class="detail-value">{{ selectedHazardPoint.groupName || '--' }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">备注</span>
+                  <span class="detail-value detail-description">{{ selectedHazardPoint.description || '--' }}</span>
+                </div>
+              </div>
+
+              <div class="widget-device-list">
+                <div class="device-list-header">
+                  <span class="device-list-title">绑定设备</span>
+                  <span class="device-count">{{ widgetBoundDevices.length }}台</span>
+                </div>
+                <div v-if="widgetDevicesLoading" class="device-loading">加载中...</div>
+                <div v-else class="widget-device-cards">
+                  <div
+                    v-for="device in widgetBoundDevices"
+                    :key="device.id"
+                    class="device-card"
+                    @click="openDeviceDataModal(device)"
+                  >
+                    <div class="device-card-icon">
+                      <el-icon :size="22"><component :is="getDeviceTypeIcon(device.type)" /></el-icon>
+                    </div>
+                    <div class="device-card-body">
+                      <div class="device-card-name">{{ device.name }}</div>
+                      <div class="device-card-meta">
+                        <span class="device-card-type">{{ device.typeName }}</span>
+                        <span class="device-card-sensors">{{ device.sensorCount }}个传感器</span>
+                      </div>
+                    </div>
+                    <div class="device-card-status" :class="device.status">
+                      <span class="status-dot"></span>
+                      <span class="status-text">{{ device.status === 'online' ? '在线' : device.status === 'warning' ? '预警' : '离线' }}</span>
+                    </div>
+                  </div>
+                  <div v-if="widgetBoundDevices.length === 0" class="no-devices">暂无绑定设备</div>
+                </div>
+              </div>
+
+              <button class="view-detail-btn" @click="openHazardDetailFromWidget">
+                查看详情
+              </button>
+            </div>
+          </div>
+          <!-- /隐患点详情部件 -->
+
         </div>
       </div>
     </div>
@@ -782,7 +768,7 @@
       <div class="layout-config-dialog" @click.stop>
         <div class="layout-config-header">
           <span class="layout-config-title">面板布局配置</span>
-          <button class="layout-config-close" @click="showLayoutDialog = false">✕</button>
+          <button class="layout-config-close" @click="showLayoutDialog = false"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="layout-config-body">
           <p class="layout-config-desc">拖拽调整各模块在左右两侧面板的显示位置</p>
@@ -799,7 +785,7 @@
                 >
                   <span class="widget-drag-handle">⠿</span>
                   <span>{{ widget.label }}</span>
-                  <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏">✕</button>
+                  <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>
                 <div v-if="leftWidgets.length === 0" class="drop-hint">拖拽模块到此处</div>
               </div>
@@ -816,7 +802,7 @@
                 >
                   <span class="widget-drag-handle">⠿</span>
                   <span>{{ widget.label }}</span>
-                  <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏">✕</button>
+                  <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>
                 <div v-if="rightWidgets.length === 0" class="drop-hint">拖拽模块到此处</div>
               </div>
@@ -832,7 +818,7 @@
                   @click="restoreWidget(widget.key)"
               >
                 {{ widget.label }}
-                <span class="restore-icon">↩</span>
+                <el-icon class="restore-icon"><RefreshLeft /></el-icon>
               </span>
             </div>
           </div>
@@ -843,6 +829,176 @@
         </div>
       </div>
     </div>
+
+    <!-- 右下角工具栏 -->
+    <div class="bottom-toolbar">
+      <div class="tool-buttons">
+        <!-- 查询按钮 -->
+        <div class="tool-button-wrapper">
+          <div v-show="showSearchPanel" class="tool-panel search-panel">
+            <div class="search-input-wrapper">
+              <input
+                  v-model="searchQuery"
+                  type="text"
+                  class="search-input"
+                  placeholder="输入隐患点名称..."
+                  @input="handleSearch"
+              />
+              <button class="search-btn" @click="handleSearch"><el-icon><Search /></el-icon></button>
+            </div>
+            <div v-show="searchResults.length" class="search-dropdown">
+              <div
+                  v-for="point in searchResults"
+                  :key="point.id"
+                  class="search-result-item"
+                  @click="selectSearchResult(point)"
+              >
+                <span class="result-name">{{ point.name }}</span>
+                <span class="result-code">{{ point.code }}</span>
+              </div>
+            </div>
+          </div>
+          <button
+              class="tool-btn"
+              @click="toggleSearchPanel"
+              :class="{ active: showSearchPanel }"
+              title="查询隐患点"
+          >
+            <el-icon><Search /></el-icon>
+          </button>
+        </div>
+
+        <!-- 图层管理按钮 -->
+        <div class="tool-button-wrapper">
+          <div v-show="showLayerPanel" class="tool-panel layer-panel">
+            <div class="panel-title">图层管理</div>
+            <div class="layer-group">
+              <div class="layer-group-title">地图图层</div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showLabels" @change="toggleLayer('showLabels')">
+                <span>名称标注</span>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showWater" @change="toggleLayer('showWater')">
+                <span>水系图</span>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showRoad" @change="toggleLayer('showRoad')">
+                <span>道路图</span>
+              </div>
+            </div>
+            <div class="layer-group">
+              <div class="layer-group-title">隐患点分组</div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showGroup1" @change="toggleLayer('showGroup1')">
+                <span>第一监测组</span>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showGroup2" @change="toggleLayer('showGroup2')">
+                <span>第二监测组</span>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showGroup3" @change="toggleLayer('showGroup3')">
+                <span>第三监测组</span>
+              </div>
+            </div>
+            <div class="layer-group">
+              <div class="layer-group-title">隐患点状态</div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showMonitoring" @change="toggleLayer('showMonitoring')">
+                <span>监测中</span>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showStopped" @change="toggleLayer('showStopped')">
+                <span>停测</span>
+              </div>
+              <div class="layer-item">
+                <input type="checkbox" v-model="layerSettings.showCompleted" @change="toggleLayer('showCompleted')">
+                <span>完结</span>
+              </div>
+            </div>
+          </div>
+          <button
+              class="tool-btn"
+              @click="toggleLayerPanel"
+              :class="{ active: showLayerPanel }"
+              title="图层管理"
+          >
+            <el-icon><DataAnalysis /></el-icon>
+          </button>
+        </div>
+
+        <!-- 图例说明按钮 -->
+        <div class="tool-button-wrapper">
+          <div v-show="showLegendPanel" class="tool-panel legend-panel">
+            <div class="panel-title">图例说明</div>
+            <div class="legend-group">
+              <div class="legend-group-title">隐患点状态</div>
+              <div class="legend-item">
+                <div class="legend-icon" style="background: #1890ff;"></div>
+                <span>正常</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-icon" style="background: #faad14;"></div>
+                <span>预警</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-icon" style="background: #f5222d;"></div>
+                <span>告警</span>
+              </div>
+            </div>
+            <div class="legend-group">
+              <div class="legend-group-title">告警级别</div>
+              <div class="legend-item">
+                <div class="legend-ripple" style="border-color: #f5222d;"></div>
+                <span>严重告警</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-ripple" style="border-color: #faad14;"></div>
+                <span>重要告警</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-ripple" style="border-color: #722ed1;"></div>
+                <span>一般告警</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-ripple" style="border-color: #1890ff;"></div>
+                <span>提示告警</span>
+              </div>
+            </div>
+            <div class="legend-group">
+              <div class="legend-group-title">其他图标</div>
+              <div class="legend-item">
+                <el-icon class="legend-text"><Location /></el-icon>
+                <span>隐患点位置</span>
+              </div>
+              <div class="legend-item">
+                <el-icon class="legend-text"><Lightning /></el-icon>
+                <span>有告警</span>
+              </div>
+            </div>
+          </div>
+          <button
+              class="tool-btn"
+              @click="toggleLegendPanel"
+              :class="{ active: showLegendPanel }"
+              title="图例说明"
+          >
+            <el-icon><List /></el-icon>
+          </button>
+        </div>
+
+        <!-- 面板布局修改按钮 -->
+        <button
+            class="tool-btn edit-btn"
+            @click="showLayoutDialog = true"
+            :class="{ active: showLayoutDialog }"
+            title="修改面板布局"
+        >
+          <el-icon><Setting /></el-icon>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -851,8 +1007,19 @@ import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import * as echarts from 'echarts'
-import {getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {DataAnalysis, Download, Drizzling, Lightning, List, Location, MapLocation, Monitor, Odometer, RefreshLeft, Search, Setting, Sunny, Upload} from '@element-plus/icons-vue'
+import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
 import {getDeviceSensors} from '@/api/sensor'
+import {getChartData, type ChartData} from '@/api/monitorData'
+
+const getDeviceTypeIcon = (type: string) => {
+  switch (type) {
+    case 'GNSS': return Monitor
+    case 'RAIN': return Sunny
+    case 'PRESSURE': return Drizzling
+    default: return Odometer
+  }
+}
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -896,6 +1063,36 @@ const showLayerList = ref(false)
 const isPanelCollapsed = ref(false)
 const activeSegment = ref<number | null>(null)
 const showAlgorithmDesc = ref(false)
+const healthPopoverStyle = ref<Record<string, string>>({})
+let healthPopoverHideTimer: ReturnType<typeof setTimeout> | null = null
+
+const showHealthPopover = (e: MouseEvent) => {
+  if (healthPopoverHideTimer) {
+    clearTimeout(healthPopoverHideTimer)
+    healthPopoverHideTimer = null
+  }
+  const target = e.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  healthPopoverStyle.value = {
+    position: 'fixed',
+    top: rect.bottom + 8 + 'px',
+    left: Math.min(rect.left, window.innerWidth - 320) + 'px',
+  }
+  showAlgorithmDesc.value = true
+}
+
+const hideHealthPopover = () => {
+  healthPopoverHideTimer = setTimeout(() => {
+    showAlgorithmDesc.value = false
+  }, 150)
+}
+
+const cancelHealthPopoverHide = () => {
+  if (healthPopoverHideTimer) {
+    clearTimeout(healthPopoverHideTimer)
+    healthPopoverHideTimer = null
+  }
+}
 
 const currentLayerName = ref('影像图')
 
@@ -934,13 +1131,14 @@ interface WidgetDef {
 const ALL_WIDGETS: WidgetDef[] = [
   {key: 'systemHealth', label: '系统健康度'},
   {key: 'assetInfo', label: '资产情况'},
-  {key: 'alarmStatus', label: '告警态势'}
+  {key: 'alarmStatus', label: '告警态势'},
+  {key: 'hazardPointDetail', label: '隐患点详情'}
 ]
 
 const DEFAULT_LAYOUT = {
-  left: ['systemHealth', 'assetInfo'],
+  left: ['hazardPointDetail'],
   right: ['alarmStatus'],
-  hidden: [] as string[]
+  hidden: ['systemHealth', 'assetInfo']
 }
 
 const showLayoutDialog = ref(false)
@@ -953,7 +1151,14 @@ const loadLayoutConfig = () => {
     const saved = localStorage.getItem('dashboard_layout')
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (parsed.left && parsed.right && parsed.hidden) layoutConfig.value = parsed
+      if (parsed.left && parsed.right && parsed.hidden) {
+        // 迁移：将 ALL_WIDGETS 中新增但不在旧布局中的部件自动补入 hidden
+        const known = new Set([...parsed.left, ...parsed.right, ...parsed.hidden])
+        for (const w of ALL_WIDGETS) {
+          if (!known.has(w.key)) parsed.hidden.push(w.key)
+        }
+        layoutConfig.value = parsed
+      }
     }
   } catch { /* keep defaults */
   }
@@ -997,9 +1202,16 @@ const moveWidget = (key: string, side: 'left' | 'right' | null) => {
   saveLayoutConfig()
 }
 
+const WIDGET_DEFAULT_SIDE: Record<string, 'left' | 'right'> = {
+  systemHealth: 'left',
+  assetInfo: 'left',
+  alarmStatus: 'right',
+  hazardPointDetail: 'left'
+}
+
 const restoreWidget = (key: string) => {
   // Restore hidden widget to its default side
-  const defaultSide = DEFAULT_LAYOUT.left.includes(key) ? 'left' : 'right'
+  const defaultSide = WIDGET_DEFAULT_SIDE[key] || 'right'
   moveWidget(key, defaultSide)
 }
 
@@ -1017,6 +1229,11 @@ const isWidgetOnRight = (key: string) => layoutConfig.value.right.includes(key)
 const currentView = ref<'system' | 'hazard'>('system')
 const currentHazardPoint = ref<typeof hazardPoints.value[0] | null>(null)
 const showHazardList = ref(false)
+
+// 隐患点详情部件 - 软选择状态
+const selectedHazardPoint = ref<typeof hazardPoints.value[0] | null>(null)
+const widgetBoundDevices = ref<any[]>([])
+const widgetDevicesLoading = ref(false)
 
 // 工具按钮状态
 const showSearchPanel = ref(false)
@@ -1314,6 +1531,10 @@ const addHazardPoints = () => {
     })
 
     marker.on('click', () => {
+      onHazardMarkerClick(point)
+    })
+
+    marker.on('dblclick', () => {
       enterHazardView(point)
     })
 
@@ -1387,6 +1608,125 @@ const startRipple = (point: typeof hazardPoints.value[0]) => {
 
   repeatRipple()
 }
+
+// ========== 隐患点详情部件 - 软选择逻辑 ==========
+
+const onHazardMarkerClick = async (point: typeof hazardPoints.value[0]) => {
+  selectedHazardPoint.value = point
+
+  // 地图缩放到隐患点
+  if (mapInstance) {
+    mapInstance.setView([point.latitude, point.longitude], 14)
+  }
+
+  // 地图上：隐藏所有隐患点，绘制区域+设备
+  await showHazardOnMap(point)
+
+  // 侧边栏：加载绑定设备
+  await loadWidgetDevices(point.id)
+}
+
+const showHazardOnMap = async (point: typeof hazardPoints.value[0]) => {
+  if (!mapInstance) return
+
+  // 清除现有地图标记
+  if (hazardMarkerLayer) {
+    mapInstance.removeLayer(hazardMarkerLayer)
+  }
+  hazardMarkerLayer = L.layerGroup().addTo(mapInstance)
+
+  // 绘制隐患点范围
+  L.circle([point.latitude, point.longitude], {
+    radius: 500,
+    color: '#f5222d',
+    fillColor: '#f5222d',
+    fillOpacity: 0.1,
+    weight: 2,
+    dashArray: '8,4'
+  }).addTo(hazardMarkerLayer)
+
+  // 加载并绘制设备标记
+  try {
+    const response = await getBoundDevices(String(point.id))
+    if (response.code === 200 && response.data) {
+      const devices = (response.data as any[]).map((item: any) => ({
+        id: item.deviceId,
+        name: item.deviceName || '未知设备',
+        type: (item.sensors?.[0]?.name || 'DEVICE').toUpperCase(),
+        typeName: item.sensors?.[0]?.name || '设备',
+        status: item.deviceStatus === 0 ? 'online' : item.deviceStatus === 1 ? 'warning' : 'offline',
+        sensorCount: item.sensors?.length || 0,
+        longitude: item.installLongitude ?? point.longitude,
+        latitude: item.installLatitude ?? point.latitude
+      }))
+
+      devices.forEach(device => {
+        const icon = createDeviceIcon(device.status)
+        L.marker([device.latitude, device.longitude], {icon})
+          .addTo(hazardMarkerLayer!)
+          .bindPopup(`
+            <div style="padding: 8px; min-width: 180px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">${device.name}</div>
+              <div style="font-size: 12px; color: #666;">
+                <div>类型: ${device.typeName}</div>
+                <div>传感器: ${device.sensorCount}个</div>
+                <div>状态: ${getStatusText(device.status)}</div>
+              </div>
+            </div>
+          `)
+      })
+    }
+  } catch (error) {
+    console.error('加载设备标记失败:', error)
+  }
+}
+
+const restoreHazardMarkers = () => {
+  if (mapInstance && hazardMarkerLayer) {
+    hazardMarkerLayer.clearLayers()
+    addHazardPoints()
+    fitToFocusArea()
+  }
+}
+
+const loadWidgetDevices = async (hazardPointId: number) => {
+  widgetDevicesLoading.value = true
+  widgetBoundDevices.value = []
+  try {
+    const response = await getBoundDevices(String(hazardPointId))
+    if (response.code === 200 && response.data) {
+      widgetBoundDevices.value = (response.data as any[]).map((item: any) => ({
+        id: item.deviceId,                                              // 设备ID (非绑定记录ID)
+        name: item.deviceName || '未知设备',
+        type: (item.sensors?.[0]?.name || 'DEVICE').toUpperCase(),      // 从传感器名推断类型
+        typeName: item.sensors?.[0]?.name || '设备',
+        status: item.deviceStatus === 0 ? 'online' : item.deviceStatus === 1 ? 'warning' : 'offline',
+        sensorCount: item.sensors?.length || 0,
+        longitude: item.installLongitude ?? 0,
+        latitude: item.installLatitude ?? 0
+      }))
+    }
+  } catch (error) {
+    console.error('加载部件设备列表失败:', error)
+    widgetBoundDevices.value = []
+  } finally {
+    widgetDevicesLoading.value = false
+  }
+}
+
+const openHazardDetailFromWidget = () => {
+  if (selectedHazardPoint.value) {
+    enterHazardView(selectedHazardPoint.value)
+  }
+}
+
+const clearWidgetSelection = () => {
+  selectedHazardPoint.value = null
+  widgetBoundDevices.value = []
+  widgetDevicesLoading.value = false
+}
+
+// ========== /隐患点详情部件 ==========
 
 const handleResize = () => {
   if (mapInstance) {
@@ -1499,6 +1839,9 @@ const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
   showSensorChart.value = false
   sensorList.value = []
 
+  // 清除部件软选择状态
+  clearWidgetSelection()
+
   // 更新告警统计（限定到当前隐患点）
   updateHazardAlarms(hazardPoint.id)
 
@@ -1604,16 +1947,16 @@ const addDeviceMarkers = async (hazardId: number) => {
     const response = await request.default.get(`/hazard-points/${hazardId}/bound-devices`)
     if (response.code === 200 && response.data) {
       const devices = response.data
-      // 更新设备列表
-      deviceList.value = devices.map((device: any) => ({
-        id: device.id,
-        name: device.name,
-        type: device.deviceType || 'UNKNOWN',
-        typeName: device.deviceTypeName || '未知设备',
-        status: device.status === 0 ? 'online' : device.status === 1 ? 'warning' : 'offline',
-        sensorCount: device.sensorCount || 0,
-        longitude: device.longitude || currentHazardPoint.value!.longitude,
-        latitude: device.latitude || currentHazardPoint.value!.latitude
+      // 更新设备列表（BoundDeviceVO 字段: deviceId, deviceName, deviceStatus, installLongitude, installLatitude, sensors）
+      deviceList.value = devices.map((item: any) => ({
+        id: item.deviceId,
+        name: item.deviceName || '未知设备',
+        type: (item.sensors?.[0]?.name || 'DEVICE').toUpperCase(),
+        typeName: item.sensors?.[0]?.name || '设备',
+        status: item.deviceStatus === 0 ? 'online' : item.deviceStatus === 1 ? 'warning' : 'offline',
+        sensorCount: item.sensors?.length || 0,
+        longitude: item.installLongitude || currentHazardPoint.value!.longitude,
+        latitude: item.installLatitude || currentHazardPoint.value!.latitude
       }))
       
       // 添加设备标记
@@ -1752,113 +2095,108 @@ const selectModalSensor = (sensor: any) => {
 }
 
 // 查询传感器数据
+const chartDataResult = ref<ChartData[]>([])
+
 const querySensorData = () => {
   if (!selectedModalSensor.value) return
-  
-  // 生成模拟数据
-  generateMockData()
-  
-  // 渲染图表
-  nextTick(() => {
-    renderChart()
+
+  const hpId = selectedHazardPoint.value?.id || currentHazardPoint.value?.id
+  if (!hpId) return
+
+  const now = new Date()
+  const days = parseInt(queryTimeRange.value)
+  const startTime = new Date(now.getTime() - days * 24 * 3600 * 1000).toISOString().slice(0, 19)
+  const endTime = now.toISOString().slice(0, 19)
+
+  getChartData({
+    hazardPointId: hpId,
+    deviceId: selectedDevice.value?.id,
+    sensorId: selectedModalSensor.value.id,
+    attrCode: queryDirection.value !== 'all' ? queryDirection.value : undefined,
+    valueType: queryValueType.value,
+    startTime,
+    endTime
+  }).then(data => {
+    chartDataResult.value = data || []
+
+    // 生成表格数据
+    if (data && data.length > 0) {
+      const labels = data[0].labels || []
+      tableData.value = labels.map((label, i) => ({
+        time: label,
+        ...Object.fromEntries(data.map(s => [s.seriesName, s.values?.[i] ?? null]))
+      }))
+    } else {
+      tableData.value = []
+    }
+
+    nextTick(() => renderChart())
+  }).catch(err => {
+    console.error('查询传感器数据失败:', err)
+    tableData.value = []
+    chartDataResult.value = []
   })
 }
 
-// 生成模拟数据
-const generateMockData = () => {
-  const days = parseInt(queryTimeRange.value)
-  const dataCount = days * 24
-  const now = new Date()
-  
-  tableData.value = []
-  for (let i = 0; i < dataCount; i++) {
-    const time = new Date(now.getTime() - (dataCount - i) * 3600000)
-    const value = Math.random() * 50 + Math.sin(i * 0.1) * 10 + 50
-    const change = (Math.random() - 0.5) * 5
-    
-    tableData.value.push({
-      time: time.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
-      value: value,
-      change: change,
-      status: Math.random() > 0.9 ? 'warning' : 'normal'
-    })
-  }
-}
-
 // 渲染ECharts图表
+const SERIES_COLORS = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#eb2f96']
+
 const renderChart = () => {
-  if (!chartContainer.value || tableData.value.length === 0) return
-  
+  if (!chartContainer.value) return
+  const dataList = chartDataResult.value
+  if (dataList.length === 0) return
+
   // 销毁旧实例
   if (chartInstance) {
     chartInstance.dispose()
   }
-  
+
   // 创建新实例
   chartInstance = echarts.init(chartContainer.value)
-  
-  const xAxisData = tableData.value.map(item => item.time)
-  const seriesData = tableData.value.map(item => item.value)
-  
+
+  const labels = dataList[0].labels || []
+  const legendData = dataList.map(s => s.seriesName)
+  const yUnit = dataList[0].unit || ''
+
   const option = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'cross'
-      }
+      axisPointer: { type: 'cross' }
     },
     legend: {
-      data: ['采集值'],
-      textStyle: {
-        fontSize: 12
-      }
+      data: legendData,
+      textStyle: { fontSize: 12 }
     },
     grid: {
       left: '3%',
       right: '4%',
       bottom: '3%',
+      top: '10%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: xAxisData,
-      axisLabel: {
-        fontSize: 10,
-        rotate: 45
-      }
+      data: labels,
+      axisLabel: { fontSize: 10, rotate: 45 }
     },
     yAxis: {
       type: 'value',
-      axisLabel: {
-        fontSize: 10
-      }
+      name: yUnit,
+      axisLabel: { fontSize: 10 }
     },
-    series: [
-      {
-        name: '采集值',
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 6,
-        data: seriesData,
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
-            { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
-          ])
-        },
-        lineStyle: {
-          color: '#1890ff',
-          width: 2
-        },
-        itemStyle: {
-          color: '#1890ff'
-        }
-      }
-    ]
+    series: dataList.map((s, index) => ({
+      name: s.seriesName,
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 4,
+      data: s.values || [],
+      lineStyle: { color: SERIES_COLORS[index % SERIES_COLORS.length], width: 2 },
+      itemStyle: { color: SERIES_COLORS[index % SERIES_COLORS.length] }
+    }))
   }
-  
+
   chartInstance.setOption(option)
 }
 
@@ -1871,18 +2209,18 @@ const handleImport = () => {
 // 处理导出
 const handleExport = () => {
   console.log('导出监测数据')
-  if (tableData.value.length === 0) {
+  const dataList = chartDataResult.value
+  if (dataList.length === 0 || tableData.value.length === 0) {
     alert('暂无数据可导出')
     return
   }
-  
+
   // 生成CSV数据
-  const headers = ['时间', '采集值', '变化量', '状态']
-  const rows = tableData.value.map(row => [
-    row.time,
-    row.value.toFixed(3),
-    row.change.toFixed(3),
-    row.status === 'normal' ? '正常' : '预警'
+  const headers = ['时间', ...dataList.map(s => `${s.seriesName}(${s.unit || ''})`)]
+  const labels = dataList[0].labels || []
+  const rows = labels.map((label, i) => [
+    label,
+    ...dataList.map(s => s.values?.[i]?.toFixed(3) ?? '')
   ])
   
   const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n')
@@ -2043,6 +2381,7 @@ onUnmounted(() => {
 }
 
 .layer-switcher-wrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -2090,8 +2429,8 @@ onUnmounted(() => {
 
 .layer-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  top: 0;
+  right: calc(100% + 8px);
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #e8e8e8;
   border-radius: 8px;
@@ -2134,11 +2473,8 @@ onUnmounted(() => {
 }
 
 .zoom-controls {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 4px;
 }
 
@@ -2183,20 +2519,24 @@ onUnmounted(() => {
 }
 
 .left-panel {
-  width: 240px;
+  width: 280px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(12px);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
   transition: all 0.3s ease;
 }
 
+.left-panel-wrapper.collapsed .left-panel .panel-content {
+  display: none;
+}
+
 .left-panel-wrapper.collapsed .left-panel {
-  width: 0;
-  padding: 0;
-  overflow: hidden;
+  width: auto;
+  min-width: unset;
 }
 
 .panel-content {
@@ -2494,115 +2834,83 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.panel-toggle-btn {
-  width: 32px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-left: none;
-  border-radius: 0 8px 8px 0;
-  cursor: pointer;
+.panel-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  padding: 8px 10px 4px;
 }
 
-.panel-toggle-btn:hover {
-  background: rgba(64, 158, 255, 0.1);
+.right-panel-header {
+  justify-content: flex-end;
 }
 
-.toggle-icon {
-  font-size: 18px;
-  color: #1890ff;
-  font-weight: bold;
-  transition: transform 0.2s ease;
-}
-
-.algorithm-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal-content {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  width: 90%;
-  max-width: 480px;
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-}
-
-.modal-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.modal-close {
+.panel-collapse-btn {
   width: 28px;
   height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.06);
-  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 6px;
-  color: #909399;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.modal-close:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #303133;
-}
-
-.modal-body {
-  padding: 20px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.modal-body p {
-  font-size: 14px;
   color: #606266;
-  line-height: 1.6;
-  margin: 0 0 12px 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.modal-body ul {
+.panel-collapse-btn:hover {
+  background: rgba(64, 158, 255, 0.1);
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.algorithm-popover {
+  position: fixed;
+  width: 300px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 14px 16px;
+  z-index: 2000;
+  cursor: default;
+  pointer-events: auto;
+}
+
+.popover-arrow {
+  position: absolute;
+  top: -6px;
+  left: 8px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+  transform: rotate(45deg);
+}
+
+.algorithm-popover p {
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.5;
   margin: 0;
-  padding-left: 20px;
 }
 
-.modal-body li {
-  font-size: 13px;
-  color: #909399;
-  line-height: 1.8;
-  margin-bottom: 8px;
+.algorithm-popover ul {
+  margin: 6px 0 0 0;
+  padding-left: 16px;
 }
 
-.modal-body li:last-child {
-  margin-bottom: 0;
+.algorithm-popover li {
+  font-size: 12px;
+  color: #4b5563;
+  margin-bottom: 3px;
+  line-height: 1.5;
+}
+
+.algorithm-popover li strong {
+  color: #3b82f6;
 }
 
 :deep(.leaflet-attribution) {
@@ -2626,43 +2934,28 @@ onUnmounted(() => {
   right: 20px;
 }
 
+.right-panel-wrapper.collapsed .right-panel .panel-content {
+  display: none;
+}
+
 .right-panel-wrapper.collapsed .right-panel {
-  width: 0;
-  padding: 0;
-  overflow: hidden;
-  margin-left: 0;
+  width: auto;
+  min-width: unset;
 }
 
 .right-panel {
   width: 280px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(12px);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
   transition: all 0.3s ease;
   margin-left: 8px;
 }
 
-.right-panel-toggle-btn {
-  width: 32px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
-}
-
-.right-panel-toggle-btn:hover {
-  background: rgba(64, 158, 255, 0.1);
-}
 
 .alarm-summary {
   display: flex;
@@ -2893,17 +3186,29 @@ onUnmounted(() => {
   display: none !important;
 }
 
+/* 右下角工具栏 */
+.bottom-toolbar {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 /* 工具按钮样式 */
 .tool-buttons {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
-  margin-top: 8px;
 }
 
 .tool-button-wrapper {
+  position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column-reverse;
+  align-items: flex-end;
   gap: 8px;
 }
 
@@ -2935,6 +3240,9 @@ onUnmounted(() => {
 }
 
 .tool-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #e8e8e8;
   border-radius: 8px;
@@ -2944,7 +3252,18 @@ onUnmounted(() => {
   max-width: 280px;
   max-height: 400px;
   overflow-y: auto;
-  animation: slideInLeft 0.2s ease;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideInLeft {
@@ -4170,8 +4489,257 @@ onUnmounted(() => {
   background: #40a9ff;
 }
 
-/* 右侧面板隐藏时工具栏仍可见 */
-.right-panel-wrapper.collapsed .right-panel {
-  display: none;
+
+/* ========== 隐患点详情部件样式 ========== */
+
+.hazard-detail-section .section-header {
+  margin-bottom: 8px;
 }
+
+.clear-selection-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: #909399;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-selection-btn:hover {
+  background: #fff1f0;
+  color: #f5222d;
+}
+
+.widget-empty-state {
+  padding: 20px 12px;
+  text-align: center;
+}
+
+.empty-hint {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
+}
+
+.hazard-widget-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.widget-hazard-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.hazard-detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.detail-label {
+  color: #909399;
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.detail-value {
+  color: #303133;
+  word-break: break-all;
+}
+
+.detail-description {
+  color: #606266;
+  font-size: 11px;
+}
+
+/* 部件设备列表 */
+.widget-device-list {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 8px;
+}
+
+.device-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.device-list-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.device-count {
+  font-size: 11px;
+  color: #909399;
+}
+
+.device-loading {
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* 设备卡片列表 */
+.widget-device-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.device-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.device-card:hover {
+  background: #f0f7ff;
+  border-color: #bae0ff;
+}
+
+.device-card:active {
+  background: #e6f7ff;
+}
+
+.device-card-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(64, 158, 255, 0.08);
+  border-radius: 8px;
+  flex-shrink: 0;
+  color: #1890ff;
+}
+
+.device-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-card-name {
+  font-size: 12px;
+  color: #303133;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.device-card-meta {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  color: #909399;
+  white-space: nowrap;
+}
+
+.device-card-type {
+  color: #606266;
+}
+
+.device-card-sensors {
+  color: #909399;
+}
+
+.device-card-status {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.device-card-status .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.device-card-status .status-text {
+  font-size: 11px;
+}
+
+.device-card-status.online .status-dot {
+  background: #52c41a;
+}
+
+.device-card-status.online .status-text {
+  color: #52c41a;
+}
+
+.device-card-status.warning .status-dot {
+  background: #faad14;
+}
+
+.device-card-status.warning .status-text {
+  color: #faad14;
+}
+
+.device-card-status.offline .status-dot {
+  background: #f5222d;
+}
+
+.device-card-status.offline .status-text {
+  color: #f5222d;
+}
+
+.no-devices {
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.view-detail-btn {
+  width: 100%;
+  padding: 8px 0;
+  background: linear-gradient(135deg, #1890ff 0%, #66b1ff 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-detail-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+/* ========== /隐患点详情部件样式 ========== */
 </style>

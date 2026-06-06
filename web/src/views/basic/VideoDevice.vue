@@ -24,7 +24,7 @@
           @keyup.enter="handleSearch"
       >
         <template #prefix>
-          <span class="search-icon">🔍</span>
+          <el-icon class="search-icon"><Search /></el-icon>
         </template>
       </el-input>
       <el-select v-model="searchProtocol" placeholder="选择协议" clearable class="protocol-select">
@@ -289,6 +289,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {Search} from '@element-plus/icons-vue'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
