@@ -4,10 +4,9 @@ import type { MonitorTypeItem } from './monitorType'
 
 export interface SensorAttrItem {
   id?: number
+  monitorContentId?: number
   attrCode: string
   attrName: string
-  indicatorType?: string
-  indicatorTypeName?: string
   initialValue?: number | null
   unit?: string
   rangeMin?: number | null
@@ -66,5 +65,5 @@ export const deleteSensor = (id: number) =>
 
 export const getSensorMonitorTypes = async () => {
   const list = await unwrap<MonitorTypeItem[]>(request.get('/monitor-types'))
-  return list.filter((item) => item.deviceType === 2)
+  return list
 }

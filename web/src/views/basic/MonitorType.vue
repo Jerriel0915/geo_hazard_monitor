@@ -33,14 +33,6 @@
           </el-icon>
         </template>
       </el-input>
-      <el-select v-model="searchDeviceType" clearable placeholder="设备类型" class="device-type-select">
-        <el-option
-          v-for="item in deviceTypeOptions"
-          :key="item.value"
-          :label="item.label"
-          :value="item.value"
-        />
-      </el-select>
       <el-select v-model="searchStatus" clearable placeholder="状态" class="status-select">
         <el-option label="启用" :value="1" />
         <el-option label="禁用" :value="0" />
@@ -65,9 +57,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="name" label="名称" min-width="180" align="center" />
-        <el-table-column prop="deviceTypeName" label="设备类型" width="120" align="center">
+        <el-table-column prop="categoryName" label="监测大类" width="120" align="center">
           <template #default="{ row }">
-            <el-tag type="info" effect="plain">{{ row.deviceTypeName || '-' }}</el-tag>
+            <el-tag type="info" effect="plain">{{ row.categoryName || '-' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="220" align="center">
@@ -161,18 +153,18 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="设备类型" prop="deviceType">
+            <el-form-item label="监测大类" prop="categoryId">
               <el-select
-                v-model="formData.deviceType"
-                placeholder="请选择设备类型"
+                v-model="formData.categoryId"
+                placeholder="请选择监测大类"
                 :disabled="isView"
                 style="width: 100%"
               >
                 <el-option
-                  v-for="item in deviceTypeOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
+                  v-for="item in categoryOptions"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
                 />
               </el-select>
             </el-form-item>
@@ -341,6 +333,7 @@
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox, type FormInstance, type FormRules} from 'element-plus'
 import {Search} from '@element-plus/icons-vue'
+import request from '@/utils/request'
 import {
   createMonitorContent,
   createMonitorType,
@@ -374,11 +367,7 @@ const IndicatorTypeEnum = {
 } as const
 
 const indicatorTypeOptions = Object.values(IndicatorTypeEnum)
-const deviceTypeOptions = [
-  { label: '直连设备', value: 1 },
-  { label: '传感器', value: 2 },
-  { label: 'RTU', value: 3 }
-]
+const categoryOptions = ref<{ id: number; name: string }[]>([])
 const typeIconList: IconItem[] = getIconList()
 
 const loading = ref(false)
@@ -389,7 +378,6 @@ const pageSize = ref(10)
 const total = ref(0)
 const searchType = ref<SearchType>('name')
 const searchKeyword = ref('')
-const searchDeviceType = ref<number | ''>('')
 const searchStatus = ref<number | ''>('')
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -404,7 +392,7 @@ const formData = reactive<{
   code: string
   name: string
   icon: string
-  deviceType: number | null
+  categoryId: number | null
   description: string
   sortOrder: number
   status: number
@@ -413,7 +401,7 @@ const formData = reactive<{
   code: '',
   name: '',
   icon: '',
-  deviceType: null,
+  categoryId: null,
   description: '',
   sortOrder: 0,
   status: 1,
@@ -429,7 +417,7 @@ const formRules: FormRules = {
     { required: true, message: '请输入监测类型名称', trigger: 'blur' },
     { max: 200, message: '监测类型名称长度不能超过200个字符', trigger: 'blur' }
   ],
-  deviceType: [{ required: true, message: '请选择设备类型', trigger: 'change' }],
+  categoryId: [{ required: true, message: '请选择监测大类', trigger: 'change' }],
   description: [{ max: 500, message: '描述长度不能超过500个字符', trigger: 'blur' }]
 }
 
@@ -444,15 +432,12 @@ const normalizeMonitorContent = (item: any): MonitorContentItem => ({
   rangeMax: item?.rangeMax === null || item?.rangeMax === undefined ? null : Number(item.rangeMax)
 })
 
-const getDeviceTypeLabel = (deviceType: number | null | undefined) =>
-  deviceTypeOptions.find((item) => item.value === deviceType)?.label || '-'
-
 const normalizeMonitorType = (item: any): MonitorTypeItem => ({
   id: Number(item?.id),
   code: String(item?.code || ''),
+  categoryId: item?.categoryId ?? undefined,
+  categoryName: item?.categoryName || '',
   name: String(item?.name || ''),
-  deviceType: item?.deviceType ?? null,
-  deviceTypeName: String(item?.deviceTypeName || getDeviceTypeLabel(item?.deviceType)),
   icon: String(item?.icon || ''),
   description: String(item?.description || ''),
   sortOrder: Number(item?.sortOrder ?? 0),
@@ -483,7 +468,7 @@ const resetFormData = () => {
     code: '',
     name: '',
     icon: '',
-    deviceType: null,
+    categoryId: null,
     description: '',
     sortOrder: 0,
     status: 1,
@@ -507,9 +492,6 @@ const buildQueryParams = () => {
   const keyword = searchKeyword.value.trim()
   if (keyword) {
     params[searchType.value] = keyword
-  }
-  if (searchDeviceType.value !== '') {
-    params.deviceType = searchDeviceType.value
   }
   if (searchStatus.value !== '') {
     params.status = searchStatus.value
@@ -537,7 +519,7 @@ const fillFormFromDetail = (detail: MonitorTypeItem) => {
     code: detail.code,
     name: detail.name,
     icon: detail.icon || '',
-    deviceType: detail.deviceType,
+    categoryId: detail.categoryId ?? null,
     description: detail.description || '',
     sortOrder: detail.sortOrder ?? 0,
     status: detail.status ?? 1,
@@ -620,7 +602,7 @@ const validateModelAttrs = () => {
 const buildMonitorTypeCreatePayload = () => ({
   code: formData.code.trim(),
   name: formData.name.trim(),
-  deviceType: formData.deviceType,
+  categoryId: formData.categoryId as number,
   icon: formData.icon || '',
   description: formData.description.trim(),
   sortOrder: formData.sortOrder ?? 0,
@@ -629,7 +611,7 @@ const buildMonitorTypeCreatePayload = () => ({
 
 const buildMonitorTypeUpdatePayload = () => ({
   name: formData.name.trim(),
-  deviceType: formData.deviceType,
+  categoryId: formData.categoryId ?? undefined,
   icon: formData.icon || '',
   description: formData.description.trim(),
   sortOrder: formData.sortOrder ?? 0
@@ -731,7 +713,6 @@ const handleSearch = () => {
 const handleReset = () => {
   searchType.value = 'name'
   searchKeyword.value = ''
-  searchDeviceType.value = ''
   searchStatus.value = ''
   currentPage.value = 1
   loadTableData()
@@ -806,7 +787,7 @@ const handleExport = () => {
     ...tableData.value.map((item) => [
       item.code,
       item.name,
-      item.deviceTypeName || '',
+      item.categoryName || '',
       item.description || '',
       item.sortOrder,
       item.status === 1 ? '启用' : '禁用',
@@ -906,8 +887,16 @@ const handleTypeIconSelect = (item: IconItem) => {
   typeIconDialogVisible.value = false
 }
 
+const loadCategoryOptions = async () => {
+  try {
+    const res = await request.get('/monitor-categories')
+    categoryOptions.value = (res.data || [])
+  } catch { /* ignore */ }
+}
+
 onMounted(() => {
   loadTableData()
+  loadCategoryOptions()
 })
 </script>
 

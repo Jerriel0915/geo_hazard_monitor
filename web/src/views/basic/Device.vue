@@ -370,7 +370,7 @@
           <template #default="{ row }">
             <div v-if="row.attrList?.length" class="attr-config-list">
               <div v-for="attr in row.attrList" :key="attr.id || attr.attrCode" class="attr-config-item">
-                <span class="attr-name">{{ attr.attrName }}({{ attr.indicatorTypeName || '-' }}):</span>
+                <span class="attr-name">{{ attr.attrName }}:</span>
                 <span>{{ attr.initialValue ?? 0 }}</span>
                 <span class="attr-unit">{{ attr.unit }}</span>
               </div>
@@ -445,7 +445,7 @@
         <el-table :data="sensorFormData.attrList" border size="small">
           <el-table-column prop="attrCode" label="属性编码" width="150" align="center" />
           <el-table-column prop="attrName" label="属性名称" width="150" align="center" />
-          <el-table-column prop="indicatorTypeName" label="指标类型" width="120" align="center" />
+          <el-table-column prop="unit" label="单位" width="100" align="center" />
           <el-table-column label="初始值" width="140" align="center">
             <template #default="{ row }">
               <el-input-number
@@ -552,10 +552,9 @@ const deviceIconList = getIconList()
 
 interface SensorAttrItem {
   id?: number
+  monitorContentId?: number
   attrCode: string
   attrName: string
-  indicatorType: string
-  indicatorTypeName: string
   initialValue: number
   unit: string
   rangeMin: number
@@ -579,29 +578,11 @@ interface MonitorTypeItem {
   modelAttrs: {
     attrCode: string
     attrName: string
-    indicatorType: string
-    indicatorTypeName: string
     rangeMin: number
     rangeMax: number
     unit: string
     icon?: string
   }[]
-}
-
-const indicatorTypeNameMap: Record<string, string> = {
-  wy: '位移',
-  wd: '温度',
-  jd: '角度',
-  yl: '压力',
-  sw: '水位',
-  jsd: '加速度',
-  hsl: '含水率',
-  ljn: '力矩',
-  zdl: '震动频率',
-  dl: '电量',
-  dx: '断线',
-  sg: '声光',
-  sp: '视频'
 }
 
 const loading = ref(false)
@@ -981,15 +962,12 @@ const loadMonitorTypeList = async () => {
   try {
     const allTypes = await getMonitorTypeListWithContents()
     const details = (allTypes || [])
-        .filter((item: any) => item.deviceType === 2)
         .map((item: any) => ({
           id: Number(item.id),
           name: item.name,
           modelAttrs: (item.contents || []).map((content: any) => ({
             attrCode: content.code,
             attrName: content.name,
-            indicatorType: content.indicatorType,
-            indicatorTypeName: indicatorTypeNameMap[content.indicatorType] || content.indicatorType || '-',
             rangeMin: content.rangeMin ?? 0,
             rangeMax: content.rangeMax ?? 999999,
             unit: content.unit || '',
@@ -1285,8 +1263,6 @@ const handleEditSensor = async (row: SensorItem) => {
         id: attr.id,
         attrCode: attr.attrCode,
         attrName: attr.attrName,
-        indicatorType: attr.indicatorType || '',
-        indicatorTypeName: attr.indicatorTypeName || '',
         initialValue: Number(attr.initialValue ?? 0),
         unit: attr.unit || '',
         rangeMin: Number(attr.rangeMin ?? 0),
@@ -1325,8 +1301,6 @@ const handleMonitorTypeChange = (row: SensorFormModel) => {
     row.attrList = mt.modelAttrs.map(attr => ({
       attrCode: attr.attrCode,
       attrName: attr.attrName,
-      indicatorType: attr.indicatorType,
-      indicatorTypeName: attr.indicatorTypeName,
       initialValue: 0,
       unit: attr.unit,
       rangeMin: attr.rangeMin,
@@ -1377,8 +1351,6 @@ const buildSensorPayload = () => ({
     id: attr.id,
     attrCode: attr.attrCode.trim(),
     attrName: attr.attrName.trim(),
-    indicatorType: attr.indicatorType || undefined,
-    indicatorTypeName: attr.indicatorTypeName || undefined,
     initialValue: attr.initialValue,
     unit: attr.unit || undefined,
     rangeMin: attr.rangeMin,
