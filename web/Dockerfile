@@ -6,12 +6,6 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 安装 git 并配置 HTTPS 替代 SSH（mpegts.js 的 git 依赖）
-RUN apk add --no-cache git \
-    && git config --global url."https://github.com/".insteadOf git@github.com: \
-    && git config --global url."https://".insteadOf git:// \
-    && git config --global url."https://".insteadOf ssh://git@
-
 # 复制依赖文件
 COPY package.json package-lock.json* ./
 
