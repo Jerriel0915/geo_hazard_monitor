@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.log.infrastructure.persistence.mysql.LogConfigMapper">
+
+    <update id="upsertConfig">
+        INSERT INTO sys_config (config_key, config_value, config_type, config_name, create_by, create_time, remark)
+        VALUES (#{configKey}, #{configValue}, 'Y', #{configKey}, 'system', NOW(), #{remark})
+        ON DUPLICATE KEY UPDATE config_value = VALUES(config_value),
+                                update_by    = 'system',
+                                update_time  = NOW()
+    </update>
+
+</mapper>

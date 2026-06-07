@@ -1,14 +1,7 @@
 package com.zwei.monitor.service;
 
-import com.zwei.iot.device.mapper.DeviceMapper;
-import com.zwei.iot.device.mapper.DeviceSensorMapper;
-import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
-import com.zwei.iot.monitor.mapper.MonitorTypeMapper;
-import com.zwei.iot.video.mapper.VideoDeviceMapper;
-import com.zwei.monitor.domain.dashboard.DashboardOverviewVO;
-import com.zwei.monitor.domain.dashboard.HazardPointTrendVO;
-import com.zwei.monitor.domain.dashboard.RateByTypeVO;
-import com.zwei.monitor.domain.dashboard.SensorDistributionVO;
+import com.zwei.iot.device.service.IDeviceStatService;
+import com.zwei.monitor.domain.dashboard.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -18,29 +11,37 @@ import java.util.stream.Collectors;
 /**
  * 大屏仪表盘统计服务。
  * <p>
- * 聚合 MySQL 基础统计与 IoTDB 时间窗口活动检测，
+ * 通过 IDeviceStatService 接口聚合 MySQL 基础统计与运维指标，
  * 为全息看板提供设备、传感器、隐患点、监测类型等多维度数据。
  */
 @Slf4j
 @Service
 public class DashboardStatService {
 
-    private final DeviceMapper deviceMapper;
-    private final DeviceSensorMapper deviceSensorMapper;
-    private final HazardPointMapper hazardPointMapper;
-    private final MonitorTypeMapper monitorTypeMapper;
-    private final VideoDeviceMapper videoDeviceMapper;
+    private static final double WEIGHT_DATA_COMPLETENESS = 0.20;
+    private static final double WEIGHT_DEVICE_ONLINE = 0.15;
+    private static final double WEIGHT_DEVICE_NORMAL = 0.15;
+    private static final double WEIGHT_ALARM_RESPONSE = 0.20;
+    private static final double WEIGHT_SLOPE_STABILITY = 0.30;
 
-    public DashboardStatService(DeviceMapper deviceMapper,
-                                DeviceSensorMapper deviceSensorMapper,
-                                HazardPointMapper hazardPointMapper,
-                                MonitorTypeMapper monitorTypeMapper,
-                                VideoDeviceMapper videoDeviceMapper) {
-        this.deviceMapper = deviceMapper;
-        this.deviceSensorMapper = deviceSensorMapper;
-        this.hazardPointMapper = hazardPointMapper;
-        this.monitorTypeMapper = monitorTypeMapper;
-        this.videoDeviceMapper = videoDeviceMapper;
+    private final IDeviceStatService deviceStatService;
+
+    public DashboardStatService(IDeviceStatService deviceStatService) {
+        this.deviceStatService = deviceStatService;
+    }
+
+    // ==================== 2.0 一体化聚合 ====================
+
+    public DashboardFullVO getFull(int windowMinutes) {
+        DashboardFullVO vo = new DashboardFullVO();
+        vo.setOverview(getOverview());
+        vo.setDeviceOnlineRate(getDeviceOnlineRate());
+        vo.setDeviceActiveRate(getDeviceActiveRate(windowMinutes));
+        vo.setSensorOnlineRate(getSensorOnlineRate());
+        vo.setHazardPointTrend(getHazardPointTrend(12));
+        vo.setSensorDistribution(getSensorDistribution());
+        vo.setHealthScore(getHealthScore());
+        return vo;
     }
 
     // ==================== 2.1 资源总览 ====================
@@ -48,27 +49,23 @@ public class DashboardStatService {
     public DashboardOverviewVO getOverview() {
         DashboardOverviewVO vo = new DashboardOverviewVO();
 
-        // 设备
-        int deviceTotal = deviceMapper.countAll();
+        int deviceTotal = deviceStatService.countAllDevices();
         DashboardOverviewVO.DeviceSummary ds = new DashboardOverviewVO.DeviceSummary();
         ds.setTotal(deviceTotal);
-        ds.setByStatus(toMap(deviceMapper.countByStatus(), "status"));
-        ds.setByRunStatus(toMap(deviceMapper.countByRunStatus(), "runStatus"));
+        ds.setByStatus(toMap(deviceStatService.countDevicesByStatus(), "status"));
+        ds.setByRunStatus(toMap(deviceStatService.countDevicesByRunStatus(), "runStatus"));
         vo.setDevice(ds);
 
-        // 设备在线率（MySQL run_status）
-        int deviceOnline = deviceMapper.countByRunStatus().stream()
-                .filter(m -> Objects.equals(1, m.get("runStatus")))
-                .mapToInt(m -> ((Number) m.get("cnt")).intValue()).sum();
+        // 设备在线率：改用 device_online_status 独立表查询
+        int deviceOnline = deviceStatService.countOnlineDevices();
         DashboardOverviewVO.DeviceOnlineRateSummary dr = new DashboardOverviewVO.DeviceOnlineRateSummary();
         dr.setTotal(deviceTotal);
         dr.setOnline(deviceOnline);
         dr.setOnlineRate(deviceTotal > 0 ? Math.round(deviceOnline * 10000.0 / deviceTotal) / 100.0 : 0);
         vo.setDeviceOnlineRate(dr);
 
-        // 传感器
-        int sensorTotal = deviceSensorMapper.countAll();
-        int sensorEnabled = deviceSensorMapper.countByStatus().stream()
+        int sensorTotal = deviceStatService.countAllSensors();
+        int sensorEnabled = deviceStatService.countSensorsByStatus().stream()
                 .filter(m -> Objects.equals(1, m.get("status")))
                 .mapToInt(m -> ((Number) m.get("cnt")).intValue()).sum();
         DashboardOverviewVO.SensorSummary ss = new DashboardOverviewVO.SensorSummary();
@@ -78,59 +75,46 @@ public class DashboardStatService {
         ss.setOnlineRate(sensorTotal > 0 ? Math.round(sensorEnabled * 10000.0 / sensorTotal) / 100.0 : 0);
         vo.setSensor(ss);
 
-        // 隐患点
-        int hpTotal = hazardPointMapper.countAll();
+        int hpTotal = deviceStatService.countAllHazardPoints();
         DashboardOverviewVO.HazardPointSummary hs = new DashboardOverviewVO.HazardPointSummary();
         hs.setTotal(hpTotal);
-        hs.setByStatus(toMap(hazardPointMapper.countByStatus(), "status"));
+        hs.setByStatus(toMap(deviceStatService.countHazardPointsByStatus(), "status"));
         vo.setHazardPoint(hs);
 
-        // 监测类型
         DashboardOverviewVO.MonitorTypeSummary ms = new DashboardOverviewVO.MonitorTypeSummary();
-        ms.setTotal(monitorTypeMapper.countAll());
+        ms.setTotal(deviceStatService.countAllMonitorTypes());
         vo.setMonitorType(ms);
 
-        // 视频设备
-        int vdTotal = videoDeviceMapper.countAll();
+        int vdTotal = deviceStatService.countAllVideoDevices();
         DashboardOverviewVO.VideoDeviceSummary vs = new DashboardOverviewVO.VideoDeviceSummary();
         vs.setTotal(vdTotal);
-        vs.setByStatus(toMap(videoDeviceMapper.countByStatus(), "status"));
+        vs.setByStatus(toMap(deviceStatService.countVideoDevicesByStatus(), "status"));
         vo.setVideoDevice(vs);
 
         return vo;
     }
 
-    // ==================== 2.2 设备在线率（MySQL） ====================
+    // ==================== 2.2 设备在线率（基于 device_online_status 独立表） ====================
 
     public RateByTypeVO getDeviceOnlineRate() {
-        int total = deviceMapper.countAll();
-        List<Map<String, Object>> runStatusRows = deviceMapper.countByRunStatus();
-        int online = runStatusRows.stream()
-                .filter(m -> Objects.equals(1, m.get("runStatus")))
-                .mapToInt(m -> ((Number) m.get("cnt")).intValue()).sum();
+        int total = deviceStatService.countAllDevices();
+        int online = deviceStatService.countOnlineDevices();
 
         RateByTypeVO vo = new RateByTypeVO();
         vo.setTotal(total);
         vo.setOnline(online);
         vo.setOffline(total - online);
         vo.setOnlineRate(total > 0 ? Math.round(online * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceMapper.countByMonitorType(), total));
+        vo.setByType(buildTypeStats(deviceStatService.countDevicesByMonitorType(), total, online));
         return vo;
     }
 
-    // ==================== 2.3 设备活跃率（IoTDB 窗口） ====================
+    // ==================== 2.3 设备活跃率（基于 device_online_status.last_report_at 时间窗口） ====================
 
     public RateByTypeVO getDeviceActiveRate(int windowMinutes) {
-        int total = deviceMapper.countAll();
-        // IoTDB activity check: query latest data per sensor within window
-        List<Map<String, Object>> typeRows = deviceMapper.countByMonitorType();
-        // For now, use MySQL device runStatus as fallback — IoTDB per-device activity check
-        // requires the IotdbTimeSeriesService which has complex query patterns.
-        // This can be enhanced later with actual IoTDB time-window queries.
-        List<Map<String, Object>> runStatusRows = deviceMapper.countByRunStatus();
-        int active = runStatusRows.stream()
-                .filter(m -> Objects.equals(1, m.get("runStatus")))
-                .mapToInt(m -> ((Number) m.get("cnt")).intValue()).sum();
+        int total = deviceStatService.countAllDevices();
+        int active = deviceStatService.countActiveDevicesInWindow(windowMinutes);
+        List<Map<String, Object>> typeRows = deviceStatService.countDevicesByMonitorType();
 
         RateByTypeVO vo = new RateByTypeVO();
         vo.setWindowMinutes(windowMinutes);
@@ -138,42 +122,45 @@ public class DashboardStatService {
         vo.setOnline(active);
         vo.setOffline(total - active);
         vo.setOnlineRate(total > 0 ? Math.round(active * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(typeRows, total));
+        vo.setByType(buildTypeStats(typeRows, total, active));
         return vo;
     }
 
-    // ==================== 2.4 传感器在线率（MySQL） ====================
+    // ==================== 2.4 传感器在线率（传感器在线 = 所属设备已连接 MQTT） ====================
 
     public RateByTypeVO getSensorOnlineRate() {
-        int total = deviceSensorMapper.countAll();
-        List<Map<String, Object>> statusRows = deviceSensorMapper.countByStatus();
-        int enabled = statusRows.stream()
-                .filter(m -> Objects.equals(1, m.get("status")))
-                .mapToInt(m -> ((Number) m.get("cnt")).intValue()).sum();
+        int total = deviceStatService.countAllSensors();
+        int online = deviceStatService.countSensorsByDeviceOnline();
 
         RateByTypeVO vo = new RateByTypeVO();
         vo.setTotal(total);
-        vo.setOnline(enabled);
-        vo.setOffline(total - enabled);
-        vo.setOnlineRate(total > 0 ? Math.round(enabled * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceSensorMapper.countByMonitorType(), total));
+        vo.setOnline(online);
+        vo.setOffline(total - online);
+        vo.setOnlineRate(total > 0 ? Math.round(online * 10000.0 / total) / 100.0 : 0);
+        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total, online));
         return vo;
     }
 
-    // ==================== 2.5 传感器活跃率（IoTDB 窗口） ====================
+    // ==================== 2.5 传感器活跃率（基于 device_sensor.last_report_time 时间窗口） ====================
 
     public RateByTypeVO getSensorActiveRate(int windowMinutes) {
-        // Same as online rate for now — IoTDB per-sensor activity detection
-        // requires querying each sensor's latest data time
-        RateByTypeVO vo = getSensorOnlineRate();
+        int total = deviceStatService.countAllSensors();
+        int active = deviceStatService.countActiveSensorsInWindow(windowMinutes);
+
+        RateByTypeVO vo = new RateByTypeVO();
         vo.setWindowMinutes(windowMinutes);
+        vo.setTotal(total);
+        vo.setOnline(active);
+        vo.setOffline(total - active);
+        vo.setOnlineRate(total > 0 ? Math.round(active * 10000.0 / total) / 100.0 : 0);
+        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total, active));
         return vo;
     }
 
     // ==================== 2.6 隐患点增长趋势 ====================
 
     public HazardPointTrendVO getHazardPointTrend(int months) {
-        List<Map<String, Object>> rows = hazardPointMapper.countByMonth(months);
+        List<Map<String, Object>> rows = deviceStatService.countHazardPointsByMonth(months);
         List<String> monthLabels = new ArrayList<>();
         List<Integer> counts = new ArrayList<>();
         List<Integer> cumulative = new ArrayList<>();
@@ -196,7 +183,7 @@ public class DashboardStatService {
     // ==================== 2.7 传感器按监测类型分布 ====================
 
     public SensorDistributionVO getSensorDistribution() {
-        List<Map<String, Object>> rows = deviceSensorMapper.countByMonitorType();
+        List<Map<String, Object>> rows = deviceStatService.countSensorsByMonitorType();
         List<SensorDistributionVO.TypeCount> list = rows.stream().map(row -> {
             SensorDistributionVO.TypeCount tc = new SensorDistributionVO.TypeCount();
             tc.setMonitorTypeId(((Number) row.get("monitorTypeId")).longValue());
@@ -206,6 +193,42 @@ public class DashboardStatService {
         }).collect(Collectors.toList());
         SensorDistributionVO vo = new SensorDistributionVO();
         vo.setList(list);
+        return vo;
+    }
+
+    // ==================== 2.8 系统健康度 ====================
+
+    public HealthScoreVO getHealthScore() {
+        int deviceTotal = deviceStatService.countAllDevices();
+        int deviceComplete = deviceStatService.countDevicesComplete();
+        int deviceOnline = deviceStatService.countOnlineDevices();
+        int deviceNormal = deviceStatService.countDevicesNormal();
+        int hpTotal = deviceStatService.countAllHazardPoints();
+
+        double dataCompleteness = deviceTotal > 0 ? Math.round(deviceComplete * 10000.0 / deviceTotal) / 100.0 : 0;
+        double deviceOnlinePct = deviceTotal > 0 ? Math.round(deviceOnline * 10000.0 / deviceTotal) / 100.0 : 0;
+        double deviceNormalPct = deviceTotal > 0 ? Math.round(deviceNormal * 10000.0 / deviceTotal) / 100.0 : 0;
+        // 告警响应率与边坡稳定率需要告警模块数据，当前使用占位值
+        double alarmResponse = 100.0;
+        double slopeStability = 100.0;
+
+        List<HealthScoreVO.HealthItem> items = List.of(
+                HealthScoreVO.HealthItem.of("资料完善率", dataCompleteness, WEIGHT_DATA_COMPLETENESS, "#52c41a", "computed"),
+                HealthScoreVO.HealthItem.of("设备在线率", deviceOnlinePct, WEIGHT_DEVICE_ONLINE, "#1890ff", "computed"),
+                HealthScoreVO.HealthItem.of("设备正常率", deviceNormalPct, WEIGHT_DEVICE_NORMAL, "#722ed1", "computed"),
+                HealthScoreVO.HealthItem.of("告警及时响应率", alarmResponse, WEIGHT_ALARM_RESPONSE, "#fa8c16", "placeholder"),
+                HealthScoreVO.HealthItem.of("边坡稳定率", slopeStability, WEIGHT_SLOPE_STABILITY, "#eb2f96", "placeholder")
+        );
+
+        double overall = 0;
+        for (HealthScoreVO.HealthItem item : items) {
+            overall += item.getValue() * item.getWeight();
+        }
+        overall = Math.round(overall * 10.0) / 10.0;
+
+        HealthScoreVO vo = new HealthScoreVO();
+        vo.setOverallScore(overall);
+        vo.setItems(items);
         return vo;
     }
 
@@ -221,16 +244,24 @@ public class DashboardStatService {
         return result;
     }
 
-    private List<RateByTypeVO.TypeStat> buildTypeStats(List<Map<String, Object>> typeRows, int total) {
+    /**
+     * 构建按监测类型分组的统计列表。
+     * <p>
+     * 由于目前没有按类型单独统计在线/活跃数的查询，
+     * 按总体比率等比例分摊到各类型，避免对所有类型显示 100% 的假数据。
+     */
+    private List<RateByTypeVO.TypeStat> buildTypeStats(List<Map<String, Object>> typeRows, int total, int online) {
+        double ratio = total > 0 ? (double) online / total : 0;
         return typeRows.stream().map(row -> {
             RateByTypeVO.TypeStat ts = new RateByTypeVO.TypeStat();
             ts.setMonitorTypeId(((Number) row.get("monitorTypeId")).longValue());
             ts.setMonitorTypeName((String) row.get("monitorTypeName"));
             int cnt = ((Number) row.get("cnt")).intValue();
+            int typeOnline = (int) Math.round(cnt * ratio);
             ts.setTotal(cnt);
-            ts.setOnline(cnt); // fallback: all counted devices are considered online
-            ts.setOffline(0);
-            ts.setOnlineRate(cnt > 0 ? 100.0 : 0);
+            ts.setOnline(typeOnline);
+            ts.setOffline(cnt - typeOnline);
+            ts.setOnlineRate(cnt > 0 ? Math.round(typeOnline * 10000.0 / cnt) / 100.0 : 0);
             return ts;
         }).collect(Collectors.toList());
     }

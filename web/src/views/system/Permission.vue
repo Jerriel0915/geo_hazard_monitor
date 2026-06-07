@@ -307,9 +307,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
+import {computed, nextTick, onMounted, reactive, ref} from 'vue'
+import type {FormInstance, FormRules} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {
   batchRegisterPermissions,
   createMenu,
@@ -322,14 +322,14 @@ import {
   getRoleDeptTree,
   getRoleDetail,
   getRolePage,
-  saveRoleDataScope,
-  toggleRoleStatus,
-  updateMenu,
-  updateRole,
   type MenuItem,
   type PermissionCoverage,
   type RoleItem,
-  type TreeOption
+  saveRoleDataScope,
+  toggleRoleStatus,
+  type TreeOption,
+  updateMenu,
+  updateRole
 } from '@/api/system'
 
 const activeTab = ref('role')
@@ -624,6 +624,20 @@ const loadMenus = async () => {
   menuLoading.value = true
   try {
     const [tree, cov] = await Promise.all([getMenuTree(), getPermissionCoverage()])
+
+    console.log('菜单列表数据:', tree)
+    console.log('菜单名称列表:', tree.map(item => item.name))
+    // 递归输出所有层级的菜单名称
+    const printMenuNames = (menus: any[], level = 0) => {
+      menus.forEach(menu => {
+        console.log(`${'  '.repeat(level)}- ${menu.name}`)
+        if (menu.children?.length) {
+          printMenuNames(menu.children, level + 1)
+        }
+      })
+    }
+    printMenuNames(tree)
+
     menuList.value = tree
     coverage.value = cov
   } finally {

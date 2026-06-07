@@ -12,14 +12,20 @@
           <div
               v-for="group in displayGroupList"
               :key="group.id"
-              :class="['group-item', { active: selectedGroupId === group.id }]"
+              :class="['group-item', { active: selectedGroupId === group.id, 'group-all': group.id === 'all' }]"
               @click="handleSelectGroup(group)"
           >
             <span class="group-name">{{ group.name }}</span>
             <span class="group-count">({{ group.count }})</span>
             <div class="group-actions">
-              <span class="action-btn" @click.stop="handleEditGroup(group)">✎</span>
-              <span class="action-btn delete-btn" @click.stop="handleDeleteGroup(group)">✕</span>
+              <span class="action-btn" @click.stop="handleEditGroup(group)"><el-icon :size="11"><Edit/></el-icon></span>
+              <span class="action-btn delete-btn" @click.stop="handleDeleteGroup(group)"><svg
+                  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><line x1="18"
+                                                                                                               y1="6"
+                                                                                                               x2="6"
+                                                                                                               y2="18"/><line
+                  x1="6" y1="6" x2="18" y2="18"/></svg></span>
             </div>
           </div>
           <div v-if="loadingGroups" class="loading-more">加载中...</div>
@@ -69,7 +75,9 @@
     @keyup.enter="handleSearch"
   >
     <template #prefix>
-      <span class="search-icon">🔍</span>
+      <el-icon class="search-icon">
+        <Search/>
+      </el-icon>
     </template>
   </el-input>
   <el-select v-model="searchStatus" placeholder="状态" clearable class="status-select">
@@ -217,8 +225,14 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                       <span>{{ g.name }}</span>
                       <span v-if="g.id !== '1'" style="display: flex; gap: 5px;">
-                        <span class="group-action-btn" @click.stop="handleEditGroupFromSelect(g)" title="修改">✎</span>
-                        <span class="group-action-btn delete-btn" @click.stop="handleDeleteGroupFromSelect(g)" title="删除">×</span>
+                        <span class="group-action-btn" @click.stop="handleEditGroupFromSelect(g)" title="修改"><el-icon
+                            :size="14"><Edit/></el-icon></span>
+                        <span class="group-action-btn delete-btn" @click.stop="handleDeleteGroupFromSelect(g)"
+                              title="删除"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6"
+                                                                                                     x2="6" y2="18"/><line
+                            x1="6" y1="6" x2="18" y2="18"/></svg></span>
                       </span>
                     </div>
                   </el-option>
@@ -239,7 +253,10 @@
             <span class="coord-separator">,</span>
             <el-input-number v-model="formData.latitude" :precision="6" :step="0.000001" placeholder="纬度" class="coord-input" />
             <el-button type="primary" size="small" @click="handleOpenMap">
-              <span>📍</span> 地图设置
+              <el-icon>
+                <Location/>
+              </el-icon>
+              地图设置
             </el-button>
           </div>
         </el-form-item>
@@ -266,10 +283,30 @@
       </div>
       <div class="map-actions">
         <el-button-group>
-          <el-button type="primary" size="small" @click="setDrawMode('point')">📍 设置中心点</el-button>
-          <el-button size="small" @click="setDrawMode('polygon')">✏️ 绘制范围</el-button>
-          <el-button size="small" @click="setDrawMode('strike')">➡️ 绘制走向</el-button>
-          <el-button size="small" @click="clearDraw">🗑 清除</el-button>
+          <el-button type="primary" size="small" @click="setDrawMode('point')">
+            <el-icon>
+              <Location/>
+            </el-icon>
+            设置中心点
+          </el-button>
+          <el-button size="small" @click="setDrawMode('polygon')">
+            <el-icon>
+              <Edit/>
+            </el-icon>
+            绘制范围
+          </el-button>
+          <el-button size="small" @click="setDrawMode('strike')">
+            <el-icon>
+              <DArrowRight/>
+            </el-icon>
+            绘制走向
+          </el-button>
+          <el-button size="small" @click="clearDraw">
+            <el-icon>
+              <Delete/>
+            </el-icon>
+            清除
+          </el-button>
         </el-button-group>
       </div>
       <div class="map-info">
@@ -862,6 +899,7 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
+import {DArrowRight, Delete, Edit, Location, Search} from '@element-plus/icons-vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import VueApexCharts from 'vue3-apexcharts'
@@ -886,8 +924,8 @@ import {
   updateHazardPointGroup
 } from '@/api/hazardPoint'
 import {getDeviceSensors} from '@/api/sensor'
-import {getChartData, getLatestData, getMonitorDataPage} from '@/api/monitorData'
 import type {ChartData, LatestDataItem, MonitorDataPageItem} from '@/api/monitorData'
+import {getChartData, getLatestData, getMonitorDataPage} from '@/api/monitorData'
 
 interface HazardPointItem {
   id: string
@@ -3003,22 +3041,33 @@ onUnmounted(() => {
 }
 
 .group-item:hover {
-  background: #f8fafc;
+  background: #e6f7ff;
 }
 
 .group-item.active {
-  background: rgba(59, 130, 246, 0.06);
-  color: #3b82f6;
+  background: #bae7ff;
+  color: #1890ff;
   font-weight: 500;
 }
 
 .group-item.active::before {
-  background: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  background: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.2);
+}
+
+.group-all .group-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.group-all::before {
+  width: 8px;
+  height: 8px;
 }
 
 .group-name {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3032,17 +3081,29 @@ onUnmounted(() => {
   border-radius: 10px;
   font-weight: 500;
   flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.group-item:hover .group-count {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .group-actions {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   gap: 4px;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s;
 }
 
 .group-item:hover .group-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .action-btn {
@@ -3052,15 +3113,12 @@ onUnmounted(() => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
+  background: #f1f5f9;
 }
 
-.group-item:hover {
-  background: #e6f7ff;
-}
-
-.group-item.active {
-  background: #bae7ff;
+.action-btn:hover {
   color: #1890ff;
+  background: #e6f7ff;
 }
 
 .action-btn.delete-btn:hover {

@@ -9,7 +9,6 @@ WORKDIR /app
 # 复制依赖文件
 COPY package.json package-lock.json* ./
 
-
 # 安装依赖
 RUN npm install
 
@@ -31,7 +30,7 @@ COPY nginx.conf /etc/nginx/conf.d/
 # 复制构建产物
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 创建日志目录
+# 创建日志目录并修复权限（nginx 以 nginx 用户运行 + read_only 容器）
 RUN mkdir -p /var/log/nginx && touch /var/log/nginx/nginx.pid && chown -R nginx:nginx /var/log/nginx
 
 EXPOSE 80

@@ -241,4 +241,9 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             }
         }
     }
+
+    @Override
+    public void updateLastReportTime(Long sensorId, String lastReportTime) {
+        sensorMapper.updateLastReportTime(sensorId, lastReportTime);
+    }
 }

@@ -16,9 +16,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
+import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,7 +59,8 @@ class MqttServerPublishPermissionTest {
                 failureGuard,
                 properties,
                 beanFactory.getBeanProvider(MqttServer.class),
-                mqttExceptionReporter
+                mqttExceptionReporter,
+                mock(ApplicationEventPublisher.class)
         );
         publishPermission = new MqttServerPublishPermission(authService, mqttExceptionReporter);
         when(deviceMapper.selectDeviceByAuthUsername("A7K9P2")).thenReturn(buildDevice());

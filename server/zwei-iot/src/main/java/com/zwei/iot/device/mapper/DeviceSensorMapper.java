@@ -93,4 +93,13 @@ public interface DeviceSensorMapper {
     List<java.util.Map<String, Object>> countByStatus();
 
     List<java.util.Map<String, Object>> countByMonitorType();
+
+    /** 更新传感器最后上报时间 */
+    int updateLastReportTime(@Param("id") Long id, @Param("lastReportTime") String lastReportTime);
+
+    /** 统计时间窗口内活跃传感器数（有数据上报） */
+    int countActiveInWindow(@Param("windowMinutes") int windowMinutes);
+
+    /** 统计有在线设备的传感器数（device_online_status.status=1） */
+    int countByDeviceOnline();
 }

@@ -252,3 +252,39 @@ export function getHazardPointTrend(months?: number): Promise<AjaxResult<HazardP
 export function getSensorDistribution(): Promise<AjaxResult<SensorDistributionVO>> {
     return request.get('/monitor/dashboard/sensor-distribution')
 }
+
+/** 健康度评分项 */
+export interface HealthScoreItem {
+    name: string
+    value: number
+    weight: number
+    color: string
+    dataSource: string
+}
+
+/** 健康度评分 */
+export interface HealthScoreVO {
+    overallScore: number
+    items: HealthScoreItem[]
+}
+
+/** 大屏一体化聚合 VO */
+export interface DashboardFullVO {
+    overview: DashboardOverview
+    deviceOnlineRate: RateByTypeVO
+    deviceActiveRate: RateByTypeVO
+    sensorOnlineRate: RateByTypeVO
+    hazardPointTrend: HazardPointTrendVO
+    sensorDistribution: SensorDistributionVO
+    healthScore: HealthScoreVO
+}
+
+/** 大屏一体化聚合（替代 6 次独立请求为 1 次） */
+export function getDashboardFull(windowMinutes?: number): Promise<AjaxResult<DashboardFullVO>> {
+    return request.get('/monitor/dashboard/full', {params: {windowMinutes}})
+}
+
+/** 获取系统健康度评分 */
+export function getHealthScore(): Promise<AjaxResult<HealthScoreVO>> {
+    return request.get('/monitor/dashboard/health-score')
+}

@@ -1,5 +1,6 @@
 package com.zwei.iot.broker.service;
 
+import com.zwei.common.event.DeviceOnlineEvent;
 import com.zwei.common.utils.DateUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.component.MqttAuthFailureGuard;
@@ -21,6 +22,7 @@ import org.dromara.mica.mqtt.codec.MqttQoS;
 import org.dromara.mica.mqtt.core.server.MqttServer;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -69,6 +71,7 @@ public class MqttDeviceAuthService {
     private final MqttAuthCenterProperties properties;
     private final ObjectProvider<MqttServer> mqttServerProvider;
     private final MqttExceptionReporter mqttExceptionReporter;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
     public MqttDeviceAuthService(DeviceMapper deviceMapper,
@@ -77,7 +80,8 @@ public class MqttDeviceAuthService {
                                  MqttAuthFailureGuard failureGuard,
                                  MqttAuthCenterProperties properties,
                                  ObjectProvider<MqttServer> mqttServerProvider,
-                                 MqttExceptionReporter mqttExceptionReporter) {
+                                 MqttExceptionReporter mqttExceptionReporter,
+                                 ApplicationEventPublisher eventPublisher) {
         this.deviceMapper = deviceMapper;
         this.deviceAuthLogService = deviceAuthLogService;
         this.sessionRegistry = sessionRegistry;
@@ -85,6 +89,7 @@ public class MqttDeviceAuthService {
         this.properties = properties;
         this.mqttServerProvider = mqttServerProvider;
         this.mqttExceptionReporter = mqttExceptionReporter;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -180,6 +185,7 @@ public class MqttDeviceAuthService {
         }
         saveAuthLog(device.getId(), normalizedUsername, normalizedClientId, clientIp, AUTH_SUCCESS, null);
         failureGuard.reset(normalizedUsername);
+        eventPublisher.publishEvent(new DeviceOnlineEvent(device.getId(), normalizedClientId, clientIp));
         log.info("[MQTT-AUTH] Authentication success. deviceId:{}, clientId:{}, ip:{}", device.getId(), normalizedClientId, clientIp);
         return true;
     }

@@ -17,7 +17,6 @@ const routes: RouteRecordRaw[] = [
       { path: '/holo-board/comprehensive', name: 'Comprehensive', component: () => import('@/views/holo-board/Comprehensive.vue') },
       { path: '/holo-board/alarm', name: 'Alarm', component: () => import('@/views/holo-board/Alarm.vue') },
       { path: '/holo-board/operation', name: 'Operation', component: () => import('@/views/holo-board/Operation.vue') },
-      { path: '/holo-board/custom', name: 'Custom', component: () => import('@/views/holo-board/Custom.vue') },
       { path: '/basic/hazard-point', name: 'HazardPoint', component: () => import('@/views/basic/HazardPoint.vue') },
       { path: '/basic/monitor-type', name: 'MonitorType', component: () => import('@/views/basic/MonitorType.vue') },
       { path: '/basic/device', name: 'Device', component: () => import('@/views/basic/Device.vue') },
@@ -27,11 +26,14 @@ const routes: RouteRecordRaw[] = [
       { path: '/alarm/notification', name: 'AlarmNotification', component: () => import('@/views/alarm/AlarmNotification.vue') },
       { path: '/alarm/disposal', name: 'AlarmDisposal', component: () => import('@/views/alarm/CompositeAlarm.vue') },
       { path: '/alarm/composite', name: 'CompositeAlarm', component: () => import('@/views/alarm/CompositeAlarm.vue') },
+        {
+            path: '/alarm/notification-setting',
+            name: 'NotificationSetting',
+            component: () => import('@/views/alarm/NotificationSetting.vue')
+        },
       { path: '/report/report', name: 'Report', component: () => import('@/views/report/Report.vue') },
       { path: '/report/query', name: 'Query', component: () => import('@/views/report/Query.vue') },
       { path: '/report/analysis', name: 'Analysis', component: () => import('@/views/report/Analysis.vue') },
-      { path: '/report/screen', name: 'Screen', component: () => import('@/views/report/Screen.vue') },
-      { path: '/iot/alarm-engine', name: 'AlarmEngine', component: () => import('@/views/iot/AlarmEngine.vue') },
       { path: '/iot/data-parse', name: 'DataParse', component: () => import('@/views/iot/DataParse.vue') },
         {path: '/iot/service-status', name: 'ServiceStatus', component: () => import('@/views/iot/ServiceStatus.vue')},
         {
@@ -50,8 +52,14 @@ const routes: RouteRecordRaw[] = [
       { path: '/system/permission', name: 'Permission', component: () => import('@/views/system/Permission.vue') },
       { path: '/system/log', name: 'Log', component: () => import('@/views/system/Log.vue') },
       { path: '/system/settings', name: 'Settings', component: () => import('@/views/system/Settings.vue') },
+      { path: '/system/notice', name: 'SysNotice', component: () => import('@/views/system/SysNotice.vue') },
       { path: '/user/profile', name: 'UserProfile', component: () => import('@/views/user/UserProfile.vue') }
     ]
+  },
+  {
+    path: '/report/screen',
+    name: 'Screen',
+    component: () => import('@/views/report/Screen.vue')
   }
 ]
 

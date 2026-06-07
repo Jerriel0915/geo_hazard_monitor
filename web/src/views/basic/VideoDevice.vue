@@ -24,7 +24,9 @@
           @keyup.enter="handleSearch"
       >
         <template #prefix>
-          <span class="search-icon">🔍</span>
+          <el-icon class="search-icon">
+            <Search/>
+          </el-icon>
         </template>
       </el-input>
       <el-select v-model="searchProtocol" placeholder="选择协议" clearable class="protocol-select">
@@ -266,7 +268,7 @@
               @error="onVideoError"
           ></video>
           <div v-if="!videoLoaded" class="video-loading">
-            <el-spinner type="dots" />
+            <el-spinner type="dots"/>
             <span>加载中...</span>
           </div>
           <div v-if="videoError" class="video-error">
@@ -287,8 +289,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {nextTick, onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {Search} from '@element-plus/icons-vue'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -447,7 +450,7 @@ const loadTableData = async () => {
 
     const response = await axios.get('/api/v1/video-devices/page', {
       params,
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     if (response.data.code === 200) {
@@ -474,7 +477,7 @@ const loadHazardPointList = async () => {
         pageNum: 1,
         pageSize: 1000
       },
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     if (response.data.code === 200) {
@@ -492,7 +495,7 @@ const fetchDetail = async (id: string) => {
   try {
     const token = getToken()
     const response = await axios.get(`/api/v1/video-devices/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     if (response.data.code === 200) {
@@ -522,7 +525,7 @@ const createVideoDevice = async () => {
       streamUrl: formData.streamUrl,
       status: 1
     }, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     if (response.data.code === 200) {
@@ -552,7 +555,7 @@ const updateVideoDevice = async () => {
       protocolCode: formData.protocolCode,
       streamUrl: formData.streamUrl
     }, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     if (response.data.code === 200) {
@@ -575,7 +578,7 @@ const deleteVideoDevice = async (id: string) => {
   try {
     const token = getToken()
     const response = await axios.delete(`/api/v1/video-devices/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     if (response.data.code === 200) {
@@ -604,7 +607,7 @@ const bindToHazardPoints = async (hpId: string, videoDeviceId: string, installLn
         }
       ]
     }, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     return response.data.code === 200
@@ -619,8 +622,8 @@ const unbindVideoDevice = async (hpId: string, videoDeviceId: string) => {
   try {
     const token = getToken()
     const response = await axios.delete(`/api/v1/hazard-points/${hpId}/unbind-video-devices`, {
-      data: { videoDeviceIds: [parseInt(videoDeviceId)] },
-      headers: { Authorization: `Bearer ${token}` }
+      data: {videoDeviceIds: [parseInt(videoDeviceId)]},
+      headers: {Authorization: `Bearer ${token}`}
     })
 
     return response.data.code === 200

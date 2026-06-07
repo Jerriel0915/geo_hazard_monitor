@@ -6,7 +6,7 @@
           <span class="section-title">系统健康度</span>
           <span ref="healthTriggerRef" class="health-question" @mouseenter="showPopover" @mouseleave="hidePopover">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" width="16" height="16">
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -109,7 +109,7 @@
               <div class="breakdown-item hazard">
                 <div class="breakdown-icon">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14"
-                       stroke-width="2" width="16" height="16">
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                   </svg>
                 </div>
@@ -121,7 +121,7 @@
               <div class="breakdown-item device">
                 <div class="breakdown-icon">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a"
-                       stroke-width="2" width="16" height="16">
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                     <circle cx="12" cy="12" r="3"/>
                     <path
                         d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -153,7 +153,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper alarm">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
@@ -172,7 +172,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper warning">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -192,7 +192,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper monitor">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
               </svg>
             </div>
@@ -210,7 +210,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper hazard">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
             </div>
@@ -228,7 +228,7 @@
           <div class="stat-item">
             <div class="stat-icon-wrapper device">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" width="24" height="24">
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                 <line x1="8" y1="21" x2="16" y2="21"/>
                 <line x1="12" y1="17" x2="12" y2="21"/>
@@ -388,11 +388,9 @@ import * as echarts from 'echarts'
 import L from 'leaflet'
 import {
   type DashboardOverview,
-  getDashboardOverview,
-  getDeviceOnlineRate,
-  getHazardPointTrend,
-  getSensorDistribution,
+  getDashboardFull,
   type HazardPointTrendVO,
+  type HealthScoreVO,
   type RateByTypeVO,
   type SensorDistributionVO
 } from '@/api/monitor'
@@ -643,36 +641,75 @@ const initMap = () => {
     }).addTo(leafletMap)
 
     const statusText = point.hasAlarm ? '待办告警' : '正常监测'
+    const statusBg = point.hasAlarm ? 'rgba(245,34,45,0.1)' : 'rgba(82,196,26,0.1)'
+    const statusColor = point.hasAlarm ? '#f5222d' : '#52c41a'
+
+    // 预警等级映射
+    const levelMap: Record<string, { text: string; bg: string; color: string }> = {
+      high: { text: '高', bg: 'rgba(245,34,45,0.1)', color: '#f5222d' },
+      medium: { text: '中', bg: 'rgba(250,173,20,0.1)', color: '#fa8c16' },
+      low: { text: '低', bg: 'rgba(82,196,26,0.1)', color: '#52c41a' }
+    }
+    const levelInfo = levelMap[point.level] || { text: point.level, bg: 'rgba(24,144,255,0.1)', color: '#1890ff' }
+
+    // 设备列表 HTML
     const devicesHtml = point.devices.map(device => {
-      const statusColor = device.status === 'online' ? '#52c41a' : device.status === 'warning' ? '#faad14' : '#f5222d'
-      const statusText = device.status === 'online' ? '在线' : device.status === 'warning' ? '异常' : '离线'
-      return `
-        <div class="device-item">
-          <span class="device-name">${device.name}</span>
-          <span class="device-status" style="color: ${statusColor};">${statusText}</span>
-        </div>
-      `
+      const dsColor = device.status === 'online' ? '#52c41a' : device.status === 'warning' ? '#faad14' : '#f5222d'
+      const dsText = device.status === 'online' ? '在线' : device.status === 'warning' ? '异常' : '离线'
+      return `<div class="hpv2-device"><span class="hpv2-dn">${device.name}</span><span class="hpv2-ds" style="color:${dsColor}">${dsText}</span></div>`
     }).join('')
 
     const popupContent = `
-      <div class="hazard-popup">
-        <div class="popup-header">
-          <span class="popup-title">${point.name}</span>
-          <span class="popup-status" style="color: ${color};">${statusText}</span>
+      <div class="hpv2-card">
+        <div class="hpv2-header">
+          <span class="hpv2-title">${point.name}</span>
         </div>
-        <div class="popup-device-info">
-          <span class="device-count-label">设备总数：</span>
-          <span class="device-count-value">${point.deviceCount}台（含视频设备）</span>
-        </div>
-        <div class="popup-device-list">
-          <div class="list-header">设备清单</div>
-          ${devicesHtml}
+        <div class="hpv2-dash"></div>
+        <div class="hpv2-body">
+          <div class="hpv2-row">
+            <div class="hpv2-cell">
+              <span class="hpv2-label">编号</span>
+              <span class="hpv2-val">${point.code}</span>
+            </div>
+            <div class="hpv2-cell">
+              <span class="hpv2-label">类型</span>
+              <span class="hpv2-val">${point.type}</span>
+            </div>
+          </div>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row">
+            <div class="hpv2-cell">
+              <span class="hpv2-label">位置</span>
+              <span class="hpv2-val">${point.location}</span>
+            </div>
+            <div class="hpv2-cell">
+              <span class="hpv2-label">状态</span>
+              <span class="hpv2-badge" style="background:${statusBg};color:${statusColor}">${statusText}</span>
+            </div>
+          </div>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row single">
+            <div class="hpv2-cell full">
+              <span class="hpv2-label">预警等级</span>
+              <span class="hpv2-level" style="background:${levelInfo.bg};color:${levelInfo.color}">${levelInfo.text}</span>
+            </div>
+          </div>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-row single">
+            <div class="hpv2-cell full">
+              <span class="hpv2-label">绑定设备</span>
+              <span class="hpv2-val">${point.deviceCount} 台</span>
+            </div>
+          </div>
+          <div class="hpv2-devices">
+            ${devicesHtml}
+          </div>
         </div>
       </div>
     `
 
     marker.bindPopup(popupContent, {
-      maxWidth: 280,
+      maxWidth: 240,
       className: 'hazard-popup-container'
     })
 
@@ -699,16 +736,13 @@ const zoomOut = () => {
 
 onMounted(async () => {
   try {
-    const [ov, dor, ht, sd] = await Promise.all([
-      getDashboardOverview(),
-      getDeviceOnlineRate(),
-      getHazardPointTrend(12),
-      getSensorDistribution()
-    ])
-    overview.value = ov.data
-    deviceOnlineRate.value = dor.data
-    hazardTrend.value = ht.data
-    sensorDist.value = sd.data
+    const full = await getDashboardFull(60)
+    const d = full.data
+    overview.value = d.overview
+    deviceOnlineRate.value = d.deviceOnlineRate
+    hazardTrend.value = d.hazardPointTrend
+    sensorDist.value = d.sensorDistribution
+    healthStats.value = d.healthScore
   } catch { /* use defaults */
   }
   initHazardTrendChart()
@@ -1013,14 +1047,14 @@ const chartTabs = [
   {key: 'inclination', label: '倾斜监测'}
 ]
 
-const healthStats = ref({
-  overallScore: 95,
+const healthStats = ref<HealthScoreVO>({
+  overallScore: 0,
   items: [
-    {name: '资料完善率', value: 95, weight: 0.2, color: '#52c41a'},
-    {name: '设备在线率', value: 96, weight: 0.15, color: '#1890ff'},
-    {name: '设备正常率', value: 94, weight: 0.15, color: '#722ed1'},
-    {name: '告警及时响应率', value: 90, weight: 0.2, color: '#fa8c16'},
-    {name: '边坡稳定率', value: 97, weight: 0.3, color: '#eb2f96'}
+    {name: '资料完善率', value: 0, weight: 0.2, color: '#52c41a', dataSource: 'computed'},
+    {name: '设备在线率', value: 0, weight: 0.15, color: '#1890ff', dataSource: 'computed'},
+    {name: '设备正常率', value: 0, weight: 0.15, color: '#722ed1', dataSource: 'computed'},
+    {name: '告警及时响应率', value: 0, weight: 0.2, color: '#fa8c16', dataSource: 'placeholder'},
+    {name: '边坡稳定率', value: 0, weight: 0.3, color: '#eb2f96', dataSource: 'placeholder'}
   ]
 })
 
@@ -2761,94 +2795,116 @@ const trendAreaPath = computed(() => {
   background: #0ea5e9;
 }
 
-/* 隐患点弹窗样式 */
+
+</style>
+
+<style>
+/* ========== 隐患点悬浮窗 V2（全局样式，Leaflet popup 动态渲染） ========== */
 .hazard-popup-container .leaflet-popup-content-wrapper {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(79, 172, 254, 0.2);
+  border: none;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.hazard-popup-container .leaflet-popup-content {
+  margin: 0;
+  min-width: 220px;
 }
 
 .hazard-popup-container .leaflet-popup-tip {
   background: #ffffff;
-  border-color: rgba(79, 172, 254, 0.2);
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.hazard-popup {
-  padding: 16px;
-  min-width: 260px;
+.hpv2-card { padding: 0; }
+
+.hpv2-header { padding: 8px 12px 6px; }
+
+.hpv2-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1677ff;
 }
 
-.popup-header {
+.hpv2-dash {
+  margin: 0 12px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.18);
+}
+
+.hpv2-body { padding: 4px 12px 8px; }
+
+.hpv2-row {
   display: flex;
+  padding: 4px 0;
+}
+
+.hpv2-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hpv2-cell:not(:last-child) { padding-right: 12px; }
+
+.hpv2-cell.full {
+  flex-direction: row;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.popup-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1f2937;
+.hpv2-label {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
-.popup-status {
-  font-size: 14px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.popup-device-info {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.device-count-label {
-  color: #6b7280;
-}
-
-.device-count-value {
+.hpv2-val {
+  font-size: 12px;
   color: #374151;
   font-weight: 500;
 }
 
-.popup-device-list {
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 8px;
-  padding: 10px;
+.hpv2-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 3px;
+  width: fit-content;
 }
 
-.popup-device-list .list-header {
-  font-size: 14px;
+.hpv2-level {
+  display: inline-block;
+  font-size: 11px;
   font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 1px 8px;
+  border-radius: 3px;
+  width: fit-content;
 }
 
-.device-item {
+.hpv2-devices {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.18);
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.hpv2-device {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
-  font-size: 14px;
+  padding: 3px 0;
 }
 
-.device-name {
-  color: #4b5563;
-}
+.hpv2-device + .hpv2-device { border-top: 1px solid rgba(0, 0, 0, 0.05); }
 
-.device-status {
-  font-weight: 500;
-  font-size: 14px;
-}
+.hpv2-dn { font-size: 11px; color: #4b5563; }
+
+.hpv2-ds { font-size: 11px; font-weight: 500; }
 </style>

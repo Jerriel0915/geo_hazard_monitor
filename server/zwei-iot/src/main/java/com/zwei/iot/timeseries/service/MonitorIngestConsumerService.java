@@ -3,6 +3,8 @@ package com.zwei.iot.timeseries.service;
 import com.alibaba.fastjson2.JSON;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.DeviceOnlineStatusService;
+import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
 import jakarta.annotation.PreDestroy;
@@ -33,6 +35,8 @@ public class MonitorIngestConsumerService {
     private final IotdbTimeSeriesService iotdbTimeSeriesService;
     private final MonitorIngestStreamService streamService;
     private final DeviceMapper deviceMapper;
+    private final DeviceOnlineStatusService deviceOnlineStatusService;
+    private final IDeviceSensorService deviceSensorService;
     private final ExecutorService executorService;
     private volatile boolean running = true;
 
@@ -44,18 +48,23 @@ public class MonitorIngestConsumerService {
      * @param iotdbTimeSeriesService IoTDB 时序服务
      * @param streamService          Stream 写入服务
      * @param deviceMapper           设备 Mapper
+     * @param deviceOnlineStatusService 设备在线状态服务
      */
     @Autowired
     public MonitorIngestConsumerService(RedisTemplate<Object, Object> redisTemplate,
                                         MonitorIngestProperties properties,
                                         IotdbTimeSeriesService iotdbTimeSeriesService,
                                         MonitorIngestStreamService streamService,
-                                        DeviceMapper deviceMapper) {
+                                        DeviceMapper deviceMapper,
+                                        DeviceOnlineStatusService deviceOnlineStatusService,
+                                        IDeviceSensorService deviceSensorService) {
         this.redisTemplate = redisTemplate;
         this.properties = properties;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
         this.streamService = streamService;
         this.deviceMapper = deviceMapper;
+        this.deviceOnlineStatusService = deviceOnlineStatusService;
+        this.deviceSensorService = deviceSensorService;
         this.executorService = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "monitor-ingest-consumer");
             thread.setDaemon(true);
@@ -72,10 +81,13 @@ public class MonitorIngestConsumerService {
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
         if (!properties.isEnabled()) {
+            log.warn("监测数据消费已禁用（iot.monitor-ingest.enabled=false），MQTT 数据将仅入栈 Redis Stream 不落库 IoTDB");
             return;
         }
         initConsumerGroup();
         executorService.submit(this::consume);
+        log.info("监测数据消费已启动。stream={}, group={}, consumer={}",
+                properties.getStreamKey(), properties.getConsumerGroup(), properties.getConsumerName());
     }
 
     /**
@@ -135,7 +147,14 @@ public class MonitorIngestConsumerService {
                 return;
             }
             iotdbTimeSeriesService.writePoints(List.of(point));
-            // IoTDB 写入成功后再回写设备最近上报时间，避免业务状态先于时序数据生效。
+            // IoTDB 写入成功 → 更新运维指标
+            deviceOnlineStatusService.updateLastReportAt(point.deviceId());
+            if (point.sensorId() != null) {
+                String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                        .format(new java.util.Date(point.dataTime()));
+                deviceSensorService.updateLastReportTime(point.sensorId(), now);
+            }
+            // 同步回写设备主表 lastReportTime（保留兼容，后续可逐步移除）
             deviceMapper.updateDevice(Device.builder()
                     .id(point.deviceId())
                     .lastReportTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")

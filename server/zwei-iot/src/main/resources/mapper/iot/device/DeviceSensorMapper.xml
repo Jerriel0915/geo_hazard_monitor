@@ -184,4 +184,27 @@
         GROUP BY ds.monitor_type_id, mt.name
     </select>
 
+    <update id="updateLastReportTime">
+        UPDATE device_sensor
+        SET last_report_time = #{lastReportTime}
+        WHERE id = #{id}
+    </update>
+
+    <select id="countActiveInWindow" resultType="int">
+        SELECT COUNT(*)
+        FROM device_sensor
+        WHERE del_flag = 0
+          AND status = 1
+          AND last_report_time >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE)
+    </select>
+
+    <select id="countByDeviceOnline" resultType="int">
+        SELECT COUNT(DISTINCT ds.id)
+        FROM device_sensor ds
+                 INNER JOIN device_online_status os ON ds.device_id = os.device_id
+        WHERE ds.del_flag = 0
+          AND ds.status = 1
+          AND os.status = 1
+    </select>
+
 </mapper>

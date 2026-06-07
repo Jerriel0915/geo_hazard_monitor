@@ -25,6 +25,8 @@ export interface DeviceItem {
   lastAuthTime?: string
   lastAuthIp?: string
   createTime?: string
+  longitude?: number | null
+  latitude?: number | null
   sensors?: any[]
 }
 
@@ -39,6 +41,8 @@ export interface DeviceCreatePayload {
   icon?: string
   iconPath?: string
   status: number
+  longitude?: number | null
+  latitude?: number | null
 }
 
 export interface DeviceUpdatePayload {
@@ -51,6 +55,8 @@ export interface DeviceUpdatePayload {
   icon?: string
   iconPath?: string
   status: number
+  longitude?: number | null
+  latitude?: number | null
 }
 
 export interface DeviceAuthAccount {

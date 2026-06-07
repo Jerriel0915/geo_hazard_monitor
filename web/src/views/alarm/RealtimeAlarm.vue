@@ -43,8 +43,8 @@
             </el-form-item>
             <el-form-item label="警情状态">
               <el-select v-model="queryParams.status" placeholder="请选择" clearable multiple style="width: 120px">
-                <el-option label="新警情" value="pending" />
-                <el-option label="已响应" value="processing" />
+                <el-option label="待处理" value="pending"/>
+                <el-option label="处理中" value="processing"/>
               </el-select>
             </el-form-item>
             <el-form-item>
@@ -181,16 +181,12 @@
       </template>
     </el-dialog>
 
-    <!-- 反馈弹窗组件 -->
-    <FeedbackDialog 
+    <!-- 反馈弹窗 -->
+    <FeedbackDialog
       v-model="feedbackDialogVisible"
       :data="currentRow"
-      @close="feedbackDialogVisible = false"
-      @submit="submitFeedback"
-      @view-detail="handleViewDetail"
-      @quick-response="handleQuickResponse"
-      @false-alarm="handleFalseAlarm"
-      @close-alarm="handleCloseAlarm"
+      @submit="handleFeedbackSubmit"
+      @update:model-value="feedbackDialogVisible = $event"
     />
 
     <!-- 误报确认弹窗 -->
@@ -208,29 +204,6 @@
       <template #footer>
         <el-button @click="closeAlarmDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="confirmCloseAlarm">确定</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 批量反馈弹窗 -->
-    <el-dialog 
-      v-model="batchFeedbackDialogVisible" 
-      :title="batchFeedbackTitle" 
-      width="500px"
-    >
-      <el-form :model="batchFeedbackForm">
-        <el-form-item label="反馈意见" label-width="80px">
-          <el-input 
-            v-model="batchFeedbackForm.remark" 
-            type="textarea" 
-            :rows="4" 
-            placeholder="请输入批量反馈意见..."
-            maxlength="500"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="batchFeedbackDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmBatchFeedback">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -271,23 +244,10 @@ const alarmListDialogVisible = ref(false)
 const feedbackDialogVisible = ref(false)
 const falseAlarmDialogVisible = ref(false)
 const closeAlarmDialogVisible = ref(false)
-const batchFeedbackDialogVisible = ref(false)
-
-// 批量反馈表单
-const batchFeedbackForm = reactive({
-  remark: ''
-})
-
-const batchFeedbackTitle = computed(() => {
-  return `批量反馈-${selectedRows.value.length}`
-})
 
 // 当前行
 const currentRow = ref<any>(null)
 const currentAlarmList = ref<any[]>([])
-const feedbackForm = reactive({
-  content: ''
-})
 
 // Mock 数据
 const mockData = [
@@ -328,6 +288,40 @@ const mockData = [
   },
   {
     id: 3,
+    hazardPointName: '山体滑坡点C-12',
+    alarmLevel: '3',
+    firstAlarmTime: '2024-05-28 16:20:00',
+    lastAlarmTime: '2024-06-02 20:30:00',
+    alarmCount: 25,
+    alarmType: 'threshold',
+    status: 'processing',
+    responderName: '李四',
+    responseTime: '2024-05-28 17:00:00',
+    alarmContent: '山体倾斜角度超过阈值5度，当前值为6.2度',
+    alarmList: [
+      {alarmTime: '2024-05-28 16:20:00', alarmLevel: '3', alarmContent: '山体倾斜角度5.1度'},
+      {alarmTime: '2024-06-02 20:30:00', alarmLevel: '3', alarmContent: '山体倾斜角度6.2度'}
+    ]
+  },
+  {
+    id: 4,
+    hazardPointName: '桥梁监测点D-03',
+    alarmLevel: '4',
+    firstAlarmTime: '2024-06-01 00:00:00',
+    lastAlarmTime: '2024-06-02 00:00:00',
+    alarmCount: 3,
+    alarmType: 'threshold',
+    status: 'pending',
+    responderName: '',
+    responseTime: '',
+    alarmContent: '桥墩沉降超过阈值2mm，当前值为2.3mm',
+    alarmList: [
+      {alarmTime: '2024-06-01 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.1mm'},
+      {alarmTime: '2024-06-02 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.3mm'}
+    ]
+  },
+  {
+    id: 5,
     hazardPointName: '隧道监测点E-08',
     alarmLevel: '1',
     firstAlarmTime: '2024-06-03 08:00:00',
@@ -344,54 +338,20 @@ const mockData = [
     ]
   },
   {
-    id: 4,
-    hazardPointName: '泥石流监测点G-07',
-    alarmLevel: '1',
-    firstAlarmTime: '2024-06-03 15:00:00',
-    lastAlarmTime: '2024-06-03 16:30:00',
-    alarmCount: 6,
-    alarmType: 'comprehensive',
-    status: 'pending',
-    responderName: '',
-    responseTime: '',
-    alarmContent: '综合预警：降雨量和土壤含水率同时超过阈值',
-    alarmList: [
-      { alarmTime: '2024-06-03 15:00:00', alarmLevel: '1', alarmContent: '降雨量达到阈值' },
-      { alarmTime: '2024-06-03 16:30:00', alarmLevel: '1', alarmContent: '土壤含水率超限' }
-    ]
-  },
-  {
-    id: 5,
-    hazardPointName: '地质灾害点H-09',
-    alarmLevel: '2',
-    firstAlarmTime: '2024-06-03 10:00:00',
-    lastAlarmTime: '2024-06-03 11:00:00',
-    alarmCount: 3,
-    alarmType: 'threshold',
-    status: 'processing',
-    responderName: '李四',
-    responseTime: '2024-06-03 10:30:00',
-    alarmContent: '裂缝宽度超过阈值，正在处理中',
-    alarmList: [
-      { alarmTime: '2024-06-03 10:00:00', alarmLevel: '2', alarmContent: '裂缝宽度5mm' },
-      { alarmTime: '2024-06-03 11:00:00', alarmLevel: '2', alarmContent: '裂缝宽度6mm' }
-    ]
-  },
-  {
     id: 6,
-    hazardPointName: '边坡监测点J-15',
-    alarmLevel: '3',
-    firstAlarmTime: '2024-06-03 09:30:00',
-    lastAlarmTime: '2024-06-03 14:00:00',
-    alarmCount: 10,
+    hazardPointName: '水库监测点F-02',
+    alarmLevel: '2',
+    firstAlarmTime: '2024-05-25 06:00:00',
+    lastAlarmTime: '2024-06-01 18:00:00',
+    alarmCount: 12,
     alarmType: 'threshold',
     status: 'processing',
-    responderName: '王五',
-    responseTime: '2024-06-03 10:00:00',
-    alarmContent: '地表位移超过阈值，已安排人员现场勘查',
+    responderName: '赵六',
+    responseTime: '2024-05-25 08:00:00',
+    alarmContent: '水库水位超过警戒水位，当前水位超出安全范围',
     alarmList: [
-      { alarmTime: '2024-06-03 09:30:00', alarmLevel: '3', alarmContent: '位移3mm' },
-      { alarmTime: '2024-06-03 14:00:00', alarmLevel: '3', alarmContent: '位移4.5mm' }
+      {alarmTime: '2024-05-25 06:00:00', alarmLevel: '2', alarmContent: '水库水位超限30cm'},
+      {alarmTime: '2024-06-01 18:00:00', alarmLevel: '2', alarmContent: '水库水位超限50cm'}
     ]
   }
 ]
@@ -499,8 +459,8 @@ const getStatusType = (status: string) => {
 // 获取状态文本
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    'pending': '新警情',
-    'processing': '已响应'
+    'pending': '待处理',
+    'processing': '处理中'
   }
   return map[status] || status
 }
@@ -550,11 +510,17 @@ const showAlarmList = (row: any) => {
   alarmListDialogVisible.value = true
 }
 
-// 反馈
+// 反馈（处置）
 const handleFeedback = (row: any) => {
   currentRow.value = row
-  feedbackForm.content = ''
   feedbackDialogVisible.value = true
+}
+
+// 处置提交回调
+const handleFeedbackSubmit = () => {
+  ElMessage.success('处置成功')
+  feedbackDialogVisible.value = false
+  tableData.value = paginatedData.value
 }
 
 // 批量反馈
@@ -563,73 +529,13 @@ const handleBatchFeedback = () => {
     ElMessage.warning('请先选择要反馈的记录')
     return
   }
-  batchFeedbackForm.remark = ''
-  batchFeedbackDialogVisible.value = true
+  currentRow.value = selectedRows.value
+  feedbackDialogVisible.value = true
 }
 
-// 确认批量反馈
-const confirmBatchFeedback = () => {
-  if (!batchFeedbackForm.remark.trim()) {
-    ElMessage.warning('请输入反馈意见')
-    return
-  }
-  
-  selectedRows.value.forEach(row => {
-    row.status = 'processing'
-    row.responderName = '当前用户'
-    row.responseTime = new Date().toLocaleString()
-  })
-  
-  ElMessage.success(`成功反馈 ${selectedRows.value.length} 条告警记录`)
-  batchFeedbackDialogVisible.value = false
-  selectedRows.value = []
-}
-
-// 提交反馈
-const submitFeedback = () => {
-  if (!feedbackForm.content.trim()) {
-    ElMessage.warning('请输入反馈内容')
-    return
-  }
-  
-  if (Array.isArray(currentRow.value)) {
-    currentRow.value.forEach(row => {
-      row.status = 'processing'
-      row.responderName = '当前用户'
-      row.responseTime = new Date().toLocaleString()
-    })
-  } else {
-    currentRow.value.status = 'processing'
-    currentRow.value.responderName = '当前用户'
-    currentRow.value.responseTime = new Date().toLocaleString()
-  }
-  
-  ElMessage.success('反馈成功')
-  feedbackDialogVisible.value = false
-  tableData.value = paginatedData.value
-}
-
-// 查看详情
-const handleViewDetail = () => {
-  ElMessage.info('查看详情功能已触发')
-}
-
-// 快速响应
-const handleQuickResponse = (row: any) => {
-  const targetRow = row || currentRow.value
-  if (targetRow) {
-    targetRow.status = 'processing'
-    targetRow.responderName = '当前用户'
-    targetRow.responseTime = new Date().toLocaleString()
-    ElMessage.success('响应成功')
-    tableData.value = paginatedData.value
-  }
-}
-
-// 误报
-const handleFalseAlarm = (row: any) => {
-  currentRow.value = row
-  falseAlarmDialogVisible.value = true
+// 导出
+const handleExport = () => {
+  ElMessage.success('导出功能已触发（模拟）')
 }
 
 // 批量误报
@@ -655,17 +561,11 @@ const confirmFalseAlarm = () => {
     currentRow.value.responderName = '当前用户'
     currentRow.value.responseTime = new Date().toLocaleString()
   }
-  
+
   ElMessage.success('已标记为误报')
   falseAlarmDialogVisible.value = false
   selectedRows.value = []
   tableData.value = paginatedData.value
-}
-
-// 销警
-const handleCloseAlarm = (row: any) => {
-  currentRow.value = row
-  closeAlarmDialogVisible.value = true
 }
 
 // 批量销警
@@ -691,16 +591,11 @@ const confirmCloseAlarm = () => {
     currentRow.value.responderName = '当前用户'
     currentRow.value.responseTime = new Date().toLocaleString()
   }
-  
+
   ElMessage.success('销警成功')
   closeAlarmDialogVisible.value = false
   selectedRows.value = []
   tableData.value = paginatedData.value
-}
-
-// 导出
-const handleExport = () => {
-  ElMessage.success('导出功能已触发（模拟）')
 }
 
 // 分页大小变化
@@ -812,452 +707,5 @@ const handleCurrentChange = (page: number) => {
 .alarm-list-table {
   max-height: 400px;
   overflow: auto;
-}
-
-/* 反馈弹窗样式 */
-.feedback-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.feedback-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: linear-gradient(135deg, #0a1628 0%, #1a365d 100%);
-  border-radius: 8px;
-  color: #fff;
-}
-
-.header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.header-left .label {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.header-left .value {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.header-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.alarm-level-badge {
-  padding: 8px 24px;
-  border-radius: 20px;
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.alarm-level-badge.danger {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
-}
-
-.alarm-level-badge.warning {
-  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
-}
-
-.alarm-level-badge.success {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-}
-
-.alarm-level-badge.info {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-}
-
-.alarm-desc {
-  font-size: 14px;
-  color: #e2e8f0;
-  max-width: 400px;
-  text-align: center;
-}
-
-.header-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
-}
-
-.timer-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #94a3b8;
-}
-
-.timer-info .icon {
-  font-size: 18px;
-}
-
-.feedback-body {
-  display: flex;
-  gap: 16px;
-}
-
-.side-panel {
-  width: 200px;
-  background: #f8fafc;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.main-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.panel-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.panel-title .el-icon {
-  color: #3b82f6;
-}
-
-/* 事件生命周期 */
-.lifecycle {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.lifecycle-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 0;
-}
-
-.lifecycle-item.active .lifecycle-node {
-  transform: scale(1.1);
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-}
-
-.lifecycle-node {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 16px;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.lifecycle-node .badge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #22c55e;
-  color: #fff;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-.device-node {
-  background: #64748b;
-}
-
-.gateway-node {
-  background: #0ea5e9;
-}
-
-.storage-node {
-  background: #0ea5e9;
-}
-
-.alarm-node {
-  background: #ef4444;
-}
-
-.situation-node {
-  background: #64748b;
-}
-
-.verify-node {
-  background: #64748b;
-}
-
-.close-node {
-  background: #64748b;
-}
-
-.lifecycle-line {
-  width: 2px;
-  height: 24px;
-  background: #cbd5e1;
-  margin: 4px 0;
-}
-
-.lifecycle-label {
-  font-size: 12px;
-  color: #64748b;
-  margin-top: 4px;
-  text-align: center;
-}
-
-/* 告警资料 */
-.info-section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 16px;
-}
-
-.section-title .el-icon {
-  color: #3b82f6;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.info-item label {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.info-item span {
-  font-size: 14px;
-  color: #1e293b;
-}
-
-.level-tag {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #fff;
-}
-
-.level-tag.danger {
-  background: #ef4444;
-}
-
-.level-tag.warning {
-  background: #f97316;
-}
-
-.level-tag.success {
-  background: #10b981;
-}
-
-.level-tag.info {
-  background: #3b82f6;
-}
-
-.alarm-desc-section {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.alarm-desc-section label {
-  display: block;
-  font-size: 12px;
-  color: #64748b;
-  margin-bottom: 8px;
-}
-
-.alarm-desc-section p {
-  font-size: 14px;
-  color: #334155;
-  line-height: 1.6;
-  margin: 0;
-}
-
-/* 数据依据 */
-.data-section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-}
-
-.sensor-selector {
-  margin-bottom: 16px;
-}
-
-.chart-container {
-  height: 250px;
-  background: #f8fafc;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chart-placeholder {
-  text-align: center;
-  color: #94a3b8;
-}
-
-.chart-placeholder .chart-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.chart-placeholder p {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-}
-
-.chart-placeholder .hint {
-  font-size: 12px;
-  color: #cbd5e1;
-}
-
-/* 右侧面板 */
-.right-panel {
-  width: 240px;
-}
-
-.timeline-content {
-  height: 150px;
-  background: #fff;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-.timeline-empty {
-  text-align: center;
-  color: #94a3b8;
-}
-
-.timeline-empty .el-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.timeline-empty p {
-  margin: 0;
-  font-size: 12px;
-}
-
-.installation-content {
-  height: 200px;
-  background: #fff;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.img-placeholder {
-  text-align: center;
-  color: #94a3b8;
-}
-
-.img-placeholder .el-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.img-placeholder p {
-  margin: 0;
-  font-size: 12px;
-}
-
-.mt-3 {
-  margin-top: 12px;
-}
-
-/* 底部操作面板 */
-.feedback-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.response-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.response-info .label {
-  color: #64748b;
-  font-size: 14px;
-}
-
-.response-info .value {
-  color: #1e293b;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.response-info .ml-4 {
-  margin-left: 16px;
-}
-
-.feedback-footer .action-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-/* 响应式 */
-@media (max-width: 1024px) {
-  .info-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .side-panel {
-    width: 150px;
-  }
-  
-  .right-panel {
-    width: 180px;
-  }
 }
 </style>

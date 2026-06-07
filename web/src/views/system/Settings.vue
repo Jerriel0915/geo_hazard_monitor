@@ -2,267 +2,151 @@
   <div class="page-content">
     <div class="page-title">系统设置</div>
     <div class="page-body">
-      <el-tabs v-model="activeTab" type="border-card">
-        <!-- 系统参数 -->
-        <el-tab-pane label="系统参数" name="params">
-          <div class="tab-content params-content">
-            <div class="params-sidebar">
-              <div
+      <!-- 系统参数 -->
+      <div class="tab-content params-content">
+        <div class="params-sidebar">
+          <div
+              v-for="cat in paramCategories"
+              :key="cat.key"
+              class="category-item"
+              :class="{ active: currentCategory === cat.key }"
+              @click="scrollToCategory(cat.key)"
+          >
+            {{ cat.label }}
+          </div>
+        </div>
+        <div class="params-main">
+          <el-form
+              ref="paramsFormRef"
+              :model="paramsFormData"
+              label-width="200px"
+              class="params-form"
+          >
+            <div
                 v-for="cat in paramCategories"
                 :key="cat.key"
-                class="category-item"
-                :class="{ active: currentCategory === cat.key }"
-                @click="currentCategory = cat.key"
+                :id="`category-${cat.key}`"
+                class="param-section"
+            >
+              <h3 class="section-title">{{ cat.label }}</h3>
+              <el-form-item
+                  v-for="param in getParamsByCategory(cat.key)"
+                  :key="param.code"
+                  :label="param.name"
               >
-                {{ cat.label }}
-              </div>
-            </div>
-            <div class="params-main">
-              <el-form
-                ref="paramsFormRef"
-                :model="paramsFormData"
-                label-width="200px"
-                class="params-form"
-              >
-                <div
-                  v-for="cat in paramCategories"
-                  :key="cat.key"
-                  :id="`category-${cat.key}`"
-                  class="param-section"
-                >
-                  <h3 class="section-title">{{ cat.label }}</h3>
-                  <el-form-item
-                    v-for="param in getParamsByCategory(cat.key)"
-                    :key="param.code"
-                    :label="param.name"
-                  >
-                    <template v-if="param.type === 'string'">
-                      <el-input
-                        v-model="paramsFormData[param.code]"
-                        :placeholder="param.placeholder"
-                        :maxlength="param.maxLength"
-                        show-word-limit
-                        style="width: 400px"
-                      />
-                    </template>
-                    <template v-else-if="param.type === 'number'">
-                      <el-input-number
-                        v-model="paramsFormData[param.code]"
-                        :min="param.min"
-                        :max="param.max"
-                        :step="param.step || 1"
-                        controls-position="right"
-                        style="width: 200px"
-                      />
-                    </template>
-                    <template v-else-if="param.type === 'select'">
-                      <el-select v-model="paramsFormData[param.code]" style="width: 200px">
-                        <el-option
-                          v-for="opt in param.options"
-                          :key="opt.value"
-                          :label="opt.label"
-                          :value="opt.value"
-                        />
-                      </el-select>
-                    </template>
-                    <template v-else-if="param.type === 'switch'">
-                      <el-switch v-model="paramsFormData[param.code]" />
-                    </template>
-                    <template v-else-if="param.type === 'textarea'">
-                      <el-input
-                        v-model="paramsFormData[param.code]"
-                        type="textarea"
-                        :rows="3"
-                        :maxlength="param.maxLength"
-                        show-word-limit
-                        style="width: 400px"
-                      />
-                    </template>
-                    <template v-else-if="param.type === 'geojson'">
-                      <div class="geojson-editor">
-                        <div class="geojson-actions">
-                          <el-upload
-                            accept=".json,.geojson"
-                            :auto-upload="false"
-                            :show-file-list="false"
-                            :on-change="handleGeoJsonUpload"
-                            style="display: inline-block; margin-right: 8px;"
-                          >
-                            <el-button type="primary" size="small">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                              </svg>
-                              导入GeoJSON
-                            </el-button>
-                          </el-upload>
-                          <el-button type="success" size="small" @click="openMapDrawer">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;">
-                              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
-                              <line x1="8" y1="2" x2="8" y2="18"/>
-                              <line x1="16" y1="6" x2="16" y2="22"/>
-                            </svg>
-                            地图绘制
-                          </el-button>
-                          <el-button type="warning" size="small" @click="handleExportGeoJson" v-if="geoJsonData">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7 10 12 15 17 10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            导出GeoJSON
-                          </el-button>
-                          <el-button type="danger" size="small" @click="handleClearGeoJson" v-if="geoJsonData">
-                            清除
-                          </el-button>
-                        </div>
-                        <div class="geojson-preview" v-if="geoJsonData">
-                          <div class="geojson-info">
-                            <el-tag type="success" size="small">已设置关注区域</el-tag>
-                            <span class="geojson-detail">{{ getGeoJsonSummary() }}</span>
-                          </div>
-                          <el-input
-                            v-model="geoJsonText"
-                            type="textarea"
-                            :rows="6"
-                            readonly
-                            class="geojson-textarea"
-                          />
-                        </div>
-                        <el-empty v-else description="暂未设置关注区域，请导入GeoJSON文件或在地图上绘制" :image-size="60" />
+                <template v-if="param.type === 'string'">
+                  <el-input
+                      v-model="paramsFormData[param.code]"
+                      :placeholder="param.placeholder"
+                      :maxlength="param.maxLength"
+                      show-word-limit
+                      style="width: 400px"
+                  />
+                </template>
+                <template v-else-if="param.type === 'number'">
+                  <el-input-number
+                      v-model="paramsFormData[param.code]"
+                      :min="param.min"
+                      :max="param.max"
+                      :step="param.step || 1"
+                      controls-position="right"
+                      style="width: 200px"
+                  />
+                </template>
+                <template v-else-if="param.type === 'select'">
+                  <el-select v-model="paramsFormData[param.code]" style="width: 200px">
+                    <el-option
+                        v-for="opt in param.options"
+                        :key="opt.value"
+                        :label="opt.label"
+                        :value="opt.value"
+                    />
+                  </el-select>
+                </template>
+                <template v-else-if="param.type === 'switch'">
+                  <el-switch v-model="paramsFormData[param.code]"/>
+                </template>
+                <template v-else-if="param.type === 'textarea'">
+                  <el-input
+                      v-model="paramsFormData[param.code]"
+                      type="textarea"
+                      :rows="3"
+                      :maxlength="param.maxLength"
+                      show-word-limit
+                      style="width: 400px"
+                  />
+                </template>
+                <template v-else-if="param.type === 'geojson'">
+                  <div class="geojson-editor">
+                    <div class="geojson-actions">
+                      <el-upload
+                          accept=".json,.geojson"
+                          :auto-upload="false"
+                          :show-file-list="false"
+                          :on-change="handleGeoJsonUpload"
+                          style="display: inline-block; margin-right: 8px;"
+                      >
+                        <el-button type="primary" size="small">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                               stroke-width="2" width="14" height="14"
+                               style="vertical-align: middle; margin-right: 4px;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                          </svg>
+                          导入GeoJSON
+                        </el-button>
+                      </el-upload>
+                      <el-button type="success" size="small" @click="openMapDrawer">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;">
+                          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                          <line x1="8" y1="2" x2="8" y2="18"/>
+                          <line x1="16" y1="6" x2="16" y2="22"/>
+                        </svg>
+                        地图绘制
+                      </el-button>
+                      <el-button type="warning" size="small" @click="handleExportGeoJson" v-if="geoJsonData">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="7 10 12 15 17 10"/>
+                          <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        导出GeoJSON
+                      </el-button>
+                      <el-button type="danger" size="small" @click="handleClearGeoJson" v-if="geoJsonData">
+                        清除
+                      </el-button>
+                    </div>
+                    <div class="geojson-preview" v-if="geoJsonData">
+                      <div class="geojson-info">
+                        <el-tag type="success" size="small">已设置关注区域</el-tag>
+                        <span class="geojson-detail">{{ getGeoJsonSummary() }}</span>
                       </div>
-                    </template>
-                    <span class="param-remark">{{ param.remark }}</span>
-                  </el-form-item>
-                </div>
-              </el-form>
-              <div class="params-actions">
-                <el-button type="primary" size="large" @click="handleSaveParams" :loading="saveLoading">
-                  保存配置
-                </el-button>
-                <el-button size="large" @click="handleResetParams">重置</el-button>
-              </div>
+                      <el-input
+                          v-model="geoJsonText"
+                          type="textarea"
+                          :rows="6"
+                          readonly
+                          class="geojson-textarea"
+                      />
+                    </div>
+                    <el-empty v-else description="暂未设置关注区域，请导入GeoJSON文件或在地图上绘制" :image-size="60"/>
+                  </div>
+                </template>
+                <span class="param-remark">{{ param.remark }}</span>
+              </el-form-item>
             </div>
+          </el-form>
+          <div class="params-actions">
+            <el-button type="primary" size="large" @click="handleSaveParams" :loading="saveLoading">
+              保存配置
+            </el-button>
+            <el-button size="large" @click="handleResetParams">重置</el-button>
           </div>
-        </el-tab-pane>
-
-        <!-- 告警分发 -->
-        <el-tab-pane label="告警分发" name="alarm">
-          <div class="tab-content">
-            <div class="search-bar">
-              <el-form :model="alarmSearchForm" inline>
-                <el-form-item label="隐患点">
-                  <el-input v-model="alarmSearchForm.hazardPoint" placeholder="请输入隐患点名称" clearable />
-                </el-form-item>
-                <el-form-item label="类型">
-                  <el-select v-model="alarmSearchForm.type" placeholder="全部类型" clearable style="width: 150px">
-                    <el-option label="监测告警" value="alarm" />
-                    <el-option label="设备离线通知" value="offline" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="状态">
-                  <el-select v-model="alarmSearchForm.status" placeholder="全部状态" clearable style="width: 120px">
-                    <el-option label="启用" :value="1" />
-                    <el-option label="禁用" :value="0" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="渠道">
-                  <el-select v-model="alarmSearchForm.channel" placeholder="全部渠道" clearable style="width: 120px">
-                    <el-option label="短信" value="sms" />
-                    <el-option label="邮件" value="email" />
-                    <el-option label="系统消息" value="system" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="handleAlarmSearch">查询</el-button>
-                  <el-button @click="handleAlarmReset">重置</el-button>
-                </el-form-item>
-              </el-form>
-              <div class="action-btns">
-                <el-button type="primary" @click="handleAddAlarmRule">新增规则</el-button>
-                <el-button type="success" @click="handleBatchEnableAlarm" :disabled="selectedAlarmRules.length === 0">批量启用</el-button>
-                <el-button type="warning" @click="handleBatchDisableAlarm" :disabled="selectedAlarmRules.length === 0">批量禁用</el-button>
-                <el-button type="success" @click="handleImportAlarm">导入</el-button>
-                <el-button type="warning" @click="handleExportAlarm">导出</el-button>
-              </div>
-            </div>
-
-            <el-table :data="alarmRuleList" border stripe v-loading="loading" @selection-change="handleAlarmSelectionChange">
-              <el-table-column type="selection" width="55" align="center" />
-              <el-table-column label="隐患点" min-width="180">
-                <template #default="{ row }">
-                  <span v-for="(name, idx) in row.hazardPointNames" :key="idx">
-                    <el-tag size="small" style="margin-right: 4px;">{{ name }}</el-tag>
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="type" label="类型" width="110" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
-                    {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="告警等级/关联设备" min-width="200">
-                <template #default="{ row }">
-                  <template v-if="row.type === 'alarm'">
-                    <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
-                    <span v-if="!row.level || row.level.length === 0" class="text-gray">无</span>
-                  </template>
-                  <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
-                    <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
-                  </template>
-                  <span v-else class="text-gray">无</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="persons" label="通知人员" min-width="150">
-                <template #default="{ row }">
-                  <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="channels" label="通知渠道" width="150">
-                <template #default="{ row }">
-                  <span v-for="(c, idx) in row.channels" :key="c">
-                    {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column label="执行描述" width="200">
-                <template #default="{ row }">
-                  {{ getExecDescription(row.execTime) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" width="80" align="center">
-                <template #default="{ row }">
-                  <el-switch v-model="row.status" @change="handleToggleAlarmStatus(row)" />
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="100" fixed="right">
-                <template #default="{ row }">
-                  <span class="action-link" @click="handleEditAlarmRule(row)">编辑</span>
-                  <span class="action-link action-danger" @click="handleDeleteAlarmRule(row)">删除</span>
-                </template>
-              </el-table-column>
-            </el-table>
-
-            <div class="pagination">
-              <el-pagination
-                v-model:current-page="alarmPagination.page"
-                v-model:page-size="alarmPagination.size"
-                :page-sizes="[10, 20, 50, 100]"
-                :total="alarmPagination.total"
-                layout="total, sizes, prev, pager, next, jumper"
-                prev-text="上一页"
-                next-text="下一页"
-                :disabled="alarmPagination.total === 0"
-                @size-change="handleAlarmSizeChange"
-                @current-change="handleAlarmPageChange"
-              />
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+        </div>
+      </div>
     </div>
 
     <!-- 地图绘制弹窗 -->
@@ -332,130 +216,14 @@
         </el-button>
       </template>
     </el-dialog>
-
-    <!-- 告警规则弹窗 -->
-    <el-dialog
-      :title="alarmDialogTitle"
-      v-model="alarmDialogVisible"
-      width="650px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="alarmFormRef"
-        :model="alarmFormData"
-        :rules="alarmFormRules"
-        label-width="100px"
-      >
-        <el-form-item label="隐患点" :prop="isEditAlarm ? 'hazardPointId' : 'hazardPointIds'">
-          <el-select
-            v-model="currentHazardPoints"
-            :multiple="!isEditAlarm"
-            placeholder="请选择隐患点"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="hp in hazardPointList"
-              :key="hp.id"
-              :label="hp.name"
-              :value="hp.id"
-            />
-          </el-select>
-          <span v-if="!isEditAlarm" class="form-hint">支持多选，确定后按隐患点列表循环保存</span>
-        </el-form-item>
-        <el-form-item label="类型" prop="type">
-          <el-radio-group v-model="alarmFormData.type">
-            <el-radio label="alarm">监测告警</el-radio>
-            <el-radio label="offline">设备离线通知</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="告警等级" prop="level" v-if="alarmFormData.type === 'alarm'">
-          <el-select v-model="alarmFormData.level" multiple placeholder="请选择告警等级（支持多选）" style="width: 100%">
-            <el-option label="四级(注意)" value="四级(注意)" />
-            <el-option label="三级(警示)" value="三级(警示)" />
-            <el-option label="二级(警戒)" value="二级(警戒)" />
-            <el-option label="一级(警报)" value="一级(警报)" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="关联设备" prop="deviceIds" v-if="alarmFormData.type === 'offline'">
-          <el-select v-model="alarmFormData.deviceIds" multiple placeholder="请选择设备" style="width: 100%">
-            <el-option
-              v-for="device in deviceList"
-              :key="device.id"
-              :label="`${device.deviceCode} - ${device.name}`"
-              :value="device.id"
-            />
-          </el-select>
-          <span class="form-hint">支持多选</span>
-        </el-form-item>
-        <el-form-item label="通知人员" prop="personIds">
-          <el-select v-model="alarmFormData.personIds" multiple placeholder="请选择通知人员" style="width: 100%">
-            <el-option
-              v-for="user in userList"
-              :key="user.id"
-              :label="user.realName"
-              :value="user.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="通知渠道" prop="channels">
-          <el-checkbox-group v-model="alarmFormData.channels">
-            <el-checkbox label="sms">短信</el-checkbox>
-            <el-checkbox label="email">邮件</el-checkbox>
-            <el-checkbox label="system" checked>系统消息</el-checkbox>
-          </el-checkbox-group>
-          <span class="form-hint">系统消息包括PC端和移动端的系统消息，默认勾选</span>
-        </el-form-item>
-        <el-form-item label="执行时间" v-if="alarmFormData.type === 'offline'">
-          <el-radio-group v-model="alarmFormData.execType" class="exec-type-group">
-            <el-radio label="realtime">实时执行</el-radio>
-            <el-radio label="timed">定时</el-radio>
-          </el-radio-group>
-          <div v-if="alarmFormData.execType === 'timed'" class="exec-time-config">
-            <span class="exec-label">每</span>
-            <el-input-number v-model="alarmFormData.execFrequencyNum" :min="1" :max="99" style="width: 80px" />
-            <el-select v-model="alarmFormData.execFrequencyUnit" style="width: 100px">
-              <el-option label="分钟" value="minute" />
-              <el-option label="小时" value="hour" />
-              <el-option label="天" value="day" />
-              <el-option label="周" value="week" />
-              <el-option label="月" value="month" />
-              <el-option label="年" value="year" />
-            </el-select>
-            <span class="exec-label">在</span>
-            <el-input v-model="alarmFormData.execTimePoints" placeholder="多个时间点用逗号隔开" style="width: 150px" />
-            <span class="exec-label">执行</span>
-            <span class="form-hint">时间点示例：分钟填秒数(10,20)，小时填分钟数(10,50)，天填小时数(8,10)，周填星期(1-7)，月填日期(1,16)，年填天数(1,36)</span>
-          </div>
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="alarmFormData.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input
-            v-model="alarmFormData.remark"
-            type="textarea"
-            :rows="2"
-            placeholder="请输入备注"
-            maxlength="200"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="alarmDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleAlarmSubmit" :loading="alarmSubmitLoading">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance, FormRules, UploadFile } from 'element-plus'
+import {computed, nextTick, onMounted, reactive, ref} from 'vue'
+import type {FormInstance, UploadFile} from 'element-plus'
+import {ElMessage} from 'element-plus'
+import {getLogCleanupConfig, updateLogCleanupConfig} from '@/api/system'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-draw/dist/leaflet.draw.css'
@@ -476,41 +244,6 @@ interface ParamItem {
   remark: string
 }
 
-interface AlarmRule {
-  id: number
-  hazardPointIds: number[]
-  hazardPointNames: string[]
-  type: 'alarm' | 'offline'
-  level: string[]
-  persons: string[]
-  personIds: number[]
-  deviceIds: number[]
-  deviceNames: string[]
-  channels: string[]
-  execTime: string
-  status: number
-  remark: string
-  createTime: string
-}
-
-interface HazardPoint {
-  id: number
-  name: string
-}
-
-interface User {
-  id: number
-  realName: string
-}
-
-interface Device {
-  id: number
-  name: string
-  deviceCode: string
-}
-
-const activeTab = ref('params')
-const loading = ref(false)
 const saveLoading = ref(false)
 const currentCategory = ref('basic')
 
@@ -529,17 +262,19 @@ const paramList = ref<ParamItem[]>([
   { code: 'single_hazard_entry', name: '单一隐患点直接进入', type: 'switch', category: 'basic', value: false, remark: '只有一个隐患点时是否直接进入详情页' },
   { code: 'sys_focus_area', name: '系统关注范围区域', type: 'geojson', category: 'basic', value: null, remark: '系统在地图上关注的地理范围，支持GeoJSON格式' },
 
-  { code: 'data_keep_days', name: '数据保留时长(天)', type: 'number', category: 'data', value: 365, min: 30, max: 3650, step: 30, remark: '监测数据保留天数，超期自动清理' },
   { code: 'log_keep_days', name: '日志保留时长(天)', type: 'number', category: 'data', value: 365, min: 90, max: 3650, step: 30, remark: '系统日志保留天数' },
   { code: 'auto_cleanup', name: '自动清理', type: 'switch', category: 'data', value: true, remark: '是否启用数据自动清理' },
-  { code: 'cleanup_time', name: '清理执行时间', type: 'string', category: 'data', value: '02:00', placeholder: '如: 02:00', maxLength: 10, remark: '每日自动清理执行时间' },
+  {
+    code: 'cleanup_time',
+    name: '清理执行时间',
+    type: 'string',
+    category: 'data',
+    value: '02:00',
+    placeholder: '如: 02:00',
+    remark: '每日自动清理执行时间'
+  },
 
   { code: 'alarm_enable', name: '告警总开关', type: 'switch', category: 'alarm', value: true, remark: '是否启用系统告警功能' },
-  { code: 'alarm_level_default', name: '默认告警等级', type: 'select', category: 'alarm', value: '一般', remark: '新告警默认等级',
-    options: [{ label: '紧急', value: '紧急' }, { label: '重要', value: '重要' }, { label: '一般', value: '一般' }, { label: '提示', value: '提示' }] },
-  { code: 'alarm_retry_times', name: '告警重试次数', type: 'number', category: 'alarm', value: 3, min: 0, max: 10, remark: '通知发送失败时的重试次数' },
-  { code: 'alarm_interval', name: '告警间隔(分钟)', type: 'number', category: 'alarm', value: 30, min: 5, max: 1440, step: 5, remark: '同一告警的最小通知间隔' },
-
   { code: 'login_fail_lock', name: '登录失败锁定', type: 'switch', category: 'security', value: true, remark: '登录失败多次后是否锁定账号' },
   { code: 'login_fail_times', name: '允许失败次数', type: 'number', category: 'security', value: 5, min: 3, max: 10, remark: '允许的最大登录失败次数' },
   { code: 'lock_duration', name: '锁定时长(分钟)', type: 'number', category: 'security', value: 30, min: 5, max: 1440, step: 5, remark: '账号锁定后自动解锁时间' },
@@ -770,16 +505,43 @@ const handleConfirmDraw = () => {
   ElMessage.success('关注区域已保存')
 }
 
+const scrollToCategory = (key: string) => {
+  currentCategory.value = key
+  nextTick(() => {
+    const el = document.getElementById(`category-${key}`)
+    el?.scrollIntoView({behavior: 'smooth', block: 'start'})
+  })
+}
+
 const getParamsByCategory = (category: string) => {
   return paramList.value.filter(p => p.category === category)
 }
 
-const handleSaveParams = () => {
+// 页面加载时从后端拉取日志清理配置
+onMounted(async () => {
+  try {
+    const cfg = await getLogCleanupConfig()
+    paramsFormData['auto_cleanup'] = cfg.enabled
+    paramsFormData['log_keep_days'] = cfg.retentionDays
+    paramsFormData['cleanup_time'] = cfg.cron
+  } catch { /* 使用默认值 */
+  }
+})
+
+const handleSaveParams = async () => {
   saveLoading.value = true
-  setTimeout(() => {
-    saveLoading.value = false
+  try {
+    await updateLogCleanupConfig({
+      enabled: paramsFormData['auto_cleanup'],
+      retentionDays: paramsFormData['log_keep_days'],
+      cron: paramsFormData['cleanup_time']
+    })
     ElMessage.success('系统参数保存成功')
-  }, 800)
+  } catch {
+    ElMessage.error('保存失败，请稍后重试')
+  } finally {
+    saveLoading.value = false
+  }
 }
 
 const handleResetParams = () => {
@@ -788,379 +550,6 @@ const handleResetParams = () => {
   })
   geoJsonData.value = null
   ElMessage.info('已重置为默认值')
-}
-
-// 告警分发
-const alarmSearchForm = reactive({
-  hazardPoint: '',
-  type: '',
-  status: undefined as number | undefined,
-  channel: ''
-})
-
-const alarmPagination = reactive({ page: 1, size: 10, total: 0 })
-
-const hazardPointList = ref<HazardPoint[]>([
-  { id: 1, name: 'XX山区滑坡监测点' },
-  { id: 2, name: 'YY矿区沉降监测点' },
-  { id: 3, name: 'ZZ水库坝体监测点' },
-  { id: 4, name: 'WW公路边坡监测点' },
-  { id: 5, name: 'QQ隧道口监测点' }
-])
-
-const userList = ref<User[]>([
-  { id: 1, realName: '系统管理员' },
-  { id: 2, realName: '张三' },
-  { id: 3, realName: '李四' },
-  { id: 4, realName: '王五' },
-  { id: 5, realName: '赵六' }
-])
-
-const deviceList = ref<Device[]>([
-  { id: 1, name: 'GNSS接收机-A1', deviceCode: 'GNSS-001' },
-  { id: 2, name: '裂缝计-B1', deviceCode: 'LF-001' },
-  { id: 3, name: '位移计-C1', deviceCode: 'WY-001' },
-  { id: 4, name: '雨量计-D1', deviceCode: 'YL-001' },
-  { id: 5, name: '水位计-E1', deviceCode: 'SW-001' },
-  { id: 6, name: 'GNSS接收机-A2', deviceCode: 'GNSS-002' },
-  { id: 7, name: '裂缝计-B2', deviceCode: 'LF-002' },
-  { id: 8, name: '视频监控-F1', deviceCode: 'VD-001' }
-])
-
-const allAlarmRules = ref<AlarmRule[]>([
-  { id: 1, hazardPointIds: [1], hazardPointNames: ['XX山区滑坡监测点'], type: 'alarm', level: ['一级(警报)'], persons: ['张三', '李四'], personIds: [2, 3], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 1, remark: '滑坡位移超限立即通知', createTime: '2024-01-01 10:00:00' },
-  { id: 2, hazardPointIds: [1], hazardPointNames: ['XX山区滑坡监测点'], type: 'offline', level: [], persons: ['张三'], personIds: [2], deviceIds: [1, 2], deviceNames: ['GNSS-001 - GNSS接收机-A1', 'LF-001 - 裂缝计-B1'], channels: ['sms', 'email', 'system'], execTime: 'day|8,14,18', status: 1, remark: '设备离线通知', createTime: '2024-01-05 09:00:00' },
-  { id: 3, hazardPointIds: [2, 3], hazardPointNames: ['YY矿区沉降监测点', 'ZZ水库坝体监测点'], type: 'alarm', level: ['二级(警戒)', '一级(警报)'], persons: ['王五', '赵六'], personIds: [4, 5], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 1, remark: '矿区沉降监测告警', createTime: '2024-01-10 08:30:00' },
-  { id: 4, hazardPointIds: [3], hazardPointNames: ['ZZ水库坝体监测点'], type: 'alarm', level: ['一级(警报)'], persons: ['系统管理员', '张三'], personIds: [1, 2], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 0, remark: '水库坝体压力超限', createTime: '2024-01-12 10:00:00' },
-  { id: 5, hazardPointIds: [4], hazardPointNames: ['WW公路边坡监测点'], type: 'offline', level: [], persons: ['李四'], personIds: [3], deviceIds: [6, 7], deviceNames: ['GNSS-002 - GNSS接收机-A2', 'LF-002 - 裂缝计-B2'], channels: ['email', 'system'], execTime: 'hour|30', status: 1, remark: '公路边坡设备状态', createTime: '2024-01-15 11:00:00' },
-  { id: 6, hazardPointIds: [5], hazardPointNames: ['QQ隧道口监测点'], type: 'alarm', level: ['三级(警示)', '四级(注意)'], persons: ['王五'], personIds: [4], deviceIds: [], deviceNames: [], channels: ['sms', 'system'], execTime: '', status: 1, remark: '隧道口变形监测', createTime: '2024-01-20 14:00:00' }
-])
-
-const alarmRuleList = computed(() => {
-  let result = allAlarmRules.value
-
-  if (alarmSearchForm.hazardPoint) {
-    result = result.filter(r => r.hazardPointNames.some(name => name.includes(alarmSearchForm.hazardPoint)))
-  }
-  if (alarmSearchForm.type) {
-    result = result.filter(r => r.type === alarmSearchForm.type)
-  }
-  if (alarmSearchForm.status !== undefined) {
-    result = result.filter(r => r.status === alarmSearchForm.status)
-  }
-  if (alarmSearchForm.channel) {
-    result = result.filter(r => r.channels.includes(alarmSearchForm.channel))
-  }
-
-  alarmPagination.total = result.length
-  const start = (alarmPagination.page - 1) * alarmPagination.size
-  return result.slice(start, start + alarmPagination.size)
-})
-
-const getAlarmLevelType = (level: string) => {
-  const map: Record<string, string> = { '一级(警报)': 'danger', '二级(警戒)': 'warning', '三级(警示)': 'info', '四级(注意)': 'success' }
-  return map[level] || 'info'
-}
-
-const getChannelLabel = (channel: string) => {
-  const map: Record<string, string> = { sms: '短信', email: '邮件', system: '系统消息' }
-  return map[channel] || channel
-}
-
-const getExecDescription = (execTime: string) => {
-  if (!execTime) return '-'
-  const parts = execTime.split('|')
-  if (parts.length !== 2) {
-    return execTime || '-'
-  }
-  
-  const [frequency, timeStr] = parts
-  const freqLabels: Record<string, string> = {
-    'minute': '分钟',
-    'hour': '小时',
-    'day': '天',
-    'week': '周',
-    'month': '月',
-    'year': '年'
-  }
-  
-  const freqLabel = freqLabels[frequency] || frequency
-  const timeValues = timeStr.split(',').filter(t => t.trim())
-  
-  if (frequency === 'minute') {
-    return `每${freqLabel}第${timeValues.join('、')}秒执行`
-  } else if (frequency === 'hour') {
-    return `每${freqLabel}第${timeValues.join('、')}分钟执行`
-  } else if (frequency === 'day') {
-    return `每${freqLabel}第${timeValues.join('、')}小时执行`
-  } else if (frequency === 'week') {
-    return `每周${timeValues.join('、')}执行`
-  } else if (frequency === 'month') {
-    return `每月${timeValues.join('、')}日执行`
-  } else if (frequency === 'year') {
-    return `每年第${timeValues.join('、')}天执行`
-  }
-  
-  return `${freqLabel}: ${timeStr}`
-}
-
-const handleAlarmSearch = () => { alarmPagination.page = 1 }
-const handleAlarmReset = () => {
-  alarmSearchForm.hazardPoint = ''
-  alarmSearchForm.type = ''
-  alarmSearchForm.status = undefined
-  alarmSearchForm.channel = ''
-  alarmPagination.page = 1
-}
-const handleAlarmSizeChange = (val: number) => { alarmPagination.size = val; alarmPagination.page = 1 }
-const handleAlarmPageChange = (val: number) => { alarmPagination.page = val }
-
-// 告警规则弹窗
-const alarmDialogVisible = ref(false)
-const alarmDialogTitle = ref('新增告警规则')
-const alarmSubmitLoading = ref(false)
-const alarmFormRef = ref<FormInstance>()
-const isEditAlarm = ref(false)
-
-// 批量操作
-const selectedAlarmRules = ref<AlarmRule[]>([])
-
-const alarmFormData = reactive({
-  id: 0,
-  hazardPointId: undefined as number | undefined,
-  hazardPointIds: [] as number[],
-  type: 'alarm' as 'alarm' | 'offline',
-  level: ['四级(注意)'] as string[],
-  personIds: [] as number[],
-  deviceIds: [] as number[],
-  channels: ['system'] as string[],
-  execTime: '',
-  execType: 'realtime' as 'realtime' | 'timed',
-  execFrequencyNum: 1,
-  execFrequencyUnit: 'hour' as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
-  execTimePoints: '',
-  status: 1,
-  remark: ''
-})
-
-const currentHazardPoints = computed({
-  get: () => {
-    if (isEditAlarm.value) {
-      return alarmFormData.hazardPointId
-    }
-    return alarmFormData.hazardPointIds
-  },
-  set: (val: number | number[]) => {
-    if (isEditAlarm.value) {
-      alarmFormData.hazardPointId = val as number
-    } else {
-      alarmFormData.hazardPointIds = val as number[]
-    }
-  }
-})
-
-const alarmFormRules: FormRules = {
-  hazardPointId: [{ required: true, message: '请选择隐患点', trigger: 'change' }],
-  hazardPointIds: [{ required: true, message: '请选择隐患点', trigger: 'change', type: 'array' }],
-  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  level: [{ required: true, message: '请选择告警等级', trigger: 'change', type: 'array' }],
-  personIds: [{ required: true, message: '请选择通知人员', trigger: 'change', type: 'array' }],
-  deviceIds: [{ required: true, message: '请选择关联设备', trigger: 'change', type: 'array' }],
-  channels: [{ required: true, message: '请选择通知渠道', trigger: 'change', type: 'array' }],
-  execTime: [{ required: true, message: '请输入执行时间', trigger: 'change' }]
-}
-
-const handleAddAlarmRule = () => {
-  isEditAlarm.value = false
-  alarmDialogTitle.value = '新增告警规则'
-  resetAlarmForm()
-  alarmDialogVisible.value = true
-}
-
-const handleEditAlarmRule = (row: AlarmRule) => {
-  isEditAlarm.value = true
-  alarmDialogTitle.value = '编辑告警规则'
-  
-  const execTime = row.execTime || ''
-  let execType: 'realtime' | 'timed' = 'realtime'
-  let execFrequencyNum = 1
-  let execFrequencyUnit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' = 'hour'
-  let execTimePoints = ''
-  
-  if (execTime) {
-    const parts = execTime.split('|')
-    if (parts.length === 2) {
-      execType = 'timed'
-      execFrequencyUnit = parts[0] as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
-      execTimePoints = parts[1]
-    }
-  }
-  
-  Object.assign(alarmFormData, {
-    id: row.id,
-    hazardPointId: row.hazardPointIds.length > 0 ? row.hazardPointIds[0] : undefined,
-    hazardPointIds: [...row.hazardPointIds],
-    type: row.type,
-    level: row.level || '四级(注意)',
-    personIds: [...row.personIds],
-    deviceIds: [...row.deviceIds],
-    channels: [...row.channels],
-    execTime: execTime,
-    execType,
-    execFrequencyNum,
-    execFrequencyUnit,
-    execTimePoints,
-    status: row.status,
-    remark: row.remark
-  })
-  alarmDialogVisible.value = true
-}
-
-const handleAlarmSelectionChange = (val: AlarmRule[]) => {
-  selectedAlarmRules.value = val
-}
-
-const handleBatchEnableAlarm = () => {
-  if (selectedAlarmRules.value.length === 0) {
-    ElMessage.warning('请选择要启用的告警规则')
-    return
-  }
-  const count = selectedAlarmRules.value.length
-  ElMessageBox.confirm(`确定要批量启用选中的 ${count} 条告警规则吗？`, '系统提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    selectedAlarmRules.value.forEach(rule => {
-      rule.status = 1
-    })
-    selectedAlarmRules.value = []
-    ElMessage.success(`成功启用 ${count} 条告警规则`)
-  }).catch(() => {})
-}
-
-const handleBatchDisableAlarm = () => {
-  if (selectedAlarmRules.value.length === 0) {
-    ElMessage.warning('请选择要禁用的告警规则')
-    return
-  }
-  const count = selectedAlarmRules.value.length
-  ElMessageBox.confirm(`确定要批量禁用选中的 ${count} 条告警规则吗？`, '系统提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    selectedAlarmRules.value.forEach(rule => {
-      rule.status = 0
-    })
-    selectedAlarmRules.value = []
-    ElMessage.success(`成功禁用 ${count} 条告警规则`)
-  }).catch(() => {})
-}
-
-const handleDeleteAlarmRule = (row: AlarmRule) => {
-  ElMessageBox.confirm(`确定要删除该告警规则吗？`, '系统提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    const index = allAlarmRules.value.findIndex(r => r.id === row.id)
-    if (index !== -1) allAlarmRules.value.splice(index, 1)
-    ElMessage.success('删除成功')
-  }).catch(() => {})
-}
-
-const handleToggleAlarmStatus = (row: AlarmRule) => {
-  row.status = row.status === 1 ? 0 : 1
-  ElMessage.success(row.status === 1 ? '启用成功' : '禁用成功')
-}
-
-const resetAlarmForm = () => {
-  alarmFormData.id = 0
-  alarmFormData.hazardPointId = undefined
-  alarmFormData.hazardPointIds = []
-  alarmFormData.type = 'alarm'
-  alarmFormData.level = ['四级(注意)']
-  alarmFormData.personIds = []
-  alarmFormData.deviceIds = []
-  alarmFormData.channels = ['system']
-  alarmFormData.execTime = ''
-  alarmFormData.status = 1
-  alarmFormData.remark = ''
-}
-
-const handleAlarmSubmit = async () => {
-  if (!alarmFormRef.value) return
-  await alarmFormRef.value.validate((valid) => {
-    if (valid) {
-      let execTimeValue = ''
-      if (alarmFormData.type === 'offline' && alarmFormData.execType === 'timed' && alarmFormData.execTimePoints) {
-        execTimeValue = `${alarmFormData.execFrequencyUnit}|${alarmFormData.execTimePoints}`
-      }
-      
-      alarmSubmitLoading.value = true
-      setTimeout(() => {
-        const persons = alarmFormData.personIds.map(id => userList.value.find(u => u.id === id)?.realName || '')
-        const devices = alarmFormData.deviceIds.map(id => {
-          const d = deviceList.value.find(dev => dev.id === id)
-          return d ? `${d.deviceCode} - ${d.name}` : ''
-        }).filter(Boolean)
-
-        if (isEditAlarm.value) {
-          const rule = allAlarmRules.value.find(r => r.id === alarmFormData.id)
-          if (rule) {
-            const hp = hazardPointList.value.find(h => h.id === alarmFormData.hazardPointId)
-            Object.assign(rule, {
-              hazardPointIds: alarmFormData.hazardPointId ? [alarmFormData.hazardPointId] : [],
-              hazardPointNames: hp ? [hp.name] : [],
-              type: alarmFormData.type,
-              level: alarmFormData.type === 'alarm' ? [...alarmFormData.level] : [],
-              personIds: [...alarmFormData.personIds],
-              persons,
-              deviceIds: [...alarmFormData.deviceIds],
-              deviceNames: [...devices],
-              channels: [...alarmFormData.channels],
-              execTime: execTimeValue,
-              status: alarmFormData.status,
-              remark: alarmFormData.remark
-            })
-          }
-          ElMessage.success('修改成功')
-        } else {
-          const selectedHps = alarmFormData.hazardPointIds.map(id => hazardPointList.value.find(h => h.id === id)).filter((hp): hp is HazardPoint => hp !== undefined)
-          selectedHps.forEach(hp => {
-            allAlarmRules.value.push({
-              id: allAlarmRules.value.length + 1,
-              hazardPointIds: [hp.id],
-              hazardPointNames: [hp.name],
-              type: alarmFormData.type,
-              level: alarmFormData.type === 'alarm' ? [...alarmFormData.level] : [],
-              personIds: [...alarmFormData.personIds],
-              persons,
-              deviceIds: [...alarmFormData.deviceIds],
-              deviceNames: [...devices],
-              channels: [...alarmFormData.channels],
-              execTime: execTimeValue,
-              status: alarmFormData.status,
-              remark: alarmFormData.remark,
-              createTime: new Date().toLocaleString('zh-CN', { hour12: false })
-            })
-          })
-          ElMessage.success(`新增成功，共创建 ${selectedHps.length} 条告警规则`)
-        }
-        alarmDialogVisible.value = false
-        alarmSubmitLoading.value = false
-      }, 500)
-    }
-  })
-}
-
-const handleImportAlarm = () => {
-  ElMessage.info('导入功能开发中')
-}
-
-const handleExportAlarm = () => {
-  ElMessage.success('告警规则导出成功')
 }
 </script>
 

@@ -1,8 +1,8 @@
 package com.zwei.iot.device.service.impl;
 
 import com.zwei.common.exception.ServiceException;
-import com.zwei.iot.device.domain.DeviceAuthLog;
 import com.zwei.iot.device.domain.Device;
+import com.zwei.iot.device.domain.DeviceAuthLog;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
@@ -104,6 +104,8 @@ public class DeviceServiceImpl implements IDeviceService {
         device.setIcon(normalizeNullable(request.getIcon()));
         device.setIconPath(normalizeNullable(request.getIconPath()));
         device.setStatus(request.getStatus());
+        device.setLongitude(request.getLongitude());
+        device.setLatitude(request.getLatitude());
         device.setAuthUsername(accountGenerator.generateUsername());
         device.setAuthPassword(accountGenerator.generatePassword());
         device.setAuthStatus(AUTH_STATUS_ENABLED);
@@ -133,6 +135,8 @@ public class DeviceServiceImpl implements IDeviceService {
         device.setIcon(normalizeNullable(request.getIcon()));
         device.setIconPath(normalizeNullable(request.getIconPath()));
         device.setStatus(request.getStatus());
+        device.setLongitude(request.getLongitude());
+        device.setLatitude(request.getLatitude());
         device.setUpdateBy(operator);
 
         validateSnUnique(device.getSn(), id);

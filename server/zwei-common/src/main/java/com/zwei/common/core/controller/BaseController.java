@@ -1,18 +1,12 @@
 package com.zwei.common.core.controller;
 
-import java.beans.PropertyEditorSupport;
-import java.util.Date;
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.InitBinder;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.zwei.common.constant.HttpStatus;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.model.LoginUser;
 import com.zwei.common.core.page.PageDomain;
+import com.zwei.common.core.page.PageResult;
 import com.zwei.common.core.page.TableDataInfo;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.utils.DateUtils;
@@ -20,6 +14,14 @@ import com.zwei.common.utils.PageUtils;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.sql.SqlUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
+
+import java.beans.PropertyEditorSupport;
+import java.util.Date;
+import java.util.List;
 
 /**
  * web层通用数据处理
@@ -139,8 +141,17 @@ public class BaseController
     }
 
     /**
+     * 返回统一分页结果
+     * <p>
+     * 使用前需调用 {@link #startPage()} 启用分页。
+     */
+    protected <T> AjaxResult pageResult(List<T> list) {
+        return AjaxResult.success("成功", PageResult.of(list, TableSupport.buildPageRequest()));
+    }
+
+    /**
      * 响应返回结果
-     * 
+     *
      * @param rows 影响行数
      * @return 操作结果
      */

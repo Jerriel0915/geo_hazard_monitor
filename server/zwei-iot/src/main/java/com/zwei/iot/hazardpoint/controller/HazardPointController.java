@@ -1,40 +1,23 @@
 package com.zwei.iot.hazardpoint.controller;
 
-import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
-import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
-import com.zwei.common.core.page.PageDomain;
-import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.StringUtils;
-import com.zwei.iot.hazardpoint.domain.dto.BatchIdsRequest;
-import com.zwei.iot.hazardpoint.domain.dto.BindVideoDeviceRequest;
-import com.zwei.iot.hazardpoint.domain.dto.DeviceIdsRequest;
-import com.zwei.iot.hazardpoint.domain.dto.HazardPointCreateRequest;
-import com.zwei.iot.hazardpoint.domain.dto.HazardPointBatchOperateRequest;
-import com.zwei.iot.hazardpoint.domain.dto.HazardPointExportRequest;
-import com.zwei.iot.hazardpoint.domain.dto.HazardPointExportVO;
-import com.zwei.iot.hazardpoint.domain.dto.HazardPointPauseRequest;
-import com.zwei.iot.hazardpoint.domain.dto.HazardPointUpdateRequest;
+import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
-import com.zwei.iot.hazardpoint.domain.dto.BindDeviceRequest;
-import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
-import com.zwei.iot.hazardpoint.domain.dto.BoundVideoDeviceVO;
-import com.zwei.iot.hazardpoint.domain.dto.UnboundDeviceVO;
-import com.zwei.iot.hazardpoint.domain.dto.VideoDeviceIdsRequest;
+import com.zwei.iot.hazardpoint.domain.dto.*;
 import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import com.zwei.iot.hazardpoint.service.IVideoDeviceHazardPointService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -69,14 +52,7 @@ public class HazardPointController extends BaseController
     {
         startPage();
         List<HazardPoint> list = hazardPointService.selectHazardPointList(hazardPoint);
-        PageDomain pageDomain = TableSupport.buildPageRequest();
-        long total = new PageInfo(list).getTotal();
-        HashMap<String, Object> data = new HashMap<>();
-        data.put("rows", list);
-        data.put("total", total);
-        data.put("pageNum", pageDomain.getPageNum());
-        data.put("pageSize", pageDomain.getPageSize());
-        return AjaxResult.success("成功", data);
+        return pageResult(list);
     }
 
     /**

@@ -1,17 +1,14 @@
 package com.zwei.iot.device.controller;
 
-import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
-import com.zwei.common.core.page.PageDomain;
-import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.ip.IpUtils;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
-import com.zwei.iot.device.domain.dto.DeviceAuthStatusChangeRequest;
 import com.zwei.iot.device.domain.dto.DeviceAuthPasswordResetRequest;
+import com.zwei.iot.device.domain.dto.DeviceAuthStatusChangeRequest;
 import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
 import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 import com.zwei.iot.device.service.IDeviceService;
@@ -56,14 +53,7 @@ public class DeviceController extends BaseController {
     public AjaxResult page(Device device) {
         startPage();
         List<Device> list = deviceService.selectDevicePage(device, 0, 0);
-        PageDomain pageDomain = TableSupport.buildPageRequest();
-        long total = new PageInfo(list).getTotal();
-        HashMap<String, Object> data = new HashMap<>();
-        data.put("rows", list);
-        data.put("total", total);
-        data.put("pageNum", pageDomain.getPageNum());
-        data.put("pageSize", pageDomain.getPageSize());
-        return AjaxResult.success("成功", data);
+        return pageResult(list);
     }
 
     /**

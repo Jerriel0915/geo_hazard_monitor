@@ -118,4 +118,10 @@ public interface DeviceMapper {
     List<java.util.Map<String, Object>> countByRunStatus();
 
     List<java.util.Map<String, Object>> countByMonitorType();
+
+    /** 资料完整设备数（名称+GPS+监测类型齐全） */
+    int countComplete();
+
+    /** 状态正常设备数（status=1） */
+    int countNormal();
 }

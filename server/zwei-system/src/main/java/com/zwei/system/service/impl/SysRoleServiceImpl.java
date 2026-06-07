@@ -1,13 +1,5 @@
 package com.zwei.system.service.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import com.zwei.common.annotation.DataScope;
 import com.zwei.common.constant.UserConstants;
 import com.zwei.common.core.domain.entity.SysRole;
@@ -23,6 +15,11 @@ import com.zwei.system.mapper.SysRoleMapper;
 import com.zwei.system.mapper.SysRoleMenuMapper;
 import com.zwei.system.mapper.SysUserRoleMapper;
 import com.zwei.system.service.ISysRoleService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
 
 /**
  * 角色 业务层处理
@@ -32,17 +29,19 @@ import com.zwei.system.service.ISysRoleService;
 @Service
 public class SysRoleServiceImpl implements ISysRoleService
 {
-    @Autowired
-    private SysRoleMapper roleMapper;
+    private final SysRoleMapper roleMapper;
+    private final SysRoleMenuMapper roleMenuMapper;
+    private final SysUserRoleMapper userRoleMapper;
+    private final SysRoleDeptMapper roleDeptMapper;
+
 
     @Autowired
-    private SysRoleMenuMapper roleMenuMapper;
-
-    @Autowired
-    private SysUserRoleMapper userRoleMapper;
-
-    @Autowired
-    private SysRoleDeptMapper roleDeptMapper;
+    public SysRoleServiceImpl(SysRoleDeptMapper roleDeptMapper, SysRoleMapper roleMapper, SysRoleMenuMapper roleMenuMapper, SysUserRoleMapper userRoleMapper) {
+        this.roleDeptMapper = roleDeptMapper;
+        this.roleMapper = roleMapper;
+        this.roleMenuMapper = roleMenuMapper;
+        this.userRoleMapper = userRoleMapper;
+    }
 
     /**
      * 根据条件分页查询角色数据

@@ -14,7 +14,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * IoTDB 树模型读写服务，用于完成监测数据的动态建模、写入、最新值查询与区间查询。
@@ -25,8 +29,8 @@ public class IotdbTimeSeriesService {
     private final IotdbJdbcClient jdbcClient;
     private final IotdbProperties properties;
     private final IotdbPathResolver pathResolver;
-    private final Set<String> createdMeasurements = new HashSet<>();
-    private boolean databaseReady;
+    private final ConcurrentMap<String, Boolean> createdMeasurements = new ConcurrentHashMap<>();
+    private volatile boolean databaseReady;
 
     /**
      * 构造 IoTDB 时序服务。
@@ -45,7 +49,7 @@ public class IotdbTimeSeriesService {
     }
 
     /**
-     * 批量写入标准化时序点。
+     * 批量写入标准化时序点（使用 JDBC executeBatch 提升写入性能）。
      *
      * @param points 标准化时序点集合
      * @throws ServiceException 当 IoTDB 写入失败时抛出
@@ -55,14 +59,19 @@ public class IotdbTimeSeriesService {
             return;
         }
         ensureDatabase();
+        // 确保所有 measurement 已创建
         for (StandardMeasurementPoint point : points) {
             ensureMeasurement(point.attrCode(), point.deviceId(), point.sensorNo(), "DOUBLE", "GORILLA");
             ensureMeasurement("quality", point.deviceId(), point.sensorNo(), "INT32", "RLE");
-            String sql = "INSERT INTO " + pathResolver.buildSensorPath(point.deviceId(), point.sensorNo())
-                    + "(timestamp," + point.attrCode() + ",quality) ALIGNED VALUES("
-                    + point.dataTime() + "," + point.value() + "," + point.quality() + ")";
-            jdbcClient.execute(sql);
         }
+        // 批量组装 SQL → 单连接 executeBatch()
+        List<String> sqlList = new ArrayList<>(points.size());
+        for (StandardMeasurementPoint point : points) {
+            sqlList.add("INSERT INTO " + pathResolver.buildSensorPath(point.deviceId(), point.sensorNo())
+                    + "(timestamp," + point.attrCode() + ",quality) ALIGNED VALUES("
+                    + point.dataTime() + "," + point.value() + "," + point.quality() + ")");
+        }
+        jdbcClient.executeBatch(sqlList);
     }
 
     /**
@@ -330,19 +339,15 @@ public class IotdbTimeSeriesService {
     }
 
     /**
-     * 确保 IoTDB 数据库存在。
-     *
-     * @throws ServiceException 当底层执行建库语句失败且未被忽略时抛出
+     * 确保 IoTDB 数据库存在（无锁，volatile 双重检查）。
      */
-    private synchronized void ensureDatabase() {
+    private void ensureDatabase() {
         if (databaseReady) {
             return;
         }
-        // 先通过 SHOW DATABASES 预检，已存在则跳过；
-        // 不存在时用 executeSilent 创建（失败仅 DEBUG 记录，不抛异常）。
         if (databaseExists()) {
-            log.info("数据库 {} 已存在，跳过建库", properties.getDatabase());
             databaseReady = true;
+            log.info("数据库 {} 已存在，跳过建库", properties.getDatabase());
             return;
         }
         jdbcClient.executeSilent("CREATE DATABASE " + properties.getDatabase());
@@ -370,29 +375,22 @@ public class IotdbTimeSeriesService {
     }
 
     /**
-     * 确保指定 measurement 已创建。
-     *
-     * @param attrCode 指标编码
-     * @param deviceId 设备ID
-     * @param sensorNo 传感器编号
-     * @param dataType IoTDB 数据类型
-     * @param encoding IoTDB 编码方式
+     * 确保指定 measurement 已创建（非阻塞，ConcurrentHashMap 去重）。
      */
-    private synchronized void ensureMeasurement(String attrCode,
-                                                Long deviceId,
-                                                String sensorNo,
-                                                String dataType,
-                                                String encoding) {
+    private void ensureMeasurement(String attrCode,
+                                   Long deviceId,
+                                   String sensorNo,
+                                   String dataType,
+                                   String encoding) {
         String measurementPath = pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode);
-        if (createdMeasurements.contains(measurementPath)) {
+        if (createdMeasurements.containsKey(measurementPath)) {
             return;
         }
-        // executeSilent：成功则静默，已存在则 DEBUG 记录
         jdbcClient.executeSilent("CREATE TIMESERIES " + measurementPath
                 + " WITH DATATYPE=" + dataType
                 + ", ENCODING=" + encoding
                 + ", COMPRESSOR=SNAPPY");
-        createdMeasurements.add(measurementPath);
+        createdMeasurements.putIfAbsent(measurementPath, Boolean.TRUE);
     }
 
     /**

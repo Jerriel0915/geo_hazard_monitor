@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 /**
  * IoTDB JDBC 访问封装。
@@ -70,6 +71,36 @@ public class IotdbJdbcClient {
         } catch (SQLException e) {
             log.error("执行 IoTDB SQL 失败, sql={}", sql, e);
             throw new ServiceException("执行 IoTDB SQL 失败").setDetailMessage(e.getMessage());
+        }
+    }
+
+    /**
+     * 批量执行 IoTDB INSERT SQL。
+     * <p>
+     * 单连接批量提交，使用 JDBC {@code executeBatch()} 替代逐条 {@code execute()}，
+     * 避免每条 INSERT 新建一次物理连接。IoTDB 官方文档推荐此方式以获得更高写入性能。
+     *
+     * @param sqlList 待执行的 INSERT 语句列表
+     * @throws ServiceException 当批量执行失败时抛出
+     */
+    public void executeBatch(List<String> sqlList) {
+        if (sqlList == null || sqlList.isEmpty()) {
+            return;
+        }
+        if (!properties.isEnabled()) {
+            throw new ServiceException("IoTDB 未启用");
+        }
+        try (Connection connection = getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.setQueryTimeout(properties.getQueryTimeoutSeconds());
+            for (String sql : sqlList) {
+                statement.addBatch(sql);
+            }
+            statement.executeBatch();
+            statement.clearBatch();
+        } catch (SQLException e) {
+            log.error("批量执行 IoTDB SQL 失败, size={}", sqlList.size(), e);
+            throw new ServiceException("批量执行 IoTDB SQL 失败").setDetailMessage(e.getMessage());
         }
     }
 

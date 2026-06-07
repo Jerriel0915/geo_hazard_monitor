@@ -1,9 +1,10 @@
 package com.zwei.log.infrastructure.config;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * 日志模块配置
