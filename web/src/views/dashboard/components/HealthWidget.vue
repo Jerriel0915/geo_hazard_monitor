@@ -260,6 +260,7 @@ const ringSegments = computed(() => {
   font-size: 20px;
   font-weight: 700;
   color: #1d2129;
+  font-family: var(--font-display);
 }
 
 .ring-label {

@@ -136,6 +136,7 @@ defineProps<{
   font-size: 18px;
   font-weight: 700;
   color: #1d2129;
+  font-family: var(--font-display);
 }
 
 .alarm-level-stats {

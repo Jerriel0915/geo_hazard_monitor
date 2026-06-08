@@ -105,7 +105,7 @@
       @back-to-system-view="backToSystemView"
     />
 
-    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' }">
+    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' || !hasLeftContent }">
       <div class="left-panel" v-if="currentView === 'system'">
         <div class="panel-header">
           <button class="panel-collapse-btn" @click="togglePanel">
@@ -217,7 +217,8 @@
     </div>
 
 
-    <div class="right-panel-wrapper" :class="{ collapsed: isRightPanelCollapsed }">
+    <!-- 右侧地图工具栏（独立于面板） -->
+    <div class="map-right-toolbar">
       <div class="layer-switcher-wrapper">
         <button class="layer-toggle-btn" @click="toggleLayerList">
           <el-icon>
@@ -245,7 +246,10 @@
           <button class="zoom-btn zoom-out" @click="handleZoomOut">−</button>
         </div>
       </div>
+    </div>
 
+    <!-- 右侧面板 -->
+    <div class="right-panel-wrapper" :class="{ collapsed: isRightPanelCollapsed || !hasRightContent }">
       <div class="right-panel">
         <div class="panel-header right-panel-header">
           <button class="panel-collapse-btn" @click="toggleRightPanel">
@@ -374,7 +378,8 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, onUnmounted, ref} from 'vue'
+import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -489,6 +494,14 @@ const handleLayoutUpdate = (layout: { left: string[]; right: string[]; hidden: s
 
 const isWidgetOnLeft = (key: string) => layoutConfig.value.left.includes(key)
 const isWidgetOnRight = (key: string) => layoutConfig.value.right.includes(key)
+
+// 面板内容检测：当面板无可见部件时自动折叠
+const hasLeftContent = computed(() => {
+  return isWidgetOnLeft('systemHealth') || isWidgetOnLeft('assetInfo') || isWidgetOnLeft('alarmStatus')
+})
+const hasRightContent = computed(() => {
+  return isWidgetOnRight('systemHealth') || isWidgetOnRight('assetInfo') || isWidgetOnRight('alarmStatus')
+})
 
 // ========== /面板布局配置 ==========
 
@@ -1361,6 +1374,8 @@ onUnmounted(() => {
   overflow: hidden;
   margin: 0;
   padding: 0;
+  --font-display: 'DingTalk JinBuTi', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .map-container {
@@ -1501,7 +1516,7 @@ onUnmounted(() => {
   left: 20px;
   z-index: 1000;
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   transition: all 0.3s ease;
 }
 
@@ -1526,16 +1541,30 @@ onUnmounted(() => {
   min-width: unset;
 }
 
+.left-panel-wrapper.collapsed .panel-header {
+  position: sticky;
+  top: 0;
+}
+
 .panel-content {
   padding: 0;
   background: transparent;
 }
 
 .panel-section {
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 8px;
-  padding: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(24, 144, 255, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 16px 18px;
   margin-bottom: 12px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.panel-section:hover {
+  border-color: rgba(24, 144, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .panel-section:last-child {
@@ -1546,15 +1575,16 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-left: 10px;
+  border-left: 3px solid #1890ff;
+  margin-bottom: 14px;
 }
 
 .section-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: #1d2129;
+  font-family: var(--font-display);
 }
 
 .panel-header {
@@ -1594,19 +1624,28 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
+.map-right-toolbar {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
 .right-panel-wrapper {
   position: absolute;
   top: 20px;
-  right: 20px;
+  right: 68px;
   z-index: 1000;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
   transition: all 0.3s ease;
 }
 
 .right-panel-wrapper.collapsed {
-  right: 20px;
+  right: 68px;
 }
 
 .right-panel-wrapper.collapsed .right-panel .panel-content {
@@ -1616,6 +1655,11 @@ onUnmounted(() => {
 .right-panel-wrapper.collapsed .right-panel {
   width: auto;
   min-width: unset;
+}
+
+.right-panel-wrapper.collapsed .panel-header {
+  position: sticky;
+  top: 0;
 }
 
 .right-panel {
@@ -1628,7 +1672,6 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
-  margin-left: 8px;
 }
 :deep(.leaflet-control-attribution) {
   display: none !important;
@@ -1684,6 +1727,7 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 600;
   color: #303133;
+  font-family: var(--font-display);
 }
 
 .hazard-dropdown-arrow {
