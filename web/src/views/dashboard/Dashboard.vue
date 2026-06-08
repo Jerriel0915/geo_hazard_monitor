@@ -103,7 +103,18 @@
             <el-icon class="device-icon">
               <DataAnalysis/>
             </el-icon>
-            <span>{{ selectedDevice?.name }} - 传感器数据</span>
+            <!-- 三级面包屑：隐患点 → 设备 → 传感器（当前层级加粗） -->
+            <div class="modal-breadcrumb">
+              <span class="crumb crumb-clickable" @click="backToSystemView" title="返回系统总览">
+                {{ currentHazardPoint?.name || '系统总览' }}
+              </span>
+              <span class="crumb-sep">/</span>
+              <span class="crumb crumb-clickable" @click="backToDeviceList" title="返回设备列表">
+                {{ selectedDevice?.name || '设备' }}
+              </span>
+              <span v-if="selectedModalSensor" class="crumb-sep">/</span>
+              <span v-if="selectedModalSensor" class="crumb crumb-current">{{ selectedModalSensor.name }}</span>
+            </div>
           </div>
           <button class="modal-close-btn" @click="closeDeviceDataModal">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -2186,12 +2197,24 @@ const closeDeviceDataModal = () => {
   showDeviceDataModal.value = false
   selectedModalSensor.value = null
   modalSensorList.value = []
-  
+
   // 销毁图表实例
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null
   }
+}
+
+// 从设备数据弹窗返回到该隐患点的设备列表（仅关闭弹窗，保留隐患点视图）
+const backToDeviceList = () => {
+  closeDeviceDataModal()
+  selectedDevice.value = null
+}
+
+// 从设备列表返回到系统总览（隐患点视图）
+const backToSystemView = () => {
+  closeDeviceDataModal()
+  exitHazardView()
 }
 
 // 选择传感器
@@ -3921,6 +3944,40 @@ onUnmounted(() => {
 
 .device-icon {
   font-size: 24px;
+}
+
+.modal-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.crumb {
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.crumb-clickable {
+  cursor: pointer;
+  color: #909399;
+}
+
+.crumb-clickable:hover {
+  background: rgba(64, 158, 255, 0.1);
+  color: #1890ff;
+}
+
+.crumb-current {
+  color: #303133;
+  font-weight: 600;
+}
+
+.crumb-sep {
+  color: #c0c4cc;
+  font-weight: 400;
 }
 
 .modal-close-btn {

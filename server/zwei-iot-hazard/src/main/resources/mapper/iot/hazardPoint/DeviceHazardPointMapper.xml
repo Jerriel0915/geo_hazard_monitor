@@ -27,9 +27,11 @@
                dhp.bind_time AS bindTime,
                dhp.install_longitude AS installLongitude,
                dhp.install_latitude AS installLatitude,
-               d.status AS deviceStatus
+               d.status   AS deviceStatus,
+               dos.status AS onlineStatus
         FROM device_hazard_point dhp
         INNER JOIN device d ON dhp.device_id = d.id AND d.del_flag = 0
+        LEFT JOIN device_online_status dos ON dos.device_id = d.id
         WHERE dhp.hazard_point_id = #{hazardPointId}
         ORDER BY dhp.bind_time DESC
     </select>

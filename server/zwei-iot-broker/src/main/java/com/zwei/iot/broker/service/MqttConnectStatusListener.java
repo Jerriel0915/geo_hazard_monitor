@@ -77,10 +77,14 @@ public class MqttConnectStatusListener implements IMqttConnectStatusListener {
     @Override
     public void offline(ChannelContext context, String clientId, String username, String reason) {
         try {
-            mqttDeviceAuthService.handleClientOffline(context, clientId, username, reason);
+            // 从会话注册中心直接获取 deviceId，避免依赖 context.getUserId()
+            // （服务端主动断连时 context 可能为 null 或 userId 未正确设置）
+            Long deviceId = mqttDeviceAuthService.handleClientOffline(context, clientId, username, reason);
+            String clientIp = resolveClientIp(context);
             eventPublisher.publishEvent(new DeviceOfflineEvent(
-                    resolveDeviceId(context), clientId, resolveClientIp(context), reason));
-            log.info("MqttClientOffline clientId:{}, username:{}, reason:{}", clientId, username, reason);
+                    deviceId != null ? deviceId : 0L, clientId, clientIp, reason));
+            log.info("MqttClientOffline clientId:{}, username:{}, deviceId:{}, reason:{}",
+                    clientId, username, deviceId, reason);
         } catch (Exception e) {
             log.error("处理设备离线事件失败。clientId={}, username={}", clientId, username, e);
         }

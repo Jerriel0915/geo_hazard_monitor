@@ -926,6 +926,7 @@ import {
 import {getDeviceSensors} from '@/api/sensor'
 import type {ChartData, LatestDataItem, MonitorDataPageItem} from '@/api/monitorData'
 import {getChartData, getLatestData, getMonitorDataPage} from '@/api/monitorData'
+import {getDeviceIconPath} from '@/utils/deviceIcon'
 
 interface HazardPointItem {
   id: string
@@ -968,6 +969,7 @@ interface BoundDevice {
   deviceName: string
   bindTime: string
   deviceStatus: string
+  onlineStatus?: number
   sensors: SensorItem[]
 }
 
@@ -2230,17 +2232,20 @@ const refreshDeviceLists = async () => {
   const unboundDevices = await loadUnboundDevices()
   leftDeviceTree.value = unboundDevices
 
-  rightDeviceTree.value = boundDevices.value.map(device => ({
-    id: device.deviceId,
-    label: `${device.deviceCode} - ${device.deviceName}`,
-    iconPath: '/jc-icon/green/device_green.png',
-    status: String(device.deviceStatus === 'NORMAL' ? 1 : device.deviceStatus === 'FAULT' ? 2 : 3), // 转为字符串
-    children: device.sensors.map(sensor => ({
-      id: sensor.id,
-      label: sensor.name,
-      iconPath: sensor.iconPath
-    }))
-  }))
+  rightDeviceTree.value = boundDevices.value.map(device => {
+    const statusCode = device.deviceStatus === 'NORMAL' ? 1 : device.deviceStatus === 'FAULT' ? 2 : 3
+    return {
+      id: device.deviceId,
+      label: `${device.deviceCode} - ${device.deviceName}`,
+      iconPath: getDeviceIconPath({icon: 'device', status: statusCode, onlineStatus: device.onlineStatus}),
+      status: String(statusCode),
+      children: device.sensors.map(sensor => ({
+        id: sensor.id,
+        label: sensor.name,
+        iconPath: sensor.iconPath
+      }))
+    }
+  })
 }
 
 const initAlarmCriteria = (hazardPointId: string) => {

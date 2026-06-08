@@ -1,11 +1,13 @@
 package com.zwei.iot.broker.service;
 
+import com.zwei.common.event.DeviceOfflineEvent;
 import com.zwei.iot.broker.component.MqttDeviceSessionRegistry;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.device.service.IDeviceSessionService;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.mica.mqtt.core.server.MqttServer;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -17,6 +19,12 @@ import java.util.Optional;
  * 通过 {@link MqttDeviceSessionRegistry} 定位设备当前 session，
  * 再调用 mica-mqtt {@link MqttServer#disconnect(String)} 执行断连。
  *
+ * <h3>离线状态同步</h3>
+ * 服务端主动断连（{@code disconnect()}）时，mica-mqtt 回调中的 ChannelContext 可能为 null，
+ * 导致 {@code resolveDeviceId()} 返回 0L，DeviceOfflineEvent 携带错误的 deviceId。
+ * 因此本方法在断连后直接发布 DeviceOfflineEvent（含正确 deviceId），
+ * 而非依赖 mica-mqtt 的回调链路。
+ *
  * @author Jerriel
  * @date: 2026-06-08
  */
@@ -26,11 +34,14 @@ public class DeviceSessionServiceImpl implements IDeviceSessionService {
 
     private final MqttDeviceSessionRegistry sessionRegistry;
     private final ObjectProvider<MqttServer> mqttServerProvider;
+    private final ApplicationEventPublisher eventPublisher;
 
     public DeviceSessionServiceImpl(MqttDeviceSessionRegistry sessionRegistry,
-                                    ObjectProvider<MqttServer> mqttServerProvider) {
+                                    ObjectProvider<MqttServer> mqttServerProvider,
+                                    ApplicationEventPublisher eventPublisher) {
         this.sessionRegistry = sessionRegistry;
         this.mqttServerProvider = mqttServerProvider;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -46,12 +57,17 @@ public class DeviceSessionServiceImpl implements IDeviceSessionService {
             log.warn("[MQTT-SESSION] Broker 实例不可用，无法断开设备。deviceId={}", deviceId);
             return false;
         }
-        boolean disconnected = mqttServer.disconnect(session.clientId());
+        String clientId = session.clientId();
+        String clientIp = session.clientIp();
+        boolean disconnected = mqttServer.disconnect(clientId);
         if (disconnected) {
-            sessionRegistry.removeByClientId(session.clientId());
-            log.info("[MQTT-SESSION] 已强制断开设备连接。deviceId={}, clientId={}", deviceId, session.clientId());
+            sessionRegistry.removeByClientId(clientId);
+            // 服务端主动断连时 mica-mqtt 回调中 context 可能为 null，导致 DeviceOfflineEvent 丢失。
+            // 这里直接发布正确 deviceId 的事件，确保 device_online_status 和 event_log 被正确更新。
+            eventPublisher.publishEvent(new DeviceOfflineEvent(deviceId, clientId, clientIp, "FORCE_OFFLINE"));
+            log.info("[MQTT-SESSION] 已强制断开设备连接。deviceId={}, clientId={}", deviceId, clientId);
         } else {
-            log.warn("[MQTT-SESSION] 断开设备连接失败。deviceId={}, clientId={}", deviceId, session.clientId());
+            log.warn("[MQTT-SESSION] 断开设备连接失败。deviceId={}, clientId={}", deviceId, clientId);
         }
         return disconnected;
     }

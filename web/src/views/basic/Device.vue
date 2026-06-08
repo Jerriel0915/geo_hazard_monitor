@@ -50,7 +50,7 @@
       >
         <el-table-column label="图标" width="80" align="center">
           <template #default="{ row }">
-            <img v-if="row.iconPath" :src="row.iconPath" class="table-icon" alt="icon" />
+            <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
             <span v-else class="empty-text">-</span>
           </template>
         </el-table-column>
@@ -195,7 +195,8 @@
           <el-col :span="12">
             <el-form-item label="图标" prop="icon">
               <div class="device-icon-selector" @click="!isView && handleSelectDeviceIcon()">
-                <img v-if="formData.iconPath" :src="formData.iconPath" class="device-icon-img" alt="icon" />
+                <img v-if="getDeviceIconPath(formData)" :src="getDeviceIconPath(formData)" class="device-icon-img"
+                     alt="icon"/>
                 <span v-else class="device-icon-placeholder">点击选择图标</span>
               </div>
             </el-form-item>
@@ -356,6 +357,12 @@
 
           <el-divider content-position="left">传感器列表</el-divider>
           <el-table :data="sensorList" border size="small" v-loading="sensorLoading">
+            <el-table-column label="图标" width="60" align="center">
+              <template #default="{ row }">
+                <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
+                <span v-else class="empty-text">-</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center"/>
             <el-table-column prop="sensorName" label="传感器名称" width="150" align="center"/>
             <el-table-column prop="sensorNo" label="主题编号" width="120" align="center"/>
@@ -642,6 +649,7 @@ import {
   updateSensor
 } from '@/api/sensor'
 import {getIconList} from '@/constants/monitorIcons'
+import {getDeviceIconPath} from '@/utils/deviceIcon'
 
 const deviceIconList = getIconList()
 
