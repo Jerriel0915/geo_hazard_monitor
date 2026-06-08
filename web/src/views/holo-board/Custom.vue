@@ -19,7 +19,7 @@
 }
 
 .page-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
   color: #303133;
   margin-bottom: 20px;

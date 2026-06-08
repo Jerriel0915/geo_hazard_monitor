@@ -11,7 +11,8 @@
       "Bash(mvn test *)",
       "Read(//d/Code/Projects/geo_hazard_monitor/.claude/**)",
       "Read(//d/Code/Projects/geo_hazard_monitor/**)",
-      "mcp__context7__query-docs"
+      "mcp__context7__query-docs",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -278,11 +278,11 @@ const initLevelChart = () => {
       top: 'center',
       textStyle: {
         color: '#334155',
-        fontSize: 14
+        fontSize: 16
       },
-      itemWidth: 12,
-      itemHeight: 12,
-      itemGap: 8
+      itemWidth: 14,
+      itemHeight: 14,
+      itemGap: 10
     },
     series: [{
       name: '告警等级',
@@ -300,7 +300,7 @@ const initLevelChart = () => {
         position: 'outside',
         formatter: '{b}\n{c}次 ({d}%)',
         color: '#334155',
-        fontSize: 14
+        fontSize: 16
       },
       labelLine: {
         show: true,
@@ -340,7 +340,7 @@ const initTrendChart = () => {
       bottom: 0,
       textStyle: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       }
     },
     grid: {
@@ -361,7 +361,7 @@ const initTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       }
     },
     yAxis: {
@@ -369,14 +369,14 @@ const initTrendChart = () => {
       name: '告警次数',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       },
       axisLine: {
         show: false
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       },
       splitLine: {
         lineStyle: {
@@ -522,7 +522,7 @@ const initSourceChart = () => {
       data: sourceDistribution.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 14
+        fontSize: 16
       },
       axisLine: {
         lineStyle: {
@@ -535,11 +535,11 @@ const initSourceChart = () => {
       name: '告警次数',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 14
+        fontSize: 16
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 14
+        fontSize: 16
       },
       splitLine: {
         lineStyle: {
@@ -561,7 +561,7 @@ const initSourceChart = () => {
         position: 'top',
         formatter: '{c}次 ({d}%)',
         color: '#1e293b',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: 600
       }
     }]
@@ -598,7 +598,7 @@ const initHazardChart = () => {
       data: hazardData.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 14
+        fontSize: 16
       },
       axisLine: {
         lineStyle: {
@@ -611,11 +611,11 @@ const initHazardChart = () => {
       name: '告警次数',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 14
+        fontSize: 16
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 14
+        fontSize: 16
       },
       splitLine: {
         lineStyle: {
@@ -636,7 +636,7 @@ const initHazardChart = () => {
         position: 'top',
         formatter: '{c}次',
         color: '#1e293b',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: 600
       }
     }]
@@ -799,7 +799,7 @@ window.addEventListener('resize', handleResize)
 }
 
 .stat-value {
-  font-size: 16px;
+  font-size: 28px;
   font-weight: 700;
   color: #1e293b;
   transition: all 0.3s ease;
@@ -838,7 +838,7 @@ window.addEventListener('resize', handleResize)
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: #1e293b;
 }
@@ -887,7 +887,7 @@ window.addEventListener('resize', handleResize)
 }
 
 .list-title {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: #1e293b;
 }
@@ -949,7 +949,7 @@ window.addEventListener('resize', handleResize)
 }
 
 .alarm-title {
-  font-size: 14px;
+  font-size: 15px;
   color: #1e293b;
   margin-bottom: 4px;
 }

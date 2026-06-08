@@ -149,99 +149,44 @@
 
     <div class="center-panel">
       <div class="charts-container">
-        <div class="stats-bar">
-          <div class="stat-item">
-            <div class="stat-icon-wrapper alarm">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+        <div class="stats-row">
+          <div
+            v-for="card in statCards"
+            :key="card.key"
+            class="stat-card"
+            :style="{ '--tc': card.color }"
+          >
+            <div class="stat-left">
+              <svg v-if="card.key === 'alarm'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                   stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value-wrapper">
-                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.recentThreeMonthsAlarms }}</span>
-              </div>
-              <div class="stat-info">
-                <span class="stat-label">近三月告警次数</span>
-                <span class="stat-desc">需及时处理</span>
-              </div>
-            </div>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <div class="stat-icon-wrapper warning">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+              <svg v-else-if="card.key === 'totalAlarms'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                   stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="12"/>
                 <line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value-wrapper">
-                <span class="stat-value highlight" :class="{ animate: animateStats }">{{ summaryStats.totalAlarms }}</span>
-              </div>
-              <div class="stat-info">
-                <span class="stat-label">累计告警次数</span>
-                <span class="stat-desc">历史记录</span>
-              </div>
-            </div>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <div class="stat-icon-wrapper monitor">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+              <svg v-else-if="card.key === 'monitor'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                   stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
               </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value-wrapper">
-                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.totalMonitorCount }}</span>
-              </div>
-              <div class="stat-info">
-                <span class="stat-label">累计监测次数</span>
-                <span class="stat-desc">数据汇总</span>
-              </div>
-            </div>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <div class="stat-icon-wrapper hazard">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+              <svg v-else-if="card.key === 'hazard'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                   stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value-wrapper">
-                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.hazardPointCount }}</span>
-              </div>
-              <div class="stat-info">
-                <span class="stat-label">隐患点数量</span>
-                <span class="stat-desc">监测区域</span>
-              </div>
-            </div>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <div class="stat-icon-wrapper device">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+              <svg v-else-if="card.key === 'device'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                   stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                 <line x1="8" y1="21" x2="16" y2="21"/>
                 <line x1="12" y1="17" x2="12" y2="21"/>
               </svg>
             </div>
-            <div class="stat-content">
-              <div class="stat-value-wrapper">
-                <span class="stat-value" :class="{ animate: animateStats }">{{ summaryStats.deviceCount }}</span>
-              </div>
-              <div class="stat-info">
-                <span class="stat-label">设备数量</span>
-                <span class="stat-desc">在线部署</span>
-              </div>
+            <div class="stat-right">
+              <span class="stat-value" :class="{ animate: animateStats }">{{ card.value }}</span>
+              <span class="stat-label">{{ card.label }}</span>
+              <span class="stat-desc">{{ card.desc }}</span>
             </div>
           </div>
         </div>
@@ -480,6 +425,14 @@ const summaryStats = computed(() => ({
   hazardPointCount: overview.value?.hazardPoint?.total ?? 0,
   deviceCount: overview.value?.device?.total ?? 0
 }))
+
+const statCards = computed(() => [
+  { key: 'alarm', label: '近三月告警次数', desc: '需及时处理', color: '#ef4444', value: summaryStats.value.recentThreeMonthsAlarms },
+  { key: 'totalAlarms', label: '累计告警次数', desc: '历史记录', color: '#f59e0b', value: summaryStats.value.totalAlarms },
+  { key: 'monitor', label: '累计监测次数', desc: '数据汇总', color: '#3b82f6', value: summaryStats.value.totalMonitorCount },
+  { key: 'hazard', label: '隐患点数量', desc: '监测区域', color: '#6366f1', value: summaryStats.value.hazardPointCount },
+  { key: 'device', label: '设备数量', desc: '在线部署', color: '#10b981', value: summaryStats.value.deviceCount },
+])
 
 interface SensorInfo {
   id: string
@@ -807,7 +760,7 @@ const initHazardTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 14
+        fontSize: 16
       }
     },
     yAxis: {
@@ -815,7 +768,7 @@ const initHazardTrendChart = () => {
       name: '新增隐患点',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 14
+        fontSize: 16
       },
       axisLine: {
         show: false
@@ -825,7 +778,7 @@ const initHazardTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 14
+        fontSize: 16
       },
       splitLine: {
         lineStyle: {
@@ -883,7 +836,7 @@ const initAlarmTrendChart = () => {
       bottom: 0,
       textStyle: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       }
     },
     grid: {
@@ -904,7 +857,7 @@ const initAlarmTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       }
     },
     yAxis: {
@@ -912,7 +865,7 @@ const initAlarmTrendChart = () => {
       name: '告警次数',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       },
       axisLine: {
         show: false
@@ -922,7 +875,7 @@ const initAlarmTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 12
+        fontSize: 16
       },
       splitLine: {
         lineStyle: {
@@ -1379,7 +1332,7 @@ const trendAreaPath = computed(() => {
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -1422,7 +1375,7 @@ const trendAreaPath = computed(() => {
 }
 
 .section-title {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -1489,12 +1442,12 @@ const trendAreaPath = computed(() => {
 }
 
 .health-label {
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .health-value {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -1561,7 +1514,7 @@ const trendAreaPath = computed(() => {
 }
 
 .ring-score {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: #1f2937;
 }
@@ -1595,7 +1548,7 @@ const trendAreaPath = computed(() => {
 }
 
 .bar-value {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -1811,82 +1764,66 @@ const trendAreaPath = computed(() => {
 }
 
 .type-bar-row .type-count {
-  font-size: 14px;
+  font-size: 15px;
   color: #3b82f6;
   font-weight: 600;
 }
 
-.stats-bar {
+/* ========== 统计卡片 — 与运营视图统一风格 ========== */
+.stats-row {
   display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 24px 32px;
+  gap: 16px;
+  padding: 20px 32px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.stat-item {
+.stat-card {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 16px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-.stat-icon-wrapper {
-  width: 52px;
-  height: 52px;
+.stat-left {
+  width: 38%;
+  min-width: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  flex-shrink: 0;
+  background: var(--tc);
+  border-radius: 10px 0 0 10px;
 }
 
-.stat-icon-wrapper.alarm {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #ef4444;
+.stat-left svg {
+  width: 28px;
+  height: 28px;
 }
 
-.stat-icon-wrapper.warning {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #f59e0b;
-}
-
-.stat-icon-wrapper.monitor {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #3b82f6;
-}
-
-.stat-icon-wrapper.hazard {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  color: #6366f1;
-}
-
-.stat-icon-wrapper.device {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  color: #10b981;
-}
-
-.stat-content {
+.stat-right {
+  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.stat-value-wrapper {
-  position: relative;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1.5px solid var(--tc);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  padding: 10px 8px;
+  text-align: center;
 }
 
 .stat-value {
-  font-size: 44px;
-  font-weight: 900;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color: #111827;
-  letter-spacing: -1px;
-  line-height: 1;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--tc);
+  line-height: 1.1;
   opacity: 0;
   transform: translateY(20px);
   transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .stat-value.animate {
@@ -1894,37 +1831,18 @@ const trendAreaPath = computed(() => {
   transform: translateY(0);
 }
 
-.stat-value.highlight {
-  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.stat-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .stat-label {
-  font-size: 14px;
-  color: #374151;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-transform: none;
-}
-
-.stat-desc {
-  font-size: 14px;
-  color: #9ca3af;
+  font-size: 13px;
+  color: var(--tc);
+  margin-top: 2px;
   font-weight: 500;
 }
 
-.stat-divider {
-  width: 1px;
-  height: 64px;
-  background: linear-gradient(to bottom, transparent, rgba(156, 163, 175, 0.3), transparent);
+.stat-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 1px;
+  font-weight: 400;
 }
 
 .map-header {
@@ -1936,7 +1854,7 @@ const trendAreaPath = computed(() => {
 }
 
 .map-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -1967,7 +1885,7 @@ const trendAreaPath = computed(() => {
 }
 
 .legend-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #6b7280;
 }
 
@@ -2037,7 +1955,7 @@ const trendAreaPath = computed(() => {
   position: absolute;
   top: 8px;
   left: 12px;
-  font-size: 12px;
+  font-size: 14px;
   color: rgba(79, 172, 254, 0.7);
 }
 
@@ -2143,7 +2061,7 @@ const trendAreaPath = computed(() => {
 }
 
 .chart-title {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -2225,37 +2143,37 @@ const trendAreaPath = computed(() => {
   margin-top: 10px;
 }
 
-.stat-item {
+.chart-stats .stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.stat-label {
-  font-size: 11px;
+.chart-stats .stat-label {
+  font-size: 13px;
   color: #6b7280;
   margin-bottom: 4px;
 }
 
-.stat-value {
-  font-size: 14px;
+.chart-stats .stat-value {
+  font-size: 15px;
   font-weight: 600;
   color: #374151;
 }
 
-.stat-value.current {
+.chart-stats .stat-value.current {
   color: #3b82f6;
 }
 
-.stat-value.max {
+.chart-stats .stat-value.max {
   color: #ef4444;
 }
 
-.stat-value.min {
+.chart-stats .stat-value.min {
   color: #10b981;
 }
 
-.stat-value.avg {
+.chart-stats .stat-value.avg {
   color: #6b7280;
 }
 
@@ -2271,7 +2189,7 @@ const trendAreaPath = computed(() => {
 }
 
 .chart-tab {
-  font-size: 12px;
+  font-size: 14px;
   color: #6b7280;
   padding: 4px 12px;
   border-radius: 4px;
@@ -2298,7 +2216,7 @@ const trendAreaPath = computed(() => {
 }
 
 .chart-y-axis span {
-  font-size: 12px;
+  font-size: 14px;
   color: #9ca3af;
 }
 
@@ -2320,7 +2238,7 @@ const trendAreaPath = computed(() => {
 }
 
 .chart-x-axis span {
-  font-size: 12px;
+  font-size: 14px;
   color: #9ca3af;
 }
 
@@ -2338,12 +2256,12 @@ const trendAreaPath = computed(() => {
 }
 
 .summary-label {
-  font-size: 11px;
+  font-size: 13px;
   color: #9ca3af;
 }
 
 .summary-value {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #3b82f6;
 }
@@ -2370,13 +2288,13 @@ const trendAreaPath = computed(() => {
 }
 
 .rate-value {
-  font-size: 42px;
+  font-size: 36px;
   font-weight: 700;
   color: #52c41a;
 }
 
 .rate-unit {
-  font-size: 20px;
+  font-size: 18px;
   color: #9ca3af;
 }
 
@@ -2398,7 +2316,7 @@ const trendAreaPath = computed(() => {
 }
 
 .online-count {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: #1f2937;
 }
@@ -2408,7 +2326,7 @@ const trendAreaPath = computed(() => {
 }
 
 .total-count {
-  font-size: 16px;
+  font-size: 18px;
   color: #6b7280;
 }
 
@@ -2481,7 +2399,7 @@ const trendAreaPath = computed(() => {
 }
 
 .trend-title {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: #374151;
 }
@@ -2504,7 +2422,7 @@ const trendAreaPath = computed(() => {
 }
 
 .trend-y-axis span {
-  font-size: 12px;
+  font-size: 14px;
   color: #9ca3af;
 }
 
@@ -2527,7 +2445,7 @@ const trendAreaPath = computed(() => {
 }
 
 .trend-x-axis span {
-  font-size: 12px;
+  font-size: 14px;
   color: #9ca3af;
 }
 
@@ -2564,7 +2482,7 @@ const trendAreaPath = computed(() => {
 }
 
 .summary-count {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: #1f2937;
 }
@@ -2611,7 +2529,7 @@ const trendAreaPath = computed(() => {
 }
 
 .level-count {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -2626,7 +2544,8 @@ const trendAreaPath = computed(() => {
 }
 
 .list-title {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
   color: #4b5563;
 }
 
@@ -2679,7 +2598,7 @@ const trendAreaPath = computed(() => {
 }
 
 .alarm-title {
-  font-size: 14px;
+  font-size: 15px;
   color: #374151;
   overflow: hidden;
   text-overflow: ellipsis;
