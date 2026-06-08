@@ -16,6 +16,7 @@ public class DeviceStatusLog {
     private String operatorPhone;
     private LocalDateTime operationDate;
     private String description;
+    private String remark;
     private String createBy;
     private LocalDateTime createTime;
 }

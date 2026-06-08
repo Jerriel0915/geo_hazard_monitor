@@ -220,26 +220,8 @@ public class DeviceController extends BaseController {
     @Log(title = "设备维修", businessType = BusinessType.UPDATE)
     @PostMapping("/{id}/maintenance")
     public AjaxResult maintenance(@PathVariable Long id, @Validated @RequestBody DeviceMaintenanceRequest req) {
-        Device device = deviceService.selectDeviceById(id);
-        if (device == null) return error("设备不存在");
-
-        int oldStatus = device.getStatus() != null ? device.getStatus() : 1;
-        int newStatus = resolveNewStatus(req.getOperationType(), oldStatus);
-        String statusText = switch (req.getOperationType()) {
-            case 1 -> "报修";
-            case 2 -> "修复";
-            case 3 -> "停用";
-            case 4 -> "恢复";
-            default -> "未知";
-        };
-
-        Device update = new Device();
-        update.setId(id);
-        update.setStatus(newStatus);
-        deviceService.updateDevice(update);
-
-        deviceStatusLogService.saveMaintenanceLog(id, device.getCode(), oldStatus, newStatus,
-                statusText, req.getOperatorName(), req.getOperatorPhone(),
+        String statusText = deviceService.maintenanceDevice(id, req.getOperationType(),
+                req.getOperatorName(), req.getOperatorPhone(),
                 req.getOperationDate(), req.getDescription(), getUsername());
         return AjaxResult.success(statusText + "成功");
     }
@@ -252,16 +234,6 @@ public class DeviceController extends BaseController {
     public AjaxResult maintenanceLogs(@PathVariable Long id) {
         List<DeviceStatusLog> logs = deviceStatusLogService.getLogsByDeviceId(id);
         return AjaxResult.success("成功", logs);
-    }
-
-    private int resolveNewStatus(int operationType, int oldStatus) {
-        return switch (operationType) {
-            case 1 -> 2; // 报修 → 故障
-            case 2 -> 1; // 修复 → 正常
-            case 3 -> 3; // 停用
-            case 4 -> 1; // 恢复 → 正常
-            default -> oldStatus;
-        };
     }
 
     /**

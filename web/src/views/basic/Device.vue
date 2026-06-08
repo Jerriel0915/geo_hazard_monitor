@@ -291,10 +291,7 @@
         <el-form-item label="设备">{{ maintenanceDeviceName }}</el-form-item>
         <el-form-item label="操作类型" prop="operationType">
           <el-select v-model="maintenanceForm.operationType" placeholder="请选择" style="width:100%">
-            <el-option label="报修" :value="1"/>
-            <el-option label="修复" :value="2"/>
-            <el-option label="停用" :value="3"/>
-            <el-option label="恢复" :value="4"/>
+            <el-option v-for="opt in availableOperationTypes" :key="opt.value" :label="opt.label" :value="opt.value"/>
           </el-select>
         </el-form-item>
         <el-row :gutter="16">
@@ -393,13 +390,24 @@
             </el-tab-pane>
             <el-tab-pane label="维修记录" name="maintenance">
               <el-table :data="maintenanceLogs" border size="small" max-height="400">
-                <el-table-column prop="statusText" label="操作" width="80"/>
-                <el-table-column label="状态变化" width="100">
-                  <template #default="{row}">{{ row.oldStatus }}→{{ row.newStatus }}</template>
+                <el-table-column label="操作" width="80">
+                  <template #default="{row}">
+                    <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
+                            size="small">
+                      {{ row.statusText }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="状态变化" width="110">
+                  <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
+                      getStatusLabel(row.newStatus)
+                    }}
+                  </template>
                 </el-table-column>
                 <el-table-column prop="operatorName" label="操作人" width="90"/>
                 <el-table-column prop="operatorPhone" label="电话" width="120"/>
-                <el-table-column prop="operationDate" label="日期" width="160"/>
+                <el-table-column prop="operationDate" label="操作日期" width="160"/>
+                <el-table-column prop="createTime" label="记录时间" width="160"/>
                 <el-table-column prop="description" label="描述" min-width="120"/>
               </el-table>
             </el-tab-pane>
@@ -603,7 +611,7 @@
 </template>
 
 <script setup lang="ts">
-import {nextTick, onMounted, reactive, ref} from 'vue'
+import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Search} from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -685,6 +693,7 @@ const maintenanceLoading = ref(false)
 const maintenanceFormRef = ref()
 const maintenanceDeviceId = ref<number | null>(null)
 const maintenanceDeviceName = ref('')
+const maintenanceDeviceStatus = ref<number>(1)
 const tableData = ref<DeviceItem[]>([])
 const maintenanceForm = reactive({
   operationType: null as number | null,
@@ -936,6 +945,32 @@ const sensorFormRules = {
 const getStatusType = (status: number) => {
   const types: Record<number, string> = { 1: 'success', 2: 'danger', 3: 'info' }
   return types[status] || 'default'
+}
+
+const getStatusLabel = (status: number) => {
+  const labels: Record<number, string> = {1: '正常', 2: '故障', 3: '停用'}
+  return labels[status] || '未知'
+}
+
+// 根据设备当前状态计算可选的操作类型
+const availableOperationTypes = computed(() => {
+  const status = maintenanceDeviceStatus.value
+  const options: { label: string, value: number }[] = []
+  if (status === 1) {
+    options.push({label: '报修', value: 1}, {label: '停用', value: 3})
+  } else if (status === 2) {
+    options.push({label: '修复', value: 2}, {label: '停用', value: 3})
+  } else if (status === 3) {
+    options.push({label: '恢复', value: 4})
+  }
+  return options
+})
+
+// 格式化当前时间
+const nowString = () => {
+  const d = new Date()
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 // ==================== API 请求 ====================
@@ -1210,10 +1245,11 @@ const handleMoreCommand = (command: string, row: DeviceItem) => {
 const handleMaintenance = (row: DeviceItem) => {
   maintenanceDeviceId.value = row.id!
   maintenanceDeviceName.value = row.name
+  maintenanceDeviceStatus.value = row.status
   maintenanceForm.operationType = null
   maintenanceForm.operatorName = ''
   maintenanceForm.operatorPhone = ''
-  maintenanceForm.operationDate = ''
+  maintenanceForm.operationDate = nowString()
   maintenanceForm.description = ''
   maintenanceDialogVisible.value = true
 }
@@ -1222,6 +1258,19 @@ const handleMaintenanceSubmit = () => {
   maintenanceFormRef.value?.validate(async (valid: boolean) => {
     if (!valid) return
     if (!maintenanceDeviceId.value) return
+    const typeLabel = availableOperationTypes.value.find((o: {
+      value: number,
+      label: string
+    }) => o.value === maintenanceForm.operationType)?.label || '操作'
+    try {
+      await ElMessageBox.confirm(
+          `确认对设备【${maintenanceDeviceName.value}】执行"${typeLabel}"操作？`,
+          '操作确认',
+          {confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning'}
+      )
+    } catch {
+      return // 用户取消
+    }
     maintenanceLoading.value = true
     try {
       await request.post(`/devices/${maintenanceDeviceId.value}/maintenance`, {

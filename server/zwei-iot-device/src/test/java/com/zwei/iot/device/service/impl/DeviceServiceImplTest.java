@@ -7,6 +7,7 @@ import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceSessionService;
+import com.zwei.iot.device.service.IDeviceStatusLogService;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class DeviceServiceImplTest {
 
     @Mock
     private IDeviceSessionService deviceSessionService;
+
+    @Mock
+    private IDeviceStatusLogService deviceStatusLogService;
 
     @InjectMocks
     private DeviceServiceImpl service;

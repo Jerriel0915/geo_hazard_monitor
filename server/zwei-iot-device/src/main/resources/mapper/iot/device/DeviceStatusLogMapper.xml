@@ -2,15 +2,31 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zwei.iot.device.mapper.DeviceStatusLogMapper">
 
+    <resultMap type="com.zwei.iot.device.domain.DeviceStatusLog" id="DeviceStatusLogResult">
+        <id property="id" column="id"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="deviceCode" column="device_code"/>
+        <result property="oldStatus" column="old_status"/>
+        <result property="newStatus" column="new_status"/>
+        <result property="statusText" column="status_text"/>
+        <result property="operatorName" column="operator_name"/>
+        <result property="operatorPhone" column="operator_phone"/>
+        <result property="operationDate" column="operation_date"/>
+        <result property="description" column="description"/>
+        <result property="remark" column="remark"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO device_status_log (device_id, device_code, old_status, new_status, status_text,
-                                       operator_name, operator_phone, operation_date, description, create_by,
+                                       operator_name, operator_phone, operation_date, description, remark, create_by,
                                        create_time)
         VALUES (#{deviceId}, #{deviceCode}, #{oldStatus}, #{newStatus}, #{statusText},
-                #{operatorName}, #{operatorPhone}, #{operationDate}, #{description}, #{createBy}, NOW())
+                #{operatorName}, #{operatorPhone}, #{operationDate}, #{description}, #{remark}, #{createBy}, NOW())
     </insert>
 
-    <select id="selectByDeviceId" resultType="com.zwei.iot.device.domain.DeviceStatusLog">
+    <select id="selectByDeviceId" resultMap="DeviceStatusLogResult">
         SELECT *
         FROM device_status_log
         WHERE device_id = #{deviceId}

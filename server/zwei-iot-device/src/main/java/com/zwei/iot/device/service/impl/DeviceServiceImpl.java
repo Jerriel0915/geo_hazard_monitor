@@ -10,10 +10,7 @@ import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
-import com.zwei.iot.device.service.DeviceAuthLogService;
-import com.zwei.iot.device.service.IDeviceHazardRelationService;
-import com.zwei.iot.device.service.IDeviceService;
-import com.zwei.iot.device.service.IDeviceSessionService;
+import com.zwei.iot.device.service.*;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -59,6 +56,7 @@ public class DeviceServiceImpl implements IDeviceService {
     private final DeviceAuthAccountGenerator accountGenerator;
     private final DeviceAuthLogService deviceAuthLogService;
     private final ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider;
+    private final IDeviceStatusLogService deviceStatusLogService;
 
     @Autowired
     public DeviceServiceImpl(DeviceMapper deviceMapper, DeviceSensorMapper sensorMapper,
@@ -66,7 +64,8 @@ public class DeviceServiceImpl implements IDeviceService {
                              IDeviceHazardRelationService hazardRelationService,
                              DeviceAuthAccountGenerator accountGenerator,
                              DeviceAuthLogService deviceAuthLogService,
-                             ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider) {
+                             ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider,
+                             IDeviceStatusLogService deviceStatusLogService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
@@ -74,6 +73,7 @@ public class DeviceServiceImpl implements IDeviceService {
         this.accountGenerator = accountGenerator;
         this.deviceAuthLogService = deviceAuthLogService;
         this.deviceSessionServiceProvider = deviceSessionServiceProvider;
+        this.deviceStatusLogService = deviceStatusLogService;
     }
 
     /**
@@ -459,6 +459,66 @@ public class DeviceServiceImpl implements IDeviceService {
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    @Override
+    @Transactional
+    public String maintenanceDevice(Long deviceId, Integer operationType, String operatorName, String operatorPhone,
+                                    String operationDate, String description, String createBy) {
+        Device device = requireDevice(deviceId);
+        int oldStatus = device.getStatus() != null ? device.getStatus() : 1;
+
+        // ── 状态转换校验 ──
+        int newStatus = resolveAndValidateStatusTransition(operationType, oldStatus);
+
+        String statusText = switch (operationType) {
+            case 1 -> "报修";
+            case 2 -> "修复";
+            case 3 -> "停用";
+            case 4 -> "恢复";
+            default -> throw new ServiceException("不支持的操作类型: " + operationType);
+        };
+
+        // ── 更新设备状态 ──
+        Device update = new Device();
+        update.setId(deviceId);
+        update.setStatus(newStatus);
+        update.setUpdateBy(createBy);
+        deviceMapper.updateDevice(update);
+
+        // ── 写入运维日志 ──
+        deviceStatusLogService.saveMaintenanceLog(deviceId, device.getCode(), oldStatus, newStatus,
+                statusText, operatorName, operatorPhone, operationDate, description, createBy);
+
+        log.info("设备维修操作完成 deviceId={}, operation={}, {}→{}, operator={}",
+                deviceId, statusText, oldStatus, newStatus, createBy);
+        return statusText;
+    }
+
+    /**
+     * 解析操作类型并校验状态转换合法性。
+     */
+    private int resolveAndValidateStatusTransition(int operationType, int oldStatus) {
+        int newStatus = switch (operationType) {
+            case 1 -> { // 报修：仅允许从 正常(1) 转入 故障(2)
+                if (oldStatus != 1) throw new ServiceException("仅正常状态的设备可以报修");
+                yield 2;
+            }
+            case 2 -> { // 修复：仅允许从 故障(2) 转入 正常(1)
+                if (oldStatus != 2) throw new ServiceException("仅故障状态的设备可以修复");
+                yield 1;
+            }
+            case 3 -> { // 停用：允许从 正常(1) 或 故障(2) 转入 停用(3)
+                if (oldStatus != 1 && oldStatus != 2) throw new ServiceException("仅正常或故障状态的设备可以停用");
+                yield 3;
+            }
+            case 4 -> { // 恢复：仅允许从 停用(3) 转入 正常(1)
+                if (oldStatus != 3) throw new ServiceException("仅停用状态的设备可以恢复");
+                yield 1;
+            }
+            default -> throw new ServiceException("不支持的操作类型: " + operationType);
+        };
+        return newStatus;
     }
 
     private String nowString() {
