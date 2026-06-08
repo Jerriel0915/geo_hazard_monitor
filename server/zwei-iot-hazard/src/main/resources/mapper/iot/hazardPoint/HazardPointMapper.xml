@@ -160,6 +160,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </update>
 
+    <update id="incrementDeviceCount">
+        UPDATE hazard_point
+        SET device_count = device_count + #{delta},
+            update_time  = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="decrementDeviceCount">
+        UPDATE hazard_point
+        SET device_count = GREATEST(device_count - #{delta}, 0),
+            update_time  = NOW()
+        WHERE id = #{id}
+    </update>
+
     <update id="refreshDeviceCountById">
         UPDATE hazard_point
         SET device_count = (

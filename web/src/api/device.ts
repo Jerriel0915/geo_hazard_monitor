@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { AjaxResult, PageResult } from './system'
+import type {AjaxResult, PageResult} from './system'
 
 export interface DeviceItem {
   id?: number
@@ -18,8 +18,6 @@ export interface DeviceItem {
   iconPath?: string
   status: number
   statusName?: string
-  runStatus?: number
-  runStatusName?: string
   lastReportTime?: string
   registeredAt?: string
   lastAuthTime?: string
@@ -27,8 +25,6 @@ export interface DeviceItem {
   longitude?: number | null
   latitude?: number | null
   createTime?: string
-  longitude?: number | null
-  latitude?: number | null
   sensors?: any[]
 }
 
@@ -45,8 +41,6 @@ export interface DeviceCreatePayload {
   longitude?: number | null
   latitude?: number | null
   status: number
-  longitude?: number | null
-  latitude?: number | null
 }
 
 export interface DeviceUpdatePayload {
@@ -61,8 +55,6 @@ export interface DeviceUpdatePayload {
   longitude?: number | null
   latitude?: number | null
   status: number
-  longitude?: number | null
-  latitude?: number | null
 }
 
 export interface DeviceAuthAccount {
@@ -88,7 +80,6 @@ export interface DevicePageParams {
   name?: string
   sn?: string
   status?: number | ''
-  runStatus?: number | ''
 }
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {

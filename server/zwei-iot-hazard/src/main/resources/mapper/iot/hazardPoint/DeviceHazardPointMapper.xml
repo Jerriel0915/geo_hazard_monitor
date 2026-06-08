@@ -128,6 +128,13 @@
         </foreach>
     </select>
 
+    <!-- 查询隐患点已绑定的设备ID列表 -->
+    <select id="selectDeviceIdsByHazardPointId" resultType="long">
+        SELECT device_id
+        FROM device_hazard_point
+        WHERE hazard_point_id = #{hazardPointId}
+    </select>
+
     <!-- 查询设备绑定次数 -->
     <select id="countByDeviceId" resultType="int">
         SELECT COUNT(*)

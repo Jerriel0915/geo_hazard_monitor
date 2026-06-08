@@ -105,20 +105,6 @@ public class Device extends BaseEntity {
     private String statusName;
 
     /**
-     * 运行状态: 0-未知, 1-运行中, 2-停止
-     * @deprecated 实时在线状态请使用 device_online_status 表
-     */
-    @Deprecated
-    private Integer runStatus;
-
-    /**
-     * 运行状态名称（查询时返回）
-     * @deprecated 随 runStatus 废弃
-     */
-    @Deprecated
-    private String runStatusName;
-
-    /**
      * 最近上报时间
      */
     private String lastReportTime;
@@ -176,8 +162,6 @@ public class Device extends BaseEntity {
                 ", iconPath='" + iconPath + '\'' +
                 ", status=" + status +
                 ", statusName='" + statusName + '\'' +
-                ", runStatus=" + runStatus +
-                ", runStatusName='" + runStatusName + '\'' +
                 ", lastReportTime='" + lastReportTime + '\'' +
                 ", registeredAt='" + registeredAt + '\'' +
                 ", lastAuthTime='" + lastAuthTime + '\'' +

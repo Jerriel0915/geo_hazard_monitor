@@ -84,6 +84,14 @@ public interface DeviceHazardPointMapper {
     List<Long> selectHazardPointIdsByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
 
     /**
+     * 查询隐患点已绑定的设备ID列表
+     *
+     * @param hazardPointId 隐患点ID
+     * @return 设备ID列表
+     */
+    List<Long> selectDeviceIdsByHazardPointId(@Param("hazardPointId") Long hazardPointId);
+
+    /**
      * 查询设备绑定次数
      *
      * @param deviceId 设备ID

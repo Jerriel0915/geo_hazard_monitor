@@ -66,7 +66,6 @@ public class MqttSessionEnrichService {
                 client.setDeviceId(device.getId());
                 client.setDeviceName(device.getName());
                 client.setDeviceCode(device.getCode());
-                client.setDeviceRunStatus(device.getRunStatus());
                 client.setLastAuthIp(device.getLastAuthIp());
                 client.setLastAuthTime(device.getLastAuthTime());
                 client.setHazardPointName(device.getHazardPointName());

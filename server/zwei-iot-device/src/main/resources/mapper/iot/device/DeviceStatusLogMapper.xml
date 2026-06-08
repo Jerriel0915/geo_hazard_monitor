@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.device.mapper.DeviceStatusLogMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO device_status_log (device_id, device_code, old_status, new_status, status_text,
+                                       operator_name, operator_phone, operation_date, description, create_by,
+                                       create_time)
+        VALUES (#{deviceId}, #{deviceCode}, #{oldStatus}, #{newStatus}, #{statusText},
+                #{operatorName}, #{operatorPhone}, #{operationDate}, #{description}, #{createBy}, NOW())
+    </insert>
+
+    <select id="selectByDeviceId" resultType="com.zwei.iot.device.domain.DeviceStatusLog">
+        SELECT *
+        FROM device_status_log
+        WHERE device_id = #{deviceId}
+        ORDER BY create_time DESC
+    </select>
+</mapper>

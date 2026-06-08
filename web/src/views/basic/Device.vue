@@ -35,10 +35,6 @@
         <el-option label="维修" :value="3" />
         <el-option label="离线" :value="4" />
       </el-select>
-      <el-select v-model="searchRunStatus" placeholder="运行状态" clearable class="run-status-select">
-        <el-option label="在线" :value="1" />
-        <el-option label="离线" :value="0" />
-      </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
       <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
@@ -70,23 +66,14 @@
             <span>{{ row.authUsername || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="authStatus" label="账号状态" width="100" align="center">
+        <el-table-column prop="authPassword" label="接入密码" width="110" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.authStatus === 1 ? 'success' : 'danger'" effect="plain">
-              {{ row.authStatus === 1 ? '有效' : '禁用' }}
-            </el-tag>
+            <span class="pwd-cell">{{ row.authPassword || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="statusName" label="设备状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="runStatusName" label="运行状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getRunStatusTag(row.runStatus)" effect="plain">
-              {{ row.runStatusName || getRunStatusLabel(row.runStatus) }}
-            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="lastReportTime" label="最近上报" width="180" align="center">
@@ -106,7 +93,7 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item command="account">账号</el-dropdown-item>
-                    <el-dropdown-item command="toggleAuth">{{ row.authStatus === 1 ? '禁用账号' : '启用账号' }}</el-dropdown-item>
+                    <el-dropdown-item command="maintenance">维修状态</el-dropdown-item>
                     <el-dropdown-item command="sensors">传感器</el-dropdown-item>
                     <el-dropdown-item command="copy">复制</el-dropdown-item>
                     <el-dropdown-item command="delete" divided>
@@ -166,18 +153,6 @@
           <el-col :span="12">
             <el-form-item label="厂商名称" prop="vendorName">
               <el-input v-model="formData.vendorName" placeholder="请输入厂商名称" :disabled="isView" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="经度" prop="longitude">
-              <el-input-number v-model="formData.longitude" :disabled="isView" :precision="6" :min="-180" :max="180" style="width: 100%" placeholder="请输入经度" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="纬度" prop="latitude">
-              <el-input-number v-model="formData.latitude" :disabled="isView" :precision="6" :min="-90" :max="90" style="width: 100%" placeholder="请输入纬度" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -302,50 +277,123 @@
       </template>
     </el-dialog>
 
+    <!-- 维修状态弹窗 -->
+    <el-dialog v-model="maintenanceDialogVisible" title="维修状态操作" width="520px" :close-on-click-modal="false"
+               destroy-on-close>
+      <el-form ref="maintenanceFormRef" :model="maintenanceForm" :rules="maintenanceFormRules" label-width="80px">
+        <el-form-item label="设备">{{ maintenanceDeviceName }}</el-form-item>
+        <el-form-item label="操作类型" prop="operationType">
+          <el-select v-model="maintenanceForm.operationType" placeholder="请选择" style="width:100%">
+            <el-option label="报修" :value="1"/>
+            <el-option label="修复" :value="2"/>
+            <el-option label="停用" :value="3"/>
+            <el-option label="恢复" :value="4"/>
+          </el-select>
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="操作人" prop="operatorName">
+              <el-input v-model="maintenanceForm.operatorName" placeholder="姓名"/>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="联系电话" prop="operatorPhone">
+              <el-input v-model="maintenanceForm.operatorPhone" placeholder="电话"/>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="操作日期" prop="operationDate">
+          <el-date-picker v-model="maintenanceForm.operationDate" type="datetime" placeholder="选择日期时间"
+                          value-format="YYYY-MM-DD HH:mm:ss" style="width:100%"/>
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="maintenanceForm.description" type="textarea" :rows="3" placeholder="操作原因或备注"/>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="maintenanceDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleMaintenanceSubmit" :loading="maintenanceLoading">确定</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 设备详情弹窗 -->
     <el-dialog
         v-model="detailDialogVisible"
-        title="设备详情"
-        width="900px"
+        :title="`设备详情 — ${currentRow?.name || ''}`"
+        width="960px"
         :close-on-click-modal="false"
         destroy-on-close
     >
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="设备编号">{{ currentRow?.code }}</el-descriptions-item>
-        <el-descriptions-item label="设备名称">{{ currentRow?.name }}</el-descriptions-item>
-        <el-descriptions-item label="设备SN">{{ currentRow?.sn || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="接入协议">{{ currentRow?.protocolType || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="注册来源">{{ currentRow?.registerSource || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="接入账号">{{ currentRow?.authUsername || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="设备状态">
-          <el-tag :type="getStatusType(currentRow?.status || 0)" size="small">{{ currentRow?.statusName }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="运行状态">
-          <el-tag :type="getRunStatusTag(currentRow?.runStatus)" size="small">
-            {{ getRunStatusLabel(currentRow?.runStatus) }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="最近上报时间">{{ currentRow?.lastReportTime || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ currentRow?.createTime || '-' }}</el-descriptions-item>
-      </el-descriptions>
+      <el-tabs v-model="detailTab">
+        <el-tab-pane label="设备详情" name="info">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="设备编号">{{ currentRow?.code }}</el-descriptions-item>
+            <el-descriptions-item label="设备名称">{{ currentRow?.name }}</el-descriptions-item>
+            <el-descriptions-item label="设备SN">{{ currentRow?.sn || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="接入协议">{{ currentRow?.protocolType || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="注册来源">{{ currentRow?.registerSource || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="接入账号">{{ currentRow?.authUsername || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="接入密码">{{ currentRow?.authPassword || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="安装位置">{{
+                formatCoord(currentRow?.longitude, currentRow?.latitude)
+              }}
+            </el-descriptions-item>
+            <el-descriptions-item label="设备状态">
+              <el-tag :type="getStatusType(currentRow?.status || 0)" size="small">{{ currentRow?.statusName }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="最近上报时间">{{ currentRow?.lastReportTime || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ currentRow?.createTime || '-' }}</el-descriptions-item>
+          </el-descriptions>
 
-      <el-divider content-position="left">
-        <span class="divider-title">传感器列表</span>
-      </el-divider>
+          <el-divider content-position="left">传感器列表</el-divider>
+          <el-table :data="sensorList" border size="small" v-loading="sensorLoading">
+            <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center"/>
+            <el-table-column prop="sensorName" label="传感器名称" width="150" align="center"/>
+            <el-table-column prop="sensorNo" label="主题编号" width="120" align="center"/>
+            <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center"/>
+            <el-table-column label="属性配置" min-width="250" align="center">
+              <template #default="{ row }">
+                <div v-for="attr in row.attrList" :key="attr.attrCode" class="attr-item">
+                  {{ attr.attrName }}: {{ attr.initialValue }}{{ attr.unit }}
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
 
-      <el-table :data="sensorList" border size="small" v-loading="sensorLoading">
-        <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center" />
-        <el-table-column prop="sensorName" label="传感器名称" width="150" align="center" />
-        <el-table-column prop="sensorNo" label="主题编号" width="120" align="center" />
-        <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
-        <el-table-column label="属性配置" min-width="250" align="center">
-          <template #default="{ row }">
-            <div v-for="attr in row.attrList" :key="attr.attrCode" class="attr-item">
-              {{ attr.attrName }}: {{ attr.initialValue }}{{ attr.unit }}
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+        <el-tab-pane label="运维记录" name="operation">
+          <el-tabs v-model="operationTab" type="card">
+            <el-tab-pane label="上下线记录" name="online">
+              <el-table :data="onlineLogs" border size="small" max-height="400">
+                <el-table-column prop="eventTime" label="时间" width="170"/>
+                <el-table-column prop="eventType" label="类型" width="80">
+                  <template #default="{row}">
+                    <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
+                        row.eventType
+                      }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="clientId" label="Client ID" min-width="160"/>
+                <el-table-column prop="clientIp" label="IP" width="140"/>
+                <el-table-column prop="reason" label="原因" min-width="120"/>
+              </el-table>
+            </el-tab-pane>
+            <el-tab-pane label="维修记录" name="maintenance">
+              <el-table :data="maintenanceLogs" border size="small" max-height="400">
+                <el-table-column prop="statusText" label="操作" width="80"/>
+                <el-table-column label="状态变化" width="100">
+                  <template #default="{row}">{{ row.oldStatus }}→{{ row.newStatus }}</template>
+                </el-table-column>
+                <el-table-column prop="operatorName" label="操作人" width="90"/>
+                <el-table-column prop="operatorPhone" label="电话" width="120"/>
+                <el-table-column prop="operationDate" label="日期" width="160"/>
+                <el-table-column prop="description" label="描述" min-width="120"/>
+              </el-table>
+            </el-tab-pane>
+          </el-tabs>
+        </el-tab-pane>
+      </el-tabs>
     </el-dialog>
 
     <!-- 传感器配置弹窗 -->
@@ -546,6 +594,7 @@
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Search} from '@element-plus/icons-vue'
+import request from '@/utils/request'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -566,8 +615,8 @@ import {getMonitorTypeListWithContents} from '@/api/monitorType'
 import {
   createSensor,
   deleteSensor,
-  getDeviceSensors,
   deleteSensorAttribute,
+  getDeviceSensors,
   getSensorDetail,
   type SensorItem,
   updateSensor
@@ -619,7 +668,24 @@ const sensorLoading = ref(false)
 const sensorFormSubmitLoading = ref(false)
 const authResetLoading = ref(false)
 const authStatusLoading = ref(false)
+const maintenanceDialogVisible = ref(false)
+const maintenanceLoading = ref(false)
+const maintenanceFormRef = ref()
+const maintenanceDeviceId = ref<number | null>(null)
+const maintenanceDeviceName = ref('')
 const tableData = ref<DeviceItem[]>([])
+const maintenanceForm = reactive({
+  operationType: null as number | null,
+  operatorName: '',
+  operatorPhone: '',
+  operationDate: '',
+  description: ''
+})
+const maintenanceFormRules = {
+  operationType: [{required: true, message: '请选择操作类型', trigger: 'change'}],
+  operatorName: [{required: true, message: '请输入操作人', trigger: 'blur'}],
+  operationDate: [{required: true, message: '请选择操作日期', trigger: 'change'}]
+}
 const sensorList = ref<SensorItem[]>([])
 const monitorTypeList = ref<MonitorTypeItem[]>([])
 const currentPage = ref(1)
@@ -627,7 +693,6 @@ const pageSize = ref(10)
 const total = ref(0)
 const searchKeyword = ref('')
 const searchStatus = ref<number | ''>('')
-const searchRunStatus = ref<number | ''>('')
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -637,6 +702,27 @@ const formRef = ref()
 
 const detailDialogVisible = ref(false)
 const currentRow = ref<DeviceItem | null>(null)
+const detailTab = ref('info')
+const operationTab = ref('online')
+const onlineLogs = ref<any[]>([])
+const maintenanceLogs = ref<any[]>([])
+const loadOpsLogs = async (deviceId: number) => {
+  try {
+    const [online, maint] = await Promise.all([
+      request.get(`/devices/${deviceId}/online-logs`),
+      request.get(`/devices/${deviceId}/maintenance-logs`)
+    ])
+    onlineLogs.value = online.data || []
+    maintenanceLogs.value = maint.data || []
+  } catch {
+    onlineLogs.value = [];
+    maintenanceLogs.value = []
+  }
+}
+const formatCoord = (lng?: number | null, lat?: number | null) => {
+  if (lng == null || lat == null) return '-'
+  return `${lng.toFixed(6)}, ${lat.toFixed(6)}`
+}
 
 const authDialogVisible = ref(false)
 const currentAuthDevice = ref<DeviceItem | null>(null)
@@ -796,8 +882,6 @@ const formData = reactive<{
   longitude: number | null
   latitude: number | null
   status: number
-  longitude: number | null
-  latitude: number | null
   sensorList: SensorItem[]
 }>({
   code: '',
@@ -812,8 +896,6 @@ const formData = reactive<{
   longitude: null,
   latitude: null,
   status: 1,
-  longitude: null,
-  latitude: null,
   sensorList: []
 })
 
@@ -844,16 +926,6 @@ const getStatusType = (status: number) => {
   return types[status] || 'default'
 }
 
-const getRunStatusLabel = (runStatus?: number) => {
-  const labels: Record<number, string> = { 0: '未知', 1: '运行中', 2: '停止' }
-  return runStatus != null ? labels[runStatus] || '-' : '-'
-}
-
-const getRunStatusTag = (runStatus?: number) => {
-  const tags: Record<number, string> = { 0: 'info', 1: 'success', 2: 'danger' }
-  return runStatus != null ? tags[runStatus] || 'info' : 'info'
-}
-
 // ==================== API 请求 ====================
 
 // 分页查询设备
@@ -868,7 +940,6 @@ const loadTableData = async () => {
       params.code = searchKeyword.value
     }
     if (searchStatus.value !== '') params.status = searchStatus.value
-    if (searchRunStatus.value !== '') params.runStatus = searchRunStatus.value
     const data = await getDevicePage(params)
     tableData.value = data.rows || []
     total.value = data.total || 0
@@ -1028,7 +1099,6 @@ const handleSearch = () => {
 const handleReset = () => {
   searchKeyword.value = ''
   searchStatus.value = ''
-  searchRunStatus.value = ''
   currentPage.value = 1
   loadTableData()
 }
@@ -1072,8 +1142,6 @@ const handleAdd = () => {
     longitude: null,
     latitude: null,
     status: 1,
-    longitude: null,
-    latitude: null,
     sensorList: []
   })
   syncFormToText()
@@ -1098,8 +1166,6 @@ const handleEdit = async (row: DeviceItem) => {
     longitude: row.longitude ?? null,
     latitude: row.latitude ?? null,
     status: row.status,
-    longitude: row.longitude ?? null,
-    latitude: row.latitude ?? null,
     sensorList: []
   })
   syncFormToText()
@@ -1113,18 +1179,55 @@ const handleView = async (row: DeviceItem) => {
     currentRow.value = detail
     sensorList.value = detail.sensors || []
   }
+  operationTab.value = 'online'
+  loadOpsLogs(Number(row.id))
   detailDialogVisible.value = true
 }
 
 const handleMoreCommand = (command: string, row: DeviceItem) => {
   const map: Record<string, () => void> = {
     account: () => handleViewAuth(row),
-    toggleAuth: () => handleToggleAuthStatus(row),
+    maintenance: () => handleMaintenance(row),
     sensors: () => handleConfigSensors(row),
     copy: () => handleCopy(row),
     delete: () => handleDelete(row)
   }
   map[command]?.()
+}
+
+const handleMaintenance = (row: DeviceItem) => {
+  maintenanceDeviceId.value = row.id!
+  maintenanceDeviceName.value = row.name
+  maintenanceForm.operationType = null
+  maintenanceForm.operatorName = ''
+  maintenanceForm.operatorPhone = ''
+  maintenanceForm.operationDate = ''
+  maintenanceForm.description = ''
+  maintenanceDialogVisible.value = true
+}
+
+const handleMaintenanceSubmit = () => {
+  maintenanceFormRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return
+    if (!maintenanceDeviceId.value) return
+    maintenanceLoading.value = true
+    try {
+      await request.post(`/devices/${maintenanceDeviceId.value}/maintenance`, {
+        operationType: maintenanceForm.operationType,
+        operatorName: maintenanceForm.operatorName,
+        operatorPhone: maintenanceForm.operatorPhone || undefined,
+        operationDate: maintenanceForm.operationDate,
+        description: maintenanceForm.description || undefined
+      })
+      ElMessage.success('操作成功')
+      maintenanceDialogVisible.value = false
+      await loadTableData()
+    } catch (e: any) {
+      ElMessage.error(e?.response?.data?.msg || '操作失败')
+    } finally {
+      maintenanceLoading.value = false
+    }
+  })
 }
 
 const handleDelete = (row: DeviceItem) => {

@@ -53,6 +53,6 @@ public class DeviceQueryServiceImpl implements IDeviceQueryService {
 
     private DeviceBriefDTO toBriefDTO(Device device, String hazardPointName) {
         return new DeviceBriefDTO(device.getId(), device.getName(), device.getCode(),
-                device.getRunStatus(), device.getLastAuthIp(), device.getLastAuthTime(), hazardPointName);
+                device.getLastAuthIp(), device.getLastAuthTime(), hazardPointName);
     }
 }

@@ -53,7 +53,6 @@ public class DashboardStatService {
         DashboardOverviewVO.DeviceSummary ds = new DashboardOverviewVO.DeviceSummary();
         ds.setTotal(deviceTotal);
         ds.setByStatus(toMap(deviceStatService.countDevicesByStatus(), "status"));
-        ds.setByRunStatus(toMap(deviceStatService.countDevicesByRunStatus(), "runStatus"));
         vo.setDevice(ds);
 
         // 设备在线率：改用 device_online_status 独立表查询
