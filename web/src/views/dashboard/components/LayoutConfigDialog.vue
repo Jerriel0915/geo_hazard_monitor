@@ -102,21 +102,19 @@ export interface LayoutConfig {
 const ALL_WIDGETS: WidgetDef[] = [
   {key: 'systemHealth', label: '系统健康度'},
   {key: 'assetInfo', label: '资产情况'},
-  {key: 'alarmStatus', label: '告警态势'},
-  {key: 'hazardPointDetail', label: '隐患点详情'}
+  {key: 'alarmStatus', label: '告警态势'}
 ]
 
 const DEFAULT_LAYOUT: LayoutConfig = {
-  left: ['hazardPointDetail'],
+  left: ['systemHealth', 'assetInfo'],
   right: ['alarmStatus'],
-  hidden: ['systemHealth', 'assetInfo']
+  hidden: []
 }
 
 const WIDGET_DEFAULT_SIDE: Record<string, 'left' | 'right'> = {
   systemHealth: 'left',
   assetInfo: 'left',
-  alarmStatus: 'right',
-  hazardPointDetail: 'left'
+  alarmStatus: 'right'
 }
 
 const props = defineProps<{

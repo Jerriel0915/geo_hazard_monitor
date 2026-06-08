@@ -2,11 +2,11 @@
   <div class="dashboard-container">
     <div ref="mapContainer" class="map-container"></div>
 
-    <!-- 隐患点视图顶部标题栏 -->
-    <div v-if="currentView === 'hazard'" class="hazard-view-header">
+    <!-- 隐患点视图 / 系统视图选中隐患点 顶部标题栏 -->
+    <div v-if="currentView === 'hazard' || (currentView === 'system' && selectedHazardPoint)" class="hazard-view-header">
       <div class="hazard-title-wrapper">
         <div class="hazard-title" @click="showHazardList = !showHazardList">
-          <span class="hazard-name">{{ currentHazardPoint?.name }}</span>
+          <span class="hazard-name">{{ currentView === 'hazard' ? currentHazardPoint?.name : selectedHazardPoint?.name }}</span>
           <span class="hazard-dropdown-arrow">▼</span>
         </div>
         <div v-show="showHazardList" class="hazard-list-dropdown">
@@ -14,14 +14,21 @@
               v-for="point in hazardPoints"
               :key="point.id"
               class="hazard-list-item"
-              :class="{ active: currentHazardPoint?.id === point.id }"
+              :class="{ active: (currentView === 'hazard' ? currentHazardPoint?.id : selectedHazardPoint?.id) === point.id }"
               @click="selectHazardPoint(point)"
           >
             {{ point.name }}
           </div>
         </div>
       </div>
-      <button class="close-hazard-view-btn" @click="exitHazardView" title="返回系统视图">
+      <button v-if="currentView === 'hazard'" class="close-hazard-view-btn" @click="exitHazardView" title="返回系统视图">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <button v-else class="close-hazard-view-btn" @click="clearWidgetSelection" title="清除选择">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
           <line x1="18" y1="6" x2="6" y2="18"/>
@@ -99,8 +106,8 @@
     <DeviceDataModal
       v-if="showDeviceDataModal"
       :device="selectedDevice"
-      :hazard-point-id="currentHazardPoint?.id"
-      :hazard-point-name="currentHazardPoint?.name || '系统总览'"
+      :hazard-point-id="currentHazardPoint?.id || selectedHazardPoint?.id"
+      :hazard-point-name="currentHazardPoint?.name || selectedHazardPoint?.name || '系统总览'"
       @close="closeDeviceDataModal"
       @back-to-system-view="backToSystemView"
     />
@@ -116,20 +123,13 @@
             </svg>
           </button>
         </div>
-        <div class="panel-content">
-          <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
 
-          <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
-
-          <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" />
-
-          <!-- 隐患点详情部件 -->
-          <div v-if="isWidgetOnLeft('hazardPointDetail') && currentView === 'system'"
-               class="panel-section hazard-detail-section">
+        <!-- Selected hazard point: show hazard detail -->
+        <div v-if="selectedHazardPoint" class="panel-content">
+          <div class="panel-section hazard-detail-section">
             <div class="section-header">
               <span class="section-title">隐患点详情</span>
-              <button v-if="selectedHazardPoint" class="clear-selection-btn" @click="clearWidgetSelection"
-                      title="清除选择">
+              <button class="clear-selection-btn" @click="clearWidgetSelection" title="清除选择">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                   <line x1="18" y1="6" x2="6" y2="18"/>
@@ -138,13 +138,7 @@
               </button>
             </div>
 
-            <!-- 空状态 -->
-            <div v-if="!selectedHazardPoint" class="widget-empty-state">
-              <span class="empty-hint">点击地图标记查看隐患点详情</span>
-            </div>
-
-            <!-- 已选择隐患点 -->
-            <div v-else class="hazard-widget-content">
+            <div class="hazard-widget-content">
               <div class="widget-hazard-name">{{ selectedHazardPoint.name }}</div>
 
               <div class="hazard-detail-info">
@@ -210,8 +204,15 @@
               </button>
             </div>
           </div>
-          <!-- /隐患点详情部件 -->
+        </div>
 
+        <!-- Not selected: show widget layout (hazardPointDetail removed from configurable widgets) -->
+        <div v-else class="panel-content">
+          <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
+
+          <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
+
+          <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" />
         </div>
       </div>
     </div>
@@ -266,93 +267,6 @@
           <ResourceWidget v-if="isWidgetOnRight('assetInfo')" :resource-stats="resourceStats" />
 
           <AlarmWidget v-if="isWidgetOnRight('alarmStatus')" :alarm-stats="alarmStats" />
-
-          <!-- 隐患点详情部件 -->
-          <div v-if="isWidgetOnRight('hazardPointDetail') && currentView === 'system'"
-               class="panel-section hazard-detail-section">
-            <div class="section-header">
-              <span class="section-title">隐患点详情</span>
-              <button v-if="selectedHazardPoint" class="clear-selection-btn" @click="clearWidgetSelection"
-                      title="清除选择">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-
-            <div v-if="!selectedHazardPoint" class="widget-empty-state">
-              <span class="empty-hint">点击地图标记查看隐患点详情</span>
-            </div>
-
-            <div v-else class="hazard-widget-content">
-              <div class="widget-hazard-name">{{ selectedHazardPoint.name }}</div>
-
-              <div class="hazard-detail-info">
-                <div class="detail-row">
-                  <span class="detail-label">编号</span>
-                  <span class="detail-value">{{ selectedHazardPoint.code }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">坐标</span>
-                  <span class="detail-value">{{
-                      selectedHazardPoint.latitude.toFixed(6)
-                    }}, {{ selectedHazardPoint.longitude.toFixed(6) }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">分组</span>
-                  <span class="detail-value">{{ selectedHazardPoint.groupName || '--' }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">备注</span>
-                  <span class="detail-value detail-description">{{ selectedHazardPoint.description || '--' }}</span>
-                </div>
-              </div>
-
-              <div class="widget-device-list">
-                <div class="device-list-header">
-                  <span class="device-list-title">绑定设备</span>
-                  <span class="device-count">{{ widgetBoundDevices.length }}台</span>
-                </div>
-                <div v-if="widgetDevicesLoading" class="device-loading">加载中...</div>
-                <div v-else class="widget-device-cards">
-                  <div
-                      v-for="device in widgetBoundDevices"
-                      :key="device.id"
-                      class="device-card"
-                      @click="openDeviceDataModal(device)"
-                  >
-                    <div class="device-card-icon">
-                      <el-icon :size="22">
-                        <component :is="getDeviceTypeIcon(device.type)"/>
-                      </el-icon>
-                    </div>
-                    <div class="device-card-body">
-                      <div class="device-card-name">{{ device.name }}</div>
-                      <div class="device-card-meta">
-                        <span class="device-card-type">{{ device.typeName }}</span>
-                        <span class="device-card-sensors">{{ device.sensorCount }}个传感器</span>
-                      </div>
-                    </div>
-                    <div class="device-card-status" :class="device.status">
-                      <span class="status-dot"></span>
-                      <span class="status-text">{{
-                          device.status === 'online' ? '在线' : device.status === 'warning' ? '预警' : '离线'
-                        }}</span>
-                    </div>
-                  </div>
-                  <div v-if="widgetBoundDevices.length === 0" class="no-devices">暂无绑定设备</div>
-                </div>
-              </div>
-
-              <button class="view-detail-btn" @click="openHazardDetailFromWidget">
-                查看详情
-              </button>
-            </div>
-          </div>
-          <!-- /隐患点详情部件 -->
-
         </div>
       </div>
     </div>
@@ -480,9 +394,9 @@ const isRightPanelCollapsed = ref(false)
 
 // ========== 面板布局配置 ==========
 const DEFAULT_LAYOUT = {
-  left: ['hazardPointDetail'],
+  left: ['systemHealth', 'assetInfo'],
   right: ['alarmStatus'],
-  hidden: ['systemHealth', 'assetInfo']
+  hidden: []
 }
 
 const showLayoutDialog = ref(false)
@@ -497,7 +411,7 @@ const isWidgetOnRight = (key: string) => layoutConfig.value.right.includes(key)
 
 // 面板内容检测：当面板无可见部件时自动折叠
 const hasLeftContent = computed(() => {
-  return isWidgetOnLeft('systemHealth') || isWidgetOnLeft('assetInfo') || isWidgetOnLeft('alarmStatus')
+  return !!selectedHazardPoint.value || isWidgetOnLeft('systemHealth') || isWidgetOnLeft('assetInfo') || isWidgetOnLeft('alarmStatus')
 })
 const hasRightContent = computed(() => {
   return isWidgetOnRight('systemHealth') || isWidgetOnRight('assetInfo') || isWidgetOnRight('alarmStatus')
@@ -512,6 +426,7 @@ const showHazardList = ref(false)
 
 // 隐患点详情部件 - 软选择状态
 const selectedHazardPoint = ref<typeof hazardPoints.value[0] | null>(null)
+let savedMapView: { center: [number, number]; zoom: number } | null = null
 const widgetBoundDevices = ref<any[]>([])
 const widgetDevicesLoading = ref(false)
 
@@ -555,7 +470,7 @@ const hazardPointGroups = ref<any[]>([])
 let maskLayer: L.GeoJSON | null = null
 let boundaryLayer: L.Polyline | null = null
 let hazardMarkerLayer: L.LayerGroup | null = null
-let hazardMarkerMap: Map<number, L.CircleMarker> = new Map()
+let hazardMarkerMap: Map<number, L.Marker> = new Map()
 let ripples: Map<number, L.Circle[]> = new Map()
 
 const alarmColors: Record<string, string> = {
@@ -684,6 +599,16 @@ const toggleMaskLayer = () => {
   }
 }
 
+const createHazardIcon = (hasAlarm: boolean) => {
+  const iconUrl = hasAlarm ? '/img/sy/auto_unnormal.png' : '/img/sy/auto_normal.png'
+  return L.icon({
+    iconUrl,
+    iconSize: [32, 40],
+    iconAnchor: [16, 40],
+    popupAnchor: [0, -40]
+  })
+}
+
 const addHazardPoints = () => {
   if (!mapInstance) return
 
@@ -691,13 +616,9 @@ const addHazardPoints = () => {
   hazardMarkerLayer = markerLayer
 
   hazardPoints.value.forEach(point => {
-    const marker = L.circleMarker([point.latitude, point.longitude], {
-      radius: 10,
-      fillColor: point.alarmLevel ? alarmColors[point.alarmLevel] : '#1890ff',
-      color: '#ffffff',
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8
+    const hasAlarm = !!point.alarmLevel
+    const marker = L.marker([point.latitude, point.longitude], {
+      icon: createHazardIcon(hasAlarm)
     }).addTo(markerLayer)
 
     // 存储marker引用
@@ -745,8 +666,7 @@ const addHazardPoints = () => {
     marker.bindPopup(popupContent, {
       maxWidth: 240,
       closeButton: false,
-      autoClose: true,
-      offset: L.point(0, -15)
+      autoClose: true
     })
 
     marker.on('click', () => {
@@ -831,6 +751,12 @@ const startRipple = (point: typeof hazardPoints.value[0]) => {
 // ========== 隐患点详情部件 - 软选择逻辑 ==========
 
 const onHazardMarkerClick = async (point: typeof hazardPoints.value[0]) => {
+  // Save current map view before flying to point
+  if (mapInstance) {
+    const center = mapInstance.getCenter()
+    savedMapView = { center: [center.lat, center.lng], zoom: mapInstance.getZoom() }
+  }
+
   selectedHazardPoint.value = point
 
   // 地图缩放到隐患点
@@ -950,6 +876,16 @@ const clearWidgetSelection = () => {
   selectedHazardPoint.value = null
   widgetBoundDevices.value = []
   widgetDevicesLoading.value = false
+  // Restore all markers
+  if (mapInstance && hazardMarkerLayer) {
+    hazardMarkerLayer.clearLayers()
+    addHazardPoints()
+  }
+  // Restore map view
+  if (mapInstance && savedMapView) {
+    mapInstance.setView(savedMapView.center, savedMapView.zoom)
+    savedMapView = null
+  }
 }
 
 // ========== /隐患点详情部件 ==========
@@ -995,15 +931,16 @@ const startPointFlash = (pointId: number) => {
   const flashInterval = setInterval(() => {
     flashCount++
 
-    // 切换marker样式来模拟闪烁
-    const currentOpacity = marker.options.fillOpacity ?? 0.8
-    marker.setStyle({
-      fillOpacity: currentOpacity > 0.5 ? 0.2 : 1
-    })
+    // Toggle marker opacity to simulate flash
+    const el = marker.getElement()
+    if (el) {
+      el.style.opacity = flashCount % 2 === 0 ? '1' : '0.2'
+    }
 
     if (flashCount >= maxFlashes) {
       clearInterval(flashInterval)
-      marker.setStyle({fillOpacity: 0.8})
+      const el2 = marker.getElement()
+      if (el2) el2.style.opacity = '1'
       flashingPointId.value = null
     }
   }, 300)
@@ -1024,8 +961,11 @@ const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
   showSensorChart.value = false
   sensorList.value = []
 
-  // 清除部件软选择状态
-  clearWidgetSelection()
+  // 清除部件软选择状态（不恢复地图/标记，因为即将切换视图）
+  selectedHazardPoint.value = null
+  widgetBoundDevices.value = []
+  widgetDevicesLoading.value = false
+  savedMapView = null
 
   // 更新告警统计（限定到当前隐患点）
   updateHazardAlarms(hazardPoint.id)
@@ -1086,15 +1026,21 @@ const resetAlarmStats = () => {
 }
 
 const selectHazardPoint = (hazardPoint: typeof hazardPoints.value[0]) => {
-  currentHazardPoint.value = hazardPoint
   showHazardList.value = false
-  updateHazardAlarms(hazardPoint.id)
 
-  if (mapInstance) {
-    mapInstance.setView([hazardPoint.latitude, hazardPoint.longitude], 14)
+  if (currentView.value === 'hazard') {
+    currentHazardPoint.value = hazardPoint
+    updateHazardAlarms(hazardPoint.id)
+
+    if (mapInstance) {
+      mapInstance.setView([hazardPoint.latitude, hazardPoint.longitude], 14)
+    }
+
+    addDeviceMarkers(hazardPoint.id)
+  } else {
+    // System view: treat as soft selection via top-center dropdown
+    onHazardMarkerClick(hazardPoint)
   }
-
-  addDeviceMarkers(hazardPoint.id)
 }
 
 const addDeviceMarkers = async (hazardId: number) => {
