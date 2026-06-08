@@ -13,7 +13,10 @@ import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceService;
+import com.zwei.iot.device.service.IDeviceSessionService;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +33,7 @@ import java.util.Objects;
  * @author zwei
  */
 @Service
+@Slf4j
 public class DeviceServiceImpl implements IDeviceService {
     private static final String REGISTER_SOURCE_MANUAL = "MANUAL";
     private static final int AUTH_STATUS_ENABLED = 1;
@@ -42,19 +46,22 @@ public class DeviceServiceImpl implements IDeviceService {
     private final IDeviceHazardRelationService hazardRelationService;
     private final DeviceAuthAccountGenerator accountGenerator;
     private final DeviceAuthLogService deviceAuthLogService;
+    private final ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider;
 
     @Autowired
     public DeviceServiceImpl(DeviceMapper deviceMapper, DeviceSensorMapper sensorMapper,
                              SensorAttributeMapper attributeMapper,
                              IDeviceHazardRelationService hazardRelationService,
                              DeviceAuthAccountGenerator accountGenerator,
-                             DeviceAuthLogService deviceAuthLogService) {
+                             DeviceAuthLogService deviceAuthLogService,
+                             ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
         this.hazardRelationService = hazardRelationService;
         this.accountGenerator = accountGenerator;
         this.deviceAuthLogService = deviceAuthLogService;
+        this.deviceSessionServiceProvider = deviceSessionServiceProvider;
     }
 
     /**
@@ -290,6 +297,15 @@ public class DeviceServiceImpl implements IDeviceService {
         latest.setLastAuthIp(current.getLastAuthIp());
         latest.setAuthPassword(password);
         saveAuthAuditLog(latest, operator, clientIp, true, buildResetPasswordDetail(resetReason, forceOffline));
+        if (Boolean.TRUE.equals(forceOffline)) {
+            IDeviceSessionService sessionService = deviceSessionServiceProvider.getIfAvailable();
+            if (sessionService != null) {
+                boolean disconnected = sessionService.disconnectDevice(deviceId);
+                log.info("密码重置后强制断连 deviceId={}, result={}", deviceId, disconnected);
+            } else {
+                log.warn("IDeviceSessionService 不可用，跳过 MQTT 断连 deviceId={}", deviceId);
+            }
+        }
         return latest;
     }
 
