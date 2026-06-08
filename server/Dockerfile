@@ -14,6 +14,12 @@ COPY zwei-system/pom.xml zwei-system/
 COPY zwei-log/pom.xml zwei-log/
 COPY zwei-monitor/pom.xml zwei-monitor/
 COPY zwei-quartz/pom.xml zwei-quartz/
+COPY zwei-iot-monitor/pom.xml zwei-iot-monitor/
+COPY zwei-iot-device/pom.xml zwei-iot-device/
+COPY zwei-iot-timeseries/pom.xml zwei-iot-timeseries/
+COPY zwei-iot-broker/pom.xml zwei-iot-broker/
+COPY zwei-iot-hazard/pom.xml zwei-iot-hazard/
+COPY zwei-iot-video/pom.xml zwei-iot-video/
 COPY zwei-iot/pom.xml zwei-iot/
 COPY zwei-admin/pom.xml zwei-admin/
 
