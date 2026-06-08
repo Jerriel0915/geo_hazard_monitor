@@ -55,11 +55,6 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     }
 
     @Override
-    public List<Map<String, Object>> countDevicesByRunStatus() {
-        return deviceMapper.countByRunStatus();
-    }
-
-    @Override
     public List<Map<String, Object>> countDevicesByMonitorType() {
         return deviceMapper.countByMonitorType();
     }

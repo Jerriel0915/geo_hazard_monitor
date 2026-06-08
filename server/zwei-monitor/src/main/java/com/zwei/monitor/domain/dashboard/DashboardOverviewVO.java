@@ -20,7 +20,6 @@ public class DashboardOverviewVO {
     public static class DeviceSummary {
         private int total;
         private Map<String, Integer> byStatus;
-        private Map<String, Integer> byRunStatus;
     }
 
     @Data

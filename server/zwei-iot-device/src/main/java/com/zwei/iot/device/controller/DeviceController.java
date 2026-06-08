@@ -6,12 +6,13 @@ import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.ip.IpUtils;
 import com.zwei.iot.device.domain.Device;
+import com.zwei.iot.device.domain.DeviceOnlineEventLog;
 import com.zwei.iot.device.domain.DeviceSensor;
-import com.zwei.iot.device.domain.dto.DeviceAuthPasswordResetRequest;
-import com.zwei.iot.device.domain.dto.DeviceAuthStatusChangeRequest;
-import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
-import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
+import com.zwei.iot.device.domain.DeviceStatusLog;
+import com.zwei.iot.device.domain.dto.*;
+import com.zwei.iot.device.mapper.DeviceOnlineEventLogMapper;
 import com.zwei.iot.device.service.IDeviceService;
+import com.zwei.iot.device.service.IDeviceStatusLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -39,10 +40,15 @@ import java.util.Map;
 @RequestMapping("api/v1/devices")
 public class DeviceController extends BaseController {
     private final IDeviceService deviceService;
+    private final IDeviceStatusLogService deviceStatusLogService;
+    private final DeviceOnlineEventLogMapper onlineEventLogMapper;
 
     @Autowired
-    public DeviceController(IDeviceService deviceService) {
+    public DeviceController(IDeviceService deviceService, IDeviceStatusLogService deviceStatusLogService,
+                            DeviceOnlineEventLogMapper onlineEventLogMapper) {
         this.deviceService = deviceService;
+        this.deviceStatusLogService = deviceStatusLogService;
+        this.onlineEventLogMapper = onlineEventLogMapper;
     }
 
     /**
@@ -205,6 +211,67 @@ public class DeviceController extends BaseController {
                 IpUtils.getIpAddr()
         );
         return AjaxResult.success("状态更新成功", buildAuthAccount(device));
+    }
+
+    /**
+     * 设备维修状态操作（报修/修复/停用/恢复）
+     */
+    @PreAuthorize("@ss.hasPermi('basic:device:edit')")
+    @Log(title = "设备维修", businessType = BusinessType.UPDATE)
+    @PostMapping("/{id}/maintenance")
+    public AjaxResult maintenance(@PathVariable Long id, @Validated @RequestBody DeviceMaintenanceRequest req) {
+        Device device = deviceService.selectDeviceById(id);
+        if (device == null) return error("设备不存在");
+
+        int oldStatus = device.getStatus() != null ? device.getStatus() : 1;
+        int newStatus = resolveNewStatus(req.getOperationType(), oldStatus);
+        String statusText = switch (req.getOperationType()) {
+            case 1 -> "报修";
+            case 2 -> "修复";
+            case 3 -> "停用";
+            case 4 -> "恢复";
+            default -> "未知";
+        };
+
+        Device update = new Device();
+        update.setId(id);
+        update.setStatus(newStatus);
+        deviceService.updateDevice(update);
+
+        deviceStatusLogService.saveMaintenanceLog(id, device.getCode(), oldStatus, newStatus,
+                statusText, req.getOperatorName(), req.getOperatorPhone(),
+                req.getOperationDate(), req.getDescription(), getUsername());
+        return AjaxResult.success(statusText + "成功");
+    }
+
+    /**
+     * 获取设备维修记录
+     */
+    @PreAuthorize("@ss.hasPermi('basic:device:query')")
+    @GetMapping("/{id}/maintenance-logs")
+    public AjaxResult maintenanceLogs(@PathVariable Long id) {
+        List<DeviceStatusLog> logs = deviceStatusLogService.getLogsByDeviceId(id);
+        return AjaxResult.success("成功", logs);
+    }
+
+    private int resolveNewStatus(int operationType, int oldStatus) {
+        return switch (operationType) {
+            case 1 -> 2; // 报修 → 故障
+            case 2 -> 1; // 修复 → 正常
+            case 3 -> 3; // 停用
+            case 4 -> 1; // 恢复 → 正常
+            default -> oldStatus;
+        };
+    }
+
+    /**
+     * 获取设备上下线记录
+     */
+    @PreAuthorize("@ss.hasPermi('basic:device:query')")
+    @GetMapping("/{id}/online-logs")
+    public AjaxResult onlineLogs(@PathVariable Long id) {
+        List<DeviceOnlineEventLog> logs = onlineEventLogMapper.selectByDeviceId(id, 50);
+        return AjaxResult.success("成功", logs);
     }
 
     private Map<String, Object> buildAuthAccount(Device device) {

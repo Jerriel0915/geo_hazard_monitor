@@ -115,7 +115,6 @@ public interface DeviceMapper {
 
     List<java.util.Map<String, Object>> countByStatus();
 
-    List<java.util.Map<String, Object>> countByRunStatus();
 
     List<java.util.Map<String, Object>> countByMonitorType();
 

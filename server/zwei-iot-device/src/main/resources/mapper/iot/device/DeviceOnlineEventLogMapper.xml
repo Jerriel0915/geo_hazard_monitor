@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.device.mapper.DeviceOnlineEventLogMapper">
+    <select id="selectByDeviceId" resultType="com.zwei.iot.device.domain.DeviceOnlineEventLog">
+        SELECT id, device_id, event_type, client_id, client_ip, event_time, reason
+        FROM device_online_event_log
+        WHERE device_id = #{deviceId}
+        ORDER BY event_time DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

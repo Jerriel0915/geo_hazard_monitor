@@ -17,7 +17,6 @@ public interface IDeviceStatService {
 
     List<Map<String, Object>> countDevicesByStatus();
 
-    List<Map<String, Object>> countDevicesByRunStatus();
 
     List<Map<String, Object>> countDevicesByMonitorType();
 

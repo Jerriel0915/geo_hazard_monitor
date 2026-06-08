@@ -21,7 +21,6 @@
         <result property="icon" column="icon"/>
         <result property="iconPath" column="icon_path"/>
         <result property="status" column="status"/>
-        <result property="runStatus" column="run_status"/>
         <result property="lastReportTime" column="last_report_time"/>
         <result property="registeredAt" column="registered_at"/>
         <result property="lastAuthTime" column="last_auth_time"/>
@@ -52,7 +51,6 @@
                d.icon,
                d.icon_path,
                d.status,
-               d.run_status,
                d.last_report_time,
                d.registered_at,
                d.last_auth_time,
@@ -67,15 +65,9 @@
                CASE d.status
                    WHEN 1 THEN '正常'
                    WHEN 2 THEN '故障'
-                   WHEN 3 THEN '离线'
+                   WHEN 3 THEN '停用'
                    ELSE '未知'
-                   END AS statusName,
-               CASE d.run_status
-                   WHEN 0 THEN '未知'
-                   WHEN 1 THEN '运行中'
-                   WHEN 2 THEN '停止'
-                   ELSE '未知'
-                   END AS runStatusName
+                   END AS statusName
         FROM device d
     </sql>
 
@@ -97,9 +89,6 @@
             </if>
             <if test="status != null">
                 AND d.status = #{status}
-            </if>
-            <if test="runStatus != null">
-                AND d.run_status = #{runStatus}
             </if>
         </where>
         ORDER BY d.id DESC
@@ -228,7 +217,6 @@
             <if test="icon != null">icon = #{icon},</if>
             <if test="iconPath != null">icon_path = #{iconPath},</if>
             <if test="status != null">status = #{status},</if>
-            <if test="runStatus != null">run_status = #{runStatus},</if>
             <if test="lastReportTime != null">last_report_time = #{lastReportTime},</if>
             <if test="registeredAt != null">registered_at = #{registeredAt},</if>
             <if test="lastAuthTime != null">last_auth_time = #{lastAuthTime},</if>
@@ -284,12 +272,6 @@
         GROUP BY status
     </select>
 
-    <select id="countByRunStatus" resultType="java.util.Map">
-        SELECT run_status AS runStatus, COUNT(*) AS cnt
-        FROM device
-        WHERE del_flag = 0
-        GROUP BY run_status
-    </select>
 
     <select id="countByMonitorType" resultType="java.util.Map">
         SELECT ds.monitor_type_id AS monitorTypeId, mt.name AS monitorTypeName, COUNT(DISTINCT d.id) AS cnt

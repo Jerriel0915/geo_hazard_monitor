@@ -11,7 +11,6 @@ public class DeviceBriefDTO {
     private Long id;
     private String name;
     private String code;
-    private Integer runStatus;
     private String lastAuthIp;
     private String lastAuthTime;
     private String hazardPointName;
@@ -19,12 +18,11 @@ public class DeviceBriefDTO {
     public DeviceBriefDTO() {
     }
 
-    public DeviceBriefDTO(Long id, String name, String code, Integer runStatus,
+    public DeviceBriefDTO(Long id, String name, String code,
                           String lastAuthIp, String lastAuthTime, String hazardPointName) {
         this.id = id;
         this.name = name;
         this.code = code;
-        this.runStatus = runStatus;
         this.lastAuthIp = lastAuthIp;
         this.lastAuthTime = lastAuthTime;
         this.hazardPointName = hazardPointName;
@@ -52,14 +50,6 @@ public class DeviceBriefDTO {
 
     public void setCode(String code) {
         this.code = code;
-    }
-
-    public Integer getRunStatus() {
-        return runStatus;
-    }
-
-    public void setRunStatus(Integer runStatus) {
-        this.runStatus = runStatus;
     }
 
     public String getLastAuthIp() {
