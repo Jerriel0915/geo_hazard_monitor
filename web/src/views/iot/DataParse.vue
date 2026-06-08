@@ -434,8 +434,8 @@ const tableData = ref([
     topic: '$dp',
     description: '国标协议数据解析策略，支持多厂商设备',
     status: 1,
-    appScope: 'global',
-    vendorIds: [],
+    appScope: 'global' as string,
+    vendorIds: [] as number[],
     deviceIds: [],
     lastRunTime: '2026-06-08 14:30:25',
     scriptCode: `// 国标协议解析脚本
@@ -468,9 +468,9 @@ function parseDataPoint(payload) {
     topic: '/beidou/+/data',
     description: '北斗智联设备数据解析',
     status: 1,
-    appScope: 'vendor',
+    appScope: 'vendor' as string,
     vendorIds: [2],
-    deviceIds: [],
+    deviceIds: [] as number[],
     lastRunTime: '2026-06-08 14:25:10',
     scriptCode: '// 北斗智联协议解析\nfunction parse(message) {\n  return { deviceId: message.deviceId, data: message.data };\n}'
   },
@@ -481,8 +481,8 @@ function parseDataPoint(payload) {
     topic: '/rainfall/+/data',
     description: '雨量计设备专用解析策略',
     status: 0,
-    appScope: 'device',
-    vendorIds: [],
+    appScope: 'device' as string,
+    vendorIds: [] as number[],
     deviceIds: [2],
     lastRunTime: '2026-06-08 12:15:30',
     scriptCode: '// 雨量计解析\nfunction parse(message) {\n  return { deviceId: message.deviceId, rainfall: message.value };\n}'
@@ -701,7 +701,7 @@ const handleSubmit = () => {
       if (isEdit.value && formData.id) {
         const index = tableData.value.findIndex(item => item.id === formData.id)
         if (index !== -1) {
-          tableData.value[index] = { ...formData }
+          tableData.value[index] = { ...formData, id: formData.id!, lastRunTime: tableData.value[index].lastRunTime }
         }
       } else {
         tableData.value.push({

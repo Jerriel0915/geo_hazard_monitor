@@ -105,12 +105,10 @@
     />
 
     <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' || !hasLeftContent }">
+      <button class="panel-collapse-trigger-left" @click="togglePanel">
+        <el-icon :size="12"><component :is="isPanelCollapsed ? ArrowRight : ArrowLeft"/></el-icon>
+      </button>
       <div class="left-panel" v-if="currentView === 'system'">
-        <div class="panel-header">
-          <button class="panel-collapse-btn" @click="togglePanel">
-            <el-icon :size="16"><component :is="isPanelCollapsed ? ArrowRight : ArrowLeft"/></el-icon>
-          </button>
-        </div>
 
         <!-- Selected hazard point: show hazard detail -->
         <div v-if="selectedHazardPoint" class="panel-content">
@@ -202,45 +200,24 @@
     </div>
 
 
-    <!-- 右侧地图工具栏（独立于面板） -->
-    <div class="map-right-toolbar">
-      <div class="layer-switcher-wrapper">
-        <button class="layer-toggle-btn" @click="toggleLayerList">
-          <el-icon>
-            <MapLocation/>
-          </el-icon>
-          <span>{{ currentLayerName }}</span>
-          <span class="arrow" :class="{ expanded: showLayerList }">▼</span>
-        </button>
-
-        <div v-show="showLayerList" class="layer-dropdown">
-          <div
-              v-for="layer in layerOptions"
-              :key="layer.id"
-              class="layer-item"
-              :class="{ active: currentLayer === layer.id }"
-              @click="handleLayerSelect(layer.id)"
-          >
-            <div class="layer-preview" :style="{ background: layer.color }"></div>
-            <span>{{ layer.name }}</span>
-          </div>
-        </div>
-
-        <div class="zoom-controls">
-          <button class="zoom-btn zoom-in" @click="handleZoomIn">+</button>
-          <button class="zoom-btn zoom-out" @click="handleZoomOut">−</button>
-        </div>
-      </div>
-    </div>
+    <!-- 业务工具条 (右侧面板旁) -->
+    <MapBusinessToolbar
+      :hazard-points="hazardPoints"
+      :mask-visible="showMaskLayer"
+      :layout-dialog-visible="showLayoutDialog"
+      :right-panel-collapsed="isRightPanelCollapsed || !hasRightContent"
+      @select-hazard-point="enterHazardView"
+      @toggle-layer="toggleLayer"
+      @open-layout-config="showLayoutDialog = true"
+      @toggle-mask="toggleMaskLayer"
+    />
 
     <!-- 右侧面板 -->
     <div class="right-panel-wrapper" :class="{ collapsed: isRightPanelCollapsed || !hasRightContent }">
+      <button class="panel-collapse-trigger-right" @click="toggleRightPanel">
+        <el-icon :size="12"><component :is="isRightPanelCollapsed ? ArrowLeft : ArrowRight"/></el-icon>
+      </button>
       <div class="right-panel">
-        <div class="panel-header right-panel-header">
-          <button class="panel-collapse-btn" @click="toggleRightPanel">
-            <el-icon :size="16"><component :is="isRightPanelCollapsed ? ArrowLeft : ArrowRight"/></el-icon>
-          </button>
-        </div>
         <div class="panel-content">
           <HealthWidget v-if="isWidgetOnRight('systemHealth')" :health-stats="healthStats" />
 
@@ -258,16 +235,8 @@
       @update:layout="handleLayoutUpdate"
     />
 
-    <!-- 右下角工具栏 -->
-    <BottomToolbar
-        :hazard-points="hazardPoints"
-        :mask-visible="showMaskLayer"
-        :layout-dialog-visible="showLayoutDialog"
-        @select-hazard-point="enterHazardView"
-        @toggle-layer="toggleLayer"
-        @open-layout-config="showLayoutDialog = true"
-        @toggle-mask="toggleMaskLayer"
-    />
+    <!-- 地图辅助工具条 (底部: 比例尺+底图+图例) -->
+    <MapAuxiliaryBar :current-layer="currentLayer" @update:current-layer="handleLayerSelect" />
   </div>
 </template>
 
@@ -288,7 +257,8 @@ import {
 } from '@element-plus/icons-vue'
 import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
 import AlarmWidget from './components/AlarmWidget.vue'
-import BottomToolbar from './components/BottomToolbar.vue'
+import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
+import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
 import DeviceDataModal from './components/DeviceDataModal.vue'
 import HealthWidget from './components/HealthWidget.vue'
 import LayoutConfigDialog from './components/LayoutConfigDialog.vue'
@@ -879,22 +849,6 @@ const handleResize = () => {
   }
 }
 
-const handleZoomIn = () => {
-  if (mapInstance) {
-    mapInstance.zoomIn()
-  }
-}
-
-const handleZoomOut = () => {
-  if (mapInstance) {
-    mapInstance.zoomOut()
-  }
-}
-
-const toggleLayerList = () => {
-  showLayerList.value = !showLayerList.value
-}
-
 const toggleRightPanel = () => {
   isRightPanelCollapsed.value = !isRightPanelCollapsed.value
 }
@@ -1315,150 +1269,25 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.layer-switcher-wrapper {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 0px 0px;
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  border: 0px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
-}
-
-.layer-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(228, 231, 237, 0.7);
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-  font-size: 13px;
-  color: #303133;
-  transition: all 0.2s ease;
-}
-
-.layer-toggle-btn:hover {
-  background: #f5f7fa;
-  border-color: #1890ff;
-}
-
-.arrow {
-  font-size: 10px;
-  transition: transform 0.2s ease;
-}
-
-.arrow.expanded {
-  transform: rotate(180deg);
-}
-
-.layer-dropdown {
-  position: absolute;
-  top: 0;
-  right: calc(100% + 8px);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 140px;
-  overflow: hidden;
-}
-
-.layer-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 13px;
-  color: #303133;
-}
-
-.layer-item:hover {
-  background: #f5f7fa;
-}
-
-.layer-item.active {
-  background: #e8f4ff;
-  color: #1890ff;
-}
-
-.layer-item.active::after {
-  content: '✓';
-  margin-left: auto;
-  font-size: 12px;
-}
-
-.layer-preview {
-  width: 20px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1px solid #e8e8e8;
-}
-
-.zoom-controls {
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-}
-
-.zoom-btn {
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(228, 231, 237, 0.7);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.zoom-btn:hover {
-  background: #f5f7fa;
-  border-color: #1890ff;
-}
-
-.zoom-in {
-  color: #1890ff;
-}
-
-.zoom-out {
-  color: #67c23a;
-}
-
 .left-panel-wrapper {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 0;
+  left: 0;
   z-index: 1000;
-  display: flex;
-  align-items: flex-start;
-  transition: all 0.3s ease;
+  transition: left 0.3s ease;
 }
 
 .left-panel {
-  width: 280px;
-  max-height: calc(100vh - 40px);
+  width: 320px;
+  max-height: 100vh;
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
+  background: transparent;
+  backdrop-filter: none;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  transition: width 0.3s ease;
+  padding: 20px 8px 20px 0;
 }
 
 .left-panel-wrapper.collapsed .left-panel .panel-content {
@@ -1466,17 +1295,45 @@ onUnmounted(() => {
 }
 
 .left-panel-wrapper.collapsed .left-panel {
-  width: auto;
+  width: 0;
   min-width: unset;
+  padding: 0;
+  overflow: hidden;
 }
 
-.left-panel-wrapper.collapsed .panel-header {
-  position: sticky;
-  top: 0;
+/* 面板折叠触发按钮 - 左侧面板 */
+.panel-collapse-trigger-left {
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 20px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #606266;
+  transition: all 0.2s ease;
+}
+
+.panel-collapse-trigger-left:hover {
+  background: rgba(24, 144, 255, 0.1);
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.left-panel-wrapper.collapsed .panel-collapse-trigger-left {
+  right: 0;
 }
 
 .panel-content {
-  padding: 0;
+  padding: 0 4px;
   background: transparent;
 }
 
@@ -1516,35 +1373,35 @@ onUnmounted(() => {
   font-family: var(--font-display);
 }
 
-.panel-header {
-  display: flex;
-  align-items: center;
-  padding: 8px 10px 4px;
-}
-
-.right-panel-header {
-  justify-content: flex-end;
-}
-
-.panel-collapse-btn {
-  width: 28px;
-  height: 28px;
+/* 面板折叠触发按钮 - 右侧面板 */
+.panel-collapse-trigger-right {
+  position: absolute;
+  top: 50%;
+  left: -20px;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 20px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 6px;
   color: #606266;
-  cursor: pointer;
   transition: all 0.2s ease;
-  flex-shrink: 0;
 }
 
-.panel-collapse-btn:hover {
-  background: rgba(64, 158, 255, 0.1);
+.panel-collapse-trigger-right:hover {
+  background: rgba(24, 144, 255, 0.1);
   border-color: #1890ff;
   color: #1890ff;
+}
+
+.right-panel-wrapper.collapsed .panel-collapse-trigger-right {
+  left: 0;
 }
 
 :deep(.leaflet-attribution) {
@@ -1553,28 +1410,25 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.map-right-toolbar {
-  position: absolute;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+/* 比例尺样式覆盖 */
+:deep(.leaflet-control-scale-line) {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #303133;
+  margin: 10px;
+  line-height: 1.4;
 }
 
 .right-panel-wrapper {
   position: absolute;
-  top: 20px;
-  right: 68px;
+  top: 0;
+  right: 0;
   z-index: 1000;
-  transition: all 0.3s ease;
-}
-
-.right-panel-wrapper.collapsed {
-  right: 68px;
+  transition: right 0.3s ease;
 }
 
 .right-panel-wrapper.collapsed .right-panel .panel-content {
@@ -1582,25 +1436,23 @@ onUnmounted(() => {
 }
 
 .right-panel-wrapper.collapsed .right-panel {
-  width: auto;
+  width: 0;
   min-width: unset;
-}
-
-.right-panel-wrapper.collapsed .panel-header {
-  position: sticky;
-  top: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .right-panel {
-  width: 280px;
-  max-height: calc(100vh - 40px);
+  width: 320px;
+  max-height: 100vh;
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
+  background: transparent;
+  backdrop-filter: none;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  transition: width 0.3s ease;
+  padding: 20px 0 20px 8px;
 }
 :deep(.leaflet-control-attribution) {
   display: none !important;
