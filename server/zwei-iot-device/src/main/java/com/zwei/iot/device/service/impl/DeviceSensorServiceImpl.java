@@ -20,7 +20,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 /**
- * 传感器Service实现
+ * 传感器全生命周期管理服务。
+ *
+ * <h3>核心职责</h3>
+ * <ul>
+ *   <li><b>CRUD</b>：新增传感器（含属性列表 + IoTDB schema 预创建）、修改、逻辑删除</li>
+ *   <li><b>属性管理</b>：属性增删改，完整性校验（更新时 attrList 必须包含所有已有属性 ID）</li>
+ *   <li><b>监测内容关联</b>：{@link #populateFromContent} 根据 monitorContentId 自动回填 attrCode 和 unit，
+ *       无效/已停用的 monitorContentId 会显式抛 {@link ServiceException}</li>
+ *   <li><b>唯一性校验</b>：sensorCode 全局唯一、同传感器下 attrCode 不重复</li>
+ * </ul>
+ *
+ * <h3>IoTDB Schema 预创建</h3>
+ * 新增传感器时调用 {@code timeSeriesSchemaService.createSensorSchema()} 提前建时序，
+ * 将 DDL 从写入热路径移至注册冷路径。
  *
  * @author zwei
  */
@@ -116,6 +129,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         fillDeviceFields(sensor, requireDevice(existing.getDeviceId()));
         Long monitorTypeId = sensor.getMonitorTypeId() != null ? sensor.getMonitorTypeId() : existing.getMonitorTypeId();
         fillMonitorTypeFields(sensor, requireSensorMonitorType(monitorTypeId));
+        populateFromContent(attrList);
         validateAttributeList(attrList);
 
         int rows = sensorMapper.updateSensor(sensor);
@@ -211,8 +225,15 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         for (SensorAttribute attr : attrList) {
             if (attr.getMonitorContentId() == null) continue;
             MonitorContent mc = monitorContentService.selectMonitorContentById(attr.getMonitorContentId());
-            if (mc == null) continue;
-            if (attr.getUnit() == null || attr.getUnit().isBlank()) attr.setUnit(mc.getUnit());
+            if (mc == null) {
+                throw new ServiceException("监测内容不存在或已停用: id=" + attr.getMonitorContentId());
+            }
+            if (attr.getAttrCode() == null || attr.getAttrCode().isBlank()) {
+                attr.setAttrCode(mc.getCode());
+            }
+            if (attr.getUnit() == null || attr.getUnit().isBlank()) {
+                attr.setUnit(mc.getUnit());
+            }
         }
     }
 

@@ -25,7 +25,24 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 设备隐患点关联Service实现
+ * 设备-隐患点绑定关系管理服务。
+ *
+ * <h3>核心操作</h3>
+ * <ul>
+ *   <li><b>绑定设备</b>：基于 ON DUPLICATE KEY UPDATE 幂等绑定，已绑定设备仅更新安装位置和更新者</li>
+ *   <li><b>解绑设备</b>：按 deviceIds 批量删除绑定，原子递减 hazard_point.device_count</li>
+ *   <li><b>查询已绑定/未绑定设备</b>：支持关键词过滤（设备名/编码/传感器名模糊匹配）</li>
+ * </ul>
+ *
+ * <h3>缓存策略</h3>
+ * bind/unbind 操作均触发 {@code @CacheEvict(value = "hazardPoint", key = "#hazardPointId")}，
+ * 确保隐患点缓存及时失效。
+ *
+ * <h3>device_count 维护</h3>
+ * <ul>
+ *   <li>解绑：原子递减 {@code GREATEST(device_count - N, 0)}，基于事务内实际删除行数</li>
+ *   <li>绑定：子查询 {@code COUNT(*) FROM device_hazard_point}（并发安全考虑，避免 REPEATABLE READ 下快照漂移）</li>
+ * </ul>
  *
  * @author zwei
  */
@@ -163,6 +180,8 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
 
         // 使用 ON DUPLICATE KEY UPDATE 基于唯一键幂等操作：
         // 已绑定设备仅更新安装位置和更新者，新绑定设备插入记录。
+        // 注意：此处使用子查询 COUNT 而非预查+原子递增，因为 REPEATABLE READ
+        // 下并发 bind 无法通过快照读准确计算新增数，存在 device_count 漂移风险。
         List<DeviceHazardPoint> bindList = new ArrayList<>();
         for (Long deviceId : deviceIds) {
             DeviceHazardPoint bind = DeviceHazardPoint.builder()
@@ -199,7 +218,9 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
         validateDevicesExist(normalizedDeviceIds);
 
         int rows = deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, normalizedDeviceIds);
-        hazardPointMapper.refreshDeviceCountById(hazardPointId);
+        if (rows > 0) {
+            hazardPointMapper.decrementDeviceCount(hazardPointId, rows);
+        }
         return rows;
     }
 

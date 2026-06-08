@@ -6,9 +6,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 监测数据主题解析。
+ * MQTT 监测主题解析器。
  *
- * <p>新增正式监测主题解析规则，用于从 MQTT 主题中提取来源类型、设备ID和传感器编号。</p>
+ * <p>从监测数据上报主题中提取三要素：协议类型、设备编码、传感器编号。
+ *
+ * <h3>支持的 MQTT 主题格式</h3>
+ * <pre>
+ * sys/v1/{deviceCode}/{sensorNo}/updata   → 通用 JSON 格式
+ * gb/v1/{deviceCode}/{sensorNo}/updata    → 国标字节流格式
+ * </pre>
+ *
+ * <p>解析失败时返回 null，由上游 {@link MonitorIngestFacade} 统一处理。
  */
 @Component
 public class MonitorTopicParser {

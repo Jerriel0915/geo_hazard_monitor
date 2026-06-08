@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **编码规范 Skill**: 本项目提供 `.claude/skills/coding-standards.md`，包含注释格式、模块边界、错误处理、数据库设计约定等详细编码规范。Agent
+> 在处理本项目代码时自动加载。
+
 ## Project Overview
 
 **知微 (Zwei)** — 地质灾害监测管理系统 (Geo-Hazard Monitoring & Management System). An IoT platform that collects
@@ -193,7 +196,7 @@ web/src/
 
 ## Database Notes
 
-- MySQL schema initializes from `db/geo_hazard_monitor_v1.9.sql` on first container start
+- MySQL schema initializes from `db/geo_hazard_monitor_v1.10.sql` on first container start
 - Upgrade scripts live in `db/upgrade/`
 - IoTDB stores time-series data — tables (sequences) created dynamically on first write per device
 

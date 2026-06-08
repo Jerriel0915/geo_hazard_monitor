@@ -80,7 +80,7 @@
           <el-table-column prop="lastAlarmTime" label="最后告警时间" width="180" />
           <el-table-column prop="alarmCount" label="告警次数" width="100">
             <template #default="{ row }">
-              <span class="alarm-count" @click.stop="showAlarmList(row)">{{ row.alarmCount }}</span>
+              <span class="alarm-count" @click.stop="handleView(row)">{{ row.alarmCount }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="alarmType" label="告警类型" width="120">
@@ -121,47 +121,7 @@
     </div>
 
     <!-- 告警详情弹窗 -->
-    <el-dialog v-model="detailDialogVisible" title="告警详情" width="800px">
-      <div v-if="currentRow" class="detail-content">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="隐患点名称">{{ currentRow.hazardPointName }}</el-descriptions-item>
-          <el-descriptions-item label="告警等级">
-            <el-tag :type="getAlarmLevelType(currentRow.alarmLevel)">{{ getAlarmLevelText(currentRow.alarmLevel) }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="告警类型">{{ getAlarmTypeText(currentRow.alarmType) }}</el-descriptions-item>
-          <el-descriptions-item label="警情状态">
-            <el-tag :type="getStatusType(currentRow.status)">{{ getStatusText(currentRow.status) }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="首次告警时间">{{ currentRow.firstAlarmTime }}</el-descriptions-item>
-          <el-descriptions-item label="最后告警时间">{{ currentRow.lastAlarmTime }}</el-descriptions-item>
-          <el-descriptions-item label="告警次数">{{ currentRow.alarmCount }}</el-descriptions-item>
-          <el-descriptions-item label="响应人员">{{ currentRow.responderName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="响应时间">{{ currentRow.responseTime || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="告警内容" :span="2">{{ currentRow.alarmContent }}</el-descriptions-item>
-        </el-descriptions>
-      </div>
-      <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 告警列表弹窗 -->
-    <el-dialog v-model="alarmListDialogVisible" title="告警列表" width="900px">
-      <div class="alarm-list-table">
-        <el-table :data="currentAlarmList" style="width: 100%" border stripe>
-          <el-table-column prop="alarmTime" label="告警时间" width="180" />
-          <el-table-column prop="alarmLevel" label="告警等级" width="100">
-            <template #default="{ row }">
-              <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="alarmContent" label="告警内容" />
-        </el-table>
-      </div>
-      <template #footer>
-        <el-button @click="alarmListDialogVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
+    <AlarmDetailDialog v-model="detailDialogVisible" :data="currentRow" />
   </div>
 </template>
 
@@ -169,6 +129,7 @@
 import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {Download, View} from '@element-plus/icons-vue'
+import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
 
 // 查询参数
 const queryParams = reactive({
@@ -194,11 +155,9 @@ const tableData = ref<any[]>([])
 
 // 弹窗
 const detailDialogVisible = ref(false)
-const alarmListDialogVisible = ref(false)
 
 // 当前行
 const currentRow = ref<any>(null)
-const currentAlarmList = ref<any[]>([])
 
 // Mock 数据 - 历史告警（已处理、误报、已销警）
 const mockData = [
@@ -446,13 +405,6 @@ const handleRowClick = (row: any) => {
 const handleView = (row: any) => {
   currentRow.value = row
   detailDialogVisible.value = true
-}
-
-// 显示告警列表
-const showAlarmList = (row: any) => {
-  currentRow.value = row
-  currentAlarmList.value = row.alarmList || []
-  alarmListDialogVisible.value = true
 }
 
 // 导出

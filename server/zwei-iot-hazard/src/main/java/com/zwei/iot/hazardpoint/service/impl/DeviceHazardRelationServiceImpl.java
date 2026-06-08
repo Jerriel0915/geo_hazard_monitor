@@ -11,6 +11,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 设备-隐患点关联关系跨模块服务实现。
+ *
+ * <p>实现 zwei-iot-device 中定义的 {@link IDeviceHazardRelationService} 接口，
+ * 使 device 模块可以查询设备所属隐患点、刷新 device_count 等，
+ * 而不直接依赖 hazard 模块的 Mapper。
+ *
+ * <p>所有方法均为薄封装委托，实际数据访问由 {@link DeviceHazardPointMapper} 和
+ * {@link HazardPointMapper} 完成。
+ */
 @Service
 public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationService {
     private final DeviceHazardPointMapper deviceHazardPointMapper;

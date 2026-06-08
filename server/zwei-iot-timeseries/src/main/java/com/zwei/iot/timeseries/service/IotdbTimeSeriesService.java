@@ -21,7 +21,29 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * IoTDB 树模型读写服务，用于完成监测数据的动态建模、写入、最新值查询与区间查询。
+ * IoTDB 时序数据读写服务 — 动态建模、写入、查询。
+ *
+ * <h3>核心设计</h3>
+ * <ol>
+ *   <li><b>惰性建模</b>：首次写入/查询某个测点时自动创建 aligned timeseries，无需预先 DDL。
+ *      使用 {@code ConcurrentHashMap} 缓存已创建的 measurement 路径，避免重复建表</li>
+ *   <li><b>路径模型</b>：{@code root.{database}.d{deviceId}.s{sensorNo}.{attrCode}}</li>
+ *   <li><b>Aligned Timeseries</b>：每个传感器路径下包含业务指标列（DOUBLE+GORILLA）和质量码列（INT32+RLE），
+ *       同一时间戳的多个指标共用一个时间戳存储，节省空间</li>
+ *   <li><b>建库幂等</b>：应用启动后首个写入触发 {@code CREATE DATABASE IF NOT EXISTS}，
+ *      通过 {@code volatile databaseReady} 双重检查避免重复建库</li>
+ * </ol>
+ *
+ * <h3>查询接口</h3>
+ * <ul>
+ *   <li>{@code queryLatest} — 最新值</li>
+ *   <li>{@code queryRange} — 区间时序（支持 IoTDB 聚合函数 + 降采样间隔）</li>
+ *   <li>{@code queryRangePaged} — 分页时序（LIMIT/OFFSET）</li>
+ *   <li>{@code countRange} — 区间内数据条数</li>
+ * </ul>
+ *
+ * @see IotdbPathResolver 路径解析
+ * @see IotdbJdbcClient JDBC 连接管理
  */
 @Slf4j
 @Service
@@ -339,7 +361,14 @@ public class IotdbTimeSeriesService {
     }
 
     /**
-     * 确保 IoTDB 数据库存在（无锁，volatile 双重检查）。
+     * 确保 IoTDB 数据库存在。
+     *
+     * <p>使用 {@code volatile databaseReady} 实现无锁双重检查：
+     * <ol>
+     *   <li>若 databaseReady=true → 直接返回（热路径，无锁）</li>
+     *   <li>若 databaseReady=false → 检查数据库是否存在 → 不存在则 CREATE DATABASE</li>
+     *   <li>设置 databaseReady=true，后续调用全部走快速路径</li>
+     * </ol>
      */
     private void ensureDatabase() {
         if (databaseReady) {

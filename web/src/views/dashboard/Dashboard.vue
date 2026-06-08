@@ -103,7 +103,18 @@
             <el-icon class="device-icon">
               <DataAnalysis/>
             </el-icon>
-            <span>{{ selectedDevice?.name }} - 传感器数据</span>
+            <!-- 三级面包屑：隐患点 → 设备 → 传感器（当前层级加粗） -->
+            <div class="modal-breadcrumb">
+              <span class="crumb crumb-clickable" @click="backToSystemView" title="返回系统总览">
+                {{ currentHazardPoint?.name || '系统总览' }}
+              </span>
+              <span class="crumb-sep">/</span>
+              <span class="crumb crumb-clickable" @click="backToDeviceList" title="返回设备列表">
+                {{ selectedDevice?.name || '设备' }}
+              </span>
+              <span v-if="selectedModalSensor" class="crumb-sep">/</span>
+              <span v-if="selectedModalSensor" class="crumb crumb-current">{{ selectedModalSensor.name }}</span>
+            </div>
           </div>
           <button class="modal-close-btn" @click="closeDeviceDataModal">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1077,6 +1088,25 @@
             <Setting/>
           </el-icon>
         </button>
+
+        <!-- 蒙层开关按钮 -->
+        <button
+            class="tool-btn mask-btn"
+            @click="toggleMaskLayer"
+            :class="{ active: !showMaskLayer }"
+            :title="showMaskLayer ? '隐藏蒙层' : '显示蒙层'"
+        >
+          <svg v-if="showMaskLayer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -1196,26 +1226,26 @@ const cancelHealthPopoverHide = () => {
 const currentLayerName = ref('影像图')
 
 const healthStats = ref({
-  overallScore: 95,
+  overallScore: 0,
   items: [
-    {name: '资料完善率', value: 95, weight: 0.2, color: '#52c41a'},
-    {name: '设备在线率', value: 96, weight: 0.15, color: '#1890ff'},
-    {name: '设备正常率', value: 94, weight: 0.15, color: '#722ed1'},
-    {name: '告警及时响应率', value: 90, weight: 0.2, color: '#fa8c16'},
-    {name: '边坡稳定率', value: 97, weight: 0.3, color: '#eb2f96'}
+    {name: '资料完善率', value: 0, weight: 0.2, color: '#52c41a'},
+    {name: '设备在线率', value: 0, weight: 0.15, color: '#1890ff'},
+    {name: '设备正常率', value: 0, weight: 0.15, color: '#722ed1'},
+    {name: '告警及时响应率', value: 0, weight: 0.2, color: '#fa8c16'},
+    {name: '边坡稳定率', value: 0, weight: 0.3, color: '#eb2f96'}
   ]
 })
 
 const resourceStats = ref({
-  totalResources: 156,
-  deviceTotal: 98,
-  hazardTotal: 45,
+  totalResources: 0,
+  deviceTotal: 0,
+  hazardTotal: 0,
   deviceTypes: [
-    {name: 'GNSS接收机', count: 25},
-    {name: '雨量计', count: 18},
-    {name: '渗压计', count: 15},
-    {name: '位移计', count: 20},
-    {name: '视频设备', count: 20}
+    {name: 'GNSS接收机', count: 0},
+    {name: '雨量计', count: 0},
+    {name: '渗压计', count: 0},
+    {name: '位移计', count: 0},
+    {name: '视频设备', count: 0}
   ]
 })
 
@@ -1343,48 +1373,7 @@ const searchResults = ref<any[]>([])
 const flashingPointId = ref<number | null>(null)
 
 // 设备列表
-const deviceList = ref([
-  {
-    id: 1,
-    name: 'GNSS接收机-001',
-    type: 'GNSS',
-    typeName: 'GNSS接收机',
-    status: 'online',
-    sensorCount: 3,
-    longitude: 104.085,
-    latitude: 30.652
-  },
-  {
-    id: 2,
-    name: '雨量计-003',
-    type: 'RAIN',
-    typeName: '雨量计',
-    status: 'online',
-    sensorCount: 1,
-    longitude: 104.088,
-    latitude: 30.655
-  },
-  {
-    id: 3,
-    name: '渗压计-012',
-    type: 'PRESSURE',
-    typeName: '渗压计',
-    status: 'warning',
-    sensorCount: 2,
-    longitude: 104.082,
-    latitude: 30.658
-  },
-  {
-    id: 4,
-    name: '位移计-005',
-    type: 'DISPLACEMENT',
-    typeName: '位移计',
-    status: 'offline',
-    sensorCount: 4,
-    longitude: 104.090,
-    latitude: 30.653
-  }
-])
+const deviceList = ref<any[]>([])
 
 // 传感器列表
 const sensorList = ref<any[]>([])
@@ -1392,6 +1381,9 @@ const selectedDevice = ref<typeof deviceList.value[0] | null>(null)
 const selectedSensor = ref<any | null>(null)
 const showSensorChart = ref(false)
 const sensorChartData = ref<number[]>([])
+
+// 蒙层显示状态
+const showMaskLayer = ref(true)
 
 // 设备数据弹窗相关数据
 const showDeviceDataModal = ref(false)
@@ -1411,13 +1403,8 @@ const dataViewMode = ref<'chart' | 'table'>('chart')
 // 表格数据
 const tableData = ref<any[]>([])
 
-// 生成最近7天的模拟数据
 const generateSensorData = () => {
-  const data: number[] = []
-  for (let i = 0; i < 7; i++) {
-    data.push(Math.random() * 50 + Math.sin(i * 0.5) * 10)
-  }
-  return data
+  return []
 }
 
 // 图层设置
@@ -1458,21 +1445,21 @@ const alarmColors: Record<string, string> = {
   info: '#1890ff'
 }
 
-const alarmStats = ref({
-  pendingCount: 12,
-  historyCount: 156,
+const alarmStats = ref<{
+  pendingCount: number
+  historyCount: number
+  levelStats: { key: string; name: string; count: number }[]
+  recentAlarms: { id: number; level: string; title: string; source: string; time: string }[]
+}>({
+  pendingCount: 0,
+  historyCount: 0,
   levelStats: [
-    {key: 'critical', name: '严重', count: 3},
-    {key: 'major', name: '重要', count: 5},
-    {key: 'minor', name: '一般', count: 4},
-    {key: 'info', name: '提示', count: 8}
+    {key: 'critical', name: '严重', count: 0},
+    {key: 'major', name: '重要', count: 0},
+    {key: 'minor', name: '一般', count: 0},
+    {key: 'info', name: '提示', count: 0}
   ],
-  recentAlarms: [
-    {id: 1, level: 'critical', title: '边坡位移超限告警', source: 'K12+345 隐患点', time: '2分钟前'},
-    {id: 2, level: 'major', title: '设备离线告警', source: 'GNSS-001', time: '15分钟前'},
-    {id: 3, level: 'minor', title: '雨量超标提醒', source: '雨量计-003', time: '30分钟前'},
-    {id: 4, level: 'info', title: '数据上报延迟', source: '渗压计-012', time: '1小时前'}
-  ]
+  recentAlarms: []
 })
 
 const ringSegments = computed(() => {
@@ -1572,6 +1559,26 @@ const addMaskLayer = () => {
       weight: 0
     }
   }).addTo(mapInstance)
+}
+
+const toggleMaskLayer = () => {
+  showMaskLayer.value = !showMaskLayer.value
+  if (!maskLayer) return
+  if (showMaskLayer.value) {
+    maskLayer.setStyle({
+      fillColor: '#000000',
+      fillOpacity: 0.35,
+      color: 'transparent',
+      weight: 0
+    })
+  } else {
+    maskLayer.setStyle({
+      fillColor: 'transparent',
+      fillOpacity: 0,
+      color: 'transparent',
+      weight: 0
+    })
+  }
 }
 
 const addHazardPoints = () => {
@@ -1990,38 +1997,29 @@ const exitHazardView = () => {
 }
 
 const updateHazardAlarms = (hazardId: number) => {
-  // 模拟当前隐患点的告警数据
-  alarmStats.value.pendingCount = 3
-  alarmStats.value.historyCount = 28
+  // TODO: 从API获取当前隐患点的告警数据
+  alarmStats.value.pendingCount = 0
+  alarmStats.value.historyCount = 0
   alarmStats.value.levelStats = [
-    {key: 'critical', name: '严重', count: 1},
-    {key: 'major', name: '重要', count: 1},
-    {key: 'minor', name: '一般', count: 1},
+    {key: 'critical', name: '严重', count: 0},
+    {key: 'major', name: '重要', count: 0},
+    {key: 'minor', name: '一般', count: 0},
     {key: 'info', name: '提示', count: 0}
   ]
-  alarmStats.value.recentAlarms = [
-    {id: 1, level: 'critical', title: '位移超限告警', source: 'GNSS接收机-001', time: '5分钟前'},
-    {id: 2, level: 'major', title: '数据异常', source: '渗压计-012', time: '30分钟前'},
-    {id: 3, level: 'minor', title: '设备离线', source: '位移计-005', time: '2小时前'}
-  ]
+  alarmStats.value.recentAlarms = []
 }
 
 const resetAlarmStats = () => {
   alarmStats.value = {
-    pendingCount: 12,
-    historyCount: 156,
+    pendingCount: 0,
+    historyCount: 0,
     levelStats: [
-      {key: 'critical', name: '严重', count: 3},
-      {key: 'major', name: '重要', count: 5},
-      {key: 'minor', name: '一般', count: 4},
-      {key: 'info', name: '提示', count: 8}
+      {key: 'critical', name: '严重', count: 0},
+      {key: 'major', name: '重要', count: 0},
+      {key: 'minor', name: '一般', count: 0},
+      {key: 'info', name: '提示', count: 0}
     ],
-    recentAlarms: [
-      {id: 1, level: 'critical', title: '位移超限告警', source: 'K12+345隐患点', time: '10分钟前'},
-      {id: 2, level: 'major', title: '设备离线告警', source: 'GNSS-001', time: '15分钟前'},
-      {id: 3, level: 'minor', title: '雨量超标提醒', source: '雨量计-003', time: '30分钟前'},
-      {id: 4, level: 'info', title: '数据上报延迟', source: '渗压计-012', time: '1小时前'}
-    ]
+    recentAlarms: []
   }
 }
 
@@ -2199,12 +2197,24 @@ const closeDeviceDataModal = () => {
   showDeviceDataModal.value = false
   selectedModalSensor.value = null
   modalSensorList.value = []
-  
+
   // 销毁图表实例
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null
   }
+}
+
+// 从设备数据弹窗返回到该隐患点的设备列表（仅关闭弹窗，保留隐患点视图）
+const backToDeviceList = () => {
+  closeDeviceDataModal()
+  selectedDevice.value = null
+}
+
+// 从设备列表返回到系统总览（隐患点视图）
+const backToSystemView = () => {
+  closeDeviceDataModal()
+  exitHazardView()
 }
 
 // 选择传感器
@@ -3934,6 +3944,40 @@ onUnmounted(() => {
 
 .device-icon {
   font-size: 24px;
+}
+
+.modal-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.crumb {
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.crumb-clickable {
+  cursor: pointer;
+  color: #909399;
+}
+
+.crumb-clickable:hover {
+  background: rgba(64, 158, 255, 0.1);
+  color: #1890ff;
+}
+
+.crumb-current {
+  color: #303133;
+  font-weight: 600;
+}
+
+.crumb-sep {
+  color: #c0c4cc;
+  font-weight: 400;
 }
 
 .modal-close-btn {

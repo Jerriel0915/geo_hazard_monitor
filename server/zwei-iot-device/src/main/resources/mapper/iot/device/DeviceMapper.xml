@@ -21,6 +21,7 @@
         <result property="icon" column="icon"/>
         <result property="iconPath" column="icon_path"/>
         <result property="status" column="status"/>
+        <result property="onlineStatus" column="online_status"/>
         <result property="lastReportTime" column="last_report_time"/>
         <result property="registeredAt" column="registered_at"/>
         <result property="lastAuthTime" column="last_auth_time"/>
@@ -51,6 +52,7 @@
                d.icon,
                d.icon_path,
                d.status,
+               dos.status AS online_status,
                d.last_report_time,
                d.registered_at,
                d.last_auth_time,
@@ -69,6 +71,7 @@
                    ELSE '未知'
                    END AS statusName
         FROM device d
+                 LEFT JOIN device_online_status dos ON dos.device_id = d.id
     </sql>
 
     <!-- ==================== 查询操作 ==================== -->

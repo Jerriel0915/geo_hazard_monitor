@@ -5,8 +5,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * IoTDB 树模型路径解析。
- * <p>根据设备ID、传感器编号和指标编码动态生成 IoTDB 路径，确保数据按照预定义树模型结构写入。</p>
+ * IoTDB 时序路径解析器。
+ *
+ * <h3>路径模型</h3>
+ * <pre>
+ * 数据库:    root.{database}
+ * 传感器:    root.{database}.d{deviceId}.s{sensorNo}
+ * 指标列:    root.{database}.d{deviceId}.s{sensorNo}.{attrCode}
+ * </pre>
+ *
+ * <p>示例：设备 101 传感器 "1" 的雨量指标 → {@code root.geo_hazard.d101.s1.rainfall_hour}
+ *
+ * <p>所有 IoTDB DDL/DML 均通过此解析器生成路径，确保全链路路径格式一致。
  */
 @Component
 public class IotdbPathResolver {

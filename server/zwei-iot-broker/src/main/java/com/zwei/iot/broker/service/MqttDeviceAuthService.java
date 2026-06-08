@@ -13,8 +13,8 @@ import com.zwei.iot.broker.exception.MqttProtocolException;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceAuthLog;
-import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
+import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
@@ -255,24 +255,27 @@ public class MqttDeviceAuthService {
     /**
      * 处理设备离线事件。
      * <p>
-     * 优先按 clientId 清理当前活跃会话；若会话已被挤占或提前释放，
-     * 再回退到 username 维度补写离线状态。
+     * 优先按 clientId 清理当前活跃会话，返回会话中的 deviceId；
+     * 若会话已被挤占或提前释放，再回退到 username 维度查询。
      *
      * @param context  当前连接上下文
      * @param clientId 当前连接 clientId
      * @param username 设备认证账号
      * @param reason   离线原因
+     * @return 设备主键；无法确定时返回 null
      */
-    public void handleClientOffline(ChannelContext context, String clientId, String username, String reason) {
+    public Long handleClientOffline(ChannelContext context, String clientId, String username, String reason) {
         Optional<MqttDeviceSession> removedSession = sessionRegistry.removeByClientId(clientId);
         if (removedSession.isPresent()) {
-            return;
+            return removedSession.get().deviceId();
         }
         Device device = deviceAuthQueryService.findByAuthUsername(normalize(username));
         if (device != null) {
             log.debug("[MQTT-AUTH] Offline event fallback by username. clientId:{}, username:{}, reason:{}",
                     clientId, username, reason);
+            return device.getId();
         }
+        return null;
     }
 
     /**

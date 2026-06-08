@@ -104,6 +104,24 @@ public interface HazardPointMapper
      */
     int refreshDeviceCountById(@Param("id") Long id);
 
+    /**
+     * 原子递增隐患点设备数量
+     *
+     * @param id    隐患点ID
+     * @param delta 增量（正整数）
+     * @return 结果
+     */
+    int incrementDeviceCount(@Param("id") Long id, @Param("delta") int delta);
+
+    /**
+     * 原子递减隐患点设备数量（下限为 0）
+     *
+     * @param id    隐患点ID
+     * @param delta 减量（正整数）
+     * @return 结果
+     */
+    int decrementDeviceCount(@Param("id") Long id, @Param("delta") int delta);
+
     // ==================== 统计查询 ====================
 
     int countAll();

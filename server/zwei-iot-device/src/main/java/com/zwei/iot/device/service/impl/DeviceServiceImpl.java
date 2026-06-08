@@ -10,10 +10,10 @@ import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
-import com.zwei.iot.device.service.DeviceAuthLogService;
-import com.zwei.iot.device.service.IDeviceHazardRelationService;
-import com.zwei.iot.device.service.IDeviceService;
+import com.zwei.iot.device.service.*;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,11 +25,24 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 设备Service实现
+ * 设备全生命周期管理服务。
+ *
+ * <h3>核心职责</h3>
+ * <ul>
+ *   <li><b>设备 CRUD</b>：创建（自动生成认证账号）、更新、删除（级联传感器+属性+绑定关系）</li>
+ *   <li><b>设备复制</b>：深拷贝设备及其下所有传感器和属性（sensorCode 加 _copy 后缀防冲突）</li>
+ *   <li><b>认证账号管理</b>：查看/重置密码（支持 forceOffline 强制断连）、启停认证状态</li>
+ *   <li><b>大规模离线判定</b>：设备超过阈值时间未上报 → 标记为离线并记录审计日志</li>
+ * </ul>
+ *
+ * <h3>账号生成规则</h3>
+ * 由 {@link DeviceAuthAccountGenerator} 生成：用户名 6 位大写字母数字、密码 8 位字母数字组合。
+ * 账号生成后通过审计日志（device_auth_log）全程追溯查看/重置/启停操作。
  *
  * @author zwei
  */
 @Service
+@Slf4j
 public class DeviceServiceImpl implements IDeviceService {
     private static final String REGISTER_SOURCE_MANUAL = "MANUAL";
     private static final int AUTH_STATUS_ENABLED = 1;
@@ -42,19 +55,25 @@ public class DeviceServiceImpl implements IDeviceService {
     private final IDeviceHazardRelationService hazardRelationService;
     private final DeviceAuthAccountGenerator accountGenerator;
     private final DeviceAuthLogService deviceAuthLogService;
+    private final ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider;
+    private final IDeviceStatusLogService deviceStatusLogService;
 
     @Autowired
     public DeviceServiceImpl(DeviceMapper deviceMapper, DeviceSensorMapper sensorMapper,
                              SensorAttributeMapper attributeMapper,
                              IDeviceHazardRelationService hazardRelationService,
                              DeviceAuthAccountGenerator accountGenerator,
-                             DeviceAuthLogService deviceAuthLogService) {
+                             DeviceAuthLogService deviceAuthLogService,
+                             ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider,
+                             IDeviceStatusLogService deviceStatusLogService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
         this.hazardRelationService = hazardRelationService;
         this.accountGenerator = accountGenerator;
         this.deviceAuthLogService = deviceAuthLogService;
+        this.deviceSessionServiceProvider = deviceSessionServiceProvider;
+        this.deviceStatusLogService = deviceStatusLogService;
     }
 
     /**
@@ -290,6 +309,15 @@ public class DeviceServiceImpl implements IDeviceService {
         latest.setLastAuthIp(current.getLastAuthIp());
         latest.setAuthPassword(password);
         saveAuthAuditLog(latest, operator, clientIp, true, buildResetPasswordDetail(resetReason, forceOffline));
+        if (Boolean.TRUE.equals(forceOffline)) {
+            IDeviceSessionService sessionService = deviceSessionServiceProvider.getIfAvailable();
+            if (sessionService != null) {
+                boolean disconnected = sessionService.disconnectDevice(deviceId);
+                log.info("密码重置后强制断连 deviceId={}, result={}", deviceId, disconnected);
+            } else {
+                log.warn("IDeviceSessionService 不可用，跳过 MQTT 断连 deviceId={}", deviceId);
+            }
+        }
         return latest;
     }
 
@@ -431,6 +459,66 @@ public class DeviceServiceImpl implements IDeviceService {
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    @Override
+    @Transactional
+    public String maintenanceDevice(Long deviceId, Integer operationType, String operatorName, String operatorPhone,
+                                    String operationDate, String description, String createBy) {
+        Device device = requireDevice(deviceId);
+        int oldStatus = device.getStatus() != null ? device.getStatus() : 1;
+
+        // ── 状态转换校验 ──
+        int newStatus = resolveAndValidateStatusTransition(operationType, oldStatus);
+
+        String statusText = switch (operationType) {
+            case 1 -> "报修";
+            case 2 -> "修复";
+            case 3 -> "停用";
+            case 4 -> "恢复";
+            default -> throw new ServiceException("不支持的操作类型: " + operationType);
+        };
+
+        // ── 更新设备状态 ──
+        Device update = new Device();
+        update.setId(deviceId);
+        update.setStatus(newStatus);
+        update.setUpdateBy(createBy);
+        deviceMapper.updateDevice(update);
+
+        // ── 写入运维日志 ──
+        deviceStatusLogService.saveMaintenanceLog(deviceId, device.getCode(), oldStatus, newStatus,
+                statusText, operatorName, operatorPhone, operationDate, description, createBy);
+
+        log.info("设备维修操作完成 deviceId={}, operation={}, {}→{}, operator={}",
+                deviceId, statusText, oldStatus, newStatus, createBy);
+        return statusText;
+    }
+
+    /**
+     * 解析操作类型并校验状态转换合法性。
+     */
+    private int resolveAndValidateStatusTransition(int operationType, int oldStatus) {
+        int newStatus = switch (operationType) {
+            case 1 -> { // 报修：仅允许从 正常(1) 转入 故障(2)
+                if (oldStatus != 1) throw new ServiceException("仅正常状态的设备可以报修");
+                yield 2;
+            }
+            case 2 -> { // 修复：仅允许从 故障(2) 转入 正常(1)
+                if (oldStatus != 2) throw new ServiceException("仅故障状态的设备可以修复");
+                yield 1;
+            }
+            case 3 -> { // 停用：允许从 正常(1) 或 故障(2) 转入 停用(3)
+                if (oldStatus != 1 && oldStatus != 2) throw new ServiceException("仅正常或故障状态的设备可以停用");
+                yield 3;
+            }
+            case 4 -> { // 恢复：仅允许从 停用(3) 转入 正常(1)
+                if (oldStatus != 3) throw new ServiceException("仅停用状态的设备可以恢复");
+                yield 1;
+            }
+            default -> throw new ServiceException("不支持的操作类型: " + operationType);
+        };
+        return newStatus;
     }
 
     private String nowString() {

@@ -1,11 +1,13 @@
 package com.zwei.iot.device.service.impl;
 
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.service.DeviceAuthLogService;
-import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
+import com.zwei.iot.device.service.DeviceAuthLogService;
+import com.zwei.iot.device.service.IDeviceHazardRelationService;
+import com.zwei.iot.device.service.IDeviceSessionService;
+import com.zwei.iot.device.service.IDeviceStatusLogService;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,12 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DeviceServiceImpl 单元测试")
@@ -41,6 +42,15 @@ class DeviceServiceImplTest {
 
     @Mock
     private DeviceAuthLogService deviceAuthLogService;
+
+    @Mock
+    private ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider;
+
+    @Mock
+    private IDeviceSessionService deviceSessionService;
+
+    @Mock
+    private IDeviceStatusLogService deviceStatusLogService;
 
     @InjectMocks
     private DeviceServiceImpl service;
@@ -120,5 +130,70 @@ class DeviceServiceImplTest {
         assertEquals("NewPass1", result.getAuthPassword());
         verify(deviceMapper).updateDevice(any(Device.class));
         verify(deviceAuthLogService).save(any());
+    }
+
+    @Test
+    @DisplayName("forceOffline=true 时应调用 MQTT 断连")
+    void resetDeviceAuthPassword_forceOfflineTrue_shouldDisconnect() {
+        Device current = new Device();
+        current.setId(1L);
+        current.setAuthUsername("A1B2C3");
+        current.setAuthPassword("OldPass1");
+
+        Device latest = new Device();
+        latest.setId(1L);
+        latest.setAuthUsername("A1B2C3");
+        latest.setAuthPassword("NewPass1");
+
+        when(accountGenerator.generatePassword()).thenReturn("NewPass1");
+        when(deviceMapper.selectDeviceById(1L)).thenReturn(current, latest);
+        when(deviceSessionServiceProvider.getIfAvailable()).thenReturn(deviceSessionService);
+
+        service.resetDeviceAuthPassword(1L, "admin", "现场更换设备", true, "127.0.0.1");
+
+        verify(deviceSessionService).disconnectDevice(1L);
+    }
+
+    @Test
+    @DisplayName("forceOffline=false 时不应调用 MQTT 断连")
+    void resetDeviceAuthPassword_forceOfflineFalse_shouldNotDisconnect() {
+        Device current = new Device();
+        current.setId(1L);
+        current.setAuthUsername("A1B2C3");
+        current.setAuthPassword("OldPass1");
+
+        Device latest = new Device();
+        latest.setId(1L);
+        latest.setAuthUsername("A1B2C3");
+        latest.setAuthPassword("NewPass1");
+
+        when(accountGenerator.generatePassword()).thenReturn("NewPass1");
+        when(deviceMapper.selectDeviceById(1L)).thenReturn(current, latest);
+
+        service.resetDeviceAuthPassword(1L, "admin", "现场更换设备", false, "127.0.0.1");
+
+        verify(deviceSessionService, never()).disconnectDevice(any());
+    }
+
+    @Test
+    @DisplayName("IDeviceSessionService 不可用时不应抛异常")
+    void resetDeviceAuthPassword_serviceUnavailable_shouldNotThrow() {
+        Device current = new Device();
+        current.setId(1L);
+        current.setAuthUsername("A1B2C3");
+        current.setAuthPassword("OldPass1");
+
+        Device latest = new Device();
+        latest.setId(1L);
+        latest.setAuthUsername("A1B2C3");
+        latest.setAuthPassword("NewPass1");
+
+        when(accountGenerator.generatePassword()).thenReturn("NewPass1");
+        when(deviceMapper.selectDeviceById(1L)).thenReturn(current, latest);
+        when(deviceSessionServiceProvider.getIfAvailable()).thenReturn(null);
+
+        Device result = service.resetDeviceAuthPassword(1L, "admin", "现场更换设备", true, "127.0.0.1");
+
+        assertEquals("NewPass1", result.getAuthPassword());
     }
 }

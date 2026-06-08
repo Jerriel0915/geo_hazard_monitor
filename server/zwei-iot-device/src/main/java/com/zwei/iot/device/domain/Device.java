@@ -95,7 +95,6 @@ public class Device extends BaseEntity {
 
     /**
      * 业务状态（人工维护）: 1-正常, 2-故障, 3-停用
-     * 实时在线状态见 device_online_status 表
      */
     private Integer status;
 
@@ -103,6 +102,11 @@ public class Device extends BaseEntity {
      * 状态名称（查询时返回）
      */
     private String statusName;
+
+    /**
+     * 实时在线状态（JOIN device_online_status 表）: 1-在线, 0/null-离线
+     */
+    private Integer onlineStatus;
 
     /**
      * 最近上报时间

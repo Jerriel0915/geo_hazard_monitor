@@ -10,10 +10,25 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
- * MQTT 连接状态监听器。
- * <p>
- * 实现 {@link IMqttConnectStatusListener}，统一承接 Broker 的在线/离线回调，
- * 通过 Spring 事件机制通知在线状态服务记录运维指标。
+ * MQTT 连接状态监听器 — Broker 上下线回调入口。
+ *
+ * <p>实现 mica-mqtt 的 {@link IMqttConnectStatusListener}，统一承接 Broker 的
+ * 在线/离线回调，并转换为 Spring 事件发布。
+ *
+ * <h3>事件流</h3>
+ * <pre>
+ * Broker 连接建立 → online()
+ *   → MqttDeviceAuthService.handleClientOnline()  // 回写设备 lastAuthIp
+ *   → publishEvent(DeviceOnlineEvent)               // → DeviceOnlineStatusService 记录运维指标
+ *
+ * Broker 连接断开 → offline()
+ *   → MqttDeviceAuthService.handleClientOffline()  // 清理会话注册中心
+ *   → publishEvent(DeviceOfflineEvent)              // → DeviceOnlineStatusService 记录离线指标
+ * </pre>
+ *
+ * <h3>设计原则</h3>
+ * 监听器本身只负责事件转换和发布，不做业务处理。
+ * 实际的会话清理、状态回写等操作统一下沉到 {@link MqttDeviceAuthService}。
  *
  * @author Jerriel
  * @date: 2026-05-20
@@ -62,10 +77,14 @@ public class MqttConnectStatusListener implements IMqttConnectStatusListener {
     @Override
     public void offline(ChannelContext context, String clientId, String username, String reason) {
         try {
-            mqttDeviceAuthService.handleClientOffline(context, clientId, username, reason);
+            // 从会话注册中心直接获取 deviceId，避免依赖 context.getUserId()
+            // （服务端主动断连时 context 可能为 null 或 userId 未正确设置）
+            Long deviceId = mqttDeviceAuthService.handleClientOffline(context, clientId, username, reason);
+            String clientIp = resolveClientIp(context);
             eventPublisher.publishEvent(new DeviceOfflineEvent(
-                    resolveDeviceId(context), clientId, resolveClientIp(context), reason));
-            log.info("MqttClientOffline clientId:{}, username:{}, reason:{}", clientId, username, reason);
+                    deviceId != null ? deviceId : 0L, clientId, clientIp, reason));
+            log.info("MqttClientOffline clientId:{}, username:{}, deviceId:{}, reason:{}",
+                    clientId, username, deviceId, reason);
         } catch (Exception e) {
             log.error("处理设备离线事件失败。clientId={}, username={}", clientId, username, e);
         }

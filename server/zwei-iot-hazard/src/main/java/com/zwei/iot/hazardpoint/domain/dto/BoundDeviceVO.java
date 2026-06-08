@@ -44,6 +44,11 @@ public class BoundDeviceVO implements Serializable {
     /** 设备状态 */
     private Integer deviceStatus;
 
+    /**
+     * 实时在线状态：1=在线, 0/null=离线
+     */
+    private Integer onlineStatus;
+
     /** 传感器列表 */
     private List<SensorVO> sensors;
 
