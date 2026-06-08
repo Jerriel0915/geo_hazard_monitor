@@ -1,0 +1,50 @@
+// src/styles/variables.scss
+
+// ============ 主题色 ============
+$primary-gradient-start: #3068e4;
+$primary-gradient-end: #1e5acc;
+$success-color: #52c41a;
+$warning-color: #faad14;
+$danger-color: #f5222d;
+
+// ============ 背景色 ============
+$bg-color: #f7f8fc;
+$card-bg: #ffffff;
+
+// ============ 文字颜色 ============
+$text-primary: #1a1a2e;
+$text-secondary: #6b7280;
+$text-placeholder: #9ca3af;
+
+// ============ 边框和分割线 ============
+$border-color: #e5e7eb;
+$divider-color: #f0f0f0;
+
+// ============ 圆角 ============
+$radius-lg: 24rpx;
+$radius-md: 16rpx;
+$radius-sm: 12rpx;
+$radius-xs: 8rpx;
+
+// ============ 阴影 ============
+$shadow-card: 0 4rpx 20rpx rgba(48, 104, 228, 0.15);
+$shadow-btn: 0 2rpx 8rpx rgba(48, 104, 228, 0.3);
+
+// ============ 字体大小 ============
+$font-size-xl: 36rpx;
+$font-size-lg: 32rpx;
+$font-size-md: 28rpx;
+$font-size-sm: 24rpx;
+$font-size-xs: 20rpx;
+
+// ============ 间距 ============
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 24rpx;
+$spacing-lg: 32rpx;
+$spacing-xl: 40rpx;
+
+// ============ 动画 ============
+$transition-fast: 0.15s ease;
+$transition-normal: 0.3s ease;
+$transition-slow: 0.5s ease;

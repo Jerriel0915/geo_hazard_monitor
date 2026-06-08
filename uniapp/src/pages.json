@@ -1,0 +1,125 @@
+{
+  "pages": [
+    {
+      "path": "pages/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/index",
+      "style": {
+        "navigationBarTitleText": "事件大厅",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/hazard",
+      "style": {
+        "navigationBarTitleText": "隐患点",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/device",
+      "style": {
+        "navigationBarTitleText": "设备库",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/chart",
+      "style": {
+        "navigationBarTitleText": "监测数据",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile",
+      "style": {
+        "navigationBarTitleText": "个人中心",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/alarm-detail",
+      "style": {
+        "navigationBarTitleText": "告警详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/hazard-detail",
+      "style": {
+        "navigationBarTitleText": "隐患点详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/device-detail",
+      "style": {
+        "navigationBarTitleText": "设备详情",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#f7f8fc",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#3068e4",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "边坡监测预警",
+    "navigationStyle": "default",
+    "pullToRefresh": false,
+    "bounce": "none"
+  },
+  "tabBar": {
+    "color": "#6b7280",
+    "selectedColor": "#3068e4",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index",
+        "text": "事件大厅",
+        "iconPath": "static/icons/bell.png",
+        "selectedIconPath": "static/icons/bell-active.png"
+      },
+      {
+        "pagePath": "pages/hazard",
+        "text": "隐患点",
+        "iconPath": "static/icons/hazard.png",
+        "selectedIconPath": "static/icons/hazard-active.png"
+      },
+      {
+        "pagePath": "pages/device",
+        "text": "设备库",
+        "iconPath": "static/icons/device-tab.png",
+        "selectedIconPath": "static/icons/device-tab-active.png"
+      },
+      {
+        "pagePath": "pages/chart",
+        "text": "监测数据",
+        "iconPath": "static/icons/chart.png",
+        "selectedIconPath": "static/icons/chart-active.png"
+      },
+      {
+        "pagePath": "pages/profile",
+        "text": "个人中心",
+        "iconPath": "static/icons/user.png",
+        "selectedIconPath": "static/icons/user-active.png"
+      }
+    ]
+  },
+  "subPackages": [],
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^zui-svg-icon$": "@/uni_modules/zui-svg-icon/components/zui-svg-icon/zui-svg-icon.vue",
+      "^EmptyState$": "@/components/EmptyState.vue",
+      "^Skeleton$": "@/components/Skeleton.vue",
+      "^StatBubble$": "@/components/StatBubble.vue"
+    }
+  }
+}
