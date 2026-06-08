@@ -8,6 +8,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Login.vue')
   },
   {
+    path: '/h5/disposal/:id?',
+    name: 'H5Disposal',
+    component: () => import('@/views/alarm/H5Disposal.vue'),
+    meta: { title: 'H5在线处置' }
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('@/layout/index.vue'),
