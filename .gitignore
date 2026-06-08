@@ -10,3 +10,8 @@ web/dist/
 /.claude/settings.local.json
 .playwright-mcp/
 .mcp.json
+**/application-local.yml
+
+node_modules/
+dist
+.worktrees/
