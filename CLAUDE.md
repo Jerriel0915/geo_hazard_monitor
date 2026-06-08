@@ -196,7 +196,7 @@ web/src/
 
 ## Database Notes
 
-- MySQL schema initializes from `db/geo_hazard_monitor_v1.9.sql` on first container start
+- MySQL schema initializes from `db/geo_hazard_monitor_v1.10.sql` on first container start
 - Upgrade scripts live in `db/upgrade/`
 - IoTDB stores time-series data — tables (sequences) created dynamically on first write per device
 

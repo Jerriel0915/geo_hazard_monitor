@@ -227,7 +227,6 @@ CREATE TABLE `device`
     `icon`             varchar(200)          DEFAULT NULL COMMENT '设备图标',
     `icon_path`        varchar(500)          DEFAULT NULL COMMENT '图标路径',
     `status`           tinyint               DEFAULT '1' COMMENT '状态: 1-正常, 2-故障, 3-离线',
-    `run_status`       tinyint               DEFAULT '0' COMMENT '运行状态: 0-未知, 1-运行中, 2-停止',
     `last_report_time` datetime              DEFAULT NULL COMMENT '最近上报时间',
     `registered_at`    datetime              DEFAULT NULL COMMENT '注册时间',
     `last_auth_time`   datetime              DEFAULT NULL COMMENT '最近鉴权时间',
@@ -243,7 +242,6 @@ CREATE TABLE `device`
     UNIQUE KEY `uk_device_code` (`code`),
     UNIQUE KEY `uk_device_auth_username` (`auth_username`),
     KEY `idx_device_status` (`status`),
-    KEY `idx_device_run_status` (`run_status`),
     KEY `idx_device_del_flag` (`del_flag`),
     KEY `idx_device_register_source` (`register_source`),
     KEY `idx_device_auth_status` (`auth_status`)
@@ -262,8 +260,9 @@ LOCK TABLES `device` WRITE;
     DISABLE KEYS */;
 INSERT INTO `device`
 VALUES (1, 'test_device_001', '123456789', '测试设备001', 0, 0, 'MQTT', 'MANUAL', NULL, 'NZMX40', 'FSg4n5Z2', 1, 'bsw',
-        '/jc-icon/green/bsw_green.png', 1, 2, '2026-06-05 20:07:40', '2026-05-28 19:12:53', '2026-06-05 20:07:27',
-        '127.0.0.1', NULL, NULL, 'admin', '2026-05-28 19:12:53', 'admin', '2026-06-05 20:08:08', 0);
+        '/jc-icon/green/bsw_green.png', 1, '2026-06-05 20:07:40', '2026-05-28 19:12:53', '2026-06-05 20:07:27',
+        '127.0.0.1', 104.06332225815277, 30.66270204240837, 'admin', '2026-05-28 19:12:53', 'admin',
+        '2026-06-08 11:56:06', 0);
 /*!40000 ALTER TABLE `device`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -531,15 +530,19 @@ DROP TABLE IF EXISTS `device_status_log`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `device_status_log`
 (
-    `id`          bigint  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `device_id`   bigint  NOT NULL COMMENT '设备ID',
-    `device_code` varchar(100) DEFAULT NULL COMMENT '设备编号',
-    `old_status`  tinyint      DEFAULT NULL COMMENT '旧状态',
-    `new_status`  tinyint NOT NULL COMMENT '新状态',
-    `status_text` varchar(50)  DEFAULT NULL COMMENT '状态文本',
-    `remark`      varchar(500) DEFAULT NULL COMMENT '备注',
-    `create_by`   varchar(64)  DEFAULT NULL COMMENT '创建者',
-    `create_time` datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '记录时间',
+    `id`             bigint  NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `device_id`      bigint  NOT NULL COMMENT '设备ID',
+    `device_code`    varchar(100) DEFAULT NULL COMMENT '设备编号',
+    `old_status`     tinyint      DEFAULT NULL COMMENT '旧状态',
+    `new_status`     tinyint NOT NULL COMMENT '新状态',
+    `status_text`    varchar(50)  DEFAULT NULL COMMENT '状态文本',
+    `operator_name`  varchar(64)  DEFAULT NULL COMMENT '操作人姓名',
+    `operator_phone` varchar(20)  DEFAULT NULL COMMENT '操作人电话',
+    `operation_date` datetime     DEFAULT NULL COMMENT '操作日期',
+    `description`    varchar(500) DEFAULT NULL COMMENT '操作描述',
+    `remark`         varchar(500) DEFAULT NULL COMMENT '备注',
+    `create_by`      varchar(64)  DEFAULT NULL COMMENT '创建者',
+    `create_time`    datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '记录时间',
     PRIMARY KEY (`id`),
     KEY `idx_device_status_log_device_id` (`device_id`),
     KEY `idx_device_status_log_create_time` (`create_time`)
@@ -828,7 +831,7 @@ CREATE TABLE `log_auth_record`
     KEY `idx_log_auth_status_time` (`result_status`, `occurred_at` DESC),
     KEY `idx_log_auth_trace` (`trace_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 389
+  AUTO_INCREMENT = 403
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='认证日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -884,7 +887,7 @@ CREATE TABLE `log_operation_record`
     KEY `idx_log_operation_api_time` (`api_path`, `occurred_at` DESC),
     KEY `idx_log_operation_trace` (`trace_id`)
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 752
+  AUTO_INCREMENT = 900
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='接口调用日志';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -984,6 +987,64 @@ LOCK TABLES `log_stream_checkpoint` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `monitor_category`
+--
+
+DROP TABLE IF EXISTS `monitor_category`;
+/*!40101 SET @saved_cs_client = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `monitor_category`
+(
+    `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `code`        varchar(100) NOT NULL COMMENT '大类编码',
+    `name`        varchar(200) NOT NULL COMMENT '大类名称',
+    `icon`        varchar(200) DEFAULT NULL COMMENT '图标路径',
+    `sort_order`  int          DEFAULT '0' COMMENT '排序号',
+    `status`      tinyint      DEFAULT '1' COMMENT '状态: 0-禁用, 1-启用',
+    `create_by`   varchar(64)  DEFAULT NULL COMMENT '创建者',
+    `create_time` datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by`   varchar(64)  DEFAULT NULL COMMENT '更新者',
+    `update_time` datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `del_flag`    tinyint      DEFAULT '0' COMMENT '删除标记: 0-正常, 1-删除',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_monitor_category_code` (`code`),
+    KEY `idx_monitor_category_status` (`status`),
+    KEY `idx_monitor_category_del_flag` (`del_flag`)
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 9
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci COMMENT ='监测大类表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `monitor_category`
+--
+
+LOCK TABLES `monitor_category` WRITE;
+/*!40000 ALTER TABLE `monitor_category`
+    DISABLE KEYS */;
+INSERT INTO `monitor_category`
+VALUES (1, 'RAINFALL', '雨量', '/jc-icon/green/wj_green.png', 1, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0),
+       (2, 'DISPLACEMENT', '位移', '/jc-icon/green/jsd_green.png', 2, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0),
+       (3, 'TEMPERATURE', '温湿度', '/jc-icon/green/ky_green.png', 3, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0),
+       (4, 'WATER_LEVEL', '水位', '/jc-icon/green/sg_green.png', 4, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0),
+       (5, 'CRACK', '裂缝', '/jc-icon/green/jsd_green.png', 5, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0),
+       (6, 'INCLINATION', '倾斜', '/jc-icon/green/nw_green.png', 6, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0),
+       (7, 'SOIL_TEMP', '地温', '/jc-icon/green/gnss_green.png', 7, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0),
+       (8, 'SOIL_MOISTURE', '含水率', '/jc-icon/green/lf_green.png', 8, 1, 'system', '2026-06-06 14:48:47', NULL,
+        '2026-06-06 14:48:47', 0);
+/*!40000 ALTER TABLE `monitor_category`
+    ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `monitor_content`
 --
 
@@ -1056,52 +1117,6 @@ VALUES (1, 1, 'rainfall_hour', '小时雨量', 'mm', 'yl', NULL, 0.00, 500.00, 0
 UNLOCK TABLES;
 
 --
--- Table structure for table `monitor_data`
---
-
-DROP TABLE IF EXISTS `monitor_data`;
-/*!40101 SET @saved_cs_client = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `monitor_data`
-(
-    `id`              bigint         NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `hazard_point_id` bigint         NOT NULL COMMENT '隐患点ID',
-    `device_id`       bigint         NOT NULL COMMENT '设备ID',
-    `device_code`     varchar(100) DEFAULT NULL COMMENT '设备编号',
-    `sensor_id`       bigint         NOT NULL COMMENT '传感器ID',
-    `sensor_code`     varchar(100) DEFAULT NULL COMMENT '传感器编号',
-    `monitor_type_id` bigint         NOT NULL COMMENT '监测类型ID',
-    `attr_code`       varchar(100)   NOT NULL COMMENT '属性编码',
-    `attr_name`       varchar(200) DEFAULT NULL COMMENT '属性名称',
-    `value`           decimal(12, 2) NOT NULL COMMENT '监测值',
-    `unit`            varchar(50)  DEFAULT NULL COMMENT '单位',
-    `direction`       varchar(10)  DEFAULT NULL COMMENT '方向: X/Y/Z',
-    `data_time`       datetime       NOT NULL COMMENT '数据时间',
-    `quality`         tinyint      DEFAULT '0' COMMENT '数据质量: 0-正常, 1-可疑, 2-无效',
-    `create_by`       varchar(64)  DEFAULT NULL COMMENT '创建者',
-    `create_time`     datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`id`),
-    KEY `idx_monitor_data_hp_id` (`hazard_point_id`),
-    KEY `idx_monitor_data_device_id` (`device_id`),
-    KEY `idx_monitor_data_sensor_id` (`sensor_id`),
-    KEY `idx_monitor_data_data_time` (`data_time`)
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci COMMENT ='监测数据表';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `monitor_data`
---
-
-LOCK TABLES `monitor_data` WRITE;
-/*!40000 ALTER TABLE `monitor_data`
-    DISABLE KEYS */;
-/*!40000 ALTER TABLE `monitor_data`
-    ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `monitor_type`
 --
 
@@ -1112,8 +1127,8 @@ CREATE TABLE `monitor_type`
 (
     `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `code`        varchar(100) NOT NULL COMMENT '监测类型编码',
+    `category_id` bigint DEFAULT NULL COMMENT '监测大类ID',
     `name`        varchar(200) NOT NULL COMMENT '监测类型名称',
-    `device_type` tinyint      DEFAULT '1' COMMENT '设备类型: 1-直连设备, 2-传感器, 3-RTU',
     `icon`        varchar(200) DEFAULT NULL COMMENT '图标路径',
     `description` varchar(500) DEFAULT NULL COMMENT '描述',
     `sort_order`  int          DEFAULT '0' COMMENT '排序号',
@@ -1125,9 +1140,9 @@ CREATE TABLE `monitor_type`
     `del_flag`    tinyint      DEFAULT '0' COMMENT '删除标记: 0-正常, 1-删除',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_monitor_type_code` (`code`),
-    KEY `idx_monitor_type_device_type` (`device_type`),
     KEY `idx_monitor_type_status` (`status`),
-    KEY `idx_monitor_type_del_flag` (`del_flag`)
+    KEY `idx_monitor_type_del_flag` (`del_flag`),
+    KEY `idx_monitor_type_category` (`category_id`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 10
   DEFAULT CHARSET = utf8mb4
@@ -1142,24 +1157,24 @@ LOCK TABLES `monitor_type` WRITE;
 /*!40000 ALTER TABLE `monitor_type`
     DISABLE KEYS */;
 INSERT INTO `monitor_type`
-VALUES (1, 'JCLX001', '雨量监测', 2, '/jc-icon/green/wj_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 11:48:01', 0),
-       (2, 'JCLX002', '位移监测', 2, '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 10:57:29', 0),
-       (3, 'JCLX003', '温湿度监测', 2, '/jc-icon/green/ky_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 11:42:05', 0),
-       (4, 'JCLX004', '水位监测', 2, '/jc-icon/green/sg_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 11:42:12', 0),
-       (5, 'JCLX005', '裂缝监测', 2, '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 10:50:24', 0),
-       (6, 'JCLX006', '倾斜监测', 2, '/jc-icon/green/nw_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 11:42:17', 0),
-       (7, 'JCLX007', '地温监测', 2, '/jc-icon/green/gnss_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 11:42:24', 0),
-       (8, 'JCLX008', '含水率监测', 2, '/jc-icon/green/lf_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
-        '2026-05-22 11:42:28', 0),
-       (9, 'JCXL456', '测试', 1, '/jc-icon/green/wj_green.png', '', 0, 1, 'admin', '2026-05-21 20:28:01', 'admin',
-        '2026-05-22 10:57:42', 0);
+VALUES (1, 'JCLX001', 1, '雨量监测', '/jc-icon/green/wj_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (2, 'JCLX002', 2, '位移监测', '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (3, 'JCLX003', 3, '温湿度监测', '/jc-icon/green/ky_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (4, 'JCLX004', 4, '水位监测', '/jc-icon/green/sg_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (5, 'JCLX005', 5, '裂缝监测', '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (6, 'JCLX006', 6, '倾斜监测', '/jc-icon/green/nw_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (7, 'JCLX007', 7, '地温监测', '/jc-icon/green/gnss_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (8, 'JCLX008', 8, '含水率监测', '/jc-icon/green/lf_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+        '2026-06-06 14:48:48', 0),
+       (9, 'JCXL456', 2, '测试', '/jc-icon/green/wj_green.png', '', 0, 1, 'admin', '2026-05-21 20:28:01', 'admin',
+        '2026-06-06 14:48:48', 0);
 /*!40000 ALTER TABLE `monitor_type`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -1261,25 +1276,25 @@ DROP TABLE IF EXISTS `sensor_attribute`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sensor_attribute`
 (
-    `id`                  bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `sensor_id`           bigint       NOT NULL COMMENT '传感器ID',
-    `attr_code`           varchar(100) NOT NULL COMMENT '属性编码',
-    `attr_name`           varchar(200) NOT NULL COMMENT '属性名称',
-    `indicator_type`      varchar(50)    DEFAULT NULL COMMENT '指标类型',
-    `indicator_type_name` varchar(100)   DEFAULT NULL COMMENT '指标类型名称',
-    `initial_value`       decimal(12, 2) DEFAULT NULL COMMENT '初始值',
-    `unit`                varchar(50)    DEFAULT NULL COMMENT '单位',
-    `range_min`           decimal(12, 2) DEFAULT NULL COMMENT '最小值范围',
-    `range_max`           decimal(12, 2) DEFAULT NULL COMMENT '最大值范围',
-    `icon`                varchar(500)   DEFAULT NULL COMMENT '图标路径',
-    `create_by`           varchar(64)    DEFAULT NULL COMMENT '创建者',
-    `create_time`         datetime       DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_by`           varchar(64)    DEFAULT NULL COMMENT '更新者',
-    `update_time`         datetime       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `id`                 bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `sensor_id`          bigint       NOT NULL COMMENT '传感器ID',
+    `monitor_content_id` bigint         DEFAULT NULL COMMENT '监测内容ID',
+    `attr_code`          varchar(100) NOT NULL COMMENT '属性编码',
+    `attr_name`          varchar(200) NOT NULL COMMENT '属性名称',
+    `initial_value`      decimal(12, 2) DEFAULT NULL COMMENT '初始值',
+    `unit`               varchar(50)    DEFAULT NULL COMMENT '单位',
+    `range_min`          decimal(12, 2) DEFAULT NULL COMMENT '最小值范围',
+    `range_max`          decimal(12, 2) DEFAULT NULL COMMENT '最大值范围',
+    `icon`               varchar(500)   DEFAULT NULL COMMENT '图标路径',
+    `create_by`          varchar(64)    DEFAULT NULL COMMENT '创建者',
+    `create_time`        datetime       DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by`          varchar(64)    DEFAULT NULL COMMENT '更新者',
+    `update_time`        datetime       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_sensor_attr_code` (`sensor_id`, `attr_code`),
     KEY `idx_sensor_attr_sensor_id` (`sensor_id`),
-    KEY `idx_sensor_attr_attr_code` (`attr_code`)
+    KEY `idx_sensor_attr_attr_code` (`attr_code`),
+    KEY `idx_sensor_attr_content` (`monitor_content_id`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 6
   DEFAULT CHARSET = utf8mb4
@@ -1294,10 +1309,10 @@ LOCK TABLES `sensor_attribute` WRITE;
 /*!40000 ALTER TABLE `sensor_attribute`
     DISABLE KEYS */;
 INSERT INTO `sensor_attribute`
-VALUES (4, 2, 'rainfall_hour', '小时雨量', 'yl', '压力', 0.00, 'mm', 0.00, 500.00, NULL, 'admin', '2026-05-29 15:32:42',
-        NULL, '2026-05-29 15:32:42'),
-       (5, 2, 'rainfall_day', '日雨量', 'yl', '压力', 0.00, 'mm', 0.00, 1000.00, NULL, 'admin', '2026-05-29 15:32:42',
-        NULL, '2026-05-29 15:32:42');
+VALUES (4, 2, 1, 'rainfall_hour', '小时雨量', 0.00, 'mm', 0.00, 500.00, NULL, 'admin', '2026-05-29 15:32:42', NULL,
+        '2026-06-06 14:48:48'),
+       (5, 2, 2, 'rainfall_day', '日雨量', 0.00, 'mm', 0.00, 1000.00, NULL, 'admin', '2026-05-29 15:32:42', NULL,
+        '2026-06-06 14:48:48');
 /*!40000 ALTER TABLE `sensor_attribute`
     ENABLE KEYS */;
 UNLOCK TABLES;
@@ -2332,7 +2347,7 @@ LOCK TABLES `sys_user` WRITE;
     DISABLE KEYS */;
 INSERT INTO `sys_user`
 VALUES (1, 103, 'admin', '若依', '00', 'ry@163.com', '15888888888', '1', '',
-        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-05 19:22:28',
+        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-08 11:39:31',
         '2026-05-08 22:05:52', 'admin', '2026-05-08 22:05:52', '', NULL, '管理员'),
        (2, 105, 'ry', '若依', '00', 'ry@qq.com', '15666666666', '1', '',
         '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-06-03 17:06:03',
@@ -2517,4 +2532,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION = @OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES = @OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-05 20:13:03
+-- Dump completed on 2026-06-08 17:32:18

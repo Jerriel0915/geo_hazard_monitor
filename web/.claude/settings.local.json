@@ -6,6 +6,12 @@
       "Bash(git add:*)",
       "Bash(GIT_EDITOR=true git rebase:*)",
       "Bash(npx vue-tsc *)"
+      "Bash(GIT_EDITOR=true git rebase:*)",
+      "Read(//d/Code/Projects/geo_hazard_monitor/server/**)",
+      "Bash(mvn compile *)",
+      "Bash(mvn test *)",
+      "Read(//d/Code/Projects/geo_hazard_monitor/.claude/**)",
+      "Read(//d/Code/Projects/geo_hazard_monitor/**)"
     ]
   }
 }
