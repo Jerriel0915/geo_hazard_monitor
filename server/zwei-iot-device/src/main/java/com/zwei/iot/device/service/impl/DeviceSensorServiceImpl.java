@@ -116,6 +116,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         fillDeviceFields(sensor, requireDevice(existing.getDeviceId()));
         Long monitorTypeId = sensor.getMonitorTypeId() != null ? sensor.getMonitorTypeId() : existing.getMonitorTypeId();
         fillMonitorTypeFields(sensor, requireSensorMonitorType(monitorTypeId));
+        populateFromContent(attrList);
         validateAttributeList(attrList);
 
         int rows = sensorMapper.updateSensor(sensor);
@@ -211,8 +212,15 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         for (SensorAttribute attr : attrList) {
             if (attr.getMonitorContentId() == null) continue;
             MonitorContent mc = monitorContentService.selectMonitorContentById(attr.getMonitorContentId());
-            if (mc == null) continue;
-            if (attr.getUnit() == null || attr.getUnit().isBlank()) attr.setUnit(mc.getUnit());
+            if (mc == null) {
+                throw new ServiceException("监测内容不存在或已停用: id=" + attr.getMonitorContentId());
+            }
+            if (attr.getAttrCode() == null || attr.getAttrCode().isBlank()) {
+                attr.setAttrCode(mc.getCode());
+            }
+            if (attr.getUnit() == null || attr.getUnit().isBlank()) {
+                attr.setUnit(mc.getUnit());
+            }
         }
     }
 

@@ -163,6 +163,8 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
 
         // 使用 ON DUPLICATE KEY UPDATE 基于唯一键幂等操作：
         // 已绑定设备仅更新安装位置和更新者，新绑定设备插入记录。
+        // 注意：此处使用子查询 COUNT 而非预查+原子递增，因为 REPEATABLE READ
+        // 下并发 bind 无法通过快照读准确计算新增数，存在 device_count 漂移风险。
         List<DeviceHazardPoint> bindList = new ArrayList<>();
         for (Long deviceId : deviceIds) {
             DeviceHazardPoint bind = DeviceHazardPoint.builder()
@@ -199,7 +201,9 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
         validateDevicesExist(normalizedDeviceIds);
 
         int rows = deviceHazardPointMapper.deleteByDeviceIdsAndHazardPointId(hazardPointId, normalizedDeviceIds);
-        hazardPointMapper.refreshDeviceCountById(hazardPointId);
+        if (rows > 0) {
+            hazardPointMapper.decrementDeviceCount(hazardPointId, rows);
+        }
         return rows;
     }
 
