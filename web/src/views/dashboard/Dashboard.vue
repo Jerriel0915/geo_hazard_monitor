@@ -22,18 +22,10 @@
         </div>
       </div>
       <button v-if="currentView === 'hazard'" class="close-hazard-view-btn" @click="exitHazardView" title="返回系统视图">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
+        <el-icon :size="18"><Close/></el-icon>
       </button>
       <button v-else class="close-hazard-view-btn" @click="clearWidgetSelection" title="清除选择">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
+        <el-icon :size="18"><Close/></el-icon>
       </button>
     </div>
 
@@ -116,11 +108,7 @@
       <div class="left-panel" v-if="currentView === 'system'">
         <div class="panel-header">
           <button class="panel-collapse-btn" @click="togglePanel">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-              <polyline v-if="isPanelCollapsed" points="9 18 15 12 9 6"/>
-              <polyline v-else points="15 18 9 12 15 6"/>
-            </svg>
+            <el-icon :size="16"><component :is="isPanelCollapsed ? ArrowRight : ArrowLeft"/></el-icon>
           </button>
         </div>
 
@@ -130,11 +118,7 @@
             <div class="section-header">
               <span class="section-title">隐患点详情</span>
               <button class="clear-selection-btn" @click="clearWidgetSelection" title="清除选择">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
+                <el-icon :size="14"><Close/></el-icon>
               </button>
             </div>
 
@@ -254,11 +238,7 @@
       <div class="right-panel">
         <div class="panel-header right-panel-header">
           <button class="panel-collapse-btn" @click="toggleRightPanel">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-              <polyline v-if="isRightPanelCollapsed" points="15 18 9 12 15 6"/>
-              <polyline v-else points="9 18 15 12 9 6"/>
-            </svg>
+            <el-icon :size="16"><component :is="isRightPanelCollapsed ? ArrowLeft : ArrowRight"/></el-icon>
           </button>
         </div>
         <div class="panel-content">
@@ -297,6 +277,9 @@ import {computed, onMounted, onUnmounted, ref} from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
+  ArrowLeft,
+  ArrowRight,
+  Close,
   Drizzling,
   MapLocation,
   Monitor,

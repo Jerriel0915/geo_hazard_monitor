@@ -1,7 +1,10 @@
 <template>
   <div class="panel-section resource-section">
     <div class="section-header">
-      <span class="section-title">资产情况</span>
+      <span class="section-title-group">
+        <el-icon class="section-icon" :size="18"><Box/></el-icon>
+        <span class="section-title">资产情况</span>
+      </span>
     </div>
     <div class="resource-compact">
       <div class="resource-main">
@@ -21,10 +24,7 @@
         <div class="resource-breakdown">
           <div class="breakdown-item hazard">
             <div class="breakdown-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-              </svg>
+              <el-icon :size="14" color="#faad14"><Location/></el-icon>
             </div>
             <div class="breakdown-info">
               <span class="breakdown-value">{{ resourceStats.hazardTotal }}</span>
@@ -33,12 +33,7 @@
           </div>
           <div class="breakdown-item device">
             <div class="breakdown-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                <circle cx="12" cy="12" r="3"/>
-                <path
-                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
+              <el-icon :size="14" color="#52c41a"><Setting/></el-icon>
             </div>
             <div class="breakdown-info">
               <span class="breakdown-value">{{ resourceStats.deviceTotal }}</span>
@@ -61,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+import { Box, Location, Setting } from '@element-plus/icons-vue'
 defineProps<{
   resourceStats: {
     totalResources: number
@@ -102,6 +98,16 @@ defineProps<{
   font-size: 13px;
   font-weight: 600;
   color: #303133;
+}
+
+.section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-icon {
+  color: #52c41a;
 }
 
 .resource-compact {

@@ -4,11 +4,7 @@
       <div class="layout-config-header">
         <span class="layout-config-title">面板布局配置</span>
         <button class="layout-config-close" @click="close">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
+          <el-icon :size="16"><Close/></el-icon>
         </button>
       </div>
       <div class="layout-config-body">
@@ -27,11 +23,7 @@
                 <span class="widget-drag-handle">⠿</span>
                 <span>{{ widget.label }}</span>
                 <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
+                  <el-icon :size="12"><Close/></el-icon>
                 </button>
               </div>
               <div v-if="leftWidgets.length === 0" class="drop-hint">拖拽模块到此处</div>
@@ -50,11 +42,7 @@
                 <span class="widget-drag-handle">⠿</span>
                 <span>{{ widget.label }}</span>
                 <button class="widget-remove" @click="moveWidget(widget.key, null)" title="隐藏">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
+                  <el-icon :size="12"><Close/></el-icon>
                 </button>
               </div>
               <div v-if="rightWidgets.length === 0" class="drop-hint">拖拽模块到此处</div>
@@ -86,7 +74,7 @@
 
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
-import {RefreshLeft} from '@element-plus/icons-vue'
+import {Close, RefreshLeft} from '@element-plus/icons-vue'
 
 export interface WidgetDef {
   key: string

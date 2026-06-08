@@ -1,7 +1,10 @@
 <template>
   <div class="panel-section alarm-section">
     <div class="section-header">
-      <span class="section-title">告警态势</span>
+      <span class="section-title-group">
+        <el-icon class="section-icon" :size="18"><Bell/></el-icon>
+        <span class="section-title">告警态势</span>
+      </span>
     </div>
     <div class="alarm-summary">
       <div class="alarm-summary-item">
@@ -38,6 +41,8 @@
 </template>
 
 <script setup lang="ts">
+import { Bell } from '@element-plus/icons-vue'
+
 interface LevelStat {
   key: string
   name: string
@@ -98,6 +103,16 @@ defineProps<{
   font-size: 15px;
   font-weight: 600;
   color: #1d2129;
+}
+
+.section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-icon {
+  color: #f5222d;
 }
 
 .alarm-summary {
