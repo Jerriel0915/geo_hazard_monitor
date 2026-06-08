@@ -15,7 +15,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 隐患点分组管理
+ * 隐患点分组管理服务。
+ *
+ * <h3>核心规则</h3>
+ * <ul>
+ *   <li>删除分组前校验子隐患点数量，非空分组禁止删除（含批量删除）</li>
+ *   <li>列表查询时批量回填各分组的隐患点数量（{@link #enrichPointCounts}），避免 N+1</li>
+ *   <li>更新时 merge 策略：未传入的 code/name 字段保持原值</li>
+ * </ul>
  *
  * @author zwei
  */

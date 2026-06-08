@@ -8,10 +8,26 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 维护 MQTT 设备鉴权会话。
- * <p>
- * 同时以 deviceId 与 clientId 建立双索引，便于在鉴权成功、重复登录挤占、
- * 连接离线和发布鉴权时快速定位当前活跃会话。
+ * MQTT 设备会话注册中心 — 维护当前所有活跃连接的内存索引。
+ *
+ * <h3>数据结构</h3>
+ * 双 {@link ConcurrentHashMap} 索引，O(1) 查找：
+ * <ul>
+ *   <li><b>deviceSessions</b>：Long deviceId → MqttDeviceSession（按设备定位）</li>
+ *   <li><b>clientSessions</b>：String clientId → MqttDeviceSession（按连接定位）</li>
+ * </ul>
+ *
+ * <h3>关键并发语义</h3>
+ * 所有写操作（register/removeByClientId）均为 {@code synchronized}，
+ * 保证双索引之间的一致性。读操作（getByClientId/getByDeviceId）无锁。
+ *
+ * <h3>会话生命周期</h3>
+ * <pre>
+ * CONNECT 鉴权成功 → register()         → 写入双索引（若同设备旧连接则清除旧 clientId）
+ * 数据上报鉴权     → getByClientId()    → 只读
+ * DISCONNECT/超时  → removeByClientId() → 仅当 deviceSessions 仍指向该 clientId 时才清除 device 索引
+ * 密码重置断连     → getByDeviceId()    → DeviceSessionServiceImpl.disconnectDevice()
+ * </pre>
  */
 @Component
 public class MqttDeviceSessionRegistry {

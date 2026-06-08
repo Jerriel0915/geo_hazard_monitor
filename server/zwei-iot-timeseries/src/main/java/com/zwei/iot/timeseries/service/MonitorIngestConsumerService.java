@@ -23,9 +23,27 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Redis Stream 异步消费与 IoTDB 落库。
- * <p>
- * 包括缓冲消费、去重、重试和死信处理逻辑，可用于打通 MQTT 入队后的异步可靠写入链路。
+ * 监测数据异步消费者 — Redis Stream → IoTDB 落库。
+ *
+ * <h3>职责</h3>
+ * <ol>
+ *   <li>应用启动后自动创建 Redis Stream 消费组，单线程轮询消费</li>
+ *   <li>基于 device_id + sensor_no + attr_code + data_time + payload_hash 幂等去重</li>
+ *   <li>写入 IoTDB 成功后回写运维指标（device_online_status.last_report_at、device_sensor.last_report_time）</li>
+ *   <li>写入失败 → 三段退避重试（可配置延迟秒数列表）→ 超限进入死信队列</li>
+ * </ol>
+ *
+ * <h3>数据流</h3>
+ * <pre>
+ * MQTT PUBLISH → MonitorIngestFacade.ingest()
+ *   → MonitorPayloadParser.parse() → List&lt;StandardMeasurementPoint&gt;
+ *   → MonitorIngestStreamService.enqueue() → Redis Stream
+ *   → [本消费者] processRecord() → IoTDB / 重试 / 死信
+ * </pre>
+ *
+ * <h3>线程模型</h3>
+ * 消费线程为单线程 daemon（monitor-ingest-consumer），通过 {@code volatile running} 控制启停。
+ * 应用关闭时 {@code @PreDestroy} 触发优雅停止：设置 running=false → shutdownNow → awaitTermination(5s)。
  */
 @Slf4j
 @Service
@@ -135,6 +153,15 @@ public class MonitorIngestConsumerService {
     /**
      * 处理单条 Stream 消息。
      *
+     * <p>核心消费逻辑——阶段顺序：</p>
+     * <ol>
+     *   <li><b>反序列化</b>：从 Stream record 还原 StandardMeasurementPoint</li>
+     *   <li><b>幂等去重</b>：基于 Redis SETNX，重复消息直接 ACK 跳过</li>
+     *   <li><b>IoTDB 写入</b>：惰性创建时序 schema + 写入测点</li>
+     *   <li><b>运维指标回写</b>：更新 device_online_status.last_report_at + device_sensor.last_report_time</li>
+     *   <li><b>失败重试</b>：三段退避 → 超限进入死信队列</li>
+     * </ol>
+     *
      * @param record Stream 记录
      */
     private void processRecord(MapRecord<Object, Object, Object> record) {
@@ -142,12 +169,18 @@ public class MonitorIngestConsumerService {
         int retryCount = Integer.parseInt(String.valueOf(record.getValue().getOrDefault("retryCount", "0")));
         StandardMeasurementPoint point = JSON.parseObject(payload, StandardMeasurementPoint.class);
         try {
+            // ── 阶段1: 幂等去重 ──
+            // 去重键 = device_id:sensor_no:attr_code:data_time:payload_hash
+            // 利用 Redis SETNX 原子操作保证 TTL 窗口内同一条数据只落库一次
             if (isDuplicate(point)) {
                 ack(record);
                 return;
             }
+            // ── 阶段2: IoTDB 时序写入 ──
+            // writePoints 内部惰性建表：首次写入自动创建 aligned timeseries + 质量码列
             iotdbTimeSeriesService.writePoints(List.of(point));
-            // IoTDB 写入成功 → 更新运维指标
+            // ── 阶段3: 运维指标回写 ──
+            // 三个维度：device_online_status（实时在线状态）、device_sensor（传感器活跃率）、device（兼容保留）
             deviceOnlineStatusService.updateLastReportAt(point.deviceId());
             if (point.sensorId() != null) {
                 String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -166,6 +199,8 @@ public class MonitorIngestConsumerService {
                     new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(point.dataTime())));
             ack(record);
         } catch (Exception e) {
+            // ── 阶段4: 退避重试 / 死信 ──
+            // 三段退避（默认 3s/9s/27s），超限进入死信队列供人工排查
             if (retryCount >= properties.getRetryDelaysSeconds().size()) {
                 streamService.enqueueDeadLetter(point, e.getMessage());
                 ack(record);
@@ -173,6 +208,7 @@ public class MonitorIngestConsumerService {
             }
             long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
             sleep(delaySeconds);
+            // 重试次数 +1 后重新入队，等待下一轮消费
             record.getValue().put("retryCount", String.valueOf(retryCount + 1));
             redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
             ack(record);

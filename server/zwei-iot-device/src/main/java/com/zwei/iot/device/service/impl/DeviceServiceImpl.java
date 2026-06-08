@@ -28,7 +28,19 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 设备Service实现
+ * 设备全生命周期管理服务。
+ *
+ * <h3>核心职责</h3>
+ * <ul>
+ *   <li><b>设备 CRUD</b>：创建（自动生成认证账号）、更新、删除（级联传感器+属性+绑定关系）</li>
+ *   <li><b>设备复制</b>：深拷贝设备及其下所有传感器和属性（sensorCode 加 _copy 后缀防冲突）</li>
+ *   <li><b>认证账号管理</b>：查看/重置密码（支持 forceOffline 强制断连）、启停认证状态</li>
+ *   <li><b>大规模离线判定</b>：设备超过阈值时间未上报 → 标记为离线并记录审计日志</li>
+ * </ul>
+ *
+ * <h3>账号生成规则</h3>
+ * 由 {@link DeviceAuthAccountGenerator} 生成：用户名 6 位大写字母数字、密码 8 位字母数字组合。
+ * 账号生成后通过审计日志（device_auth_log）全程追溯查看/重置/启停操作。
  *
  * @author zwei
  */

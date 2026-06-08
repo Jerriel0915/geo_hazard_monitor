@@ -17,12 +17,12 @@ import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.DeviceRegistrationLogService;
 import com.zwei.iot.device.service.IDeviceRegistryService;
+import com.zwei.iot.device.service.ITimeSeriesSchemaService;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
-import com.zwei.iot.device.service.ITimeSeriesSchemaService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +33,29 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 设备注册中心服务
+ * 设备自注册服务 — 设备侧通过 API 主动注册到平台。
+ *
+ * <h3>注册流程</h3>
+ * <ol>
+ *   <li><b>幂等校验</b>：通过 requestId 查注册日志，已成功 → 返回已有设备；已失败 → 拒绝</li>
+ *   <li><b>注册码验证</b>：校验 registerCode 是否在配置的允许列表中</li>
+ *   <li><b>SN 冲突检测</b>：同 SN 设备已存在 → 校验请求一致性并返回已有设备（支持设备重注册）</li>
+ *   <li><b>设备创建</b>：生成认证账号（6位用户名+8位密码）、分配 deviceCode</li>
+ *   <li><b>传感器创建</b>：按 monitorTypes 为每个监测类型创建一个传感器 + 对应属性；
+ *       若有子设备则递归创建（sensorNo = childSn + "_" + baseSensorNo）</li>
+ *   <li><b>IoTDB Schema 预创建</b>：在注册冷路径预建时序，避免写入热路径触发 DDL</li>
+ * </ol>
+ *
+ * <h3>注册日志</h3>
+ * 每次注册均写入 device_registration_log（含请求原文 payload 快照），
+ * 成功记录 deviceId，失败记录 failureReason，便于追溯。
+ *
+ * <h3>传感器标识生成规则</h3>
+ * <ul>
+ *   <li>sensorNo = monitorTypes[].sid（设备内唯一）</li>
+ *   <li>sensorCode = deviceCode + "_" + sensorNo（全局唯一，冲突时追加 _N 后缀）</li>
+ *   <li>子设备传感器：sensorNo = childSn + "_" + baseSensorNo</li>
+ * </ul>
  */
 @Service
 public class DeviceRegistryServiceImpl implements IDeviceRegistryService {

@@ -17,6 +17,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * MQTT 订阅权限校验器。
+ *
+ * <p>拦截设备侧 SUBSCRIBE 请求，仅允许设备订阅所属传感器对应的主题：
+ * {@code sys/v1/{deviceCode}/{sensorNo}/updata}。
+ *
+ * <h3>校验流程</h3>
+ * <ol>
+ *   <li>topic 非空 + 前缀 "sys/v1/" 快速过滤</li>
+ *   <li>严格正则匹配（字母数字 + _ -，64 字符上限）</li>
+ *   <li>数据库存在性校验：按 deviceCode + sensorNo 查 device_sensor 表</li>
+ * </ol>
+ *
+ * <p>注意：主题第二段为 sensor_no（设备内唯一），非 sensor_code（全局唯一）。
+ * 查询时按 sensor_no 而非 sensor_code 定位传感器。
  *
  * @author Jerriel
  * @date: 2026-05-20

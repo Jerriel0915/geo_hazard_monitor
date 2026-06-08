@@ -15,6 +15,15 @@ import java.util.Map;
 /**
  * Redis Stream 缓冲写入服务。
  *
+ * <p>作为 MQTT 解析链路与 IoTDB 异步消费链路之间的缓冲层：
+ * <ul>
+ *   <li>{@link #enqueue} — 将标准化时序点 JSON 序列化后写入主消费流（stream:monitor:ingest），
+ *       附带 retryCount=0 初始标记</li>
+ *   <li>{@link #enqueueDeadLetter} — 写入失败超过重试上限的测点进入死信流，
+ *       附带失败原因供人工排查</li>
+ * </ul>
+ *
+ * <p>主消费流由 {@link MonitorIngestConsumerService} 异步轮询消费。
  */
 @Service
 public class MonitorIngestStreamService {
