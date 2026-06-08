@@ -76,6 +76,13 @@
             <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="在线状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.onlineStatus === 1 ? 'success' : 'info'" effect="plain">
+              {{ row.onlineStatus === 1 ? '在线' : '离线' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="lastReportTime" label="最近上报" width="180" align="center">
           <template #default="{ row }">
             <span v-if="row.lastReportTime">{{ row.lastReportTime }}</span>
@@ -340,6 +347,11 @@
             </el-descriptions-item>
             <el-descriptions-item label="设备状态">
               <el-tag :type="getStatusType(currentRow?.status || 0)" size="small">{{ currentRow?.statusName }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="在线状态">
+              <el-tag :type="currentRow?.onlineStatus === 1 ? 'success' : 'info'" size="small">
+                {{ currentRow?.onlineStatus === 1 ? '在线' : '离线' }}
+              </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="最近上报时间">{{ currentRow?.lastReportTime || '-' }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ currentRow?.createTime || '-' }}</el-descriptions-item>

@@ -18,6 +18,7 @@ export interface DeviceItem {
   iconPath?: string
   status: number
   statusName?: string
+    onlineStatus?: number
   lastReportTime?: string
   registeredAt?: string
   lastAuthTime?: string
