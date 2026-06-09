@@ -23,8 +23,8 @@
                 <circle cx="40" cy="40" r="8" fill="white" opacity="0.8"/>
                 <defs>
                   <linearGradient id="logoGrad" x1="10" y1="5" x2="70" y2="75" gradientUnits="userSpaceOnUse">
-                    <stop stop-color="#FF7043"/>
-                    <stop offset="1" stop-color="#FF5722"/>
+                    <stop stop-color="#42a5f5"/>
+                    <stop offset="1" stop-color="#1e88e5"/>
                   </linearGradient>
                 </defs>
               </svg>
@@ -422,9 +422,9 @@ onUnmounted(() => {
 <style scoped>
 /* CSS Variables */
 :root {
-  --primary: #FF7043;
-  --primary-dark: #FF5722;
-  --primary-light: #FFAB91;
+  --primary: #1890ff;
+  --primary-dark: #096dd9;
+  --primary-light: #40a9ff;
   --bg-light: #FAFAFA;
   --text-dark: #1a1a2e;
   --text-muted: #6B7280;
@@ -451,7 +451,7 @@ onUnmounted(() => {
 .login-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #FF7043 100%);
+  background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 50%, #1565c0 100%);
   overflow: hidden;
 }
 
@@ -485,7 +485,7 @@ onUnmounted(() => {
   height: 250px;
   bottom: -50px;
   right: 20%;
-  background: linear-gradient(135deg, rgba(255,112,67,0.2), rgba(255,112,67,0.05));
+  background: linear-gradient(135deg, rgba(30,136,229,0.2), rgba(30,136,229,0.05));
   animation-delay: -10s;
 }
 
@@ -705,7 +705,7 @@ onUnmounted(() => {
 .input-wrapper:focus-within {
   border-color: var(--primary);
   background: white;
-  box-shadow: 0 0 0 3px rgba(255, 112, 67, 0.15), 0 2px 6px rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.15), 0 2px 6px rgba(0,0,0,0.06);
 }
 
 .input-prefix {
@@ -817,7 +817,7 @@ onUnmounted(() => {
 .login-btn {
   width: 100%;
   padding: 16px;
-  background: linear-gradient(135deg, #FF7043 0%, #E64A19 50%, #FF5722 100%);
+  background: #1890ff;
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -826,7 +826,7 @@ onUnmounted(() => {
   letter-spacing: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 87, 34, 0.4), 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 15px rgba(24, 144, 255, 0.4), 0 2px 6px rgba(0,0,0,0.1);
   text-shadow: 0 1px 2px rgba(0,0,0,0.2);
   position: relative;
   overflow: hidden;
@@ -845,8 +845,8 @@ onUnmounted(() => {
 
 .login-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 87, 34, 0.5), 0 4px 10px rgba(0,0,0,0.15);
-  background: linear-gradient(135deg, #FF8A65 0%, #FF7043 50%, #E64A19 100%);
+  box-shadow: 0 8px 25px rgba(24, 144, 255, 0.5), 0 4px 10px rgba(0,0,0,0.15);
+  background: #40a9ff;
 }
 
 .login-btn:hover::before {
@@ -855,7 +855,7 @@ onUnmounted(() => {
 
 .login-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
 }
 
 /* WeChat Login */
