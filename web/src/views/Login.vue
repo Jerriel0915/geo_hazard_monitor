@@ -79,16 +79,6 @@
               <h2>欢迎回来</h2>
               <p>请登录您的账户继续</p>
             </div>
-            <!-- QR Code Button -->
-            <div class="qr-trigger" title="扫码登录" @click="showQR = !showQR">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                   stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="7"/>
-                <rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/>
-                <rect x="3" y="14" width="7" height="7"/>
-              </svg>
-            </div>
           </div>
 
           <!-- Login Tabs -->
@@ -299,20 +289,6 @@
             </div>
           </div>
 
-          <!-- Divider -->
-          <div class="divider" v-if="loginMethod !== 'wechat'">
-            <span>或</span>
-          </div>
-
-          <!-- Enterprise SSO -->
-          <button class="sso-btn" v-if="loginMethod !== 'wechat'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                 stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <path d="M12 8v8M8 12h8"/>
-            </svg>
-            企业账号登录
-          </button>
         </div>
       </div>
     </div>
@@ -322,40 +298,6 @@
       <p>Copyright © 2024 地质灾害监测预警系统 All Rights Reserved</p>
     </div>
 
-    <!-- QR Modal -->
-    <div class="qr-modal" v-if="showQR" @click.self="showQR = false">
-      <div class="qr-modal-content">
-        <div class="qr-modal-header">
-          <span>微信扫码登录</span>
-          <button class="qr-close" @click="showQR = false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                 stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="qr-modal-body">
-          <div class="qr-display">
-            <div class="qr-placeholder">
-              <svg viewBox="0 0 200 200" class="qrcode-svg">
-                <rect width="200" height="200" fill="white"/>
-                <rect x="30" y="30" width="30" height="30" fill="#333"/>
-                <rect x="30" y="140" width="30" height="30" fill="#333"/>
-                <rect x="140" y="30" width="30" height="30" fill="#333"/>
-                <rect x="155" y="155" width="15" height="15" fill="#333"/>
-                <rect x="140" y="155" width="15" height="15" fill="#333"/>
-                <rect x="155" y="140" width="15" height="15" fill="#333"/>
-                <rect x="70" y="70" width="60" height="60" fill="white"/>
-                <rect x="80" y="80" width="40" height="40" fill="#333"/>
-                <rect x="92" y="92" width="16" height="16" fill="white"/>
-              </svg>
-            </div>
-          </div>
-          <p class="qr-tip">打开微信扫一扫登录</p>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -369,7 +311,6 @@ const router = useRouter()
 
 const loginFormRef = ref()
 const loginMethod = ref('account')
-const showQR = ref(false)
 const showPassword = ref(false)
 
 // 登录表单数据
@@ -707,32 +648,6 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-.qr-trigger {
-  width: 44px;
-  height: 44px;
-  background: var(--bg-light);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.qr-trigger:hover {
-  background: var(--primary);
-}
-
-.qr-trigger:hover svg {
-  stroke: white;
-}
-
-.qr-trigger svg {
-  width: 22px;
-  height: 22px;
-  stroke: var(--text-dark);
-}
-
 /* Login Tabs */
 .login-tabs {
   display: flex;
@@ -943,27 +858,6 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
 }
 
-/* Divider */
-.divider {
-  display: flex;
-  align-items: center;
-  margin: 28px 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border-light);
-}
-
-.divider span {
-  padding: 0 16px;
-}
-
 /* WeChat Login */
 .wechat-section {
   padding: 20px 0;
@@ -1003,35 +897,6 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-/* SSO Button */
-.sso-btn {
-  width: 100%;
-  padding: 14px;
-  background: white;
-  border: 2px solid var(--border-light);
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-dark);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: var(--transition);
-}
-
-.sso-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: #FFF5F2;
-}
-
-.sso-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
 /* Footer */
 .login-footer {
   position: absolute;
@@ -1045,86 +910,6 @@ onUnmounted(() => {
 .login-footer p {
   font-size: 12px;
   color: rgba(255,255,255,0.7);
-}
-
-/* QR Modal */
-.qr-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  animation: fadeIn 0.3s ease;
-}
-
-.qr-modal-content {
-  background: white;
-  border-radius: 20px;
-  padding: 32px;
-  width: 360px;
-  box-shadow: var(--card-shadow);
-}
-
-.qr-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-dark);
-}
-
-.qr-close {
-  width: 32px;
-  height: 32px;
-  background: var(--bg-light);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition);
-}
-
-.qr-close:hover {
-  background: #FEE2E2;
-}
-
-.qr-close svg {
-  width: 18px;
-  height: 18px;
-  stroke: var(--text-muted);
-}
-
-.qr-display {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.qr-placeholder {
-  width: 200px;
-  height: 200px;
-  background: white;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.qrcode-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.qr-tip {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 14px;
 }
 
 /* Responsive */
