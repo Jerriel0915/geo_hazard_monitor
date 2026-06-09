@@ -23,7 +23,7 @@ public class AlarmStreamController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('iot:alarm-record:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
     public SseEmitter subscribe() {
         return streamPublisher.subscribe();
     }

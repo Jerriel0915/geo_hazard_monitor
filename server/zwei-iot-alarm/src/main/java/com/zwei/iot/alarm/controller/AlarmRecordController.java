@@ -29,7 +29,7 @@ public class AlarmRecordController extends BaseController {
     }
 
     @GetMapping("/pending")
-    @PreAuthorize("hasAuthority('iot:alarm-record:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
     public TableDataInfo pending(AlarmRecord record) {
         startPage();
         List<AlarmRecord> list = alarmRecordService.selectPendingList(record);
@@ -37,7 +37,7 @@ public class AlarmRecordController extends BaseController {
     }
 
     @GetMapping("/history")
-    @PreAuthorize("hasAuthority('iot:alarm-record:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
     public TableDataInfo history(AlarmRecord record) {
         startPage();
         List<AlarmRecord> list = alarmRecordService.selectHistoryList(record);
@@ -45,19 +45,19 @@ public class AlarmRecordController extends BaseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-record:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
     public AjaxResult getById(@PathVariable Long id) {
         return success(alarmRecordService.selectById(id));
     }
 
     @PutMapping("/{id}/dispose")
-    @PreAuthorize("hasAuthority('iot:alarm-record:dispose')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:dispose')")
     public AjaxResult dispose(@PathVariable Long id, @RequestBody AlarmRecordDisposeRequest request) {
         return toAjax(alarmRecordService.dispose(id, request.getStatus(), request.getNote(), getUsername()));
     }
 
     @PostMapping("/batch")
-    @PreAuthorize("hasAuthority('iot:alarm-record:batch')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:batch')")
     public AjaxResult batchDispose(@RequestBody BatchDisposeRequest request) {
         return toAjax(alarmRecordService.batchDispose(
                 request.getIds().toArray(new Long[0]),
@@ -66,7 +66,7 @@ public class AlarmRecordController extends BaseController {
     }
 
     @GetMapping("/{id}/logs")
-    @PreAuthorize("hasAuthority('iot:alarm-record:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
     public AjaxResult getLogs(@PathVariable Long id) {
         List<AlarmRecordLog> logs = alarmRecordService.selectLogsByAlarmId(id);
         return success(logs);

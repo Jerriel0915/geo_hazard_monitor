@@ -96,6 +96,10 @@ export interface AlarmCriteriaItem {
     redDescription?: string
     persistCount: number
     silencePeriod: number
+    /** 各级别独立持续触发次数 (level -> count) */
+    levelPersistCount?: Record<number, number>
+    /** 各级别独立静默周期 (level -> period) */
+    levelSilencePeriod?: Record<number, number>
     isEnabled: number
     version: number
     createTime: string
@@ -120,6 +124,10 @@ export interface AlarmCriteriaCreatePayload {
     redDescription?: string
     persistCount?: number
     silencePeriod?: number
+    /** 各级别独立持续触发次数 (level -> count) */
+    levelPersistCount?: Record<number, number>
+    /** 各级别独立静默周期 (level -> period) */
+    levelSilencePeriod?: Record<number, number>
     isEnabled?: number
 }
 

@@ -27,7 +27,7 @@ public class AlarmDispatchController extends BaseController {
     }
 
     @GetMapping("/list")
-    @PreAuthorize("hasAuthority('iot:alarm-dispatch:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-dispatch:list')")
     public TableDataInfo list(AlarmDispatchRule rule) {
         startPage();
         List<AlarmDispatchRule> list = dispatchService.selectList(rule);
@@ -35,13 +35,13 @@ public class AlarmDispatchController extends BaseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-dispatch:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-dispatch:list')")
     public AjaxResult getById(@PathVariable Long id) {
         return success(dispatchService.selectById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('iot:alarm-dispatch:create')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-dispatch:create')")
     public AjaxResult create(@RequestBody DispatchRuleCreateRequest request) {
         AlarmDispatchRule rule = AlarmDispatchRule.builder()
                 .name(request.getName())
@@ -58,7 +58,7 @@ public class AlarmDispatchController extends BaseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-dispatch:update')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-dispatch:update')")
     public AjaxResult update(@PathVariable Long id, @RequestBody DispatchRuleCreateRequest request) {
         AlarmDispatchRule rule = AlarmDispatchRule.builder()
                 .id(id)
@@ -76,7 +76,7 @@ public class AlarmDispatchController extends BaseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-dispatch:delete')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-dispatch:delete')")
     public AjaxResult delete(@PathVariable Long id) {
         return toAjax(dispatchService.delete(id));
     }

@@ -28,7 +28,7 @@ public class AlarmCriteriaController extends BaseController {
     }
 
     @GetMapping("/list")
-    @PreAuthorize("hasAuthority('iot:alarm-criteria:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:list')")
     public TableDataInfo list(AlarmCriteria criteria) {
         startPage();
         List<AlarmCriteria> list = criteriaService.selectList(criteria);
@@ -36,13 +36,13 @@ public class AlarmCriteriaController extends BaseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-criteria:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:list')")
     public AjaxResult getById(@PathVariable Long id) {
         return success(criteriaService.selectById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('iot:alarm-criteria:create')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:create')")
     public AjaxResult create(@RequestBody CriteriaCreateRequest request) {
         AlarmCriteria criteria = AlarmCriteria.builder()
                 .name(request.getName())
@@ -70,7 +70,7 @@ public class AlarmCriteriaController extends BaseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-criteria:update')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:update')")
     public AjaxResult update(@PathVariable Long id, @RequestBody CriteriaCreateRequest request) {
         AlarmCriteria criteria = AlarmCriteria.builder()
                 .id(id)
@@ -98,19 +98,19 @@ public class AlarmCriteriaController extends BaseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-criteria:delete')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:delete')")
     public AjaxResult delete(@PathVariable Long id) {
         return toAjax(criteriaService.delete(id));
     }
 
     @PutMapping("/{id}/toggle")
-    @PreAuthorize("hasAuthority('iot:alarm-criteria:toggle')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:toggle')")
     public AjaxResult toggle(@PathVariable Long id, @RequestParam Integer isEnabled) {
         return toAjax(criteriaService.toggle(id, isEnabled));
     }
 
     @GetMapping("/{id}/logs")
-    @PreAuthorize("hasAuthority('iot:alarm-criteria:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:list')")
     public AjaxResult getLogs(@PathVariable Long id) {
         List<AlarmCriteriaLog> logs = criteriaService.selectLogsByCriteriaId(id);
         return success(logs);

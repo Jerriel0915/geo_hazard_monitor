@@ -27,7 +27,7 @@ public class AlarmStrategyController extends BaseController {
     }
 
     @GetMapping("/list")
-    @PreAuthorize("hasAuthority('iot:alarm-strategy:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
     public TableDataInfo list(AlarmStrategy strategy) {
         startPage();
         List<AlarmStrategy> list = strategyService.selectList(strategy);
@@ -35,13 +35,13 @@ public class AlarmStrategyController extends BaseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-strategy:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
     public AjaxResult getById(@PathVariable Long id) {
         return success(strategyService.selectById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('iot:alarm-strategy:create')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:create')")
     public AjaxResult create(@RequestBody StrategyCreateRequest request) {
         AlarmStrategy strategy = AlarmStrategy.builder()
                 .name(request.getName())
@@ -61,7 +61,7 @@ public class AlarmStrategyController extends BaseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-strategy:update')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:update')")
     public AjaxResult update(@PathVariable Long id, @RequestBody StrategyCreateRequest request) {
         AlarmStrategy strategy = AlarmStrategy.builder()
                 .id(id)
@@ -82,19 +82,19 @@ public class AlarmStrategyController extends BaseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:alarm-strategy:delete')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:delete')")
     public AjaxResult delete(@PathVariable Long id) {
         return toAjax(strategyService.delete(id));
     }
 
     @PutMapping("/{id}/toggle")
-    @PreAuthorize("hasAuthority('iot:alarm-strategy:toggle')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:toggle')")
     public AjaxResult toggle(@PathVariable Long id, @RequestParam Integer isEnabled) {
         return toAjax(strategyService.toggle(id, isEnabled));
     }
 
     @GetMapping("/{id}/scope")
-    @PreAuthorize("hasAuthority('iot:alarm-strategy:list')")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
     public AjaxResult getScope(@PathVariable Long id) {
         return success(strategyService.getHazardPointIds(id));
     }
