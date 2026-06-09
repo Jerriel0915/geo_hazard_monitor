@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-container">
-    <div ref="mapContainer" class="map-container"></div>
+    <div ref="mapContainer" class="map-container" :style="{ '--scale-left': devicePanelLeftOffset + 12 + 'px' }"></div>
 
     <!-- 隐患点视图 / 系统视图选中隐患点 顶部标题栏 -->
     <div v-if="currentView === 'hazard' || (currentView === 'system' && currentHazardPoint)" class="hazard-view-header">
@@ -65,6 +65,7 @@
     <MapBusinessToolbar
       :hazard-points="hazardPoints"
       :mask-visible="showMaskLayer"
+      :legend-visible="showLegend"
       :layout-dialog-visible="showLayoutDialog"
       :right-panel-collapsed="isRightPanelCollapsed || !hasRightContent"
       :groups="hazardPointGroups"
@@ -72,6 +73,7 @@
       @toggle-layers="handleLayerToggle"
       @open-layout-config="showLayoutDialog = true"
       @toggle-mask="toggleMaskLayer"
+      @toggle-legend="showLegend = !showLegend"
       @reset-view="resetMapView"
     />
 
@@ -87,7 +89,7 @@
         <HazardAlarmWidget v-else-if="currentHazardPoint" :hazard-point-id="currentHazardPoint.id" />
         <!-- 默认系统视图：Widget 布局 -->
         <template v-else>
-          <div class="panel-content">
+          <div class="panel-content panel-content-scroll">
             <HealthWidget v-if="isWidgetOnRight('systemHealth')" :health-stats="healthStats" />
             <ResourceWidget v-if="isWidgetOnRight('assetInfo')" :resource-stats="resourceStats" />
             <AlarmWidget v-if="isWidgetOnRight('alarmStatus')" :alarm-stats="alarmStats" />
@@ -104,7 +106,7 @@
     />
 
     <!-- 地图辅助工具条 (底部: 比例尺+底图+图例) -->
-    <MapAuxiliaryBar :current-layer="currentLayer" :monitor-types="monitorTypes" @update:current-layer="handleLayerSelect" />
+    <MapAuxiliaryBar :current-layer="currentLayer" :monitor-types="monitorTypes" :right-panel-offset="devicePanelRightOffset" :legend-visible="showLegend" @update:current-layer="handleLayerSelect" />
   </div>
 </template>
 
@@ -268,18 +270,19 @@ const selectedSensor = ref<any | null>(null)
 
 // 设备数据面板偏移量：跟随左右面板折叠状态
 const devicePanelLeftOffset = computed(() => {
-  if (isPanelCollapsed.value || !hasLeftContent.value) return 24 + 12  // trigger + gap
-  return 12 + 320 + 24 + 12  // left + panel + trigger + gap
+  if (isPanelCollapsed.value || !hasLeftContent.value) return 24  // trigger
+  return 12 + 320 + 24  // left + panel + trigger
 })
 const devicePanelRightOffset = computed(() => {
-  if (isRightPanelCollapsed.value || !hasRightContent.value) return 24 + 12
-  return 12 + 320 + 24 + 12
+  if (isRightPanelCollapsed.value || !hasRightContent.value) return 24
+  return 12 + 320 + 24
 })
 const showSensorChart = ref(false)
 const sensorChartData = ref<number[]>([])
 
 // 蒙层显示状态
 const showMaskLayer = ref(false)
+const showLegend = ref(true)
 
 const generateSensorData = () => {
   return []
@@ -1240,6 +1243,7 @@ onUnmounted(() => {
   z-index: 1000;
   overflow: visible;
   transition: left 0.3s ease;
+  pointer-events: none;
 }
 
 .left-panel {
@@ -1277,6 +1281,7 @@ onUnmounted(() => {
   right: -24px;
   transform: translateY(-50%);
   z-index: 10;
+  pointer-events: auto;
   width: 24px;
   height: 56px;
   background: linear-gradient(to right, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
@@ -1312,6 +1317,7 @@ onUnmounted(() => {
   background: transparent;
   height: 100%;
   overflow-y: auto;
+  pointer-events: auto;
 }
 
 .panel-section {
@@ -1359,6 +1365,7 @@ onUnmounted(() => {
   left: -24px;
   transform: translateY(-50%);
   z-index: 10;
+  pointer-events: auto;
   width: 24px;
   height: 56px;
   background: linear-gradient(to left, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
@@ -1399,7 +1406,7 @@ onUnmounted(() => {
 :deep(.leaflet-bottom.leaflet-right) {
   display: flex !important;
   right: auto;
-  left: auto;
+  left: var(--scale-left, 12px);
   bottom: 28px;
 }
 
@@ -1444,6 +1451,7 @@ onUnmounted(() => {
   z-index: 1000;
   overflow: visible;
   transition: right 0.3s ease;
+  pointer-events: none;
 }
 
 .right-panel-wrapper.collapsed {
@@ -1463,8 +1471,8 @@ onUnmounted(() => {
 
 .right-panel {
   width: 320px;
-  max-height: 100vh;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
   background: transparent;
   backdrop-filter: none;
   border-radius: 0;

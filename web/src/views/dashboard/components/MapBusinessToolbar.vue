@@ -62,17 +62,24 @@
             :title="maskVisible ? '隐藏蒙层' : '显示蒙层'">
       <el-icon><component :is="maskVisible ? View : Hide"/></el-icon>
     </button>
+
+    <!-- 图例开关 -->
+    <button class="tool-btn" @click="$emit('toggleLegend')" :class="{ active: legendVisible }"
+            :title="legendVisible ? '隐藏图例' : '显示图例'">
+      <el-icon><PieChart/></el-icon>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Aim, Hide, Operation, Search, Setting, View } from '@element-plus/icons-vue'
+import { Aim, Hide, Operation, PieChart, Search, Setting, View } from '@element-plus/icons-vue'
 import type { ElTree } from 'element-plus'
 
 const props = defineProps<{
   hazardPoints: any[]
   maskVisible: boolean
+  legendVisible: boolean
   layoutDialogVisible: boolean
   rightPanelCollapsed: boolean
   groups: { id: number; name: string }[]
@@ -83,6 +90,7 @@ const emit = defineEmits<{
   (e: 'toggleLayers', activeKeys: string[]): void
   (e: 'openLayoutConfig'): void
   (e: 'toggleMask'): void
+  (e: 'toggleLegend'): void
   (e: 'resetView'): void
 }>()
 

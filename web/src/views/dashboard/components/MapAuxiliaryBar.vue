@@ -3,9 +3,9 @@
     <!-- 比例尺由 Leaflet 自带，样式在 Dashboard.vue 中覆盖 -->
 
     <!-- 右下角组：图例 + 底图切换 -->
-    <div class="bottom-right-group">
+    <div class="bottom-right-group" :style="{ right: props.rightPanelOffset + 'px' }">
       <!-- 图例 (多行，与底图切换等高) -->
-      <div class="legend-bar">
+      <div v-show="props.legendVisible" class="legend-bar">
         <div class="legend-group">
           <span class="legend-group-label">隐患点</span>
           <div class="legend-group-items">
@@ -83,6 +83,8 @@ import basemapTerrain from '@/assets/img/basemap-terrain.png'
 const props = defineProps<{
   currentLayer: string
   monitorTypes: MonitorTypeItem[]
+  rightPanelOffset: number
+  legendVisible: boolean
 }>()
 
 const emit = defineEmits<{
@@ -125,7 +127,6 @@ const switchBasemap = (id: string) => {
 .bottom-right-group {
   pointer-events: auto;
   position: absolute;
-  right: 12px;
   bottom: 12px;
   display: flex;
   align-items: flex-end;

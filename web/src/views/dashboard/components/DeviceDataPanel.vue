@@ -264,7 +264,7 @@ onUnmounted(() => {
 .device-data-panel {
   position: absolute;
   bottom: 12px;
-  z-index: 900;
+  z-index: 1100;
 }
 
 .panel-inner {
