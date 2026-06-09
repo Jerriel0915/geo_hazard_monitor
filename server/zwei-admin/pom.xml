@@ -69,6 +69,10 @@
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-video</artifactId></dependency>
         <dependency>
             <groupId>com.zwei</groupId>
+            <artifactId>zwei-iot-alarm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zwei</groupId>
             <artifactId>zwei-iot</artifactId>
         </dependency>
 

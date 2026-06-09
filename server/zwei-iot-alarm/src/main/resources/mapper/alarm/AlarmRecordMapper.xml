@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmRecordMapper">
+
+    <resultMap type="com.zwei.iot.alarm.domain.AlarmRecord" id="AlarmRecordResult">
+        <id property="id" column="id"/>
+        <result property="hazardPointId" column="hazard_point_id"/>
+        <result property="hazardPointName" column="hazard_point_name"/>
+        <result property="deviceId" column="device_id"/>
+        <result property="sensorId" column="sensor_id"/>
+        <result property="monitorContentId" column="monitor_content_id"/>
+        <result property="alarmLevel" column="alarm_level"/>
+        <result property="alarmLevelText" column="alarm_level_text"/>
+        <result property="alarmType" column="alarm_type"/>
+        <result property="alarmMessage" column="alarm_message"/>
+        <result property="criteriaId" column="criteria_id"/>
+        <result property="strategyId" column="strategy_id"/>
+        <result property="currentValue" column="current_value"/>
+        <result property="thresholdValue" column="threshold_value"/>
+        <result property="triggerConditions" column="trigger_conditions"/>
+        <result property="firstTriggerTime" column="first_trigger_time"/>
+        <result property="lastTriggerTime" column="last_trigger_time"/>
+        <result property="triggerCount" column="trigger_count"/>
+        <result property="status" column="status"/>
+        <result property="statusName" column="status_name"/>
+        <result property="resolvedBy" column="resolved_by"/>
+        <result property="resolvedAt" column="resolved_at"/>
+        <result property="resolutionNote" column="resolution_note"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectRecordVo">
+        SELECT id,
+               hazard_point_id,
+               hazard_point_name,
+               device_id,
+               sensor_id,
+               monitor_content_id,
+               alarm_level,
+               alarm_level_text,
+               alarm_type,
+               alarm_message,
+               criteria_id,
+               strategy_id,
+               current_value,
+               threshold_value,
+               trigger_conditions,
+               first_trigger_time,
+               last_trigger_time,
+               trigger_count,
+               status,
+               status_name,
+               resolved_by,
+               resolved_at,
+               resolution_note,
+               create_by,
+               create_time,
+               update_by,
+               update_time
+        FROM alarm_record
+    </sql>
+
+    <select id="selectRecordList" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        <where>
+            <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
+            <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
+            <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="criteriaId != null">AND criteria_id = #{criteriaId}</if>
+            <if test="strategyId != null">AND strategy_id = #{strategyId}</if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectPendingRecords" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        WHERE status IN (1, 2)
+        <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
+        <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
+        <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
+        <if test="hazardPointName != null and hazardPointName != ''">
+            AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
+        </if>
+        ORDER BY alarm_level DESC, last_trigger_time DESC
+    </select>
+
+    <select id="selectHistoryRecords" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        WHERE status IN (3, 4)
+        <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
+        <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
+        <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
+        <if test="hazardPointName != null and hazardPointName != ''">
+            AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
+        </if>
+        ORDER BY resolved_at DESC
+    </select>
+
+    <select id="selectRecordById" parameterType="Long" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectActiveByCriteria" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        WHERE criteria_id = #{criteriaId}
+        AND hazard_point_id = #{hazardPointId}
+        AND status IN (1, 2)
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveByStrategy" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        WHERE strategy_id = #{strategyId}
+        AND hazard_point_id = #{hazardPointId}
+        AND status IN (1, 2)
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <insert id="insertRecord" parameterType="com.zwei.iot.alarm.domain.AlarmRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_record (hazard_point_id, hazard_point_name, device_id, sensor_id,
+                                  monitor_content_id, alarm_level, alarm_level_text, alarm_type, alarm_message,
+                                  criteria_id, strategy_id, current_value, threshold_value, trigger_conditions,
+                                  first_trigger_time, last_trigger_time, trigger_count,
+                                  status, status_name, create_by, create_time)
+        VALUES (#{hazardPointId}, #{hazardPointName}, #{deviceId}, #{sensorId},
+                #{monitorContentId}, #{alarmLevel}, #{alarmLevelText}, #{alarmType}, #{alarmMessage},
+                #{criteriaId}, #{strategyId}, #{currentValue}, #{thresholdValue}, #{triggerConditions},
+                #{firstTriggerTime}, #{lastTriggerTime}, #{triggerCount},
+                #{status}, #{statusName}, #{createBy}, #{createTime})
+    </insert>
+
+    <update id="updateRecord" parameterType="com.zwei.iot.alarm.domain.AlarmRecord">
+        UPDATE alarm_record
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="statusName != null">status_name = #{statusName},</if>
+            <if test="resolvedBy != null">resolved_by = #{resolvedBy},</if>
+            <if test="resolvedAt != null">resolved_at = #{resolvedAt},</if>
+            <if test="resolutionNote != null">resolution_note = #{resolutionNote},</if>
+            update_by = #{updateBy}, update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateTriggerCount">
+        UPDATE alarm_record
+        SET last_trigger_time = #{lastTriggerTime},
+            trigger_count     = #{triggerCount},
+            update_time       = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE alarm_record
+        SET status          = #{status},
+            status_name     = #{statusName},
+            resolved_by     = #{resolvedBy},
+            resolved_at     = #{resolvedAt},
+            resolution_note = #{resolutionNote},
+            update_time     = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="batchUpdateStatus">
+        UPDATE alarm_record
+        SET status = #{status}, status_name = #{statusName},
+        resolved_by = #{resolvedBy}, resolved_at = #{resolvedAt},
+        update_time = NOW()
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <select id="countByStatus" resultType="int">
+        SELECT COUNT(*)
+        FROM alarm_record
+        WHERE status = #{status}
+    </select>
+
+    <select id="countByHazardPointId" resultType="int">
+        SELECT COUNT(*)
+        FROM alarm_record
+        WHERE hazard_point_id = #{hazardPointId}
+          AND status IN (1, 2)
+    </select>
+
+</mapper>

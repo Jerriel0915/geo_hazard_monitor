@@ -33,11 +33,10 @@
         <el-option label="正常" :value="1" />
         <el-option label="故障" :value="2" />
         <el-option label="维修" :value="3" />
-        <el-option label="离线" :value="4" />
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
-      <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
+      <!--      <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>-->
     </div>
 
     <div class="table-container">
@@ -64,11 +63,6 @@
         <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
           <template #default="{ row }">
             <span>{{ row.authUsername || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="authPassword" label="接入密码" width="110" align="center">
-          <template #default="{ row }">
-            <span class="pwd-cell">{{ row.authPassword || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="statusName" label="设备状态" width="100" align="center">
@@ -100,7 +94,7 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item command="account">账号</el-dropdown-item>
-                    <el-dropdown-item command="maintenance">维修状态</el-dropdown-item>
+                    <el-dropdown-item command="maintenance">运维</el-dropdown-item>
                     <el-dropdown-item command="sensors">传感器</el-dropdown-item>
                     <el-dropdown-item command="copy">复制</el-dropdown-item>
                     <el-dropdown-item command="delete" divided>
@@ -338,10 +332,27 @@
             <el-descriptions-item label="接入协议">{{ currentRow?.protocolType || '-' }}</el-descriptions-item>
             <el-descriptions-item label="注册来源">{{ currentRow?.registerSource || '-' }}</el-descriptions-item>
             <el-descriptions-item label="接入账号">{{ currentRow?.authUsername || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="接入密码">{{ currentRow?.authPassword || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="安装位置">{{
-                formatCoord(currentRow?.longitude, currentRow?.latitude)
-              }}
+            <el-descriptions-item label="接入密码">
+              <template v-if="currentRow?.authPassword">
+                <span class="pwd-masked">{{ detailPwdVisible ? currentRow.authPassword : '••••••••' }}</span>
+                <el-button size="small" text type="primary" @click="detailPwdVisible = !detailPwdVisible">
+                  {{ detailPwdVisible ? '隐藏' : '查看' }}
+                </el-button>
+                <el-button size="small" text type="primary" @click="copyPwd(currentRow.authPassword)">复制</el-button>
+              </template>
+              <span v-else>-</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="安装位置">
+              {{ formatCoord(currentRow?.longitude, currentRow?.latitude) }}
+              <el-button v-if="currentRow?.longitude != null" size="small" text type="primary"
+                         @click="openViewMap(currentRow)">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                查看
+              </el-button>
             </el-descriptions-item>
             <el-descriptions-item label="设备状态">
               <el-tag :type="getStatusType(currentRow?.status || 0)" size="small">{{ currentRow?.statusName }}</el-tag>
@@ -610,8 +621,11 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="mapDialogVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="pickerLng == null" @click="confirmMapPicker">确定</el-button>
+        <el-button v-if="mapViewOnly" @click="mapDialogVisible = false">关闭</el-button>
+        <template v-else>
+          <el-button @click="mapDialogVisible = false">取消</el-button>
+          <el-button type="primary" :disabled="pickerLng == null" @click="confirmMapPicker">确定</el-button>
+        </template>
       </template>
     </el-dialog>
   </div>
@@ -730,6 +744,7 @@ const isView = ref(false)
 const formRef = ref()
 
 const detailDialogVisible = ref(false)
+const detailPwdVisible = ref(false)
 const currentRow = ref<DeviceItem | null>(null)
 const detailTab = ref('info')
 const operationTab = ref('online')
@@ -748,6 +763,15 @@ const loadOpsLogs = async (deviceId: number) => {
     maintenanceLogs.value = []
   }
 }
+const copyPwd = async (pwd: string) => {
+  try {
+    await navigator.clipboard.writeText(pwd);
+    ElMessage.success('密码已复制')
+  } catch {
+    ElMessage.warning('复制失败，请手动复制')
+  }
+}
+
 const formatCoord = (lng?: number | null, lat?: number | null) => {
   if (lng == null || lat == null) return '-'
   return `${lng.toFixed(6)}, ${lat.toFixed(6)}`
@@ -768,6 +792,7 @@ const deviceIconDialogVisible = ref(false)
 
 // 地图坐标选择
 const mapDialogVisible = ref(false)
+const mapViewOnly = ref(false)
 const mapPickerRef = ref<HTMLDivElement | null>(null)
 const pickerLng = ref<number | null>(null)
 const pickerLat = ref<number | null>(null)
@@ -814,8 +839,16 @@ const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
 const openMapPicker = () => {
   onLocationBlur()
+  mapViewOnly.value = false
   pickerLng.value = formData.longitude
   pickerLat.value = formData.latitude
+  mapDialogVisible.value = true
+}
+
+const openViewMap = (row: DeviceItem) => {
+  mapViewOnly.value = true
+  pickerLng.value = row.longitude ?? null
+  pickerLat.value = row.latitude ?? null
   mapDialogVisible.value = true
 }
 
@@ -848,6 +881,7 @@ const initMapPicker = () => {
     ).addTo(mapPickerInstance)
 
     mapPickerInstance.on('click', (e: L.LeafletMouseEvent) => {
+      if (mapViewOnly.value) return
       const { lat, lng } = e.latlng
       pickerLng.value = lng
       pickerLat.value = lat
@@ -1228,6 +1262,7 @@ const handleEdit = async (row: DeviceItem) => {
 }
 
 const handleView = async (row: DeviceItem) => {
+  detailPwdVisible.value = false
   currentRow.value = row
   const detail = await fetchDetail(Number(row.id))
   if (detail) {
@@ -1790,6 +1825,10 @@ onMounted(() => {
   color: #909399;
 }
 
+.pwd-masked {
+  font-family: monospace;
+  letter-spacing: 2px;
+}
 .attr-item {
   font-size: 13px;
   color: #606266;

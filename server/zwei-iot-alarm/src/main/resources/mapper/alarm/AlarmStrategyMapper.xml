@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmStrategyMapper">
+
+    <resultMap type="com.zwei.iot.alarm.domain.AlarmStrategy" id="AlarmStrategyResult">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="monitorTypeId" column="monitor_type_id"/>
+        <result property="triggerMode" column="trigger_mode"/>
+        <result property="cronExpression" column="cron_expression"/>
+        <result property="scriptType" column="script_type"/>
+        <result property="scriptContent" column="script_content"/>
+        <result property="defaultAlarmLevel" column="default_alarm_level"/>
+        <result property="silenceMinutes" column="silence_minutes"/>
+        <result property="escalationEnabled" column="escalation_enabled"/>
+        <result property="isEnabled" column="is_enabled"/>
+        <result property="lastRunTime" column="last_run_time"/>
+        <result property="lastRunResult" column="last_run_result"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectStrategyVo">
+        SELECT id,
+               name,
+               description,
+               monitor_type_id,
+               trigger_mode,
+               cron_expression,
+               script_type,
+               script_content,
+               default_alarm_level,
+               silence_minutes,
+               escalation_enabled,
+               is_enabled,
+               last_run_time,
+               last_run_result,
+               create_by,
+               create_time,
+               update_by,
+               update_time,
+               del_flag
+        FROM alarm_strategy
+    </sql>
+
+    <select id="selectStrategyList" resultMap="AlarmStrategyResult">
+        <include refid="selectStrategyVo"/>
+        <where>
+            del_flag = 0
+            <if test="name != null and name != ''">
+                AND (name LIKE CONCAT('%', #{name}, '%')
+                OR description LIKE CONCAT('%', #{name}, '%'))
+            </if>
+            <if test="triggerMode != null and triggerMode != ''">
+                AND trigger_mode = #{triggerMode}
+            </if>
+            <if test="isEnabled != null">
+                AND is_enabled = #{isEnabled}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectEnabledByTriggerMode" resultMap="AlarmStrategyResult">
+        <include refid="selectStrategyVo"/>
+        WHERE del_flag = 0 AND is_enabled = 1 AND trigger_mode = #{triggerMode}
+    </select>
+
+    <select id="selectStrategyById" parameterType="Long" resultMap="AlarmStrategyResult">
+        <include refid="selectStrategyVo"/>
+        WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <insert id="insertStrategy" parameterType="com.zwei.iot.alarm.domain.AlarmStrategy"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_strategy (name, description, monitor_type_id, trigger_mode, cron_expression,
+                                    script_type, script_content, default_alarm_level,
+                                    silence_minutes, escalation_enabled, is_enabled,
+                                    create_by, create_time)
+        VALUES (#{name}, #{description}, #{monitorTypeId}, #{triggerMode}, #{cronExpression},
+                #{scriptType}, #{scriptContent}, #{defaultAlarmLevel},
+                #{silenceMinutes}, #{escalationEnabled}, #{isEnabled},
+                #{createBy}, #{createTime})
+    </insert>
+
+    <update id="updateStrategy" parameterType="com.zwei.iot.alarm.domain.AlarmStrategy">
+        UPDATE alarm_strategy
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="monitorTypeId != null">monitor_type_id = #{monitorTypeId},</if>
+            <if test="triggerMode != null">trigger_mode = #{triggerMode},</if>
+            <if test="cronExpression != null">cron_expression = #{cronExpression},</if>
+            <if test="scriptType != null">script_type = #{scriptType},</if>
+            <if test="scriptContent != null">script_content = #{scriptContent},</if>
+            <if test="defaultAlarmLevel != null">default_alarm_level = #{defaultAlarmLevel},</if>
+            <if test="silenceMinutes != null">silence_minutes = #{silenceMinutes},</if>
+            <if test="escalationEnabled != null">escalation_enabled = #{escalationEnabled},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            update_by = #{updateBy}, update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteStrategyById" parameterType="Long">
+        UPDATE alarm_strategy
+        SET del_flag = 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateLastRunResult">
+        UPDATE alarm_strategy
+        SET last_run_time   = #{lastRunTime},
+            last_run_result = #{lastRunResult}
+        WHERE id = #{id}
+    </update>
+
+    <!--
+        根据监测类型ID查询所有关联的隐患点ID。
+        注意：此查询直接JOIN device_hazard_point (zwei-iot-hazard) 和 device_sensor (zwei-iot-device) 表，
+        存在跨模块表级耦合。若上游表结构变更，需同步更新此查询。
+        长期方案：将此查询迁移至 zwei-iot-device 的 IDeviceSensorQueryService 接口。
+    -->
+    <select id="selectHazardPointIdsByMonitorTypeId" resultType="Long">
+        SELECT DISTINCT dhp.hazard_point_id
+        FROM device_hazard_point dhp
+                 JOIN device_sensor ds ON ds.device_id = dhp.device_id
+        WHERE ds.monitor_type_id = #{monitorTypeId}
+          AND ds.del_flag = 0
+          AND ds.status = 1
+    </select>
+
+</mapper>

@@ -87,7 +87,7 @@
   </el-select>
   <el-button type="primary" @click="handleSearch">搜索</el-button>
   <el-button @click="handleReset">重置</el-button>
-  <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
+          <!--  <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>-->
 </div>
 
         <div class="table-container">

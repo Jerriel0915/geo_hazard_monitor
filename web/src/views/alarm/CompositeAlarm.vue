@@ -58,7 +58,7 @@
           </div>
           <div class="meta-row">
             <span class="meta-label">静默:</span>
-            <span class="meta-value">{{ formatDuration(item.silenceSeconds) }}</span>
+            <span class="meta-value">{{ formatDuration(item.silenceSeconds || 0) }}</span>
             <span class="meta-label" style="margin-left: 12px">持续:</span>
             <span class="meta-value">{{ item.sustainSeconds ? formatDuration(item.sustainSeconds) : '未设置' }}</span>
           </div>
@@ -167,7 +167,7 @@
       v-if="scriptDrawerVisible"
       v-model:visible="scriptDrawerVisible"
       :alarm-id="currentAlarmId"
-      :trigger-mode="currentTriggerMode"
+      :trigger-mode="(currentTriggerMode as any)"
       @saved="loadData"
     />
   </div>
@@ -212,7 +212,7 @@ const scopeDialogVisible = ref(false)
 const scriptDrawerVisible = ref(false)
 const currentAlarmId = ref(0)
 const currentAlarmName = ref('')
-const currentTriggerMode = ref<'PERIODIC' | 'REALTIME'>('PERIODIC')
+const currentTriggerMode = ref<string>('CRON')
 
 const formData = reactive({
   name: '',
@@ -294,10 +294,10 @@ async function handleSubmit() {
       payload.subscriptionConfig = { sourceType: formData.subscriptionSourceType }
     }
     if (editingItem.value) {
-      await updateCompositeAlarm(editingItem.value.id, payload)
+      await updateCompositeAlarm(editingItem.value.id, payload as any)
       ElMessage.success('更新成功')
     } else {
-      await createCompositeAlarm(payload)
+      await createCompositeAlarm(payload as any)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -332,7 +332,7 @@ async function handleToggleStatus(item: CompositeAlarmItem, enabled: boolean) {
 // ==================== 子功能入口 ====================
 function handleEditScript(item: CompositeAlarmItem) {
   currentAlarmId.value = item.id
-  currentTriggerMode.value = item.triggerMode
+  currentTriggerMode.value = item.triggerMode as string
   scriptDrawerVisible.value = true
 }
 

@@ -167,6 +167,11 @@
             <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-video</artifactId><version>${zwei.version}</version></dependency>
             <dependency>
                 <groupId>com.zwei</groupId>
+                <artifactId>zwei-iot-alarm</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.zwei</groupId>
                 <artifactId>zwei-iot</artifactId>
                 <version>${zwei.version}</version>
             </dependency>
@@ -223,6 +228,7 @@
         <module>zwei-iot-broker</module>
         <module>zwei-iot-hazard</module>
         <module>zwei-iot-video</module>
+        <module>zwei-iot-alarm</module>
         <module>zwei-iot</module>
         <module>zwei-monitor</module>
     </modules>
