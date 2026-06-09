@@ -16,18 +16,19 @@
         <div class="summary-count">{{ alarmStats.historyCount }}</div>
       </div>
     </div>
-    <div class="alarm-level-stats">
-      <div class="level-stat" v-for="level in alarmStats.levelStats" :key="level.name">
-        <div class="level-dot" :class="level.key"></div>
-        <span class="level-name">{{ level.name }}</span>
-        <span class="level-count">{{ level.count }}</span>
+    <div class="alarm-level-cards">
+      <div class="level-card" v-for="level in alarmStats.levelStats" :key="level.key">
+        <img :src="level.icon" class="level-card-img" :alt="level.name" />
+        <span class="level-card-num" :class="level.key">{{ level.count }}</span>
+        <div class="level-card-label">{{ level.name }}</div>
       </div>
     </div>
     <div class="alarm-list-section">
       <div class="list-header">
         <span class="list-title">实时告警事件</span>
+        <span class="list-count">{{ alarmStats.recentAlarms.length }}条</span>
       </div>
-      <div class="alarm-list">
+      <div v-if="alarmStats.recentAlarms.length" class="alarm-list">
         <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
           <div class="alarm-level-dot" :class="alarm.level"></div>
           <div class="alarm-content">
@@ -36,6 +37,7 @@
           </div>
         </div>
       </div>
+      <div v-else class="alarm-list-empty">暂无告警事件</div>
     </div>
   </div>
 </template>
@@ -47,6 +49,7 @@ interface LevelStat {
   key: string
   name: string
   count: number
+  icon: string
 }
 
 interface RecentAlarm {
@@ -159,59 +162,46 @@ defineProps<{
   line-height: 1;
 }
 
-.alarm-level-stats {
+.alarm-level-cards {
   display: flex;
-  flex-direction: column;
   gap: 8px;
   padding: 10px 0;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.level-stat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0;
-}
-
-.level-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.level-dot.critical {
-  background: #f5222d;
-}
-
-.level-dot.major {
-  background: #faad14;
-}
-
-.level-dot.minor {
-  background: #722ed1;
-}
-
-.level-dot.info {
-  background: #1890ff;
-}
-
-.level-name {
+.level-card {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  background: rgba(245, 247, 250, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.level-card-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.level-card-num {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.level-card-num.critical { color: #f5222d; }
+.level-card-num.major { color: #d48806; }
+.level-card-num.minor { color: #722ed1; }
+.level-card-num.info { color: #1890ff; }
+
+.level-card-label {
   font-size: 12px;
   color: #4e5969;
   font-weight: 500;
-}
-
-.level-count {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1d2129;
-  font-family: var(--font-display, inherit);
-  min-width: 20px;
-  text-align: right;
+  white-space: nowrap;
 }
 
 .alarm-list-section {
@@ -219,15 +209,22 @@ defineProps<{
 }
 
 .list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 10px;
 }
 
 .list-title {
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.list-count {
+  font-size: 12px;
+  color: #9ca3af;
   font-weight: 500;
-  color: #86909c;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .alarm-list {
@@ -296,5 +293,12 @@ defineProps<{
   font-size: 11px;
   color: #86909c;
   margin-top: 2px;
+}
+
+.alarm-list-empty {
+  text-align: center;
+  padding: 24px 0;
+  font-size: 13px;
+  color: #86909c;
 }
 </style>

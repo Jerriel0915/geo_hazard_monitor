@@ -90,7 +90,8 @@ export interface LayoutConfig {
 const ALL_WIDGETS: WidgetDef[] = [
   {key: 'systemHealth', label: '系统健康度'},
   {key: 'assetInfo', label: '资产情况'},
-  {key: 'alarmStatus', label: '告警态势'}
+  {key: 'alarmStatus', label: '告警态势'},
+  {key: 'deviceStatus', label: '设备在线状态'}
 ]
 
 const DEFAULT_LAYOUT: LayoutConfig = {
@@ -102,7 +103,8 @@ const DEFAULT_LAYOUT: LayoutConfig = {
 const WIDGET_DEFAULT_SIDE: Record<string, 'left' | 'right'> = {
   systemHealth: 'left',
   assetInfo: 'left',
-  alarmStatus: 'right'
+  alarmStatus: 'right',
+  deviceStatus: 'right'
 }
 
 const props = defineProps<{

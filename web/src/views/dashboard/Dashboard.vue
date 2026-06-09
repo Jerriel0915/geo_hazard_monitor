@@ -56,6 +56,7 @@
           <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
           <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
           <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" />
+          <DeviceStatusWidget v-if="isWidgetOnLeft('deviceStatus')" :stats="deviceStatusStats" :trend-data="deviceOnlineTrend" />
         </div>
       </div>
     </div>
@@ -91,6 +92,7 @@
             <HealthWidget v-if="isWidgetOnRight('systemHealth')" :health-stats="healthStats" />
             <ResourceWidget v-if="isWidgetOnRight('assetInfo')" :resource-stats="resourceStats" />
             <AlarmWidget v-if="isWidgetOnRight('alarmStatus')" :alarm-stats="alarmStats" />
+            <DeviceStatusWidget v-if="isWidgetOnRight('deviceStatus')" :stats="deviceStatusStats" :trend-data="deviceOnlineTrend" />
           </div>
         </template>
       </div>
@@ -130,6 +132,7 @@ import AlarmWidget from './components/AlarmWidget.vue'
 import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import HazardAlarmWidget from './components/HazardAlarmWidget.vue'
 import HazardDetailWidget from './components/HazardDetailWidget.vue'
+import DeviceStatusWidget from './components/DeviceStatusWidget.vue'
 import HealthWidget from './components/HealthWidget.vue'
 import LayoutConfigDialog from './components/LayoutConfigDialog.vue'
 import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
@@ -218,6 +221,14 @@ const resourceStats = ref({
   ]
 })
 
+const deviceStatusStats = ref({
+  onlineRate: 0,
+  onlineCount: 0,
+  totalCount: 0,
+  typeStats: [] as { name: string; online: number; total: number }[]
+})
+const deviceOnlineTrend = ref<number[]>([])
+
 const isRightPanelCollapsed = ref(false)
 
 // ========== 面板布局配置 ==========
@@ -239,10 +250,10 @@ const isWidgetOnRight = (key: string) => layoutConfig.value.right.includes(key)
 
 // 面板内容检测：当面板无可见部件时自动折叠
 const hasLeftContent = computed(() => {
-  return !!currentHazardPoint.value || isWidgetOnLeft('systemHealth') || isWidgetOnLeft('assetInfo') || isWidgetOnLeft('alarmStatus')
+  return !!currentHazardPoint.value || isWidgetOnLeft('systemHealth') || isWidgetOnLeft('assetInfo') || isWidgetOnLeft('alarmStatus') || isWidgetOnLeft('deviceStatus')
 })
 const hasRightContent = computed(() => {
-  return isWidgetOnRight('systemHealth') || isWidgetOnRight('assetInfo') || isWidgetOnRight('alarmStatus')
+  return isWidgetOnRight('systemHealth') || isWidgetOnRight('assetInfo') || isWidgetOnRight('alarmStatus') || isWidgetOnRight('deviceStatus')
 })
 
 // ========== /面板布局配置 ==========
@@ -318,16 +329,16 @@ const alarmColors: Record<string, string> = {
 const alarmStats = ref<{
   pendingCount: number
   historyCount: number
-  levelStats: { key: string; name: string; count: number }[]
+  levelStats: { key: string; name: string; count: number; icon: string }[]
   recentAlarms: { id: number; level: string; title: string; source: string; time: string }[]
 }>({
   pendingCount: 0,
   historyCount: 0,
   levelStats: [
-    {key: 'critical', name: '严重', count: 0},
-    {key: 'major', name: '重要', count: 0},
-    {key: 'minor', name: '一般', count: 0},
-    {key: 'info', name: '提示', count: 0}
+    {key: 'critical', name: '严重', count: 0, icon: '/img/alarm/level1.png'},
+    {key: 'major', name: '重要', count: 0, icon: '/img/alarm/level2.png'},
+    {key: 'minor', name: '一般', count: 0, icon: '/img/alarm/level3.png'},
+    {key: 'info', name: '提示', count: 0, icon: '/img/alarm/level4.png'}
   ],
   recentAlarms: []
 })
@@ -889,10 +900,10 @@ const updateHazardAlarms = (hazardId: number) => {
   alarmStats.value.pendingCount = 0
   alarmStats.value.historyCount = 0
   alarmStats.value.levelStats = [
-    {key: 'critical', name: '严重', count: 0},
-    {key: 'major', name: '重要', count: 0},
-    {key: 'minor', name: '一般', count: 0},
-    {key: 'info', name: '提示', count: 0}
+    {key: 'critical', name: '严重', count: 0, icon: '/img/alarm/level1.png'},
+    {key: 'major', name: '重要', count: 0, icon: '/img/alarm/level2.png'},
+    {key: 'minor', name: '一般', count: 0, icon: '/img/alarm/level3.png'},
+    {key: 'info', name: '提示', count: 0, icon: '/img/alarm/level4.png'}
   ]
   alarmStats.value.recentAlarms = []
 }
@@ -1218,6 +1229,21 @@ const loadDashboardData = async () => {
       }
     }
 
+    // ---- DeviceStatusWidget ----
+    if (fullRes.code === 200 && fullRes.data?.deviceOnlineRate) {
+      const dor = fullRes.data.deviceOnlineRate
+      deviceStatusStats.value = {
+        onlineRate: dor.onlineRate ?? 0,
+        onlineCount: dor.online ?? 0,
+        totalCount: dor.total ?? 0,
+        typeStats: dor.byType?.map(t => ({
+          name: t.monitorTypeName,
+          online: t.online,
+          total: t.total
+        })) ?? []
+      }
+    }
+
     // ---- AlarmWidget (system-wide) ----
     if (alarmRes?.code === 200 && alarmRes.data?.rows) {
       const alarms: RealtimeAlarmDetail[] = alarmRes.data.rows
@@ -1233,10 +1259,10 @@ const loadDashboardData = async () => {
       alarmStats.value.pendingCount = pending.length
       alarmStats.value.historyCount = alarms.length
       alarmStats.value.levelStats = [
-        { key: 'critical', name: '严重', count: levelCounts.critical },
-        { key: 'major', name: '重要', count: levelCounts.major },
-        { key: 'minor', name: '一般', count: levelCounts.minor },
-        { key: 'info', name: '提示', count: levelCounts.info }
+        { key: 'critical', name: '严重', count: levelCounts.critical, icon: '/img/alarm/level1.png' },
+        { key: 'major', name: '重要', count: levelCounts.major, icon: '/img/alarm/level2.png' },
+        { key: 'minor', name: '一般', count: levelCounts.minor, icon: '/img/alarm/level3.png' },
+        { key: 'info', name: '提示', count: levelCounts.info, icon: '/img/alarm/level4.png' }
       ]
       alarmStats.value.recentAlarms = alarms.slice(0, 10).map(a => ({
         id: a.id,
