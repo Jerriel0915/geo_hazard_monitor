@@ -3,10 +3,10 @@
     <div ref="mapContainer" class="map-container"></div>
 
     <!-- 隐患点视图 / 系统视图选中隐患点 顶部标题栏 -->
-    <div v-if="currentView === 'hazard' || (currentView === 'system' && selectedHazardPoint)" class="hazard-view-header">
+    <div v-if="currentView === 'hazard' || (currentView === 'system' && currentHazardPoint)" class="hazard-view-header">
       <div class="hazard-title-wrapper">
         <div class="hazard-title" @click="showHazardList = !showHazardList">
-          <span class="hazard-name">{{ currentView === 'hazard' ? currentHazardPoint?.name : selectedHazardPoint?.name }}</span>
+          <span class="hazard-name">{{ currentHazardPoint?.name }}</span>
           <span class="hazard-dropdown-arrow">▼</span>
         </div>
         <div v-show="showHazardList" class="hazard-list-dropdown">
@@ -14,7 +14,7 @@
               v-for="point in hazardPoints"
               :key="point.id"
               class="hazard-list-item"
-              :class="{ active: (currentView === 'hazard' ? currentHazardPoint?.id : selectedHazardPoint?.id) === point.id }"
+              :class="{ active: currentHazardPoint?.id === point.id }"
               @click="selectHazardPoint(point)"
           >
             {{ point.name }}
@@ -24,97 +24,37 @@
       <button v-if="currentView === 'hazard'" class="close-hazard-view-btn" @click="exitHazardView" title="返回系统视图">
         <el-icon :size="18"><Close/></el-icon>
       </button>
-      <button v-else class="close-hazard-view-btn" @click="clearWidgetSelection" title="清除选择">
+      <button v-else class="close-hazard-view-btn" @click="clearHazardSelection" title="清除选择">
         <el-icon :size="18"><Close/></el-icon>
       </button>
     </div>
 
-    <!-- 隐患点视图 / 系统视图选中隐患点 左侧面板 -->
-    <div v-if="currentView === 'hazard' || (currentView === 'system' && selectedHazardPoint)" class="hazard-info-panel">
-      <!-- 隐患点基本信息 -->
-      <div class="hazard-basic-info">
-        <div class="info-title">隐患点基本信息</div>
-        <div class="info-content">
-          <div class="info-row">
-            <span class="info-label">隐患点名称:</span>
-            <span class="info-value">{{ activeHazardPoint?.name }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">隐患点编号:</span>
-            <span class="info-value">{{ activeHazardPoint?.code }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">坐标位置:</span>
-            <span class="info-value">{{
-                activeHazardPoint?.latitude.toFixed(6)
-              }}, {{ activeHazardPoint?.longitude.toFixed(6) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">所属分组:</span>
-            <span class="info-value">{{ activeHazardPoint?.groupName }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">隐患点备注:</span>
-            <span class="info-value">{{ activeHazardPoint?.description }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 设备列表 -->
-      <div class="device-list-panel">
-        <div class="info-title">绑定设备列表</div>
-        <div class="device-list">
-          <div
-              v-for="device in deviceList"
-              :key="device.id"
-              class="device-item"
-              :class="{ selected: selectedDevice?.id === device.id }"
-              @click="openDeviceDataModal(device)"
-          >
-            <div class="device-info">
-              <div class="device-type-icon">
-                <el-icon :size="24">
-                  <component :is="getDeviceTypeIcon(device.type)"/>
-                </el-icon>
-              </div>
-              <div class="device-details">
-                <div class="device-name">{{ device.name }}</div>
-                <div class="device-meta">
-                  <span class="device-type">{{ device.typeName }}</span>
-                  <span class="device-sensors">{{ device.sensorCount }}个传感器</span>
-                </div>
-              </div>
-            </div>
-            <div class="device-status" :class="device.status">
-              <span class="status-dot"></span>
-              <span class="status-text">{{ getStatusText(device.status) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 设备数据弹窗 -->
-    <DeviceDataModal
-      v-if="showDeviceDataModal"
+    <!-- 设备数据面板 (底部) -->
+    <DeviceDataPanel
+      v-if="selectedDevice"
       :device="selectedDevice"
-      :hazard-point-id="currentHazardPoint?.id || selectedHazardPoint?.id"
-      :hazard-point-name="currentHazardPoint?.name || selectedHazardPoint?.name || '系统总览'"
-      @close="closeDeviceDataModal"
-      @back-to-system-view="backToSystemView"
+      :hazard-point-id="currentHazardPoint?.id"
+      :left-offset="devicePanelLeftOffset"
+      :right-offset="devicePanelRightOffset"
+      @close="closeDevicePanel"
     />
 
-    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' || !hasLeftContent || !!selectedHazardPoint }">
+    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || !hasLeftContent }">
       <button class="panel-collapse-trigger-left" @click="togglePanel">
         <el-icon :size="12"><component :is="isPanelCollapsed ? ArrowRight : ArrowLeft"/></el-icon>
       </button>
-      <div class="left-panel" v-if="currentView === 'system'">
-
-        <div class="panel-content">
+      <div class="left-panel">
+        <!-- 隐患点详情（hazard视图 或 system视图选中隐患点） -->
+        <div v-if="currentView === 'hazard' || currentHazardPoint" class="panel-content">
+          <HazardDetailWidget
+            :hazard-point="currentHazardPoint"
+            @device-click="openDeviceDataModal"
+          />
+        </div>
+        <!-- 默认系统视图：Widget 布局 -->
+        <div v-else class="panel-content">
           <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
-
           <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
-
           <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" />
         </div>
       </div>
@@ -144,7 +84,7 @@
         <!-- 隐患点视图：显示告警情况 + 实时警情 -->
         <HazardAlarmWidget v-if="currentView === 'hazard'" :hazard-point-id="currentHazardPoint?.id ?? null" />
         <!-- 系统视图选中隐患点：显示对应告警 -->
-        <HazardAlarmWidget v-else-if="selectedHazardPoint" :hazard-point-id="selectedHazardPoint.id" />
+        <HazardAlarmWidget v-else-if="currentHazardPoint" :hazard-point-id="currentHazardPoint.id" />
         <!-- 默认系统视图：Widget 布局 -->
         <template v-else>
           <div class="panel-content">
@@ -187,9 +127,10 @@ import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/h
 import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
 import AlarmWidget from './components/AlarmWidget.vue'
 import HazardAlarmWidget from './components/HazardAlarmWidget.vue'
+import HazardDetailWidget from './components/HazardDetailWidget.vue'
 import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
-import DeviceDataModal from './components/DeviceDataModal.vue'
+import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import HealthWidget from './components/HealthWidget.vue'
 import LayoutConfigDialog from './components/LayoutConfigDialog.vue'
 import ResourceWidget from './components/ResourceWidget.vue'
@@ -297,7 +238,7 @@ const isWidgetOnRight = (key: string) => layoutConfig.value.right.includes(key)
 
 // 面板内容检测：当面板无可见部件时自动折叠
 const hasLeftContent = computed(() => {
-  return !!selectedHazardPoint.value || isWidgetOnLeft('systemHealth') || isWidgetOnLeft('assetInfo') || isWidgetOnLeft('alarmStatus')
+  return !!currentHazardPoint.value || isWidgetOnLeft('systemHealth') || isWidgetOnLeft('assetInfo') || isWidgetOnLeft('alarmStatus')
 })
 const hasRightContent = computed(() => {
   return isWidgetOnRight('systemHealth') || isWidgetOnRight('assetInfo') || isWidgetOnRight('alarmStatus')
@@ -310,13 +251,6 @@ const currentView = ref<'system' | 'hazard'>('system')
 const currentHazardPoint = ref<typeof hazardPoints.value[0] | null>(null)
 const showHazardList = ref(false)
 
-// 隐患点详情部件 - 软选择状态
-const selectedHazardPoint = ref<typeof hazardPoints.value[0] | null>(null)
-
-// 当前活跃的隐患点（hazard视图 或 system视图选中）
-const activeHazardPoint = computed(() =>
-  currentView.value === 'hazard' ? currentHazardPoint.value : selectedHazardPoint.value
-)
 let savedMapView: { center: [number, number]; zoom: number } | null = null
 const widgetBoundDevices = ref<any[]>([])
 const widgetDevicesLoading = ref(false)
@@ -331,14 +265,21 @@ const deviceList = ref<any[]>([])
 const sensorList = ref<any[]>([])
 const selectedDevice = ref<typeof deviceList.value[0] | null>(null)
 const selectedSensor = ref<any | null>(null)
+
+// 设备数据面板偏移量：跟随左右面板折叠状态
+const devicePanelLeftOffset = computed(() => {
+  if (isPanelCollapsed.value || !hasLeftContent.value) return 24 + 12  // trigger + gap
+  return 12 + 320 + 24 + 12  // left + panel + trigger + gap
+})
+const devicePanelRightOffset = computed(() => {
+  if (isRightPanelCollapsed.value || !hasRightContent.value) return 24 + 12
+  return 12 + 320 + 24 + 12
+})
 const showSensorChart = ref(false)
 const sensorChartData = ref<number[]>([])
 
 // 蒙层显示状态
 const showMaskLayer = ref(false)
-
-// 设备数据弹窗
-const showDeviceDataModal = ref(false)
 
 const generateSensorData = () => {
   return []
@@ -662,7 +603,7 @@ const onHazardMarkerClick = async (point: typeof hazardPoints.value[0]) => {
     savedMapView = { center: [center.lat, center.lng], zoom: mapInstance.getZoom() }
   }
 
-  selectedHazardPoint.value = point
+  currentHazardPoint.value = point
 
   // 地图缩放到隐患点
   if (mapInstance) {
@@ -769,13 +710,13 @@ const loadWidgetDevices = async (hazardPointId: number) => {
 }
 
 const openHazardDetailFromWidget = () => {
-  if (selectedHazardPoint.value) {
-    enterHazardView(selectedHazardPoint.value)
+  if (currentHazardPoint.value) {
+    enterHazardView(currentHazardPoint.value)
   }
 }
 
-const clearWidgetSelection = () => {
-  selectedHazardPoint.value = null
+const clearHazardSelection = () => {
+  currentHazardPoint.value = null
   widgetBoundDevices.value = []
   widgetDevicesLoading.value = false
   // Restore all markers
@@ -901,7 +842,6 @@ const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
   sensorList.value = []
 
   // 清除部件软选择状态（不恢复地图/标记，因为即将切换视图）
-  selectedHazardPoint.value = null
   widgetBoundDevices.value = []
   widgetDevicesLoading.value = false
   savedMapView = null
@@ -1108,21 +1048,23 @@ const getChartPoints = () => {
   }).join(' ')
 }
 
-// 打开设备数据弹窗
+// 打开设备数据面板
 const openDeviceDataModal = (device: typeof deviceList.value[0]) => {
-  selectedDevice.value = device
-  showDeviceDataModal.value = true
+  // 如果点击同一设备则关闭面板
+  if (selectedDevice.value?.id === device.id) {
+    selectedDevice.value = null
+  } else {
+    selectedDevice.value = device
+  }
 }
 
-// 关闭设备数据弹窗
-const closeDeviceDataModal = () => {
-  showDeviceDataModal.value = false
+// 关闭设备数据面板
+const closeDevicePanel = () => {
   selectedDevice.value = null
 }
 
 // 从设备列表返回到系统总览
 const backToSystemView = () => {
-  showDeviceDataModal.value = false
   selectedDevice.value = null
   exitHazardView()
 }
@@ -1294,7 +1236,7 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 16px;
+  left: 12px;
   z-index: 1000;
   overflow: visible;
   transition: left 0.3s ease;
@@ -1302,15 +1244,15 @@ onUnmounted(() => {
 
 .left-panel {
   width: 320px;
-  max-height: 100vh;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
   background: transparent;
   backdrop-filter: none;
   border-radius: 0;
   border: none;
   box-shadow: none;
   transition: width 0.3s ease;
-  padding: 24px 0 24px 0;
+  padding: 12px 0;
 }
 
 .left-panel-wrapper.collapsed .left-panel .panel-content {
@@ -1368,6 +1310,8 @@ onUnmounted(() => {
 .panel-content {
   padding: 0 4px;
   background: transparent;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .panel-section {
@@ -1496,7 +1440,7 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 16px;
+  right: 12px;
   z-index: 1000;
   overflow: visible;
   transition: right 0.3s ease;
@@ -1527,7 +1471,7 @@ onUnmounted(() => {
   border: none;
   box-shadow: none;
   transition: width 0.3s ease;
-  padding: 24px 0 24px 0;
+  padding: 12px 0;
 }
 :deep(.leaflet-control-attribution) {
   display: none !important;
@@ -1640,156 +1584,6 @@ onUnmounted(() => {
 }
 
 /* 隐患点信息面板 */
-.hazard-info-panel {
-  position: absolute;
-  top: 80px;
-  bottom: 0;
-  left: 16px;
-  width: 320px;
-  background: transparent;
-  backdrop-filter: none;
-  border-radius: 0;
-  box-shadow: none;
-  overflow-y: auto;
-  z-index: 999;
-}
-
-.hazard-basic-info {
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.info-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.info-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.info-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.info-label {
-  font-size: 12px;
-  color: #909399;
-  flex-shrink: 0;
-}
-
-.info-value {
-  font-size: 12px;
-  color: #303133;
-}
-
-/* 设备列表 */
-.device-list-panel {
-  padding: 16px;
-}
-
-.device-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.device-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-
-.device-item:hover {
-  background: #f0f7ff;
-  border-color: #1890ff;
-}
-
-.device-item.selected {
-  background: #e6f7ff;
-  border-color: #1890ff;
-}
-
-.device-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.device-type-icon {
-  font-size: 24px;
-}
-
-.device-details {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.device-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.device-meta {
-  display: flex;
-  gap: 8px;
-  font-size: 11px;
-  color: #909399;
-}
-
-.device-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.device-status .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.device-status.online .status-dot {
-  background: #52c41a;
-}
-
-.device-status.online .status-text {
-  color: #52c41a;
-}
-
-.device-status.warning .status-dot {
-  background: #faad14;
-}
-
-.device-status.warning .status-text {
-  color: #faad14;
-}
-
-.device-status.offline .status-dot {
-  background: #f5222d;
-}
-
-.device-status.offline .status-text {
-  color: #f5222d;
-}
-
 /* 传感器列表 */
 .sensor-list-panel {
   margin-top: 16px;

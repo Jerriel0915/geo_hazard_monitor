@@ -124,18 +124,18 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
 }
 
 .panel-section {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(24, 144, 255, 0.08);
+  border: 1px solid rgba(24, 144, 255, 0.15);
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   padding: 16px 18px;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 .panel-section:hover {
-  border-color: rgba(24, 144, 255, 0.15);
-  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.08);
+  border-color: rgba(24, 144, 255, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .section-header {
@@ -143,9 +143,9 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
   align-items: center;
   justify-content: space-between;
   padding: 8px 14px 10px;
-  background: linear-gradient(135deg, rgba(245, 34, 45, 0.12) 0%, rgba(245, 34, 45, 0.03) 100%);
+  background: linear-gradient(135deg, rgba(245, 34, 45, 0.18) 0%, rgba(245, 34, 45, 0.06) 100%);
   border-radius: 8px 8px 0 0;
-  border-bottom: 1px solid rgba(245, 34, 45, 0.12);
+  border-bottom: 1px solid rgba(245, 34, 45, 0.18);
   margin: -16px -18px 16px;
 }
 
@@ -175,9 +175,9 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
   flex: 1;
   text-align: center;
   padding: 10px 8px;
-  background: rgba(245, 247, 250, 0.6);
+  background: rgba(245, 247, 250, 0.9);
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .summary-badge {
@@ -189,12 +189,12 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
 }
 
 .summary-badge.pending {
-  background: rgba(250, 173, 20, 0.15);
+  background: rgba(250, 173, 20, 0.2);
   color: #d48806;
 }
 
 .summary-badge.history {
-  background: rgba(24, 144, 255, 0.12);
+  background: rgba(24, 144, 255, 0.18);
   color: #0958d9;
 }
 
@@ -210,7 +210,7 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
   flex-direction: column;
   gap: 8px;
   padding: 10px 0;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .level-stat {
@@ -265,7 +265,7 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
 
 .list-count {
   font-size: 11px;
-  color: #c9cdd4;
+  color: #86909c;
 }
 
 .alarm-loading,
@@ -273,7 +273,7 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
   text-align: center;
   padding: 24px 0;
   font-size: 13px;
-  color: #c9cdd4;
+  color: #86909c;
 }
 
 .alarm-list {
@@ -286,7 +286,7 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
   display: flex;
   gap: 10px;
   padding: 10px 12px;
-  background: rgba(245, 247, 250, 0.5);
+  background: rgba(245, 247, 250, 0.85);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -294,8 +294,8 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
 }
 
 .alarm-item:hover {
-  background: rgba(24, 144, 255, 0.06);
-  border-left-color: rgba(24, 144, 255, 0.3);
+  background: rgba(24, 144, 255, 0.08);
+  border-left-color: rgba(24, 144, 255, 0.4);
 }
 
 .alarm-item.status-0 {
@@ -345,19 +345,19 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
 }
 
 .alarm-type-tag {
-  background: rgba(24, 144, 255, 0.08);
+  background: rgba(24, 144, 255, 0.12);
   color: #1890ff;
 }
 
-.alarm-status-tag.tag-status-0 { background: rgba(245, 34, 45, 0.1); color: #f5222d; }
-.alarm-status-tag.tag-status-1 { background: rgba(250, 173, 20, 0.1); color: #d48806; }
-.alarm-status-tag.tag-status-2 { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
-.alarm-status-tag.tag-status-3 { background: rgba(0, 0, 0, 0.04); color: #86909c; }
-.alarm-status-tag.tag-status-4 { background: rgba(24, 144, 255, 0.1); color: #1890ff; }
+.alarm-status-tag.tag-status-0 { background: rgba(245, 34, 45, 0.15); color: #cf1322; }
+.alarm-status-tag.tag-status-1 { background: rgba(250, 173, 20, 0.15); color: #d48806; }
+.alarm-status-tag.tag-status-2 { background: rgba(82, 196, 26, 0.15); color: #389e0d; }
+.alarm-status-tag.tag-status-3 { background: rgba(0, 0, 0, 0.06); color: #86909c; }
+.alarm-status-tag.tag-status-4 { background: rgba(24, 144, 255, 0.15); color: #0958d9; }
 
 .alarm-time {
   font-size: 11px;
-  color: #c9cdd4;
+  color: #86909c;
   margin-top: 2px;
 }
 
