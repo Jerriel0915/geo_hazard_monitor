@@ -112,25 +112,16 @@
 </template>
 
 <script setup lang="ts">
-import { getBoundDevices, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
-import { getDashboardFull } from '@/api/monitor'
-import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
-import { getRealtimeAlarmPage, type RealtimeAlarmDetail } from '@/api/realtimeAlarm'
-import { getFocusArea } from '@/api/system'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Close,
-  Drizzling,
-  MapLocation,
-  Monitor,
-  Odometer,
-  Sunny
-} from '@element-plus/icons-vue'
+import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {getDashboardFull} from '@/api/monitor'
+import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
+import {getRealtimeAlarmPage, type RealtimeAlarmDetail} from '@/api/realtimeAlarm'
+import {getFocusArea} from '@/api/system'
+import {ArrowLeft, ArrowRight, Close, Drizzling, Monitor, Odometer, Sunny} from '@element-plus/icons-vue'
 import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import {computed, onMounted, onUnmounted, ref, shallowRef} from 'vue'
 import AlarmWidget from './components/AlarmWidget.vue'
 import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import HazardAlarmWidget from './components/HazardAlarmWidget.vue'
@@ -1468,11 +1459,12 @@ onUnmounted(() => {
   width: 320px;
   height: 100%;
   overflow: hidden;
-  background: transparent;
-  backdrop-filter: none;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
   transition: width 0.3s ease;
   padding: 12px 0;
 }
@@ -1690,11 +1682,12 @@ onUnmounted(() => {
   width: 320px;
   height: 100%;
   overflow: hidden;
-  background: transparent;
-  backdrop-filter: none;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
   transition: width 0.3s ease;
   padding: 12px 0;
 }
