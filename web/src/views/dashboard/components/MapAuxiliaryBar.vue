@@ -51,8 +51,8 @@
       </div>
 
       <!-- 底图切换器 -->
-      <div class="basemap-switcher">
-        <div class="basemap-current" @click="showBasemapOptions = !showBasemapOptions">
+      <div class="basemap-switcher" @mouseenter="showBasemapOptions = true" @mouseleave="showBasemapOptions = false">
+        <div class="basemap-current">
           <img :src="currentThumb" class="basemap-thumb" />
           <span class="basemap-label">{{ currentName }}</span>
         </div>
@@ -213,6 +213,11 @@ const switchBasemap = (id: string) => {
 }
 
 /* 底图切换器 */
+.basemap-switcher {
+  position: relative;
+  z-index: 10;
+}
+
 .basemap-current {
   display: flex;
   flex-direction: column;
@@ -248,7 +253,7 @@ const switchBasemap = (id: string) => {
 .basemap-options {
   position: absolute;
   bottom: 0;
-  right: calc(100% + 6px);
+  right: calc(100% - 1px);
   display: flex;
   gap: 6px;
   background: rgba(255, 255, 255, 0.92);
