@@ -121,7 +121,7 @@ const switchBasemap = (id: string) => {
   pointer-events: auto;
   position: absolute;
   right: 12px;
-  bottom: 80px;
+  bottom: 100px;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   border-radius: 8px;
@@ -230,8 +230,8 @@ const switchBasemap = (id: string) => {
 
 .basemap-options {
   position: absolute;
-  bottom: calc(100% + 6px);
-  right: 0;
+  bottom: 0;
+  right: calc(100% + 6px);
   display: flex;
   gap: 6px;
   background: rgba(255, 255, 255, 0.92);

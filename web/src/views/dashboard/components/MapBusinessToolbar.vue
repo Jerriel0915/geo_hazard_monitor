@@ -1,5 +1,10 @@
 <template>
   <div class="map-business-toolbar" :class="{ 'panel-open': !rightPanelCollapsed }">
+    <!-- 归心 -->
+    <button class="tool-btn" @click="$emit('resetView')" title="归心 - 复原视角">
+      <el-icon><Aim/></el-icon>
+    </button>
+
     <!-- 搜索 -->
     <div class="tool-button-wrapper">
       <button class="tool-btn" @click="toggleSearchPanel" :class="{ active: showSearchPanel }" title="搜索隐患点">
@@ -96,7 +101,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { DataAnalysis, Hide, Search, Setting, View } from '@element-plus/icons-vue'
+import { Aim, DataAnalysis, Hide, Search, Setting, View } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   hazardPoints: any[]
@@ -110,6 +115,7 @@ const emit = defineEmits<{
   (e: 'toggleLayer', layerKey: string): void
   (e: 'openLayoutConfig'): void
   (e: 'toggleMask'): void
+  (e: 'resetView'): void
 }>()
 
 const showSearchPanel = ref(false)
@@ -165,9 +171,8 @@ const onToggleLayer = (layerKey: string) => {
 <style scoped>
 .map-business-toolbar {
   position: absolute;
-  top: 50%;
+  top: 16px;
   right: 0;
-  transform: translateY(-50%);
   z-index: 999;
   display: flex;
   flex-direction: column;
@@ -178,7 +183,7 @@ const onToggleLayer = (layerKey: string) => {
 }
 
 .map-business-toolbar.panel-open {
-  right: 320px;
+  right: 352px;
 }
 
 .toolbar-divider {

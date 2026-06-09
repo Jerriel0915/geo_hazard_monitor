@@ -210,6 +210,7 @@
       @toggle-layer="toggleLayer"
       @open-layout-config="showLayoutDialog = true"
       @toggle-mask="toggleMaskLayer"
+      @reset-view="resetMapView"
     />
 
     <!-- 右侧面板 -->
@@ -397,7 +398,7 @@ const showSensorChart = ref(false)
 const sensorChartData = ref<number[]>([])
 
 // 蒙层显示状态
-const showMaskLayer = ref(true)
+const showMaskLayer = ref(false)
 
 // 设备数据弹窗
 const showDeviceDataModal = ref(false)
@@ -454,6 +455,10 @@ const togglePanel = () => {
   isPanelCollapsed.value = !isPanelCollapsed.value
 }
 
+const resetMapView = () => {
+  fitToFocusArea()
+}
+
 const initMap = () => {
   if (!mapContainer.value) return
 
@@ -470,11 +475,13 @@ const initMap = () => {
     maxWidth: 150,
     metric: true,
     imperial: false,
-    position: 'bottomleft'
+    position: 'bottomright'
   }).addTo(mapInstance)
 
   addFocusBoundary()
   addMaskLayer()
+  // 默认关闭蒙层和边界线
+  toggleMaskLayer()
   addHazardPoints()
 
   fitToFocusArea()
@@ -534,21 +541,25 @@ const addMaskLayer = () => {
 
 const toggleMaskLayer = () => {
   showMaskLayer.value = !showMaskLayer.value
-  if (!maskLayer) return
-  if (showMaskLayer.value) {
-    maskLayer.setStyle({
-      fillColor: '#000000',
-      fillOpacity: 0.35,
-      color: 'transparent',
-      weight: 0
-    })
-  } else {
-    maskLayer.setStyle({
-      fillColor: 'transparent',
-      fillOpacity: 0,
-      color: 'transparent',
-      weight: 0
-    })
+  if (maskLayer) {
+    if (showMaskLayer.value) {
+      maskLayer.setStyle({
+        fillColor: '#000000',
+        fillOpacity: 0.35,
+        color: 'transparent',
+        weight: 0
+      })
+    } else {
+      maskLayer.setStyle({
+        fillColor: 'transparent',
+        fillOpacity: 0,
+        color: 'transparent',
+        weight: 0
+      })
+    }
+  }
+  if (boundaryLayer) {
+    boundaryLayer.setStyle({ opacity: showMaskLayer.value ? 1 : 0 })
   }
 }
 
@@ -1272,8 +1283,9 @@ onUnmounted(() => {
 .left-panel-wrapper {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 16px;
   z-index: 1000;
+  overflow: visible;
   transition: left 0.3s ease;
 }
 
@@ -1287,7 +1299,7 @@ onUnmounted(() => {
   border: none;
   box-shadow: none;
   transition: width 0.3s ease;
-  padding: 20px 8px 20px 0;
+  padding: 24px 12px 24px 4px;
 }
 
 .left-panel-wrapper.collapsed .left-panel .panel-content {
@@ -1305,31 +1317,37 @@ onUnmounted(() => {
 .panel-collapse-trigger-left {
   position: absolute;
   top: 50%;
-  right: -20px;
+  right: -24px;
   transform: translateY(-50%);
   z-index: 10;
-  width: 20px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.85);
+  width: 24px;
+  height: 56px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
   backdrop-filter: blur(8px);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 0 6px 6px 0;
+  border-left: none;
+  border-radius: 0 8px 8px 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #606266;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
 }
 
 .panel-collapse-trigger-left:hover {
   background: rgba(24, 144, 255, 0.1);
-  border-color: #1890ff;
+  border-color: rgba(24, 144, 255, 0.3);
   color: #1890ff;
+  width: 28px;
+  right: -28px;
 }
 
 .left-panel-wrapper.collapsed .panel-collapse-trigger-left {
-  right: 0;
+  right: -24px;
+  border-left: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 0 8px 8px 0;
 }
 
 .panel-content {
@@ -1377,31 +1395,37 @@ onUnmounted(() => {
 .panel-collapse-trigger-right {
   position: absolute;
   top: 50%;
-  left: -20px;
+  left: -24px;
   transform: translateY(-50%);
   z-index: 10;
-  width: 20px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.85);
+  width: 24px;
+  height: 56px;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
   backdrop-filter: blur(8px);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 6px 0 0 6px;
+  border-right: none;
+  border-radius: 8px 0 0 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #606266;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.04);
 }
 
 .panel-collapse-trigger-right:hover {
   background: rgba(24, 144, 255, 0.1);
-  border-color: #1890ff;
+  border-color: rgba(24, 144, 255, 0.3);
   color: #1890ff;
+  width: 28px;
+  left: -28px;
 }
 
 .right-panel-wrapper.collapsed .panel-collapse-trigger-right {
-  left: 0;
+  left: -24px;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px 0 0 8px;
 }
 
 :deep(.leaflet-attribution) {
@@ -1410,24 +1434,53 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-/* 比例尺样式覆盖 */
+/* 比例尺 — 线段 + 两端竖线 + 居中文字 */
+:deep(.leaflet-bottom.leaflet-right) {
+  display: flex !important;
+  right: 84px;
+  bottom: 16px;
+  left: auto;
+}
+
 :deep(.leaflet-control-scale-line) {
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(8px);
-  border-color: rgba(0, 0, 0, 0.15) !important;
-  border-radius: 4px;
-  padding: 2px 8px;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.85) !important;
+  position: relative;
+  text-align: center;
+  padding: 0 0 2px 0;
+  margin: 0;
   font-size: 11px;
-  color: #303133;
-  margin: 10px;
-  line-height: 1.4;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 4px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+:deep(.leaflet-control-scale-line)::before,
+:deep(.leaflet-control-scale-line)::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  width: 2px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+:deep(.leaflet-control-scale-line)::before {
+  left: 0;
+}
+
+:deep(.leaflet-control-scale-line)::after {
+  right: 0;
 }
 
 .right-panel-wrapper {
   position: absolute;
   top: 0;
-  right: 0;
+  right: 16px;
   z-index: 1000;
+  overflow: visible;
   transition: right 0.3s ease;
 }
 
@@ -1452,13 +1505,9 @@ onUnmounted(() => {
   border: none;
   box-shadow: none;
   transition: width 0.3s ease;
-  padding: 20px 0 20px 8px;
+  padding: 24px 4px 24px 12px;
 }
 :deep(.leaflet-control-attribution) {
-  display: none !important;
-}
-
-:deep(.leaflet-bottom.leaflet-right) {
   display: none !important;
 }
 
