@@ -1,7 +1,6 @@
 package com.zwei.iot.hazardpoint.domain;
 
 import com.zwei.common.core.domain.BaseEntity;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
@@ -46,6 +45,11 @@ public class HazardPoint extends BaseEntity
 
     /** 走向角度 */
     private BigDecimal strike;
+
+    /**
+     * 边界范围 JSON
+     */
+    private String boundaryCoords;
 
     /** 隐患描述 */
     private String description;

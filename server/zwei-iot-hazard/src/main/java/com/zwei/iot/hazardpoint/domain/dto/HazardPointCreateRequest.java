@@ -1,10 +1,6 @@
 package com.zwei.iot.hazardpoint.domain.dto;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -45,6 +41,11 @@ public class HazardPointCreateRequest implements Serializable {
     @DecimalMax(value = "360.00", message = "走向角度不能大于360")
     @Digits(integer = 3, fraction = 2, message = "走向角度最多支持2位小数")
     private BigDecimal strike;
+
+    /**
+     * 边界范围 JSON
+     */
+    private String boundaryCoords;
 
     @Size(max = 65535, message = "隐患描述长度超出限制")
     private String description;

@@ -1,18 +1,5 @@
 package com.zwei.web.controller.system;
 
-import java.util.List;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
@@ -21,6 +8,13 @@ import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.system.domain.SysConfig;
 import com.zwei.system.service.ISysConfigService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 参数配置 信息操作处理
@@ -28,7 +22,7 @@ import com.zwei.system.service.ISysConfigService;
  * @author zwei
  */
 @RestController
-@RequestMapping("/system/config")
+@RequestMapping("/api/v1/system/config")
 public class SysConfigController extends BaseController
 {
     @Autowired
@@ -72,7 +66,34 @@ public class SysConfigController extends BaseController
     @GetMapping(value = "/configKey/{configKey}")
     public AjaxResult getConfigKey(@PathVariable String configKey)
     {
-        return success(configService.selectConfigByKey(configKey));
+        return success((Object) configService.selectConfigByKey(configKey));
+    }
+
+    /**
+     * 根据参数键名设置参数值（不存在则新增）
+     */
+    @PreAuthorize("@ss.hasPermi('system:config:edit')")
+    @Log(title = "参数管理", businessType = BusinessType.UPDATE)
+    @PutMapping(value = "/configKey/{configKey}")
+    public AjaxResult updateByKey(@PathVariable String configKey, @RequestBody java.util.Map<String, Object> body) {
+        String value = body != null ? String.valueOf(body.getOrDefault("configValue", "")) : "";
+        // 先查记录是否存在（不依赖 value，因为 value 可能为 null）
+        SysConfig filter = new SysConfig();
+        filter.setConfigKey(configKey);
+        List<SysConfig> list = configService.selectConfigList(filter);
+        SysConfig cfg = new SysConfig();
+        cfg.setConfigKey(configKey);
+        cfg.setConfigValue(value);
+        cfg.setUpdateBy(getUsername());
+        if (!list.isEmpty()) {
+            cfg.setConfigId(list.get(0).getConfigId());
+            return toAjax(configService.updateConfig(cfg));
+        } else {
+            cfg.setConfigName(configKey);
+            cfg.setConfigType("Y");
+            cfg.setCreateBy(getUsername());
+            return toAjax(configService.insertConfig(cfg));
+        }
     }
 
     /**

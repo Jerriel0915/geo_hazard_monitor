@@ -30,7 +30,7 @@ services:
       - "3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./db/geo_hazard_monitor_v1.10.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+      - ./db/geo_hazard_monitor_v2.0.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
       - ./db/upgrade:/docker-entrypoint-initdb.d/01-upgrade:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]

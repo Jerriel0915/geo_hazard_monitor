@@ -53,7 +53,10 @@
               <el-table-column prop="createTime" label="创建时间" width="180" />
               <el-table-column label="操作" width="220" fixed="right">
                 <template #default="{ row }">
-                  <div class="op-cell">
+                  <div class="op-cell" v-if="row.id === 1">
+                    <span class="super-admin-tag">超级管理员</span>
+                  </div>
+                  <div class="op-cell" v-else>
                     <el-button type="primary" text size="small" @click="handleEditRole(row)">编辑</el-button>
                     <el-button type="primary" text size="small" @click="handleConfigPermission(row)">权限配置</el-button>
                     <el-dropdown trigger="hover" @command="(cmd: string) => handleRoleMoreCommand(cmd, row)">
@@ -63,7 +66,7 @@
                           <el-dropdown-item :command="'toggle_' + row.id">
                             {{ row.status === 0 ? '停用' : '启用' }}
                           </el-dropdown-item>
-                          <el-dropdown-item v-if="row.id !== 1" command="delete" divided>
+                          <el-dropdown-item command="delete" divided>
                             <span style="color: #f56c6c">删除</span>
                           </el-dropdown-item>
                         </el-dropdown-menu>
@@ -193,6 +196,7 @@
     <el-dialog
       :title="`权限配置[${currentRole?.name || ''}]`"
       v-model="permDialogVisible"
+      destroy-on-close
       width="760px"
       :close-on-click-modal="false"
     >
@@ -206,6 +210,7 @@
               node-key="id"
               show-checkbox
               default-expand-all
+              :default-checked-keys="checkedMenuKeys"
               :props="{ label: 'name', children: 'children' }"
             />
           </el-tab-pane>
@@ -223,6 +228,7 @@
                   node-key="id"
                   show-checkbox
                   default-expand-all
+                  :default-checked-keys="checkedDeptKeys"
                   :props="{ label: 'label', children: 'children' }"
                 />
               </el-form-item>
@@ -307,7 +313,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
 import type {FormInstance, FormRules} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {
@@ -539,11 +545,6 @@ const checkedDeptKeys = ref<number[]>([])
 const permMenuTreeRef = ref<any>()
 const permDeptTreeRef = ref<any>()
 
-const setTreeCheckedKeys = (treeRef: any, keys: number[]) => {
-  if (!treeRef?.setCheckedKeys) return
-  treeRef.setCheckedKeys(keys)
-}
-
 const collectTreeKeys = (treeRef: any) => {
   if (!treeRef) return []
   return Array.from(
@@ -569,9 +570,6 @@ const handleConfigPermission = async (row: RoleItem) => {
   checkedMenuKeys.value = detail.menuIds || []
   checkedDeptKeys.value = deptTree.checkedKeys || []
   permDialogVisible.value = true
-  await nextTick()
-  setTreeCheckedKeys(permMenuTreeRef.value, checkedMenuKeys.value)
-  setTreeCheckedKeys(permDeptTreeRef.value, checkedDeptKeys.value)
 }
 
 const registerLoading = ref(false)
@@ -905,5 +903,16 @@ onMounted(async () => {
 
 .action-link.action-danger:hover {
   color: #cf1322;
+}
+
+.super-admin-tag {
+  color: #909399;
+  font-size: 13px;
+}
+
+.op-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>

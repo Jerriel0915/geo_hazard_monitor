@@ -16,6 +16,7 @@ export interface HazardPointPayload {
   longitude?: number
   latitude?: number
   strike?: number
+    boundaryCoords?: string
   description?: string
 }
 

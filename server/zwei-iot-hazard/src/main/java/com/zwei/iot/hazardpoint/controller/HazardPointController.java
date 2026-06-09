@@ -8,10 +8,10 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.*;
-import com.zwei.iot.video.domain.BoundVideoDeviceVO;
 import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import com.zwei.iot.hazardpoint.service.IVideoDeviceHazardPointService;
+import com.zwei.iot.video.domain.BoundVideoDeviceVO;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -332,6 +332,7 @@ public class HazardPointController extends BaseController
         hazardPoint.setLongitude(request.getLongitude());
         hazardPoint.setLatitude(request.getLatitude());
         hazardPoint.setStrike(request.getStrike());
+        hazardPoint.setBoundaryCoords(request.getBoundaryCoords());
         hazardPoint.setDescription(trimToNull(request.getDescription()));
         return hazardPoint;
     }
@@ -344,6 +345,7 @@ public class HazardPointController extends BaseController
         hazardPoint.setLongitude(request.getLongitude());
         hazardPoint.setLatitude(request.getLatitude());
         hazardPoint.setStrike(request.getStrike());
+        hazardPoint.setBoundaryCoords(request.getBoundaryCoords());
         hazardPoint.setDescription(trimToNull(request.getDescription()));
         return hazardPoint;
     }

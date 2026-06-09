@@ -89,7 +89,7 @@ zwei/
 
 ```bash
 # 初始化 MySQL
-mysql -u root -p < db/geo_hazard_monitor_v1.10.sql
+mysql -u root -p < db/geo_hazard_monitor_v2.0.sql
 
 # 如有增量升级，依次执行
 mysql -u root -p < db/upgrade/*.sql

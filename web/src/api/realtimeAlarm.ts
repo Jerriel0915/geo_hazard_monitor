@@ -1,10 +1,12 @@
 /**
  * @deprecated 请使用 @/api/alarm 模块。此文件保留向后兼容。
  */
+// 类型重导出
+import type {AlarmRecordItem as _AlarmRecordItem} from './alarm'
 import * as alarm from './alarm'
 
-// 类型重导出
 export type {AlarmRecordItem, AlarmRecordPageParams, AlarmDisposePayload, AlarmBatchDisposePayload} from './alarm'
+export type RealtimeAlarmDetail = _AlarmRecordItem
 
 // ── 待办 / 历史 ──
 export const getRealtimeAlarmPage = alarm.getPendingAlarms
