@@ -115,7 +115,7 @@
 import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
 import {getDashboardFull} from '@/api/monitor'
 import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
-import {getRealtimeAlarmPage, type RealtimeAlarmDetail} from '@/api/realtimeAlarm'
+import {type AlarmRecordItem, getRealtimeAlarmPage} from '@/api/realtimeAlarm'
 import {getFocusArea} from '@/api/system'
 import {ArrowLeft, ArrowRight, Close, Drizzling, Monitor, Odometer, Sunny} from '@element-plus/icons-vue'
 import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
@@ -450,24 +450,22 @@ const addMaskLayer = () => {
 const toggleMaskLayer = () => {
   showMaskLayer.value = !showMaskLayer.value
   if (maskLayer) {
+    const ml = maskLayer as any
     if (showMaskLayer.value) {
-      maskLayer.setStyle({
+      ml.setStyle({
         fillColor: '#000000',
         fillOpacity: 0.35,
         color: 'transparent',
         weight: 0
       })
     } else {
-      maskLayer.setStyle({
+      ml.setStyle({
         fillColor: 'transparent',
         fillOpacity: 0,
         color: 'transparent',
         weight: 0
       })
     }
-  }
-  if (boundaryLayer) {
-    boundaryLayer.setStyle({ opacity: showMaskLayer.value ? 1 : 0 })
   }
 }
 
@@ -1312,13 +1310,13 @@ const loadDashboardData = async () => {
     }
 
     // ---- AlarmWidget (system-wide) ----
-    if (alarmRes?.code === 200 && alarmRes.data?.rows) {
-      const alarms: RealtimeAlarmDetail[] = alarmRes.data.rows
-      const pending = alarms.filter(a => a.alarmStatus === 0)
+    const alarmData: any = alarmRes
+    if (alarmData?.code === 200 && alarmData.data?.rows) {
+      const alarms: AlarmRecordItem[] = alarmData.data.rows
+      const pending = alarms.filter(a => a.status === 1 || a.status === 2)
       const levelMap: Record<string, string> = { '1': 'critical', '2': 'major', '3': 'minor', '4': 'info' }
-      const nameMap: Record<string, string> = { '1': '严重', '2': '重要', '3': '一般', '4': '提示' }
       const levelCounts: Record<string, number> = { critical: 0, major: 0, minor: 0, info: 0 }
-      alarms.forEach(a => {
+      alarms.forEach((a: AlarmRecordItem) => {
         const key = levelMap[String(a.alarmLevel)] || 'info'
         levelCounts[key]++
       })
@@ -1331,12 +1329,12 @@ const loadDashboardData = async () => {
         { key: 'minor', name: '一般', count: levelCounts.minor, icon: '/img/alarm/level3.png' },
         { key: 'info', name: '提示', count: levelCounts.info, icon: '/img/alarm/level4.png' }
       ]
-      alarmStats.value.recentAlarms = alarms.slice(0, 10).map(a => ({
+      alarmStats.value.recentAlarms = alarms.slice(0, 10).map((a: AlarmRecordItem) => ({
         id: a.id,
         level: levelMap[String(a.alarmLevel)] || 'info',
-        title: a.alarmDetail || a.alarmTypeName,
+        title: a.alarmMessage || '',
         source: a.hazardPointName,
-        time: a.lastAlarmTime
+        time: a.lastTriggerTime
       }))
     }
   } catch (e) {
@@ -1437,6 +1435,7 @@ onUnmounted(() => {
 }
 
 .map-container {
+  --scale-left: 12px;
   width: 100%;
   height: 100%;
   margin: 0;

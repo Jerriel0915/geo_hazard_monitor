@@ -101,21 +101,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { Bell, Close, Warning } from '@element-plus/icons-vue'
-import { getRealtimeAlarmByHazardPoint, type RealtimeAlarmDetail } from '@/api/realtimeAlarm'
+import {computed, ref, watch} from 'vue'
+import {Bell, Close, Warning} from '@element-plus/icons-vue'
+import {type AlarmRecordItem, getRealtimeAlarmByHazardPoint} from '@/api/realtimeAlarm'
 
 const props = defineProps<{
   hazardPointId: number | null
 }>()
 
 const loading = ref(false)
-const alarmList = ref<RealtimeAlarmDetail[]>([])
+const alarmList = ref<AlarmRecordItem[]>([])
 const detailVisible = ref(false)
-const detailAlarm = ref<RealtimeAlarmDetail | null>(null)
+const detailAlarm = ref<AlarmRecordItem | null>(null)
 
 const pendingCount = computed(() =>
-  alarmList.value.filter(a => a.alarmStatus === 0).length
+    alarmList.value.filter((a: AlarmRecordItem) => a.status === 1 || a.status === 2).length
 )
 
 const levelStats = computed(() => {
@@ -126,7 +126,7 @@ const levelStats = computed(() => {
     { key: 'info', name: '四级', count: 0, icon: '/img/alarm/level4.png' }
   ]
   const map: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3 }
-  alarmList.value.forEach(a => {
+  alarmList.value.forEach((a: AlarmRecordItem) => {
     const idx = map[a.alarmLevel]
     if (idx !== undefined) levels[idx].count++
   })

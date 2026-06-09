@@ -5,6 +5,7 @@ import * as alarm from './alarm'
 
 // 类型重导出
 export type {AlarmRecordItem, AlarmRecordPageParams, AlarmDisposePayload, AlarmBatchDisposePayload} from './alarm'
+export type RealtimeAlarmDetail = AlarmRecordItem
 
 // ── 待办 / 历史 ──
 export const getRealtimeAlarmPage = alarm.getPendingAlarms
