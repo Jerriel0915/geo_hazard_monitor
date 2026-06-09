@@ -4,219 +4,120 @@
     <div class="page-body">
       <el-tabs v-model="activeTab" class="criteria-tabs" @tab-change="handleTabChange">
 
-        <!-- ========== 监测类型 ========== -->
+        <!-- ========== 监测类型（兜底判据） ========== -->
         <el-tab-pane label="监测类型" name="monitorType">
           <div class="criteria-container">
             <div class="left-panel">
               <div class="type-list">
                 <div v-if="monitorTypes.length === 0" class="empty-hint">加载中...</div>
-                <div
-                  v-for="item in monitorTypes"
-                  :key="item.id"
-                  class="type-item"
-                  :class="{ active: selectedMonitorType === item.id }"
-                  @click="selectMonitorType(item.id)"
-                >
+                <div v-for="item in monitorTypes" :key="item.id" class="type-item"
+                     :class="{ active: selectedMonitorType === item.id }" @click="selectMonitorType(item.id)">
                   <span class="type-name">{{ item.name }}</span>
                   <span class="type-count">{{ getTypeCriteriaCount(item.id) }}</span>
                 </div>
               </div>
             </div>
             <div class="right-panel">
-              <template v-if="!selectedMonitorType">
-                <div class="empty-hint">请选择左侧监测类型</div>
-              </template>
-              <template v-else>
-                <div class="criteria-header">
-                  <span class="sub-title">{{ selectedMonitorTypeName }} — 告警判据</span>
-                  <el-button type="primary" size="small" @click="openCreateDialog('monitor')">新增判据</el-button>
-                </div>
-                <div v-if="currentTypeCriteria.length > 1" class="criteria-selector">
-                  <el-select v-model="selectedTypeCriteriaId" placeholder="选择判据" @change="onTypeCriteriaSelect">
-                    <el-option v-for="c in currentTypeCriteria" :key="c.id" :label="c.name" :value="c.id"/>
-                  </el-select>
-                </div>
-                <template v-if="activeTypeCriteria">
-                  <div class="criteria-info-bar">
-                    <el-switch :model-value="activeTypeCriteria.isEnabled === 1"
-                               @change="handleToggle(activeTypeCriteria)" size="small"/>
-                    <span class="criteria-name-text">{{ activeTypeCriteria.name }}</span>
-                    <span v-if="activeTypeCriteria.version" class="version-text">v{{
-                        activeTypeCriteria.version
-                      }}</span>
-                    <el-button size="small" type="danger" @click="handleDelete(activeTypeCriteria)">删除</el-button>
-                  </div>
-                  <div class="level-sections">
-                    <div v-for="lv in alarmLevels" :key="lv.value" class="level-section">
-                      <div class="level-header">
-                        <span class="level-title" :style="{ color: lv.color }">{{ lv.value }}、{{ lv.label }}</span>
-                      </div>
-                      <div class="level-divider" :style="{ backgroundColor: lv.color }"></div>
-                      <div class="level-form">
-                        <div class="form-row">
-                          <span class="form-label">多指标判据</span>
-                          <div class="form-field">
-                            <div class="expr-display" :class="{ 'expr-empty': !levelForm[lv.key].expression }">
-                              {{ levelForm[lv.key].expression || '未设置' }}
-                            </div>
-                            <el-button type="primary" size="small" @click="openExprDialog(lv.key)">修改</el-button>
-                          </div>
-                        </div>
-                        <div class="form-row">
-                          <span class="form-label">告警持续时长</span>
-                          <div class="form-field">
-                            <el-input-number v-model="levelForm[lv.key].persistCount" :min="1" :max="100" size="small"/>
-                            <span class="unit-text">次</span>
-                          </div>
-                        </div>
-                        <div class="form-row">
-                          <span class="form-label">静默数据周期</span>
-                          <div class="form-field">
-                            <el-input-number v-model="levelForm[lv.key].silencePeriod" :min="0" :max="1000"
-                                             size="small"/>
-                            <span class="unit-text">次</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="save-bar">
-                    <el-button type="primary" :loading="saving" @click="handleSaveForm('monitor')">保存判据</el-button>
-                  </div>
-                </template>
-                <div v-else class="empty-hint">暂未配置判据，请点击"新增判据"创建</div>
-              </template>
+              <CriteriaDetailPanel
+                  v-if="selectedMonitorType"
+                  :title="selectedMonitorTypeName + ' — 通用判据'"
+                  :criteria-list="currentTypeCriteria"
+                  :context="'monitor'"
+                  :alarm-levels="alarmLevels"
+                  :monitor-contents="monitorContents"
+                  :saving="saving"
+                  @create="openCreateDialog('monitor')"
+                  @edit="openEditDialog"
+                  @delete="handleDelete"
+                  @toggle="handleToggle"
+                  @save-form="handleSaveForm('monitor')"
+                  @expr-open="openExprDialog"
+                  @expr-confirm="handleExprConfirm"
+                  v-model:selected-id="selectedTypeCriteriaId"
+                  v-model:level-form="levelForm"
+              />
+              <div v-else class="empty-hint">请选择左侧监测类型</div>
             </div>
           </div>
         </el-tab-pane>
 
-        <!-- ========== 隐患点 ========== -->
+        <!-- ========== 隐患点（设备判据） ========== -->
         <el-tab-pane label="隐患点" name="hazardPoint">
           <div class="criteria-container">
-            <div class="left-panel">
-              <el-tree
+            <div class="left-panel cascade-panel">
+              <div class="cascade-row">
+                <span class="cascade-label">隐患点</span>
+                <el-tree-select
+                    v-model="cascade.hazardPointId"
                   :data="hazardPointTree"
-                  :props="{ children: 'children', label: 'name' }"
-                node-key="id"
-                  highlight-current
-                default-expand-all
-                  @node-click="handleHazardPointNodeClick"
-                  :expand-on-click-node="true"
-              />
+                    :props="{ children: 'children', label: 'name', value: 'id', disabled: 'isGroup' }"
+                    placeholder="选择隐患点"
+                    filterable
+                    check-strictly
+                    style="width: 100%"
+                    @update:model-value="onHpSelect"
+                />
+              </div>
+              <div class="cascade-row">
+                <span class="cascade-label">设备</span>
+                <el-select v-model="cascade.deviceId" placeholder="选择设备" filterable style="width: 100%"
+                           :disabled="!cascade.hazardPointId" @change="onDeviceSelect">
+                  <el-option v-for="d in cascadeDevices" :key="d.deviceId" :label="d.deviceName || d.deviceCode"
+                             :value="d.deviceId"/>
+                </el-select>
+              </div>
+              <div class="cascade-row">
+                <span class="cascade-label">传感器</span>
+                <el-select v-model="cascade.sensorId" placeholder="选择传感器" filterable style="width: 100%"
+                           :disabled="!cascade.deviceId" @change="onSensorSelect">
+                  <el-option v-for="s in cascadeSensors" :key="s.id" :label="s.name || s.sensorName || s.sensorCode"
+                             :value="s.id"/>
+                </el-select>
+              </div>
+              <div v-if="cascade.sensorMeta" class="cascade-meta">
+                监测类型: {{ cascade.sensorMeta.contentName || '未知' }}
+              </div>
             </div>
             <div class="right-panel">
-              <template v-if="!selectedHazardPointId">
-                <div class="empty-hint">请选择左侧隐患点</div>
-              </template>
-              <template v-else>
-                <div class="criteria-header">
-                  <span class="sub-title">{{ selectedHazardPointName }} — 告警判据</span>
-                  <el-button type="primary" size="small" @click="openCreateDialog('hazard')">新增判据</el-button>
-                </div>
-                <div v-if="currentHpCriteria.length > 1" class="criteria-selector">
-                  <el-select v-model="selectedHpCriteriaId" placeholder="选择判据" @change="onHpCriteriaSelect">
-                    <el-option v-for="c in currentHpCriteria" :key="c.id" :label="c.name" :value="c.id"/>
-                  </el-select>
-                </div>
-                <template v-if="activeHpCriteria">
-                  <div class="criteria-info-bar">
-                    <el-switch :model-value="activeHpCriteria.isEnabled === 1" @change="handleToggle(activeHpCriteria)"
-                               size="small"/>
-                    <span class="criteria-name-text">{{ activeHpCriteria.name }}</span>
-                    <span v-if="activeHpCriteria.version" class="version-text">v{{ activeHpCriteria.version }}</span>
-                    <el-button size="small" type="danger" @click="handleDelete(activeHpCriteria)">删除</el-button>
-                  </div>
-                  <div class="level-sections">
-                    <div v-for="lv in alarmLevels" :key="lv.value" class="level-section">
-                      <div class="level-header">
-                        <span class="level-title" :style="{ color: lv.color }">{{ lv.value }}、{{ lv.label }}</span>
-                      </div>
-                      <div class="level-divider" :style="{ backgroundColor: lv.color }"></div>
-                      <div class="level-form">
-                        <div class="form-row">
-                          <span class="form-label">多指标判据</span>
-                          <div class="form-field">
-                            <div class="expr-display" :class="{ 'expr-empty': !levelForm[lv.key].expression }">
-                              {{ levelForm[lv.key].expression || '未设置' }}
-                            </div>
-                            <el-button type="primary" size="small" @click="openExprDialog(lv.key)">修改</el-button>
-                          </div>
-                        </div>
-                        <div class="form-row">
-                          <span class="form-label">告警持续时长</span>
-                          <div class="form-field">
-                            <el-input-number v-model="levelForm[lv.key].persistCount" :min="1" :max="100" size="small"/>
-                            <span class="unit-text">次</span>
-                          </div>
-                        </div>
-                        <div class="form-row">
-                          <span class="form-label">静默数据周期</span>
-                          <div class="form-field">
-                            <el-input-number v-model="levelForm[lv.key].silencePeriod" :min="0" :max="1000"
-                                             size="small"/>
-                            <span class="unit-text">次</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="save-bar">
-                    <el-button type="primary" :loading="saving" @click="handleSaveForm('hazard')">保存判据</el-button>
-                  </div>
-                </template>
-                <div v-else class="empty-hint">暂未配置判据，请点击"新增判据"创建</div>
-              </template>
+              <CriteriaDetailPanel
+                  v-if="cascade.sensorId && cascade.hazardPointId"
+                  :title="(cascade.sensorMeta?.sensorName || '传感器') + ' — 设备判据'"
+                  :criteria-list="currentHpCriteria"
+                  :context="'hazard'"
+                  :alarm-levels="alarmLevels"
+                  :monitor-contents="monitorContents"
+                  :saving="saving"
+                  @create="openCreateDialog('hazard')"
+                  @edit="openEditDialog"
+                  @delete="handleDelete"
+                  @toggle="handleToggle"
+                  @save-form="handleSaveForm('hazard')"
+                  @expr-open="openExprDialog"
+                  @expr-confirm="handleExprConfirm"
+                  v-model:selected-id="selectedHpCriteriaId"
+                  v-model:level-form="levelForm"
+              />
+              <div v-else class="empty-hint">请依次选择隐患点 → 设备 → 传感器</div>
             </div>
           </div>
         </el-tab-pane>
       </el-tabs>
     </div>
 
-    <!-- ========== 新增/编辑判据弹窗 ========== -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px" destroy-on-close>
+    <!-- ========== 新增弹窗（仅名称） ========== -->
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="450px" destroy-on-close>
       <el-form :model="formData" label-width="100px">
         <el-form-item label="判据名称" required>
-          <el-input v-model="formData.name" placeholder="如：雨量蓝色预警"/>
-        </el-form-item>
-        <el-form-item label="监测内容" v-if="dialogContext === 'monitor'">
-          <el-select v-model="formData.monitorContentId" placeholder="选择监测指标" clearable style="width: 100%">
-            <el-option v-for="mc in monitorContents" :key="mc.id" :label="`${mc.name} (${mc.code})`" :value="mc.id"/>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="逻辑运算符">
-          <el-radio-group v-model="formData.logicOperator">
-            <el-radio value="AND">且 (AND)</el-radio>
-            <el-radio value="OR">或 (OR)</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-divider content-position="left">四级告警阈值</el-divider>
-        <el-form-item v-for="lv in alarmLevels" :key="lv.value" :label="lv.label">
-          <el-row :gutter="8">
-            <el-col :span="14">
-              <el-input v-model="(formData as any)[`${lv.key}Expression`]" placeholder="阈值 (如 10 或 GT 10)"/>
-            </el-col>
-            <el-col :span="10">
-              <el-input v-model="(formData as any)[`${lv.key}Description`]" placeholder="描述"/>
-            </el-col>
-          </el-row>
-        </el-form-item>
-        <el-divider content-position="left">防抖配置</el-divider>
-        <el-form-item label="持续触发">
-          <el-input-number v-model="formData.persistCount" :min="1" :max="100"/>
-          <span class="form-hint">连续触发 N 次后才生成告警</span>
-        </el-form-item>
-        <el-form-item label="静默周期">
-          <el-input-number v-model="formData.silencePeriod" :min="0" :max="1000"/>
-          <span class="form-hint">周期内重复触发仅累加次数，0=不禁用</span>
+          <el-input v-model="formData.name" placeholder="如：雨量蓝色预警" @keyup.enter="handleSave"/>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">确定</el-button>
       </template>
     </el-dialog>
 
-    <!-- ========== 表达式编辑弹窗 (组件化) ========== -->
+    <!-- ========== 表达式编辑弹窗 ========== -->
     <ExpressionEditDialog
         v-model="exprDialogVisible"
         :expression="exprDialogExpression"
@@ -231,7 +132,8 @@
 import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
-import {getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {getDeviceSensors, getSensorDetail} from '@/api/sensor'
 import {
   type AlarmCriteriaCreatePayload,
   type AlarmCriteriaItem,
@@ -242,6 +144,7 @@ import {
   updateCriteria
 } from '@/api/alarm'
 import ExpressionEditDialog from './components/ExpressionEditDialog.vue'
+import CriteriaDetailPanel from './components/CriteriaDetailPanel.vue'
 
 // ── 常量 ──
 const alarmLevels = [
@@ -251,198 +154,214 @@ const alarmLevels = [
   {value: 4, label: '红色告警（严重级）', key: 'red', color: '#f56c6c'},
 ]
 
-// ── 状态 ──
+// ── Tab ──
 const activeTab = ref('monitorType')
-const selectedMonitorType = ref<number | null>(null)
-const selectedMonitorTypeName = computed(() => {
-  const t = monitorTypes.value.find(m => m.id === selectedMonitorType.value)
-  return t?.name || ''
-})
-const selectedHazardPointId = ref<number | null>(null)
-const selectedHazardPointName = ref('')
 
+// ── 监测类型 ──
+const selectedMonitorType = ref<number | null>(null)
+const selectedMonitorTypeName = computed(() => monitorTypes.value.find(m => m.id === selectedMonitorType.value)?.name || '')
 const monitorTypes = ref<MonitorTypeItem[]>([])
 const monitorContents = ref<any[]>([])
-const hazardPointTree = ref<any[]>([])
-
-const allCriteria = ref<AlarmCriteriaItem[]>([])
-const currentTypeCriteria = computed(() =>
-    allCriteria.value.filter(c => c.monitorTypeId === selectedMonitorType.value && !c.hazardPointId)
-)
-const currentHpCriteria = computed(() =>
-    allCriteria.value.filter(c => c.hazardPointId === selectedHazardPointId.value)
-)
-
 const selectedTypeCriteriaId = ref<number | null>(null)
+
+// ── 隐患点级联 ──
+const cascade = reactive({
+  hazardPointId: null as number | null,
+  deviceId: null as number | null,
+  sensorId: null as number | null,
+  sensorMeta: null as any
+})
+const cascadeDevices = ref<any[]>([])
+const cascadeSensors = ref<any[]>([])
+const hazardPointTree = ref<any[]>([])
+const selectedHazardPointName = ref('')
+const selectedHazardPointId = computed(() => cascade.hazardPointId)
 const selectedHpCriteriaId = ref<number | null>(null)
 
-const activeTypeCriteria = computed(() =>
-    currentTypeCriteria.value.find(c => c.id === selectedTypeCriteriaId.value) || null
-)
-const activeHpCriteria = computed(() =>
-    currentHpCriteria.value.find(c => c.id === selectedHpCriteriaId.value) || null
-)
+// ── 判据数据 ──
+const allCriteria = ref<AlarmCriteriaItem[]>([])
+const currentTypeCriteria = computed(() => allCriteria.value.filter(c => c.monitorTypeId === selectedMonitorType.value && !c.hazardPointId))
+const currentHpCriteria = computed(() => {
+  if (!cascade.hazardPointId || !cascade.sensorMeta?.monitorContentId) return []
+  return allCriteria.value.filter(c => c.hazardPointId === cascade.hazardPointId && c.monitorContentId === cascade.sensorMeta.monitorContentId)
+})
 
-// ── 级别表单状态 (四级告警表达式 + 防抖) ──
+// ── 级别表单 ──
 interface LevelFormState {
   expression: string;
   persistCount: number;
   silencePeriod: number
 }
-
-function makeLevelFormState(): LevelFormState {
-  return {expression: '', persistCount: 1, silencePeriod: 0}
-}
-
 const levelForm = reactive<Record<string, LevelFormState>>({
-  blue: makeLevelFormState(), yellow: makeLevelFormState(),
-  orange: makeLevelFormState(), red: makeLevelFormState(),
+  blue: {expression: '', persistCount: 1, silencePeriod: 0},
+  yellow: {expression: '', persistCount: 1, silencePeriod: 0},
+  orange: {expression: '', persistCount: 1, silencePeriod: 0},
+  red: {expression: '', persistCount: 1, silencePeriod: 0},
 })
 
-function initLevelForm(c: AlarmCriteriaItem) {
-  levelForm.blue.expression = c.blueExpression || ''
-  levelForm.yellow.expression = c.yellowExpression || ''
-  levelForm.orange.expression = c.orangeExpression || ''
-  levelForm.red.expression = c.redExpression || ''
-  levelForm.blue.persistCount = c.persistCount ?? 1
-  levelForm.yellow.persistCount = c.persistCount ?? 1
-  levelForm.orange.persistCount = c.persistCount ?? 1
-  levelForm.red.persistCount = c.persistCount ?? 1
-  levelForm.blue.silencePeriod = c.silencePeriod ?? 0
-  levelForm.yellow.silencePeriod = c.silencePeriod ?? 0
-  levelForm.orange.silencePeriod = c.silencePeriod ?? 0
-  levelForm.red.silencePeriod = c.silencePeriod ?? 0
+function opToSymbol(op: string): string {
+  const m: Record<string, string> = {GT: '>', GTE: '>=', LT: '<', LTE: '<=', EQ: '==', NEQ: '!=', BETWEEN: '~'}
+  return m[op] || op
 }
 
-// ── 表达式编辑弹窗 ──
-const exprDialogVisible = ref(false)
-const exprDialogLevelKey = ref('')
-const exprDialogExpression = ref('')
-const exprDialogDescription = ref('')
+function initLevelForm(c: AlarmCriteriaItem) {
+  let config: Record<string, { conditions?: any[]; description?: string }> = {}
+  try {
+    if (c.levelConfig && c.levelConfig !== '{}') config = JSON.parse(c.levelConfig)
+  } catch {
+  }
+  for (const key of ['blue', 'yellow', 'orange', 'red'] as const) {
+    const lc = config[key]
+    levelForm[key].expression = lc?.conditions?.map((cond: any) =>
+        `${cond.subject || ''} ${opToSymbol(cond.operator)} ${cond.threshold ?? ''}`).join(' ') || ''
+    levelForm[key].persistCount = c.persistCount ?? 1
+    levelForm[key].silencePeriod = c.silencePeriod ?? 0
+  }
+}
 
-const exprDialogIndicators = computed(() =>
-    monitorContents.value.map(mc => ({code: mc.code, name: mc.name, unit: mc.unit}))
-)
+// ── 表达式弹窗 ──
+const exprDialogVisible = ref(false);
+const exprDialogLevelKey = ref('')
+const exprDialogExpression = ref('');
+const exprDialogDescription = ref('')
+const exprDialogIndicators = computed(() => monitorContents.value.map(mc => ({
+  code: mc.code,
+  name: mc.name,
+  unit: mc.unit
+})))
 
 function openExprDialog(key: string) {
-  exprDialogLevelKey.value = key
-  exprDialogExpression.value = levelForm[key].expression
-  const c = activeTab.value === 'monitorType' ? activeTypeCriteria.value : activeHpCriteria.value
-  const descKey = (key + 'Description') as keyof AlarmCriteriaItem
-  exprDialogDescription.value = (c?.[descKey] as string) || ''
+  exprDialogLevelKey.value = key;
+  exprDialogExpression.value = levelForm[key].expression;
   exprDialogVisible.value = true
 }
 
-function handleExprConfirm(payload: { expression: string; description: string }) {
-  const key = exprDialogLevelKey.value
-  if (!key) return
-  levelForm[key].expression = payload.expression
-  // description 暂存到 levelForm 的 computed 来源；实际保存时由 handleSaveForm 写回
+function handleExprConfirm(p: { expression: string; description: string }) {
+  if (exprDialogLevelKey.value) levelForm[exprDialogLevelKey.value].expression = p.expression
 }
 
-// ── 判据切换 ──
-function onTypeCriteriaSelect(id: number) {
-  const c = currentTypeCriteria.value.find(c => c.id === id);
-  if (c) initLevelForm(c)
+// ── 级联选择 ──
+async function onHpSelect(val: number | string | null) {
+  if (!val || String(val).startsWith('g_')) return  // skip group nodes
+  const id = Number(val)
+  cascade.hazardPointId = id;
+  cascade.deviceId = null;
+  cascade.sensorId = null;
+  cascade.sensorMeta = null;
+  cascadeSensors.value = []
+  try {
+    const res: any = await getBoundDevices(String(id));
+    cascadeDevices.value = res?.data || res?.rows || res || []
+  } catch {
+    cascadeDevices.value = []
+  }
 }
 
-function onHpCriteriaSelect(id: number) {
-  const c = currentHpCriteria.value.find(c => c.id === id);
-  if (c) initLevelForm(c)
+async function onDeviceSelect(deviceId: number) {
+  cascade.deviceId = deviceId;
+  cascade.sensorId = null;
+  cascade.sensorMeta = null
+  try {
+    const res: any = await getDeviceSensors(deviceId);
+    cascadeSensors.value = res?.data || res?.rows || res || []
+  } catch {
+    cascadeSensors.value = []
+  }
 }
 
-// ── 判据 CRUD 弹窗 ──
-const dialogVisible = ref(false)
-const dialogTitle = ref('')
+async function onSensorSelect(sensorId: number) {
+  cascade.sensorId = sensorId
+  try {
+    const res: any = await getSensorDetail(sensorId);
+    const s = res?.data || res
+    const contentId = s?.attrList?.[0]?.monitorContentId
+    const typeId = s?.monitorTypeId
+    cascade.sensorMeta = {
+      sensorName: s?.name || s?.sensorName || s?.sensorCode || '',
+      monitorContentId: contentId,
+      contentName: s?.monitorTypeName || '',
+      monitorTypeId: typeId
+    }
+    if (typeId) await loadMonitorContents(typeId)
+    await loadAllCriteria()
+    const list = currentHpCriteria.value;
+    selectedHpCriteriaId.value = list.length > 0 ? list[0].id : null
+    if (selectedHpCriteriaId.value && list[0]) initLevelForm(list[0])
+  } catch {
+    cascade.sensorMeta = null
+  }
+}
+
+// ── 判据弹窗（仅名称） ──
+const dialogVisible = ref(false);
+const dialogTitle = ref('');
 const dialogContext = ref<'monitor' | 'hazard'>('monitor')
-const editingId = ref<number | null>(null)
+const editingId = ref<number | null>(null);
 const saving = ref(false)
-
 const formData = reactive<AlarmCriteriaCreatePayload & { id?: number }>({
   name: '',
-  monitorTypeId: undefined, monitorContentId: undefined, hazardPointId: undefined,
-  conditionsJson: '', logicOperator: 'AND',
-  blueExpression: '', blueDescription: '',
-  yellowExpression: '', yellowDescription: '',
-  orangeExpression: '', orangeDescription: '',
-  redExpression: '', redDescription: '',
-  persistCount: 1, silencePeriod: 0, isEnabled: 1,
+  levelConfig: '{}',
+  persistCount: 1,
+  silencePeriod: 0,
+  isEnabled: 1
 })
 
 function resetForm() {
-  Object.assign(formData, {
-    name: '', monitorTypeId: undefined, monitorContentId: undefined, hazardPointId: undefined,
-    conditionsJson: '', logicOperator: 'AND',
-    blueExpression: '', blueDescription: '',
-    yellowExpression: '', yellowDescription: '',
-    orangeExpression: '', orangeDescription: '',
-    redExpression: '', redDescription: '',
-    persistCount: 1, silencePeriod: 0, isEnabled: 1,
-  })
+  Object.assign(formData, {name: '', levelConfig: '{}', persistCount: 1, silencePeriod: 0, isEnabled: 1});
   editingId.value = null
 }
 
-function openCreateDialog(context: 'monitor' | 'hazard') {
-  resetForm()
-  dialogContext.value = context;
+function openCreateDialog(ctx: 'monitor' | 'hazard') {
+  resetForm();
+  dialogContext.value = ctx;
   dialogTitle.value = '新增告警判据'
-  formData.monitorTypeId = context === 'monitor' ? selectedMonitorType.value! : undefined
-  formData.hazardPointId = context === 'hazard' ? selectedHazardPointId.value! : undefined
+  if (ctx === 'monitor') {
+    formData.monitorTypeId = selectedMonitorType.value!;
+    formData.hazardPointId = undefined
+  } else {
+    formData.hazardPointId = cascade.hazardPointId!;
+    formData.monitorContentId = cascade.sensorMeta?.monitorContentId;
+    formData.monitorTypeId = cascade.sensorMeta?.monitorTypeId
+  }
   dialogVisible.value = true
 }
 
 function openEditDialog(c: AlarmCriteriaItem) {
-  resetForm()
-  dialogContext.value = c.hazardPointId ? 'hazard' : 'monitor'
-  dialogTitle.value = '编辑告警判据'
-  editingId.value = c.id
+  resetForm();
+  dialogContext.value = c.hazardPointId ? 'hazard' : 'monitor';
+  dialogTitle.value = '编辑判据名称';
+  editingId.value = c.id;
   formData.name = c.name;
-  formData.monitorTypeId = c.monitorTypeId
-  formData.monitorContentId = c.monitorContentId;
-  formData.hazardPointId = c.hazardPointId
-  formData.conditionsJson = c.conditionsJson || '';
-  formData.logicOperator = c.logicOperator || 'AND'
-  formData.blueExpression = c.blueExpression || '';
-  formData.blueDescription = c.blueDescription || ''
-  formData.yellowExpression = c.yellowExpression || '';
-  formData.yellowDescription = c.yellowDescription || ''
-  formData.orangeExpression = c.orangeExpression || '';
-  formData.orangeDescription = c.orangeDescription || ''
-  formData.redExpression = c.redExpression || '';
-  formData.redDescription = c.redDescription || ''
-  formData.persistCount = c.persistCount || 1;
-  formData.silencePeriod = c.silencePeriod || 0
-  formData.isEnabled = c.isEnabled
   dialogVisible.value = true
 }
 
 // ── 数据加载 ──
 async function loadMonitorTypes() {
   try {
-    const res: any = await getMonitorTypeList()
+    const res: any = await getMonitorTypeList();
     monitorTypes.value = (res && res.rows) || (Array.isArray(res) ? res : res?.data) || []
-  } catch { /* ok */
+  } catch {
   }
 }
-
 async function loadHazardPointTree() {
   try {
-    const groups: any = await getHazardPointGroups()
+    const groups: any = await getHazardPointGroups();
     const gList = groups?.data || groups?.rows || groups || []
-    const hps: any = await getHazardPointPage({pageNum: 1, pageSize: 1000})
+    const hps: any = await getHazardPointPage({pageNum: 1, pageSize: 1000});
     const hpList = hps?.data?.rows || hps?.rows || hps || []
     hazardPointTree.value = gList.map((g: any) => ({
-      id: 'g_' + g.id, name: g.name,
-      children: hpList.filter((h: any) => h.groupId === g.id).map((h: any) => ({id: h.id, name: h.name})),
+      id: 'g_' + g.id,
+      name: g.name,
+      isGroup: true,
+      children: hpList.filter((h: any) => h.groupId === g.id).map((h: any) => ({id: h.id, name: h.name}))
     }))
-  } catch { /* ok */
+  } catch {
   }
 }
-
 async function loadMonitorContents(typeId: number) {
   try {
-    const api = await import('@/api/monitorType')
-    const res: any = await api.getMonitorTypeDetail(typeId)
+    const api = await import('@/api/monitorType');
+    const res: any = await api.getMonitorTypeDetail(typeId);
     monitorContents.value = res?.contents || res?.data?.contents || []
   } catch {
     monitorContents.value = []
@@ -451,7 +370,7 @@ async function loadMonitorContents(typeId: number) {
 
 async function loadAllCriteria() {
   try {
-    const res: any = await getCriteriaList({pageSize: 1000})
+    const res: any = await getCriteriaList({pageSize: 1000});
     allCriteria.value = res?.rows || res?.data?.rows || []
   } catch {
     allCriteria.value = []
@@ -465,28 +384,20 @@ function getTypeCriteriaCount(typeId: number) {
 // ── 选择 ──
 async function selectMonitorType(id: number) {
   selectedMonitorType.value = id;
-  selectedHazardPointId.value = null
-  await loadMonitorContents(id)
-  const list = currentTypeCriteria.value
-  selectedTypeCriteriaId.value = list.length > 0 ? list[0].id : null
+  await loadMonitorContents(id);
+  const list = currentTypeCriteria.value;
+  selectedTypeCriteriaId.value = list.length > 0 ? list[0].id : null;
   if (selectedTypeCriteriaId.value && list[0]) initLevelForm(list[0])
-}
-
-async function handleHazardPointNodeClick(node: any) {
-  if (node.children && node.children.length > 0) return
-  selectedHazardPointId.value = node.id;
-  selectedHazardPointName.value = node.name
-  selectedMonitorType.value = null
-  const list = currentHpCriteria.value
-  selectedHpCriteriaId.value = list.length > 0 ? list[0].id : null
-  if (selectedHpCriteriaId.value && list[0]) initLevelForm(list[0])
 }
 
 async function handleTabChange() {
   selectedMonitorType.value = null;
-  selectedHazardPointId.value = null
+  cascade.hazardPointId = null;
+  cascade.deviceId = null;
+  cascade.sensorId = null;
+  cascade.sensorMeta = null;
   selectedTypeCriteriaId.value = null;
-  selectedHpCriteriaId.value = null
+  selectedHpCriteriaId.value = null;
   await loadAllCriteria()
 }
 
@@ -496,25 +407,23 @@ async function handleSave() {
     ElMessage.warning('请输入判据名称');
     return
   }
-  saving.value = true
+  ;saving.value = true;
   try {
-    let targetId: number | null = null
+    let tid: number | null = null;
     if (editingId.value) {
-      await updateCriteria(editingId.value, formData)
-      targetId = editingId.value;
-      ElMessage.success('判据已更新')
+      await updateCriteria(editingId.value, formData);
+      tid = editingId.value;
+      ElMessage.success('已更新')
     } else {
-      const res: any = await createCriteria(formData)
-      targetId = res?.id ?? res?.data?.id ?? null;
-      ElMessage.success('判据已创建')
+      const res: any = await createCriteria(formData);
+      tid = res?.id ?? res?.data?.id ?? null;
+      ElMessage.success('已创建，请在下方编辑判据条件')
     }
-    dialogVisible.value = false
-    await loadAllCriteria()
-    if (targetId) {
-      if (dialogContext.value === 'monitor') selectedTypeCriteriaId.value = targetId
-      else selectedHpCriteriaId.value = targetId
-      const active = dialogContext.value === 'monitor' ? activeTypeCriteria.value : activeHpCriteria.value
-      if (active) initLevelForm(active)
+    ;dialogVisible.value = false;
+    await loadAllCriteria();
+    if (tid) {
+      if (dialogContext.value === 'monitor') selectedTypeCriteriaId.value = tid; else selectedHpCriteriaId.value = tid;
+      initLevelForm(allCriteria.value.find(c => c.id === tid)!)
     }
   } catch (e: any) {
     ElMessage.error(e?.message || '操作失败')
@@ -523,26 +432,50 @@ async function handleSave() {
   }
 }
 
+function buildLevelConfigFromForm(): string {
+  const config: Record<string, { logicOperator: string; conditions: any[]; description: string }> = {}
+  for (const key of ['blue', 'yellow', 'orange', 'red'] as const) {
+    const expr = levelForm[key].expression.trim();
+    if (!expr) continue
+    const parts = expr.split(/\s+(且|或)\s+/i);
+    const logicOp = expr.match(/\s+(且)\s+/i) ? 'AND' : 'OR'
+    config[key] = {
+      logicOperator: logicOp, conditions: parts.filter(p => p !== '且' && p !== '或').map(part => {
+        const m = part.match(/^(.+?)\s*(>=|<=|!=|==|>|<)\s*([0-9.]+)$/);
+        if (m) return {subject: m[1].trim(), operator: mapOp(m[2]), threshold: parseFloat(m[3])};
+        return {subject: part.trim(), operator: 'GT', threshold: 0}
+      }), description: ''
+    }
+  }
+  return JSON.stringify(config)
+}
+
+function mapOp(s: string): string {
+  const m: Record<string, string> = {'>': 'GT', '<': 'LT', '>=': 'GTE', '<=': 'LTE', '==': 'EQ', '!=': 'NEQ'};
+  return m[s] || 'GT'
+}
+
 async function handleSaveForm(context: 'monitor' | 'hazard') {
-  const active = context === 'monitor' ? activeTypeCriteria.value : activeHpCriteria.value
+  const list = context === 'monitor' ? currentTypeCriteria.value : currentHpCriteria.value
+  const active = list.find(c => c.id === (context === 'monitor' ? selectedTypeCriteriaId.value : selectedHpCriteriaId.value))
   if (!active) {
     ElMessage.warning('请先选择判据');
     return
   }
-  saving.value = true
+  ;saving.value = true
   try {
     const payload: AlarmCriteriaCreatePayload = {
       name: active.name,
-      monitorTypeId: active.monitorTypeId, monitorContentId: active.monitorContentId,
+      monitorTypeId: active.monitorTypeId,
+      monitorContentId: active.monitorContentId,
       hazardPointId: active.hazardPointId,
-      conditionsJson: active.conditionsJson, logicOperator: active.logicOperator,
-      blueExpression: levelForm.blue.expression, yellowExpression: levelForm.yellow.expression,
-      orangeExpression: levelForm.orange.expression, redExpression: levelForm.red.expression,
-      persistCount: levelForm.blue.persistCount, silencePeriod: levelForm.blue.silencePeriod,
-      isEnabled: active.isEnabled,
-    }
-    await updateCriteria(active.id, payload)
-    ElMessage.success('判据已保存')
+      levelConfig: buildLevelConfigFromForm(),
+      persistCount: levelForm.blue.persistCount,
+      silencePeriod: levelForm.blue.silencePeriod,
+      isEnabled: active.isEnabled
+    };
+    await updateCriteria(active.id, payload);
+    ElMessage.success('判据已保存');
     await loadAllCriteria()
   } catch (e: any) {
     ElMessage.error(e?.message || '保存失败')
@@ -551,11 +484,11 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
   }
 }
 
-// ── 启用/删除 ──
+// ── 启停/删除 ──
 async function handleToggle(c: AlarmCriteriaItem) {
   try {
-    await apiToggleCriteria(c.id, c.isEnabled === 1 ? 0 : 1)
-    ElMessage.success(c.isEnabled === 1 ? '已停用' : '已启用')
+    await apiToggleCriteria(c.id, c.isEnabled === 1 ? 0 : 1);
+    ElMessage.success(c.isEnabled === 1 ? '已停用' : '已启用');
     await loadAllCriteria()
   } catch (e: any) {
     ElMessage.error(e?.message || '操作失败')
@@ -564,13 +497,12 @@ async function handleToggle(c: AlarmCriteriaItem) {
 
 async function handleDelete(c: AlarmCriteriaItem) {
   try {
-    await ElMessageBox.confirm(`确定删除判据"${c.name}"？`, '确认删除', {type: 'warning'})
-    await deleteCriteria(c.id)
-    ElMessage.success('已删除')
-    if (activeTab.value === 'monitorType') selectedTypeCriteriaId.value = null
-    else selectedHpCriteriaId.value = null
+    await ElMessageBox.confirm(`确定删除判据"${c.name}"？`, '确认删除', {type: 'warning'});
+    await deleteCriteria(c.id);
+    ElMessage.success('已删除');
+    if (activeTab.value === 'monitorType') selectedTypeCriteriaId.value = null; else selectedHpCriteriaId.value = null;
     await loadAllCriteria()
-  } catch { /* cancelled */
+  } catch {
   }
 }
 
@@ -594,6 +526,7 @@ onMounted(async () => {
   gap: 20px;
   min-height: 500px;
 }
+
 .left-panel {
   width: 260px;
   border: 1px solid #dcdfe6;
@@ -603,10 +536,39 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
+.cascade-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.cascade-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cascade-label {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.cascade-meta {
+  font-size: 12px;
+  color: #409eff;
+  padding: 8px;
+  background: #ecf5ff;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
 .type-list {
   display: flex;
   flex-direction: column;
 }
+
 .type-item {
   display: flex;
   justify-content: space-between;
@@ -659,138 +621,5 @@ onMounted(async () => {
   color: #999;
   padding: 60px 0;
   font-size: 14px;
-}
-
-.criteria-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.sub-title {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.criteria-selector {
-  margin-bottom: 12px;
-}
-
-.criteria-selector .el-select {
-  width: 100%;
-}
-
-.criteria-info-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  padding: 12px 16px;
-  background: transparent;
-  border-radius: 6px;
-}
-
-.criteria-name-text {
-  font-weight: 500;
-  flex: 1;
-}
-
-.version-text {
-  font-size: 12px;
-  color: #409eff;
-}
-
-.level-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.level-section {
-  background: transparent;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.level-header {
-  padding: 20px 24px 10px;
-}
-
-.level-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.level-divider {
-  height: 2px;
-  margin: 0 24px;
-}
-
-.level-form {
-  padding: 20px 24px;
-}
-
-.form-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 22px;
-}
-
-.form-row:last-child {
-  margin-bottom: 0;
-}
-
-.form-label {
-  width: 110px;
-  font-size: 14px;
-  color: #606266;
-  flex-shrink: 0;
-}
-
-.form-field {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-}
-
-.expr-display {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-family: 'Consolas', 'Courier New', monospace;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  color: #303133;
-  min-height: 20px;
-  line-height: 20px;
-  word-break: break-all;
-}
-
-.expr-display.expr-empty {
-  color: #c0c4cc;
-  font-family: inherit;
-}
-
-.unit-text {
-  font-size: 14px;
-  color: #909399;
-  white-space: nowrap;
-}
-
-.save-bar {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 8px;
-  border-top: 1px solid #ebeef5;
-  margin-top: 4px;
-}
-
-.form-hint {
-  margin-left: 10px;
-  font-size: 12px;
-  color: #999;
 }
 </style>

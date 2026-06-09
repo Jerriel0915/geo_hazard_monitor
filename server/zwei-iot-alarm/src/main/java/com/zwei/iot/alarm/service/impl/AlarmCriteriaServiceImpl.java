@@ -6,13 +6,14 @@ import com.zwei.iot.alarm.domain.AlarmCriteriaLog;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaLogMapper;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaMapper;
 import com.zwei.iot.alarm.service.IAlarmCriteriaService;
+import com.zwei.iot.alarm.service.engine.CriteriaCacheService;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
 
 /**
- * 告警判据服务实现
+ * 告警判据服务实现 V3.0。
  *
  * @author zwei
  */
@@ -21,11 +22,14 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
 
     private final AlarmCriteriaMapper criteriaMapper;
     private final AlarmCriteriaLogMapper criteriaLogMapper;
+    private final CriteriaCacheService cacheService;
 
     public AlarmCriteriaServiceImpl(AlarmCriteriaMapper criteriaMapper,
-                                    AlarmCriteriaLogMapper criteriaLogMapper) {
+                                    AlarmCriteriaLogMapper criteriaLogMapper,
+                                    CriteriaCacheService cacheService) {
         this.criteriaMapper = criteriaMapper;
         this.criteriaLogMapper = criteriaLogMapper;
+        this.cacheService = cacheService;
     }
 
     @Override
@@ -40,12 +44,12 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
 
     @Override
     public List<AlarmCriteria> selectEnabledByMonitorContentId(Long monitorContentId) {
-        return criteriaMapper.selectEnabledByMonitorContentId(monitorContentId);
+        return cacheService.getByMonitorContentId(monitorContentId);
     }
 
     @Override
     public List<AlarmCriteria> selectEnabledByHazardPointId(Long hazardPointId) {
-        return criteriaMapper.selectEnabledByHazardPointId(hazardPointId);
+        return cacheService.getByHazardPointId(hazardPointId);
     }
 
     @Override
@@ -55,6 +59,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
         int rows = criteriaMapper.insertCriteria(criteria);
         if (rows > 0) {
             recordLog(criteria.getId(), 1, "CREATE", null, JSON.toJSONString(criteria));
+            cacheService.refresh();
         }
         return rows;
     }
@@ -62,16 +67,13 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     @Override
     public int update(AlarmCriteria criteria) {
         AlarmCriteria old = criteriaMapper.selectCriteriaById(criteria.getId());
-        if (old == null) {
-            return 0;
-        }
-        int newVersion = (old.getVersion() != null ? old.getVersion() : 1) + 1;
-        criteria.setVersion(newVersion);
+        if (old == null) return 0;
         criteria.setUpdateTime(new Date());
         int rows = criteriaMapper.updateCriteria(criteria);
         if (rows > 0) {
-            recordLog(criteria.getId(), newVersion, "UPDATE",
+            recordLog(criteria.getId(), (old.getVersion() != null ? old.getVersion() : 1) + 1, "UPDATE",
                     JSON.toJSONString(old), JSON.toJSONString(criteria));
+            cacheService.refresh();
         }
         return rows;
     }
@@ -84,23 +86,16 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
         if (rows > 0) {
             recordLog(id, (old.getVersion() != null ? old.getVersion() : 1) + 1, "DELETE",
                     JSON.toJSONString(old), null);
+            cacheService.refresh();
         }
         return rows;
     }
 
     @Override
     public int toggle(Long id, Integer isEnabled) {
-        AlarmCriteria old = criteriaMapper.selectCriteriaById(id);
-        if (old == null) return 0;
-        AlarmCriteria update = new AlarmCriteria();
-        update.setId(id);
-        update.setIsEnabled(isEnabled);
-        update.setUpdateTime(new Date());
+        AlarmCriteria update = AlarmCriteria.builder().id(id).isEnabled(isEnabled).updateTime(new Date()).build();
         int rows = criteriaMapper.updateCriteria(update);
-        if (rows > 0) {
-            recordLog(id, (old.getVersion() != null ? old.getVersion() : 1) + 1, "TOGGLE",
-                    JSON.toJSONString(old), JSON.toJSONString(update));
-        }
+        if (rows > 0) cacheService.refresh();
         return rows;
     }
 
@@ -109,16 +104,9 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
         return criteriaLogMapper.selectLogsByCriteriaId(criteriaId);
     }
 
-    private void recordLog(Long criteriaId, int version, String changeType,
-                           String oldValue, String newValue) {
-        AlarmCriteriaLog log = AlarmCriteriaLog.builder()
-                .criteriaId(criteriaId)
-                .version(version)
-                .changeType(changeType)
-                .oldValue(oldValue)
-                .newValue(newValue)
-                .createTime(new Date())
-                .build();
-        criteriaLogMapper.insertLog(log);
+    private void recordLog(Long criteriaId, int version, String changeType, String oldValue, String newValue) {
+        criteriaLogMapper.insertLog(AlarmCriteriaLog.builder()
+                .criteriaId(criteriaId).version(version).changeType(changeType)
+                .oldValue(oldValue).newValue(newValue).createTime(new Date()).build());
     }
 }

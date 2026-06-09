@@ -14,6 +14,16 @@ public interface AlarmCriteriaMapper {
 
     List<AlarmCriteria> selectEnabledByHazardPointId(Long hazardPointId);
 
+    /**
+     * 按监测类型加载兜底判据（hazard_point_id IS NULL）
+     */
+    List<AlarmCriteria> selectEnabledByMonitorTypeId(Long monitorTypeId);
+
+    /**
+     * 加载所有启用的判据（用于缓存预热）
+     */
+    List<AlarmCriteria> selectAllEnabled();
+
     AlarmCriteria selectCriteriaById(Long id);
 
     int insertCriteria(AlarmCriteria criteria);
@@ -21,7 +31,4 @@ public interface AlarmCriteriaMapper {
     int updateCriteria(AlarmCriteria criteria);
 
     int deleteCriteriaById(Long id);
-
-    int updateVersion(@org.apache.ibatis.annotations.Param("id") Long id,
-                      @org.apache.ibatis.annotations.Param("version") Integer version);
 }

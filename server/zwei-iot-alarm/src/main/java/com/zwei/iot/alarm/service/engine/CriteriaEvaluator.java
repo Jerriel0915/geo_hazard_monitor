@@ -1,145 +1,154 @@
 package com.zwei.iot.alarm.service.engine;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
-import com.zwei.iot.alarm.domain.CriteriaCondition;
+import com.zwei.iot.alarm.domain.LevelCondition;
+import com.zwei.iot.alarm.domain.LevelConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 判据条件评估器 — 解析 alarm_criteria.conditions_json 并执行条件匹配。
- * <p>
- * 支持操作符: GT, GTE, LT, LTE, EQ, NEQ, BETWEEN
+ * 判据条件评估器 V3.0 — 基于 level_config 的逐级多指标评估。
  *
  * @author zwei
  */
 @Component
 public class CriteriaEvaluator {
 
+    private static final Logger log = LoggerFactory.getLogger(CriteriaEvaluator.class);
+
     /**
-     * 评估单条判据是否触发告警。
+     * 告警等级 key 顺序（从高到低）
+     */
+    private static final String[] LEVEL_KEYS = {"red", "orange", "yellow", "blue"};
+    private static final Map<String, Integer> LEVEL_VALUES = Map.of(
+            "red", 4, "orange", 3, "yellow", 2, "blue", 1
+    );
+
+    /**
+     * 评估判据，返回触发的最高告警等级。
      *
      * @param criteria     判据
-     * @param currentValue 当前测量值
-     * @param recentValues 最近N条历史值（用于 RATE_CHANGE 等复合操作符，暂无）
-     * @return 触发的告警等级 (1=蓝 2=黄 3=橙 4=红)，0 = 未触发
+     * @param subjectValues 主语 → 当前值的映射（由调用方从 IoTDB 查询填充）
+     * @return 告警等级 1-4，0 表示未触发
      */
-    public int evaluate(AlarmCriteria criteria, Double currentValue) {
-        String conditionsJson = criteria.getConditionsJson();
-        if (conditionsJson == null || conditionsJson.isEmpty()) {
-            // 无条件 JSON，仅按表达式阈值判定
-            return evaluateLevelExpressions(criteria, currentValue);
-        }
-
-        List<CriteriaCondition> conditions = parseConditions(conditionsJson);
-        if (conditions.isEmpty()) {
-            return evaluateLevelExpressions(criteria, currentValue);
-        }
-
-        // 评估条件组合
-        boolean matched;
-        if ("OR".equalsIgnoreCase(criteria.getLogicOperator())) {
-            matched = conditions.stream().anyMatch(c -> evaluateSingleCondition(c, currentValue));
-        } else {
-            // 默认 AND
-            matched = conditions.stream().allMatch(c -> evaluateSingleCondition(c, currentValue));
-        }
-
-        if (!matched) {
+    public int evaluate(AlarmCriteria criteria, Map<String, Double> subjectValues) {
+        if (subjectValues == null || subjectValues.isEmpty()) {
             return 0;
         }
 
-        // 分级判定：从高到低依次检查
-        return evaluateLevelExpressions(criteria, currentValue);
+        Map<String, LevelConfig> configMap = parseLevelConfig(criteria.getLevelConfig());
+        if (configMap.isEmpty()) {
+            return 0;
+        }
+
+        // 从高到低检查
+        for (String key : LEVEL_KEYS) {
+            LevelConfig config = configMap.get(key);
+            if (config == null) continue;
+
+            boolean matched = evaluateLevel(config, subjectValues);
+            if (matched) {
+                return LEVEL_VALUES.getOrDefault(key, 0);
+            }
+        }
+        return 0;
     }
 
     /**
-     * 评估单个条件是否满足。
+     * 评估单个等级的所有条件。
      */
-    private boolean evaluateSingleCondition(CriteriaCondition cond, Double currentValue) {
-        if (currentValue == null) {
+    boolean evaluateLevel(LevelConfig config, Map<String, Double> subjectValues) {
+        List<LevelCondition> conditions = config.getConditions();
+        if (conditions == null || conditions.isEmpty()) {
             return false;
         }
-        String operator = cond.getOperator();
-        Double threshold = cond.getThreshold();
 
-        switch (operator != null ? operator.toUpperCase() : "GT") {
+        boolean isOr = "OR".equalsIgnoreCase(config.getLogicOperator());
+        for (LevelCondition cond : conditions) {
+            Double value = resolveSubjectValue(cond, subjectValues);
+            boolean condResult = evaluateCondition(cond, value);
+
+            if (isOr && condResult) return true;       // OR: 任一满足即通过
+            if (!isOr && !condResult) return false;     // AND: 任一不满足即失败
+        }
+        return !isOr; // AND: 全部通过; OR: 全部不通过
+    }
+
+    /**
+     * 根据条件的主语解析出实际值。
+     */
+    Double resolveSubjectValue(LevelCondition cond, Map<String, Double> subjectValues) {
+        if (cond == null || cond.getSubject() == null) return null;
+
+        if ("FUNCTION".equals(cond.getSubjectType())) {
+            // 函数主语：尝试从 subjectValues 中查找（由调用方预计算函数值）
+            return subjectValues.get(cond.getSubject());
+        }
+        // 直接监测内容
+        return subjectValues.get(cond.getSubject());
+    }
+
+    /**
+     * 评估单个条件。
+     */
+    boolean evaluateCondition(LevelCondition cond, Double value) {
+        if (value == null || cond == null || cond.getOperator() == null) {
+            return false;
+        }
+        Double threshold = cond.getThreshold();
+        if (threshold == null) return false;
+
+        switch (cond.getOperator().toUpperCase()) {
             case "GT":
-                return currentValue > threshold;
+                return value > threshold;
             case "GTE":
-                return currentValue >= threshold;
+                return value >= threshold;
             case "LT":
-                return currentValue < threshold;
+                return value < threshold;
             case "LTE":
-                return currentValue <= threshold;
+                return value <= threshold;
             case "EQ":
-                return Math.abs(currentValue - threshold) < 0.0001;
+                return Math.abs(value - threshold) < 0.0001;
             case "NEQ":
-                return Math.abs(currentValue - threshold) >= 0.0001;
+                return Math.abs(value - threshold) >= 0.0001;
             case "BETWEEN":
-                Double max = cond.getThresholdMax();
-                return max != null && currentValue >= threshold && currentValue <= max;
+                return cond.getThresholdMax() != null
+                        && value >= threshold && value <= cond.getThresholdMax();
             default:
                 return false;
         }
     }
 
     /**
-     * 分级判定：从高到低检查各等级表达式阈值。
+     * 解析 level_config JSON。
      */
-    private int evaluateLevelExpressions(AlarmCriteria criteria, Double currentValue) {
-        if (currentValue == null) return 0;
-        if (matchesLevel(criteria.getRedExpression(), currentValue)) return 4;
-        if (matchesLevel(criteria.getOrangeExpression(), currentValue)) return 3;
-        if (matchesLevel(criteria.getYellowExpression(), currentValue)) return 2;
-        if (matchesLevel(criteria.getBlueExpression(), currentValue)) return 1;
-        return 0;
-    }
-
-    /**
-     * 检查当前值是否超过指定等级的阈值表达式。
-     * 表达式格式: 纯数字（如 "10.5"）表示 > 阈值；也可为 "LT 5" 表示低于阈值时触发。
-     */
-    private boolean matchesLevel(String expression, Double currentValue) {
-        if (expression == null || expression.trim().isEmpty()) {
-            return false;
-        }
+    public Map<String, LevelConfig> parseLevelConfig(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyMap();
         try {
-            String trimmed = expression.trim();
-            if (trimmed.startsWith("LT ")) {
-                double threshold = Double.parseDouble(trimmed.substring(3).trim());
-                return currentValue < threshold;
-            }
-            if (trimmed.startsWith("GT ")) {
-                double threshold = Double.parseDouble(trimmed.substring(3).trim());
-                return currentValue > threshold;
-            }
-            if (trimmed.startsWith("LTE ")) {
-                double threshold = Double.parseDouble(trimmed.substring(4).trim());
-                return currentValue <= threshold;
-            }
-            if (trimmed.startsWith("GTE ")) {
-                double threshold = Double.parseDouble(trimmed.substring(4).trim());
-                return currentValue >= threshold;
-            }
-            // 默认: 纯数字 = GT 阈值
-            double threshold = Double.parseDouble(trimmed);
-            return currentValue > threshold;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    /**
-     * 解析 conditions_json 为条件对象列表。
-     */
-    List<CriteriaCondition> parseConditions(String conditionsJson) {
-        try {
-            return JSON.parseArray(conditionsJson, CriteriaCondition.class);
+            return JSON.parseObject(json, new TypeReference<LinkedHashMap<String, LevelConfig>>() {});
         } catch (Exception e) {
-            return Collections.emptyList();
+            log.warn("level_config 解析失败: {}", json, e);
+            return Collections.emptyMap();
         }
+    }
+
+    /**
+     * 从 level_config 中提取所有引用的主语（用于缓存预判用到的指标列表）。
+     */
+    public List<String> extractSubjects(String levelConfigJson) {
+        Map<String, LevelConfig> map = parseLevelConfig(levelConfigJson);
+        return map.values().stream()
+                .flatMap(c -> c.getConditions().stream())
+                .map(LevelCondition::getSubject)
+                .distinct()
+                .toList();
     }
 }

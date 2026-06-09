@@ -1,10 +1,9 @@
 package com.zwei.iot.alarm.domain.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 /**
- * 告警判据 — 创建请求
+ * 告警判据 — 创建/更新请求 V3.0。
  *
  * @author zwei
  */
@@ -20,28 +19,15 @@ public class CriteriaCreateRequest {
     private Long hazardPointId;
 
     /**
-     * 判据条件 JSON
+     * 四级告警条件配置 JSON: {"blue":{...},"yellow":{...},"orange":{...},"red":{...}}
      */
-    private String conditionsJson;
-    /**
-     * 逻辑运算符: AND/OR
-     */
-    private String logicOperator;
-
-    private String blueExpression;
-    private String blueDescription;
-    private String yellowExpression;
-    private String yellowDescription;
-    private String orangeExpression;
-    private String orangeDescription;
-    private String redExpression;
-    private String redDescription;
+    private String levelConfig;
 
     private Integer persistCount;
     private Integer silencePeriod;
     private Integer isEnabled;
 
-    // Getters and Setters
+    // ── Getters / Setters ──
     public String getName() {
         return name;
     }
@@ -90,84 +76,12 @@ public class CriteriaCreateRequest {
         this.hazardPointId = hazardPointId;
     }
 
-    public String getConditionsJson() {
-        return conditionsJson;
+    public String getLevelConfig() {
+        return levelConfig;
     }
 
-    public void setConditionsJson(String conditionsJson) {
-        this.conditionsJson = conditionsJson;
-    }
-
-    public String getLogicOperator() {
-        return logicOperator;
-    }
-
-    public void setLogicOperator(String logicOperator) {
-        this.logicOperator = logicOperator;
-    }
-
-    public String getBlueExpression() {
-        return blueExpression;
-    }
-
-    public void setBlueExpression(String blueExpression) {
-        this.blueExpression = blueExpression;
-    }
-
-    public String getBlueDescription() {
-        return blueDescription;
-    }
-
-    public void setBlueDescription(String blueDescription) {
-        this.blueDescription = blueDescription;
-    }
-
-    public String getYellowExpression() {
-        return yellowExpression;
-    }
-
-    public void setYellowExpression(String yellowExpression) {
-        this.yellowExpression = yellowExpression;
-    }
-
-    public String getYellowDescription() {
-        return yellowDescription;
-    }
-
-    public void setYellowDescription(String yellowDescription) {
-        this.yellowDescription = yellowDescription;
-    }
-
-    public String getOrangeExpression() {
-        return orangeExpression;
-    }
-
-    public void setOrangeExpression(String orangeExpression) {
-        this.orangeExpression = orangeExpression;
-    }
-
-    public String getOrangeDescription() {
-        return orangeDescription;
-    }
-
-    public void setOrangeDescription(String orangeDescription) {
-        this.orangeDescription = orangeDescription;
-    }
-
-    public String getRedExpression() {
-        return redExpression;
-    }
-
-    public void setRedExpression(String redExpression) {
-        this.redExpression = redExpression;
-    }
-
-    public String getRedDescription() {
-        return redDescription;
-    }
-
-    public void setRedDescription(String redDescription) {
-        this.redDescription = redDescription;
+    public void setLevelConfig(String levelConfig) {
+        this.levelConfig = levelConfig;
     }
 
     public Integer getPersistCount() {
@@ -191,6 +105,5 @@ public class CriteriaCreateRequest {
     }
 
     public void setIsEnabled(Integer isEnabled) {
-        this.isEnabled = isEnabled;
-    }
+        this.isEnabled = isEnabled; }
 }

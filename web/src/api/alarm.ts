@@ -76,6 +76,25 @@ export interface AlarmRecordLog {
 
 // ── 告警判据 ──
 
+// ── 单个条件 ──
+export interface LevelCondition {
+    subject: string
+    subjectType?: 'CONTENT' | 'FUNCTION'
+    function?: string
+    functionParams?: Record<string, string>
+    operator: string
+    threshold: number
+    thresholdMax?: number
+    unit?: string
+}
+
+// ── 等级配置 ──
+export interface LevelConfig {
+    logicOperator?: string
+    conditions: LevelCondition[]
+    description?: string
+}
+
 export interface AlarmCriteriaItem {
     id: number
     name: string
@@ -84,22 +103,9 @@ export interface AlarmCriteriaItem {
     monitorContentId?: number
     monitorContentCode?: string
     hazardPointId?: number
-    conditionsJson?: string
-    logicOperator?: string
-    blueExpression?: string
-    blueDescription?: string
-    yellowExpression?: string
-    yellowDescription?: string
-    orangeExpression?: string
-    orangeDescription?: string
-    redExpression?: string
-    redDescription?: string
+    levelConfig?: string
     persistCount: number
     silencePeriod: number
-    /** 各级别独立持续触发次数 (level -> count) */
-    levelPersistCount?: Record<number, number>
-    /** 各级别独立静默周期 (level -> period) */
-    levelSilencePeriod?: Record<number, number>
     isEnabled: number
     version: number
     createTime: string
@@ -112,22 +118,10 @@ export interface AlarmCriteriaCreatePayload {
     monitorContentId?: number
     monitorContentCode?: string
     hazardPointId?: number
-    conditionsJson?: string
-    logicOperator?: string
-    blueExpression?: string
-    blueDescription?: string
-    yellowExpression?: string
-    yellowDescription?: string
-    orangeExpression?: string
-    orangeDescription?: string
-    redExpression?: string
-    redDescription?: string
+    /** V3.0: 四级告警条件 JSON */
+    levelConfig?: string
     persistCount?: number
     silencePeriod?: number
-    /** 各级别独立持续触发次数 (level -> count) */
-    levelPersistCount?: Record<number, number>
-    /** 各级别独立静默周期 (level -> period) */
-    levelSilencePeriod?: Record<number, number>
     isEnabled?: number
 }
 

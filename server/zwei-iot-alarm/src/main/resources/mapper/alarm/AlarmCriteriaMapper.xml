@@ -11,16 +11,7 @@
         <result property="monitorContentId" column="monitor_content_id"/>
         <result property="monitorContentCode" column="monitor_content_code"/>
         <result property="hazardPointId" column="hazard_point_id"/>
-        <result property="conditionsJson" column="conditions_json"/>
-        <result property="logicOperator" column="logic_operator"/>
-        <result property="blueExpression" column="blue_expression"/>
-        <result property="blueDescription" column="blue_description"/>
-        <result property="yellowExpression" column="yellow_expression"/>
-        <result property="yellowDescription" column="yellow_description"/>
-        <result property="orangeExpression" column="orange_expression"/>
-        <result property="orangeDescription" column="orange_description"/>
-        <result property="redExpression" column="red_expression"/>
-        <result property="redDescription" column="red_description"/>
+        <result property="levelConfig" column="level_config"/>
         <result property="persistCount" column="persist_count"/>
         <result property="silencePeriod" column="silence_period"/>
         <result property="isEnabled" column="is_enabled"/>
@@ -32,7 +23,7 @@
         <result property="delFlag" column="del_flag"/>
     </resultMap>
 
-    <sql id="selectCriteriaVo">
+    <sql id="selectVo">
         SELECT id,
                name,
                monitor_type_id,
@@ -40,81 +31,72 @@
                monitor_content_id,
                monitor_content_code,
                hazard_point_id,
-               conditions_json,
-               logic_operator,
-               blue_expression,
-               blue_description,
-               yellow_expression,
-               yellow_description,
-               orange_expression,
-               orange_description,
-               red_expression,
-               red_description,
+               level_config,
                persist_count,
                silence_period,
                is_enabled,
                version,
+               del_flag,
                create_by,
                create_time,
                update_by,
-               update_time,
-               del_flag
+               update_time
         FROM alarm_criteria
     </sql>
 
     <select id="selectCriteriaList" parameterType="com.zwei.iot.alarm.domain.AlarmCriteria"
             resultMap="AlarmCriteriaResult">
-        <include refid="selectCriteriaVo"/>
+        <include refid="selectVo"/>
         <where>
             del_flag = 0
-            <if test="name != null and name != ''">
-                AND name LIKE CONCAT('%', #{name}, '%')
-            </if>
-            <if test="monitorTypeId != null">
-                AND monitor_type_id = #{monitorTypeId}
-            </if>
-            <if test="monitorContentId != null">
-                AND monitor_content_id = #{monitorContentId}
-            </if>
-            <if test="hazardPointId != null">
-                AND hazard_point_id = #{hazardPointId}
-            </if>
-            <if test="isEnabled != null">
-                AND is_enabled = #{isEnabled}
-            </if>
+            <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="monitorTypeId != null">AND monitor_type_id = #{monitorTypeId}</if>
+            <if test="monitorContentId != null">AND monitor_content_id = #{monitorContentId}</if>
+            <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
+            <if test="isEnabled != null">AND is_enabled = #{isEnabled}</if>
         </where>
         ORDER BY id DESC
     </select>
 
     <select id="selectEnabledByMonitorContentId" resultMap="AlarmCriteriaResult">
-        <include refid="selectCriteriaVo"/>
+        <include refid="selectVo"/>
         WHERE del_flag = 0 AND is_enabled = 1 AND monitor_content_id = #{monitorContentId}
     </select>
 
     <select id="selectEnabledByHazardPointId" resultMap="AlarmCriteriaResult">
-        <include refid="selectCriteriaVo"/>
+        <include refid="selectVo"/>
         WHERE del_flag = 0 AND is_enabled = 1 AND hazard_point_id = #{hazardPointId}
     </select>
 
+    <!-- 按监测类型加载兜底判据 (hazard_point_id IS NULL, 全局生效) -->
+    <select id="selectEnabledByMonitorTypeId" resultMap="AlarmCriteriaResult">
+        <include refid="selectVo"/>
+        WHERE del_flag = 0 AND is_enabled = 1
+        AND monitor_type_id = #{monitorTypeId}
+        AND hazard_point_id IS NULL
+    </select>
+
+    <select id="selectAllEnabled" resultMap="AlarmCriteriaResult">
+        <include refid="selectVo"/>
+        WHERE del_flag = 0 AND is_enabled = 1
+    </select>
+
     <select id="selectCriteriaById" parameterType="Long" resultMap="AlarmCriteriaResult">
-        <include refid="selectCriteriaVo"/>
+        <include refid="selectVo"/>
         WHERE id = #{id} AND del_flag = 0
     </select>
 
     <insert id="insertCriteria" parameterType="com.zwei.iot.alarm.domain.AlarmCriteria"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO alarm_criteria (name, monitor_type_id, monitor_type_name, monitor_content_id,
-                                    monitor_content_code, hazard_point_id, conditions_json, logic_operator,
-                                    blue_expression, blue_description, yellow_expression, yellow_description,
-                                    orange_expression, orange_description, red_expression, red_description,
-                                    persist_count, silence_period, is_enabled, version,
-                                    create_by, create_time)
-        VALUES (#{name}, #{monitorTypeId}, #{monitorTypeName}, #{monitorContentId},
-                #{monitorContentCode}, #{hazardPointId}, #{conditionsJson}, #{logicOperator},
-                #{blueExpression}, #{blueDescription}, #{yellowExpression}, #{yellowDescription},
-                #{orangeExpression}, #{orangeDescription}, #{redExpression}, #{redDescription},
-                #{persistCount}, #{silencePeriod}, #{isEnabled}, #{version},
-                #{createBy}, #{createTime})
+        INSERT INTO alarm_criteria (name, monitor_type_id, monitor_type_name,
+                                    monitor_content_id, monitor_content_code, hazard_point_id,
+                                    level_config, persist_count, silence_period,
+                                    is_enabled, version, create_by, create_time)
+        VALUES (#{name}, #{monitorTypeId}, #{monitorTypeName},
+                #{monitorContentId}, #{monitorContentCode}, #{hazardPointId},
+                IF(#{levelConfig} = '' OR #{levelConfig} IS NULL, '{}', #{levelConfig}),
+                #{persistCount}, #{silencePeriod},
+                #{isEnabled}, #{version}, #{createBy}, #{createTime})
     </insert>
 
     <update id="updateCriteria" parameterType="com.zwei.iot.alarm.domain.AlarmCriteria">
@@ -126,16 +108,7 @@
             <if test="monitorContentId != null">monitor_content_id = #{monitorContentId},</if>
             <if test="monitorContentCode != null">monitor_content_code = #{monitorContentCode},</if>
             <if test="hazardPointId != null">hazard_point_id = #{hazardPointId},</if>
-            <if test="conditionsJson != null">conditions_json = #{conditionsJson},</if>
-            <if test="logicOperator != null">logic_operator = #{logicOperator},</if>
-            <if test="blueExpression != null">blue_expression = #{blueExpression},</if>
-            <if test="blueDescription != null">blue_description = #{blueDescription},</if>
-            <if test="yellowExpression != null">yellow_expression = #{yellowExpression},</if>
-            <if test="yellowDescription != null">yellow_description = #{yellowDescription},</if>
-            <if test="orangeExpression != null">orange_expression = #{orangeExpression},</if>
-            <if test="orangeDescription != null">orange_description = #{orangeDescription},</if>
-            <if test="redExpression != null">red_expression = #{redExpression},</if>
-            <if test="redDescription != null">red_description = #{redDescription},</if>
+            <if test="levelConfig != null">level_config = #{levelConfig},</if>
             <if test="persistCount != null">persist_count = #{persistCount},</if>
             <if test="silencePeriod != null">silence_period = #{silencePeriod},</if>
             <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
@@ -148,13 +121,6 @@
     <update id="deleteCriteriaById" parameterType="Long">
         UPDATE alarm_criteria
         SET del_flag = 1
-        WHERE id = #{id}
-    </update>
-
-    <update id="updateVersion">
-        UPDATE alarm_criteria
-        SET version     = #{version},
-            update_time = NOW()
         WHERE id = #{id}
     </update>
 

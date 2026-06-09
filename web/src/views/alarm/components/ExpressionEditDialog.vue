@@ -192,7 +192,6 @@ function handleConfirm() {
   color: #303133;
   margin-bottom: 8px;
 }
-
 .expr-textarea {
   width: 100%;
   box-sizing: border-box;
@@ -232,7 +231,6 @@ function handleConfirm() {
   align-items: flex-start;
   gap: 10px;
 }
-
 .quick-label {
   min-width: 80px;
   font-size: 13px;
