@@ -1,9 +1,11 @@
 <template>
   <div class="hazard-detail-card">
     <!-- 卡片标题 -->
-    <div class="card-header">
-      <el-icon class="card-header-icon" :size="18"><MapLocation/></el-icon>
-      <span class="card-header-title">{{ hazardPoint?.name || '--' }}</span>
+    <div class="section-header">
+      <span class="section-title-group">
+        <el-icon class="section-icon" :size="18"><MapLocation/></el-icon>
+        <span class="section-title">{{ hazardPoint?.name || '--' }}</span>
+      </span>
     </div>
 
     <!-- 基本信息 -->
@@ -29,7 +31,10 @@
     <!-- 设备列表 -->
     <div class="device-section">
       <div class="device-section-header">
-        <span class="device-section-title">设备列表</span>
+        <span class="section-title-group">
+          <el-icon class="section-icon section-icon--green" :size="16"><Monitor/></el-icon>
+          <span class="device-section-title">设备列表</span>
+        </span>
         <span class="device-section-count">{{ devices.length }}</span>
       </div>
       <div v-if="loading" class="device-loading">加载中...</div>
@@ -163,26 +168,34 @@ watch(() => props.hazardPoint?.id, fetchDevices, { immediate: true })
 }
 
 /* 卡片标题 */
-.card-header {
+.section-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.04) 100%);
-  border-bottom: 1px solid rgba(24, 144, 255, 0.2);
+  justify-content: space-between;
+  padding: 8px 14px 10px;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.03) 100%);
+  border-bottom: 1px solid rgba(24, 144, 255, 0.12);
   flex-shrink: 0;
 }
 
-.card-header-icon { color: #1677ff; font-size: 20px; }
-
-.card-header-title {
+.section-title {
   font-size: 16px;
   font-weight: 600;
   color: #1d2129;
+  font-family: var(--font-display, inherit);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.5;
+}
+
+.section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-icon {
+  color: #1890ff;
 }
 
 /* 基本信息 */
@@ -235,12 +248,16 @@ watch(() => props.hazardPoint?.id, fetchDevices, { immediate: true })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 4px 12px;
+  padding: 8px 4px 8px;
   flex-shrink: 0;
 }
 
+.section-icon--green {
+  color: #52c41a;
+}
+
 .device-section-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1d2129;
 }

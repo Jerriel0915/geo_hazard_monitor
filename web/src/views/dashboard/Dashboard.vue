@@ -84,9 +84,7 @@
       </button>
       <div class="right-panel">
         <!-- 隐患点视图：显示告警情况 + 实时警情 -->
-        <HazardAlarmWidget v-if="currentView === 'hazard'" :hazard-point-id="currentHazardPoint?.id ?? null" />
-        <!-- 系统视图选中隐患点：显示对应告警 -->
-        <HazardAlarmWidget v-else-if="currentHazardPoint" :hazard-point-id="currentHazardPoint.id" />
+        <HazardAlarmWidget v-if="currentView === 'hazard' || currentHazardPoint" class="panel-content" :hazard-point-id="currentHazardPoint?.id ?? null" />
         <!-- 默认系统视图：Widget 布局 -->
         <template v-else>
           <div class="panel-content panel-content-scroll">
@@ -111,30 +109,31 @@
 </template>
 
 <script setup lang="ts">
-import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
-import {computed, onMounted, onUnmounted, ref} from 'vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { getBoundDevices, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
+import { getDashboardFull } from '@/api/monitor'
+import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
+import { getRealtimeAlarmPage, type RealtimeAlarmDetail } from '@/api/realtimeAlarm'
 import {
   ArrowLeft,
   ArrowRight,
   Close,
   Drizzling,
-  MapLocation,
   Monitor,
   Odometer,
   Sunny
 } from '@element-plus/icons-vue'
-import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
-import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
+import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import AlarmWidget from './components/AlarmWidget.vue'
+import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import HazardAlarmWidget from './components/HazardAlarmWidget.vue'
 import HazardDetailWidget from './components/HazardDetailWidget.vue'
-import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
-import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
-import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import HealthWidget from './components/HealthWidget.vue'
 import LayoutConfigDialog from './components/LayoutConfigDialog.vue'
+import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
+import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import ResourceWidget from './components/ResourceWidget.vue'
 
 const getDeviceTypeIcon = (type: string) => {
@@ -612,6 +611,8 @@ const onHazardMarkerClick = async (point: typeof hazardPoints.value[0]) => {
     savedMapView = { center: [center.lat, center.lng], zoom: mapInstance.getZoom() }
   }
 
+  currentView.value = 'hazard'
+
   currentHazardPoint.value = point
 
   // 地图缩放到隐患点
@@ -897,17 +898,7 @@ const updateHazardAlarms = (hazardId: number) => {
 }
 
 const resetAlarmStats = () => {
-  alarmStats.value = {
-    pendingCount: 0,
-    historyCount: 0,
-    levelStats: [
-      {key: 'critical', name: '严重', count: 0},
-      {key: 'major', name: '重要', count: 0},
-      {key: 'minor', name: '一般', count: 0},
-      {key: 'info', name: '提示', count: 0}
-    ],
-    recentAlarms: []
-  }
+  loadDashboardData()
 }
 
 const selectHazardPoint = (hazardPoint: typeof hazardPoints.value[0]) => {
@@ -1168,6 +1159,13 @@ const loadHazardPointGroups = async () => {
     const response = await getHazardPointGroups()
     if (response.code === 200 && response.data) {
       hazardPointGroups.value = response.data
+      // 同步默认图层选中状态（与 MapBusinessToolbar 的 defaultCheckedKeys 一致）
+      if (activeLayerKeys.value.length === 0) {
+        const keys = ['showLabels']
+        response.data.forEach((g: any) => keys.push(`group_${g.id}`))
+        keys.push('showMonitoring')
+        activeLayerKeys.value = keys
+      }
     }
   } catch (error) {
     console.error('加载隐患点分组失败:', error)
@@ -1182,6 +1180,77 @@ const loadMonitorTypes = async () => {
   }
 }
 
+// 加载仪表盘全局统计（Health + Resource + Alarm）
+const loadDashboardData = async () => {
+  try {
+    const [fullRes, alarmRes] = await Promise.all([
+      getDashboardFull(),
+      getRealtimeAlarmPage({ pageNum: 1, pageSize: 50 })
+    ])
+
+    // ---- HealthWidget ----
+    if (fullRes.code === 200 && fullRes.data?.healthScore) {
+      const hs = fullRes.data.healthScore
+      healthStats.value.overallScore = hs.overallScore
+      if (hs.items?.length) {
+        healthStats.value.items = hs.items.map((item, i) => ({
+          name: item.name,
+          value: item.value,
+          weight: item.weight,
+          color: item.color || healthStats.value.items[i]?.color || '#1890ff'
+        }))
+      }
+    }
+
+    // ---- ResourceWidget ----
+    if (fullRes.code === 200 && fullRes.data?.overview) {
+      const ov = fullRes.data.overview
+      const dist = fullRes.data.sensorDistribution
+      resourceStats.value.deviceTotal = ov.device?.total || 0
+      resourceStats.value.hazardTotal = ov.hazardPoint?.total || 0
+      resourceStats.value.totalResources = resourceStats.value.deviceTotal + resourceStats.value.hazardTotal + (ov.videoDevice?.total || 0)
+
+      if (dist?.list?.length) {
+        resourceStats.value.deviceTypes = dist.list.map(d => ({
+          name: d.monitorTypeName,
+          count: d.sensorCount
+        }))
+      }
+    }
+
+    // ---- AlarmWidget (system-wide) ----
+    if (alarmRes?.code === 200 && alarmRes.data?.rows) {
+      const alarms: RealtimeAlarmDetail[] = alarmRes.data.rows
+      const pending = alarms.filter(a => a.alarmStatus === 0)
+      const levelMap: Record<string, string> = { '1': 'critical', '2': 'major', '3': 'minor', '4': 'info' }
+      const nameMap: Record<string, string> = { '1': '严重', '2': '重要', '3': '一般', '4': '提示' }
+      const levelCounts: Record<string, number> = { critical: 0, major: 0, minor: 0, info: 0 }
+      alarms.forEach(a => {
+        const key = levelMap[String(a.alarmLevel)] || 'info'
+        levelCounts[key]++
+      })
+
+      alarmStats.value.pendingCount = pending.length
+      alarmStats.value.historyCount = alarms.length
+      alarmStats.value.levelStats = [
+        { key: 'critical', name: '严重', count: levelCounts.critical },
+        { key: 'major', name: '重要', count: levelCounts.major },
+        { key: 'minor', name: '一般', count: levelCounts.minor },
+        { key: 'info', name: '提示', count: levelCounts.info }
+      ]
+      alarmStats.value.recentAlarms = alarms.slice(0, 10).map(a => ({
+        id: a.id,
+        level: levelMap[String(a.alarmLevel)] || 'info',
+        title: a.alarmDetail || a.alarmTypeName,
+        source: a.hazardPointName,
+        time: a.lastAlarmTime
+      }))
+    }
+  } catch (e) {
+    console.error('加载仪表盘统计失败:', e)
+  }
+}
+
 onMounted(async () => {
   initMap()
   window.addEventListener('resize', handleResize)
@@ -1190,6 +1259,7 @@ onMounted(async () => {
   await loadHazardPointGroups()
   loadMonitorTypes()
   await loadHazardPoints()
+  loadDashboardData()
 })
 
 onUnmounted(() => {
@@ -1319,7 +1389,6 @@ onUnmounted(() => {
 }
 
 .panel-content {
-  padding: 0 4px;
   background: transparent;
   height: 100%;
   overflow-y: auto;

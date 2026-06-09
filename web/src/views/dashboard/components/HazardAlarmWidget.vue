@@ -197,15 +197,16 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(245, 34, 45, 0.12) 0%, rgba(245, 34, 45, 0.04) 100%);
-  border-bottom: 1px solid rgba(245, 34, 45, 0.15);
+  padding: 8px 14px 10px;
+  background: linear-gradient(135deg, rgba(245, 34, 45, 0.12) 0%, rgba(245, 34, 45, 0.03) 100%);
+  border-bottom: 1px solid rgba(245, 34, 45, 0.12);
 }
 
 .section-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #1d2129;
+  font-family: var(--font-display, inherit);
 }
 
 .section-title-group {
@@ -309,8 +310,8 @@ watch(() => props.hazardPointId, fetchAlarms, { immediate: true })
 }
 
 .list-header {
-  background: linear-gradient(135deg, rgba(245, 34, 45, 0.12) 0%, rgba(245, 34, 45, 0.04) 100%);
-  border-bottom: 1px solid rgba(245, 34, 45, 0.15);
+  background: linear-gradient(135deg, rgba(245, 34, 45, 0.12) 0%, rgba(245, 34, 45, 0.03) 100%);
+  border-bottom: 1px solid rgba(245, 34, 45, 0.12);
   flex-shrink: 0;
 }
 
