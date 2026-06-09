@@ -43,19 +43,19 @@
           v-for="alarm in alarmList"
           :key="alarm.id"
           class="alarm-item"
-          :class="`status-${alarm.alarmStatus}`"
+          :class="`status-${alarm.status}`"
           @click="showDetail(alarm)"
         >
           <div class="alarm-level-dot" :class="levelKey(alarm.alarmLevel)"></div>
           <div class="alarm-content">
-            <div class="alarm-title">{{ alarm.alarmDetail || alarm.alarmTypeName }}</div>
+            <div class="alarm-title">{{ alarm.alarmMessage || alarm.alarmLevelText }}</div>
             <div class="alarm-meta">
-              <span class="alarm-type-tag">{{ alarm.alarmTypeName }}</span>
-              <span class="alarm-status-tag" :class="`tag-status-${alarm.alarmStatus}`">{{ alarm.alarmStatusName }}</span>
+              <span class="alarm-type-tag">{{ alarm.alarmLevelText }}</span>
+              <span class="alarm-status-tag" :class="`tag-status-${alarm.status}`">{{ alarm.statusName }}</span>
             </div>
-            <div class="alarm-time">{{ formatTime(alarm.lastAlarmTime) }}</div>
+            <div class="alarm-time">{{ formatTime(alarm.lastTriggerTime) }}</div>
           </div>
-          <div class="alarm-count-badge">{{ alarm.alarmCount }}</div>
+          <div class="alarm-count-badge">{{ alarm.triggerCount }}</div>
         </div>
       </div>
     </div>
@@ -72,7 +72,7 @@
         <div class="detail-body">
           <div class="detail-row">
             <span class="detail-label">告警类型</span>
-            <span class="detail-value">{{ detailAlarm?.alarmTypeName || '--' }}</span>
+            <span class="detail-value">{{ detailAlarm?.alarmLevelText || '--' }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">告警等级</span>
@@ -80,19 +80,19 @@
           </div>
           <div class="detail-row">
             <span class="detail-label">告警状态</span>
-            <span class="detail-value">{{ detailAlarm?.alarmStatusName || '--' }}</span>
+            <span class="detail-value">{{ detailAlarm?.statusName || '--' }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">告警详情</span>
-            <span class="detail-value">{{ detailAlarm?.alarmDetail || '--' }}</span>
+            <span class="detail-value">{{ detailAlarm?.alarmMessage || '--' }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">告警次数</span>
-            <span class="detail-value">{{ detailAlarm?.alarmCount ?? '--' }}</span>
+            <span class="detail-value">{{ detailAlarm?.triggerCount ?? '--' }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">最近告警时间</span>
-            <span class="detail-value">{{ detailAlarm?.lastAlarmTime || '--' }}</span>
+            <span class="detail-value">{{ detailAlarm?.lastTriggerTime || '--' }}</span>
           </div>
         </div>
       </div>
@@ -148,7 +148,7 @@ const formatTime = (time: string) => {
   return time.replace(/:\d{2}$/, '')
 }
 
-const showDetail = (alarm: RealtimeAlarmDetail) => {
+const showDetail = (alarm: AlarmRecordItem) => {
   detailAlarm.value = alarm
   detailVisible.value = true
 }
@@ -162,8 +162,8 @@ const fetchAlarms = async () => {
   try {
     const res = await getRealtimeAlarmByHazardPoint(String(props.hazardPointId))
     if (res.code === 200 && res.data) {
-      alarmList.value = (res.data as RealtimeAlarmDetail[])
-        .sort((a, b) => new Date(b.lastAlarmTime).getTime() - new Date(a.lastAlarmTime).getTime())
+      alarmList.value = (res.data as AlarmRecordItem[])
+          .sort((a, b) => new Date(b.lastTriggerTime).getTime() - new Date(a.lastTriggerTime).getTime())
     }
   } catch {
     alarmList.value = []
