@@ -375,14 +375,14 @@ async function loadAll(){
 
 async function loadAlarms(){
   try{
-    const r=await getRealtimeAlarmPage({pageNum:1,pageSize:50})
-    if(r.code===200&&r.data){
-      const rows:any[]=r.data.rows||[]
+    const r: any = await getRealtimeAlarmPage({pageNum:1,pageSize:50})
+    if(r && r.rows){
+      const rows:any[]=r.rows||[]
       const cnt:Record<string,number>={critical:0,major:0,minor:0,info:0}
       rows.forEach((a:any)=>{const l=a.alarmLevel||a.level||'info';if(cnt[l]!==undefined)cnt[l]++})
       overview.value.totalAlarms=Object.values(cnt).reduce((s,v)=>s+v,0)
       nextTick(()=>chPieSmall([{name:'严重',value:cnt.critical},{name:'重要',value:cnt.major},{name:'一般',value:cnt.minor},{name:'提示',value:cnt.info}]))
-      alarmTicker.value=rows.slice(0,25).map((a:any)=>({id:a.id,level:a.alarmLevel||a.level||'info',time:a.alarmTime?a.alarmTime.slice(5,16).replace('T',' '):'--',hazardPointName:a.hazardPointName||'--',alarmType:a.alarmTypeName||a.alarmType||'告警'}))
+      alarmTicker.value=rows.slice(0,25).map((a:any)=>({id:a.id,level:a.alarmLevel||a.level||'info',time:a.firstTriggerTime?a.firstTriggerTime.slice(5,16).replace('T',' '):'--',hazardPointName:a.hazardPointName||'--',alarmType:a.alarmType||'告警'}))
     }
   }catch(_){}
 }

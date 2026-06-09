@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmStrategyHazardPointMapper">
+
+    <select id="selectHazardPointIdsByStrategyId" resultType="Long">
+        SELECT hazard_point_id
+        FROM alarm_strategy_hazard_point
+        WHERE strategy_id = #{strategyId}
+    </select>
+
+    <insert id="insertBinding" parameterType="com.zwei.iot.alarm.domain.AlarmStrategyHazardPoint">
+        INSERT INTO alarm_strategy_hazard_point (strategy_id, hazard_point_id, create_by, create_time)
+        VALUES (#{strategyId}, #{hazardPointId}, #{createBy}, #{createTime})
+    </insert>
+
+    <delete id="deleteByStrategyId">
+        DELETE
+        FROM alarm_strategy_hazard_point
+        WHERE strategy_id = #{strategyId}
+    </delete>
+
+    <delete id="deleteBinding">
+        DELETE
+        FROM alarm_strategy_hazard_point
+        WHERE strategy_id = #{strategyId}
+          AND hazard_point_id = #{hazardPointId}
+    </delete>
+
+    <select id="countByStrategyId" resultType="int">
+        SELECT COUNT(*)
+        FROM alarm_strategy_hazard_point
+        WHERE strategy_id = #{strategyId}
+    </select>
+
+</mapper>

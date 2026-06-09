@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmDispatchRuleMapper">
+
+    <resultMap type="com.zwei.iot.alarm.domain.AlarmDispatchRule" id="AlarmDispatchRuleResult">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="hazardPointId" column="hazard_point_id"/>
+        <result property="alarmLevels" column="alarm_levels"/>
+        <result property="alarmTypes" column="alarm_types"/>
+        <result property="recipientsJson" column="recipients_json"/>
+        <result property="channels" column="channels"/>
+        <result property="timeWindow" column="time_window"/>
+        <result property="isEnabled" column="is_enabled"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectRuleVo">
+        SELECT id,
+               name,
+               hazard_point_id,
+               alarm_levels,
+               alarm_types,
+               recipients_json,
+               channels,
+               time_window,
+               is_enabled,
+               create_by,
+               create_time,
+               update_by,
+               update_time,
+               del_flag
+        FROM alarm_dispatch_rule
+    </sql>
+
+    <select id="selectRuleList" resultMap="AlarmDispatchRuleResult">
+        <include refid="selectRuleVo"/>
+        <where>
+            del_flag = 0
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="hazardPointId != null">
+                AND (hazard_point_id = #{hazardPointId} OR hazard_point_id IS NULL)
+            </if>
+            <if test="isEnabled != null">
+                AND is_enabled = #{isEnabled}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectEnabledRules" resultMap="AlarmDispatchRuleResult">
+        <include refid="selectRuleVo"/>
+        WHERE del_flag = 0 AND is_enabled = 1
+        ORDER BY id ASC
+    </select>
+
+    <select id="selectRuleById" parameterType="Long" resultMap="AlarmDispatchRuleResult">
+        <include refid="selectRuleVo"/>
+        WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <insert id="insertRule" parameterType="com.zwei.iot.alarm.domain.AlarmDispatchRule"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_dispatch_rule (name, hazard_point_id, alarm_levels, alarm_types,
+                                         recipients_json, channels, time_window, is_enabled,
+                                         create_by, create_time)
+        VALUES (#{name}, #{hazardPointId}, #{alarmLevels}, #{alarmTypes},
+                #{recipientsJson}, #{channels}, #{timeWindow}, #{isEnabled},
+                #{createBy}, #{createTime})
+    </insert>
+
+    <update id="updateRule" parameterType="com.zwei.iot.alarm.domain.AlarmDispatchRule">
+        UPDATE alarm_dispatch_rule
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="hazardPointId != null">hazard_point_id = #{hazardPointId},</if>
+            <if test="alarmLevels != null">alarm_levels = #{alarmLevels},</if>
+            <if test="alarmTypes != null">alarm_types = #{alarmTypes},</if>
+            <if test="recipientsJson != null">recipients_json = #{recipientsJson},</if>
+            <if test="channels != null">channels = #{channels},</if>
+            <if test="timeWindow != null">time_window = #{timeWindow},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            update_by = #{updateBy}, update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteRuleById" parameterType="Long">
+        UPDATE alarm_dispatch_rule
+        SET del_flag = 1
+        WHERE id = #{id}
+    </update>
+
+</mapper>

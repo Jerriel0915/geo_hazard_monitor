@@ -1,0 +1,118 @@
+package com.zwei.iot.alarm.controller;
+
+import com.zwei.common.core.controller.BaseController;
+import com.zwei.common.core.domain.AjaxResult;
+import com.zwei.common.core.page.TableDataInfo;
+import com.zwei.iot.alarm.domain.AlarmCriteria;
+import com.zwei.iot.alarm.domain.AlarmCriteriaLog;
+import com.zwei.iot.alarm.domain.dto.CriteriaCreateRequest;
+import com.zwei.iot.alarm.service.IAlarmCriteriaService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 告警判据管理 Controller
+ *
+ * @author zwei
+ */
+@RestController
+@RequestMapping("/api/v1/alarm/criteria")
+public class AlarmCriteriaController extends BaseController {
+
+    private final IAlarmCriteriaService criteriaService;
+
+    public AlarmCriteriaController(IAlarmCriteriaService criteriaService) {
+        this.criteriaService = criteriaService;
+    }
+
+    @GetMapping("/list")
+    @PreAuthorize("hasAuthority('iot:alarm-criteria:list')")
+    public TableDataInfo list(AlarmCriteria criteria) {
+        startPage();
+        List<AlarmCriteria> list = criteriaService.selectList(criteria);
+        return getDataTable(list);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('iot:alarm-criteria:list')")
+    public AjaxResult getById(@PathVariable Long id) {
+        return success(criteriaService.selectById(id));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('iot:alarm-criteria:create')")
+    public AjaxResult create(@RequestBody CriteriaCreateRequest request) {
+        AlarmCriteria criteria = AlarmCriteria.builder()
+                .name(request.getName())
+                .monitorTypeId(request.getMonitorTypeId())
+                .monitorTypeName(request.getMonitorTypeName())
+                .monitorContentId(request.getMonitorContentId())
+                .monitorContentCode(request.getMonitorContentCode())
+                .hazardPointId(request.getHazardPointId())
+                .conditionsJson(request.getConditionsJson())
+                .logicOperator(request.getLogicOperator() != null ? request.getLogicOperator() : "AND")
+                .blueExpression(request.getBlueExpression())
+                .blueDescription(request.getBlueDescription())
+                .yellowExpression(request.getYellowExpression())
+                .yellowDescription(request.getYellowDescription())
+                .orangeExpression(request.getOrangeExpression())
+                .orangeDescription(request.getOrangeDescription())
+                .redExpression(request.getRedExpression())
+                .redDescription(request.getRedDescription())
+                .persistCount(request.getPersistCount() != null ? request.getPersistCount() : 1)
+                .silencePeriod(request.getSilencePeriod() != null ? request.getSilencePeriod() : 0)
+                .isEnabled(request.getIsEnabled() != null ? request.getIsEnabled() : 1)
+                .createBy(getUsername())
+                .build();
+        return toAjax(criteriaService.insert(criteria));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('iot:alarm-criteria:update')")
+    public AjaxResult update(@PathVariable Long id, @RequestBody CriteriaCreateRequest request) {
+        AlarmCriteria criteria = AlarmCriteria.builder()
+                .id(id)
+                .name(request.getName())
+                .monitorTypeId(request.getMonitorTypeId())
+                .monitorTypeName(request.getMonitorTypeName())
+                .monitorContentId(request.getMonitorContentId())
+                .monitorContentCode(request.getMonitorContentCode())
+                .hazardPointId(request.getHazardPointId())
+                .conditionsJson(request.getConditionsJson())
+                .logicOperator(request.getLogicOperator())
+                .blueExpression(request.getBlueExpression())
+                .blueDescription(request.getBlueDescription())
+                .yellowExpression(request.getYellowExpression())
+                .yellowDescription(request.getYellowDescription())
+                .orangeExpression(request.getOrangeExpression())
+                .orangeDescription(request.getOrangeDescription())
+                .redExpression(request.getRedExpression())
+                .redDescription(request.getRedDescription())
+                .persistCount(request.getPersistCount())
+                .silencePeriod(request.getSilencePeriod())
+                .updateBy(getUsername())
+                .build();
+        return toAjax(criteriaService.update(criteria));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('iot:alarm-criteria:delete')")
+    public AjaxResult delete(@PathVariable Long id) {
+        return toAjax(criteriaService.delete(id));
+    }
+
+    @PutMapping("/{id}/toggle")
+    @PreAuthorize("hasAuthority('iot:alarm-criteria:toggle')")
+    public AjaxResult toggle(@PathVariable Long id, @RequestParam Integer isEnabled) {
+        return toAjax(criteriaService.toggle(id, isEnabled));
+    }
+
+    @GetMapping("/{id}/logs")
+    @PreAuthorize("hasAuthority('iot:alarm-criteria:list')")
+    public AjaxResult getLogs(@PathVariable Long id) {
+        List<AlarmCriteriaLog> logs = criteriaService.selectLogsByCriteriaId(id);
+        return success(logs);
+    }
+}

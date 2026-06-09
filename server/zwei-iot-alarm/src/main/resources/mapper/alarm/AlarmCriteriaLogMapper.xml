@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmCriteriaLogMapper">
+
+    <resultMap type="com.zwei.iot.alarm.domain.AlarmCriteriaLog" id="AlarmCriteriaLogResult">
+        <id property="id" column="id"/>
+        <result property="criteriaId" column="criteria_id"/>
+        <result property="version" column="version"/>
+        <result property="changeType" column="change_type"/>
+        <result property="oldValue" column="old_value"/>
+        <result property="newValue" column="new_value"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <insert id="insertLog" parameterType="com.zwei.iot.alarm.domain.AlarmCriteriaLog">
+        INSERT INTO alarm_criteria_log (criteria_id, version, change_type, old_value, new_value, create_by, create_time)
+        VALUES (#{criteriaId}, #{version}, #{changeType}, #{oldValue}, #{newValue}, #{createBy}, #{createTime})
+    </insert>
+
+    <select id="selectLogsByCriteriaId" resultMap="AlarmCriteriaLogResult">
+        SELECT *
+        FROM alarm_criteria_log
+        WHERE criteria_id = #{criteriaId}
+        ORDER BY version DESC
+    </select>
+
+</mapper>

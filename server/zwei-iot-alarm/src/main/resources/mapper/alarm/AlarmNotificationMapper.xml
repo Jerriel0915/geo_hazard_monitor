@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmNotificationMapper">
+
+    <resultMap type="com.zwei.iot.alarm.domain.AlarmNotification" id="AlarmNotificationResult">
+        <id property="id" column="id"/>
+        <result property="alarmId" column="alarm_id"/>
+        <result property="dispatchRuleId" column="dispatch_rule_id"/>
+        <result property="recipientId" column="recipient_id"/>
+        <result property="recipientName" column="recipient_name"/>
+        <result property="recipientPhone" column="recipient_phone"/>
+        <result property="channel" column="channel"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="status" column="status"/>
+        <result property="sendTime" column="send_time"/>
+        <result property="errorMsg" column="error_msg"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="selectNotificationList" resultMap="AlarmNotificationResult">
+        SELECT id, alarm_id, dispatch_rule_id, recipient_id, recipient_name,
+        recipient_phone, channel, title, content,
+        status, send_time, error_msg, create_time
+        FROM alarm_notification
+        <where>
+            <if test="alarmId != null">AND alarm_id = #{alarmId}</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="channel != null and channel != ''">AND channel = #{channel}</if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByAlarmId" resultMap="AlarmNotificationResult">
+        SELECT id,
+               alarm_id,
+               dispatch_rule_id,
+               recipient_id,
+               recipient_name,
+               recipient_phone,
+               channel,
+               title,
+               content,
+               status,
+               send_time,
+               error_msg,
+               create_time
+        FROM alarm_notification
+        WHERE alarm_id = #{alarmId}
+        ORDER BY create_time ASC
+    </select>
+
+    <insert id="insertNotification" parameterType="com.zwei.iot.alarm.domain.AlarmNotification"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_notification (alarm_id, dispatch_rule_id, recipient_id, recipient_name,
+                                        recipient_phone, channel, title, content, status, create_time)
+        VALUES (#{alarmId}, #{dispatchRuleId}, #{recipientId}, #{recipientName},
+                #{recipientPhone}, #{channel}, #{title}, #{content}, #{status}, #{createTime})
+    </insert>
+
+    <insert id="batchInsert" parameterType="list">
+        INSERT INTO alarm_notification (
+        alarm_id, dispatch_rule_id, recipient_id, recipient_name,
+        recipient_phone, channel, title, content, status, create_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.alarmId}, #{item.dispatchRuleId}, #{item.recipientId}, #{item.recipientName},
+            #{item.recipientPhone}, #{item.channel}, #{item.title}, #{item.content},
+            #{item.status}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE alarm_notification
+        SET status = #{status}, send_time = #{sendTime},
+        <if test="errorMsg != null">error_msg = #{errorMsg},</if>
+        error_msg = #{errorMsg}
+        WHERE id = #{id}
+    </update>
+
+</mapper>
