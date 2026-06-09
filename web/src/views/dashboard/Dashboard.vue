@@ -65,6 +65,7 @@
     <!-- 业务工具条 (右侧面板旁) -->
     <MapBusinessToolbar
       :hazard-points="hazardPoints"
+      :map-instance="mapInstanceRef"
       :mask-visible="showMaskLayer"
       :legend-visible="showLegend"
       :layout-dialog-visible="showLayoutDialog"
@@ -127,7 +128,7 @@ import {
 import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import AlarmWidget from './components/AlarmWidget.vue'
 import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import HazardAlarmWidget from './components/HazardAlarmWidget.vue'
@@ -154,6 +155,7 @@ const getDeviceTypeIcon = (type: string) => {
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
+const mapInstanceRef = shallowRef<L.Map | null>(null)
 let baseLayer: L.TileLayer | null = null
 let labelLayer: L.TileLayer | null = null
 let isLabelVisible = true
@@ -366,6 +368,7 @@ const initMap = () => {
     zoomControl: false,
     attributionControl: false
   })
+  mapInstanceRef.value = mapInstance
 
   addLayer('image')
 
@@ -1291,6 +1294,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   if (mapInstance) {
+    mapInstanceRef.value = null
     mapInstance.remove()
     mapInstance = null
   }

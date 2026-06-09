@@ -49,6 +49,9 @@
       </div>
     </div>
 
+    <!-- 地理工具箱 -->
+    <MapDrawToolbar :map-instance="mapInstance" />
+
     <!-- 分隔线 -->
     <div class="toolbar-divider"></div>
 
@@ -73,11 +76,14 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import L from 'leaflet'
 import { Aim, Hide, Operation, PieChart, Search, Setting, View } from '@element-plus/icons-vue'
 import type { ElTree } from 'element-plus'
+import MapDrawToolbar from './MapDrawToolbar.vue'
 
 const props = defineProps<{
   hazardPoints: any[]
+  mapInstance: L.Map | null
   maskVisible: boolean
   legendVisible: boolean
   layoutDialogVisible: boolean
