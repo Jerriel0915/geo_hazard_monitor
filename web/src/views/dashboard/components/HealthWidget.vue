@@ -176,21 +176,24 @@ const ringSegments = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: 10px;
-  border-left: 3px solid #1890ff;
-  margin-bottom: 14px;
+  padding: 8px 14px 10px;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.03) 100%);
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(24, 144, 255, 0.12);
+  margin: -16px -18px 16px;
 }
 
 .section-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #1d2129;
+  font-family: var(--font-display, inherit);
 }
 
 .section-title-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .section-icon {
@@ -212,13 +215,13 @@ const ringSegments = computed(() => {
 .health-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .health-ring-container {
   position: relative;
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   margin: 0 auto;
 }
 
@@ -266,35 +269,37 @@ const ringSegments = computed(() => {
 }
 
 .ring-score {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: #1d2129;
-  font-family: var(--font-display);
+  font-family: var(--font-display, inherit);
 }
 
 .ring-label {
   font-size: 10px;
   color: #86909c;
+  margin-top: 2px;
 }
 
 .health-bars {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .health-bar-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 4px 6px;
-  border-radius: 6px;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  background: transparent;
 }
 
 .health-bar-item.active {
-  background: rgba(24, 144, 255, 0.08);
+  background: rgba(24, 144, 255, 0.06);
 }
 
 .bar-info {
@@ -304,18 +309,20 @@ const ringSegments = computed(() => {
 }
 
 .bar-name {
-  font-size: 11px;
+  font-size: 12px;
   color: #4e5969;
+  font-weight: 500;
 }
 
 .bar-value {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-display, inherit);
 }
 
 .bar-track {
   height: 4px;
-  background: rgba(24, 144, 255, 0.08);
+  background: rgba(0, 0, 0, 0.06);
   border-radius: 2px;
   overflow: hidden;
 }

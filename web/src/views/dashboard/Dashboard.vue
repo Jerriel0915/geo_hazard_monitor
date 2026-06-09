@@ -1379,13 +1379,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: 10px;
-  border-left: 3px solid #1890ff;
-  margin-bottom: 14px;
+  padding: 8px 14px 10px;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.03) 100%);
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(24, 144, 255, 0.12);
+  margin: -16px -18px 14px;
 }
 
 .section-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #1d2129;
   font-family: var(--font-display);
@@ -1905,7 +1907,11 @@ onUnmounted(() => {
 /* ========== 隐患点详情部件样式 ========== */
 
 .hazard-detail-section .section-header {
-  margin-bottom: 8px;
+  margin: -16px -18px 12px;
+  padding: 8px 14px 10px;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.03) 100%);
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(24, 144, 255, 0.12);
 }
 
 .clear-selection-btn {
@@ -1941,39 +1947,45 @@ onUnmounted(() => {
 .hazard-widget-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .widget-hazard-name {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  color: #303133;
-  padding-bottom: 6px;
+  color: #1d2129;
+  padding-bottom: 8px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-family: var(--font-display, inherit);
 }
 
 .hazard-detail-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(24, 144, 255, 0.04);
+  border-radius: 8px;
 }
 
 .detail-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   font-size: 12px;
   line-height: 1.6;
 }
 
 .detail-label {
-  color: #909399;
+  color: #86909c;
   flex-shrink: 0;
-  min-width: 36px;
+  min-width: 40px;
+  font-weight: 500;
 }
 
 .detail-value {
   color: #303133;
   word-break: break-all;
+  font-weight: 500;
 }
 
 .detail-description {
@@ -1984,25 +1996,29 @@ onUnmounted(() => {
 /* 部件设备列表 */
 .widget-device-list {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
-  padding-top: 8px;
+  padding-top: 10px;
 }
 
 .device-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .device-list-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #606266;
+  font-size: 11px;
+  font-weight: 500;
+  color: #86909c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .device-count {
-  font-size: 11px;
-  color: #909399;
+  font-size: 12px;
+  color: #1890ff;
+  font-weight: 700;
+  font-family: var(--font-display, inherit);
 }
 
 .device-loading {
@@ -2016,7 +2032,7 @@ onUnmounted(() => {
 .widget-device-cards {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   max-height: 220px;
   overflow-y: auto;
 }
@@ -2024,9 +2040,9 @@ onUnmounted(() => {
 .device-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: #fafafa;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(245, 247, 250, 0.6);
   border-radius: 8px;
   border: 1px solid transparent;
   cursor: pointer;
@@ -2035,7 +2051,7 @@ onUnmounted(() => {
 
 .device-card:hover {
   background: #f0f7ff;
-  border-color: #bae0ff;
+  border-color: rgba(24, 144, 255, 0.2);
 }
 
 .device-card:active {
@@ -2043,8 +2059,8 @@ onUnmounted(() => {
 }
 
 .device-card-icon {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2062,7 +2078,7 @@ onUnmounted(() => {
 .device-card-name {
   font-size: 12px;
   color: #303133;
-  font-weight: 500;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2088,7 +2104,7 @@ onUnmounted(() => {
 .device-card-status {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   flex-shrink: 0;
   font-size: 11px;
   white-space: nowrap;
@@ -2102,6 +2118,7 @@ onUnmounted(() => {
 
 .device-card-status .status-text {
   font-size: 11px;
+  font-weight: 500;
 }
 
 .device-card-status.online .status-dot {
@@ -2137,13 +2154,13 @@ onUnmounted(() => {
 
 .view-detail-btn {
   width: 100%;
-  padding: 8px 0;
+  padding: 10px 0;
   background: linear-gradient(135deg, #1890ff 0%, #66b1ff 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }

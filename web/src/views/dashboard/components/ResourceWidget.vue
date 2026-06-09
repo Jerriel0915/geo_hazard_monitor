@@ -89,21 +89,27 @@ defineProps<{
 }
 
 .section-header {
-  padding-left: 10px;
-  border-left: 3px solid #52c41a;
-  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 10px;
+  background: linear-gradient(135deg, rgba(82, 196, 26, 0.12) 0%, rgba(82, 196, 26, 0.03) 100%);
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(82, 196, 26, 0.12);
+  margin: -16px -18px 16px;
 }
 
 .section-title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: #1d2129;
+  font-family: var(--font-display, inherit);
 }
 
 .section-title-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .section-icon {
@@ -113,13 +119,13 @@ defineProps<{
 .resource-compact {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .resource-main {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .resource-total {
@@ -129,8 +135,8 @@ defineProps<{
 
 .total-circle {
   position: relative;
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
 }
 
 .total-ring {
@@ -141,7 +147,7 @@ defineProps<{
 
 .ring-bg {
   fill: none;
-  stroke: rgba(0, 0, 0, 0.08);
+  stroke: rgba(0, 0, 0, 0.06);
   stroke-width: 10;
 }
 
@@ -164,40 +170,44 @@ defineProps<{
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
-  color: #303133;
+  color: #1d2129;
+  font-family: var(--font-display, inherit);
 }
 
 .total-label {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 10px;
-  color: #909399;
+  color: #86909c;
 }
 
 .resource-breakdown {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
 }
 
 .breakdown-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  background: rgba(59, 130, 246, 0.08);
-  border-radius: 6px;
+  padding: 10px 14px;
+  background: rgba(59, 130, 246, 0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.08);
 }
 
 .breakdown-icon {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(59, 130, 246, 0.15);
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 7px;
+  flex-shrink: 0;
 }
 
 .breakdown-info {
@@ -207,48 +217,54 @@ defineProps<{
 }
 
 .breakdown-value {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
-  color: #303133;
+  color: #1d2129;
+  font-family: var(--font-display, inherit);
 }
 
 .breakdown-label {
-  font-size: 10px;
-  color: #909399;
+  font-size: 11px;
+  color: #86909c;
 }
 
 .device-type-section {
-  border-top: 1px solid rgba(79, 172, 254, 0.2);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding-top: 12px;
 }
 
 .type-title {
   font-size: 11px;
-  color: #606266;
-  margin-bottom: 8px;
+  font-weight: 500;
+  color: #86909c;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .type-bars {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .type-bar-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
+  padding: 5px 0;
 }
 
 .type-name {
-  font-size: 11px;
-  color: #909399;
+  font-size: 12px;
+  color: #4e5969;
+  font-weight: 500;
 }
 
 .type-count {
-  font-size: 11px;
+  font-size: 13px;
   color: #1890ff;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: var(--font-display, inherit);
 }
 </style>
