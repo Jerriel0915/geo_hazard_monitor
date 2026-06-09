@@ -338,7 +338,13 @@ const togglePanel = () => {
 }
 
 const resetMapView = () => {
-  fitToFocusArea()
+  if (currentHazardPoint.value && mapInstance) {
+    const center: [number, number] = [currentHazardPoint.value.latitude, currentHazardPoint.value.longitude]
+    const circleBounds = L.latLng(center).toBounds(1000) // radius=500 → diameter=1000m
+    mapInstance.fitBounds(circleBounds, { padding: [40, 40], animate: true, maxZoom: 16 })
+  } else {
+    fitToFocusArea()
+  }
 }
 
 const initMap = () => {
