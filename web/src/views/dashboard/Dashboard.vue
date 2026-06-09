@@ -29,33 +29,33 @@
       </button>
     </div>
 
-    <!-- 隐患点视图左侧面板 -->
-    <div v-if="currentView === 'hazard'" class="hazard-info-panel">
+    <!-- 隐患点视图 / 系统视图选中隐患点 左侧面板 -->
+    <div v-if="currentView === 'hazard' || (currentView === 'system' && selectedHazardPoint)" class="hazard-info-panel">
       <!-- 隐患点基本信息 -->
       <div class="hazard-basic-info">
         <div class="info-title">隐患点基本信息</div>
         <div class="info-content">
           <div class="info-row">
             <span class="info-label">隐患点名称:</span>
-            <span class="info-value">{{ currentHazardPoint?.name }}</span>
+            <span class="info-value">{{ activeHazardPoint?.name }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">隐患点编号:</span>
-            <span class="info-value">{{ currentHazardPoint?.code }}</span>
+            <span class="info-value">{{ activeHazardPoint?.code }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">坐标位置:</span>
             <span class="info-value">{{
-                currentHazardPoint?.latitude.toFixed(6)
-              }}, {{ currentHazardPoint?.longitude.toFixed(6) }}</span>
+                activeHazardPoint?.latitude.toFixed(6)
+              }}, {{ activeHazardPoint?.longitude.toFixed(6) }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">所属分组:</span>
-            <span class="info-value">{{ currentHazardPoint?.groupName }}</span>
+            <span class="info-value">{{ activeHazardPoint?.groupName }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">隐患点备注:</span>
-            <span class="info-value">{{ currentHazardPoint?.description }}</span>
+            <span class="info-value">{{ activeHazardPoint?.description }}</span>
           </div>
         </div>
       </div>
@@ -104,92 +104,13 @@
       @back-to-system-view="backToSystemView"
     />
 
-    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' || !hasLeftContent }">
+    <div class="left-panel-wrapper" :class="{ collapsed: isPanelCollapsed || currentView === 'hazard' || !hasLeftContent || !!selectedHazardPoint }">
       <button class="panel-collapse-trigger-left" @click="togglePanel">
         <el-icon :size="12"><component :is="isPanelCollapsed ? ArrowRight : ArrowLeft"/></el-icon>
       </button>
       <div class="left-panel" v-if="currentView === 'system'">
 
-        <!-- Selected hazard point: show hazard detail -->
-        <div v-if="selectedHazardPoint" class="panel-content">
-          <div class="panel-section hazard-detail-section">
-            <div class="section-header">
-              <span class="section-title">隐患点详情</span>
-              <button class="clear-selection-btn" @click="clearWidgetSelection" title="清除选择">
-                <el-icon :size="14"><Close/></el-icon>
-              </button>
-            </div>
-
-            <div class="hazard-widget-content">
-              <div class="widget-hazard-name">{{ selectedHazardPoint.name }}</div>
-
-              <div class="hazard-detail-info">
-                <div class="detail-row">
-                  <span class="detail-label">编号</span>
-                  <span class="detail-value">{{ selectedHazardPoint.code }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">坐标</span>
-                  <span class="detail-value">{{
-                      selectedHazardPoint.latitude.toFixed(6)
-                    }}, {{ selectedHazardPoint.longitude.toFixed(6) }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">分组</span>
-                  <span class="detail-value">{{ selectedHazardPoint.groupName || '--' }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">备注</span>
-                  <span class="detail-value detail-description">{{ selectedHazardPoint.description || '--' }}</span>
-                </div>
-              </div>
-
-              <!-- 绑定设备列表 -->
-              <div class="widget-device-list">
-                <div class="device-list-header">
-                  <span class="device-list-title">绑定设备</span>
-                  <span class="device-count">{{ widgetBoundDevices.length }}台</span>
-                </div>
-                <div v-if="widgetDevicesLoading" class="device-loading">加载中...</div>
-                <div v-else class="widget-device-cards">
-                  <div
-                      v-for="device in widgetBoundDevices"
-                      :key="device.id"
-                      class="device-card"
-                      @click="openDeviceDataModal(device)"
-                  >
-                    <div class="device-card-icon">
-                      <el-icon :size="22">
-                        <component :is="getDeviceTypeIcon(device.type)"/>
-                      </el-icon>
-                    </div>
-                    <div class="device-card-body">
-                      <div class="device-card-name">{{ device.name }}</div>
-                      <div class="device-card-meta">
-                        <span class="device-card-type">{{ device.typeName }}</span>
-                        <span class="device-card-sensors">{{ device.sensorCount }}个传感器</span>
-                      </div>
-                    </div>
-                    <div class="device-card-status" :class="device.status">
-                      <span class="status-dot"></span>
-                      <span class="status-text">{{
-                          device.status === 'online' ? '在线' : device.status === 'warning' ? '预警' : '离线'
-                        }}</span>
-                    </div>
-                  </div>
-                  <div v-if="widgetBoundDevices.length === 0" class="no-devices">暂无绑定设备</div>
-                </div>
-              </div>
-
-              <button class="view-detail-btn" @click="openHazardDetailFromWidget">
-                查看详情
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Not selected: show widget layout (hazardPointDetail removed from configurable widgets) -->
-        <div v-else class="panel-content">
+        <div class="panel-content">
           <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
 
           <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
@@ -206,8 +127,9 @@
       :mask-visible="showMaskLayer"
       :layout-dialog-visible="showLayoutDialog"
       :right-panel-collapsed="isRightPanelCollapsed || !hasRightContent"
+      :groups="hazardPointGroups"
       @select-hazard-point="enterHazardView"
-      @toggle-layer="toggleLayer"
+      @toggle-layers="handleLayerToggle"
       @open-layout-config="showLayoutDialog = true"
       @toggle-mask="toggleMaskLayer"
       @reset-view="resetMapView"
@@ -219,13 +141,18 @@
         <el-icon :size="12"><component :is="isRightPanelCollapsed ? ArrowLeft : ArrowRight"/></el-icon>
       </button>
       <div class="right-panel">
-        <div class="panel-content">
-          <HealthWidget v-if="isWidgetOnRight('systemHealth')" :health-stats="healthStats" />
-
-          <ResourceWidget v-if="isWidgetOnRight('assetInfo')" :resource-stats="resourceStats" />
-
-          <AlarmWidget v-if="isWidgetOnRight('alarmStatus')" :alarm-stats="alarmStats" />
-        </div>
+        <!-- 隐患点视图：显示告警情况 + 实时警情 -->
+        <HazardAlarmWidget v-if="currentView === 'hazard'" :hazard-point-id="currentHazardPoint?.id ?? null" />
+        <!-- 系统视图选中隐患点：显示对应告警 -->
+        <HazardAlarmWidget v-else-if="selectedHazardPoint" :hazard-point-id="selectedHazardPoint.id" />
+        <!-- 默认系统视图：Widget 布局 -->
+        <template v-else>
+          <div class="panel-content">
+            <HealthWidget v-if="isWidgetOnRight('systemHealth')" :health-stats="healthStats" />
+            <ResourceWidget v-if="isWidgetOnRight('assetInfo')" :resource-stats="resourceStats" />
+            <AlarmWidget v-if="isWidgetOnRight('alarmStatus')" :alarm-stats="alarmStats" />
+          </div>
+        </template>
       </div>
     </div>
 
@@ -237,7 +164,7 @@
     />
 
     <!-- 地图辅助工具条 (底部: 比例尺+底图+图例) -->
-    <MapAuxiliaryBar :current-layer="currentLayer" @update:current-layer="handleLayerSelect" />
+    <MapAuxiliaryBar :current-layer="currentLayer" :monitor-types="monitorTypes" @update:current-layer="handleLayerSelect" />
   </div>
 </template>
 
@@ -257,7 +184,9 @@ import {
   Sunny
 } from '@element-plus/icons-vue'
 import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
 import AlarmWidget from './components/AlarmWidget.vue'
+import HazardAlarmWidget from './components/HazardAlarmWidget.vue'
 import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
 import DeviceDataModal from './components/DeviceDataModal.vue'
@@ -282,6 +211,9 @@ const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
 let baseLayer: L.TileLayer | null = null
 let labelLayer: L.TileLayer | null = null
+let isLabelVisible = true
+const activeLayerKeys = ref<string[]>([])
+const hazardPointDataMap = new Map<number, any>()
 
 const TIANDI_TU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
@@ -380,6 +312,11 @@ const showHazardList = ref(false)
 
 // 隐患点详情部件 - 软选择状态
 const selectedHazardPoint = ref<typeof hazardPoints.value[0] | null>(null)
+
+// 当前活跃的隐患点（hazard视图 或 system视图选中）
+const activeHazardPoint = computed(() =>
+  currentView.value === 'hazard' ? currentHazardPoint.value : selectedHazardPoint.value
+)
 let savedMapView: { center: [number, number]; zoom: number } | null = null
 const widgetBoundDevices = ref<any[]>([])
 const widgetDevicesLoading = ref(false)
@@ -420,6 +357,7 @@ const focusAreaBounds = ref<[number, number][]>([
 // 隐患点列表（从API获取）
 const hazardPoints = ref<any[]>([])
 const hazardPointGroups = ref<any[]>([])
+const monitorTypes = ref<MonitorTypeItem[]>([])
 
 let maskLayer: L.GeoJSON | null = null
 let boundaryLayer: L.Polyline | null = null
@@ -587,6 +525,9 @@ const addHazardPoints = () => {
 
     // 存储marker引用
     hazardMarkerMap.set(point.id, marker)
+
+    // 存储数据用于过滤
+    hazardPointDataMap.set(point.id, point)
 
     if (point.alarmLevel) {
       startRipple(point)
@@ -798,11 +739,8 @@ const showHazardOnMap = async (point: typeof hazardPoints.value[0]) => {
 }
 
 const restoreHazardMarkers = () => {
-  if (mapInstance && hazardMarkerLayer) {
-    hazardMarkerLayer.clearLayers()
-    addHazardPoints()
-    fitToFocusArea()
-  }
+  refreshHazardMarkers()
+  fitToFocusArea()
 }
 
 const loadWidgetDevices = async (hazardPointId: number) => {
@@ -841,10 +779,7 @@ const clearWidgetSelection = () => {
   widgetBoundDevices.value = []
   widgetDevicesLoading.value = false
   // Restore all markers
-  if (mapInstance && hazardMarkerLayer) {
-    hazardMarkerLayer.clearLayers()
-    addHazardPoints()
-  }
+  refreshHazardMarkers()
   // Restore map view
   if (mapInstance && savedMapView) {
     mapInstance.setView(savedMapView.center, savedMapView.zoom)
@@ -895,8 +830,64 @@ const startPointFlash = (pointId: number) => {
 }
 
 // 图层控制
-const toggleLayer = (layerKey: string) => {
-  console.log('Toggle layer:', layerKey)
+const handleLayerToggle = (activeKeys: string[]) => {
+  const keySet = new Set(activeKeys)
+
+  // 标注层
+  if (keySet.has('showLabels')) {
+    if (!labelLayer) addLabelOverlay()
+    isLabelVisible = true
+  } else {
+    if (labelLayer && mapInstance) {
+      mapInstance.removeLayer(labelLayer)
+      labelLayer = null
+    }
+    isLabelVisible = false
+  }
+
+  // Marker 过滤
+  filterMarkers(keySet)
+
+  activeLayerKeys.value = activeKeys
+}
+
+const filterMarkers = (keySet: Set<string>) => {
+  // 提取活跃分组 ID
+  const activeGroups = new Set<number>()
+  for (const key of keySet) {
+    if (key.startsWith('group_')) {
+      activeGroups.add(Number(key.slice(6)))
+    }
+  }
+
+  // 提取活跃状态
+  const activeStatuses = new Set<string>()
+  if (keySet.has('showMonitoring')) activeStatuses.add('MONITORING')
+  if (keySet.has('showStopped')) activeStatuses.add('PAUSED')
+  if (keySet.has('showCompleted')) activeStatuses.add('COMPLETED')
+
+  const hasGroups = activeGroups.size > 0
+  const hasStatuses = activeStatuses.size > 0
+
+  hazardMarkerMap.forEach((marker, pointId) => {
+    const data = hazardPointDataMap.get(pointId)
+    if (!data) return
+
+    const groupOk = hasGroups && activeGroups.has(data.groupId)
+    const statusOk = hasStatuses && activeStatuses.has(data.status)
+    const visible = groupOk && statusOk
+
+    const el = marker.getElement()
+    if (el) el.style.display = visible ? '' : 'none'
+  })
+}
+
+const refreshHazardMarkers = () => {
+  if (mapInstance && hazardMarkerLayer) {
+    hazardMarkerLayer.clearLayers()
+    addHazardPoints()
+    filterMarkers(new Set(activeLayerKeys.value))
+  }
 }
 
 // 隐患点视图相关函数
@@ -939,11 +930,8 @@ const exitHazardView = () => {
   resetAlarmStats()
 
   // 恢复隐患点显示
-  if (mapInstance && hazardMarkerLayer) {
-    hazardMarkerLayer.clearLayers()
-    addHazardPoints()
-    fitToFocusArea()
-  }
+  refreshHazardMarkers()
+  fitToFocusArea()
 }
 
 const updateHazardAlarms = (hazardId: number) => {
@@ -1155,12 +1143,28 @@ const addLayer = (layerId: string) => {
   }
   if (labelLayer) {
     mapInstance.removeLayer(labelLayer)
+    labelLayer = null
   }
 
   baseLayer = L.tileLayer(`https://t0.tianditu.gov.cn/${layer.baseUrl}/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer.baseLayer}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDI_TU_KEY}`, {
     maxZoom: 18,
     minZoom: 1
   }).addTo(mapInstance)
+
+  if (isLabelVisible) {
+    addLabelOverlay()
+  }
+}
+
+const addLabelOverlay = () => {
+  if (!mapInstance) return
+  const layer = layerOptions.find(l => l.id === currentLayer.value)
+  if (!layer) return
+
+  if (labelLayer) {
+    mapInstance.removeLayer(labelLayer)
+    labelLayer = null
+  }
 
   labelLayer = L.tileLayer(`https://t0.tianditu.gov.cn/${layer.labelUrl}/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer.labelLayer}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDI_TU_KEY}`, {
     maxZoom: 18,
@@ -1195,15 +1199,12 @@ const loadHazardPoints = async () => {
         groupName: item.groupName || '',
         description: item.description || '',
         deviceCount: item.deviceCount || 0,
-        status: item.status === 0 ? 'normal' : item.status === 1 ? 'warning' : 'danger',
+        status: item.status === 1 ? 'MONITORING' : item.status === 2 ? 'PAUSED' : 'COMPLETED',
         alarmLevel: item.alarmLevel || null
       }))
       
       // 重新渲染地图标记
-      if (mapInstance && hazardMarkerLayer) {
-        hazardMarkerLayer.clearLayers()
-        addHazardPoints()
-      }
+      refreshHazardMarkers()
     }
   } catch (error) {
     console.error('加载隐患点列表失败:', error)
@@ -1222,12 +1223,21 @@ const loadHazardPointGroups = async () => {
   }
 }
 
+const loadMonitorTypes = async () => {
+  try {
+    monitorTypes.value = await getMonitorTypeList()
+  } catch {
+    monitorTypes.value = []
+  }
+}
+
 onMounted(async () => {
   initMap()
   window.addEventListener('resize', handleResize)
   
   // 加载数据
   await loadHazardPointGroups()
+  loadMonitorTypes()
   await loadHazardPoints()
 })
 
@@ -1283,6 +1293,7 @@ onUnmounted(() => {
 .left-panel-wrapper {
   position: absolute;
   top: 0;
+  bottom: 0;
   left: 16px;
   z-index: 1000;
   overflow: visible;
@@ -1299,11 +1310,15 @@ onUnmounted(() => {
   border: none;
   box-shadow: none;
   transition: width 0.3s ease;
-  padding: 24px 12px 24px 4px;
+  padding: 24px 0 24px 0;
 }
 
 .left-panel-wrapper.collapsed .left-panel .panel-content {
   display: none;
+}
+
+.left-panel-wrapper.collapsed {
+  left: 0;
 }
 
 .left-panel-wrapper.collapsed .left-panel {
@@ -1439,9 +1454,9 @@ onUnmounted(() => {
 /* 比例尺 — 线段 + 两端竖线 + 居中文字 */
 :deep(.leaflet-bottom.leaflet-right) {
   display: flex !important;
-  right: 84px;
-  bottom: 16px;
+  right: auto;
   left: auto;
+  bottom: 28px;
 }
 
 :deep(.leaflet-control-scale-line) {
@@ -1480,10 +1495,15 @@ onUnmounted(() => {
 .right-panel-wrapper {
   position: absolute;
   top: 0;
+  bottom: 0;
   right: 16px;
   z-index: 1000;
   overflow: visible;
   transition: right 0.3s ease;
+}
+
+.right-panel-wrapper.collapsed {
+  right: 0;
 }
 
 .right-panel-wrapper.collapsed .right-panel .panel-content {
@@ -1507,7 +1527,7 @@ onUnmounted(() => {
   border: none;
   box-shadow: none;
   transition: width 0.3s ease;
-  padding: 24px 4px 24px 12px;
+  padding: 24px 0 24px 0;
 }
 :deep(.leaflet-control-attribution) {
   display: none !important;
@@ -1623,13 +1643,13 @@ onUnmounted(() => {
 .hazard-info-panel {
   position: absolute;
   top: 80px;
-  left: 20px;
-  width: 300px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  max-height: calc(100vh - 160px);
+  bottom: 0;
+  left: 16px;
+  width: 320px;
+  background: transparent;
+  backdrop-filter: none;
+  border-radius: 0;
+  box-shadow: none;
   overflow-y: auto;
   z-index: 999;
 }

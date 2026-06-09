@@ -31,55 +31,21 @@
     <!-- 图层控制 -->
     <div class="tool-button-wrapper">
       <button class="tool-btn" @click="toggleLayerPanel" :class="{ active: showLayerPanel }" title="图层控制">
-        <el-icon><DataAnalysis/></el-icon>
+        <el-icon><Operation/></el-icon>
       </button>
       <div v-show="showLayerPanel" class="tool-panel layer-panel">
         <div class="panel-title">图层控制</div>
-        <div class="layer-group">
-          <div class="layer-group-title">Tile 图层</div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showLabels" @change="onToggleLayer('showLabels')">
-            <span>名称标注</span>
-          </div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showWater" @change="onToggleLayer('showWater')">
-            <span>水系图</span>
-          </div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showRoad" @change="onToggleLayer('showRoad')">
-            <span>道路图</span>
-          </div>
-        </div>
-        <div class="layer-group">
-          <div class="layer-group-title">隐患点分组</div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showGroup1" @change="onToggleLayer('showGroup1')">
-            <span>第一监测组</span>
-          </div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showGroup2" @change="onToggleLayer('showGroup2')">
-            <span>第二监测组</span>
-          </div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showGroup3" @change="onToggleLayer('showGroup3')">
-            <span>第三监测组</span>
-          </div>
-        </div>
-        <div class="layer-group">
-          <div class="layer-group-title">隐患点状态</div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showMonitoring" @change="onToggleLayer('showMonitoring')">
-            <span>监测中</span>
-          </div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showStopped" @change="onToggleLayer('showStopped')">
-            <span>停测</span>
-          </div>
-          <div class="layer-item">
-            <input type="checkbox" v-model="layerSettings.showCompleted" @change="onToggleLayer('showCompleted')">
-            <span>完结</span>
-          </div>
-        </div>
+        <el-tree
+          ref="treeRef"
+          :data="treeData"
+          show-checkbox
+          node-key="id"
+          :default-expanded-keys="expandedKeys"
+          :default-checked-keys="defaultCheckedKeys"
+          :props="{ label: 'label', children: 'children' }"
+          @check="onTreeCheck"
+          class="layer-tree"
+        />
       </div>
     </div>
 
@@ -100,39 +66,58 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Aim, DataAnalysis, Hide, Search, Setting, View } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { Aim, Hide, Operation, Search, Setting, View } from '@element-plus/icons-vue'
+import type { ElTree } from 'element-plus'
 
 const props = defineProps<{
   hazardPoints: any[]
   maskVisible: boolean
   layoutDialogVisible: boolean
   rightPanelCollapsed: boolean
+  groups: { id: number; name: string }[]
 }>()
 
 const emit = defineEmits<{
   (e: 'selectHazardPoint', point: any): void
-  (e: 'toggleLayer', layerKey: string): void
+  (e: 'toggleLayers', activeKeys: string[]): void
   (e: 'openLayoutConfig'): void
   (e: 'toggleMask'): void
   (e: 'resetView'): void
 }>()
 
+const treeRef = ref<InstanceType<typeof ElTree> | null>(null)
 const showSearchPanel = ref(false)
 const showLayerPanel = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
 
-const layerSettings = ref({
-  showLabels: true,
-  showWater: false,
-  showRoad: false,
-  showGroup1: true,
-  showGroup2: true,
-  showGroup3: true,
-  showMonitoring: true,
-  showStopped: false,
-  showCompleted: false
+const treeData = computed(() => [
+  {
+    id: 'tile-layers', label: '图层叠加', children: [
+      { id: 'showLabels', label: '文字标注' },
+    ]
+  },
+  {
+    id: 'hazard-groups', label: '隐患点分组', children: props.groups.map(g => ({ id: `group_${g.id}`, label: g.name }))
+  },
+  {
+    id: 'hazard-status', label: '隐患点状态', children: [
+      { id: 'showMonitoring', label: '监测中' },
+      { id: 'showStopped', label: '停测' },
+      { id: 'showCompleted', label: '完结' },
+    ]
+  }
+])
+
+const expandedKeys = ['tile-layers', 'hazard-groups', 'hazard-status']
+
+const defaultCheckedKeys = computed(() => {
+  const keys = ['showLabels']
+  // All groups checked by default
+  props.groups.forEach(g => keys.push(`group_${g.id}`))
+  keys.push('showMonitoring')
+  return keys
 })
 
 const toggleSearchPanel = () => {
@@ -163,8 +148,10 @@ const onSelectSearchResult = (point: any) => {
   searchResults.value = []
 }
 
-const onToggleLayer = (layerKey: string) => {
-  emit('toggleLayer', layerKey)
+const onTreeCheck = () => {
+  // Only emit leaf keys — parent IDs are irrelevant for layer logic
+  const keys = (treeRef.value?.getCheckedKeys(true) || []) as string[]
+  emit('toggleLayers', keys)
 }
 </script>
 
@@ -172,7 +159,7 @@ const onToggleLayer = (layerKey: string) => {
 .map-business-toolbar {
   position: absolute;
   top: 16px;
-  right: 0;
+  right: 16px;
   z-index: 999;
   display: flex;
   flex-direction: column;
@@ -183,7 +170,7 @@ const onToggleLayer = (layerKey: string) => {
 }
 
 .map-business-toolbar.panel-open {
-  right: 352px;
+  right: 368px;
 }
 
 .toolbar-divider {
@@ -230,8 +217,7 @@ const onToggleLayer = (layerKey: string) => {
 .tool-panel {
   position: absolute;
   right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -240,7 +226,7 @@ const onToggleLayer = (layerKey: string) => {
   padding: 12px;
   min-width: 220px;
   max-width: 280px;
-  max-height: 400px;
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
 }
 
@@ -320,39 +306,22 @@ const onToggleLayer = (layerKey: string) => {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.layer-group {
-  margin-bottom: 12px;
-}
-
-.layer-group:last-child {
-  margin-bottom: 0;
-}
-
-.layer-group-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: #606266;
-  margin-bottom: 8px;
-}
-
-.layer-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+.layer-tree {
+  --el-tree-node-content-height: 28px;
   font-size: 13px;
-  color: #303133;
-  cursor: pointer;
 }
 
-.layer-item:hover {
-  color: #1890ff;
+.layer-tree :deep(.el-tree-node__content) {
+  height: 28px;
 }
 
-.layer-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #1890ff;
+/* 根节点取消缩进 */
+.layer-tree > :deep(.el-tree-node > .el-tree-node__content) {
+  padding-left: 4px !important;
+}
+
+.layer-tree :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: #1890ff;
+  border-color: #1890ff;
 }
 </style>

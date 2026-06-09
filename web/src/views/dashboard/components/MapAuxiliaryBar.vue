@@ -2,62 +2,71 @@
   <div class="map-auxiliary-bar">
     <!-- 比例尺由 Leaflet 自带，样式在 Dashboard.vue 中覆盖 -->
 
-    <!-- 图例 (默认展开) -->
-    <div class="legend-panel">
-      <div class="legend-header" @click="legendExpanded = !legendExpanded">
-        <span class="legend-title">图例</span>
-        <el-icon :size="12"><component :is="legendExpanded ? ArrowDown : ArrowUp"/></el-icon>
-      </div>
-      <div v-show="legendExpanded" class="legend-body">
+    <!-- 右下角组：图例 + 底图切换 -->
+    <div class="bottom-right-group">
+      <!-- 图例 (多行，与底图切换等高) -->
+      <div class="legend-bar">
         <div class="legend-group">
-          <div class="legend-group-title">隐患点状态</div>
-          <div class="legend-item">
-            <img src="/img/sy/auto_normal.png" class="legend-marker-icon" alt="正常" />
-            <span>正常</span>
-          </div>
-          <div class="legend-item">
-            <img src="/img/sy/auto_unnormal.png" class="legend-marker-icon" alt="预警" />
-            <span>预警/告警</span>
+          <span class="legend-group-label">隐患点</span>
+          <div class="legend-group-items">
+            <div class="legend-item">
+              <img src="/img/sy/auto_normal.png" class="legend-marker-icon" alt="正常" />
+              <span>正常</span>
+            </div>
+            <div class="legend-item">
+              <img src="/img/sy/auto_unnormal.png" class="legend-marker-icon" alt="预警" />
+              <span>预警</span>
+            </div>
           </div>
         </div>
+        <div class="legend-divider"></div>
         <div class="legend-group">
-          <div class="legend-group-title">告警级别</div>
-          <div class="legend-item">
-            <div class="legend-dot" style="background: #f5222d;"></div>
-            <span>严重告警</span>
+          <span class="legend-group-label">设备状态</span>
+          <div class="legend-group-items">
+            <div class="legend-item">
+              <div class="legend-dot" style="background: #52c41a;"></div>
+              <span>在线</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: #faad14;"></div>
+              <span>预警</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: #f5222d;"></div>
+              <span>离线</span>
+            </div>
           </div>
-          <div class="legend-item">
-            <div class="legend-dot" style="background: #faad14;"></div>
-            <span>重要告警</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-dot" style="background: #722ed1;"></div>
-            <span>一般告警</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-dot" style="background: #1890ff;"></div>
-            <span>提示告警</span>
+        </div>
+        <div v-if="monitorTypes.length" class="legend-divider"></div>
+        <div v-if="monitorTypes.length" class="legend-group">
+          <span class="legend-group-label">监测类型</span>
+          <div class="legend-group-items legend-group-items-wrap">
+            <div v-for="mt in monitorTypes" :key="mt.id" class="legend-item">
+              <img v-if="mt.icon" :src="mt.icon" class="legend-type-icon" :alt="mt.name" />
+              <div v-else class="legend-dot" style="background: #1890ff;"></div>
+              <span>{{ mt.name }}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 底图切换器 -->
-    <div class="basemap-switcher">
-      <div class="basemap-current" @click="showBasemapOptions = !showBasemapOptions">
-        <img :src="currentThumb" class="basemap-thumb" />
-        <span class="basemap-label">{{ currentName }}</span>
-      </div>
-      <div v-show="showBasemapOptions" class="basemap-options">
-        <div
-          v-for="bm in basemapList"
-          :key="bm.id"
-          class="basemap-option"
-          :class="{ active: currentLayer === bm.id }"
-          @click="switchBasemap(bm.id)"
-        >
-          <img :src="bm.thumb" class="basemap-option-thumb" />
-          <span class="basemap-option-label">{{ bm.name }}</span>
+      <!-- 底图切换器 -->
+      <div class="basemap-switcher">
+        <div class="basemap-current" @click="showBasemapOptions = !showBasemapOptions">
+          <img :src="currentThumb" class="basemap-thumb" />
+          <span class="basemap-label">{{ currentName }}</span>
+        </div>
+        <div v-show="showBasemapOptions" class="basemap-options">
+          <div
+            v-for="bm in basemapList"
+            :key="bm.id"
+            class="basemap-option"
+            :class="{ active: currentLayer === bm.id }"
+            @click="switchBasemap(bm.id)"
+          >
+            <img :src="bm.thumb" class="basemap-option-thumb" />
+            <span class="basemap-option-label">{{ bm.name }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -66,20 +75,20 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
+import type { MonitorTypeItem } from '@/api/monitorType'
 import basemapNormal from '@/assets/img/basemap-normal.png'
 import basemapSatellite from '@/assets/img/basemap-satellite.png'
 import basemapTerrain from '@/assets/img/basemap-terrain.png'
 
 const props = defineProps<{
   currentLayer: string
+  monitorTypes: MonitorTypeItem[]
 }>()
 
 const emit = defineEmits<{
   (e: 'update:currentLayer', layerId: string): void
 }>()
 
-const legendExpanded = ref(true)
 const showBasemapOptions = ref(false)
 
 const basemapList = [
@@ -110,92 +119,99 @@ const switchBasemap = (id: string) => {
   right: 0;
   z-index: 999;
   pointer-events: none;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 12px 12px;
 }
 
-/* 图例面板 */
-.legend-panel {
+/* 右下角组：图例 + 底图水平排列 */
+.bottom-right-group {
   pointer-events: auto;
   position: absolute;
   right: 12px;
-  bottom: 100px;
+  bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* 图例条 — 与底图切换器等高 */
+.legend-bar {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  min-width: 140px;
-}
-
-.legend-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0;
   padding: 8px 12px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.legend-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.legend-body {
-  padding: 4px 12px 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .legend-group {
-  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
 }
 
-.legend-group:last-child {
-  margin-bottom: 0;
-}
-
-.legend-group-title {
-  font-size: 11px;
-  font-weight: 500;
+.legend-group-label {
+  font-size: 10px;
   color: #909399;
-  margin-bottom: 4px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  min-width: 36px;
+  padding-top: 2px;
+}
+
+.legend-group-items {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 监测类型：3列网格 */
+.legend-group-items-wrap {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 4px 12px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 12px;
-  color: #303133;
+  gap: 4px;
+  font-size: 11px;
+  color: #4e5969;
+  white-space: nowrap;
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .legend-marker-icon {
-  width: 14px;
-  height: 18px;
+  width: 12px;
+  height: 16px;
   flex-shrink: 0;
   object-fit: contain;
 }
 
-/* 底图切换器 */
-.basemap-switcher {
-  pointer-events: auto;
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
+.legend-type-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
+.legend-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 2px 0;
+}
+
+/* 底图切换器 */
 .basemap-current {
   display: flex;
   flex-direction: column;
