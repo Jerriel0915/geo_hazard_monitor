@@ -940,6 +940,7 @@ interface HazardPointItem {
   longitude?: number
   latitude?: number
   strike?: number
+  boundaryCoords?: string
   description?: string
   deviceCount: number
   createTime?: string
@@ -1333,7 +1334,8 @@ const buildHazardPointPayload = () => ({
   longitude: formData.longitude,
   latitude: formData.latitude,
   strike: formData.strike || 0,
-  description: formData.description
+  description: formData.description,
+  boundaryCoords: (formData as any).boundaryCoords || undefined
 })
 
 const getStatusType = (status: string) => {
@@ -1365,6 +1367,7 @@ const normalizeHazardPoint = (item: any): HazardPointItem => ({
   longitude: item.longitude,
   latitude: item.latitude,
   strike: item.strike,
+  boundaryCoords: item.boundaryCoords,
   description: item.description,
   deviceCount: item.deviceCount || 0,
   createTime: item.createTime,
@@ -1782,6 +1785,20 @@ const handleEdit = (row: HazardPointItem) => {
     strike: row.strike || 0,
     description: row.description || ''
   })
+  // 解析 boundaryCoords 回显
+  polygonCoords.value = [];
+  strikeCoords.value = [];
+  strikeAngle.value = 0
+  const bc: any = (row as any).boundaryCoords
+  if (bc) {
+    try {
+      const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
+      if (obj.polygon) polygonCoords.value = obj.polygon.map((c: number[]) => L.latLng(c[0], c[1]))
+      if (obj.strikeCoords) strikeCoords.value = obj.strikeCoords.map((c: number[]) => L.latLng(c[0], c[1]))
+      if (obj.strikeAngle != null) strikeAngle.value = obj.strikeAngle
+    } catch {
+    }
+  }
   dialogVisible.value = true
 }
 
@@ -1836,14 +1853,47 @@ const initDetailMap = () => {
     maxZoom: 18
   }).addTo(detailMapInstance)
 
-  L.marker([lat, lng], {
-    icon: L.divIcon({
-      className: 'center-marker',
-      html: `<div style="background:#f56c6c;color:#fff;padding:6px 12px;border-radius:8px;font-size:14px;font-weight:bold;">⚠ ${currentRow.value.name}</div>`,
-      iconSize: [120, 40],
-      iconAnchor: [60, 20]
-    })
-  }).addTo(detailMapInstance).bindPopup(`${currentRow.value.name}<br>坐标: ${lng.toFixed(6)}, ${lat.toFixed(6)}`).openPopup()
+  const detailIcon = L.icon({
+    iconUrl: '/img/sy/auto_normal.png',
+    iconSize: [32, 40],
+    iconAnchor: [16, 40],
+    popupAnchor: [0, -40]
+  })
+  const detailMarker = L.marker([lat, lng], {icon: detailIcon}).addTo(detailMapInstance)
+  const detailPopup = L.popup({offset: [0, -36], closeButton: false}).setContent(
+      `<div style="text-align:center;font-size:13px"><b>${currentRow.value.name}</b><br>${lng.toFixed(6)}, ${lat.toFixed(6)}</div>`
+  )
+  detailMarker.on('mouseover', () => {
+    detailMarker.bindPopup(detailPopup).openPopup()
+  })
+  detailMarker.on('mouseout', () => {
+    detailMarker.closePopup()
+  })
+
+  // 渲染多边形边界
+  const bc: any = (currentRow.value as any).boundaryCoords
+  if (bc) {
+    try {
+      const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
+      if (obj.polygon && obj.polygon.length > 0) {
+        const pts = obj.polygon.map((c: number[]) => [c[0], c[1]])
+        L.polygon(pts as any, {
+          color: '#1890ff',
+          fillColor: '#1890ff',
+          fillOpacity: 0.15,
+          weight: 2
+        }).addTo(detailMapInstance!).bindPopup('监测范围')
+      }
+      if (obj.strikeCoords && obj.strikeCoords.length >= 2) {
+        L.polyline(obj.strikeCoords as any, {
+          color: '#f56c6c',
+          weight: 3,
+          dashArray: '6 6'
+        }).addTo(detailMapInstance!).bindPopup(`走向: ${obj.strikeAngle ?? 0}°`)
+      }
+    } catch {
+    }
+  }
 
   if (currentRow.value.strike) {
     const strikeRad = (currentRow.value.strike * Math.PI) / 180
@@ -2161,9 +2211,16 @@ const clearDraw = () => {
 }
 
 const handleMapConfirm = () => {
+  const coords: any = {}
+  if (polygonCoords.value.length > 0) coords.polygon = polygonCoords.value.map(c => [c.lat, c.lng])
+  if (strikeCoords.value.length >= 2) {
+    coords.strikeCoords = strikeCoords.value.map(c => [c.lat, c.lng])
+    coords.strikeAngle = strikeAngle.value
+  }
+  ;(formData as any).boundaryCoords = Object.keys(coords).length > 0 ? JSON.stringify(coords) : undefined
   mapDialogVisible.value = false
   if (mapInstance) {
-    mapInstance.remove()
+    mapInstance.remove();
     mapInstance = null
   }
   ElMessage.success('隐患点范围设置成功')

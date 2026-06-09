@@ -116,11 +116,13 @@ import { getBoundDevices, getHazardPointGroups, getHazardPointPage } from '@/api
 import { getDashboardFull } from '@/api/monitor'
 import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
 import { getRealtimeAlarmPage, type RealtimeAlarmDetail } from '@/api/realtimeAlarm'
+import { getFocusArea } from '@/api/system'
 import {
   ArrowLeft,
   ArrowRight,
   Close,
   Drizzling,
+  MapLocation,
   Monitor,
   Odometer,
   Sunny
@@ -302,14 +304,6 @@ const generateSensorData = () => {
 
 // 图层设置 (moved to BottomToolbar component)
 
-const focusAreaBounds = ref<[number, number][]>([
-  [30.60, 104.00],
-  [30.70, 104.15],
-  [30.65, 104.25],
-  [30.55, 104.20],
-  [30.60, 104.00]
-])
-
 // 隐患点列表（从API获取）
 const hazardPoints = ref<any[]>([])
 const hazardPointGroups = ref<any[]>([])
@@ -318,6 +312,8 @@ const monitorTypes = ref<MonitorTypeItem[]>([])
 let maskLayer: L.GeoJSON | null = null
 let boundaryLayer: L.Polyline | null = null
 let hazardMarkerLayer: L.LayerGroup | null = null
+let hazardBoundaryLayer: L.LayerGroup | null = null
+let focusAreaLayer: L.GeoJSON | null = null
 let hazardMarkerMap: Map<number, L.Marker> = new Map()
 let ripples: Map<number, L.Circle[]> = new Map()
 
@@ -389,51 +385,71 @@ const initMap = () => {
 }
 
 const fitToFocusArea = () => {
-  if (!mapInstance || !focusAreaBounds.value.length) return
-
-  const bounds = L.latLngBounds(focusAreaBounds.value)
-  mapInstance.fitBounds(bounds, {
-    padding: [20, 20],
-    animate: false,
-    maxZoom: 14
-  })
+  if (!mapInstance) return
+  if (focusAreaLayer && (focusAreaLayer as any).getBounds) {
+    try {
+      mapInstance.fitBounds((focusAreaLayer as any).getBounds(), {padding: [20, 20], animate: false, maxZoom: 14});
+      return
+    } catch {
+    }
+  }
+  mapInstance.setView([30.67, 104.06], 12)
 }
 
 const addFocusBoundary = () => {
-  if (!mapInstance) return
-
-  boundaryLayer = L.polyline(focusAreaBounds.value, {
-    color: '#f5222d',
-    weight: 3,
-    opacity: 1,
-    dashArray: '8,4'
-  }).addTo(mapInstance)
+  // focusAreaLayer is rendered by loadFocusArea(), skip duplicate
 }
 
 const addMaskLayer = () => {
   if (!mapInstance) return
 
-  const southWest = L.latLng(30.40, 103.80)
-  const northEast = L.latLng(30.90, 104.40)
-  const mapBounds = L.latLngBounds(southWest, northEast)
+  // 清理旧遮罩层
+  if (maskLayer) {
+    mapInstance.removeLayer(maskLayer)
+    maskLayer = null
+  }
+
+  // 从已加载的 focusAreaLayer 获取边界坐标
+  const geojson: any = (focusAreaLayer as any)?.toGeoJSON?.()
+  const features = geojson?.features || []
+  if (!features.length) return
+
+  // 外环: 使用世界范围确保覆盖整个地图
   const outerRing: [number, number][] = [
-    [mapBounds.getWest(), mapBounds.getSouth()],
-    [mapBounds.getEast(), mapBounds.getSouth()],
-    [mapBounds.getEast(), mapBounds.getNorth()],
-    [mapBounds.getWest(), mapBounds.getNorth()],
-    [mapBounds.getWest(), mapBounds.getSouth()]
+    [-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]
   ]
-  const innerRing: [number, number][] = focusAreaBounds.value.map(([lat, lng]) => [lng, lat])
+
+  // 收集所有 Polygon/MultiPolygon 的坐标环作为内环（洞）
+  const innerRings: [number, number][][] = []
+  for (const f of features) {
+    const geomType = f?.geometry?.type
+    if (geomType === 'Polygon') {
+      const ring = f.geometry.coordinates?.[0]
+      if (ring && ring.length >= 3) {
+        innerRings.push(ring.map((c: number[]) => [c[0], c[1]] as [number, number]))
+      }
+    } else if (geomType === 'MultiPolygon') {
+      for (const polygon of f.geometry.coordinates || []) {
+        const ring = polygon?.[0]
+        if (ring && ring.length >= 3) {
+          innerRings.push(ring.map((c: number[]) => [c[0], c[1]] as [number, number]))
+        }
+      }
+    }
+  }
+  if (!innerRings.length) return
 
   const maskGeoJson = {
     type: 'Polygon' as const,
-    coordinates: [outerRing, innerRing]
+    coordinates: [outerRing, ...innerRings]
   }
 
+  const isVisible = showMaskLayer.value
   maskLayer = L.geoJSON(maskGeoJson, {
+    interactive: false,
     style: {
       fillColor: '#000000',
-      fillOpacity: 0.35,
+      fillOpacity: isVisible ? 0.35 : 0,
       color: 'transparent',
       weight: 0
     }
@@ -650,15 +666,38 @@ const showHazardOnMap = async (point: typeof hazardPoints.value[0]) => {
   }
   hazardMarkerLayer = L.layerGroup().addTo(mapInstance)
 
-  // 绘制隐患点范围
-  L.circle([point.latitude, point.longitude], {
-    radius: 500,
-    color: '#f5222d',
-    fillColor: '#f5222d',
-    fillOpacity: 0.1,
-    weight: 2,
-    dashArray: '8,4'
-  }).addTo(hazardMarkerLayer)
+  // 绘制隐患点边界范围
+  const bc: any = (point as any).boundaryCoords
+  let hasBoundary = false
+  if (bc) {
+    try {
+      const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
+      if (obj.polygon && obj.polygon.length > 0) {
+        L.polygon(obj.polygon as any, {
+          color: '#1890ff',
+          fillColor: '#1890ff',
+          fillOpacity: 0.15,
+          weight: 2
+        }).addTo(hazardMarkerLayer)
+        hasBoundary = true
+      }
+      if (obj.strikeCoords && obj.strikeCoords.length >= 2) {
+        L.polyline(obj.strikeCoords as any, {color: '#f56c6c', weight: 3, dashArray: '6 6'}).addTo(hazardMarkerLayer)
+      }
+    } catch {
+    }
+  }
+  // 无边界数据时用默认圆圈兜底
+  if (!hasBoundary) {
+    L.circle([point.latitude, point.longitude], {
+      radius: 500,
+      color: '#f5222d',
+      fillColor: '#f5222d',
+      fillOpacity: 0.1,
+      weight: 2,
+      dashArray: '8,4'
+    }).addTo(hazardMarkerLayer)
+  }
 
   // 加载并绘制设备标记
   try {
@@ -876,6 +915,34 @@ const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
   // 地图聚焦到隐患点
   if (mapInstance) {
     mapInstance.setView([hazardPoint.latitude, hazardPoint.longitude], 14)
+    // 渲染边界范围
+    if (hazardBoundaryLayer) {
+      hazardBoundaryLayer.clearLayers()
+    } else {
+      hazardBoundaryLayer = L.layerGroup().addTo(mapInstance)
+    }
+    const bc: any = (hazardPoint as any).boundaryCoords
+    if (bc) {
+      try {
+        const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
+        if (obj.polygon && obj.polygon.length > 0) {
+          L.polygon(obj.polygon as any, {
+            color: '#1890ff',
+            fillColor: '#1890ff',
+            fillOpacity: 0.15,
+            weight: 2
+          }).addTo(hazardBoundaryLayer!)
+        }
+        if (obj.strikeCoords && obj.strikeCoords.length >= 2) {
+          L.polyline(obj.strikeCoords as any, {
+            color: '#f56c6c',
+            weight: 3,
+            dashArray: '6 6'
+          }).addTo(hazardBoundaryLayer!)
+        }
+      } catch {
+      }
+    }
   }
 
   // 添加设备标记
@@ -889,6 +956,11 @@ const exitHazardView = () => {
   selectedSensor.value = null
   showSensorChart.value = false
   sensorList.value = []
+
+  // 清除边界图层
+  if (hazardBoundaryLayer) {
+    hazardBoundaryLayer.clearLayers()
+  }
 
   // 恢复告警统计（全系统）
   resetAlarmStats()
@@ -1156,7 +1228,8 @@ const loadHazardPoints = async () => {
         description: item.description || '',
         deviceCount: item.deviceCount || 0,
         status: item.status === 1 ? 'MONITORING' : item.status === 2 ? 'PAUSED' : 'COMPLETED',
-        alarmLevel: item.alarmLevel || null
+        alarmLevel: item.alarmLevel || null,
+        boundaryCoords: item.boundaryCoords || null
       }))
       
       // 重新渲染地图标记
@@ -1280,6 +1353,44 @@ const loadDashboardData = async () => {
   }
 }
 
+const loadFocusArea = async () => {
+  try {
+    const res: any = await getFocusArea()
+    // 兼容两种响应格式: data 字段或 msg 字段 (AjaxResult String 重载问题)
+    const val = res?.data || res?.msg
+    if (val && typeof val === 'string' && val !== 'null') {
+      const geojson = JSON.parse(val)
+      if (geojson?.type === 'FeatureCollection' && mapInstance) {
+        if (focusAreaLayer) {
+          mapInstance.removeLayer(focusAreaLayer)
+          focusAreaLayer = null
+        }
+        focusAreaLayer = L.geoJSON(geojson, {
+          style: (feature: any) => {
+            const t = feature?.geometry?.type
+            if (t === 'Polygon' || t === 'MultiPolygon') return {
+              color: '#faad14',
+              weight: 3,
+              fillColor: '#faad14',
+              fillOpacity: 0.12,
+              dashArray: '8 4'
+            }
+            if (t === 'LineString') return {color: '#faad14', weight: 3, dashArray: '8 4'}
+            return {color: '#faad14', weight: 2}
+          }
+        }).addTo(mapInstance).bindPopup('系统关注区域')
+        if ((focusAreaLayer as any).getBounds) mapInstance.fitBounds((focusAreaLayer as any).getBounds(), {
+          padding: [30, 30],
+          maxZoom: 13
+        })
+        addMaskLayer()
+      }
+    }
+  } catch (e) {
+    console.error('加载系统关注区域失败:', e)
+  }
+}
+
 onMounted(async () => {
   initMap()
   window.addEventListener('resize', handleResize)
@@ -1289,6 +1400,7 @@ onMounted(async () => {
   loadMonitorTypes()
   await loadHazardPoints()
   loadDashboardData()
+  loadFocusArea()
 })
 
 onUnmounted(() => {

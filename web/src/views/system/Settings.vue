@@ -155,6 +155,7 @@
       v-model="mapDialogVisible"
       width="900px"
       :close-on-click-modal="false"
+      @closed="cleanupMapDraw"
       class="map-draw-dialog"
     >
       <div class="map-draw-container">
@@ -194,7 +195,6 @@
               type="danger"
               size="small"
               @click="clearDrawLayer"
-              v-if="drawnFeatures.length > 0"
             >
               清除绘制
             </el-button>
@@ -202,16 +202,18 @@
           <span class="draw-hint" v-if="drawMode">
             <el-tag type="warning" size="small">{{ getDrawHint() }}</el-tag>
           </span>
+          <span class="draw-hint" v-if="!drawMode">
+            <el-tag type="info" size="small">选择上方绘制模式后点击地图开始绘制</el-tag>
+          </span>
         </div>
         <div ref="mapContainerRef" class="map-container"></div>
-        <div class="drawn-info" v-if="drawnFeatures.length > 0">
-          <el-tag type="success" size="small">已绘制 {{ drawnFeatures.length }} 个区域</el-tag>
-          <span class="feature-types">{{ getFeatureTypesSummary() }}</span>
+        <div class="drawn-info" v-if="drawCoords.length > 0">
+          <el-tag type="success" size="small">已添加 {{ drawCoords.length }} 个顶点</el-tag>
         </div>
       </div>
       <template #footer>
         <el-button @click="mapDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleConfirmDraw" :disabled="drawnFeatures.length === 0">
+        <el-button type="primary" @click="handleConfirmDraw">
           确认使用此区域
         </el-button>
       </template>
@@ -223,11 +225,9 @@
 import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import type {FormInstance, UploadFile} from 'element-plus'
 import {ElMessage} from 'element-plus'
-import {getLogCleanupConfig, updateLogCleanupConfig} from '@/api/system'
+import {getFocusArea, getLogCleanupConfig, saveFocusArea, updateLogCleanupConfig} from '@/api/system'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import 'leaflet-draw/dist/leaflet.draw.css'
-import 'leaflet-draw'
 
 interface ParamItem {
   code: string
@@ -353,156 +353,183 @@ const mapDialogVisible = ref(false)
 const mapContainerRef = ref<HTMLElement | null>(null)
 let mapInstance: L.Map | null = null
 let drawLayer: L.FeatureGroup | null = null
-let currentDrawHandler: any = null
 const drawMode = ref<string>('')
-const drawnFeatures = ref<any[]>([])
+const drawCoords = ref<L.LatLng[]>([])
+let drawPolygonClosed = false
 
 const openMapDrawer = () => {
-  mapDialogVisible.value = true
-  drawMode.value = ''
-  drawnFeatures.value = []
-  nextTick(() => {
-    initMap()
-  })
+  mapDialogVisible.value = true;
+  drawMode.value = '';
+  drawCoords.value = [];
+  drawPolygonClosed = false
+  nextTick(() => initMap())
 }
 
 const initMap = () => {
-  if (!mapContainerRef.value) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-  }
-
+  if (!mapContainerRef.value) return;
+  if (mapInstance) mapInstance.remove()
   mapInstance = L.map(mapContainerRef.value).setView([39.9042, 116.4074], 10)
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(mapInstance)
-
+  setTimeout(() => mapInstance?.invalidateSize(), 200)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '&copy; OSM'}).addTo(mapInstance)
   drawLayer = L.featureGroup().addTo(mapInstance)
 
-  // 如果已有GeoJSON数据，显示在地图上
+  // 回显已有 GeoJSON
   if (geoJsonData.value) {
     try {
-      const layer = L.geoJSON(geoJsonData.value, {
+      L.geoJSON(geoJsonData.value, {
         style: {
           color: '#1890ff',
           weight: 3,
           fillColor: '#1890ff',
           fillOpacity: 0.2
         }
-      })
-      drawLayer.addLayer(layer)
-      const bounds = layer.getBounds()
-      if (bounds.isValid()) {
-        mapInstance.fitBounds(bounds, { padding: [50, 50] })
-      }
-      drawnFeatures.value = geoJsonData.value.features || []
-    } catch (e) {
-      console.error('加载已有GeoJSON失败', e)
+      }).addTo(drawLayer)
+      mapInstance.fitBounds(drawLayer.getBounds(), {padding: [50, 50]})
+    } catch {
     }
   }
-}
 
-const setDrawMode = (mode: string) => {
-  if (!mapInstance || !drawLayer) return
-
-  // 清除之前的绘制处理器
-  if (currentDrawHandler) {
-    currentDrawHandler.disable()
-    currentDrawHandler = null
-  }
-
-  if (drawMode.value === mode) {
-    drawMode.value = ''
-    return
-  }
-
-  drawMode.value = mode
-
-  // 创建新的绘制处理器
-  const Draw = (L as any).Draw
-  if (mode === 'polygon') {
-    currentDrawHandler = new Draw.Polygon(mapInstance, {
-      allowIntersection: false,
-      showArea: true,
-      shapeOptions: {
-        color: '#1890ff',
-        weight: 3,
-        fillColor: '#1890ff',
-        fillOpacity: 0.2
+  // 点击地图处理
+  mapInstance.on('click', (e: L.LeafletMouseEvent) => {
+    if (drawPolygonClosed) return
+    if (drawMode.value === 'polygon') {
+      // 检查是否点击在起始点附近（容差约 15 像素），且已有点 >= 3 → 闭合
+      if (drawCoords.value.length >= 3) {
+        const firstPoint = mapInstance!.latLngToContainerPoint(drawCoords.value[0])
+        const clickPoint = mapInstance!.latLngToContainerPoint(e.latlng)
+        const dist = firstPoint.distanceTo(clickPoint)
+        if (dist < 15) {
+          finishPolygon()
+          return
+        }
       }
-    })
-  } else if (mode === 'rectangle') {
-    currentDrawHandler = new Draw.Rectangle(mapInstance, {
-      shapeOptions: {
-        color: '#1890ff',
-        weight: 3,
-        fillColor: '#1890ff',
-        fillOpacity: 0.2
-      }
-    })
-  } else if (mode === 'circle') {
-    currentDrawHandler = new Draw.Circle(mapInstance, {
-      shapeOptions: {
-        color: '#1890ff',
-        weight: 3,
-        fillColor: '#1890ff',
-        fillOpacity: 0.2
-      }
-    })
-  }
+      drawCoords.value.push(e.latlng)
+      redrawPolygonPreview()
+    } else if (drawMode.value === 'rectangle') {
+      drawCoords.value = [e.latlng]
+      drawMode.value = 'rectangle2'
+    }
+  })
 
-  if (currentDrawHandler) {
-    currentDrawHandler.enable()
-  }
+  // 矩形第二步
+  mapInstance.on('mousemove', (e: L.LeafletMouseEvent) => {
+    if (drawMode.value !== 'rectangle2' || drawCoords.value.length !== 1) return
+    const p1 = drawCoords.value[0];
+    const p2 = e.latlng
+    drawLayer!.clearLayers()
+    L.rectangle(L.latLngBounds(p1, p2), {
+      color: '#1890ff',
+      weight: 2,
+      fillColor: '#1890ff',
+      fillOpacity: 0.15
+    }).addTo(drawLayer!)
+  })
 
-  // 监听绘制完成事件
-  mapInstance.once(Draw.Event.CREATED, (e: any) => {
-    const layer = e.layer
-    drawLayer!.addLayer(layer)
-    drawMode.value = ''
-    currentDrawHandler = null
-    updateDrawnFeatures()
+  mapInstance.on('dblclick', (e: L.LeafletMouseEvent) => {
+    if (drawPolygonClosed) return
+    if (drawMode.value === 'polygon' && drawCoords.value.length >= 3) {
+      finishPolygon()
+    } else if (drawMode.value === 'rectangle2') {
+      drawLayer!.clearLayers()
+      const p1 = drawCoords.value[0];
+      const p2 = e.latlng
+      L.rectangle(L.latLngBounds(p1, p2), {
+        color: '#1890ff',
+        weight: 2,
+        fillColor: '#1890ff',
+        fillOpacity: 0.15
+      }).addTo(drawLayer!)
+      drawCoords.value = []
+      drawMode.value = ''
+    }
   })
 }
 
-const clearDrawLayer = () => {
-  if (drawLayer) {
-    drawLayer.clearLayers()
+const redrawPolygonPreview = () => {
+  drawLayer!.clearLayers()
+  const coords = drawCoords.value
+  // 虚线预览边
+  if (coords.length > 1) L.polyline(coords, {color: '#1890ff', dashArray: '5,5', weight: 2}).addTo(drawLayer!)
+  // 绘制顶点标记：第一个点红色（可点击闭合），其余蓝色
+  coords.forEach((c, i) => {
+    const isFirst = i === 0 && coords.length >= 3
+    L.circleMarker(c, {
+      radius: isFirst ? 6 : 4,
+      color: isFirst ? '#f5222d' : '#1890ff',
+      fillColor: isFirst ? '#f5222d' : '#fff',
+      fillOpacity: 1,
+      weight: 2
+    }).addTo(drawLayer!)
+  })
+  // 从最后一个点到第一个点的虚线提示闭合
+  if (coords.length >= 3) {
+    L.polyline([coords[coords.length - 1], coords[0]], {
+      color: '#f5222d',
+      dashArray: '3,6',
+      weight: 1.5,
+      opacity: 0.6
+    }).addTo(drawLayer!)
   }
-  drawnFeatures.value = []
 }
 
-const updateDrawnFeatures = () => {
-  if (!drawLayer) return
-  const geojson = drawLayer.toGeoJSON() as any
-  drawnFeatures.value = geojson.features || []
+const finishPolygon = () => {
+  drawPolygonClosed = true
+  drawLayer!.clearLayers()
+  L.polygon(drawCoords.value, {color: '#1890ff', weight: 2, fillColor: '#1890ff', fillOpacity: 0.15}).addTo(drawLayer!)
+  drawCoords.value = []
+  drawMode.value = ''
+  // 延迟重置 flag 防止 click/dblclick 事件冒泡触发额外处理
+  setTimeout(() => {
+    drawPolygonClosed = false
+  }, 300)
+}
+
+const setDrawMode = (mode: string) => {
+  drawMode.value = drawMode.value === mode ? '' : mode
+  if (mode === 'polygon') drawCoords.value = []
+  drawPolygonClosed = false
+}
+
+const clearDrawLayer = () => {
+  drawLayer?.clearLayers();
+  drawCoords.value = [];
+  drawPolygonClosed = false
 }
 
 const getDrawHint = () => {
-  const hints: Record<string, string> = {
-    polygon: '点击地图开始绘制多边形，双击完成绘制',
-    rectangle: '按住鼠标拖动绘制矩形',
-    circle: '点击并拖动绘制圆形'
+  const h: Record<string, string> = {
+    polygon: '点击地图添加顶点，点击红色起始点或双击完成绘制',
+    rectangle: '点击起点 → 移动鼠标 → 双击终点完成',
+    circle: '暂不支持圆形'
   }
-  return hints[drawMode.value] || ''
+  return h[drawMode.value] || ''
 }
 
 const getFeatureTypesSummary = () => {
-  const types = drawnFeatures.value.map(f => f.geometry?.type).filter(Boolean)
-  const uniqueTypes = [...new Set(types)]
-  return uniqueTypes.join('、')
+  const geojson = drawLayer?.toGeoJSON() as any
+  if (!geojson?.features?.length) return ''
+  const types = [...new Set(geojson.features.map((f: any) => f.geometry?.type))]
+  return types.join('、')
 }
 
 const handleConfirmDraw = () => {
-  if (!drawLayer || drawnFeatures.value.length === 0) return
-
-  const geojson = drawLayer.toGeoJSON()
+  const geojson = drawLayer?.toGeoJSON() as any
+  if (!geojson?.features?.length) return
   geoJsonData.value = geojson
   paramsFormData.sys_focus_area = geojson
-  mapDialogVisible.value = false
+  mapDialogVisible.value = false;
+  drawMode.value = '';
+  drawCoords.value = []
   ElMessage.success('关注区域已保存')
+}
+
+const cleanupMapDraw = () => {
+  drawMode.value = '';
+  drawCoords.value = []
+  if (mapInstance) {
+    mapInstance.remove();
+    mapInstance = null
+  }
 }
 
 const scrollToCategory = (key: string) => {
@@ -517,7 +544,7 @@ const getParamsByCategory = (category: string) => {
   return paramList.value.filter(p => p.category === category)
 }
 
-// 页面加载时从后端拉取日志清理配置
+// 页面加载时从后端拉取配置
 onMounted(async () => {
   try {
     const cfg = await getLogCleanupConfig()
@@ -525,6 +552,18 @@ onMounted(async () => {
     paramsFormData['log_keep_days'] = cfg.retentionDays
     paramsFormData['cleanup_time'] = cfg.cron
   } catch { /* 使用默认值 */
+  }
+  try {
+    const res: any = await getFocusArea()
+    const val = res?.data || res?.msg || res
+    if (val && typeof val === 'string' && val !== 'null') {
+      const parsed = JSON.parse(val)
+      if (parsed && parsed.type === 'FeatureCollection') {
+        geoJsonData.value = parsed
+        paramsFormData.sys_focus_area = parsed
+      }
+    }
+  } catch { /* 未配置 */
   }
 })
 
@@ -536,6 +575,9 @@ const handleSaveParams = async () => {
       retentionDays: paramsFormData['log_keep_days'],
       cron: paramsFormData['cleanup_time']
     })
+    if (geoJsonData.value) {
+      await saveFocusArea(geoJsonData.value)
+    }
     ElMessage.success('系统参数保存成功')
   } catch {
     ElMessage.error('保存失败，请稍后重试')
