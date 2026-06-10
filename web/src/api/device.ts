@@ -27,12 +27,12 @@ export interface DeviceItem {
   latitude?: number | null
   createTime?: string
   sensors?: any[]
-    /**
-     * 传感器数量
-     * - 列表接口当前不返回该字段，UI 层以占位符 - 展示
-     * - 后端在 Device 实体中已具备 sensors 字段，分页查询可补一个子查询以填充 sensorCount
-     */
-    sensorCount?: number
+  /**
+   * 传感器数量
+   * - 列表接口当前不返回该字段，UI 层以占位符 - 展示
+   * - 后端在 Device 实体中已具备 sensors 字段，分页查询可补一个子查询以填充 sensorCount
+   */
+  sensorCount?: number
 }
 
 export interface DeviceCreatePayload {
