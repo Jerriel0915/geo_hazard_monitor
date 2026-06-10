@@ -50,12 +50,47 @@ html, body, #app {
   padding: 0 20px;
 }
 
+/* ============================================
+ * 弹窗默认样式
+ * position:fixed 确保始终相对视口居中，不受页面滚动影响
+ * 内部弹性布局，内容溢出时 body 滚动
+ * ============================================ */
+
+.el-dialog {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  border-radius: 12px;
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+
 .el-dialog__header {
-  padding: 15px 20px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.el-dialog__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .el-dialog__body {
-  padding: 20px;
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.el-dialog__footer {
+  padding: 14px 24px 20px;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
 }
 
 .el-form-item {
@@ -299,6 +334,7 @@ html, body, #app {
 /* ---------- TableWrap 表格卡片容器 ---------- */
 .table-wrap {
   flex: 1;
+  width: 100%;
   min-height: 0;
   background: #fff;
   border: 1px solid #e2e8f0;

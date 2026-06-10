@@ -362,77 +362,89 @@
         </el-tab-pane>
 
         <el-tab-pane label="绑定设备" name="devices">
-          <el-table :data="boundDevices" border size="small">
-            <el-table-column prop="deviceCode" label="设备编号" width="150" align="center" />
-            <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center" />
-            <el-table-column prop="sensorNames" label="传感器" min-width="150" align="center">
-              <template #default="{ row }">
-                <span v-for="sensor in row.sensors" :key="sensor.id" class="sensor-tag">
-                  {{ sensor.name }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="bindTime" label="绑定时间" width="180" align="center" />
-            <el-table-column prop="deviceStatus" label="设备状态" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'warning'" size="small">
-                  {{ row.deviceStatus === 'NORMAL' ? '正常' : row.deviceStatus === 'FAULT' ? '故障' : '离线' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="boundDevices" border size="small">
+                <el-table-column prop="deviceCode" label="设备编号" width="150" align="center" />
+                <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center" />
+                <el-table-column prop="sensorNames" label="传感器" min-width="150" align="center">
+                  <template #default="{ row }">
+                    <span v-for="sensor in row.sensors" :key="sensor.id" class="sensor-tag">
+                      {{ sensor.name }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="bindTime" label="绑定时间" width="180" align="center" />
+                <el-table-column prop="deviceStatus" label="设备状态" width="100" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'warning'" size="small">
+                      {{ row.deviceStatus === 'NORMAL' ? '正常' : row.deviceStatus === 'FAULT' ? '故障' : '离线' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </el-tab-pane>
 
         <el-tab-pane label="告警配置" name="alarmConfig">
           <div class="alarm-config-view">
             <div class="config-section">
               <h3 class="section-title">告警判据</h3>
-              <el-table :data="alarmCriteriaList" border size="small">
-                <el-table-column prop="name" label="判据名称" width="150" align="center" />
-                <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
-                <el-table-column prop="expression" label="表达式" width="250" align="center" />
-                <el-table-column prop="alarmLevel" label="告警等级" width="100" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="isEnabled" label="状态" width="80" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <el-table :data="alarmCriteriaList" border size="small">
+                    <el-table-column prop="name" label="判据名称" width="150" align="center" />
+                    <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
+                    <el-table-column prop="expression" label="表达式" min-width="250" align="center" />
+                    <el-table-column prop="alarmLevel" label="告警等级" width="100" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="isEnabled" label="状态" width="80" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </div>
             </div>
 
             <div class="config-section">
               <h3 class="section-title">告警分发</h3>
-              <el-table :data="dispatchRules" border size="small">
-                <el-table-column prop="name" label="规则名称" width="150" align="center" />
-                <el-table-column prop="type" label="类型" width="100" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="row.type === 'ALARM' ? 'warning' : 'info'" size="small">
-                      {{ row.type === 'ALARM' ? '告警分发' : '状态通知' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="alarmLevel" label="告警等级" width="120" align="center">
-                  <template #default="{ row }">
-                    <span v-if="row.type === 'ALARM'">{{ row.alarmLevel }}</span>
-                    <span v-else class="empty-text">-</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="recipientName" label="接收人" width="120" align="center" />
-                <el-table-column prop="channel" label="通知渠道" width="150" align="center">
-                  <template #default="{ row }">
-                    <span v-for="ch in row.channel.split(',')" :key="ch" class="channel-tag">{{ getChannelLabel(ch) }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="isEnabled" label="状态" width="80" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <el-table :data="dispatchRules" border size="small">
+                    <el-table-column prop="name" label="规则名称" width="150" align="center" />
+                    <el-table-column prop="type" label="类型" width="100" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="row.type === 'ALARM' ? 'warning' : 'info'" size="small">
+                          {{ row.type === 'ALARM' ? '告警分发' : '状态通知' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="alarmLevel" label="告警等级" width="120" align="center">
+                      <template #default="{ row }">
+                        <span v-if="row.type === 'ALARM'">{{ row.alarmLevel }}</span>
+                        <span v-else class="empty-text">-</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="recipientName" label="接收人" width="120" align="center" />
+                    <el-table-column prop="channel" label="通知渠道" min-width="150" align="center">
+                      <template #default="{ row }">
+                        <span v-for="ch in row.channel.split(',')" :key="ch" class="channel-tag">{{ getChannelLabel(ch) }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="isEnabled" label="状态" width="80" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </div>
             </div>
           </div>
         </el-tab-pane>
@@ -492,16 +504,18 @@
                 />
                 <div v-if="chartSeriesData.length === 0" class="chart-empty-tip">暂无数据，选择条件后将自动加载近3天数据</div>
               </div>
-              <div v-else class="table-container">
-                <el-table :data="monitorDataList" border size="small">
-                  <el-table-column prop="dataTime" label="时间" width="180" align="center" />
-                  <el-table-column prop="deviceName" label="设备" width="150" align="center" />
-                  <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
-                  <el-table-column prop="attrName" label="指标" width="100" align="center"/>
-                  <el-table-column prop="value" label="数值" width="100" align="center" />
-                  <el-table-column prop="unit" label="单位" width="80" align="center" />
-                  <el-table-column prop="qualityText" label="质量" width="80" align="center" />
-                </el-table>
+              <div v-else class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <el-table :data="monitorDataList" border size="small">
+                    <el-table-column prop="dataTime" label="时间" min-width="180" align="center" />
+                    <el-table-column prop="deviceName" label="设备" width="150" align="center" />
+                    <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
+                    <el-table-column prop="attrName" label="指标" width="100" align="center"/>
+                    <el-table-column prop="value" label="数值" width="100" align="center" />
+                    <el-table-column prop="unit" label="单位" width="80" align="center" />
+                    <el-table-column prop="qualityText" label="质量" width="80" align="center" />
+                  </el-table>
+                </div>
               </div>
             </div>
           </div>
@@ -3591,30 +3605,6 @@ onUnmounted(() => {
 :deep(.el-descriptions__content) {
   color: #1f2937;
   font-size: 13px;
-}
-
-:deep(.el-dialog) {
-  border-radius: 12px;
-}
-
-:deep(.el-dialog__header) {
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-:deep(.el-dialog__title) {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-:deep(.el-dialog__body) {
-  padding: 20px 24px;
-}
-
-:deep(.el-dialog__footer) {
-  padding: 14px 24px 20px;
-  border-top: 1px solid #f1f5f9;
 }
 
 :deep(.el-tabs__item) {
