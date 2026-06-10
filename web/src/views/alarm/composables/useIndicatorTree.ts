@@ -73,6 +73,22 @@ function buildPayloadNode(contents: MonitorContentItem[]): IndicatorTreeNode {
   }
 }
 
+/** 深拷贝节点树，为所有 displayLabel 加上前缀（用于传感器模式下显示"传感器.指标"） */
+function prefixDisplayLabels(nodes: IndicatorTreeNode[], prefix: string): IndicatorTreeNode[] {
+  return nodes.map(n => {
+    const copy: IndicatorTreeNode = {...n}
+    if (!n.disabled) {
+      // 可选叶子 / 可选节点：前缀 + 原始短 label
+      copy.displayLabel = `${prefix}.${n.label}`
+    } else if (n.children) {
+      // 分组节点：保持自身 label，递归处理子节点
+      copy.displayLabel = n.displayLabel
+      copy.children = prefixDisplayLabels(n.children, prefix)
+    }
+    return copy
+  })
+}
+
 function buildNodeMap(nodes: IndicatorTreeNode[], map: Map<string, IndicatorTreeNode>) {
   for (const node of nodes) {
     map.set(node.value, node)
@@ -125,10 +141,10 @@ export function useIndicatorTree() {
         label: s.sensorName,
         displayLabel: s.sensorName,
         disabled: true,
-        children: [
-          ...DEVICE_NODES,
-          buildPayloadNode(contents),
-        ]
+        children: prefixDisplayLabels(
+          [...DEVICE_NODES, buildPayloadNode(contents)],
+          s.sensorName
+        )
       } satisfies IndicatorTreeNode
     })
     setTree(tree)

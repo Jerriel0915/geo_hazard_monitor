@@ -44,52 +44,72 @@
                   v-model:selected-id="selectedTypeCriteriaId"
                   :level-form="levelForm"
               />
-              <el-empty v-else description="请在左侧选择一个监测类型，查看和编辑告警判据规则" :image-size="140" />
+              <el-empty v-else description="请在左侧选择一个监测类型" :image-size="140" />
             </div>
           </div>
         </el-tab-pane>
 
         <!-- ========== 隐患点（设备判据） ========== -->
         <el-tab-pane label="隐患点" name="hazardPoint">
-          <div class="criteria-container">
-            <div class="left-panel cascade-panel">
-              <div class="cascade-row">
-                <span class="cascade-label">隐患点</span>
-                <el-tree-select
-                    v-model="cascade.hazardPointId"
+          <div class="hazard-three-col">
+
+            <!-- 第一栏：隐患点树 -->
+            <div class="col-hp-tree">
+              <div class="col-header">隐患点</div>
+              <el-tree
+                  v-if="hazardPointTree.length > 0"
                   :data="hazardPointTree"
-                    :props="{ children: 'children', label: 'name', value: 'id', disabled: 'isGroup' }"
-                    placeholder="选择隐患点"
-                    filterable
-                    check-strictly
-                    style="width: 100%"
-                    @update:model-value="onHpSelect"
-                />
+                  :props="{ children: 'children', label: 'name' }"
+                  node-key="id"
+                  highlight-current
+                  default-expand-all
+                  :expand-on-click-node="false"
+                  @node-click="onHpNodeClick"
+              />
+              <div v-else class="empty-hint">加载中...</div>
+            </div>
+
+            <!-- 第二栏：设备列表 -->
+            <div class="col-device-list">
+              <div class="col-header">
+                设备列表
+                <span v-if="hpDevices.length > 0" class="col-header-count">{{ hpDevices.length }}</span>
               </div>
-              <div class="cascade-row">
-                <span class="cascade-label">设备</span>
-                <el-select v-model="cascade.deviceId" placeholder="选择设备" filterable style="width: 100%"
-                           :disabled="!cascade.hazardPointId" @change="onDeviceSelect">
-                  <el-option v-for="d in cascadeDevices" :key="d.deviceId" :label="d.deviceName || d.deviceCode"
-                             :value="d.deviceId"/>
-                </el-select>
-              </div>
-              <div class="cascade-row">
-                <span class="cascade-label">传感器</span>
-                <el-select v-model="cascade.sensorId" placeholder="选择传感器" filterable style="width: 100%"
-                           :disabled="!cascade.deviceId" @change="onSensorSelect">
-                  <el-option v-for="s in cascadeSensors" :key="s.id" :label="s.name || s.sensorName || s.sensorCode"
-                             :value="s.id"/>
-                </el-select>
-              </div>
-              <div v-if="cascade.sensorMeta" class="cascade-meta">
-                监测类型: {{ cascade.sensorMeta.contentName || '未知' }}
+              <div v-if="!selectedHazardPointId" class="empty-hint">请先选择隐患点</div>
+              <div v-else-if="hpDevicesLoading" class="empty-hint">加载中...</div>
+              <div v-else-if="hpDevices.length === 0" class="empty-hint">暂无设备</div>
+              <div v-else class="device-scroll">
+                <div
+                    v-for="device in hpDevices"
+                    :key="device.deviceId"
+                    class="device-capsule"
+                    :class="{ selected: selectedDeviceId === device.deviceId }"
+                    @click="onDeviceCardClick(device)"
+                >
+                  <div class="capsule-name-row">
+                    <span class="capsule-name">{{ device.deviceName || device.deviceCode }}</span>
+                    <span class="capsule-status" :class="device.onlineStatus">
+                      <span class="capsule-status-dot"></span>
+                      {{ device.onlineStatus === 'online' ? '在线' : '离线' }}
+                    </span>
+                  </div>
+                  <div class="capsule-meta">
+                    <span class="capsule-code">{{ device.deviceCode || '--' }}</span>
+                  </div>
+                  <div v-if="device.sensors && device.sensors.length" class="capsule-sensors">
+                    <div v-for="sensor in device.sensors" :key="sensor.id || sensor.sensorCode" class="sensor-chip">
+                      <span class="sensor-chip-name">{{ sensor.monitorTypeName || sensor.name }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="right-panel">
+
+            <!-- 第三栏：判据设置 -->
+            <div class="col-criteria">
               <CriteriaDetailPanel
-                  v-if="cascade.sensorId && cascade.hazardPointId"
-                  :title="(cascade.sensorMeta?.sensorName || '传感器') + ' — 设备判据'"
+                  v-if="selectedDeviceId && currentHpCriteria.length >= 0"
+                  :title="selectedDeviceName"
                   :criteria-list="currentHpCriteria"
                   :context="'hazard'"
                   :alarm-levels="alarmLevels"
@@ -102,7 +122,7 @@
                   v-model:selected-id="selectedHpCriteriaId"
                   :level-form="levelForm"
               />
-              <el-empty v-else description="请依次选择隐患点 → 设备 → 传感器" :image-size="140" />
+              <el-empty v-else description="请选择设备查看判据配置" :image-size="140" />
             </div>
           </div>
         </el-tab-pane>
@@ -123,7 +143,7 @@ import {
 } from '@/api/alarm'
 import { getBoundDevices, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
 import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
-import { getDeviceSensors, getSensorDetail } from '@/api/sensor'
+import { getDeviceSensors } from '@/api/sensor'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -142,7 +162,7 @@ const alarmLevels = [
 const activeTab = ref('monitorType')
 
 // ── 指标树 ──
-const {treeData: indicatorTree, nodeMap, buildFromMonitorType, clear: clearIndicatorTree} = useIndicatorTree()
+const {treeData: indicatorTree, nodeMap, buildFromMonitorType, buildFromSensors, clear: clearIndicatorTree} = useIndicatorTree()
 
 // ── 监测类型 ──
 const selectedMonitorType = ref<number | null>(null)
@@ -151,24 +171,30 @@ const monitorTypes = ref<MonitorTypeItem[]>([])
 const monitorContents = ref<any[]>([])
 const selectedTypeCriteriaId = ref<number | null>(null)
 
-// ── 隐患点级联 ──
-const cascade = reactive({
-  hazardPointId: null as number | null,
-  deviceId: null as number | null,
-  sensorId: null as number | null,
-  sensorMeta: null as any
+// ── 隐患点（三栏） ──
+const selectedHazardPointId = ref<number | null>(null)
+const selectedDeviceId = ref<number | null>(null)
+const selectedDeviceName = computed(() => {
+  const d = hpDevices.value.find(d => d.deviceId === selectedDeviceId.value)
+  return d ? (d.deviceName || d.deviceCode) + ' — 设备判据' : '设备判据'
 })
-const cascadeDevices = ref<any[]>([])
-const cascadeSensors = ref<any[]>([])
+const hpDevices = ref<any[]>([])
+const hpDevicesLoading = ref(false)
 const hazardPointTree = ref<any[]>([])
 const selectedHpCriteriaId = ref<number | null>(null)
+
+// 当前设备下第一个传感器的 monitorContentId，用于匹配判据
+const currentSensorMeta = ref<any>(null)
 
 // ── 判据数据 ──
 const allCriteria = ref<AlarmCriteriaItem[]>([])
 const currentTypeCriteria = computed(() => allCriteria.value.filter(c => c.monitorTypeId === selectedMonitorType.value && !c.hazardPointId))
 const currentHpCriteria = computed(() => {
-  if (!cascade.hazardPointId || !cascade.sensorMeta?.monitorContentId) return []
-  return allCriteria.value.filter(c => c.hazardPointId === cascade.hazardPointId && c.monitorContentId === cascade.sensorMeta.monitorContentId)
+  if (!selectedHazardPointId.value || !currentSensorMeta.value?.monitorContentId) return []
+  return allCriteria.value.filter(c =>
+    c.hazardPointId === selectedHazardPointId.value &&
+    c.monitorContentId === currentSensorMeta.value.monitorContentId
+  )
 })
 
 // ── 级别表单 ──
@@ -185,14 +211,12 @@ function resetLevelForm() {
   }
 }
 
-/** 迁移旧 subject（无点分前缀）为 payload.current.xxx */
 function migrateSubject(subject: string): string {
   if (!subject) return subject
   if (subject.includes('.')) return subject
   return `payload.current.${subject}`
 }
 
-/** 迁移旧格式 conditions → groups 结构 */
 function migrateToGroups(lc: any): { groups: ConditionGroup[]; groupLogic: 'AND' | 'OR' } {
   if (Array.isArray(lc?.groups)) {
     return { groups: lc.groups, groupLogic: lc.groupLogic || 'AND' }
@@ -223,49 +247,67 @@ function initLevelForm(c: AlarmCriteriaItem) {
   }
 }
 
-// ── 级联选择 ──
-async function onHpSelect(val: number | string | null) {
-  if (!val || String(val).startsWith('g_')) return
-  const id = Number(val)
-  cascade.hazardPointId = id; cascade.deviceId = null; cascade.sensorId = null; cascade.sensorMeta = null
-  cascadeSensors.value = []
+// ── 隐患点树点击 ──
+async function onHpNodeClick(data: any) {
+  if (data.isGroup) return  // 忽略分组节点
+  const hpId = Number(data.id)
+  if (selectedHazardPointId.value === hpId) return
+  selectedHazardPointId.value = hpId
+  selectedDeviceId.value = null
+  currentSensorMeta.value = null
+  hpDevicesLoading.value = true
+  hpDevices.value = []
   try {
-    const res: any = await getBoundDevices(String(id))
-    cascadeDevices.value = res?.data || res?.rows || res || []
-  } catch { cascadeDevices.value = [] }
+    const res: any = await getBoundDevices(String(hpId))
+    const rawDevices = res?.data || res?.rows || res || []
+    // 为每个设备加载传感器
+    hpDevices.value = await Promise.all(rawDevices.map(async (d: any) => {
+      let sensors: any[] = []
+      try {
+        const sRes: any = await getDeviceSensors(d.deviceId)
+        sensors = sRes?.data || sRes?.rows || sRes || []
+      } catch {}
+      return {
+        ...d,
+        sensors,
+        onlineStatus: d.deviceStatus === 0 ? 'online' : 'offline',
+      }
+    }))
+  } catch {
+    hpDevices.value = []
+  } finally {
+    hpDevicesLoading.value = false
+  }
 }
 
-async function onDeviceSelect(deviceId: number) {
-  cascade.deviceId = deviceId; cascade.sensorId = null; cascade.sensorMeta = null
-  try {
-    const res: any = await getDeviceSensors(deviceId)
-    cascadeSensors.value = res?.data || res?.rows || res || []
-  } catch { cascadeSensors.value = [] }
-}
-
-async function onSensorSelect(sensorId: number) {
-  cascade.sensorId = sensorId
-  try {
-    const res: any = await getSensorDetail(sensorId)
-    const s = res?.data || res
-    const contentId = s?.attrList?.[0]?.monitorContentId
-    const typeId = s?.monitorTypeId
-    cascade.sensorMeta = {
-      sensorName: s?.name || s?.sensorName || s?.sensorCode || '',
-      monitorContentId: contentId,
-      contentName: s?.monitorTypeName || '',
-      monitorTypeId: typeId
+// ── 设备卡片点击 ──
+async function onDeviceCardClick(device: any) {
+  selectedDeviceId.value = device.deviceId
+  if (device.sensors && device.sensors.length > 0) {
+    const s = device.sensors[0]
+    currentSensorMeta.value = {
+      monitorContentId: s.monitorContentId || s.id,
+      monitorTypeId: s.monitorTypeId,
     }
-    if (typeId) {
-      await loadMonitorContents(typeId)
-      await buildFromMonitorType(typeId)
-    }
-    await loadAllCriteria()
-    const list = currentHpCriteria.value
-    selectedHpCriteriaId.value = list.length > 0 ? list[0].id : null
-    if (list.length > 0 && list[0]) initLevelForm(list[0])
-    else resetLevelForm()
-  } catch { cascade.sensorMeta = null }
+    // 用第一个传感器的监测类型加载 monitorContents
+    if (s.monitorTypeId) await loadMonitorContents(s.monitorTypeId)
+    // 构建含传感器层级的指标树
+    await buildFromSensors(
+      device.sensors.map((s: any) => ({
+        sensorId: s.id || s.sensorId,
+        sensorName: s.monitorTypeName || s.name || s.sensorName || '',
+        monitorTypeId: s.monitorTypeId,
+      }))
+    )
+  } else {
+    currentSensorMeta.value = null
+    clearIndicatorTree()
+  }
+  await loadAllCriteria()
+  const list = currentHpCriteria.value
+  selectedHpCriteriaId.value = list.length > 0 ? list[0].id : null
+  if (list.length > 0 && list[0]) initLevelForm(list[0])
+  else resetLevelForm()
 }
 
 // ── 数据加载 ──
@@ -308,7 +350,7 @@ function getTypeCriteriaCount(typeId: number) {
   return allCriteria.value.filter(c => c.monitorTypeId === typeId && !c.hazardPointId).length
 }
 
-// ── 选择 ──
+// ── 监测类型选择 ──
 async function selectMonitorType(id: number) {
   selectedMonitorType.value = id
   await loadMonitorContents(id)
@@ -321,14 +363,15 @@ async function selectMonitorType(id: number) {
 
 async function handleTabChange() {
   selectedMonitorType.value = null
-  cascade.hazardPointId = null; cascade.deviceId = null; cascade.sensorId = null; cascade.sensorMeta = null
+  selectedHazardPointId.value = null; selectedDeviceId.value = null; currentSensorMeta.value = null
   selectedTypeCriteriaId.value = null; selectedHpCriteriaId.value = null
+  hpDevices.value = []
   clearIndicatorTree()
   resetLevelForm()
   await loadAllCriteria()
 }
 
-// ── 保存逻辑：自动判断 新增 / 更新 / 删除 ──
+// ── 保存逻辑 ──
 
 function isFormEmpty(): boolean {
   return (['blue', 'yellow', 'orange', 'red'] as const).every(key => {
@@ -352,7 +395,7 @@ function buildLevelConfigFromForm(): string {
 
 function buildCriteriaName(context: 'monitor' | 'hazard'): string {
   if (context === 'monitor') return selectedMonitorTypeName.value + ' — 告警判据'
-  return (cascade.sensorMeta?.sensorName || '传感器') + ' — 设备判据'
+  return selectedDeviceName.value
 }
 
 function getActiveCriteria(context: 'monitor' | 'hazard'): AlarmCriteriaItem | undefined {
@@ -365,13 +408,11 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
   const existing = getActiveCriteria(context)
   const formEmpty = isFormEmpty()
 
-  // 无数据 + 无已有判据 → 无操作
   if (formEmpty && !existing) {
     ElMessage.info('请先添加条件')
     return
   }
 
-  // 清空后保存 → 删除已有判据
   if (formEmpty && existing) {
     saving.value = true
     try {
@@ -387,7 +428,6 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
     return
   }
 
-  // 有数据 + 无已有判据 → 新增
   if (!formEmpty && !existing) {
     saving.value = true
     try {
@@ -399,9 +439,9 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
       if (context === 'monitor') {
         payload.monitorTypeId = selectedMonitorType.value!
       } else {
-        payload.hazardPointId = cascade.hazardPointId!
-        payload.monitorContentId = cascade.sensorMeta?.monitorContentId
-        payload.monitorTypeId = cascade.sensorMeta?.monitorTypeId
+        payload.hazardPointId = selectedHazardPointId.value!
+        payload.monitorContentId = currentSensorMeta.value?.monitorContentId
+        payload.monitorTypeId = currentSensorMeta.value?.monitorTypeId
       }
       const res: any = await createCriteria(payload)
       const newId = res?.id ?? res?.data?.id ?? null
@@ -415,7 +455,6 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
     return
   }
 
-  // 有数据 + 有已有判据 → 更新
   saving.value = true
   try {
     const payload: AlarmCriteriaCreatePayload = {
@@ -537,34 +576,6 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-.cascade-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-}
-
-.cascade-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.cascade-label {
-  font-size: 13px;
-  color: #606266;
-  font-weight: 500;
-}
-
-.cascade-meta {
-  font-size: 12px;
-  color: #409eff;
-  padding: 8px;
-  background: #ecf5ff;
-  border-radius: 4px;
-  margin-top: 4px;
-}
-
 .type-list {
   display: flex;
   flex-direction: column;
@@ -627,10 +638,208 @@ onMounted(async () => {
   min-width: 0;
 }
 
+/* ===== 隐患点三栏布局 ===== */
+
+.hazard-three-col {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+}
+
+.col-hp-tree {
+  width: 220px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.col-device-list {
+  width: 280px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.col-criteria {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.col-header {
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  border-bottom: 1px solid #e5e6eb;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.col-header-count {
+  font-size: 12px;
+  color: #86909c;
+  background: #f0f1f3;
+  border-radius: 10px;
+  padding: 0 8px;
+  line-height: 20px;
+}
+
+/* 隐患点树 */
+.col-hp-tree :deep(.el-tree) {
+  background: transparent;
+  padding: 4px;
+}
+
+.col-hp-tree :deep(.el-tree-node__content) {
+  border-radius: 4px;
+  height: 32px;
+}
+
+/* 设备卡片列表 */
+.device-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.device-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.device-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+
+.device-capsule {
+  padding: 10px 12px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e6eb;
+}
+
+.device-capsule:hover {
+  background: #e8f4ff;
+  border-color: #91caff;
+}
+
+.device-capsule.selected {
+  background: #e8f4ff;
+  border-color: #1677ff;
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.15);
+}
+
+.capsule-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.capsule-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d2129;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.capsule-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.capsule-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.capsule-status.online {
+  background: #f0ffe6;
+  color: #237804;
+}
+
+.capsule-status.online .capsule-status-dot {
+  background: #52c41a;
+}
+
+.capsule-status.offline {
+  background: #f5f5f5;
+  color: #86909c;
+}
+
+.capsule-status.offline .capsule-status-dot {
+  background: #c9cdd4;
+}
+
+.capsule-meta {
+  margin-top: 4px;
+}
+
+.capsule-code {
+  font-size: 12px;
+  color: #6b7785;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.capsule-sensors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e5e6eb;
+}
+
+.sensor-chip {
+  padding: 2px 8px;
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #4e5969;
+}
+
+.sensor-chip-name {
+  white-space: nowrap;
+}
+
+/* ===== 通用 ===== */
+
 .empty-hint {
   text-align: center;
   color: #999;
-  padding: 40px 0;
+  padding: 40px 12px;
   font-size: 14px;
 }
 </style>
