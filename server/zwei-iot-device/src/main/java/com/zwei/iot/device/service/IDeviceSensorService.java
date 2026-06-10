@@ -71,6 +71,32 @@ public interface IDeviceSensorService {
     boolean checkSensorCodeUnique(String sensorCode, Long id);
 
     /**
+     * 校验同一设备下主题编号（sensorNo）是否唯一。
+     * <p>
+     * 与 {@link #checkSensorCodeUnique} 的区别：sensorNo 仅在设备范围内唯一，
+     * 全局不唯一。数据库唯一索引 {@code uk_device_sensor_no(device_id, sensor_no)}
+     * 作最终兜底，本方法用于 INSERT 前给出友好中文错误。
+     *
+     * @param deviceId 设备ID
+     * @param sensorNo 主题编号
+     * @return true-该设备下该 sensorNo 不存在（可用），false-已存在
+     */
+    boolean checkSensorNoUnique(Long deviceId, String sensorNo);
+
+    /**
+     * 预测指定设备下一个可用的传感器序号。
+     * <p>
+     * 用于前端在"新增传感器"表单中预填 sensorNo 占位（格式 {@code {TYPE}_{序号}}），
+     * 序号 = 该设备下未删除传感器数 +1。空设备返回1。
+     * 并发场景下两个用户可能拿到相同值，由 DB 唯一索引 {@code uk_device_sensor_no}
+     * 与 service 层预检兜底。
+     *
+     * @param deviceId 设备ID
+     * @return 设备下的下一个可用序号
+     */
+    int getNextSensorNo(Long deviceId);
+
+    /**
      * 更新传感器最后上报时间。
      * @param sensorId 传感器ID
      * @param lastReportTime 最后上报时间 (yyyy-MM-dd HH:mm:ss)

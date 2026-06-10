@@ -23,6 +23,7 @@ import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,6 +80,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     @Value("${zwei.iot.device-registry.register-codes:ABCDEF123456}")
     private String configuredRegisterCodes;
 
+    @Autowired
     public DeviceRegistryServiceImpl(DeviceMapper deviceMapper,
                                      DeviceSensorMapper sensorMapper,
                                      SensorAttributeMapper attributeMapper,

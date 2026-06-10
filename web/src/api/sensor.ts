@@ -69,6 +69,16 @@ export const deleteSensor = (id: number) =>
 export const deleteSensorAttribute = (sensorId: number, attrId: number) =>
   unwrap<null>(request.delete(`/sensors/${sensorId}/attributes/${attrId}`))
 
+/**
+ * 预测指定设备下一个可用的传感器序号。
+ * <p>
+ * 用于前端在"新增传感器"表单中按规则 {@code {indicator_type(大写)}_{序号}} 预填 sensorNo 占位。
+ * 序号 = 该设备下未删除传感器数 +1。
+ * 并发场景下由后端 service 预检 + DB 唯一索引兜底。
+ */
+export const getNextSensorNo = (deviceId: number) =>
+    unwrap<{ nextNo: number }>(request.get('/sensors/next-no', {params: {deviceId}}))
+
 export const getSensorMonitorTypes = async () => {
   const list = await unwrap<MonitorTypeItem[]>(request.get('/monitor-types'))
   return list

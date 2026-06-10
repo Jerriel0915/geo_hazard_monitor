@@ -542,7 +542,12 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="主题编号" prop="sensorNo">
-              <el-input v-model="sensorFormData.sensorNo" placeholder="请输入主题编号（默认同编号）" />
+              <el-input
+                  v-model="sensorFormData.sensorNo"
+                  :placeholder="sensorNoPlaceholder"
+                  :disabled="sensorFormData.monitorTypeId == null"
+                  @input="handleSensorNoInput"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -605,7 +610,13 @@
 
       <template #footer>
         <el-button @click="sensorFormDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSensorSubmit" :loading="sensorFormSubmitLoading">确定</el-button>
+        <el-button
+            type="primary"
+            :loading="sensorFormSubmitLoading"
+            :disabled="sensorFormMode === 'add' && sensorFormData.monitorTypeId == null"
+            @click="handleSensorSubmit"
+        >确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -684,6 +695,7 @@ import {
   deleteSensor,
   deleteSensorAttribute,
   getDeviceSensors,
+  getNextSensorNo,
   getSensorDetail,
   type SensorItem,
   updateSensor
@@ -725,6 +737,20 @@ interface MonitorTypeItem {
     rangeMin: number
     rangeMax: number
     unit: string
+    icon?: string
+  }[]
+  /**
+   * 监测类型下的监测内容列表（含 indicatorType，用于生成 sensorNo 占位）。
+   * 由 loadMonitorTypeList 从 getMonitorTypeListWithContents() 透传保留。
+   */
+  contents?: {
+    id: number
+    code: string
+    name: string
+    indicatorType: string
+    unit: string
+    rangeMin?: number | null
+    rangeMax?: number | null
     icon?: string
   }[]
 }
@@ -812,6 +838,9 @@ const sensorTableData = ref<SensorItem[]>([])
 const sensorFormDialogVisible = ref(false)
 const sensorFormTitle = ref('新增传感器')
 const sensorFormMode = ref<'add' | 'edit'>('add')
+// sensorNo 自动占位相关：nextId 来自后端预测；manuallyEdited 标记用户是否手动改过
+const nextSensorId = ref<number | null>(null)
+const sensorNoManuallyEdited = ref(false)
 
 const deviceIconDialogVisible = ref(false)
 
@@ -1188,6 +1217,17 @@ const loadMonitorTypeList = async () => {
             rangeMax: content.rangeMax ?? 999999,
             unit: content.unit || '',
             icon: content.icon || ''
+          })),
+          // 透传 contents 供 sensorNo 占位生成读取 indicatorType
+          contents: (item.contents || []).map((content: any) => ({
+            id: Number(content.id),
+            code: content.code,
+            name: content.name,
+            indicatorType: content.indicatorType || '',
+            unit: content.unit || '',
+            rangeMin: content.rangeMin ?? null,
+            rangeMax: content.rangeMax ?? null,
+            icon: content.icon || ''
           }))
         } as MonitorTypeItem))
     monitorTypeList.value = details
@@ -1539,13 +1579,69 @@ const resetSensorForm = () => {
     status: 1,
     attrList: []
   })
+  // 重置"用户是否手动改过 sensorNo"标记；切换监测类型时据此决定是否重算占位
+  sensorNoManuallyEdited.value = false
 }
 
-const handleAddSensor = () => {
+// input 提示文本
+const sensorNoPlaceholder = computed(() => {
+  if (sensorFormData.monitorTypeId == null) {
+    return '请先选择监测类型'
+  }
+  if (!nextSensorId.value) {
+    return '加载中…'
+  }
+  return `默认 {TYPE}_${nextSensorId.value}（本设备第 ${nextSensorId.value} 个传感器），可手动修改`
+})
+
+/**
+ * 计算 sensorNo 占位值：{@code {indicator_type(大写)}_{nextId}}。
+ * 取所选监测类型下第一个监测内容的 indicatorType（与 attrList[0] 一致）。
+ */
+const computeSensorNoPlaceholder = (): string => {
+  if (sensorFormData.monitorTypeId == null || nextSensorId.value == null) {
+    return ''
+  }
+  const mt = monitorTypeList.value.find(m => m.id === sensorFormData.monitorTypeId)
+  const firstContent = mt?.contents?.[0]
+  const indicatorType = (firstContent?.indicatorType || '').trim().toUpperCase()
+  if (!indicatorType) {
+    return ''
+  }
+  return `${indicatorType}_${nextSensorId.value}`
+}
+
+// 拉取指定设备的下一个预测传感器序号；失败时让用户手动填
+const fetchNextSensorNo = async (deviceId?: number) => {
+  const id = deviceId ?? currentSensorDevice.value?.id
+  if (id == null) {
+    nextSensorId.value = null
+    return
+  }
+  try {
+    const {nextNo} = await getNextSensorNo(Number(id))
+    nextSensorId.value = nextNo
+  } catch {
+    nextSensorId.value = null
+  }
+}
+
+// 用户手动修改 sensorNo：标记一下，切换监测类型时不再覆盖
+const handleSensorNoInput = () => {
+  sensorNoManuallyEdited.value = true
+}
+
+const handleAddSensor = async () => {
   sensorFormTitle.value = '新增传感器'
   sensorFormMode.value = 'add'
   resetSensorForm()
   sensorFormDialogVisible.value = true
+  // 拉取当前设备的下一个预测序号（设备下未删除传感器数 +1）
+  nextSensorId.value = null
+  await fetchNextSensorNo()
+  if (!sensorNoManuallyEdited.value) {
+    sensorFormData.sensorNo = computeSensorNoPlaceholder()
+  }
 }
 
 const handleEditSensor = async (row: SensorItem) => {
@@ -1608,6 +1704,10 @@ const handleMonitorTypeChange = (row: SensorFormModel) => {
       rangeMax: attr.rangeMax,
       icon: attr.icon
     }))
+    // 若用户未手动改过 sensorNo，则根据新监测类型重算占位
+    if (!sensorNoManuallyEdited.value) {
+      row.sensorNo = computeSensorNoPlaceholder()
+    }
   }
 }
 
@@ -1660,6 +1760,26 @@ const validateSensorCode = () => {
   return true
 }
 
+/**
+ * 校验主题编号（sensorNo）在当前设备的已加载传感器列表中是否重复。
+ * 镜像 validateSensorCode。空值不校验（由后端兜底生成）。
+ */
+const validateSensorNo = (): boolean => {
+  if (sensorFormMode.value !== 'add') {
+    return true
+  }
+  const no = sensorFormData.sensorNo?.trim()
+  if (!no) {
+    return true
+  }
+  const conflict = sensorTableData.value.find((s) => s.sensorNo === no)
+  if (conflict) {
+    ElMessage.warning(`主题编号 ${no} 已被【${conflict.sensorName}】占用`)
+    return false
+  }
+  return true
+}
+
 const buildSensorPayload = () => ({
   sensorCode: sensorFormData.sensorCode.trim(),
   sensorNo: sensorFormData.sensorNo.trim() || undefined,
@@ -1690,7 +1810,7 @@ const handleDeleteAttr = async (index: number) => {
 
 const handleSensorSubmit = () => {
   sensorFormRef.value.validate(async (valid: boolean) => {
-    if (!valid || !validateSensorAttrs() || !validateSensorCode()) {
+    if (!valid || !validateSensorAttrs() || !validateSensorCode() || !validateSensorNo()) {
       return
     }
 

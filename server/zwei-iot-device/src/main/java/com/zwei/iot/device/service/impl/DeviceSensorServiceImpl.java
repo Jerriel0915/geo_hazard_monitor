@@ -99,6 +99,11 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             throw new ServiceException("传感器编码已存在");
         }
         fillDeviceFields(sensor, device);
+        // 主题编号（sensorNo）若已填，需校验同设备内唯一；DB 唯一索引兜底
+        if (sensor.getSensorNo() != null && !sensor.getSensorNo().isBlank()
+                && !checkSensorNoUnique(device.getId(), sensor.getSensorNo())) {
+            throw new ServiceException("该设备下主题编号已存在：" + sensor.getSensorNo());
+        }
         fillMonitorTypeFields(sensor, requireSensorMonitorType(sensor.getMonitorTypeId()));
         populateFromContent(attrList);
         validateAttributeList(attrList);
@@ -189,6 +194,29 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     public boolean checkSensorCodeUnique(String sensorCode, Long id) {
         DeviceSensor result = sensorMapper.checkSensorCodeUnique(sensorCode, id);
         return result == null;
+    }
+
+    /**
+     * 校验同一设备下主题编号（sensorNo）是否唯一
+     */
+    @Override
+    public boolean checkSensorNoUnique(Long deviceId, String sensorNo) {
+        if (deviceId == null || sensorNo == null || sensorNo.isBlank()) {
+            return true;
+        }
+        DeviceSensor result = sensorMapper.checkSensorNoUnique(deviceId, sensorNo);
+        return result == null;
+    }
+
+    /**
+     * 预测指定设备下一个可用的传感器序号（设备下未删除传感器数 +1；空设备返回 1）
+     */
+    @Override
+    public int getNextSensorNo(Long deviceId) {
+        if (deviceId == null) {
+            return 1;
+        }
+        return sensorMapper.countByDeviceId(deviceId) + 1;
     }
 
     /**
