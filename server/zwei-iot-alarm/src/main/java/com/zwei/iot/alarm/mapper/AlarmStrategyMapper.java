@@ -14,6 +14,16 @@ public interface AlarmStrategyMapper {
 
     AlarmStrategy selectStrategyById(Long id);
 
+    /**
+     * 校验策略名称唯一
+     *
+     * @param name 策略名称
+     * @param id   排除的策略ID（新增传 0L）
+     * @return 命中的策略（null 表示唯一）
+     */
+    AlarmStrategy checkStrategyNameUnique(@org.apache.ibatis.annotations.Param("name") String name,
+                                          @org.apache.ibatis.annotations.Param("id") Long id);
+
     int insertStrategy(AlarmStrategy strategy);
 
     int updateStrategy(AlarmStrategy strategy);

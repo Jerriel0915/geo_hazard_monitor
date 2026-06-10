@@ -228,20 +228,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage } from 'element-plus'
+import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
+import {ElMessage} from 'element-plus'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 import * as echarts from 'echarts'
 import {
-  getHazardPointOptions,
-  getDeviceTypeOptions,
-  getDeviceOptions,
-  getChartData,
-  type SensorSeriesItem,
   type ChartDataItem,
-  type HazardPointOption,
   type DeviceOption,
   type DeviceTypeOption,
+  getChartData,
+  getDeviceOptions,
+  getDeviceTypeOptions,
+  getHazardPointOptions,
   type GridChartItem,
+  type HazardPointOption,
+  type SensorSeriesItem,
 } from '@/api/report'
 
 // ---------------------------------------------------------------------------
@@ -518,8 +519,7 @@ const generateCorrelationChart = async () => {
 
     chart.setOption(option)
   } catch (error) {
-    console.error('生成图表失败:', error)
-    ElMessage.error('生成图表失败')
+    showRequestErrorMessage(error, '生成图表失败')
   } finally {
     chartLoading.value = false
   }
@@ -649,7 +649,7 @@ const loadGridCellChart = async (idx: number) => {
       dataZoom: [{ type: 'inside' }],
     })
   } catch (error) {
-    console.error(`加载宫格图表 ${idx} 失败:`, error)
+    showRequestErrorMessage(error, `加载宫格图表 ${idx} 失败`)
   }
 }
 

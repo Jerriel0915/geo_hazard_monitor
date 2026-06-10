@@ -75,6 +75,9 @@ export interface MonitorContentUpdatePayload {
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
   const response = await promise
+    if (response && typeof response.code === 'number' && response.code !== 200) {
+        throw new Error(response.msg || '操作失败')
+    }
   return response.data
 }
 
@@ -91,10 +94,8 @@ export const getMonitorTypeList = () =>
 export const getMonitorTypeListWithContents = () =>
     unwrap<MonitorTypeItem[]>(request.get('/monitor-types/with-contents'))
 
-export const createMonitorType = async (payload: MonitorTypeCreatePayload) => {
-  const response = await request.post<AjaxResult<{ id: number }>>('/monitor-types', payload)
-  return response.data
-}
+export const createMonitorType = (payload: MonitorTypeCreatePayload) =>
+    unwrap<{ id: number }>(request.post('/monitor-types', payload))
 
 export const updateMonitorType = (id: number, payload: MonitorTypeUpdatePayload) =>
   unwrap<null>(request.put(`/monitor-types/${id}`, payload))
@@ -102,10 +103,8 @@ export const updateMonitorType = (id: number, payload: MonitorTypeUpdatePayload)
 export const removeMonitorType = (id: number) =>
   unwrap<null>(request.delete(`/monitor-types/${id}`))
 
-export const createMonitorContent = async (payload: MonitorContentCreatePayload) => {
-  const response = await request.post<AjaxResult<{ id: number }>>('/monitor-contents', payload)
-  return response.data
-}
+export const createMonitorContent = (payload: MonitorContentCreatePayload) =>
+    unwrap<{ id: number }>(request.post('/monitor-contents', payload))
 
 export const updateMonitorContent = (id: number, payload: MonitorContentUpdatePayload) =>
   unwrap<null>(request.put(`/monitor-contents/${id}`, payload))

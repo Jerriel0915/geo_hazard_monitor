@@ -1,7 +1,8 @@
 package com.zwei.system.service;
 
-import java.util.List;
 import com.zwei.common.core.domain.entity.SysDictData;
+
+import java.util.List;
 
 /**
  * 字典 业务层
@@ -52,9 +53,19 @@ public interface ISysDictDataService
 
     /**
      * 修改保存字典数据信息
-     * 
+     *
      * @param dictData 字典数据信息
      * @return 结果
      */
     public int updateDictData(SysDictData dictData);
+
+    /**
+     * 校验字典数据在指定 dict_type 下 dict_value 唯一
+     *
+     * @param dictType  字典类型
+     * @param dictValue 字典键值
+     * @param dictCode  排除的字典ID（新增传 null）
+     * @return true=唯一，false=已存在
+     */
+    boolean checkDictDataUnique(String dictType, String dictValue, Long dictCode);
 }

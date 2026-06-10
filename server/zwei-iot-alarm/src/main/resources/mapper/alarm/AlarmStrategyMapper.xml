@@ -76,6 +76,12 @@
         WHERE id = #{id} AND del_flag = 0
     </select>
 
+    <!-- 校验策略名称唯一（更新时排除自身 id） -->
+    <select id="checkStrategyNameUnique" resultMap="AlarmStrategyResult">
+        <include refid="selectStrategyVo"/>
+        WHERE del_flag = 0 AND name = #{name} AND id != #{id} LIMIT 1
+    </select>
+
     <insert id="insertStrategy" parameterType="com.zwei.iot.alarm.domain.AlarmStrategy"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO alarm_strategy (name, description, monitor_type_id, trigger_mode, cron_expression,

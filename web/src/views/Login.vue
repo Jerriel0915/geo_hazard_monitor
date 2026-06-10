@@ -303,9 +303,9 @@
 
 <script setup lang="ts">
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {ElMessage} from 'element-plus'
+import {onMounted, onUnmounted, reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
 
 const router = useRouter()
 
@@ -333,12 +333,17 @@ let smsTimer: ReturnType<typeof setInterval> | null = null
 const getCaptcha = async () => {
   try {
     const res = await axios.get('/api/v1/auth/captcha')
+    if (res.data?.code && res.data.code !== 200) {
+      ElMessage.error(res.data.msg || '获取验证码失败')
+      return
+    }
     captchaKey = res.data.data.captchaKey
     captchaImage.value = 'data:image/png;base64,' + res.data.data.captchaImage
     captchaEnabled.value = res.data.data.captchaEnabled
     loginForm.captcha = ''
-  } catch (err) {
-    ElMessage.error('获取验证码失败')
+  } catch (err: any) {
+    console.error('获取验证码失败:', err)
+    ElMessage.error(err?.response?.data?.msg || err?.message || '获取验证码失败')
   }
 }
 
@@ -351,7 +356,11 @@ const sendSms = async () => {
   if (smsCooldown.value > 0) return
 
   try {
-    await axios.post('/api/v1/auth/sms', { phone: loginForm.phone })
+    const res = await axios.post('/api/v1/auth/sms', {phone: loginForm.phone})
+    if (res.data?.code && res.data.code !== 200) {
+      ElMessage.error(res.data.msg || '发送失败')
+      return
+    }
     ElMessage.success('短信验证码已发送')
     smsCooldown.value = 60
     smsTimer = setInterval(() => {
@@ -361,8 +370,9 @@ const sendSms = async () => {
         smsTimer = null
       }
     }, 1000)
-  } catch (err) {
-    ElMessage.error('发送失败')
+  } catch (err: any) {
+    console.error('发送短信验证码失败:', err)
+    ElMessage.error(err?.response?.data?.msg || err?.message || '发送失败')
   }
 }
 
@@ -386,6 +396,11 @@ const login = async () => {
     }
 
     const res = await axios.post('/api/v1/auth/login', loginData)
+    if (res.data?.code && res.data.code !== 200) {
+      ElMessage.error(res.data.msg || '登录失败')
+      if (captchaEnabled.value) getCaptcha()
+      return
+    }
     localStorage.setItem('token', res.data.data.token)
 
     const userRes = await axios.get('/api/v1/auth/getInfo', {
@@ -404,8 +419,9 @@ const login = async () => {
 
     ElMessage.success('登录成功')
     router.push('/dashboard')
-  } catch (error) {
-    ElMessage.error('登录失败')
+  } catch (error: any) {
+    console.error('登录失败:', error)
+    ElMessage.error(error?.response?.data?.msg || error?.message || '登录失败')
     if (captchaEnabled.value) getCaptcha()
   }
 }

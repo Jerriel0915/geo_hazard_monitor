@@ -169,20 +169,12 @@
 </template>
 
 <script setup lang="ts">
-import {nextTick, onUnmounted, ref, watch} from 'vue'
+import {nextTick, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
-import {
-  Close,
-  DataAnalysis,
-  Download,
-  Drizzling,
-  Monitor,
-  Odometer,
-  Sunny,
-  Upload
-} from '@element-plus/icons-vue'
+import {Close, DataAnalysis, Download, Drizzling, Monitor, Odometer, Sunny, Upload} from '@element-plus/icons-vue'
 import {getDeviceSensors} from '@/api/sensor'
 import {type ChartData, getChartData} from '@/api/monitorData'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 
 // ---------- Props & Emits ----------
 const props = defineProps<{
@@ -241,7 +233,7 @@ const loadSensors = async () => {
       status: sensor.status === 0 ? 'online' : sensor.status === 1 ? 'warning' : 'offline'
     }))
   } catch (error) {
-    console.error('加载传感器列表失败:', error)
+    showRequestErrorMessage(error, '加载传感器列表失败')
     modalSensorList.value = []
   }
 
@@ -299,7 +291,7 @@ const querySensorData = () => {
 
     nextTick(() => renderChart())
   }).catch(err => {
-    console.error('查询传感器数据失败:', err)
+    showRequestErrorMessage(err, '查询传感器数据失败')
     tableData.value = []
     chartDataResult.value = []
   })

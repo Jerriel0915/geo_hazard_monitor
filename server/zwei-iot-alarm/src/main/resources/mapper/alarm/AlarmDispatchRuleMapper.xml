@@ -66,6 +66,17 @@
         WHERE id = #{id} AND del_flag = 0
     </select>
 
+    <!-- 校验分发规则在指定隐患点下 name 唯一 -->
+    <select id="checkDispatchRuleUnique" resultMap="AlarmDispatchRuleResult">
+        <include refid="selectRuleVo"/>
+        WHERE del_flag = 0
+        AND name = #{name}
+        AND (hazard_point_id = #{hazardPointId}
+        OR (hazard_point_id IS NULL AND #{hazardPointId} IS NULL))
+        AND id != #{id}
+        LIMIT 1
+    </select>
+
     <insert id="insertRule" parameterType="com.zwei.iot.alarm.domain.AlarmDispatchRule"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO alarm_dispatch_rule (name, hazard_point_id, alarm_levels, alarm_types,

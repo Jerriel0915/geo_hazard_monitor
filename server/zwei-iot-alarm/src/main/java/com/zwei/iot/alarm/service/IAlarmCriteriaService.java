@@ -56,4 +56,14 @@ public interface IAlarmCriteriaService {
      * 查询判据变更日志
      */
     List<AlarmCriteriaLog> selectLogsByCriteriaId(Long criteriaId);
+
+    /**
+     * 校验判据在指定隐患点下 name 唯一
+     *
+     * @param name          判据名称
+     * @param hazardPointId 隐患点ID（null 表示全局兜底判据）
+     * @param id            排除的判据ID（新增传 0L）
+     * @return true=唯一，false=已存在
+     */
+    boolean checkCriteriaUnique(String name, Long hazardPointId, Long id);
 }

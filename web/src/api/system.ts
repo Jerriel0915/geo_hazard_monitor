@@ -148,6 +148,9 @@ export interface RoleDeptTreeResult {
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
   const response = await promise
+    if (response && typeof response.code === 'number' && response.code !== 200) {
+        throw new Error(response.msg || '操作失败')
+    }
   return response.data
 }
 
@@ -185,10 +188,8 @@ export const getOrganizationPage = (params?: Record<string, any>) =>
 export const getOrganizationDetail = (id: number) =>
   unwrap<OrganizationItem>(request.get(`/organizations/${id}`))
 
-export const createOrganization = async (payload: OrganizationPayload) => {
-  const response = await request.post<AjaxResult<{ id: number }>>('/organizations', payload)
-  return response.data
-}
+export const createOrganization = (payload: OrganizationPayload) =>
+    unwrap<{ id: number }>(request.post('/organizations', payload))
 
 export const updateOrganization = (id: number, payload: OrganizationPayload) =>
   unwrap<null>(request.put(`/organizations/${id}`, payload))
@@ -202,10 +203,8 @@ export const getUserPage = (params?: Record<string, any>) =>
 export const getUserDetail = (id: number) =>
   unwrap<UserItem>(request.get(`/users/${id}`))
 
-export const createUser = async (payload: UserPayload) => {
-  const response = await request.post<AjaxResult<{ id: number }>>('/users', payload)
-  return response.data
-}
+export const createUser = (payload: UserPayload) =>
+    unwrap<{ id: number }>(request.post('/users', payload))
 
 export const updateUser = (id: number, payload: UserPayload) =>
   unwrap<null>(request.put(`/users/${id}`, payload))
@@ -225,10 +224,8 @@ export const getRolePage = (params?: Record<string, any>) =>
 export const getRoleDetail = (id: number) =>
   unwrap<RoleItem>(request.get(`/roles/${id}`))
 
-export const createRole = async (payload: RolePayload) => {
-  const response = await request.post<AjaxResult<{ id: number }>>('/roles', payload)
-  return response.data
-}
+export const createRole = (payload: RolePayload) =>
+    unwrap<{ id: number }>(request.post('/roles', payload))
 
 export const updateRole = (id: number, payload: RolePayload) =>
   unwrap<null>(request.put(`/roles/${id}`, payload))
@@ -269,10 +266,8 @@ export const getMenuTree = () =>
 export const getMenuDetail = (id: number) =>
   unwrap<MenuItem>(request.get(`/menus/${id}`))
 
-export const createMenu = async (payload: MenuPayload) => {
-  const response = await request.post<AjaxResult<{ id: number }>>('/menus', mapMenuPayload(payload))
-  return response.data
-}
+export const createMenu = (payload: MenuPayload) =>
+    unwrap<{ id: number }>(request.post('/menus', mapMenuPayload(payload)))
 
 export const updateMenu = (id: number, payload: MenuPayload) =>
   unwrap<null>(request.put(`/menus/${id}`, mapMenuPayload(payload)))

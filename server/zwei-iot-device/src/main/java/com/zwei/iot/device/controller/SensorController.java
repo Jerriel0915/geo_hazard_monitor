@@ -59,7 +59,7 @@ public class SensorController extends BaseController {
      * 修改传感器
      *
      * @param id     传感器ID
-     * @param sensor 传感器信息（包含attrList）
+     * @param request 传感器信息（包含attrList）
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:sensor:edit')")
@@ -102,7 +102,7 @@ public class SensorController extends BaseController {
      * 新增传感器（为设备添加传感器）
      *
      * @param deviceId 设备ID
-     * @param sensor   传感器信息（包含attrList）
+     * @param request   传感器信息（包含attrList）
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:sensor:add')")

@@ -95,11 +95,12 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {nextTick, onMounted, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
-import { getReportPage, getReportDetail, deleteReport, type ReportItem } from '@/api/report'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
+import {deleteReport, getReportDetail, getReportPage, type ReportItem} from '@/api/report'
 
 // State
 const loading = ref(false)
@@ -132,7 +133,7 @@ const loadTableData = async () => {
     tableData.value = data.rows || []
     total.value = data.total || 0
   } catch (error) {
-    ElMessage.error('加载报告数据失败')
+    showRequestErrorMessage(error, '加载报告数据失败')
   } finally {
     loading.value = false
   }
@@ -157,7 +158,7 @@ const handleView = async (row: ReportItem) => {
     currentReport.value = detail
     viewDialogVisible.value = true
   } catch (error) {
-    ElMessage.error('获取报告详情失败')
+    showRequestErrorMessage(error, '获取报告详情失败')
   }
 }
 
@@ -196,7 +197,7 @@ const handleExportPdf = async (row: ReportItem) => {
     await new Promise(r => setTimeout(r, 300))
     await doExportPdf()
   } catch (error) {
-    ElMessage.error('导出PDF失败')
+    showRequestErrorMessage(error, '导出PDF失败')
   }
 }
 
@@ -207,7 +208,7 @@ const handleExportPdfDialog = async () => {
   try {
     await doExportPdf()
   } catch (error) {
-    ElMessage.error('导出PDF失败')
+    showRequestErrorMessage(error, '导出PDF失败')
   } finally {
     pdfLoading.value = false
   }

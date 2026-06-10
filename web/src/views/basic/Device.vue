@@ -626,6 +626,7 @@ import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Search} from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -1023,8 +1024,7 @@ const loadTableData = async () => {
     tableData.value = data.rows || []
     total.value = data.total || 0
   } catch (error) {
-    console.error('请求失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '加载设备列表失败')
   } finally {
     loading.value = false
   }
@@ -1036,8 +1036,7 @@ const fetchDetail = async (id: number) => {
   try {
     return await getDeviceDetail(id)
   } catch (error) {
-    console.error('获取详情失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '获取设备详情失败')
     return null
   } finally {
     loading.value = false
@@ -1077,9 +1076,8 @@ const createDevice = async () => {
       password: result.password,
       authStatus: 1
     })
-  } catch (error) {
-    console.error('新增失败:', error)
-    ElMessage.error('网络请求失败')
+  } catch (error: any) {
+    showRequestErrorMessage(error, '新增设备失败')
   } finally {
     submitLoading.value = false
   }
@@ -1105,9 +1103,8 @@ const updateDevice = async () => {
     ElMessage.success('修改成功')
     dialogVisible.value = false
     await loadTableData()
-  } catch (error) {
-    console.error('修改失败:', error)
-    ElMessage.error('网络请求失败')
+  } catch (error: any) {
+    showRequestErrorMessage(error, '修改设备失败')
   } finally {
     submitLoading.value = false
   }
@@ -1120,8 +1117,7 @@ const deleteDevice = async (id: number) => {
     ElMessage.success('删除成功')
     await loadTableData()
   } catch (error) {
-    console.error('删除失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '删除设备失败')
   }
 }
 
@@ -1132,8 +1128,7 @@ const copyDevice = async (id: number) => {
     ElMessage.success('复制成功')
     await loadTableData()
   } catch (error) {
-    console.error('复制失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '复制设备失败')
   }
 }
 
@@ -1163,8 +1158,7 @@ const loadMonitorTypeList = async () => {
         } as MonitorTypeItem))
     monitorTypeList.value = details
   } catch (error) {
-    console.error('获取监测类型失败:', error)
-    ElMessage.error('获取监测类型失败')
+    showRequestErrorMessage(error, '获取监测类型失败')
   }
 }
 
@@ -1189,7 +1183,7 @@ const handleRefresh = async () => {
     await loadTableData()
     ElMessage.success('刷新成功')
   } catch (error) {
-    ElMessage.error('刷新失败')
+    showRequestErrorMessage(error, '刷新失败')
   } finally {
     refreshing.value = false
   }
@@ -1317,7 +1311,7 @@ const handleMaintenanceSubmit = () => {
       maintenanceDialogVisible.value = false
       await loadTableData()
     } catch (e: any) {
-      ElMessage.error(e?.response?.data?.msg || '操作失败')
+      showRequestErrorMessage(e, '操作失败')
     } finally {
       maintenanceLoading.value = false
     }
@@ -1341,9 +1335,31 @@ const handleExport = () => {
   }, 1000)
 }
 
+// 对当前页 tableData 做 code / sn 快速查重，命中后再依赖后端兜底做全局校验
+const validateDeviceIdentity = () => {
+  const code = formData.code?.trim()
+  const sn = formData.sn?.trim()
+  const excludeId = formData.id
+  if (code) {
+    const conflict = tableData.value.find((d) => d.id !== excludeId && d.code === code)
+    if (conflict) {
+      ElMessage.warning(`设备编号 ${code} 已被【${conflict.name}】占用`)
+      return false
+    }
+  }
+  if (sn) {
+    const conflict = tableData.value.find((d) => d.id !== excludeId && d.sn === sn)
+    if (conflict) {
+      ElMessage.warning(`设备 SN ${sn} 已被【${conflict.name}】占用`)
+      return false
+    }
+  }
+  return true
+}
+
 const handleSubmit = () => {
   formRef.value.validate((valid: boolean) => {
-    if (valid) {
+    if (valid && validateDeviceIdentity()) {
       if (formData.id) {
         updateDevice()
       } else {
@@ -1367,8 +1383,7 @@ const handleViewAuth = async (row: DeviceItem) => {
   try {
     await openAuthDialog(row)
   } catch (error) {
-    console.error('获取设备账号失败:', error)
-    ElMessage.error('获取设备账号失败')
+    showRequestErrorMessage(error, '获取设备账号失败')
   }
 }
 
@@ -1404,8 +1419,7 @@ const handleToggleAuthStatus = async (row?: DeviceItem | null) => {
     if (error === 'cancel' || error?.action === 'cancel' || error?.action === 'close') {
       return
     }
-    console.error(`${actionText}账号失败:`, error)
-    ElMessage.error(`${actionText}账号失败`)
+    showRequestErrorMessage(error, `${actionText}账号失败`)
   } finally {
     authStatusLoading.value = false
   }
@@ -1439,8 +1453,7 @@ const handleResetPassword = async () => {
     if (error === 'cancel' || error?.action === 'cancel' || error?.action === 'close') {
       return
     }
-    console.error('重置密码失败:', error)
-    ElMessage.error('重置密码失败')
+    showRequestErrorMessage(error, '重置密码失败')
   } finally {
     authResetLoading.value = false
   }
@@ -1457,8 +1470,7 @@ const loadSensorTableData = async (deviceId: number) => {
   try {
     sensorTableData.value = await getDeviceSensors(deviceId)
   } catch (error) {
-    console.error('获取传感器列表失败:', error)
-    ElMessage.error('获取传感器列表失败')
+    showRequestErrorMessage(error, '获取传感器列表失败')
     sensorTableData.value = []
   } finally {
     sensorLoading.value = false
@@ -1512,8 +1524,7 @@ const handleEditSensor = async (row: SensorItem) => {
     })
     sensorFormDialogVisible.value = true
   } catch (error) {
-    console.error('获取传感器详情失败:', error)
-    ElMessage.error('获取传感器详情失败')
+    showRequestErrorMessage(error, '获取传感器详情失败')
   }
 }
 
@@ -1528,8 +1539,7 @@ const handleDeleteSensor = (row: SensorItem) => {
       ElMessage.success('删除成功')
       await loadSensorTableData(Number(currentSensorDevice.value?.id))
     } catch (error) {
-      console.error('删除传感器失败:', error)
-      ElMessage.error('删除传感器失败')
+      showRequestErrorMessage(error, '删除传感器失败')
     }
   }).catch(() => {})
 }
@@ -1582,6 +1592,23 @@ const validateSensorAttrs = () => {
   return true
 }
 
+// 对当前设备已加载的 sensorTableData 做 sensorCode 快速查重，命中后再依赖后端兜底做全局校验
+const validateSensorCode = () => {
+  if (sensorFormMode.value !== 'add') {
+    return true
+  }
+  const code = sensorFormData.sensorCode?.trim()
+  if (!code) {
+    return true
+  }
+  const conflict = sensorTableData.value.find((s) => s.sensorCode === code)
+  if (conflict) {
+    ElMessage.warning(`传感器编号 ${code} 已被【${conflict.sensorName}】占用`)
+    return false
+  }
+  return true
+}
+
 const buildSensorPayload = () => ({
   sensorCode: sensorFormData.sensorCode.trim(),
   sensorNo: sensorFormData.sensorNo.trim() || undefined,
@@ -1612,7 +1639,7 @@ const handleDeleteAttr = async (index: number) => {
 
 const handleSensorSubmit = () => {
   sensorFormRef.value.validate(async (valid: boolean) => {
-    if (!valid || !validateSensorAttrs()) {
+    if (!valid || !validateSensorAttrs() || !validateSensorCode()) {
       return
     }
 
@@ -1632,9 +1659,8 @@ const handleSensorSubmit = () => {
       }
       sensorFormDialogVisible.value = false
       await loadSensorTableData(Number(currentSensorDevice.value?.id))
-    } catch (error) {
-      console.error('保存传感器失败:', error)
-      ElMessage.error('保存传感器失败')
+    } catch (error: any) {
+      showRequestErrorMessage(error, '保存传感器失败')
     } finally {
       sensorFormSubmitLoading.value = false
     }

@@ -60,6 +60,9 @@ public class SysNoticeController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysNotice notice)
     {
+        if (!noticeService.checkNoticeTitleUnique(notice.getNoticeTitle(), null)) {
+            return error("新增失败，公告标题已存在");
+        }
         notice.setCreateBy(getUsername());
         return toAjax(noticeService.insertNotice(notice));
     }
@@ -72,6 +75,9 @@ public class SysNoticeController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysNotice notice)
     {
+        if (!noticeService.checkNoticeTitleUnique(notice.getNoticeTitle(), notice.getNoticeId())) {
+            return error("修改失败，公告标题已存在");
+        }
         notice.setUpdateBy(getUsername());
         return toAjax(noticeService.updateNotice(notice));
     }
