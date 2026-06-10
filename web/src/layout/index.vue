@@ -244,10 +244,10 @@
 </template>
 
 <script setup lang="ts">
-import { getTopNotices, markRead, markReadAll, type SysNotice } from '@/api/notice'
-import { getAuthInfo, getUserInfo } from '@/utils/userApi'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {getAuthInfo, getUserInfo} from '@/utils/userApi'
+import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
 
 
 /** 通知消息（来自 SysNotice 后端） */
@@ -389,7 +389,8 @@ const menuList = [
     children: [
       { name: 'Report', label: '报告管理' },
       { name: 'Query', label: '查询中心' },
-      { name: 'Analysis', label: '数据分析' }
+      { name: 'Analysis', label: '数据分析' },
+      { name: 'Screen', label: '运营大屏' }
     ]
   },
   {
@@ -399,7 +400,7 @@ const menuList = [
     children: [
       { name: 'MonitorType', label: '监测类型' },
       { name: 'Device', label: '设备管理' },
-      { name: 'VideoDevice', label: '视频设备' },
+      { name: 'VideoDevice', label: '视频设备管理' },
       {name: 'DataParse', label: '数据解析'},
       {name: 'ServiceStatus', label: '服务状态'}
     ]
@@ -469,7 +470,7 @@ const menuLabelMap: Record<string, string> = {
   HazardPoint: '隐患点管理',
   MonitorType: '监测类型',
   Device: '设备管理',
-  VideoDevice: '视频设备',
+  VideoDevice: '视频设备管理',
   RealtimeAlarm: '待办告警',
   AlarmCriteria: '告警判据',
   AlarmNotification: '历史告警',
@@ -700,6 +701,15 @@ const goToDashboard = () => {
   justify-content: center;
   width: 44px;
   height: 44px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
+}
+
+.logo:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
 }
 
 .logo .icon {
