@@ -52,16 +52,6 @@
       <div class="resize-handle" @mousedown="startResize"></div>
 
       <div class="content-panel">
-        <div class="stats-bar">
-          <span class="stat-item">隐患点 <strong>{{ statsTotal }}</strong></span>
-          <span class="stat-sep">|</span>
-          <span class="stat-item">监测中 <strong class="c-green">{{ statsMonitoring }}</strong></span>
-          <span class="stat-sep">|</span>
-          <span class="stat-item">关联设备 <strong class="c-amber">{{ statsDeviceTotal }}</strong></span>
-          <span class="stat-sep">|</span>
-          <span class="stat-item">分组 <strong class="c-purple">{{ statsGroupCount }}</strong></span>
-        </div>
-
         <div class="search">
           <el-select v-model="searchType" placeholder="搜索方式" class="search__select">
             <el-option label="按名称" value="name" />
@@ -152,7 +142,6 @@
                           </el-dropdown-item>
                           <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="complete">完结</el-dropdown-item>
                           <el-dropdown-item command="bindDevice">绑定设备</el-dropdown-item>
-                          <el-dropdown-item command="alarmConfig">告警配置</el-dropdown-item>
                           <el-dropdown-item command="delete" divided>
                             <span style="color: #f56c6c">删除</span>
                           </el-dropdown-item>
@@ -166,6 +155,15 @@
           </div>
 
           <div class="table-wrap__pagination">
+            <div class="pagination-stats">
+              <span>隐患点 <strong>{{ statsTotal }}</strong></span>
+              <span class="pagination-stats__sep">|</span>
+              <span>监测中 <strong class="c-green">{{ statsMonitoring }}</strong></span>
+              <span class="pagination-stats__sep">|</span>
+              <span>关联设备 <strong class="c-amber">{{ statsDeviceTotal }}</strong></span>
+              <span class="pagination-stats__sep">|</span>
+              <span>分组 <strong class="c-purple">{{ statsGroupCount }}</strong></span>
+            </div>
             <el-pagination
               v-model:current-page="currentPage"
               v-model:page-size="pageSize"
@@ -3289,37 +3287,32 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-/* ========== 统计条 ========== */
-.stats-bar {
+/* 分页栏左侧统计数据 */
+.pagination-stats {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 14px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  margin-bottom: 12px;
+  gap: 10px;
   font-size: 12px;
   color: #64748b;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  margin-right: auto;
 }
 
-.stat-item strong {
-  font-size: 15px;
+.pagination-stats strong {
+  font-size: 14px;
   font-weight: 700;
   color: #1f2937;
-  margin-left: 3px;
+  margin-left: 2px;
 }
 
-.stat-item .c-green { color: #10b981; }
-.stat-item .c-amber { color: #f59e0b; }
-.stat-item .c-purple { color: #6366f1; }
-
-.stat-sep {
+.pagination-stats__sep {
   color: #e2e8f0;
-  font-size: 14px;
 }
 
+.c-green { color: #10b981; }
+.c-amber { color: #f59e0b; }
+.c-purple { color: #6366f1; }
+
+/* ========== 统计条 ========== */
 /* ========== 分页激活态 ========== */
 :deep(.el-pagination .el-pager li.is-active) {
   background: #3b82f6;
