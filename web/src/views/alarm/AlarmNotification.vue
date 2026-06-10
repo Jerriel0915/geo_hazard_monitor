@@ -1,68 +1,67 @@
 <template>
-  <div class="page-content">
-    <div class="page-title">历史告警</div>
-    <div class="page-body">
-      <!-- 搜索和操作栏 -->
-      <div class="search-bar">
-        <div class="search-conditions">
-          <el-form :inline="true" :model="queryParams" label-width="100px">
-            <el-form-item label="隐患点名称">
-              <el-input v-model="queryParams.hazardPointName" placeholder="请输入" clearable />
-            </el-form-item>
-            <el-form-item label="人员名称">
-              <el-input v-model="queryParams.personName" placeholder="请输入" clearable />
-            </el-form-item>
-            <el-form-item label="告警时间">
-              <el-date-picker
-                v-model="queryParams.alarmTimeRange"
-                type="daterange"
-                range-separator="至"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
-                value-format="YYYY-MM-DD"
-              />
-            </el-form-item>
-            <el-form-item label="告警次数">
-              <el-input-number v-model="queryParams.alarmCountMin" :min="0" placeholder="最小" style="width: 120px" />
-              <span style="margin: 0 8px">至</span>
-              <el-input-number v-model="queryParams.alarmCountMax" :min="0" placeholder="最大" style="width: 120px" />
-            </el-form-item>
-            <el-form-item label="告警等级">
-              <el-select v-model="queryParams.alarmLevel" placeholder="请选择" clearable multiple style="width: 120px">
-                <el-option label="一级" value="1" />
-                <el-option label="二级" value="2" />
-                <el-option label="三级" value="3" />
-                <el-option label="四级" value="4" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="告警类型">
-              <el-select v-model="queryParams.alarmType" placeholder="请选择" clearable multiple style="width: 120px">
-                <el-option label="阈值预警" value="threshold" />
-                <el-option label="综合预警" value="comprehensive" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="警情状态">
-              <el-select v-model="queryParams.status" placeholder="请选择" clearable multiple style="width: 120px">
-                <el-option label="误报" value="false_alarm" />
-                <el-option label="已销警" value="closed" />
-              </el-select>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="handleQuery">查询</el-button>
-              <el-button @click="handleReset">重置</el-button>
-            </el-form-item>
-          </el-form>
-        </div>
-        <div class="action-buttons">
-          <el-button type="info" @click="handleExport">
-            <el-icon><Download /></el-icon>
-            导出
-          </el-button>
-        </div>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">历史告警</h2>
       </div>
+    </div>
 
-      <!-- 数据表格 -->
-      <div class="table-container">
+    <div class="search">
+      <el-form :inline="true" :model="queryParams" label-width="100px">
+        <el-form-item label="隐患点名称">
+          <el-input v-model="queryParams.hazardPointName" placeholder="请输入" clearable />
+        </el-form-item>
+        <el-form-item label="人员名称">
+          <el-input v-model="queryParams.personName" placeholder="请输入" clearable />
+        </el-form-item>
+        <el-form-item label="告警时间">
+          <el-date-picker
+            v-model="queryParams.alarmTimeRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="告警次数">
+          <el-input-number v-model="queryParams.alarmCountMin" :min="0" placeholder="最小" style="width: 120px" />
+          <span style="margin: 0 8px">至</span>
+          <el-input-number v-model="queryParams.alarmCountMax" :min="0" placeholder="最大" style="width: 120px" />
+        </el-form-item>
+        <el-form-item label="告警等级">
+          <el-select v-model="queryParams.alarmLevel" placeholder="请选择" clearable multiple style="width: 120px">
+            <el-option label="一级" value="1" />
+            <el-option label="二级" value="2" />
+            <el-option label="三级" value="3" />
+            <el-option label="四级" value="4" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="告警类型">
+          <el-select v-model="queryParams.alarmType" placeholder="请选择" clearable multiple style="width: 120px">
+            <el-option label="阈值预警" value="threshold" />
+            <el-option label="综合预警" value="comprehensive" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="警情状态">
+          <el-select v-model="queryParams.status" placeholder="请选择" clearable multiple style="width: 120px">
+            <el-option label="误报" value="false_alarm" />
+            <el-option label="已销警" value="closed" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleQuery">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+      <el-button type="info" @click="handleExport">
+        <el-icon><Download /></el-icon>
+        导出
+      </el-button>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
         <el-table
           :data="tableData"
           style="width: 100%"
@@ -106,8 +105,7 @@
         </el-table>
       </div>
 
-      <!-- 分页 -->
-      <div class="pagination">
+      <div class="table-wrap__pagination">
         <el-pagination
           v-model:current-page="pagination.currentPage"
           v-model:page-size="pagination.pageSize"
@@ -426,61 +424,6 @@ const handleCurrentChange = (page: number) => {
 </script>
 
 <style scoped>
-.page-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: calc(100% - 32px);
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.page-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.search-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
-}
-
-.search-conditions {
-  flex: 1;
-  min-width: 0;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-}
-
-.table-container {
-  flex: 1;
-  overflow: auto;
-}
-
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 16px;
-}
-
 .alarm-count {
   color: #409eff;
   cursor: pointer;
