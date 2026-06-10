@@ -382,6 +382,25 @@ const fitToFocusArea = () => {
   mapInstance.setView([30.67, 104.06], 12)
 }
 
+/** 将地图视角聚焦到隐患点：有边界范围则 fitBounds，否则以点为中心放大到21级 */
+const focusOnHazardPoint = (point: any) => {
+  if (!mapInstance) return
+  const bc = point.boundaryCoords
+  if (bc) {
+    try {
+      const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
+      if (obj.polygon && obj.polygon.length > 0) {
+        const polygon = L.polygon(obj.polygon as any)
+        mapInstance.fitBounds(polygon.getBounds(), {padding: [30, 30], animate: false, maxZoom: 21})
+        return
+      }
+    } catch {
+      // 解析失败，fallback 到 setView
+    }
+  }
+  mapInstance.setView([point.latitude, point.longitude], 21)
+}
+
 const addFocusBoundary = () => {
   // focusAreaLayer is rendered by loadFocusArea(), skip duplicate
 }
@@ -648,7 +667,7 @@ const onHazardMarkerClick = async (point: typeof hazardPoints.value[0]) => {
 
   // 地图缩放到隐患点
   if (mapInstance) {
-    mapInstance.setView([point.latitude, point.longitude], 14)
+    focusOnHazardPoint(point)
   }
 
   // 地图上：隐藏所有隐患点，绘制区域+设备
@@ -915,7 +934,7 @@ const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
 
   // 地图聚焦到隐患点
   if (mapInstance) {
-    mapInstance.setView([hazardPoint.latitude, hazardPoint.longitude], 14)
+    focusOnHazardPoint(hazardPoint)
     // 渲染边界范围
     if (hazardBoundaryLayer) {
       hazardBoundaryLayer.clearLayers()
@@ -996,7 +1015,7 @@ const selectHazardPoint = (hazardPoint: typeof hazardPoints.value[0]) => {
     updateHazardAlarms(hazardPoint.id)
 
     if (mapInstance) {
-      mapInstance.setView([hazardPoint.latitude, hazardPoint.longitude], 14)
+      focusOnHazardPoint(hazardPoint)
     }
 
     addDeviceMarkers(hazardPoint.id)
