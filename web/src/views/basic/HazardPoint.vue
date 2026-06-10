@@ -3204,12 +3204,6 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-/* 搜索栏收窄（全局 .search padding:15px 偏高） */
-.content-panel .search {
-  padding: 8px 15px;
-  margin-bottom: 12px;
-}
-
 /* ========== 统计条 ========== */
 .stats-bar {
   display: flex;

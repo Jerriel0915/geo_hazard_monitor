@@ -3,61 +3,43 @@
     <div class="header">
       <div class="header__left">
         <h2 class="header__title">历史告警</h2>
+        <span class="header__subtitle">已处置告警记录归档与追溯</span>
+      </div>
+      <div class="header__right">
+        <el-button type="info" @click="handleExport">
+          <el-icon><Download /></el-icon>
+          导出
+        </el-button>
       </div>
     </div>
 
     <div class="search">
-      <el-form :inline="true" :model="queryParams" label-width="100px">
-        <el-form-item label="隐患点名称">
-          <el-input v-model="queryParams.hazardPointName" placeholder="请输入" clearable />
-        </el-form-item>
-        <el-form-item label="人员名称">
-          <el-input v-model="queryParams.personName" placeholder="请输入" clearable />
-        </el-form-item>
-        <el-form-item label="告警时间">
-          <el-date-picker
-            v-model="queryParams.alarmTimeRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item label="告警次数">
-          <el-input-number v-model="queryParams.alarmCountMin" :min="0" placeholder="最小" style="width: 120px" />
-          <span style="margin: 0 8px">至</span>
-          <el-input-number v-model="queryParams.alarmCountMax" :min="0" placeholder="最大" style="width: 120px" />
-        </el-form-item>
-        <el-form-item label="告警等级">
-          <el-select v-model="queryParams.alarmLevel" placeholder="请选择" clearable multiple style="width: 120px">
-            <el-option label="一级" value="1" />
-            <el-option label="二级" value="2" />
-            <el-option label="三级" value="3" />
-            <el-option label="四级" value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="告警类型">
-          <el-select v-model="queryParams.alarmType" placeholder="请选择" clearable multiple style="width: 120px">
-            <el-option label="阈值预警" value="threshold" />
-            <el-option label="综合预警" value="comprehensive" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="警情状态">
-          <el-select v-model="queryParams.status" placeholder="请选择" clearable multiple style="width: 120px">
-            <el-option label="误报" value="false_alarm" />
-            <el-option label="已销警" value="closed" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-      <el-button type="info" @click="handleExport">
-        <el-icon><Download /></el-icon>
-        导出
-      </el-button>
+      <el-input v-model="queryParams.hazardPointName" placeholder="隐患点名称" clearable />
+      <el-input v-model="queryParams.personName" placeholder="人员名称" clearable />
+      <el-date-picker
+        v-model="queryParams.alarmTimeRange"
+        type="daterange"
+        range-separator=""
+        start-placeholder="告警时间:开始"
+        end-placeholder="告警时间:结束"
+        value-format="YYYY-MM-DD"
+      />
+      <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple>
+        <el-option label="一级" value="1" />
+        <el-option label="二级" value="2" />
+        <el-option label="三级" value="3" />
+        <el-option label="四级" value="4" />
+      </el-select>
+      <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple>
+        <el-option label="阈值预警" value="threshold" />
+        <el-option label="综合预警" value="comprehensive" />
+      </el-select>
+      <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple>
+        <el-option label="误报" value="false_alarm" />
+        <el-option label="已销警" value="closed" />
+      </el-select>
+      <el-button type="primary" @click="handleQuery">查询</el-button>
+      <el-button @click="handleReset">重置</el-button>
     </div>
 
     <div class="table-wrap">
@@ -69,34 +51,34 @@
           border
           stripe
         >
-          <el-table-column prop="hazardPointName" label="隐患点名称" min-width="180" />
-          <el-table-column prop="alarmLevel" label="告警等级" width="100">
+          <el-table-column prop="hazardPointName" label="隐患点名称" min-width="160" />
+          <el-table-column prop="alarmLevel" label="告警等级" width="90">
             <template #default="{ row }">
               <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="firstAlarmTime" label="首次告警时间" width="180" />
-          <el-table-column prop="lastAlarmTime" label="最后告警时间" width="180" />
-          <el-table-column prop="alarmCount" label="告警次数" width="100">
+          <el-table-column prop="firstAlarmTime" label="首次告警时间" min-width="160" />
+          <el-table-column prop="lastAlarmTime" label="最后告警时间" min-width="160" />
+          <el-table-column prop="alarmCount" label="告警次数" width="90">
             <template #default="{ row }">
               <span class="alarm-count" @click.stop="handleView(row)">{{ row.alarmCount }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="alarmType" label="告警类型" width="120">
+          <el-table-column prop="alarmType" label="告警类型" width="100">
             <template #default="{ row }">
               {{ getAlarmTypeText(row.alarmType) }}
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="警情状态" width="100">
+          <el-table-column prop="status" label="警情状态" width="90">
             <template #default="{ row }">
               <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="responderName" label="响应人员" width="120" />
-          <el-table-column prop="responseTime" label="响应时间" width="180" />
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column prop="responderName" label="响应人员" width="100" />
+          <el-table-column prop="responseTime" label="响应时间" min-width="160" />
+          <el-table-column label="操作" width="100" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" link size="small" @click.stop="handleView(row)">
+              <el-button type="primary" text size="small" @click.stop="handleView(row)">
                 <el-icon><View /></el-icon>
                 查看
               </el-button>
@@ -380,7 +362,7 @@ const handleQuery = () => {
   ElMessage.success('查询成功')
 }
 
-// 重置
+// 重置（静默，不弹窗）
 const handleReset = () => {
   queryParams.hazardPointName = ''
   queryParams.personName = ''
@@ -390,7 +372,9 @@ const handleReset = () => {
   queryParams.alarmLevel = []
   queryParams.alarmType = []
   queryParams.status = []
-  handleQuery()
+  pagination.currentPage = 1
+  pagination.total = filteredData.value.length
+  tableData.value = paginatedData.value
 }
 
 // 行点击 - 查看详情
@@ -432,14 +416,5 @@ const handleCurrentChange = (page: number) => {
 
 .alarm-count:hover {
   color: #66b1ff;
-}
-
-.detail-content {
-  padding: 16px 0;
-}
-
-.alarm-list-table {
-  max-height: 400px;
-  overflow: auto;
 }
 </style>
