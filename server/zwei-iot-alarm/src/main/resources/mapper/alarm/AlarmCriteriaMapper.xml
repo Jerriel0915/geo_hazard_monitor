@@ -86,6 +86,17 @@
         WHERE id = #{id} AND del_flag = 0
     </select>
 
+    <!-- 校验判据在指定隐患点下 name 唯一（更新时排除自身 id；hazardPointId 为 null 表示全局兜底判据） -->
+    <select id="checkCriteriaUnique" resultMap="AlarmCriteriaResult">
+        <include refid="selectVo"/>
+        WHERE del_flag = 0
+        AND name = #{name}
+        AND (hazard_point_id = #{hazardPointId}
+        OR (hazard_point_id IS NULL AND #{hazardPointId} IS NULL))
+        AND id != #{id}
+        LIMIT 1
+    </select>
+
     <insert id="insertCriteria" parameterType="com.zwei.iot.alarm.domain.AlarmCriteria"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO alarm_criteria (name, monitor_type_id, monitor_type_name,

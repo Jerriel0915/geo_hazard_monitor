@@ -1077,9 +1077,9 @@ const createDevice = async () => {
       password: result.password,
       authStatus: 1
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('新增失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(error?.response?.data?.msg || '网络请求失败')
   } finally {
     submitLoading.value = false
   }
@@ -1105,9 +1105,9 @@ const updateDevice = async () => {
     ElMessage.success('修改成功')
     dialogVisible.value = false
     await loadTableData()
-  } catch (error) {
+  } catch (error: any) {
     console.error('修改失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(error?.response?.data?.msg || '网络请求失败')
   } finally {
     submitLoading.value = false
   }
@@ -1341,9 +1341,31 @@ const handleExport = () => {
   }, 1000)
 }
 
+// 对当前页 tableData 做 code / sn 快速查重，命中后再依赖后端兜底做全局校验
+const validateDeviceIdentity = () => {
+  const code = formData.code?.trim()
+  const sn = formData.sn?.trim()
+  const excludeId = formData.id
+  if (code) {
+    const conflict = tableData.value.find((d) => d.id !== excludeId && d.code === code)
+    if (conflict) {
+      ElMessage.warning(`设备编号 ${code} 已被【${conflict.name}】占用`)
+      return false
+    }
+  }
+  if (sn) {
+    const conflict = tableData.value.find((d) => d.id !== excludeId && d.sn === sn)
+    if (conflict) {
+      ElMessage.warning(`设备 SN ${sn} 已被【${conflict.name}】占用`)
+      return false
+    }
+  }
+  return true
+}
+
 const handleSubmit = () => {
   formRef.value.validate((valid: boolean) => {
-    if (valid) {
+    if (valid && validateDeviceIdentity()) {
       if (formData.id) {
         updateDevice()
       } else {
@@ -1582,6 +1604,23 @@ const validateSensorAttrs = () => {
   return true
 }
 
+// 对当前设备已加载的 sensorTableData 做 sensorCode 快速查重，命中后再依赖后端兜底做全局校验
+const validateSensorCode = () => {
+  if (sensorFormMode.value !== 'add') {
+    return true
+  }
+  const code = sensorFormData.sensorCode?.trim()
+  if (!code) {
+    return true
+  }
+  const conflict = sensorTableData.value.find((s) => s.sensorCode === code)
+  if (conflict) {
+    ElMessage.warning(`传感器编号 ${code} 已被【${conflict.sensorName}】占用`)
+    return false
+  }
+  return true
+}
+
 const buildSensorPayload = () => ({
   sensorCode: sensorFormData.sensorCode.trim(),
   sensorNo: sensorFormData.sensorNo.trim() || undefined,
@@ -1612,7 +1651,7 @@ const handleDeleteAttr = async (index: number) => {
 
 const handleSensorSubmit = () => {
   sensorFormRef.value.validate(async (valid: boolean) => {
-    if (!valid || !validateSensorAttrs()) {
+    if (!valid || !validateSensorAttrs() || !validateSensorCode()) {
       return
     }
 
@@ -1632,9 +1671,9 @@ const handleSensorSubmit = () => {
       }
       sensorFormDialogVisible.value = false
       await loadSensorTableData(Number(currentSensorDevice.value?.id))
-    } catch (error) {
+    } catch (error: any) {
       console.error('保存传感器失败:', error)
-      ElMessage.error('保存传感器失败')
+      ElMessage.error(error?.response?.data?.msg || '保存传感器失败')
     } finally {
       sensorFormSubmitLoading.value = false
     }

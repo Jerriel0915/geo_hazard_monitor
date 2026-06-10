@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.service.impl;
 
+import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.alarm.domain.AlarmStrategy;
 import com.zwei.iot.alarm.domain.AlarmStrategyHazardPoint;
 import com.zwei.iot.alarm.mapper.AlarmStrategyHazardPointMapper;
@@ -41,6 +42,9 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     @Override
     @Transactional
     public int insert(AlarmStrategy strategy, Long[] hazardPointIds) {
+        if (!checkStrategyNameUnique(strategy.getName(), 0L)) {
+            throw new ServiceException("新增失败，策略名称已存在");
+        }
         strategy.setCreateTime(new Date());
         int rows = strategyMapper.insertStrategy(strategy);
         if (rows > 0 && hazardPointIds != null) {
@@ -52,6 +56,9 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     @Override
     @Transactional
     public int update(AlarmStrategy strategy, Long[] hazardPointIds) {
+        if (!checkStrategyNameUnique(strategy.getName(), strategy.getId())) {
+            throw new ServiceException("修改失败，策略名称已存在");
+        }
         strategy.setUpdateTime(new Date());
         int rows = strategyMapper.updateStrategy(strategy);
         if (rows > 0 && hazardPointIds != null) {
@@ -75,6 +82,11 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     @Override
     public List<Long> getHazardPointIds(Long strategyId) {
         return bindingMapper.selectHazardPointIdsByStrategyId(strategyId);
+    }
+
+    @Override
+    public boolean checkStrategyNameUnique(String name, Long id) {
+        return strategyMapper.checkStrategyNameUnique(name, id) == null;
     }
 
     private void updateBindings(Long strategyId, Long[] hazardPointIds) {

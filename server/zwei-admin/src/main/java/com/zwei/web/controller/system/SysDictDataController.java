@@ -1,19 +1,5 @@
 package com.zwei.web.controller.system;
 
-import java.util.ArrayList;
-import java.util.List;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
@@ -24,6 +10,14 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.system.service.ISysDictDataService;
 import com.zwei.system.service.ISysDictTypeService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 数据字典信息
@@ -91,6 +85,9 @@ public class SysDictDataController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysDictData dict)
     {
+        if (!dictDataService.checkDictDataUnique(dict.getDictType(), dict.getDictValue(), null)) {
+            return error("新增失败，字典类型 [" + dict.getDictType() + "] 下已存在键值 [" + dict.getDictValue() + "]");
+        }
         dict.setCreateBy(getUsername());
         return toAjax(dictDataService.insertDictData(dict));
     }
@@ -103,6 +100,9 @@ public class SysDictDataController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysDictData dict)
     {
+        if (!dictDataService.checkDictDataUnique(dict.getDictType(), dict.getDictValue(), dict.getDictCode())) {
+            return error("修改失败，字典类型 [" + dict.getDictType() + "] 下已存在键值 [" + dict.getDictValue() + "]");
+        }
         dict.setUpdateBy(getUsername());
         return toAjax(dictDataService.updateDictData(dict));
     }

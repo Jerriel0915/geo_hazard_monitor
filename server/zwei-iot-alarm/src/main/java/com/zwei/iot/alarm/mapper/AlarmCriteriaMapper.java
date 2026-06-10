@@ -26,6 +26,18 @@ public interface AlarmCriteriaMapper {
 
     AlarmCriteria selectCriteriaById(Long id);
 
+    /**
+     * 校验判据在指定隐患点下 name 唯一
+     *
+     * @param name          判据名称
+     * @param hazardPointId 隐患点ID（null 表示全局兜底判据）
+     * @param id            排除的判据ID（新增传 0L）
+     * @return 命中的判据（null 表示唯一）
+     */
+    AlarmCriteria checkCriteriaUnique(@org.apache.ibatis.annotations.Param("name") String name,
+                                      @org.apache.ibatis.annotations.Param("hazardPointId") Long hazardPointId,
+                                      @org.apache.ibatis.annotations.Param("id") Long id);
+
     int insertCriteria(AlarmCriteria criteria);
 
     int updateCriteria(AlarmCriteria criteria);

@@ -43,6 +43,9 @@ public class AlarmDispatchController extends BaseController {
     @PostMapping
     @PreAuthorize("@ss.hasPermi('iot:alarm-dispatch:create')")
     public AjaxResult create(@RequestBody DispatchRuleCreateRequest request) {
+        if (!dispatchService.checkDispatchRuleUnique(request.getName(), request.getHazardPointId(), 0L)) {
+            return error("新增失败，该隐患点下已存在同名分发规则");
+        }
         AlarmDispatchRule rule = AlarmDispatchRule.builder()
                 .name(request.getName())
                 .hazardPointId(request.getHazardPointId())
@@ -60,6 +63,9 @@ public class AlarmDispatchController extends BaseController {
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPermi('iot:alarm-dispatch:update')")
     public AjaxResult update(@PathVariable Long id, @RequestBody DispatchRuleCreateRequest request) {
+        if (!dispatchService.checkDispatchRuleUnique(request.getName(), request.getHazardPointId(), id)) {
+            return error("修改失败，该隐患点下已存在同名分发规则");
+        }
         AlarmDispatchRule rule = AlarmDispatchRule.builder()
                 .id(id)
                 .name(request.getName())
