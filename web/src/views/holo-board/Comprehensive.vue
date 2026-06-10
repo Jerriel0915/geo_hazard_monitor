@@ -194,21 +194,21 @@
         <div class="analysis-charts">
           <div class="chart-panel">
             <div class="panel-header">
-              <span class="panel-title">隐患点增长趋势分析</span>
-              <span class="panel-subtitle">近12个月新增隐患点统计</span>
-            </div>
-            <div class="chart-body">
-              <div ref="hazardTrendChart" class="echarts-container"></div>
-            </div>
-          </div>
-
-          <div class="chart-panel">
-            <div class="panel-header">
               <span class="panel-title">告警趋势分析</span>
               <span class="panel-subtitle">近12个月告警统计及未来预测</span>
             </div>
             <div class="chart-body">
               <div ref="alarmTrendChart" class="echarts-container"></div>
+            </div>
+          </div>
+
+          <div class="chart-panel">
+            <div class="panel-header">
+              <span class="panel-title">隐患点增长分析</span>
+              <span class="panel-subtitle">近12个月新增隐患点统计 · 近30天各隐患点日均监测次数（总监测次数 / 传感器数量）</span>
+            </div>
+            <div class="chart-body">
+              <div ref="hazardTrendChart" class="echarts-container"></div>
             </div>
           </div>
         </div>
@@ -444,6 +444,7 @@ const hazardTrendData = computed(() => ({
   months: hazardTrend.value?.months ?? [],
   values: hazardTrend.value?.counts ?? []
 }))
+
 
 const alarmTrendData = ref({
   months: ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
@@ -698,8 +699,9 @@ onMounted(async () => {
     healthStats.value = d.healthScore
   } catch { /* use defaults */
   }
-  initHazardTrendChart()
   initAlarmTrendChart()
+  initHazardTrendChart()
+  initAvgMonitorRateChart()
   setTimeout(() => {
     animateStats.value = true
   }, 500)
@@ -732,60 +734,60 @@ const initHazardTrendChart = () => {
 
   hazardTrendChartInstance = echarts.init(hazardTrendChart.value)
 
+  const barData = [
+    { name: 'A-01', value: 8.5 }, { name: 'B-05', value: 12.3 },
+    { name: 'C-12', value: 5.7 }, { name: 'D-03', value: 9.1 },
+    { name: 'E-08', value: 6.8 }, { name: 'F-02', value: 14.2 },
+    { name: 'G-04', value: 7.9 }, { name: 'H-09', value: 10.4 },
+  ]
+
   const option = {
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#e2e8f0',
       borderWidth: 1,
-      textStyle: {
-        color: '#374151'
-      }
+      textStyle: { color: '#374151' }
+    },
+    legend: {
+      data: ['新增隐患点', '日均监测(次)'],
+      bottom: 0,
+      textStyle: { color: '#6b7280', fontSize: 14 }
     },
     grid: {
       left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '10%',
+      right: '6%',
+      bottom: '12%',
+      top: '12%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
-      boundaryGap: false,
+      boundaryGap: true,
       data: hazardTrendData.value.months,
-      axisLine: {
-        lineStyle: {
-          color: '#e2e8f0'
-        }
-      },
-      axisLabel: {
-        color: '#6b7280',
-        fontSize: 16
-      }
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      axisLabel: { color: '#6b7280', fontSize: 14 }
     },
-    yAxis: {
-      type: 'value',
-      name: '新增隐患点',
-      nameTextStyle: {
-        color: '#6b7280',
-        fontSize: 16
+    yAxis: [
+      {
+        type: 'value',
+        name: '新增隐患点',
+        nameTextStyle: { color: '#6b7280', fontSize: 14 },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#6b7280', fontSize: 14 },
+        splitLine: { lineStyle: { color: '#f3f4f6' } }
       },
-      axisLine: {
-        show: false
-      },
-      axisTick: {
-        show: false
-      },
-      axisLabel: {
-        color: '#6b7280',
-        fontSize: 16
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#f3f4f6'
-        }
+      {
+        type: 'value',
+        name: '日均监测(次)',
+        nameTextStyle: { color: '#fa8c16', fontSize: 14 },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#6b7280', fontSize: 14 },
+        splitLine: { show: false }
       }
-    },
+    ],
     series: [
       {
         name: '新增隐患点',
@@ -793,15 +795,8 @@ const initHazardTrendChart = () => {
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: {
-          width: 3,
-          color: '#6366f1'
-        },
-        itemStyle: {
-          color: '#6366f1',
-          borderColor: '#fff',
-          borderWidth: 2
-        },
+        lineStyle: { width: 3, color: '#6366f1' },
+        itemStyle: { color: '#6366f1', borderColor: '#fff', borderWidth: 2 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             {offset: 0, color: 'rgba(99, 102, 241, 0.3)'},
@@ -809,6 +804,23 @@ const initHazardTrendChart = () => {
           ])
         },
         data: hazardTrendData.value.values
+      },
+      {
+        type: 'bar',
+        name: '日均监测(次)',
+        yAxisIndex: 1,
+        barWidth: '50%',
+        itemStyle: {
+          borderRadius: [4, 4, 0, 0],
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#fa8c16' },
+            { offset: 1, color: '#ffd591' }
+          ])
+        },
+        data: hazardTrendData.value.months.map(m => {
+          const found = barData.find(b => b.name.includes(m.slice(5)))
+          return found ? found.value : null
+        })
       }
     ]
   }
@@ -824,6 +836,7 @@ const initAlarmTrendChart = () => {
   const option = {
     tooltip: {
       trigger: 'axis',
+      confine: true,
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#e2e8f0',
       borderWidth: 1,
@@ -1320,7 +1333,7 @@ const trendAreaPath = computed(() => {
   background: rgba(255, 255, 255, 0.8);
   border-radius: 8px;
   overflow: hidden;
-  min-height: 320px;
+  min-height: 380px;
 }
 
 .panel-header {
@@ -1355,6 +1368,7 @@ const trendAreaPath = computed(() => {
   height: 100%;
   min-height: 250px;
 }
+
 
 .panel-section {
   background: rgba(255, 255, 255, 0.7);
