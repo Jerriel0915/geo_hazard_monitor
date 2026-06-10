@@ -1,5 +1,5 @@
 <template>
-  <div class="service-status-view">
+  <div class="page service-status-view">
     <!-- 无权限 -->
     <div v-if="!canViewMqtt" class="no-permission">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
@@ -12,7 +12,12 @@
 
     <!-- 管理员 -->
     <template v-if="canViewMqtt">
-      <div class="page-title">MQTT监控</div>
+      <div class="header">
+        <div class="header__left">
+          <h2 class="header__title">MQTT监控</h2>
+          <span class="header__subtitle">Broker 运行状态、数据日志与在线客户端管理</span>
+        </div>
+      </div>
 
       <div class="tabs-row">
         <span class="tab-item" :class="{ active: activeTab === 'status' }" @click="switchTab('status')">MQTT状态</span>
@@ -23,8 +28,9 @@
       </div>
 
       <!-- MQTT状态 -->
-      <div v-show="activeTab === 'status'" class="tab-content">
-        <div class="status-grid">
+      <div v-show="activeTab === 'status'" class="tab-content table-wrap">
+        <div class="table-wrap__scroll">
+          <div class="status-grid">
           <div class="status-cell">
             <span class="sc-label">Broker 状态</span>
             <span class="sc-value">
@@ -95,10 +101,12 @@
           </div>
         </div>
       </div>
+      </div>
 
-      <!-- 数据日志（暂无接口，保留mock） -->
-      <div v-show="activeTab === 'log'" class="tab-content">
-        <div class="query-bar">
+      <!-- 数据日志 -->
+      <div v-show="activeTab === 'log'" class="tab-content table-wrap">
+        <div class="table-wrap__scroll">
+          <div class="query-bar">
           <div class="query-item">
             <label>Client ID</label>
             <input v-model="logQuery.clientId" type="text" placeholder="请输入 Client ID"/>
@@ -108,132 +116,110 @@
             <input v-model="logQuery.topic" type="text" placeholder="请输入主题"/>
           </div>
           <div class="query-actions">
-            <button class="btn-query" @click="handleLogSearch">查询</button>
-            <button class="btn-reset" @click="handleLogReset">重置</button>
+            <el-button type="primary" @click="handleLogSearch">查询</el-button>
+            <el-button @click="handleLogReset">重置</el-button>
           </div>
         </div>
-        <table class="data-table">
-          <thead>
-          <tr>
-            <th style="width:60px;">序号</th>
-            <th style="width:160px;">接收时间</th>
-            <th style="width:140px;">Client ID</th>
-            <th style="width:100px;">用户名</th>
-            <th style="width:160px;">主题</th>
-            <th>消息内容</th>
-            <th style="width:80px;">大小</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="(log, index) in logs" :key="(logPage - 1) * logPageSize + index">
-            <td>{{ (logPage - 1) * logPageSize + index + 1 }}</td>
-            <td>{{ formatTimestamp(log.receiveTime) }}</td>
-            <td><code>{{ log.clientId || '-' }}</code></td>
-            <td>{{ log.username }}</td>
-            <td><code>{{ log.topic }}</code></td>
-            <td class="log-message-cell" :title="log.payload">{{ log.payload }}</td>
-            <td>{{ fmtBytes(log.payloadSize) }}</td>
-          </tr>
-          <tr v-if="logs.length === 0">
-            <td colspan="7" class="empty-row">{{ logsLoading ? '加载中...' : '暂无数据' }}</td>
-          </tr>
-          </tbody>
-        </table>
-        <div class="pagination-row" v-if="logTotal > logPageSize">
-          <span class="page-info">共 {{ logTotal }} 条</span>
-          <div class="page-btns">
-            <button :disabled="logPage <= 1" @click="logPage--; fetchLogs()">上一页</button>
-            <span class="page-num">{{ logPage }} / {{ Math.ceil(logTotal / logPageSize) }}</span>
-            <button :disabled="logPage >= Math.ceil(logTotal / logPageSize)" @click="logPage++; fetchLogs()">
-              下一页
-            </button>
-          </div>
-        </div>
+        <el-table :data="logs" border stripe v-loading="logsLoading">
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column label="接收时间" min-width="170" align="center">
+            <template #default="{ row }">{{ formatTimestamp(row.receiveTime) }}</template>
+          </el-table-column>
+          <el-table-column label="Client ID" min-width="150" align="center">
+            <template #default="{ row }"><code>{{ row.clientId || '-' }}</code></template>
+          </el-table-column>
+          <el-table-column prop="username" label="用户名" width="110" align="center" />
+          <el-table-column label="主题" min-width="170" align="center">
+            <template #default="{ row }"><code>{{ row.topic }}</code></template>
+          </el-table-column>
+          <el-table-column label="消息内容" min-width="200">
+            <template #default="{ row }"><span class="log-message-cell" :title="row.payload">{{ row.payload }}</span></template>
+          </el-table-column>
+          <el-table-column label="大小" width="80" align="center">
+            <template #default="{ row }">{{ fmtBytes(row.payloadSize) }}</template>
+          </el-table-column>
+        </el-table>
       </div>
+      <div class="table-wrap__pagination" v-if="logTotal > 0">
+        <el-pagination
+          v-model:current-page="logPage"
+          v-model:page-size="logPageSize"
+          :total="logTotal"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="fetchLogs"
+          @current-change="fetchLogs"
+        />
+      </div>
+    </div>
 
       <!-- 在线客户端 -->
-      <div v-show="activeTab === 'clients'" class="tab-content">
-        <div class="client-toolbar" v-if="clients.length > 0">
-          <label class="select-all">
-            <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll"/>
-            <span>全选</span>
-          </label>
-          <button
-              class="btn-batch-kick"
+      <div v-show="activeTab === 'clients'" class="tab-content table-wrap">
+        <div class="table-wrap__scroll">
+          <div class="client-toolbar" v-if="clients.length > 0">
+          <el-button
+              type="danger"
               :disabled="selectedClientIds.length === 0"
               @click="handleBatchKick"
+              size="small"
           >
             批量踢出 {{ selectedClientIds.length ? '(' + selectedClientIds.length + ')' : '' }}
-          </button>
+          </el-button>
         </div>
-        <table class="data-table">
-          <thead>
-          <tr>
-            <th style="width:40px;">
-              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll"/>
-            </th>
-            <th style="width:55px;">序号</th>
-            <th style="width:170px;">Client ID</th>
-            <th style="width:100px;">用户名</th>
-            <th style="width:130px;">IP 地址</th>
-            <th style="width:160px;">连接时间</th>
-            <th style="width:130px;">设备名称</th>
-            <th style="width:120px;">隐患点</th>
-            <th style="width:120px;">操作</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="(client, index) in clients" :key="client.clientId">
-            <td>
-              <input type="checkbox" :checked="selectedClientIds.includes(client.clientId)"
-                     @change="toggleSelect(client.clientId)"/>
-            </td>
-            <td>{{ (clientPage - 1) * clientPageSize + index + 1 }}</td>
-            <td><code>{{ client.clientId }}</code></td>
-            <td>{{ client.username }}</td>
-            <td>{{ client.ipAddress }}:{{ client.port }}</td>
-            <td>{{ formatTimestamp(client.connectedAt) }}</td>
-            <td>{{ client.deviceName || '-' }}</td>
-            <td>{{ client.hazardPointName || '-' }}</td>
-            <td>
-              <div class="row-actions">
-                <button class="btn-detail" @click="openClientDetail(client)">详情</button>
-                <button class="btn-kick" @click="handleKickClient(client)">踢出</button>
+        <el-table
+          :data="clients"
+          border
+          stripe
+          v-loading="clientsLoading"
+          @selection-change="handleClientSelectionChange"
+        >
+          <el-table-column type="selection" width="50" align="center" />
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column label="Client ID" min-width="170" align="center">
+            <template #default="{ row }"><code>{{ row.clientId }}</code></template>
+          </el-table-column>
+          <el-table-column prop="username" label="用户名" width="110" align="center" />
+          <el-table-column label="IP 地址" min-width="130" align="center">
+            <template #default="{ row }">{{ row.ipAddress }}:{{ row.port }}</template>
+          </el-table-column>
+          <el-table-column label="连接时间" min-width="170" align="center">
+            <template #default="{ row }">{{ formatTimestamp(row.connectedAt) }}</template>
+          </el-table-column>
+          <el-table-column label="设备名称" width="130" align="center">
+            <template #default="{ row }">{{ row.deviceName || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="隐患点" width="130" align="center">
+            <template #default="{ row }">{{ row.hazardPointName || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="200" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="op-cell">
+                <el-button type="primary" text size="small" @click="openClientDetail(row)">详情</el-button>
+                <el-button type="danger" text size="small" @click="handleKickClient(row)">踢出</el-button>
               </div>
-            </td>
-          </tr>
-          <tr v-if="clients.length === 0">
-            <td colspan="9" class="empty-row">{{ clientsLoading ? '加载中...' : '暂无在线客户端' }}</td>
-          </tr>
-          </tbody>
-        </table>
-        <div class="pagination-row" v-if="clientTotal > clientPageSize">
-          <span class="page-info">共 {{ clientTotal }} 条</span>
-          <div class="page-btns">
-            <button :disabled="clientPage <= 1" @click="clientPage--; fetchClients()">上一页</button>
-            <span class="page-num">{{ clientPage }} / {{ Math.ceil(clientTotal / clientPageSize) }}</span>
-            <button :disabled="clientPage >= Math.ceil(clientTotal / clientPageSize)"
-                    @click="clientPage++; fetchClients()">下一页
-            </button>
-          </div>
+            </template>
+          </el-table-column>
+        </el-table>
         </div>
+      <div class="table-wrap__pagination" v-if="clientTotal > 0">
+        <el-pagination
+          v-model:current-page="clientPage"
+          v-model:page-size="clientPageSize"
+          :total="clientTotal"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="fetchClients"
+          @current-change="fetchClients"
+        />
+      </div>
       </div>
     </template>
 
     <!-- 客户端详情弹窗 -->
-    <div v-if="detailVisible" class="dialog-overlay" @click.self="detailVisible = false">
-      <div class="dialog-panel">
-        <div class="dialog-header">
-          <span class="dialog-title">客户端详情</span>
-          <button class="dialog-close" @click="detailVisible = false">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" width="20" height="20">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="dialog-body" v-if="detailLoading">加载中...</div>
-        <div class="dialog-body" v-else-if="detailInfo">
+    <el-dialog v-model="detailVisible" title="客户端详情" width="640px" destroy-on-close>
+      <div v-if="detailLoading" style="text-align:center;padding:40px 0;color:#94a3b8">加载中...</div>
+      <div v-else-if="detailInfo" class="table-wrap">
+        <div class="table-wrap__scroll">
           <table class="info-table">
             <tbody>
             <tr>
@@ -292,7 +278,7 @@
           </table>
         </div>
       </div>
-    </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -415,7 +401,7 @@ onUnmounted(() => {
 // ===== 数据日志 =====
 const logQuery = ref({clientId: '', topic: ''})
 const logPage = ref(1)
-const logPageSize = 10
+const logPageSize = ref(10)
 const logTotal = ref(0)
 const logs = ref<MqttMessageLogItem[]>([])
 const logsLoading = ref(false)
@@ -425,7 +411,7 @@ const fetchLogs = async () => {
   try {
     const res = await getMqttMessages({
       page: logPage.value,
-      pageSize: logPageSize,
+      pageSize: logPageSize.value,
       clientId: logQuery.value.clientId || undefined,
       topic: logQuery.value.topic || undefined
     })
@@ -454,14 +440,14 @@ const handleLogReset = () => {
 // ===== 在线客户端 =====
 const clients = ref<MqttClientItem[]>([])
 const clientPage = ref(1)
-const clientPageSize = 20
+const clientPageSize = ref(20)
 const clientTotal = ref(0)
 const clientsLoading = ref(false)
 
 const fetchClients = async () => {
   clientsLoading.value = true
   try {
-    const res = await getMqttClients({page: clientPage.value, limit: clientPageSize})
+    const res = await getMqttClients({page: clientPage.value, limit: clientPageSize.value})
     const data = res.data
     clients.value = data?.list ?? []
     clientTotal.value = data?.totalRow ?? 0
@@ -474,25 +460,8 @@ const fetchClients = async () => {
 
 const selectedClientIds = ref<string[]>([])
 
-const isAllSelected = computed(() => {
-  return clients.value.length > 0 && selectedClientIds.value.length === clients.value.length
-})
-
-const toggleSelectAll = () => {
-  if (isAllSelected.value) {
-    selectedClientIds.value = []
-  } else {
-    selectedClientIds.value = clients.value.map(c => c.clientId)
-  }
-}
-
-const toggleSelect = (clientId: string) => {
-  const idx = selectedClientIds.value.indexOf(clientId)
-  if (idx > -1) {
-    selectedClientIds.value.splice(idx, 1)
-  } else {
-    selectedClientIds.value.push(clientId)
-  }
+const handleClientSelectionChange = (rows: MqttClientItem[]) => {
+  selectedClientIds.value = rows.map(c => c.clientId)
 }
 
 const handleBatchKick = async () => {
@@ -543,13 +512,9 @@ const openClientDetail = async (client: MqttClientItem) => {
 
 <style scoped>
 .service-status-view {
-  min-height: 100%;
   background: transparent;
-  padding: 20px 0 0 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 无权限 */
 .no-permission {
   display: flex;
   flex-direction: column;
@@ -561,22 +526,13 @@ const openClientDetail = async (client: MqttClientItem) => {
   font-size: 16px;
 }
 
-/* 标题 */
-.page-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1e293b;
-  padding: 4px 0 16px 12px;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 16px;
-}
-
 /* 标签页 */
 .tabs-row {
   display: flex;
   gap: 0;
   border-bottom: 2px solid #e2e8f0;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .tab-item {
@@ -775,87 +731,6 @@ const openClientDetail = async (client: MqttClientItem) => {
   padding-bottom: 0;
 }
 
-.btn-query {
-  height: 32px;
-  padding: 0 16px;
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-query:hover {
-  background: #2563eb;
-}
-
-.btn-reset {
-  height: 32px;
-  padding: 0 16px;
-  background: #fff;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-reset:hover {
-  background: #f1f5f9;
-  color: #334155;
-}
-
-/* 数据表格 */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  padding: 10px 20px;
-  text-align: left;
-  font-size: 14px;
-  color: #64748b;
-  font-weight: 600;
-  background: #f8fafc;
-  border-bottom: 2px solid #e2e8f0;
-  white-space: nowrap;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.data-table td {
-  padding: 10px 20px;
-  font-size: 14px;
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: middle;
-}
-
-.data-table tbody tr:hover {
-  background: #f8fafc;
-}
-
-.data-table code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 12px;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #6366f1;
-  word-break: break-all;
-}
-
-.empty-row {
-  text-align: center;
-  color: #94a3b8;
-  padding: 40px 0 !important;
-}
-
 .log-message-cell {
   max-width: 260px;
   overflow: hidden;
@@ -874,197 +749,7 @@ const openClientDetail = async (client: MqttClientItem) => {
   border-bottom: 1px solid #e2e8f0;
 }
 
-.select-all {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #64748b;
-  cursor: pointer;
-  user-select: none;
-}
-
-.select-all input[type="checkbox"],
-.data-table input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #3b82f6;
-}
-
-.btn-batch-kick {
-  height: 32px;
-  padding: 0 16px;
-  background: #fff;
-  color: #ef4444;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-batch-kick:hover:not(:disabled) {
-  background: #fef2f2;
-  border-color: #ef4444;
-}
-
-.btn-batch-kick:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.row-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.btn-detail {
-  height: 28px;
-  padding: 0 12px;
-  background: #fff;
-  color: #3b82f6;
-  border: 1px solid #bfdbfe;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn-detail:hover {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.btn-kick {
-  height: 28px;
-  padding: 0 12px;
-  background: #fff;
-  color: #ef4444;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn-kick:hover {
-  background: #fef2f2;
-  border-color: #ef4444;
-}
-
 /* 分页 */
-.pagination-row {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.page-info {
-  font-size: 13px;
-  color: #94a3b8;
-}
-
-.page-btns {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.page-btns button {
-  height: 28px;
-  padding: 0 10px;
-  background: #fff;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.page-btns button:hover:not(:disabled) {
-  background: #f1f5f9;
-  color: #334155;
-}
-
-.page-btns button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.page-num {
-  font-size: 13px;
-  color: #64748b;
-}
-
-/* 详情弹窗 */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.dialog-panel {
-  width: 600px;
-  max-height: 70vh;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-}
-
-.dialog-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.dialog-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.dialog-close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.05);
-  border: none;
-  border-radius: 8px;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.dialog-close:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #374151;
-}
-
-.dialog-body {
-  padding: 20px;
-  overflow-y: auto;
-}
-
 .topic-list {
   display: flex;
   flex-direction: column;

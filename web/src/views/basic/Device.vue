@@ -1,114 +1,104 @@
 <template>
-  <div class="device-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">设备管理</h2>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">设备管理</h2>
+        <span class="header__subtitle">监测设备全生命周期管理与传感器配置</span>
       </div>
-      <div class="header-right">
-        <el-button type="primary" @click="handleAdd">
-          <span class="btn-icon">+</span> 新增
-        </el-button>
-        <el-button @click="handleExport">
-          <span class="btn-icon">↓</span> 导出
-        </el-button>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">+ 新增</el-button>
+        <el-button @click="handleExport">导出</el-button>
       </div>
     </div>
 
-    <div class="search-bar">
+    <div class="search">
       <el-input
           v-model="searchKeyword"
           placeholder="搜索编号或名称"
-          class="search-input"
           clearable
           @clear="handleSearch"
           @keyup.enter="handleSearch"
-      >
-        <template #prefix>
-          <el-icon class="search-icon">
-            <Search/>
-          </el-icon>
-        </template>
-      </el-input>
-      <el-select v-model="searchStatus" placeholder="设备状态" clearable class="status-select">
+      />
+      <el-select v-model="searchStatus" placeholder="设备状态" clearable>
         <el-option label="正常" :value="1" />
         <el-option label="故障" :value="2" />
         <el-option label="维修" :value="3" />
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
-      <!--      <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>-->
     </div>
 
-    <div class="table-container">
-      <el-table
-          :data="tableData"
-          border
-          stripe
-          v-loading="loading"
-          :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
-      >
-        <el-table-column label="图标" width="80" align="center">
-          <template #default="{ row }">
-            <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="code" label="编号" width="150" align="center" />
-        <el-table-column prop="name" label="名称" min-width="180" align="center" />
-        <el-table-column prop="sn" label="SN" width="160" align="center">
-          <template #default="{ row }">
-            <span>{{ row.sn || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
-          <template #default="{ row }">
-            <span>{{ row.authUsername || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="statusName" label="设备状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="在线状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.onlineStatus === 1 ? 'success' : 'info'" effect="plain">
-              {{ row.onlineStatus === 1 ? '在线' : '离线' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="lastReportTime" label="最近上报" width="180" align="center">
-          <template #default="{ row }">
-            <span v-if="row.lastReportTime">{{ row.lastReportTime }}</span>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
-        <el-table-column label="操作" width="200" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="op-cell">
-              <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
-              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
-                <el-button type="primary" text size="small">更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="account">账号</el-dropdown-item>
-                    <el-dropdown-item command="maintenance">运维</el-dropdown-item>
-                    <el-dropdown-item command="sensors">传感器</el-dropdown-item>
-                    <el-dropdown-item command="copy">复制</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
-                      <span style="color: #f56c6c">删除</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table
+            :data="tableData"
+            border
+            stripe
+            v-loading="loading"
+        >
+          <el-table-column label="图标" width="80" align="center">
+            <template #default="{ row }">
+              <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="code" label="编号" width="130" align="center" />
+          <el-table-column prop="name" label="名称" min-width="160" align="center" />
+          <el-table-column prop="sn" label="SN" min-width="160" align="center">
+            <template #default="{ row }">
+              <span>{{ row.sn || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
+            <template #default="{ row }">
+              <span>{{ row.authUsername || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="statusName" label="设备状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="在线状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.onlineStatus === 1 ? 'success' : 'info'" effect="plain">
+                {{ row.onlineStatus === 1 ? '在线' : '离线' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="lastReportTime" label="最近上报" min-width="170" align="center">
+            <template #default="{ row }">
+              <span v-if="row.lastReportTime">{{ row.lastReportTime }}</span>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" min-width="170" align="center" />
+          <el-table-column label="操作" width="200" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="op-cell">
+                <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+                <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                  <el-button type="primary" text size="small">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="account">账号</el-dropdown-item>
+                      <el-dropdown-item command="maintenance">运维</el-dropdown-item>
+                      <el-dropdown-item command="sensors">传感器</el-dropdown-item>
+                      <el-dropdown-item command="copy">复制</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>
+                        <span style="color: #f56c6c">删除</span>
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
-      <div class="pagination-container">
+      <div class="table-wrap__pagination">
         <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -1668,60 +1658,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.device-page {
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  min-height: calc(100% - 40px);
-}
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
 
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-}
 
-.header-right {
-  display: flex;
-  gap: 10px;
-}
 
-.btn-icon {
-  margin-right: 4px;
-}
 
-.search-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-}
 
-.search-input {
-  width: 250px;
-}
 
-.search-icon {
-  font-size: 14px;
-}
 
-.status-select,
-.run-status-select {
-  width: 120px;
-}
 
-.table-container {
-  background: #fff;
-}
 
 .table-icon {
   width: 28px;
@@ -1729,23 +1674,9 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.empty-text {
-  color: #909399;
-}
 
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
 
-.danger-text {
-  color: #f56c6c !important;
-}
 
-.danger-text:hover {
-  color: #f56c6c !important;
-}
 
 .divider-title {
   font-size: 14px;
@@ -1932,4 +1863,5 @@ onMounted(() => {
   color: #909399;
   font-style: italic;
 }
+
 </style>

@@ -12,7 +12,15 @@
       "Read(//d/Code/Projects/geo_hazard_monitor/.claude/**)",
       "Read(//d/Code/Projects/geo_hazard_monitor/**)",
       "mcp__context7__query-docs",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(python3 _temp_replace.py)",
+      "Bash(python3)",
+      "Bash(git checkout *)",
+      "Bash(python3 _trim_styles.py)",
+      "Bash(awk '/^[[:space:]]*<div/{d++} /^[[:space:]]*<\\\\/div>/{d--; if\\(d<0\\) print \"MISMATCH at line \" NR \": depth=\" d} /^[[:space:]]*<\\\\/template>/{t--; if\\(t<0\\) print \"TEMPLATE MISMATCH at line \" NR} /^[[:space:]]*<template/{if\\($0 !~ /#/\\){t++}} END{print \"div balance: \" d \", template balance: \" t}' src/views/iot/ServiceStatus.vue)",
+      "Bash(npx vite *)",
+      "Bash(python3 _fix_clients.py)",
+      "Bash(python3 _cleanup_svc.py)"
     ]
   }
 }
