@@ -22,6 +22,7 @@
         <result property="iconPath" column="icon_path"/>
         <result property="status" column="status"/>
         <result property="onlineStatus" column="online_status"/>
+        <result property="sensorCount" column="sensor_count"/>
         <result property="lastReportTime" column="last_report_time"/>
         <result property="registeredAt" column="registered_at"/>
         <result property="lastAuthTime" column="last_auth_time"/>
@@ -53,6 +54,7 @@
                d.icon_path,
                d.status,
                dos.status AS online_status,
+               COALESCE(sc.sensor_count, 0) AS sensor_count,
                d.last_report_time,
                d.registered_at,
                d.last_auth_time,
@@ -72,6 +74,10 @@
                    END AS statusName
         FROM device d
                  LEFT JOIN device_online_status dos ON dos.device_id = d.id
+                 LEFT JOIN (SELECT device_id, COUNT(*) AS sensor_count
+                            FROM device_sensor
+                            WHERE del_flag = 0
+                            GROUP BY device_id) sc ON sc.device_id = d.id
     </sql>
 
     <!-- ==================== 查询操作 ==================== -->

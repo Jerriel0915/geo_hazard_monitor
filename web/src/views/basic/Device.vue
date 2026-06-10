@@ -44,6 +44,27 @@
           </el-table-column>
           <el-table-column prop="code" label="编号" width="130" align="center" />
           <el-table-column prop="name" label="名称" min-width="160" align="center" />
+          <el-table-column label="传感器数量" width="110" align="center">
+            <template #default="{ row }">
+              <el-tooltip
+                  :content="row.sensorCount != null ? `查看 ${row.name} 的传感器配置` : `为 ${row.name} 配置传感器`"
+                  placement="top"
+              >
+                <span
+                    class="sensor-count-cell"
+                    :class="{
+                    'is-active': row.sensorCount != null && row.sensorCount > 0,
+                    'is-zero': row.sensorCount === 0
+                  }"
+                    @click="handleOpenSensorsFromList(row)"
+                >
+                  <el-icon v-if="row.sensorCount != null && row.sensorCount > 0" class="cell-icon"><Cpu/></el-icon>
+                  <span v-if="row.sensorCount != null">{{ row.sensorCount }}</span>
+                  <span v-else>—</span>
+                </span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
           <el-table-column prop="sn" label="SN" min-width="160" align="center">
             <template #default="{ row }">
               <span>{{ row.sn || '-' }}</span>
@@ -51,12 +72,26 @@
           </el-table-column>
           <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
             <template #default="{ row }">
-              <span>{{ row.authUsername || '-' }}</span>
+              <el-tooltip
+                  v-if="row.authUsername"
+                  :content="`查看 ${row.name} 的接入账号`"
+                  placement="top"
+              >
+                <span class="link-cell" @click="handleOpenAccountFromList(row)">
+                  <el-icon class="link-icon"><User/></el-icon>
+                  <span>{{ row.authUsername }}</span>
+                </span>
+              </el-tooltip>
+              <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="statusName" label="设备状态" width="90" align="center">
+          <el-table-column prop="statusName" label="设备状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
+              <el-tooltip :content="`对 ${row.name} 进行运维操作`" placement="top">
+                <span class="status-cell" @click="handleOpenMaintenanceFromList(row)">
+                  <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
+                </span>
+              </el-tooltip>
             </template>
           </el-table-column>
           <el-table-column label="在线状态" width="90" align="center">
@@ -379,47 +414,47 @@
         </el-tab-pane>
 
         <el-tab-pane label="运维记录" name="operation">
-          <el-tabs v-model="operationTab" type="card">
-            <el-tab-pane label="上下线记录" name="online">
-              <el-table :data="onlineLogs" border size="small" max-height="400">
-                <el-table-column prop="eventTime" label="时间" width="170"/>
-                <el-table-column prop="eventType" label="类型" width="80">
-                  <template #default="{row}">
-                    <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
-                        row.eventType
-                      }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="clientId" label="Client ID" min-width="160"/>
-                <el-table-column prop="clientIp" label="IP" width="140"/>
-                <el-table-column prop="reason" label="原因" min-width="120"/>
-              </el-table>
-            </el-tab-pane>
-            <el-tab-pane label="维修记录" name="maintenance">
-              <el-table :data="maintenanceLogs" border size="small" max-height="400">
-                <el-table-column label="操作" width="80">
-                  <template #default="{row}">
-                    <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
-                            size="small">
-                      {{ row.statusText }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column label="状态变化" width="110">
-                  <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
-                      getStatusLabel(row.newStatus)
+          <div class="ops-section">
+            <div class="ops-section__title">运行状态变更</div>
+            <el-table :data="onlineLogs" border size="small" max-height="400">
+              <el-table-column prop="eventTime" label="时间" width="170"/>
+              <el-table-column prop="eventType" label="类型" width="80">
+                <template #default="{row}">
+                  <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
+                      row.eventType
                     }}
-                  </template>
-                </el-table-column>
-                <el-table-column prop="operatorName" label="操作人" width="90"/>
-                <el-table-column prop="operatorPhone" label="电话" width="120"/>
-                <el-table-column prop="operationDate" label="操作日期" width="160"/>
-                <el-table-column prop="createTime" label="记录时间" width="160"/>
-                <el-table-column prop="description" label="描述" min-width="120"/>
-              </el-table>
-            </el-tab-pane>
-          </el-tabs>
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="clientId" label="Client ID" min-width="160"/>
+              <el-table-column prop="clientIp" label="IP" width="140"/>
+              <el-table-column prop="reason" label="原因" min-width="120"/>
+            </el-table>
+          </div>
+          <div class="ops-section">
+            <div class="ops-section__title">维修记录</div>
+            <el-table :data="maintenanceLogs" border size="small" max-height="400">
+              <el-table-column label="操作" width="80">
+                <template #default="{row}">
+                  <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
+                          size="small">
+                    {{ row.statusText }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态变化" width="110">
+                <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
+                    getStatusLabel(row.newStatus)
+                  }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="operatorName" label="操作人" width="90"/>
+              <el-table-column prop="operatorPhone" label="电话" width="120"/>
+              <el-table-column prop="operationDate" label="操作日期" width="160"/>
+              <el-table-column prop="createTime" label="记录时间" width="160"/>
+              <el-table-column prop="description" label="描述" min-width="120"/>
+            </el-table>
+          </div>
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
@@ -624,7 +659,7 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {Search} from '@element-plus/icons-vue'
+import {Cpu, User} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import L from 'leaflet'
@@ -738,7 +773,6 @@ const detailDialogVisible = ref(false)
 const detailPwdVisible = ref(false)
 const currentRow = ref<DeviceItem | null>(null)
 const detailTab = ref('info')
-const operationTab = ref('online')
 const onlineLogs = ref<any[]>([])
 const maintenanceLogs = ref<any[]>([])
 const loadOpsLogs = async (deviceId: number) => {
@@ -1253,7 +1287,6 @@ const handleView = async (row: DeviceItem) => {
     currentRow.value = detail
     sensorList.value = detail.sensors || []
   }
-  operationTab.value = 'online'
   loadOpsLogs(Number(row.id))
   detailDialogVisible.value = true
 }
@@ -1463,6 +1496,24 @@ const handleConfigSensors = async (row: DeviceItem) => {
   currentSensorDevice.value = row
   await loadSensorTableData(Number(row.id))
   sensorDialogVisible.value = true
+}
+
+// 列表行内“传感器数量”单元格快捷入口：直接打开该设备的传感器配置弹窗
+const handleOpenSensorsFromList = async (row: DeviceItem) => {
+  if (!row.id) return
+  await handleConfigSensors(row)
+}
+
+// 列表行内“接入账号”单元格快捷入口：直接打开该设备的账号弹窗
+const handleOpenAccountFromList = async (row: DeviceItem) => {
+  if (!row.id) return
+  await handleViewAuth(row)
+}
+
+// 列表行内“设备状态”单元格快捷入口：直接打开该设备的运维弹窗
+const handleOpenMaintenanceFromList = (row: DeviceItem) => {
+  if (!row.id) return
+  handleMaintenance(row)
 }
 
 const loadSensorTableData = async (deviceId: number) => {
@@ -1888,6 +1939,112 @@ onMounted(() => {
 .picker-hint {
   color: #909399;
   font-style: italic;
+}
+
+/* 运维记录 - 上下线/维修 两块上下排列 */
+.ops-section {
+  margin-bottom: 18px;
+}
+
+.ops-section:last-child {
+  margin-bottom: 0;
+}
+
+.ops-section__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  border-left: 3px solid #1890ff;
+  padding-left: 8px;
+  background: #fafbfc;
+}
+
+/* 传感器数量单元格（列表行内可点击徽标） */
+.sensor-count-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 32px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #909399;
+  background: #f4f4f5;
+  border: 1px solid #e9e9eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.sensor-count-cell:hover {
+  background: #ecf5ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.sensor-count-cell.is-active {
+  color: #1890ff;
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.sensor-count-cell.is-active:hover {
+  background: #1890ff;
+  color: #fff;
+  border-color: #1890ff;
+}
+
+.sensor-count-cell.is-zero {
+  color: #909399;
+}
+
+.sensor-count-cell .cell-icon {
+  font-size: 12px;
+}
+
+/* 接入账号单元格（蓝色文字链接样式） */
+.link-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1890ff;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.link-cell:hover {
+  color: #096dd9;
+  background: #e6f7ff;
+  text-decoration: underline;
+}
+
+.link-cell .link-icon {
+  font-size: 13px;
+}
+
+/* 设备状态单元格（点击整行打开运维弹窗，hover 微微高亮） */
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.status-cell:hover {
+  background: #f5f7fa;
+  transform: scale(1.05);
+}
+
+.status-cell:hover :deep(.el-tag) {
+  filter: brightness(0.95);
 }
 
 </style>
