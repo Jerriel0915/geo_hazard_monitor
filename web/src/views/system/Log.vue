@@ -306,6 +306,7 @@ import axios from 'axios'
 import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {handleAuthFailure} from '@/utils/auth'
+import {getRequestErrorMessage} from '@/utils/errorHandler'
 
 type TabKey = 'operation' | 'auth' | 'runtime'
 type StreamStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -496,7 +497,8 @@ const fetchOperationLogs = async () => {
       ElMessage.error(response.data.msg || '获取操作日志失败')
     }
   } catch (error) {
-    ElMessage.error('获取操作日志失败')
+    console.error('获取操作日志失败:', error)
+    ElMessage.error(getRequestErrorMessage(error, '获取操作日志失败'))
   } finally {
     operationLoading.value = false
   }
@@ -523,7 +525,8 @@ const fetchAuthLogs = async () => {
       ElMessage.error(response.data.msg || '获取认证日志失败')
     }
   } catch (error) {
-    ElMessage.error('获取认证日志失败')
+    console.error('获取认证日志失败:', error)
+    ElMessage.error(getRequestErrorMessage(error, '获取认证日志失败'))
   } finally {
     authLoading.value = false
   }
@@ -550,7 +553,8 @@ const fetchRuntimeLogs = async () => {
       ElMessage.error(response.data.msg || '获取运行日志失败')
     }
   } catch (error) {
-    ElMessage.error('获取运行日志失败')
+    console.error('获取运行日志失败:', error)
+    ElMessage.error(getRequestErrorMessage(error, '获取运行日志失败'))
   } finally {
     runtimeLoading.value = false
   }

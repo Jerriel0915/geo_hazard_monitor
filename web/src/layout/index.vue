@@ -244,11 +244,11 @@
 </template>
 
 <script setup lang="ts">
-import { getTopNotices, markRead, markReadAll, type SysNotice } from '@/api/notice'
-import { loadPermissions } from '@/utils/permission'
-import { getAuthInfo, getUserInfo } from '@/utils/userApi'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
+import {loadPermissions} from '@/utils/permission'
+import {getAuthInfo, getUserInfo} from '@/utils/userApi'
+import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
 
 
 /** 通知消息（来自 SysNotice 后端） */
@@ -470,7 +470,7 @@ const menuLabelMap: Record<string, string> = {
   HazardPoint: '隐患点管理',
   MonitorType: '监测类型',
   Device: '设备管理',
-  VideoDevice: '视频设备管理',
+  VideoDevice: '视频设备',
   RealtimeAlarm: '待办告警',
   AlarmCriteria: '告警判据',
   AlarmNotification: '历史告警',

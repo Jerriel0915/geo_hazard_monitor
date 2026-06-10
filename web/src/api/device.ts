@@ -85,6 +85,9 @@ export interface DevicePageParams {
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
   const response = await promise
+    if (response && typeof response.code === 'number' && response.code !== 200) {
+        throw new Error(response.msg || '操作失败')
+    }
   return response.data
 }
 

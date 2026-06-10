@@ -1,6 +1,6 @@
 import request from '@/utils/request'
-import type { AjaxResult } from './system'
-import type { MonitorTypeItem } from './monitorType'
+import type {AjaxResult} from './system'
+import type {MonitorTypeItem} from './monitorType'
 
 export interface SensorAttrItem {
   id?: number
@@ -45,6 +45,9 @@ export interface SensorUpdatePayload {
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
   const response = await promise
+    if (response && typeof response.code === 'number' && response.code !== 200) {
+        throw new Error(response.msg || '操作失败')
+    }
   return response.data
 }
 
@@ -54,10 +57,8 @@ export const getDeviceSensors = (deviceId: number) =>
 export const getSensorDetail = (id: number) =>
   unwrap<SensorItem>(request.get(`/sensors/${id}`))
 
-export const createSensor = async (deviceId: number, payload: SensorCreatePayload) => {
-  const response = await request.post<AjaxResult<{ id: number }>>(`/devices/${deviceId}/sensors`, payload)
-  return response.data
-}
+export const createSensor = (deviceId: number, payload: SensorCreatePayload) =>
+    unwrap<{ id: number }>(request.post(`/devices/${deviceId}/sensors`, payload))
 
 export const updateSensor = (id: number, payload: SensorUpdatePayload) =>
   unwrap<null>(request.put(`/sensors/${id}`, payload))

@@ -1435,8 +1435,7 @@ const loadTableData = async () => {
       ElMessage.error(response.msg || '获取数据失败')
     }
   } catch (error) {
-    console.error('请求失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '加载隐患点失败')
   } finally {
     loading.value = false
   }
@@ -1739,7 +1738,7 @@ const handleRefresh = async () => {
     await Promise.all([loadTableData(), loadGroupList()])
     ElMessage.success('刷新成功')
   } catch (error) {
-    ElMessage.error('刷新失败')
+    showRequestErrorMessage(error, '刷新失败')
   } finally {
     refreshing.value = false
   }
@@ -1836,8 +1835,7 @@ const handleView = async (row: HazardPointItem) => {
       initDetailMap()
     })
   } catch (error) {
-    console.error('获取详情失败:', error)
-    ElMessage.error('获取详情失败')
+    showRequestErrorMessage(error, '获取详情失败')
   } finally {
     loading.value = false
   }
@@ -1948,8 +1946,7 @@ const handleDelete = async (row: any) => {
         ElMessage.error(res.msg || '删除失败')
       }
     } catch (error) {
-      console.error('删除失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '删除失败')
     } finally {
       loading.value = false
     }
@@ -1978,8 +1975,7 @@ const handleBatchDelete = async () => {
         ElMessage.error(res.msg || '批量删除失败')
       }
     } catch (error) {
-      console.error('批量删除失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量删除失败')
     } finally {
       loading.value = false
     }
@@ -2013,8 +2009,7 @@ const handleExportHazardPoints = async () => {
     downloadBlobFile(response.data, fileName)
     ElMessage.success(selectedIds.length > 0 ? '已按选中隐患点导出' : '已按当前筛选条件导出')
   } catch (error: any) {
-    console.error('导出失败:', error)
-    ElMessage.error(error?.message || '导出失败')
+    showRequestErrorMessage(error, '导出失败')
   }
 }
 
@@ -2043,8 +2038,7 @@ const handleSubmit = async () => {
           ElMessage.error(res.msg || '操作失败')
         }
       } catch (error: any) {
-        console.error('提交失败:', error)
-        ElMessage.error(error?.response?.data?.msg || error?.message || '网络请求失败')
+        showRequestErrorMessage(error, '提交失败')
       } finally {
         loading.value = false
       }
@@ -2071,8 +2065,7 @@ const handleTogglePause = async (row: HazardPointItem) => {
         ElMessage.error(res.msg || `${actionText}失败`)
       }
     } catch (error) {
-      console.error(`${actionText}失败:`, error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, `${actionText}失败`)
     } finally {
       loading.value = false
     }
@@ -2096,8 +2089,7 @@ const handleComplete = async (row: HazardPointItem) => {
         ElMessage.error(res.msg || '完结失败')
       }
     } catch (error) {
-      console.error('完结失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '完结失败')
     } finally {
       loading.value = false
     }
@@ -2386,8 +2378,7 @@ const transferToRight = async () => {
       ElMessage.error(response.msg || '绑定失败')
     }
   } catch (error) {
-    console.error('绑定失败:', error)
-    ElMessage.error('绑定失败')
+    showRequestErrorMessage(error, '绑定失败')
   } finally {
     bindLoading.value = false
   }
@@ -2413,8 +2404,7 @@ const transferToLeft = async () => {
       ElMessage.error(response.msg || '解绑失败')
     }
   } catch (error) {
-    console.error('解绑失败:', error)
-    ElMessage.error('解绑失败')
+    showRequestErrorMessage(error, '解绑失败')
   } finally {
     bindLoading.value = false
   }
@@ -2439,8 +2429,7 @@ const transferAllToRight = async () => {
       ElMessage.error(response.msg || '绑定失败')
     }
   } catch (error) {
-    console.error('绑定失败:', error)
-    ElMessage.error('绑定失败')
+    showRequestErrorMessage(error, '绑定失败')
   } finally {
     bindLoading.value = false
   }
@@ -2465,8 +2454,7 @@ const transferAllToLeft = async () => {
       ElMessage.error(response.msg || '解绑失败')
     }
   } catch (error) {
-    console.error('解绑失败:', error)
-    ElMessage.error('解绑失败')
+    showRequestErrorMessage(error, '解绑失败')
   } finally {
     bindLoading.value = false
   }
@@ -2845,8 +2833,8 @@ const queryChart = async (baseParams: Record<string, unknown>) => {
     ElMessage.success(`加载 ${series.length} 条曲线，共 ${series[0]?.labels.length || 0} 个数据点`)
     await nextTick()
     buildChartOptions()
-  } catch {
-    ElMessage.error('获取图表数据失败')
+  } catch (error) {
+    showRequestErrorMessage(error, '获取图表数据失败')
   }
 }
 
@@ -2865,8 +2853,8 @@ const queryPage = async (baseParams: Record<string, unknown>) => {
     })
     monitorDataList.value = res.rows || []
     ElMessage.success(`加载 ${monitorDataList.value.length} 条数据`)
-  } catch {
-    ElMessage.error('获取监测数据失败')
+  } catch (error) {
+    showRequestErrorMessage(error, '获取监测数据失败')
   }
 }
 
@@ -2898,8 +2886,7 @@ const handleBatchPause = async () => {
         ElMessage.error(res.msg || '批量停测失败')
       }
     } catch (error) {
-      console.error('批量停测失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量停测失败')
     }
   }).catch(() => {})
 }
@@ -2924,8 +2911,7 @@ const handleBatchResume = async () => {
         ElMessage.error(res.msg || '批量恢复失败')
       }
     } catch (error) {
-      console.error('批量恢复失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量恢复失败')
     }
   }).catch(() => {})
 }
@@ -2950,8 +2936,7 @@ const handleBatchComplete = async () => {
         ElMessage.error(res.msg || '批量完结失败')
       }
     } catch (error) {
-      console.error('批量完结失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量完结失败')
     }
   }).catch(() => {})
 }

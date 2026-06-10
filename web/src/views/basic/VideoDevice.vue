@@ -292,12 +292,13 @@
 </template>
 
 <script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
+import {Search} from '@element-plus/icons-vue'
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { nextTick, onMounted, reactive, ref } from 'vue'
+import {nextTick, onMounted, reactive, ref} from 'vue'
+import {getRequestErrorMessage} from '@/utils/errorHandler'
 
 // 获取token
 const getToken = () => localStorage.getItem('token')
@@ -471,7 +472,7 @@ const loadTableData = async () => {
     }
   } catch (error) {
     console.error('请求失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   } finally {
     loading.value = false
   }
@@ -515,7 +516,7 @@ const fetchDetail = async (id: string) => {
     }
   } catch (error) {
     console.error('获取详情失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
     return null
   }
 }
@@ -548,7 +549,7 @@ const createVideoDevice = async () => {
     }
   } catch (error) {
     console.error('新增失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   } finally {
     submitLoading.value = false
   }
@@ -580,7 +581,7 @@ const updateVideoDevice = async () => {
     }
   } catch (error) {
     console.error('修改失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   } finally {
     submitLoading.value = false
   }
@@ -602,7 +603,7 @@ const deleteVideoDevice = async (id: string) => {
     }
   } catch (error) {
     console.error('删除失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   }
 }
 
@@ -775,7 +776,8 @@ const handleBindSubmit = async () => {
     bindDialogVisible.value = false
     loadTableData() // 刷新列表
   } catch (error) {
-    ElMessage.error('关联失败')
+    console.error('关联失败:', error)
+    ElMessage.error(getRequestErrorMessage(error, '关联失败'))
   } finally {
     bindLoading.value = false
   }

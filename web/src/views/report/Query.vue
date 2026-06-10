@@ -128,16 +128,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import {computed, onMounted, ref} from 'vue'
+import {ElMessage} from 'element-plus'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 import {
-  getHazardPointOptions,
-  getDeviceTypeOptions,
-  getDeviceOptions,
-  getMonitorQueryData,
-  type HazardPointOption,
+  type DeviceOption,
   type DeviceTypeOption,
-  type DeviceOption
+  getDeviceOptions,
+  getDeviceTypeOptions,
+  getHazardPointOptions,
+  getMonitorQueryData,
+  type HazardPointOption
 } from '@/api/report'
 
 const loading = ref(false)
@@ -206,7 +207,7 @@ const loadOptions = async () => {
     hazardPointOptions.value = hps
     deviceTypeOptions.value = dts
   } catch (error) {
-    ElMessage.error('加载选项失败')
+    showRequestErrorMessage(error, '加载选项失败')
   }
 }
 
@@ -218,6 +219,7 @@ const loadDeviceOptions = async () => {
     })
     deviceOptions.value = devices
   } catch (error) {
+    console.error('加载设备选项失败:', error)
     deviceOptions.value = []
   }
 }
@@ -242,7 +244,7 @@ const handleQuery = async () => {
     tableData.value = data.rows || []
     total.value = data.total || 0
   } catch (error) {
-    ElMessage.error('查询失败')
+    showRequestErrorMessage(error, '查询失败')
   } finally {
     loading.value = false
   }

@@ -638,15 +638,15 @@ const applyAuthInfo = async () => {
 onMounted(async () => {
   try {
     await applyProfile()
-  } catch (error) {
+  } catch (error: any) {
     console.error('获取个人中心信息失败:', error)
-    ElMessage.error('获取个人中心信息失败')
+    ElMessage.error(error?.message || error?.response?.data?.msg || '获取个人中心信息失败')
     return
   }
 
   try {
     await applyAuthInfo()
-  } catch (error) {
+  } catch (error: any) {
     console.error('获取账号扩展信息失败:', error)
   }
 
