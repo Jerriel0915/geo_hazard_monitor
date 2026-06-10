@@ -1,12 +1,12 @@
 <template>
-  <div class="composite-alarm-page">
+  <div class="page">
     <!-- 页头 -->
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">综合告警</h2>
-        <span class="page-subtitle">高阶多参数综合告警策略管理</span>
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">综合告警</h2>
+        <span class="header__subtitle">高阶多参数综合告警策略管理</span>
       </div>
-      <div class="header-right">
+      <div class="header__right">
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增策略
         </el-button>
@@ -14,15 +14,15 @@
     </div>
 
     <!-- 搜索栏 -->
-    <div class="search-bar">
-      <el-input v-model="searchName" placeholder="搜索策略名称或描述" class="search-input" clearable @clear="loadData" @keyup.enter="loadData">
+    <div class="search">
+      <el-input v-model="searchName" placeholder="搜索策略名称或描述" class="search__input" clearable @clear="loadData" @keyup.enter="loadData">
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
-      <el-select v-model="searchStatus" placeholder="状态" clearable class="filter-select" @change="loadData">
+      <el-select v-model="searchStatus" placeholder="状态" clearable class="search__select" @change="loadData">
         <el-option label="已启用" value="ENABLED" />
         <el-option label="已停用" value="DISABLED" />
       </el-select>
-      <el-select v-model="searchTriggerMode" placeholder="触发方式" clearable class="filter-select" @change="loadData">
+      <el-select v-model="searchTriggerMode" placeholder="触发方式" clearable class="search__select" @change="loadData">
         <el-option label="周期触发" value="PERIODIC" />
         <el-option label="实时触发" value="REALTIME" />
       </el-select>
@@ -31,13 +31,13 @@
     </div>
 
     <!-- 卡片列表 -->
-    <div v-loading="loading" class="card-grid">
+    <div v-loading="loading" class="grid">
       <el-empty v-if="!loading && alarmList.length === 0" description="暂无综合告警策略" />
 
-      <div v-for="item in alarmList" :key="item.id" class="alarm-card" :class="{ 'is-disabled': item.status === 'DISABLED' }">
-        <div class="card-header">
-          <div class="card-title-row">
-            <h3 class="card-title">{{ item.name }}</h3>
+      <div v-for="item in alarmList" :key="item.id" class="card" :class="{ 'card--disabled': item.status === 'DISABLED' }">
+        <div class="card__header">
+          <div class="card__title-row">
+            <h3 class="card__title">{{ item.name }}</h3>
             <el-switch
               :model-value="item.status === 'ENABLED'"
               size="small"
@@ -46,37 +46,37 @@
               @change="(val: boolean) => handleToggleStatus(item, val)"
             />
           </div>
-          <p class="card-desc">{{ item.description }}</p>
+          <p class="card__desc">{{ item.description }}</p>
         </div>
 
-        <div class="card-meta">
-          <div class="meta-row">
+        <div class="card__meta">
+          <div class="card__meta-row">
             <el-tag :type="item.triggerMode === 'REALTIME' ? 'warning' : 'primary'" size="small" effect="plain">
               {{ item.triggerMode === 'REALTIME' ? '实时触发' : '周期触发' }}
             </el-tag>
             <span v-if="item.triggerMode === 'PERIODIC' && item.cronExpression" class="cron-text">{{ item.cronExpression }}</span>
           </div>
-          <div class="meta-row">
-            <span class="meta-label">静默:</span>
-            <span class="meta-value">{{ formatDuration(item.silenceSeconds || 0) }}</span>
-            <span class="meta-label" style="margin-left: 12px">持续:</span>
-            <span class="meta-value">{{ item.sustainSeconds ? formatDuration(item.sustainSeconds) : '未设置' }}</span>
+          <div class="card__meta-row">
+            <span class="card__meta-label">静默:</span>
+            <span class="card__meta-value">{{ formatDuration(item.silenceSeconds || 0) }}</span>
+            <span class="card__meta-label" style="margin-left: 12px">持续:</span>
+            <span class="card__meta-value">{{ item.sustainSeconds ? formatDuration(item.sustainSeconds) : '未设置' }}</span>
           </div>
-          <div class="meta-row">
-            <span class="meta-label">等级变化提醒:</span>
-            <span :class="['meta-value', item.levelChangeNotify ? 'text-success' : 'text-muted']">{{ item.levelChangeNotify ? '已开启' : '已关闭' }}</span>
+          <div class="card__meta-row">
+            <span class="card__meta-label">等级变化提醒:</span>
+            <span :class="['card__meta-value', item.levelChangeNotify ? 'text-success' : 'text-muted']">{{ item.levelChangeNotify ? '已开启' : '已关闭' }}</span>
           </div>
-          <div class="meta-row">
-            <span class="meta-label">应用范围:</span>
-            <span class="meta-value">{{ item.scopeCount || 0 }} 个隐患点</span>
+          <div class="card__meta-row">
+            <span class="card__meta-label">应用范围:</span>
+            <span class="card__meta-value">{{ item.scopeCount || 0 }} 个隐患点</span>
           </div>
-          <div v-if="item.lastRunTime" class="meta-row">
-            <span class="meta-label">最近运行:</span>
-            <span :class="['meta-value', getRunStatusClass(item.lastRunStatus)]">{{ item.lastRunTime }}</span>
+          <div v-if="item.lastRunTime" class="card__meta-row">
+            <span class="card__meta-label">最近运行:</span>
+            <span :class="['card__meta-value', getRunStatusClass(item.lastRunStatus)]">{{ item.lastRunTime }}</span>
           </div>
         </div>
 
-        <div class="card-footer">
+        <div class="card__footer">
           <el-button type="primary" text size="small" @click="handleEditScript(item)">
             <el-icon><Edit /></el-icon> 脚本
           </el-button>
@@ -97,7 +97,7 @@
     </div>
 
     <!-- 分页 -->
-    <div v-if="total > 0" class="pagination-wrap">
+    <div v-if="total > 0" class="pagination">
       <el-pagination
         v-model:current-page="pageNum"
         v-model:page-size="pageSize"
@@ -367,147 +367,12 @@ onMounted(() => loadData())
 </script>
 
 <style scoped>
-.composite-alarm-page {
-  padding: 20px;
+/* 页面特有覆盖 */
+.page {
   background: #f0f2f5;
-  min-height: calc(100vh - 60px);
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.header-left {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: #86909c;
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  background: #fff;
-  padding: 16px 20px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.search-input {
-  width: 260px;
-}
-
-.filter-select {
-  width: 140px;
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  gap: 16px;
-  min-height: 200px;
-}
-
-.alarm-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.2s, transform 0.15s;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid #e5e6eb;
-}
-
-.alarm-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.alarm-card.is-disabled {
-  opacity: 0.65;
-  background: #fafafa;
-}
-
-.card-header {
-  margin-bottom: 14px;
-}
-
-.card-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.card-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1d2129;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  margin-right: 12px;
-}
-
-.card-desc {
-  margin: 0;
-  font-size: 13px;
-  color: #86909c;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-meta {
-  flex: 1;
-  padding: 12px 0;
-  border-top: 1px solid #f2f3f5;
-  border-bottom: 1px solid #f2f3f5;
-}
-
-.meta-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 6px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.meta-row:last-child {
-  margin-bottom: 0;
-}
-
-.meta-label {
-  color: #86909c;
-  flex-shrink: 0;
-}
-
-.meta-value {
-  color: #4e5969;
-}
-
+/* 组件特有：等宽字体 Cron 文本 */
 .cron-text {
   font-family: 'Courier New', monospace;
   font-size: 12px;
@@ -515,31 +380,5 @@ onMounted(() => loadData())
   padding: 1px 6px;
   border-radius: 4px;
   color: #4e5969;
-}
-
-.text-success { color: #00b42a; }
-.text-danger { color: #f53f3f; }
-.text-warning { color: #ff7d00; }
-.text-muted { color: #c9cdd4; }
-
-.card-footer {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding-top: 12px;
-  flex-wrap: wrap;
-}
-
-.pagination-wrap {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding: 12px 0;
-}
-
-.form-hint {
-  margin-left: 8px;
-  font-size: 12px;
-  color: #86909c;
 }
 </style>

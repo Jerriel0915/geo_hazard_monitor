@@ -1,25 +1,42 @@
 <template>
-  <div class="hazard-point-page">
-    <div class="page-container">
+  <div class="page hazard-point-page">
+    <!-- 标题栏 -->
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">隐患点管理</h2>
+        <span class="header__subtitle">地质灾害隐患点基础信息维护</span>
+      </div>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">+ 新增</el-button>
+        <el-button type="danger" @click="handleBatchDelete" :disabled="selectedRows.length === 0" plain>批量删除</el-button>
+        <el-button @click="handleBatchPause" :disabled="selectedRows.length === 0" plain>停测</el-button>
+        <el-button @click="handleBatchResume" :disabled="selectedRows.length === 0" plain>恢复</el-button>
+        <el-button @click="handleBatchComplete" :disabled="selectedRows.length === 0" type="warning" plain>完结</el-button>
+        <el-button @click="handleExportHazardPoints" plain>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="margin-right:4px;vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 主体：左侧分组 + 右侧表格 -->
+    <div class="page-body">
       <div class="group-panel" :style="{ width: groupPanelWidth + 'px' }">
-        <div class="panel-header">
-          <span class="panel-title">分组列表</span>
-          <div class="panel-actions">
-            <el-button size="mini" @click="handleAddGroup">+ 新增</el-button>
-          </div>
+        <div class="group-panel__header">
+          <span class="group-panel__title">分组列表</span>
+          <el-button size="small" @click="handleAddGroup">+ 新增</el-button>
         </div>
-        <div class="group-list" @scroll="handleGroupListScroll">
+        <div class="group-panel__list" @scroll="handleGroupListScroll">
           <div
-              v-for="group in displayGroupList"
-              :key="group.id"
-              :class="['group-item', { active: selectedGroupId === group.id, 'group-all': group.id === 'all' }]"
-              @click="handleSelectGroup(group)"
+            v-for="group in displayGroupList"
+            :key="group.id"
+            :class="['group-item', { 'group-item--active': selectedGroupId === group.id, 'group-item--all': group.id === 'all' }]"
+            @click="handleSelectGroup(group)"
           >
-            <span class="group-name">{{ group.name }}</span>
-            <span class="group-count">({{ group.count }})</span>
-            <div class="group-actions">
-              <span class="action-btn" @click.stop="handleEditGroup(group)"><el-icon :size="11"><Edit/></el-icon></span>
-              <span class="action-btn delete-btn" @click.stop="handleDeleteGroup(group)"><svg
+            <span class="group-item__name">{{ group.name }}</span>
+            <span class="group-item__count">({{ group.count }})</span>
+            <div class="group-item__actions">
+              <span class="group-item__action" @click.stop="handleEditGroup(group)"><el-icon :size="11"><Edit/></el-icon></span>
+              <span class="group-item__action group-item__action--delete" @click.stop="handleDeleteGroup(group)"><svg
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><line x1="18"
                                                                                                                y1="6"
@@ -35,22 +52,6 @@
       <div class="resize-handle" @mousedown="startResize"></div>
 
       <div class="content-panel">
-        <div class="page-header">
-          <div class="header-left">
-            <h2 class="page-title">隐患点管理</h2>
-          </div>
-          <div class="header-right">
-            <el-button type="primary" @click="handleAdd">+ 新增</el-button>
-            <el-button type="danger" @click="handleBatchDelete" :disabled="selectedRows.length === 0" plain>批量删除</el-button>
-            <el-button @click="handleBatchPause" :disabled="selectedRows.length === 0" plain>停测</el-button>
-            <el-button @click="handleBatchResume" :disabled="selectedRows.length === 0" plain>恢复</el-button>
-            <el-button @click="handleBatchComplete" :disabled="selectedRows.length === 0" type="warning" plain>完结</el-button>
-            <el-button @click="handleExportHazardPoints" plain>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="margin-right:4px;vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出
-            </el-button>
-          </div>
-        </div>
-
         <div class="stats-bar">
           <span class="stat-item">隐患点 <strong>{{ statsTotal }}</strong></span>
           <span class="stat-sep">|</span>
@@ -61,99 +62,95 @@
           <span class="stat-item">分组 <strong class="c-purple">{{ statsGroupCount }}</strong></span>
         </div>
 
-        <div class="search-bar">
-  <el-select v-model="searchType" placeholder="搜索方式" class="search-type-select">
-    <el-option label="按名称" value="name" />
-    <el-option label="按编号" value="code" />
-  </el-select>
-  <el-input
-    v-model="searchKeyword"
-    :placeholder="searchType === 'name' ? '搜索名称' : '搜索编号'"
-    class="search-input"
-    clearable
-    @clear="handleSearch"
-    @keyup.enter="handleSearch"
-  >
-    <template #prefix>
-      <el-icon class="search-icon">
-        <Search/>
-      </el-icon>
-    </template>
-  </el-input>
-  <el-select v-model="searchStatus" placeholder="状态" clearable class="status-select">
-    <el-option label="监测中" value="MONITORING" />
-    <el-option label="停测中" value="PAUSED" />
-    <el-option label="已完结" value="COMPLETED" />
-  </el-select>
-  <el-button type="primary" @click="handleSearch">搜索</el-button>
-  <el-button @click="handleReset">重置</el-button>
-          <!--  <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>-->
-</div>
+        <div class="search">
+          <el-select v-model="searchType" placeholder="搜索方式" class="search__select">
+            <el-option label="按名称" value="name" />
+            <el-option label="按编号" value="code" />
+          </el-select>
+          <el-input
+            v-model="searchKeyword"
+            :placeholder="searchType === 'name' ? '搜索名称' : '搜索编号'"
+            class="search__input"
+            clearable
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          >
+            <template #prefix>
+              <el-icon><Search/></el-icon>
+            </template>
+          </el-input>
+          <el-select v-model="searchStatus" placeholder="状态" clearable class="search__select">
+            <el-option label="监测中" value="MONITORING" />
+            <el-option label="停测中" value="PAUSED" />
+            <el-option label="已完结" value="COMPLETED" />
+          </el-select>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </div>
 
-        <div class="table-container">
-          <div class="table-scroll">
+        <div class="table-wrap">
+          <div class="table-wrap__scroll">
             <el-table
               :data="tableData"
               border
               stripe
               v-loading="loading"
-              :header-cell-style="{ background: '#f8fafc', color: '#475569', fontWeight: 600 }"
               @selection-change="handleSelectionChange"
             >
-            <el-table-column type="selection" width="55" align="center" />
-            <el-table-column prop="code" label="编号" width="150" align="center" />
-            <el-table-column prop="name" label="名称" min-width="200" align="center" />
-            <el-table-column prop="statusName" label="状态" width="100" align="center">
-              <template #default="{ row }">
-                <span :class="['status-badge', `status-${row.status.toLowerCase()}`]">
-                  {{ row.statusName }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="groupName" label="分组" width="120" align="center">
-              <template #default="{ row }">
-                <span>{{ row.groupName || '未分组' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="coordinates" label="中心坐标" width="180" align="center">
-              <template #default="{ row }">
-                <span v-if="row.longitude && row.latitude">{{ row.longitude }}, {{ row.latitude }}</span>
-                <span v-else class="empty-text">-</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="deviceCount" label="设备数量" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag type="info" effect="plain">{{ row.deviceCount || 0 }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right" align="center">
-              <template #default="{ row }">
-                <div class="op-cell">
-                  <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
-                  <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-                  <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
-                    <el-button type="primary" text size="small">更多</el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="togglePause">
-                          {{ row.status === 'PAUSED' ? '恢复' : '停测' }}
-                        </el-dropdown-item>
-                        <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="complete">完结</el-dropdown-item>
-                        <el-dropdown-item command="bindDevice">绑定设备</el-dropdown-item>
-                        <el-dropdown-item command="alarmConfig">告警配置</el-dropdown-item>
-                        <el-dropdown-item command="delete" divided>
-                          <span style="color: #f56c6c">删除</span>
-                        </el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
+              <el-table-column type="selection" width="55" align="center" />
+              <el-table-column prop="code" label="编号" width="150" align="center" />
+              <el-table-column prop="name" label="名称" min-width="200" align="center" />
+              <el-table-column prop="statusName" label="状态" width="100" align="center">
+                <template #default="{ row }">
+                  <span :class="['status-badge', `status--${row.status.toLowerCase()}`]">
+                    {{ row.statusName }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="groupName" label="分组" width="120" align="center">
+                <template #default="{ row }">
+                  <span>{{ row.groupName || '未分组' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="coordinates" label="中心坐标" width="180" align="center">
+                <template #default="{ row }">
+                  <span v-if="row.longitude && row.latitude">{{ row.longitude }}, {{ row.latitude }}</span>
+                  <span v-else class="empty-text">-</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="deviceCount" label="设备数量" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag type="info" effect="plain">{{ row.deviceCount || 0 }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="200" fixed="right" align="center">
+                <template #default="{ row }">
+                  <div class="op-cell">
+                    <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                    <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+                    <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                      <el-button type="primary" text size="small">更多</el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="togglePause">
+                            {{ row.status === 'PAUSED' ? '恢复' : '停测' }}
+                          </el-dropdown-item>
+                          <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="complete">完结</el-dropdown-item>
+                          <el-dropdown-item command="bindDevice">绑定设备</el-dropdown-item>
+                          <el-dropdown-item command="alarmConfig">告警配置</el-dropdown-item>
+                          <el-dropdown-item command="delete" divided>
+                            <span style="color: #f56c6c">删除</span>
+                          </el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
 
-          <div class="pagination-container">
+          <div class="table-wrap__pagination">
             <el-pagination
               v-model:current-page="currentPage"
               v-model:page-size="pageSize"
@@ -2997,44 +2994,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ========== 全局 ========== */
+/* ========== 页面覆盖 ========== */
 .hazard-point-page {
-  padding: 20px;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-  border-radius: 8px;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-.page-container {
+/* ========== 主体：左分组 + 右内容 ========== */
+.page-body {
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-.group-panel-toggle {
-  width: 20px;
-  background: #f5f7fa;
-  border: 1px solid #e8e8e8;
-  border-right: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 4px 0 0 4px;
-  transition: all 0.3s;
-}
-
-.group-panel-toggle:hover {
-  background: #e8e8e8;
-}
-
-.toggle-icon {
-  font-size: 12px;
-  color: #606266;
 }
 
 /* ========== 左侧分组面板 ========== */
@@ -3044,40 +3015,31 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   transition: width 0.3s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+  border-radius: 8px 0 0 8px;
 }
 
-.panel-header {
-  padding: 15px;
+.group-panel__header {
+  padding: 12px 15px;
   border-bottom: 1px solid #e8e8e8;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.panel-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.panel-title {
+.group-panel__title {
   font-size: 12px;
   color: #909399;
-  padding: 2px 6px;
-  border-radius: 3px;
 }
 
-.action-btn:hover {
-  background: #e8e8e8;
-  color: #606266;
-}
-
-.group-list {
+.group-panel__list {
   flex: 1;
   overflow-y: auto;
   padding: 6px;
 }
 
+/* ---------- 分组项 ---------- */
 .group-item {
   padding: 9px 12px;
   cursor: pointer;
@@ -3106,28 +3068,28 @@ onUnmounted(() => {
   background: #e6f7ff;
 }
 
-.group-item.active {
+.group-item--active {
   background: #bae7ff;
   color: #1890ff;
   font-weight: 500;
 }
 
-.group-item.active::before {
+.group-item--active::before {
   background: #1890ff;
   box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.2);
 }
 
-.group-all .group-name {
+.group-item--all .group-item__name {
   font-size: 14px;
   font-weight: 700;
 }
 
-.group-all::before {
+.group-item--all::before {
   width: 8px;
   height: 8px;
 }
 
-.group-name {
+.group-item__name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -3135,7 +3097,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.group-count {
+.group-item__count {
   font-size: 11px;
   color: #94a3b8;
   background: #f1f5f9;
@@ -3146,12 +3108,12 @@ onUnmounted(() => {
   transition: opacity 0.15s;
 }
 
-.group-item:hover .group-count {
+.group-item:hover .group-item__count {
   opacity: 0;
   pointer-events: none;
 }
 
-.group-actions {
+.group-item__actions {
   position: absolute;
   right: 12px;
   top: 50%;
@@ -3163,12 +3125,12 @@ onUnmounted(() => {
   transition: opacity 0.15s;
 }
 
-.group-item:hover .group-actions {
+.group-item:hover .group-item__actions {
   opacity: 1;
   pointer-events: auto;
 }
 
-.action-btn {
+.group-item__action {
   font-size: 11px;
   color: #94a3b8;
   padding: 2px 5px;
@@ -3178,12 +3140,12 @@ onUnmounted(() => {
   background: #f1f5f9;
 }
 
-.action-btn:hover {
+.group-item__action:hover {
   color: #1890ff;
   background: #e6f7ff;
 }
 
-.action-btn.delete-btn:hover {
+.group-item__action--delete:hover {
   background: #fef2f2;
   color: #ef4444;
 }
@@ -3219,35 +3181,13 @@ onUnmounted(() => {
   border-radius: 1px;
 }
 
-/* ========== 内容面板 ========== */
+/* ========== 右侧内容面板 ========== */
 .content-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-left: 20px;
+  padding-left: 12px;
   min-width: 0;
-}
-
-/* ========== 页头 ========== */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.page-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0;
-  letter-spacing: -0.3px;
-}
-
-.header-right {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 /* ========== 统计条 ========== */
@@ -3262,7 +3202,7 @@ onUnmounted(() => {
   margin-bottom: 12px;
   font-size: 12px;
   color: #64748b;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .stat-item strong {
@@ -3281,192 +3221,16 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
-/* ========== 搜索栏 ========== */
-.search-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-  align-items: center;
-  padding: 14px 16px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-
-.search-input {
-  width: 250px;
-}
-
-.search-icon {
-  font-size: 14px;
-}
-
-.status-select {
-  width: 120px;
-}
-
-.search-type-select {
-  width: 100px;
-}
-
-/* ========== 表格 ========== */
-.table-container {
-  flex: 1;
-  min-height: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-
-.table-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.table-scroll :deep(.el-table) {
-  /* 表格填满滚动区 */
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 16px;
-  background: #fff;
-  border-top: 1px solid #f1f5f9;
-  flex-shrink: 0;
-}
-
-.empty-text {
-  color: #94a3b8;
-}
-
-/* ========== 状态标签 ========== */
-.status-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  text-align: center;
-  min-width: 56px;
-  letter-spacing: 0.2px;
-}
-
-.status-monitoring {
-  background: rgba(16, 185, 129, 0.08);
-  color: #059669;
-}
-
-.status-paused {
-  background: rgba(245, 158, 11, 0.08);
-  color: #d97706;
-}
-
-.status-completed {
-  background: rgba(100, 116, 139, 0.08);
-  color: #64748b;
-}
-
-/* ========== 操作列 ========== */
-.action-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.action-more {
-  font-size: 13px !important;
-}
-
-.dropdown-arrow {
-  font-size: 10px;
-  margin-left: 2px;
-}
-
-.drop-danger {
-  color: #ef4444 !important;
-}
-
-.drop-danger:hover {
-  background-color: #fef2f2 !important;
-  color: #ef4444 !important;
-}
-
-/* ========== 表格全局微调 ========== */
-:deep(.el-table) {
-  --el-table-border-color: #f1f5f9;
-  font-size: 13px;
-}
-
-:deep(.el-table th.el-table__cell) {
-  background: #f8fafc !important;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 600;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-:deep(.el-table tr) {
-  transition: background 0.15s;
-}
-
-:deep(.el-table .el-table__body tr:hover > td) {
-  background: #f8fafc;
-}
-
-:deep(.el-tag) {
-  border: none;
-  font-weight: 500;
-}
-
-:deep(.el-button) {
-  font-weight: 500;
-  letter-spacing: 0.2px;
-}
-
-:deep(.el-pagination) {
-  font-size: 13px;
-}
-
-:deep(.el-pagination .btn-prev),
-:deep(.el-pagination .btn-next) {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-}
-
-:deep(.el-pagination .el-pager li) {
-  border-radius: 6px;
-}
-
+/* ========== 分页激活态 ========== */
 :deep(.el-pagination .el-pager li.is-active) {
   background: #3b82f6;
 }
-
-:deep(.el-select .el-input__wrapper) {
-  border-radius: 6px;
-}
-
 :deep(.el-input__wrapper) {
   border-radius: 6px;
   box-shadow: 0 0 0 1px #e2e8f0 inset;
 }
 
 /* ========== 对话框内表单 ========== */
-.form-hint {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
-}
-
 .group-select-wrapper {
   display: flex;
   align-items: center;
