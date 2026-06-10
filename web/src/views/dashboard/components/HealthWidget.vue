@@ -160,6 +160,9 @@ const ringSegments = computed(() => {
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   padding: 16px 18px;
   margin-bottom: 12px;
+  flex-shrink: 0;
+  height: 420px;
+  box-sizing: border-box;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 

@@ -1372,14 +1372,15 @@ const loadFocusArea = async () => {
             // 默认隐藏边界线（与 showMaskLayer 同步）
             const borderColor = showMaskLayer.value ? '#faad14' : 'transparent'
             const borderWeight = showMaskLayer.value ? 3 : 0
+            const dash = showMaskLayer.value ? '8 4' : undefined
             if (t === 'Polygon' || t === 'MultiPolygon') return {
               color: borderColor,
               weight: borderWeight,
               fillColor: 'transparent',
               fillOpacity: 0,
-              dashArray: showMaskLayer.value ? '8 4' : null
+              dashArray: dash
             }
-            if (t === 'LineString') return {color: borderColor, weight: borderWeight, dashArray: showMaskLayer.value ? '8 4' : null}
+            if (t === 'LineString') return {color: borderColor, weight: borderWeight, dashArray: dash}
             return {color: borderColor, weight: showMaskLayer.value ? 2 : 0}
           }
         }).addTo(mapInstance).bindPopup('系统关注区域')
@@ -1470,12 +1471,7 @@ onUnmounted(() => {
   width: 320px;
   height: 100%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+  background: transparent;
   transition: width 0.3s ease;
   padding: 12px 0;
 }
@@ -1538,6 +1534,23 @@ onUnmounted(() => {
   height: 100%;
   overflow-y: auto;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 自定义滚动条 */
+.panel-content::-webkit-scrollbar {
+  width: 4px;
+}
+.panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .panel-section {
@@ -1548,6 +1561,7 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   padding: 16px 18px;
   margin-bottom: 12px;
+  flex-shrink: 0;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
@@ -1558,6 +1572,7 @@ onUnmounted(() => {
 
 .panel-section:last-child {
   margin-bottom: 0;
+  flex-grow: 1;
 }
 
 .section-header {
@@ -1693,12 +1708,7 @@ onUnmounted(() => {
   width: 320px;
   height: 100%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+  background: transparent;
   transition: width 0.3s ease;
   padding: 12px 0;
 }

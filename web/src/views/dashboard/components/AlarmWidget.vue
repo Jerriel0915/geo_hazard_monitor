@@ -81,6 +81,7 @@ defineProps<{
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06);
   padding: 16px 18px;
   margin-bottom: 12px;
+  flex-shrink: 0;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
