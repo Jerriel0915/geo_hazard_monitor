@@ -649,12 +649,11 @@
           </div>
           <div class="transfer-tree">
             <el-tree
+                ref="leftTreeRef"
               :data="leftDeviceTree"
               :props="{ label: 'label', children: 'children' }"
               show-checkbox
               node-key="id"
-              :default-checked-keys="selectedLeftKeys"
-              @check="handleLeftCheck"
               :filter-node-method="filterLeftNode"
             >
               <template #default="{ node, data }">
@@ -670,18 +669,63 @@
         </div>
 
         <div class="transfer-actions">
-          <el-button type="primary" size="small" @click="transferToRight">
-            <span class="arrow-icon">→</span>
-          </el-button>
-          <el-button type="primary" size="small" @click="transferAllToRight">
-            <span class="arrow-icon">⇒</span>
-          </el-button>
-          <el-button size="small" @click="transferToLeft">
-            <span class="arrow-icon">←</span>
-          </el-button>
-          <el-button size="small" @click="transferAllToLeft">
-            <span class="arrow-icon">⇐</span>
-          </el-button>
+          <el-tooltip content="将左侧选中的设备绑定到当前隐患点" placement="left">
+            <el-button
+                type="primary"
+                size="small"
+                :disabled="bindLoading"
+                @click="transferToRight"
+            >
+              <el-icon>
+                <ArrowRight/>
+              </el-icon>
+              <span class="btn-label">选中</span>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="将左侧所有设备全部绑定到当前隐患点" placement="left">
+            <el-button
+                type="primary"
+                size="small"
+                plain
+                :disabled="bindLoading"
+                @click="transferAllToRight"
+            >
+              <el-icon>
+                <DArrowRight/>
+              </el-icon>
+              <span class="btn-label">全部</span>
+            </el-button>
+          </el-tooltip>
+
+          <div class="transfer-divider"/>
+
+          <el-tooltip content="将右侧选中的设备从当前隐患点解绑" placement="right">
+            <el-button
+                type="warning"
+                size="small"
+                :disabled="bindLoading"
+                @click="transferToLeft"
+            >
+              <span class="btn-label">选中</span>
+              <el-icon>
+                <ArrowLeft/>
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="将右侧所有设备从当前隐患点全部解绑" placement="right">
+            <el-button
+                type="warning"
+                size="small"
+                plain
+                :disabled="bindLoading"
+                @click="transferAllToLeft"
+            >
+              <span class="btn-label">全部</span>
+              <el-icon>
+                <DArrowLeft/>
+              </el-icon>
+            </el-button>
+          </el-tooltip>
         </div>
 
         <div class="transfer-panel">
@@ -697,12 +741,11 @@
           </div>
           <div class="transfer-tree">
             <el-tree
+                ref="rightTreeRef"
               :data="rightDeviceTree"
               :props="{ label: 'label', children: 'children' }"
               show-checkbox
               node-key="id"
-              :default-checked-keys="selectedRightKeys"
-              @check="handleRightCheck"
               :filter-node-method="filterRightNode"
             >
               <template #default="{ node, data }">
@@ -910,7 +953,7 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {DArrowRight, Delete, Edit, Location, Search} from '@element-plus/icons-vue'
+import {ArrowLeft, ArrowRight, DArrowLeft, DArrowRight, Delete, Edit, Location, Search} from '@element-plus/icons-vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import VueApexCharts from 'vue3-apexcharts'
@@ -1153,6 +1196,8 @@ const leftSearchText = ref('')
 const rightSearchText = ref('')
 const leftDeviceTree = ref<TreeNode[]>([])
 const rightDeviceTree = ref<TreeNode[]>([])
+const leftTreeRef = ref()
+const rightTreeRef = ref()
 const selectedLeftKeys = ref<string[]>([])
 const selectedRightKeys = ref<string[]>([])
 
@@ -2339,32 +2384,29 @@ const filterRightNode = (value: string, data: any) => {
 }
 
 const handleLeftCheck = (data: any, checkedInfo: any) => {
-  const node = data as TreeNode
-  if (checkedInfo.checked) {
-    selectedLeftKeys.value.push(node.id)
-  } else {
-    const index = selectedLeftKeys.value.indexOf(node.id)
-    if (index > -1) selectedLeftKeys.value.splice(index, 1)
+  // el-tree @check 事件第二个参数是 CheckedInfo 对象
+  // (checkedKeys, checkedNodes, halfCheckedKeys, halfCheckedNodes)
+  // 这里同步给 selectedLeftKeys 以便其他地方使用（实际提交以 leftTreeRef.getCheckedKeys() 为准）
+  if (Array.isArray(checkedInfo?.checkedKeys)) {
+    selectedLeftKeys.value = checkedInfo.checkedKeys.map((k: any) => String(k))
   }
 }
 
 const handleRightCheck = (data: any, checkedInfo: any) => {
-  const node = data as TreeNode
-  if (checkedInfo.checked) {
-    selectedRightKeys.value.push(node.id)
-  } else {
-    const index = selectedRightKeys.value.indexOf(node.id)
-    if (index > -1) selectedRightKeys.value.splice(index, 1)
+  if (Array.isArray(checkedInfo?.checkedKeys)) {
+    selectedRightKeys.value = checkedInfo.checkedKeys.map((k: any) => String(k))
   }
 }
 
 const transferToRight = async () => {
-  if (selectedLeftKeys.value.length === 0) {
+  // 以 el-tree 的内部选中状态为准（getCheckedKeys），避免 selectedLeftKeys 与 UI 不同步
+  const checkedKeys: Array<string | number> = leftTreeRef.value?.getCheckedKeys() ?? []
+  if (checkedKeys.length === 0) {
     ElMessage.warning('请选择要绑定的设备')
     return
   }
 
-  const deviceIds = selectedLeftKeys.value.map(id => parseInt(id))
+  const deviceIds = checkedKeys.map(id => parseInt(String(id)))
 
   bindLoading.value = true
   try {
@@ -2385,12 +2427,13 @@ const transferToRight = async () => {
 }
 
 const transferToLeft = async () => {
-  if (selectedRightKeys.value.length === 0) {
+  const checkedKeys: Array<string | number> = rightTreeRef.value?.getCheckedKeys() ?? []
+  if (checkedKeys.length === 0) {
     ElMessage.warning('请选择要解绑的设备')
     return
   }
 
-  const deviceIds = selectedRightKeys.value.map(id => parseInt(id))
+  const deviceIds = checkedKeys.map(id => parseInt(String(id)))
 
   bindLoading.value = true
   try {
@@ -2417,6 +2460,16 @@ const transferAllToRight = async () => {
     return
   }
 
+  try {
+    await ElMessageBox.confirm(
+        `确定要将左侧 ${allDeviceIds.length} 台设备全部绑定到当前隐患点吗？`,
+        '批量绑定确认',
+        {type: 'warning', confirmButtonText: '全部绑定', cancelButtonText: '取消'}
+    )
+  } catch {
+    return
+  }
+
   bindLoading.value = true
   try {
     const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, { deviceIds: allDeviceIds })
@@ -2439,6 +2492,16 @@ const transferAllToLeft = async () => {
   const allDeviceIds = rightDeviceTree.value.map(node => parseInt(node.id))
   if (allDeviceIds.length === 0) {
     ElMessage.warning('没有可解绑的设备')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+        `确定要将当前隐患点的 ${allDeviceIds.length} 台设备全部解绑吗？此操作不可撤销。`,
+        '批量解绑确认',
+        {type: 'warning', confirmButtonText: '全部解绑', cancelButtonText: '取消'}
+    )
+  } catch {
     return
   }
 
@@ -3356,11 +3419,27 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   gap: 8px;
 }
 
-.arrow-icon {
-  font-size: 16px;
+.transfer-actions .el-button {
+  width: 90px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.transfer-actions .btn-label {
+  font-size: 12px;
+}
+
+.transfer-divider {
+  width: 24px;
+  height: 1px;
+  background: #e4e7ed;
+  margin: 2px 0;
 }
 
 .tree-node {
