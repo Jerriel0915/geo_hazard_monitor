@@ -19,7 +19,12 @@
                 <div v-for="item in monitorTypes" :key="item.id" class="type-item"
                      :class="{ active: selectedMonitorType === item.id }" @click="selectMonitorType(item.id)">
                   <span class="type-name">{{ item.name }}</span>
-                  <span class="type-count">{{ getTypeCriteriaCount(item.id) }}</span>
+                  <span v-if="getTypeCriteriaCount(item.id) > 0" class="type-badge configured" title="已配置判据">
+                    <el-icon :size="16"><CircleCheckFilled /></el-icon>
+                  </span>
+                  <span v-else class="type-badge unconfigured" title="未配置判据">
+                    <el-icon :size="16"><WarningFilled /></el-icon>
+                  </span>
                 </div>
               </div>
             </div>
@@ -34,9 +39,6 @@
                   :saving="saving"
                   :indicator-tree="indicatorTree"
                   :node-map="nodeMap"
-                  @create="openCreateDialog('monitor')"
-                  @edit="openEditDialog"
-                  @delete="handleDelete"
                   @toggle="handleToggle"
                   @save-form="handleSaveForm('monitor')"
                   v-model:selected-id="selectedTypeCriteriaId"
@@ -95,9 +97,6 @@
                   :saving="saving"
                   :indicator-tree="indicatorTree"
                   :node-map="nodeMap"
-                  @create="openCreateDialog('hazard')"
-                  @edit="openEditDialog"
-                  @delete="handleDelete"
                   @toggle="handleToggle"
                   @save-form="handleSaveForm('hazard')"
                   v-model:selected-id="selectedHpCriteriaId"
@@ -109,20 +108,6 @@
         </el-tab-pane>
       </el-tabs>
     </div>
-
-    <!-- ========== 新增弹窗（仅名称） ========== -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="450px" destroy-on-close>
-      <el-form :model="formData" label-width="100px">
-        <el-form-item label="判据名称" required>
-          <el-input v-model="formData.name" placeholder="如：雨量蓝色预警" @keyup.enter="handleSave"/>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">确定</el-button>
-      </template>
-    </el-dialog>
-
   </div>
 </template>
 
@@ -139,10 +124,11 @@ import {
 import { getBoundDevices, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
 import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
 import { getDeviceSensors, getSensorDetail } from '@/api/sensor'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import CriteriaDetailPanel from './components/CriteriaDetailPanel.vue'
-import { useIndicatorTree, type Condition, type ConditionGroup, type LevelFormState } from './composables/useIndicatorTree'
+import { useIndicatorTree, type ConditionGroup, type LevelFormState } from './composables/useIndicatorTree'
 
 // ── 常量 ──
 const alarmLevels = [
@@ -156,7 +142,7 @@ const alarmLevels = [
 const activeTab = ref('monitorType')
 
 // ── 指标树 ──
-const {treeData: indicatorTree, nodeMap, buildFromMonitorType, buildFromSensors, clear: clearIndicatorTree} = useIndicatorTree()
+const {treeData: indicatorTree, nodeMap, buildFromMonitorType, clear: clearIndicatorTree} = useIndicatorTree()
 
 // ── 监测类型 ──
 const selectedMonitorType = ref<number | null>(null)
@@ -175,8 +161,6 @@ const cascade = reactive({
 const cascadeDevices = ref<any[]>([])
 const cascadeSensors = ref<any[]>([])
 const hazardPointTree = ref<any[]>([])
-const selectedHazardPointName = ref('')
-const selectedHazardPointId = computed(() => cascade.hazardPointId)
 const selectedHpCriteriaId = ref<number | null>(null)
 
 // ── 判据数据 ──
@@ -189,18 +173,17 @@ const currentHpCriteria = computed(() => {
 
 // ── 级别表单 ──
 const emptyLevel = (): LevelFormState => ({
-  groups: [],
-  groupLogic: 'AND',
-  persistCount: 1,
-  silencePeriod: 0,
-  description: ''
+  groups: [], groupLogic: 'AND', persistCount: 1, silencePeriod: 0, description: ''
 })
 const levelForm = reactive<Record<string, LevelFormState>>({
-  blue: emptyLevel(),
-  yellow: emptyLevel(),
-  orange: emptyLevel(),
-  red: emptyLevel(),
+  blue: emptyLevel(), yellow: emptyLevel(), orange: emptyLevel(), red: emptyLevel(),
 })
+
+function resetLevelForm() {
+  for (const key of ['blue', 'yellow', 'orange', 'red'] as const) {
+    Object.assign(levelForm[key], emptyLevel())
+  }
+}
 
 /** 迁移旧 subject（无点分前缀）为 payload.current.xxx */
 function migrateSubject(subject: string): string {
@@ -212,29 +195,21 @@ function migrateSubject(subject: string): string {
 /** 迁移旧格式 conditions → groups 结构 */
 function migrateToGroups(lc: any): { groups: ConditionGroup[]; groupLogic: 'AND' | 'OR' } {
   if (Array.isArray(lc?.groups)) {
-    return {
-      groups: lc.groups,
-      groupLogic: lc.groupLogic || 'AND',
-    }
+    return { groups: lc.groups, groupLogic: lc.groupLogic || 'AND' }
   }
-  // 旧格式：flat conditions + logicOperator
-  const conditions: Condition[] = (lc?.conditions || []).map((c: any) => ({
+  const conditions = (lc?.conditions || []).map((c: any) => ({
     ...c,
     subject: migrateSubject(c.subject),
   }))
-  if (conditions.length === 0) return {groups: [], groupLogic: 'AND'}
-  return {
-    groups: [{conditions, logicOperator: lc?.logicOperator || 'AND'}],
-    groupLogic: 'AND',
-  }
+  if (conditions.length === 0) return { groups: [], groupLogic: 'AND' }
+  return { groups: [{ conditions, logicOperator: lc?.logicOperator || 'AND' }], groupLogic: 'AND' }
 }
 
 function initLevelForm(c: AlarmCriteriaItem) {
   let config: Record<string, any> = {}
   try {
     if (c.levelConfig && c.levelConfig !== '{}') config = JSON.parse(c.levelConfig)
-  } catch {
-  }
+  } catch {}
   for (const key of ['blue', 'yellow', 'orange', 'red'] as const) {
     const lc = config[key]
     const migrated = migrateToGroups(lc)
@@ -250,37 +225,28 @@ function initLevelForm(c: AlarmCriteriaItem) {
 
 // ── 级联选择 ──
 async function onHpSelect(val: number | string | null) {
-  if (!val || String(val).startsWith('g_')) return  // skip group nodes
+  if (!val || String(val).startsWith('g_')) return
   const id = Number(val)
-  cascade.hazardPointId = id;
-  cascade.deviceId = null;
-  cascade.sensorId = null;
-  cascade.sensorMeta = null;
+  cascade.hazardPointId = id; cascade.deviceId = null; cascade.sensorId = null; cascade.sensorMeta = null
   cascadeSensors.value = []
   try {
-    const res: any = await getBoundDevices(String(id));
+    const res: any = await getBoundDevices(String(id))
     cascadeDevices.value = res?.data || res?.rows || res || []
-  } catch {
-    cascadeDevices.value = []
-  }
+  } catch { cascadeDevices.value = [] }
 }
 
 async function onDeviceSelect(deviceId: number) {
-  cascade.deviceId = deviceId;
-  cascade.sensorId = null;
-  cascade.sensorMeta = null
+  cascade.deviceId = deviceId; cascade.sensorId = null; cascade.sensorMeta = null
   try {
-    const res: any = await getDeviceSensors(deviceId);
+    const res: any = await getDeviceSensors(deviceId)
     cascadeSensors.value = res?.data || res?.rows || res || []
-  } catch {
-    cascadeSensors.value = []
-  }
+  } catch { cascadeSensors.value = [] }
 }
 
 async function onSensorSelect(sensorId: number) {
   cascade.sensorId = sensorId
   try {
-    const res: any = await getSensorDetail(sensorId);
+    const res: any = await getSensorDetail(sensorId)
     const s = res?.data || res
     const contentId = s?.attrList?.[0]?.monitorContentId
     const typeId = s?.monitorTypeId
@@ -295,97 +261,47 @@ async function onSensorSelect(sensorId: number) {
       await buildFromMonitorType(typeId)
     }
     await loadAllCriteria()
-    const list = currentHpCriteria.value;
+    const list = currentHpCriteria.value
     selectedHpCriteriaId.value = list.length > 0 ? list[0].id : null
-    if (selectedHpCriteriaId.value && list[0]) initLevelForm(list[0])
-  } catch {
-    cascade.sensorMeta = null
-  }
-}
-
-// ── 判据弹窗（仅名称） ──
-const dialogVisible = ref(false);
-const dialogTitle = ref('');
-const dialogContext = ref<'monitor' | 'hazard'>('monitor')
-const editingId = ref<number | null>(null);
-const saving = ref(false)
-const formData = reactive<AlarmCriteriaCreatePayload & { id?: number }>({
-  name: '',
-  levelConfig: '{}',
-  persistCount: 1,
-  silencePeriod: 0,
-  isEnabled: 1
-})
-
-function resetForm() {
-  Object.assign(formData, {name: '', levelConfig: '{}', persistCount: 1, silencePeriod: 0, isEnabled: 1});
-  editingId.value = null
-}
-
-function openCreateDialog(ctx: 'monitor' | 'hazard') {
-  resetForm();
-  dialogContext.value = ctx;
-  dialogTitle.value = '新增告警判据'
-  if (ctx === 'monitor') {
-    formData.monitorTypeId = selectedMonitorType.value!;
-    formData.hazardPointId = undefined
-  } else {
-    formData.hazardPointId = cascade.hazardPointId!;
-    formData.monitorContentId = cascade.sensorMeta?.monitorContentId;
-    formData.monitorTypeId = cascade.sensorMeta?.monitorTypeId
-  }
-  dialogVisible.value = true
-}
-
-function openEditDialog(c: AlarmCriteriaItem) {
-  resetForm();
-  dialogContext.value = c.hazardPointId ? 'hazard' : 'monitor';
-  dialogTitle.value = '编辑判据名称';
-  editingId.value = c.id;
-  formData.name = c.name;
-  dialogVisible.value = true
+    if (list.length > 0 && list[0]) initLevelForm(list[0])
+    else resetLevelForm()
+  } catch { cascade.sensorMeta = null }
 }
 
 // ── 数据加载 ──
 async function loadMonitorTypes() {
   try {
-    const res: any = await getMonitorTypeList();
+    const res: any = await getMonitorTypeList()
     monitorTypes.value = (res && res.rows) || (Array.isArray(res) ? res : res?.data) || []
-  } catch {
-  }
+  } catch {}
 }
+
 async function loadHazardPointTree() {
   try {
-    const groups: any = await getHazardPointGroups();
+    const groups: any = await getHazardPointGroups()
     const gList = groups?.data || groups?.rows || groups || []
-    const hps: any = await getHazardPointPage({pageNum: 1, pageSize: 1000});
+    const hps: any = await getHazardPointPage({pageNum: 1, pageSize: 1000})
     const hpList = hps?.data?.rows || hps?.rows || hps || []
     hazardPointTree.value = gList.map((g: any) => ({
-      id: 'g_' + g.id,
-      name: g.name,
-      isGroup: true,
+      id: 'g_' + g.id, name: g.name, isGroup: true,
       children: hpList.filter((h: any) => h.groupId === g.id).map((h: any) => ({id: h.id, name: h.name}))
     }))
-  } catch {
-  }
+  } catch {}
 }
+
 async function loadMonitorContents(typeId: number) {
   try {
-    const api = await import('@/api/monitorType');
-    const res: any = await api.getMonitorTypeDetail(typeId);
+    const api = await import('@/api/monitorType')
+    const res: any = await api.getMonitorTypeDetail(typeId)
     monitorContents.value = res?.contents || res?.data?.contents || []
-  } catch {
-    monitorContents.value = []
-  }
+  } catch { monitorContents.value = [] }
 }
 
 async function loadAllCriteria() {
   try {
-    const res: any = await getCriteriaList({pageSize: 1000});
+    const res: any = await getCriteriaList({pageSize: 1000})
     allCriteria.value = res?.rows || res?.data?.rows || []
-  } catch {
-    allCriteria.value = []
-  }
+  } catch { allCriteria.value = [] }
 }
 
 function getTypeCriteriaCount(typeId: number) {
@@ -394,55 +310,31 @@ function getTypeCriteriaCount(typeId: number) {
 
 // ── 选择 ──
 async function selectMonitorType(id: number) {
-  selectedMonitorType.value = id;
-  await loadMonitorContents(id);
-  await buildFromMonitorType(id);
-  const list = currentTypeCriteria.value;
-  selectedTypeCriteriaId.value = list.length > 0 ? list[0].id : null;
-  if (selectedTypeCriteriaId.value && list[0]) initLevelForm(list[0])
+  selectedMonitorType.value = id
+  await loadMonitorContents(id)
+  await buildFromMonitorType(id)
+  const list = currentTypeCriteria.value
+  selectedTypeCriteriaId.value = list.length > 0 ? list[0].id : null
+  if (list.length > 0 && list[0]) initLevelForm(list[0])
+  else resetLevelForm()
 }
 
 async function handleTabChange() {
-  selectedMonitorType.value = null;
-  cascade.hazardPointId = null;
-  cascade.deviceId = null;
-  cascade.sensorId = null;
-  cascade.sensorMeta = null;
-  selectedTypeCriteriaId.value = null;
-  selectedHpCriteriaId.value = null;
+  selectedMonitorType.value = null
+  cascade.hazardPointId = null; cascade.deviceId = null; cascade.sensorId = null; cascade.sensorMeta = null
+  selectedTypeCriteriaId.value = null; selectedHpCriteriaId.value = null
   clearIndicatorTree()
+  resetLevelForm()
   await loadAllCriteria()
 }
 
-// ── 保存 ──
-async function handleSave() {
-  if (!formData.name) {
-    ElMessage.warning('请输入判据名称');
-    return
-  }
-  ;saving.value = true;
-  try {
-    let tid: number | null = null;
-    if (editingId.value) {
-      await updateCriteria(editingId.value, formData);
-      tid = editingId.value;
-      ElMessage.success('已更新')
-    } else {
-      const res: any = await createCriteria(formData);
-      tid = res?.id ?? res?.data?.id ?? null;
-      ElMessage.success('已创建，请在下方编辑判据条件')
-    }
-    ;dialogVisible.value = false;
-    await loadAllCriteria();
-    if (tid) {
-      if (dialogContext.value === 'monitor') selectedTypeCriteriaId.value = tid; else selectedHpCriteriaId.value = tid;
-      initLevelForm(allCriteria.value.find(c => c.id === tid)!)
-    }
-  } catch (e: any) {
-    ElMessage.error(e?.message || '操作失败')
-  } finally {
-    saving.value = false
-  }
+// ── 保存逻辑：自动判断 新增 / 更新 / 删除 ──
+
+function isFormEmpty(): boolean {
+  return (['blue', 'yellow', 'orange', 'red'] as const).every(key => {
+    const lf = levelForm[key]
+    return lf.groups.length === 0 && !lf.description
+  })
 }
 
 function buildLevelConfigFromForm(): string {
@@ -451,64 +343,109 @@ function buildLevelConfigFromForm(): string {
     const lf = levelForm[key]
     if (lf.groups.length === 0 && !lf.description) continue
     config[key] = {
-      groupLogic: lf.groupLogic,
-      groups: lf.groups,
-      description: lf.description,
-      persistCount: lf.persistCount,
-      silencePeriod: lf.silencePeriod,
+      groupLogic: lf.groupLogic, groups: lf.groups,
+      description: lf.description, persistCount: lf.persistCount, silencePeriod: lf.silencePeriod,
     }
   }
   return JSON.stringify(config)
 }
 
-async function handleSaveForm(context: 'monitor' | 'hazard') {
+function buildCriteriaName(context: 'monitor' | 'hazard'): string {
+  if (context === 'monitor') return selectedMonitorTypeName.value + ' — 告警判据'
+  return (cascade.sensorMeta?.sensorName || '传感器') + ' — 设备判据'
+}
+
+function getActiveCriteria(context: 'monitor' | 'hazard'): AlarmCriteriaItem | undefined {
   const list = context === 'monitor' ? currentTypeCriteria.value : currentHpCriteria.value
-  const active = list.find(c => c.id === (context === 'monitor' ? selectedTypeCriteriaId.value : selectedHpCriteriaId.value))
-  if (!active) {
-    ElMessage.warning('请先选择判据');
+  const selectedId = context === 'monitor' ? selectedTypeCriteriaId.value : selectedHpCriteriaId.value
+  return list.find(c => c.id === selectedId) || list[0]
+}
+
+async function handleSaveForm(context: 'monitor' | 'hazard') {
+  const existing = getActiveCriteria(context)
+  const formEmpty = isFormEmpty()
+
+  // 无数据 + 无已有判据 → 无操作
+  if (formEmpty && !existing) {
+    ElMessage.info('请先添加条件')
     return
   }
-  ;saving.value = true
+
+  // 清空后保存 → 删除已有判据
+  if (formEmpty && existing) {
+    saving.value = true
+    try {
+      await deleteCriteria(existing.id)
+      ElMessage.success('判据已删除')
+      if (context === 'monitor') selectedTypeCriteriaId.value = null
+      else selectedHpCriteriaId.value = null
+      resetLevelForm()
+      await loadAllCriteria()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '删除失败')
+    } finally { saving.value = false }
+    return
+  }
+
+  // 有数据 + 无已有判据 → 新增
+  if (!formEmpty && !existing) {
+    saving.value = true
+    try {
+      const payload: AlarmCriteriaCreatePayload = {
+        name: buildCriteriaName(context),
+        levelConfig: buildLevelConfigFromForm(),
+        isEnabled: 1,
+      }
+      if (context === 'monitor') {
+        payload.monitorTypeId = selectedMonitorType.value!
+      } else {
+        payload.hazardPointId = cascade.hazardPointId!
+        payload.monitorContentId = cascade.sensorMeta?.monitorContentId
+        payload.monitorTypeId = cascade.sensorMeta?.monitorTypeId
+      }
+      const res: any = await createCriteria(payload)
+      const newId = res?.id ?? res?.data?.id ?? null
+      if (context === 'monitor') selectedTypeCriteriaId.value = newId
+      else selectedHpCriteriaId.value = newId
+      ElMessage.success('判据已创建')
+      await loadAllCriteria()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '创建失败')
+    } finally { saving.value = false }
+    return
+  }
+
+  // 有数据 + 有已有判据 → 更新
+  saving.value = true
   try {
     const payload: AlarmCriteriaCreatePayload = {
-      name: active.name,
-      monitorTypeId: active.monitorTypeId,
-      monitorContentId: active.monitorContentId,
-      hazardPointId: active.hazardPointId,
+      name: existing!.name,
+      monitorTypeId: existing!.monitorTypeId,
+      monitorContentId: existing!.monitorContentId,
+      hazardPointId: existing!.hazardPointId,
       levelConfig: buildLevelConfigFromForm(),
       persistCount: levelForm.blue.persistCount,
       silencePeriod: levelForm.blue.silencePeriod,
-      isEnabled: active.isEnabled
-    };
-    await updateCriteria(active.id, payload);
-    ElMessage.success('判据已保存');
+      isEnabled: existing!.isEnabled,
+    }
+    await updateCriteria(existing!.id, payload)
+    ElMessage.success('判据已保存')
     await loadAllCriteria()
   } catch (e: any) {
     ElMessage.error(e?.message || '保存失败')
-  } finally {
-    saving.value = false
-  }
+  } finally { saving.value = false }
 }
 
-// ── 启停/删除 ──
+// ── 启停 ──
+const saving = ref(false)
+
 async function handleToggle(c: AlarmCriteriaItem) {
   try {
-    await apiToggleCriteria(c.id, c.isEnabled === 1 ? 0 : 1);
-    ElMessage.success(c.isEnabled === 1 ? '已停用' : '已启用');
+    await apiToggleCriteria(c.id, c.isEnabled === 1 ? 0 : 1)
+    ElMessage.success(c.isEnabled === 1 ? '已停用' : '已启用')
     await loadAllCriteria()
   } catch (e: any) {
     ElMessage.error(e?.message || '操作失败')
-  }
-}
-
-async function handleDelete(c: AlarmCriteriaItem) {
-  try {
-    await ElMessageBox.confirm(`确定删除判据"${c.name}"？`, '确认删除', {type: 'warning'});
-    await deleteCriteria(c.id);
-    ElMessage.success('已删除');
-    if (activeTab.value === 'monitorType') selectedTypeCriteriaId.value = null; else selectedHpCriteriaId.value = null;
-    await loadAllCriteria()
-  } catch {
   }
 }
 
@@ -653,22 +590,30 @@ onMounted(async () => {
   color: #fff;
 }
 
-.type-item.active .type-count {
-  color: #fff;
+.type-item.active .type-badge.configured {
+  color: #b3e19d;
+}
+
+.type-item.active .type-badge.unconfigured {
+  color: #ffcda4;
 }
 
 .type-name {
   font-size: 14px;
 }
 
-.type-count {
-  font-size: 12px;
-  color: #999;
-  background: #f0f0f0;
-  border-radius: 10px;
-  padding: 0 8px;
-  min-width: 20px;
-  text-align: center;
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.type-badge.configured {
+  color: #67c23a;
+}
+
+.type-badge.unconfigured {
+  color: #e6a23c;
 }
 
 .right-panel {

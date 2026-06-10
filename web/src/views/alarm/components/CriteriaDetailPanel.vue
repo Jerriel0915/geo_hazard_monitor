@@ -3,36 +3,33 @@
     <div class="criteria-header">
       <div class="header-left-area">
         <span class="sub-title">{{ title }}</span>
-        <el-button v-if="criteriaList.length === 0" type="primary" size="small" @click="$emit('create')">新增判据
-        </el-button>
+        <el-tag v-if="activeCriteria" :type="activeCriteria.isEnabled === 1 ? 'success' : 'info'" size="small">
+          {{ activeCriteria.isEnabled === 1 ? '已启用' : '已停用' }}
+        </el-tag>
       </div>
-      <div v-if="activeCriteria" class="header-actions">
-        <el-switch :model-value="activeCriteria.isEnabled === 1" @change="$emit('toggle', activeCriteria)"
-                   size="small" active-text="启用" inactive-text="停用"/>
+      <div class="header-actions">
+        <el-switch
+            v-if="activeCriteria"
+            :model-value="activeCriteria.isEnabled === 1"
+            @change="$emit('toggle', activeCriteria)"
+            size="small" active-text="启用" inactive-text="停用"
+        />
         <el-button size="small" @click="resetAllLevels">清空</el-button>
         <el-button size="small" type="primary" :loading="saving" @click="$emit('save-form')">保存</el-button>
       </div>
     </div>
 
-    <template v-if="activeCriteria">
-      <div class="level-grid">
-        <LevelCriteriaCard
-            v-for="lv in alarmLevels"
-            :key="lv.value"
-            :level="lv"
-            :level-data="props.levelForm[lv.key]"
-            :indicator-tree="indicatorTree"
-            :node-map="nodeMap"
-            @update:level-data="d => updateLevel(lv.key, d)"
-        />
-      </div>
-    </template>
-
-    <el-empty
-        v-else
-        description="暂未配置判据，请点击上方「新增判据」按钮创建"
-        :image-size="100"
-    />
+    <div class="level-grid">
+      <LevelCriteriaCard
+          v-for="lv in alarmLevels"
+          :key="lv.value"
+          :level="lv"
+          :level-data="props.levelForm[lv.key]"
+          :indicator-tree="indicatorTree"
+          :node-map="nodeMap"
+          @update:level-data="d => updateLevel(lv.key, d)"
+      />
+    </div>
   </div>
 </template>
 
@@ -57,14 +54,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:selectedId': [id: number | null]
-  create: []; edit: [c: AlarmCriteriaItem]; delete: [c: AlarmCriteriaItem]; toggle: [c: AlarmCriteriaItem]
+  edit: [c: AlarmCriteriaItem]; delete: [c: AlarmCriteriaItem]; toggle: [c: AlarmCriteriaItem]
   'save-form': []
 }>()
 
-const activeCriteria = computed(() => props.criteriaList.find(c => c.id === props.selectedId) || (props.criteriaList.length === 1 ? props.criteriaList[0] : null))
+const activeCriteria = computed(() => {
+  if (props.selectedId) return props.criteriaList.find(c => c.id === props.selectedId) || null
+  return props.criteriaList.length > 0 ? props.criteriaList[0] : null
+})
 
 watch(() => props.criteriaList, (list) => {
-  if (list.length === 1 && props.selectedId !== list[0].id) {
+  if (list.length > 0 && (!props.selectedId || !list.find(c => c.id === props.selectedId))) {
     emit('update:selectedId', list[0].id)
   }
 }, {immediate: true})
@@ -104,7 +104,7 @@ function resetAllLevels() {
 .header-left-area {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .header-actions {
