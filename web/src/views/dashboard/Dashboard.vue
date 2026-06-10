@@ -286,7 +286,7 @@ const showSensorChart = ref(false)
 const sensorChartData = ref<number[]>([])
 
 // 蒙层显示状态
-const showMaskLayer = ref(false)
+const showMaskLayer = ref(true)
 const showLegend = ref(true)
 
 const generateSensorData = () => {
@@ -367,12 +367,7 @@ const initMap = () => {
   }).addTo(mapInstance)
 
   addFocusBoundary()
-  addMaskLayer()
-  // 默认关闭蒙层和边界线
-  toggleMaskLayer()
   addHazardPoints()
-
-  fitToFocusArea()
 }
 
 const fitToFocusArea = () => {
@@ -464,6 +459,23 @@ const toggleMaskLayer = () => {
         fillOpacity: 0,
         color: 'transparent',
         weight: 0
+      })
+    }
+  }
+  // 同步控制关注区域边界线的显隐
+  if (focusAreaLayer) {
+    const fl = focusAreaLayer as any
+    if (showMaskLayer.value) {
+      fl.setStyle({
+        color: '#faad14',
+        weight: 3,
+        dashArray: '8 4'
+      })
+    } else {
+      fl.setStyle({
+        color: 'transparent',
+        weight: 0,
+        dashArray: null
       })
     }
   }
@@ -1357,22 +1369,22 @@ const loadFocusArea = async () => {
         focusAreaLayer = L.geoJSON(geojson, {
           style: (feature: any) => {
             const t = feature?.geometry?.type
+            // 默认隐藏边界线（与 showMaskLayer 同步）
+            const borderColor = showMaskLayer.value ? '#faad14' : 'transparent'
+            const borderWeight = showMaskLayer.value ? 3 : 0
             if (t === 'Polygon' || t === 'MultiPolygon') return {
-              color: '#faad14',
-              weight: 3,
-              fillColor: '#faad14',
-              fillOpacity: 0.12,
-              dashArray: '8 4'
+              color: borderColor,
+              weight: borderWeight,
+              fillColor: 'transparent',
+              fillOpacity: 0,
+              dashArray: showMaskLayer.value ? '8 4' : null
             }
-            if (t === 'LineString') return {color: '#faad14', weight: 3, dashArray: '8 4'}
-            return {color: '#faad14', weight: 2}
+            if (t === 'LineString') return {color: borderColor, weight: borderWeight, dashArray: showMaskLayer.value ? '8 4' : null}
+            return {color: borderColor, weight: showMaskLayer.value ? 2 : 0}
           }
         }).addTo(mapInstance).bindPopup('系统关注区域')
-        if ((focusAreaLayer as any).getBounds) mapInstance.fitBounds((focusAreaLayer as any).getBounds(), {
-          padding: [30, 30],
-          maxZoom: 13
-        })
         addMaskLayer()
+        fitToFocusArea()
       }
     }
   } catch (e) {
@@ -1389,7 +1401,7 @@ onMounted(async () => {
   loadMonitorTypes()
   await loadHazardPoints()
   loadDashboardData()
-  loadFocusArea()
+  await loadFocusArea()
 })
 
 onUnmounted(() => {
