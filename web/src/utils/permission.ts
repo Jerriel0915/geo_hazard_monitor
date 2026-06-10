@@ -1,7 +1,7 @@
-import { getAuthInfo, type AuthInfo } from './userApi'
-import { ref } from 'vue'
+import {type AuthInfo, getAuthInfo} from './userApi'
+import {ref} from 'vue'
 
-const permissions = ref<string[]>([])
+export const permissions = ref<string[]>([])
 let loaded = false
 
 /** 检查当前用户是否拥有指定权限（含 *:*:* 超级通配） */

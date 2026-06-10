@@ -317,10 +317,10 @@ import {
 } from '@/api/monitor'
 
 // ===== 权限 =====
-const canViewMqtt = hasPermission('monitor:mqtt:list')
+const canViewMqtt = computed(() => hasPermission('monitor:mqtt:list'))
 
 onMounted(() => {
-  if (canViewMqtt) {
+  if (canViewMqtt.value) {
     fetchStats()
     fetchListeners()
     fetchConfig()

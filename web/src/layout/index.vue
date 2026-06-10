@@ -246,6 +246,7 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
+import {loadPermissions} from '@/utils/permission'
 import {getAuthInfo, getUserInfo} from '@/utils/userApi'
 import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
 
@@ -592,6 +593,7 @@ const markAllAsRead = async () => {
 onMounted(async () => {
   tabs.value = [{ name: 'Dashboard', label: '首页' }]
   try {
+    await loadPermissions()
     const auth = await getAuthInfo()
     isAdmin.value = auth.roles.includes('admin') || auth.roles.includes('ROOT')
   } catch {
