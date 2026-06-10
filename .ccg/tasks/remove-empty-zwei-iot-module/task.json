@@ -1,0 +1,12 @@
+{
+  "id": "remove-empty-zwei-iot-module",
+  "title": "移除空的 zwei-iot 兼容模块，不留下任何引用",
+  "status": "in_progress",
+  "strategy": "refactor-safely",
+  "currentPhase": "1",
+  "nextAction": "执行引用清点 → 分步移除 → 编译验证 → 文档同步",
+  "gate": null,
+  "branch": "web260429",
+  "scope": "Maven 多模块 + 文档",
+  "createdAt": "2026-06-10T21:13:00+08:00"
+}

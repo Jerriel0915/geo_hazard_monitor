@@ -5,6 +5,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > **编码规范 Skill**: 本项目提供 `.claude/skills/coding-standards.md`，包含注释格式、模块边界、错误处理、数据库设计约定等详细编码规范。Agent
 > 在处理本项目代码时自动加载。
 
+> **架构师自动扫描**: 本文件由架构师 Agent (自适应版) 于 2026-06-10 扫描增量更新。完整模块级文档见 `server/*/CLAUDE.md` 与
+`web/CLAUDE.md`，扫描元数据见 `.claude/index.json`。
+
+## 变更记录 (Changelog)
+
+| 时间               | 变更                                                                                                                        | 备注                                                                                                                                                                                        |
+|------------------|---------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-06-10 18:52 | 新增 `.claude/index.json` 项目扫描索引                                                                                            | 记录模块清单、事件契约、Service 接口、覆盖率与下一步建议                                                                                                                                                          |
+| 2026-06-10 18:52 | 新增 14 个模块级 CLAUDE.md                                                                                                      | server 各 Maven 模块 + web 前端总览                                                                                                                                                              |
+| 2026-06-10 18:52 | 根级 CLAUDE.md 新增模块结构图 (Mermaid)                                                                                            | 直观表达 Maven 依赖与前后端目录关系                                                                                                                                                                     |
+| 2026-06-10 19:08 | 新增 14 个模块级 CLAUDE.md                                                                                                      | service/impl 核心实现类索引 + Redis Stream 消费者 + Groovy 沙箱 + 告警引擎细节                                                                                                                              |
+| 2026-06-10 19:08 | 新增 `db/CLAUDE.md`                                                                                                         | 解析 SQL 2.0 全量脚本，59 张表 + Mermaid E-R 图                                                                                                                                                     |
+| 2026-06-10 19:08 | `coding-standards.md` 追加 4 节                                                                                              | 第三方库 / 异步线程池 / Redis 规范 / Controller 响应                                                                                                                                                   |
+| 2026-06-10 21:20 | **移除 `server/zwei-iot` 兼容空壳模块**                                                                                           | 父 POM + `zwei-admin`/`zwei-monitor` POM + Dockerfile 全部引用清空；Maven 验证 14 模块 BUILD SUCCESS                                                                                                  |
+| 2026-06-10 19:08 | **增量补扫 P0-P3**: 6 个核心模块 (alarm/timeseries/device/hazard/video/broker/monitor) 新增"核心实现类索引"小节; 修正多处 `service/impl/` 等子包路径错误 | alarm 5 个 engine 类 + 5 个 service impl + notify 双 SSE; timeseries 4 阶段 + Redis Stream 三段退避; device 设备状态机 + 自注册 7 步; hazard REPEATABLE READ 安全 device_count; broker 10 步鉴权; monitor 8 维度健康分 |
+| 2026-06-10 19:08 | 新增 `db/CLAUDE.md` (59 张表清单 + 业务域分组 + E-R 关系图 + 初始化数据)                                                                     | 9 大业务域 + Mermaid `erDiagram` + 关键记录数                                                                                                                                                      |
+| 2026-06-10 19:08 | 模块索引表追加 `db` 行                                                                                                            | MySQL 8.0 全量脚本 + 升级                                                                                                                                                                       |
+
 ## Project Overview
 
 **知微 (Zwei)** — 地质灾害监测管理系统 (Geo-Hazard Monitoring & Management System). An IoT platform that collects
@@ -53,6 +71,81 @@ docker compose up -d --build
 
 ## Architecture
 
+### 模块结构图 (Mermaid)
+
+```mermaid
+graph TD
+    Root["(根) 知微 / Zwei Geo-Hazard Monitor"] --> Server["server/ (Maven 多模块)"];
+    Root --> Web["web/ (Vue 3 + TS)"];
+    Root --> Db["db/ (MySQL 脚本 + 升级)"];
+    Root --> Docs["docs/ (需求/接口/视图规范)"];
+
+    Server --> SA["zwei-admin<br/>(启动入口 + REST 控制器)"];
+    Server --> SF["zwei-framework<br/>(安全/权限/AOP/配置)"];
+    Server --> SC["zwei-common<br/>(BaseController/事件契约/工具类)"];
+    Server --> SS["zwei-system<br/>(RBAC + 通知公告 notice/)"];
+    Server --> SQ["zwei-quartz<br/>(定时任务)"];
+    Server --> SL["zwei-log<br/>(审计日志 + SSE + MQTT 消息日志)"];
+    Server --> SM["zwei-monitor<br/>(系统/Redis/MQTT/仪表盘)"];
+    Server --> SI["zwei-iot-*<br/>(7 个 IoT 子模块)"];
+
+    SI --> IMon["zwei-iot-monitor<br/>(监测字典 - 叶子)"];
+    SI --> IDev["zwei-iot-device<br/>(设备+传感器+跨模块接口)"];
+    SI --> ITs["zwei-iot-timeseries<br/>(IoTDB 读写 + 解析)"];
+    SI --> IBr["zwei-iot-broker<br/>(MQTT 鉴权+ACL)"];
+    SI --> IHaz["zwei-iot-hazard<br/>(隐患点+绑定)"];
+    SI --> IVid["zwei-iot-video<br/>(视频设备)"];
+    SI --> IAlm["zwei-iot-alarm<br/>(告警引擎+Groovy)"];
+
+    Web --> WDash["views/dashboard"];
+    Web --> WHolo["views/holo-board"];
+    Web --> WBasic["views/basic"];
+    Web --> WAlarm["views/alarm"];
+    Web --> WReport["views/report"];
+    Web --> WIot["views/iot"];
+    Web --> WMini["views/miniprogram"];
+    Web --> WSys["views/system"];
+    Web --> WUser["views/user"];
+
+    click SA "./server/zwei-admin/CLAUDE.md" "查看 Spring Boot 启动入口"
+    click SF "./server/zwei-framework/CLAUDE.md" "查看框架层"
+    click SC "./server/zwei-common/CLAUDE.md" "查看公共基础"
+    click SS "./server/zwei-system/CLAUDE.md" "查看 RBAC + 通知公告"
+    click SQ "./server/zwei-quartz/CLAUDE.md" "查看 Quartz 定时任务"
+    click SL "./server/zwei-log/CLAUDE.md" "查看审计日志"
+    click SM "./server/zwei-monitor/CLAUDE.md" "查看系统监控"
+    click IMon "./server/zwei-iot-monitor/CLAUDE.md" "查看 IoT 监测字典"
+    click IDev "./server/zwei-iot-device/CLAUDE.md" "查看 IoT 设备"
+    click ITs "./server/zwei-iot-timeseries/CLAUDE.md" "查看 IoT 时序"
+    click IBr "./server/zwei-iot-broker/CLAUDE.md" "查看 IoT Broker"
+    click IHaz "./server/zwei-iot-hazard/CLAUDE.md" "查看 IoT 隐患点"
+    click IVid "./server/zwei-iot-video/CLAUDE.md" "查看 IoT 视频设备"
+    click IAlm "./server/zwei-iot-alarm/CLAUDE.md" "查看 IoT 告警中心"
+    click Web "./web/CLAUDE.md" "查看前端总览"
+    click Db "./db/CLAUDE.md" "查看 MySQL 数据库"
+```
+
+### 模块索引
+
+| 模块                    | 路径                           | 一句话职责                             | 模块级文档                                               |
+|-----------------------|------------------------------|-----------------------------------|-----------------------------------------------------|
+| `zwei-admin`          | `server/zwei-admin`          | Spring Boot 启动入口 + REST 控制器总成     | [CLAUDE.md](./server/zwei-admin/CLAUDE.md)          |
+| `zwei-common`         | `server/zwei-common`         | 公共基础: BaseController/事件契约/工具类     | [CLAUDE.md](./server/zwei-common/CLAUDE.md)         |
+| `zwei-framework`      | `server/zwei-framework`      | 认证/安全/权限/AOP/MyBatis/Redis        | [CLAUDE.md](./server/zwei-framework/CLAUDE.md)      |
+| `zwei-system`         | `server/zwei-system`         | RBAC + 通知公告 (含 SSE)               | [CLAUDE.md](./server/zwei-system/CLAUDE.md)         |
+| `zwei-quartz`         | `server/zwei-quartz`         | Quartz 定时任务                       | [CLAUDE.md](./server/zwei-quartz/CLAUDE.md)         |
+| `zwei-log`            | `server/zwei-log`            | 审计/操作日志 + SSE + MQTT 消息日志         | [CLAUDE.md](./server/zwei-log/CLAUDE.md)            |
+| `zwei-monitor`        | `server/zwei-monitor`        | 系统监控: 服务器/Redis/MQTT/仪表盘          | [CLAUDE.md](./server/zwei-monitor/CLAUDE.md)        |
+| `zwei-iot-monitor`    | `server/zwei-iot-monitor`    | 监测字典 (category/type/content) — 叶子 | [CLAUDE.md](./server/zwei-iot-monitor/CLAUDE.md)    |
+| `zwei-iot-device`     | `server/zwei-iot-device`     | 设备/传感器/注册 + 跨模块接口定义               | [CLAUDE.md](./server/zwei-iot-device/CLAUDE.md)     |
+| `zwei-iot-timeseries` | `server/zwei-iot-timeseries` | IoTDB 读写 + MQTT payload 解析        | [CLAUDE.md](./server/zwei-iot-timeseries/CLAUDE.md) |
+| `zwei-iot-broker`     | `server/zwei-iot-broker`     | MQTT 鉴权/会话/ACL                    | [CLAUDE.md](./server/zwei-iot-broker/CLAUDE.md)     |
+| `zwei-iot-hazard`     | `server/zwei-iot-hazard`     | 隐患点/分组/设备绑定                       | [CLAUDE.md](./server/zwei-iot-hazard/CLAUDE.md)     |
+| `zwei-iot-video`      | `server/zwei-iot-video`      | 视频设备 + 隐患点关联                      | [CLAUDE.md](./server/zwei-iot-video/CLAUDE.md)      |
+| `zwei-iot-alarm`      | `server/zwei-iot-alarm`      | 告警中心: 判据/策略/引擎/分发 (Groovy)        | [CLAUDE.md](./server/zwei-iot-alarm/CLAUDE.md)      |
+| 前端总览                  | `web`                        | Vue 3 + TS + Vite + Element Plus  | [CLAUDE.md](./web/CLAUDE.md)                        |
+| **数据库**               | `db`                         | **MySQL 8.0 全量脚本 (59 张表) + 升级**   | **[CLAUDE.md](./db/CLAUDE.md)**                     |
+
 ### Backend Module Map (Maven multi-module)
 
 ```
@@ -71,6 +164,7 @@ server/
 ├── zwei-iot-hazard/       IoT — 隐患点管理 + 分组 + 设备/视频设备绑定
 ├── zwei-iot-video/        IoT — 视频设备管理 + 隐患点关联
 ├── zwei-iot/              (空壳，保留兼容旧依赖)
+├── zwei-iot-alarm/        IoT — 告警中心: 判据/综合策略/引擎/通知分发 (Groovy)
 ├── zwei-monitor/          System monitoring — unified monitoring API & MQTT broker status
 ├── zwei-quartz/           Scheduled tasks (quartz job framework)
 └── zwei-log/              Audit/operation logging, SSE streaming, MQTT message logs
@@ -80,19 +174,22 @@ server/
 
 Previously a single `zwei-iot` module. Now split into 6 independent Maven modules:
 
-| Module                | Package                     | Responsibility                                                                              |
-|-----------------------|-----------------------------|---------------------------------------------------------------------------------------------|
-| `zwei-iot-monitor`    | `com.zwei.iot.monitor`      | Monitor category/type/content CRUD. Pure dictionary, no IoT dependencies.                   |
-| `zwei-iot-device`     | `com.zwei.iot.device`       | Device & sensor lifecycle, registration, MQTT auth accounts, cross-module service interfaces |
-| `zwei-iot-timeseries` | `com.zwei.iot.timeseries`   | IoTDB read/write, MQTT payload parsing (sys/gb), monitor data query API (latest/page/chart) |
-| `zwei-iot-broker`     | `com.zwei.iot.broker`       | MQTT CONNECT auth, session registry, publish/subscribe ACL, connect/disconnect listeners    |
-| `zwei-iot-hazard`     | `com.zwei.iot.hazardpoint`  | Hazard point & group CRUD, device/video binding, implements IDeviceHazardRelationService    |
-| `zwei-iot-video`      | `com.zwei.iot.video`        | Video device CRUD, hazard point association, implements IVideoDeviceStatService             |
+| Module                | Package                    | Responsibility                                                                               |
+|-----------------------|----------------------------|----------------------------------------------------------------------------------------------|
+| `zwei-iot-monitor`    | `com.zwei.iot.monitor`     | Monitor category/type/content CRUD. Pure dictionary, no IoT dependencies.                    |
+| `zwei-iot-device`     | `com.zwei.iot.device`      | Device & sensor lifecycle, registration, MQTT auth accounts, cross-module service interfaces |
+| `zwei-iot-timeseries` | `com.zwei.iot.timeseries`  | IoTDB read/write, MQTT payload parsing (sys/gb), monitor data query API (latest/page/chart)  |
+| `zwei-iot-broker`     | `com.zwei.iot.broker`      | MQTT CONNECT auth, session registry, publish/subscribe ACL, connect/disconnect listeners     |
+| `zwei-iot-hazard`     | `com.zwei.iot.hazardpoint` | Hazard point & group CRUD, device/video binding, implements IDeviceHazardRelationService     |
+| `zwei-iot-video`      | `com.zwei.iot.video`       | Video device CRUD, hazard point association, implements IVideoDeviceStatService              |
+| `zwei-iot-alarm`      | `com.zwei.iot.alarm`       | Alarm center: criteria/strategy/engine/notification (Groovy) — **P0**                        |
 
 **Cross-module dependency rules:**
 - `zwei-iot-device` defines all cross-module service interfaces (IDeviceAuthQueryService, IDeviceSensorQueryService, etc.)
 - All other IoT modules depend on `zwei-iot-device` only through its service interfaces, never through Mapper directly
 - `zwei-iot-monitor` is the leaf module — no IoT dependencies
+- `zwei-iot-broker` depends on `zwei-iot-timeseries` (reverse direction; needed to call `MonitorIngestFacade.ingest()`
+  from message listener)
 
 ### Monitor Module (`zwei-monitor/`) — System & MQTT Monitoring
 
@@ -139,20 +236,22 @@ Key infrastructure:
 ### Data Flow
 
 ```
-Field sensors → MQTT (mica-mqtt) → MonitorIngestFacade
+Field sensors → MQTT (mica-mqtt) → MqttServerMessageListener → MqttDeviceAuthService.hasPublishPermission
+    → MonitorIngestFacade.ingest()
     → MonitorTopicParser → MonitorMetadataService → payload parser (sys/gb)
-    → Redis Stream (stream:monitor:ingest)
-    → MonitorIngestConsumerService (async)
-        → IotdbTimeSeriesService → IoTDB (time-series storage)
-        → DeviceOnlineStatusService → device_online_status.last_report_at  (运维指标)
-        → DeviceSensorService → device_sensor.last_report_time            (传感器活跃率)
-        → DeviceMapper → device.lastReportTime (兼容保留)
-
-MQTT Connect/Disconnect:
-    → MqttDeviceAuthService.authenticate() → publishEvent(DeviceOnlineEvent)
-    → MqttConnectStatusListener → publishEvent(DeviceOnlineEvent / DeviceOfflineEvent)
-    → DeviceOnlineStatusService (EventListener) → device_online_status 表 (UPSERT)
-    → device_online_event_log 表 (INSERT 历史明细)
+    → MonitorIngestStreamService.enqueue() → Redis Stream (stream:monitor:ingest)
+    → MonitorIngestConsumerService (单线程 daemon, 4 阶段处理)
+        ─ 阶段1: 幂等去重 (Redis SETNX, dedupe-key 拼接 deviceId:sensorNo:attrCode:dataTime:payloadHash)
+        ─ 阶段2: IotdbTimeSeriesService.writePoints (懒建 aligned timeseries, 质量码 INT32 RLE)
+        ─ 阶段3: 运维指标回写
+            ├─ DeviceOnlineStatusService → device_online_status.last_report_at
+            ├─ DeviceSensorService → device_sensor.last_report_time
+            └─ DeviceMapper → device.lastReportTime (兼容保留)
+        ─ 阶段4: 失败重试 (三段退避 3s/9s/27s) → 死信队列
+    → AlarmEvaluationEngine.@EventListener(MonitorDataIngestedEvent)
+        → 隐患点专属判据 (优先级 1) → 监测类型兜底 (优先级 2) → 综合策略
+        → AlarmRecordServiceImpl.createOrUpdateAlarm (去重 + 状态机)
+        → AlarmNotifier (分发) + AlarmStreamPublisher (SSE)
 ```
 
 ### Frontend Structure
@@ -187,29 +286,38 @@ web/src/
 
 ### Key Config Files
 
-| File                 | Purpose                                                                      |
-|----------------------|------------------------------------------------------------------------------|
-| `docker-compose.yml` | Full stack orchestration with health checks and log rotation                 |
-| `web/nginx.conf`     | Production Nginx — SPA fallback, API proxy to backend, SSE/WebSocket support |
-| `server/pom.xml`     | Parent POM with all dependency versions and module declarations              |
-| `.env.example`       | Required environment variables template                                      |
+| File                             | Purpose                                                                      |
+|----------------------------------|------------------------------------------------------------------------------|
+| `docker-compose.yml`             | Full stack orchestration with health checks and log rotation                 |
+| `web/nginx.conf`                 | Production Nginx — SPA fallback, API proxy to backend, SSE/WebSocket support |
+| `server/pom.xml`                 | Parent POM with all dependency versions and module declarations              |
+| `.env.example`                   | Required environment variables template                                      |
+| `db/geo_hazard_monitor_v2.0.sql` | MySQL 8.0.42 full dump (59 tables, 3099 lines)                               |
+| `db/CLAUDE.md`                   | Database ER + table inventory + initialization data                          |
 
 ## Database Notes
 
-- MySQL schema initializes from `db/geo_hazard_monitor_v2.0.sql` on first container start
-- Upgrade scripts live in `db/upgrade/`
-- IoTDB stores time-series data — tables (sequences) created dynamically on first write per device
+- MySQL 8.0.42, charset `utf8mb4_0900_ai_ci`, all tables InnoDB
+- 59 tables grouped into 9 business domains (alarm/device/hazard/monitor/log/report/video/sys_/sensor)
+- 物理外键**仅** `device_hazard_point` / `video_device_hazard_point` 两张表保留；其余由应用层 Service 维护
+  （见 `.claude/skills/coding-standards.md` 第六节）
+- **逻辑删除**统一 `del_flag` 列 (0-正常 1-删除)，不物理 DELETE
+- IoTDB stores time-series data — paths `root.{database}.d{deviceId}.s{sensorNo}` with auto-created aligned timeseries
+  (DOUBLE+GORILLA for values, INT32+RLE for quality codes)
+- 升级脚本目录 `db/upgrade/` 当前**不存在**；如需新增请按版本号命名
 
 ## Shared Events (`zwei-common`)
 
 Event classes in `com.zwei.common.event` serve as contracts between modules without direct Maven dependencies:
 
-| Event                      | Publisher                                                   | Consumer                                  |
-|----------------------------|-------------------------------------------------------------|-------------------------------------------|
-| `MqttMessageReceivedEvent` | zwei-iot (MqttServerMessageListener)                        | zwei-log (MqttMessageLogService)          |
-| `DeviceOnlineEvent`        | zwei-iot (MqttDeviceAuthService, MqttConnectStatusListener) | zwei-iot (DeviceOnlineStatusService)      |
-| `DeviceOfflineEvent`       | zwei-iot (MqttConnectStatusListener)                        | zwei-iot (DeviceOnlineStatusService)      |
-| `NoticeCreatedEvent`       | zwei-system (SysNoticeServiceImpl)                          | zwei-system (NoticeStreamPublisher → SSE) |
+| Event                      | Publisher                                                   | Consumer                                           |
+|----------------------------|-------------------------------------------------------------|----------------------------------------------------|
+| `MqttMessageReceivedEvent` | zwei-iot (MqttServerMessageListener)                        | zwei-log (MqttMessageLogService)                   |
+| `DeviceOnlineEvent`        | zwei-iot (MqttDeviceAuthService, MqttConnectStatusListener) | zwei-iot (DeviceOnlineStatusService)               |
+| `DeviceOfflineEvent`       | zwei-iot (MqttConnectStatusListener)                        | zwei-iot (DeviceOnlineStatusService)               |
+| `NoticeCreatedEvent`       | zwei-system (SysNoticeServiceImpl)                          | zwei-system (NoticeStreamPublisher → SSE)          |
+| `AlarmTriggeredEvent`      | zwei-iot-alarm (AlarmEvaluationEngine)                      | alarm (AlarmNotifier + AlarmStreamPublisher → SSE) |
+| `MonitorDataIngestedEvent` | zwei-iot-timeseries (MonitorIngestConsumerService)          | alarm (AlarmEvaluationEngine) + future analytics   |
 
 ## Notification Module (`zwei-system/notice/`)
 

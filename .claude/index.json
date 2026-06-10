@@ -1,0 +1,445 @@
+{
+  "project": "geo_hazard_monitor",
+  "displayName": "知微 (Zwei) — 地质灾害监测管理系统",
+  "version": "3.9.2",
+  "scanTimestamp": "2026-06-10T21:20:00+08:00",
+  "workingDirectory": "D:/Code/Projects/geo_hazard_monitor",
+  "techStack": {
+    "backend": {
+      "language": "Java 17",
+      "framework": "Spring Boot 4.0.3",
+      "orm": "MyBatis 4.0.1",
+      "buildTool": "Maven (multi-module)",
+      "security": "Spring Security + JWT (jjwt 0.9.1)",
+      "connectionPool": "Druid 1.2.28"
+    },
+    "frontend": {
+      "framework": "Vue 3 + TypeScript",
+      "buildTool": "Vite 5",
+      "ui": "Element Plus 2.6",
+      "charts": "ECharts 6, ApexCharts",
+      "map": "Leaflet + leaflet-draw",
+      "router": "Vue Router 4"
+    },
+    "databases": {
+      "relational": "MySQL 8.0.42",
+      "timeseries": "Apache IoTDB 1.3.4"
+    },
+    "infrastructure": {
+      "cache": "Redis 7",
+      "messaging": "MQTT (mica-mqtt 2.6.3)",
+      "deployment": "Docker Compose + Nginx"
+    }
+  },
+  "mavenModules": [
+    {
+      "name": "zwei-admin",
+      "path": "server/zwei-admin",
+      "responsibility": "Spring Boot 启动入口 + REST 控制器",
+      "entry": "com.zwei.RuoYiApplication",
+      "dependsOn": [
+        "zwei-framework",
+        "zwei-system",
+        "zwei-monitor",
+        "zwei-iot-*"
+      ]
+    },
+    {
+      "name": "zwei-common",
+      "path": "server/zwei-common",
+      "responsibility": "共享基础: BaseController/BaseEntity/AjaxResult/工具类/事件契约",
+      "dependsOn": []
+    },
+    {
+      "name": "zwei-framework",
+      "path": "server/zwei-framework",
+      "responsibility": "认证/权限/安全/AOP/MyBatis/Redis/全局异常",
+      "dependsOn": [
+        "zwei-system",
+        "zwei-log"
+      ]
+    },
+    {
+      "name": "zwei-system",
+      "path": "server/zwei-system",
+      "responsibility": "RBAC 用户/角色/菜单/部门/字典 + 通知公告子包",
+      "dependsOn": [
+        "zwei-common"
+      ]
+    },
+    {
+      "name": "zwei-quartz",
+      "path": "server/zwei-quartz",
+      "responsibility": "Quartz 定时任务",
+      "dependsOn": [
+        "zwei-common"
+      ]
+    },
+    {
+      "name": "zwei-log",
+      "path": "server/zwei-log",
+      "responsibility": "审计/操作日志 + SSE + MQTT 消息日志",
+      "dependsOn": [
+        "zwei-common"
+      ]
+    },
+    {
+      "name": "zwei-iot-monitor",
+      "path": "server/zwei-iot-monitor",
+      "responsibility": "监测字典 (category/type/content) — 叶子模块",
+      "dependsOn": [
+        "zwei-common"
+      ]
+    },
+    {
+      "name": "zwei-iot-device",
+      "path": "server/zwei-iot-device",
+      "responsibility": "设备/传感器/注册/MQTT 账号 + 跨模块 Service 接口定义",
+      "dependsOn": [
+        "zwei-common",
+        "zwei-iot-monitor"
+      ]
+    },
+    {
+      "name": "zwei-iot-timeseries",
+      "path": "server/zwei-iot-timeseries",
+      "responsibility": "IoTDB 读写 + MQTT payload 解析 + 监测数据查询",
+      "dependsOn": [
+        "zwei-common",
+        "zwei-iot-device",
+        "zwei-iot-monitor",
+        "zwei-iot-hazard"
+      ]
+    },
+    {
+      "name": "zwei-iot-broker",
+      "path": "server/zwei-iot-broker",
+      "responsibility": "MQTT CONNECT 鉴权 + 会话注册 + 发布订阅 ACL",
+      "dependsOn": [
+        "zwei-common",
+        "zwei-iot-device",
+        "zwei-iot-timeseries",
+        "mica-mqtt"
+      ]
+    },
+    {
+      "name": "zwei-iot-hazard",
+      "path": "server/zwei-iot-hazard",
+      "responsibility": "隐患点/分组 + 设备/视频绑定, 实现 IDeviceHazardRelationService",
+      "dependsOn": [
+        "zwei-common",
+        "zwei-iot-device",
+        "zwei-iot-video"
+      ]
+    },
+    {
+      "name": "zwei-iot-video",
+      "path": "server/zwei-iot-video",
+      "responsibility": "视频设备管理 + 隐患点关联, 实现 IVideoDeviceStatService",
+      "dependsOn": [
+        "zwei-common",
+        "zwei-iot-device"
+      ]
+    },
+    {
+      "name": "zwei-iot-alarm",
+      "path": "server/zwei-iot-alarm",
+      "responsibility": "告警中心: 判据/综合策略/引擎/分发 (Groovy) — P0",
+      "dependsOn": [
+        "zwei-common",
+        "zwei-iot-device",
+        "zwei-iot-monitor",
+        "zwei-iot-timeseries",
+        "zwei-iot-hazard"
+      ]
+    },
+    {
+      "name": "zwei-monitor",
+      "path": "server/zwei-monitor",
+      "responsibility": "系统监控: 服务器健康 + Redis + MQTT Broker + 仪表盘",
+      "dependsOn": [
+        "zwei-common",
+        "zwei-framework",
+        "zwei-iot-device"
+      ]
+    }
+  ],
+  "frontendModules": [
+    {
+      "name": "dashboard",
+      "path": "web/src/views/dashboard",
+      "files": 11,
+      "responsibility": "首页仪表盘 (地图/隐患详情/告警/设备/健康/资源部件)"
+    },
+    {
+      "name": "holo-board",
+      "path": "web/src/views/holo-board",
+      "files": 4,
+      "responsibility": "视图看板 (综合/告警/运营/自定义)"
+    },
+    {
+      "name": "basic",
+      "path": "web/src/views/basic",
+      "files": 4,
+      "responsibility": "基础数据: 隐患点/监测类型/设备/视频设备"
+    },
+    {
+      "name": "alarm",
+      "path": "web/src/views/alarm",
+      "files": 14,
+      "responsibility": "告警: 实时/判据/通知设置/综合/处置/H5 处置"
+    },
+    {
+      "name": "report",
+      "path": "web/src/views/report",
+      "files": 4,
+      "responsibility": "报表/查询/分析/大屏"
+    },
+    {
+      "name": "iot",
+      "path": "web/src/views/iot",
+      "files": 2,
+      "responsibility": "IoT 内部: 数据解析 + 服务状态"
+    },
+    {
+      "name": "miniprogram",
+      "path": "web/src/views/miniprogram",
+      "files": 4,
+      "responsibility": "小程序侧视图 (隐患点/设备/事件/监测数据)"
+    },
+    {
+      "name": "system",
+      "path": "web/src/views/system",
+      "files": 6,
+      "responsibility": "组织/身份/权限/日志/设置/通知公告"
+    },
+    {
+      "name": "user",
+      "path": "web/src/views/user",
+      "files": 1,
+      "responsibility": "用户个人资料"
+    }
+  ],
+  "dbModule": {
+    "name": "db",
+    "path": "db",
+    "responsibility": "MySQL 8.0.42 全量脚本 + 表清单 + E-R 图",
+    "tables": 59,
+    "lines": 3099,
+    "businessDomains": [
+      "alarm",
+      "device",
+      "hazard",
+      "monitor",
+      "log",
+      "report",
+      "video",
+      "sys_",
+      "sensor"
+    ]
+  },
+  "sharedEvents": [
+    {
+      "event": "MqttMessageReceivedEvent",
+      "path": "server/zwei-common/src/main/java/com/zwei/common/event/MqttMessageReceivedEvent.java",
+      "publisher": "MqttServerMessageListener",
+      "consumer": "MqttMessageLogService (zwei-log)"
+    },
+    {
+      "event": "DeviceOnlineEvent",
+      "path": "server/zwei-common/src/main/java/com/zwei/common/event/DeviceOnlineEvent.java",
+      "publisher": "MqttDeviceAuthService / MqttConnectStatusListener",
+      "consumer": "DeviceOnlineStatusService (zwei-iot)"
+    },
+    {
+      "event": "DeviceOfflineEvent",
+      "path": "server/zwei-common/src/main/java/com/zwei/common/event/DeviceOfflineEvent.java",
+      "publisher": "MqttConnectStatusListener",
+      "consumer": "DeviceOnlineStatusService (zwei-iot)"
+    },
+    {
+      "event": "NoticeCreatedEvent",
+      "path": "server/zwei-common/src/main/java/com/zwei/common/event/NoticeCreatedEvent.java",
+      "publisher": "SysNoticeServiceImpl",
+      "consumer": "NoticeStreamPublisher → SSE"
+    },
+    {
+      "event": "AlarmTriggeredEvent",
+      "path": "server/zwei-common/src/main/java/com/zwei/common/event/AlarmTriggeredEvent.java",
+      "publisher": "AlarmEvaluationEngine (zwei-iot-alarm)",
+      "consumer": "AlarmNotifier (分发) + AlarmStreamPublisher → SSE"
+    },
+    {
+      "event": "MonitorDataIngestedEvent",
+      "path": "server/zwei-common/src/main/java/com/zwei/common/event/MonitorDataIngestedEvent.java",
+      "publisher": "MonitorIngestConsumerService (zwei-iot-timeseries)",
+      "consumer": "AlarmEvaluationEngine (zwei-iot-alarm)"
+    }
+  ],
+  "keyServiceInterfaces": [
+    "IDeviceAuthQueryService (zwei-iot-device/service)",
+    "IDeviceSensorQueryService (zwei-iot-device/service)",
+    "IDeviceHazardRelationService (zwei-iot-device/service) — 由 zwei-iot-hazard 实现",
+    "IDeviceStatService (zwei-iot-device/service)",
+    "IDeviceQueryService (zwei-iot-device/service)",
+    "IVideoDeviceStatService (zwei-iot-device/service) — 由 zwei-iot-video 实现",
+    "ITimeSeriesSchemaService (zwei-iot-device/service) — 由 zwei-iot-timeseries.service.impl.TimeSeriesSchemaServiceImpl 实现"
+  ],
+  "coreImplementationClasses": {
+    "zwei-iot-alarm": {
+      "priority": "P0",
+      "files": [
+        "service/engine/AlarmEvaluationEngine.java",
+        "service/engine/CriteriaEvaluator.java",
+        "service/engine/CriteriaCacheService.java",
+        "service/engine/AlarmDedupService.java",
+        "service/engine/GroovyScriptExecutor.java",
+        "service/impl/AlarmCriteriaServiceImpl.java",
+        "service/impl/AlarmStrategyServiceImpl.java",
+        "service/impl/AlarmRecordServiceImpl.java",
+        "service/impl/AlarmDispatchServiceImpl.java",
+        "service/impl/AlarmNotificationServiceImpl.java",
+        "service/notify/AlarmNotifier.java",
+        "service/notify/AlarmStreamPublisher.java"
+      ],
+      "keyFindings": "alarm_type=THRESHOLD|COMPREHENSIVE; status 1=待处理/2=处理中/3=已销警/4=误报; Redis keys: alarm:pre-trigger:{cid}:{hpId}:{level}, alarm:last-trigger:{cid}:{hpId}, alarm:criteria:enabled; Groovy 沙箱禁关键字 13 个; 单线程 groovy-eval + Future timeout"
+    },
+    "zwei-iot-timeseries": {
+      "priority": "P0",
+      "files": [
+        "service/IotdbTimeSeriesService.java",
+        "service/MonitorIngestFacade.java",
+        "service/MonitorIngestStreamService.java",
+        "service/MonitorIngestConsumerService.java",
+        "service/MonitorDataQueryService.java",
+        "service/MonitorMetadataService.java",
+        "service/IotdbJdbcClient.java",
+        "support/MonitorTopicParser.java",
+        "support/IotdbPathResolver.java"
+      ],
+      "keyFindings": "Redis Stream stream:monitor:ingest; 三段退避 3s/9s/27s; 死信 MonitorIngestStreamService.enqueueDeadLetter; 4 阶段处理 (幂等→IoTDB→运维指标→重试); IoTDB 路径 root.{db}.d{deviceId}.s{sensorNo}; Aligned timeseries DOUBLE+GORILLA + 质量码 INT32+RLE"
+    },
+    "zwei-iot-device": {
+      "priority": "P1",
+      "files": [
+        "service/impl/DeviceServiceImpl.java",
+        "service/impl/DeviceSensorServiceImpl.java",
+        "service/impl/DeviceRegistryServiceImpl.java",
+        "service/impl/DeviceAuthQueryServiceImpl.java",
+        "service/impl/DeviceSensorQueryServiceImpl.java",
+        "service/impl/DeviceQueryServiceImpl.java",
+        "service/impl/DeviceStatServiceImpl.java",
+        "service/DeviceOnlineStatusService.java"
+      ],
+      "keyFindings": "authUsername 6位大写字母数字 (^[A-Z0-9]{6}$); authPassword 8位字母数字 (^[A-Za-z0-9]{8}$); 设备状态机 1正常↔2故障↔3停用; 自注册 7 步流程 (幂等→注册码→SN 校验→建设备→递归子设备→IoTDB schema 预创建→失败回滚); ObjectProvider<IDeviceSessionService> 可选注入"
+    },
+    "zwei-iot-hazard": {
+      "priority": "P1",
+      "files": [
+        "service/impl/HazardPointServiceImpl.java",
+        "service/impl/HazardPointGroupServiceImpl.java",
+        "service/impl/DeviceHazardPointServiceImpl.java",
+        "service/impl/DeviceHazardRelationServiceImpl.java",
+        "service/impl/VideoDeviceHazardPointServiceImpl.java"
+      ],
+      "keyFindings": "@Cacheable/@CacheEvict value='hazardPoint'; device_count 用子查询 COUNT (避免 REPEATABLE READ 快照漂移); 隐患点状态 1监测中/2停测中/3已完结; 隐患点 boundary JSON 含 polygon + strike"
+    },
+    "zwei-iot-video": {
+      "priority": "P1",
+      "files": [
+        "service/impl/VideoDeviceServiceImpl.java",
+        "service/impl/VideoDeviceStatServiceImpl.java"
+      ],
+      "keyFindings": "物理表名 video_device_hazard_point (非 hazard_point_video); 状态 0=离线 1=在线 2=故障; FK fk_vdhp_video/fk_vdhp_hp"
+    },
+    "zwei-iot-broker": {
+      "priority": "P2",
+      "files": [
+        "service/MqttDeviceAuthService.java",
+        "handler/MqttServerAuthHandler.java",
+        "component/MqttDeviceSessionRegistry.java",
+        "component/MqttAuthFailureGuard.java",
+        "component/MqttServerPublishPermission.java",
+        "component/MqttServerSubscribeValidator.java",
+        "service/MqttConnectStatusListener.java",
+        "service/MqttServerMessageListener.java",
+        "service/DeviceSessionServiceImpl.java"
+      ],
+      "keyFindings": "10 步鉴权流程; MqttException 4 类 (Business/Connection/Communication/Protocol); 双 ConcurrentHashMap 索引 (deviceId/clientId) + synchronized 写; broker→timeseries 反向依赖 (MqttServerMessageListener 调 MonitorIngestFacade)"
+    },
+    "zwei-monitor": {
+      "priority": "P2",
+      "files": [
+        "service/DashboardStatService.java",
+        "service/MqttSessionEnrichService.java",
+        "client/MqttHttpApiClient.java"
+      ],
+      "keyFindings": "8 维度仪表盘统计; 健康分 5 因子加权 (资料完善率 0.20/设备在线率 0.15/设备正常率 0.15/告警响应率 0.20 placeholder/边坡稳定率 0.30 placeholder); 按监测类型等比例分摊算法"
+    },
+    "zwei-system-notice": {
+      "priority": "P3",
+      "files": [
+        "notice/service/impl/SysNoticeServiceImpl.java",
+        "notice/service/NoticeStreamPublisher.java"
+      ],
+      "keyFindings": "SSE 超时 300_000ms; CopyOnWriteArrayList<SseEmitter>; HTML 标签过滤"
+    }
+  },
+  "sharedBaseClasses": [
+    "BaseController (com.zwei.common.core.controller.BaseController)",
+    "AjaxResult (com.zwei.common.core.domain.AjaxResult)",
+    "BaseEntity (com.zwei.common.core.domain.BaseEntity)",
+    "TableDataInfo / PageResult (com.zwei.common.core.page)",
+    "LoginUser (com.zwei.common.core.domain.model.LoginUser)"
+  ],
+  "coverage": {
+    "rootCladueMd": "updated (changelog appended, db row added)",
+    "moduleCladueMdGenerated": [
+      "server/zwei-common",
+      "server/zwei-framework",
+      "server/zwei-system",
+      "server/zwei-monitor",
+      "server/zwei-quartz",
+      "server/zwei-log",
+      "server/zwei-iot-monitor",
+      "server/zwei-iot-device",
+      "server/zwei-iot-timeseries",
+      "server/zwei-iot-broker",
+      "server/zwei-iot-hazard",
+      "server/zwei-iot-video",
+      "server/zwei-iot-alarm",
+      "server/zwei-admin",
+      "web",
+      "db"
+    ],
+    "estimatedFiles": 1500,
+    "scannedFiles": 165,
+    "scannedPercentage": 11.0,
+    "thisRunFiles": 45,
+    "thisRunFocus": "core service/impl + engine + db SQL",
+    "skipped": {
+      "node_modules": "已忽略 (web/node_modules 数千个依赖文件)",
+      "dist": "未扫描 (构建产物)",
+      "git": "已忽略",
+      "binary": "未扫描 (图片/字体/二进制)",
+      "uniapp": "按用户要求暂不扫描",
+      "truncated": false
+    },
+    "gaps": [
+      "server/zwei-iot (空壳兼容模块) — 仍保留,建议下次扫描时确认是否可移除",
+      "web/src/components/ (公共组件目录) 未单独扫描",
+      "uniapp/ (小程序原生工程) 未扫描",
+      "Controller 层的完整路由清单 (覆盖 alarm/device/hazard 等所有 Controller) 未提取",
+      "MyBatis XML Mapper 文件未深入分析 (只看 .java 接口)",
+      "前端 API 模块 (web/src/api/*) 与后端 Controller 的对应关系未梳理"
+    ]
+  },
+  "nextScanRecommendations": [
+    "扫描 server/zwei-admin/src/main/java/com/zwei/web/controller 下的所有业务 Controller, 补充完整路由清单 (按模块聚合)",
+    "扫描 MyBatis XML Mapper 文件, 提取关键 SQL 与动态 SQL 模式",
+    "扫描 web/src/api/* 目录, 梳理前端 API 模块与后端 Controller 的对应关系 (用于前后端联调)",
+    "评估 server/zwei-iot 空壳是否仍需保留 (deps only, no business code)",
+    "扫描 uniapp/ 目录结构, 评估是否需生成 uniapp/CLAUDE.md",
+    "对所有 service/impl/*.java 添加 @DisplayName 中文单元测试覆盖 (目标 80%+)"
+  ]
+}

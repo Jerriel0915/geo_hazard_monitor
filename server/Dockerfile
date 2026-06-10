@@ -21,7 +21,6 @@ COPY zwei-iot-broker/pom.xml zwei-iot-broker/
 COPY zwei-iot-hazard/pom.xml zwei-iot-hazard/
 COPY zwei-iot-video/pom.xml zwei-iot-video/
 COPY zwei-iot-alarm/pom.xml zwei-iot-alarm/
-COPY zwei-iot/pom.xml zwei-iot/
 COPY zwei-admin/pom.xml zwei-admin/
 
 RUN mvn dependency:go-offline -B

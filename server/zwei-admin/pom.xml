@@ -71,10 +71,6 @@
             <groupId>com.zwei</groupId>
             <artifactId>zwei-iot-alarm</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.zwei</groupId>
-            <artifactId>zwei-iot</artifactId>
-        </dependency>
 
         <!-- 监控模块-->
         <dependency>
