@@ -2,7 +2,7 @@
   <div class="video-device-page">
     <div class="page-header">
       <div class="header-left">
-        <h2 class="page-title">视频设备管理</h2>
+        <h2 class="page-title">视频设备</h2>
       </div>
       <div class="header-right">
         <el-button type="primary" @click="handleAdd">
@@ -301,12 +301,12 @@
 </template>
 
 <script setup lang="ts">
-import {nextTick, onMounted, reactive, ref} from 'vue'
-import {ElMessage, ElMessageBox} from 'element-plus'
-import {Search} from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import axios from 'axios'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 
 // 获取token
 const getToken = () => localStorage.getItem('token')
