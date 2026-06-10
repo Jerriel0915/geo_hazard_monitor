@@ -1,67 +1,64 @@
 <template>
-  <div class="page-content">
-    <div class="page-title">身份管理</div>
-    <div class="page-body">
-      <div class="search-bar">
-        <el-form :model="searchForm" inline>
-          <el-form-item label="用户名">
-            <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable />
-          </el-form-item>
-          <el-form-item label="真实姓名">
-            <el-input v-model="searchForm.realName" placeholder="请输入真实姓名" clearable />
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="searchForm.status" placeholder="全部状态" clearable>
-              <el-option label="正常" :value="0" />
-              <el-option label="禁用" :value="1" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="所属组织">
-            <el-tree-select
-              v-model="searchForm.orgId"
-              :data="orgTreeData"
-              :props="{ label: 'name', value: 'id', children: 'children' }"
-              placeholder="请选择组织"
-              clearable
-              check-strictly
-              :render-after-expand="false"
-              style="width: 200px"
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleSearch">查询</el-button>
-            <el-button @click="handleReset">重置</el-button>
-          </el-form-item>
-        </el-form>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">身份管理</h2>
+        <span class="header__subtitle">系统用户与角色权限配置</span>
+      </div>
+      <div class="header__right">
         <el-button type="primary" @click="handleAdd">新增用户</el-button>
       </div>
+    </div>
 
-      <el-table :data="userList" border stripe v-loading="loading">
-        <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="realName" label="真实姓名" width="120" />
-        <el-table-column prop="orgName" label="所属组织" width="150" />
-        <el-table-column prop="phone" label="联系电话" width="140" />
-        <el-table-column prop="email" label="邮箱" min-width="180"/>
-        <el-table-column prop="status" label="状态" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="lastLoginTime" label="最后登录" width="160" />
-        <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column label="操作" width="220" fixed="right">
-          <template #default="{ row }">
-            <div class="op-cell">
-              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-button type="primary" text size="small" @click="handleChangePwd(row)">修改密码</el-button>
-              <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div class="search">
+      <el-input v-model="searchForm.username" placeholder="用户名" clearable />
+      <el-input v-model="searchForm.realName" placeholder="真实姓名" clearable />
+      <el-select v-model="searchForm.status" placeholder="状态" clearable>
+        <el-option label="正常" :value="0" />
+        <el-option label="禁用" :value="1" />
+      </el-select>
+      <el-tree-select
+        v-model="searchForm.orgId"
+        :data="orgTreeData"
+        :props="{ label: 'name', value: 'id', children: 'children' }"
+        placeholder="所属组织"
+        clearable
+        check-strictly
+        :render-after-expand="false"
+      />
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+      <el-button @click="handleReset">重置</el-button>
+    </div>
 
-      <div class="pagination">
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table :data="userList" border stripe v-loading="loading">
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column prop="username" label="用户名" min-width="120" />
+          <el-table-column prop="realName" label="真实姓名" min-width="120" />
+          <el-table-column prop="orgName" label="所属组织" min-width="140" />
+          <el-table-column prop="phone" label="联系电话" width="130" />
+          <el-table-column prop="email" label="邮箱" min-width="160" />
+          <el-table-column prop="status" label="状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="lastLoginTime" label="最后登录" min-width="160" />
+          <el-table-column prop="createTime" label="创建时间" min-width="160" />
+          <el-table-column label="操作" width="220" fixed="right">
+            <template #default="{ row }">
+              <div class="op-cell">
+                <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+                <el-button type="primary" text size="small" @click="handleChangePwd(row)">修改密码</el-button>
+                <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div class="table-wrap__pagination">
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.size"
@@ -512,82 +509,5 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.page-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: calc(100% - 32px);
-}
 
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e8e8e8;
-}
 
-.page-body {
-  padding: 0;
-}
-
-.search-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-:deep(.el-form--inline .el-form-item) {
-  margin-right: 16px;
-  margin-bottom: 10px;
-}
-
-.action-link {
-  display: inline-block;
-  padding: 4px 10px;
-  margin: 0 4px;
-  color: #303133;
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.action-link:hover {
-  color: #1890ff;
-}
-
-.action-link.action-warning {
-  color: #faad14;
-}
-
-.action-link.action-warning:hover {
-  color: #d48806;
-}
-
-.action-link.action-success {
-  color: #52c41a;
-}
-
-.action-link.action-success:hover {
-  color: #389e0d;
-}
-
-.action-link.action-danger {
-  color: #f5222d;
-}
-
-.action-link.action-danger:hover {
-  color: #cf1322;
-}
-</style>

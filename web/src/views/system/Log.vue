@@ -1,225 +1,204 @@
 <template>
-  <div class="page-content">
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">日志管理</h2>
+        <span class="header__subtitle">操作日志、认证日志、运行日志与实时流监控</span>
+      </div>
+    </div>
+
     <div class="dashboard-grid">
       <section class="main-panel">
         <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
           <el-tab-pane label="操作日志" name="operation">
-            <div class="tab-content">
-              <div class="toolbar">
-                <el-form :model="opSearchForm" inline class="search-form">
-                  <el-form-item label="操作用户">
-                    <el-input v-model="opSearchForm.username" placeholder="请输入用户名" clearable/>
-                  </el-form-item>
-                  <el-form-item label="业务标题">
-                    <el-input v-model="opSearchForm.title" placeholder="请输入业务标题" clearable/>
-                  </el-form-item>
-                  <el-form-item label="接口路径">
-                    <el-input v-model="opSearchForm.apiPath" placeholder="请输入接口路径" clearable/>
-                  </el-form-item>
-                  <el-form-item label="执行状态">
-                    <el-select v-model="opSearchForm.execStatus" placeholder="全部状态" clearable style="width: 140px">
-                      <el-option label="成功" value="SUCCESS"/>
-                      <el-option label="失败" value="FAIL"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="操作时间">
-                    <el-date-picker
-                        v-model="opSearchForm.timeRange"
-                        type="datetimerange"
-                        range-separator="至"
-                        start-placeholder="开始时间"
-                        end-placeholder="结束时间"
-                        value-format="YYYY-MM-DD HH:mm:ss"
-                    />
-                  </el-form-item>
-                </el-form>
-                <div class="toolbar-actions">
-                  <el-button type="primary" @click="handleOperationSearch">查询</el-button>
-                  <el-button @click="handleOperationReset">重置</el-button>
-                  <el-button @click="refreshActiveTab">刷新</el-button>
-                </div>
+            <div class="log-tab-content">
+              <div class="search">
+                <el-input v-model="opSearchForm.username" placeholder="操作用户" clearable />
+                <el-input v-model="opSearchForm.title" placeholder="业务标题" clearable />
+                <el-input v-model="opSearchForm.apiPath" placeholder="接口路径" clearable />
+                <el-select v-model="opSearchForm.execStatus" placeholder="执行状态" clearable>
+                  <el-option label="成功" value="SUCCESS"/>
+                  <el-option label="失败" value="FAIL"/>
+                </el-select>
+                <el-date-picker
+                    v-model="opSearchForm.timeRange"
+                    type="datetimerange"
+                    range-separator=""
+                    start-placeholder="开始"
+                    end-placeholder="结束"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                />
+                <el-button type="primary" @click="handleOperationSearch">查询</el-button>
+                <el-button @click="handleOperationReset">重置</el-button>
+                <el-button @click="refreshActiveTab">刷新</el-button>
               </div>
 
-              <el-table :data="operationLogs" border stripe v-loading="operationLoading">
-                <el-table-column type="index" label="序号" width="60" align="center"/>
-                <el-table-column prop="title" label="业务标题" min-width="140" show-overflow-tooltip/>
-                <el-table-column prop="businessType" label="业务类型" width="120" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="getBusinessTypeTag(row.businessType)" size="small">
-                      {{ row.businessType || 'UNKNOWN' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="username" label="操作用户" width="120"/>
-                <el-table-column prop="apiPath" label="接口路径" min-width="220" show-overflow-tooltip/>
-                <el-table-column prop="requestMethod" label="请求方式" width="100" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="getRequestMethodTag(row.requestMethod)" size="small">
-                      {{ row.requestMethod || '--' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="clientIp" label="IP地址" width="130"/>
-                <el-table-column prop="execStatus" label="状态" width="90" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="row.execStatus === 'SUCCESS' ? 'success' : 'danger'" size="small">
-                      {{ row.execStatus === 'SUCCESS' ? '成功' : '失败' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="costTimeMs" label="耗时(ms)" width="100" align="center"/>
-                <el-table-column prop="occurredAt" label="操作时间" width="180"/>
-              </el-table>
+              <div class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <el-table :data="operationLogs" border stripe v-loading="operationLoading">
+                    <el-table-column type="index" label="序号" width="60" align="center"/>
+                    <el-table-column prop="title" label="业务标题" min-width="140" show-overflow-tooltip/>
+                    <el-table-column prop="businessType" label="业务类型" width="120" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="getBusinessTypeTag(row.businessType)" size="small">
+                          {{ row.businessType || 'UNKNOWN' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="username" label="操作用户" width="110"/>
+                    <el-table-column prop="apiPath" label="接口路径" min-width="200" show-overflow-tooltip/>
+                    <el-table-column prop="requestMethod" label="请求方式" width="90" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="getRequestMethodTag(row.requestMethod)" size="small">
+                          {{ row.requestMethod || '--' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="clientIp" label="IP地址" width="120"/>
+                    <el-table-column prop="execStatus" label="状态" width="80" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="row.execStatus === 'SUCCESS' ? 'success' : 'danger'" size="small">
+                          {{ row.execStatus === 'SUCCESS' ? '成功' : '失败' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="costTimeMs" label="耗时(ms)" width="90" align="center"/>
+                    <el-table-column prop="occurredAt" label="操作时间" min-width="170"/>
+                  </el-table>
+                </div>
 
-              <div class="pagination">
-                <el-pagination
-                    v-model:current-page="operationPagination.page"
-                    v-model:page-size="operationPagination.size"
-                    :page-sizes="[10, 20, 50, 100]"
-                    :total="operationPagination.total"
-                    layout="total, sizes, prev, pager, next, jumper"
-                    @size-change="handleOperationSizeChange"
-                    @current-change="handleOperationPageChange"
-                />
+                <div class="table-wrap__pagination">
+                  <el-pagination
+                      v-model:current-page="operationPagination.page"
+                      v-model:page-size="operationPagination.size"
+                      :page-sizes="[10, 20, 50, 100]"
+                      :total="operationPagination.total"
+                      layout="total, sizes, prev, pager, next, jumper"
+                      @size-change="handleOperationSizeChange"
+                      @current-change="handleOperationPageChange"
+                  />
+                </div>
               </div>
             </div>
           </el-tab-pane>
 
           <el-tab-pane label="认证日志" name="auth">
-            <div class="tab-content">
-              <div class="toolbar">
-                <el-form :model="authSearchForm" inline class="search-form">
-                  <el-form-item label="用户名">
-                    <el-input v-model="authSearchForm.username" placeholder="请输入用户名" clearable/>
-                  </el-form-item>
-                  <el-form-item label="事件类型">
-                    <el-select v-model="authSearchForm.authEventType" placeholder="全部类型" clearable
-                               style="width: 160px">
-                      <el-option v-for="item in authEventOptions" :key="item" :label="item" :value="item"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="结果状态">
-                    <el-select v-model="authSearchForm.resultStatus" placeholder="全部状态" clearable
-                               style="width: 140px">
-                      <el-option label="成功" value="SUCCESS"/>
-                      <el-option label="失败" value="FAIL"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="认证时间">
-                    <el-date-picker
-                        v-model="authSearchForm.timeRange"
-                        type="datetimerange"
-                        range-separator="至"
-                        start-placeholder="开始时间"
-                        end-placeholder="结束时间"
-                        value-format="YYYY-MM-DD HH:mm:ss"
-                    />
-                  </el-form-item>
-                </el-form>
-                <div class="toolbar-actions">
-                  <el-button type="primary" @click="handleAuthSearch">查询</el-button>
-                  <el-button @click="handleAuthReset">重置</el-button>
-                  <el-button @click="refreshActiveTab">刷新</el-button>
-                </div>
+            <div class="log-tab-content">
+              <div class="search">
+                <el-input v-model="authSearchForm.username" placeholder="用户名" clearable />
+                <el-select v-model="authSearchForm.authEventType" placeholder="事件类型" clearable>
+                  <el-option v-for="item in authEventOptions" :key="item" :label="item" :value="item"/>
+                </el-select>
+                <el-select v-model="authSearchForm.resultStatus" placeholder="结果状态" clearable>
+                  <el-option label="成功" value="SUCCESS"/>
+                  <el-option label="失败" value="FAIL"/>
+                </el-select>
+                <el-date-picker
+                    v-model="authSearchForm.timeRange"
+                    type="datetimerange"
+                    range-separator=""
+                    start-placeholder="认证时间:开始"
+                    end-placeholder="认证时间:结束"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                />
+                <el-button type="primary" @click="handleAuthSearch">查询</el-button>
+                <el-button @click="handleAuthReset">重置</el-button>
+                <el-button @click="refreshActiveTab">刷新</el-button>
               </div>
 
-              <el-table :data="authLogs" border stripe v-loading="authLoading">
-                <el-table-column type="index" label="序号" width="60" align="center"/>
-                <el-table-column prop="username" label="用户名" width="120"/>
-                <el-table-column prop="authEventType" label="认证事件" width="160" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="getAuthEventTag(row.authEventType)" size="small">
-                      {{ row.authEventType || '--' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="authChannel" label="认证通道" width="120" align="center"/>
-                <el-table-column prop="requestUri" label="请求URI" min-width="220" show-overflow-tooltip/>
-                <el-table-column prop="clientIp" label="IP地址" width="130"/>
-                <el-table-column prop="resultStatus" label="结果" width="90" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="row.resultStatus === 'SUCCESS' ? 'success' : 'danger'" size="small">
-                      {{ row.resultStatus === 'SUCCESS' ? '成功' : '失败' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="failureMessage" label="消息" min-width="200" show-overflow-tooltip/>
-                <el-table-column prop="occurredAt" label="认证时间" width="180"/>
-              </el-table>
+              <div class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <el-table :data="authLogs" border stripe v-loading="authLoading">
+                    <el-table-column type="index" label="序号" width="60" align="center"/>
+                    <el-table-column prop="username" label="用户名" width="110"/>
+                    <el-table-column prop="authEventType" label="认证事件" width="140" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="getAuthEventTag(row.authEventType)" size="small">
+                          {{ row.authEventType || '--' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="authChannel" label="认证通道" width="110" align="center"/>
+                    <el-table-column prop="requestUri" label="请求URI" min-width="200" show-overflow-tooltip/>
+                    <el-table-column prop="clientIp" label="IP地址" width="120"/>
+                    <el-table-column prop="resultStatus" label="结果" width="80" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="row.resultStatus === 'SUCCESS' ? 'success' : 'danger'" size="small">
+                          {{ row.resultStatus === 'SUCCESS' ? '成功' : '失败' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="failureMessage" label="消息" min-width="180" show-overflow-tooltip/>
+                    <el-table-column prop="occurredAt" label="认证时间" min-width="170"/>
+                  </el-table>
+                </div>
 
-              <div class="pagination">
-                <el-pagination
-                    v-model:current-page="authPagination.page"
-                    v-model:page-size="authPagination.size"
-                    :page-sizes="[10, 20, 50, 100]"
-                    :total="authPagination.total"
-                    layout="total, sizes, prev, pager, next, jumper"
-                    @size-change="handleAuthSizeChange"
-                    @current-change="handleAuthPageChange"
-                />
+                <div class="table-wrap__pagination">
+                  <el-pagination
+                      v-model:current-page="authPagination.page"
+                      v-model:page-size="authPagination.size"
+                      :page-sizes="[10, 20, 50, 100]"
+                      :total="authPagination.total"
+                      layout="total, sizes, prev, pager, next, jumper"
+                      @size-change="handleAuthSizeChange"
+                      @current-change="handleAuthPageChange"
+                  />
+                </div>
               </div>
             </div>
           </el-tab-pane>
 
           <el-tab-pane label="运行日志" name="runtime">
-            <div class="tab-content">
-              <div class="toolbar">
-                <el-form :model="runtimeSearchForm" inline class="search-form">
-                  <el-form-item label="日志级别">
-                    <el-select v-model="runtimeSearchForm.level" placeholder="全部级别" clearable style="width: 140px">
-                      <el-option label="INFO" value="INFO"/>
-                      <el-option label="WARN" value="WARN"/>
-                      <el-option label="ERROR" value="ERROR"/>
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="Logger">
-                    <el-input v-model="runtimeSearchForm.loggerName" placeholder="请输入 Logger 名称" clearable/>
-                  </el-form-item>
-                  <el-form-item label="关键词">
-                    <el-input v-model="runtimeSearchForm.keyword" placeholder="请输入日志内容关键词" clearable/>
-                  </el-form-item>
-                  <el-form-item label="发生时间">
-                    <el-date-picker
-                        v-model="runtimeSearchForm.timeRange"
-                        type="datetimerange"
-                        range-separator="至"
-                        start-placeholder="开始时间"
-                        end-placeholder="结束时间"
-                        value-format="YYYY-MM-DD HH:mm:ss"
-                    />
-                  </el-form-item>
-                </el-form>
-                <div class="toolbar-actions">
-                  <el-button type="primary" @click="handleRuntimeSearch">查询</el-button>
-                  <el-button @click="handleRuntimeReset">重置</el-button>
-                  <el-button @click="refreshActiveTab">刷新</el-button>
-                </div>
+            <div class="log-tab-content">
+              <div class="search">
+                <el-select v-model="runtimeSearchForm.level" placeholder="日志级别" clearable>
+                  <el-option label="INFO" value="INFO"/>
+                  <el-option label="WARN" value="WARN"/>
+                  <el-option label="ERROR" value="ERROR"/>
+                </el-select>
+                <el-input v-model="runtimeSearchForm.loggerName" placeholder="Logger 名称" clearable />
+                <el-input v-model="runtimeSearchForm.keyword" placeholder="日志内容关键词" clearable />
+                <el-date-picker
+                    v-model="runtimeSearchForm.timeRange"
+                    type="datetimerange"
+                    range-separator=""
+                    start-placeholder="发生时间:开始"
+                    end-placeholder="发生时间:结束"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                />
+                <el-button type="primary" @click="handleRuntimeSearch">查询</el-button>
+                <el-button @click="handleRuntimeReset">重置</el-button>
+                <el-button @click="refreshActiveTab">刷新</el-button>
               </div>
 
-              <el-table :data="runtimeLogs" border stripe v-loading="runtimeLoading">
-                <el-table-column type="index" label="序号" width="60" align="center"/>
-                <el-table-column prop="level" label="级别" width="100" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="getLevelTag(row.level)" effect="dark" size="small">{{ row.level }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="loggerName" label="Logger" min-width="250" show-overflow-tooltip/>
-                <el-table-column prop="threadName" label="线程" width="160" show-overflow-tooltip/>
-                <el-table-column prop="sourceApp" label="来源应用" width="120"/>
-                <el-table-column prop="messageDigest" label="日志摘要" min-width="280" show-overflow-tooltip/>
-                <el-table-column prop="occurredAt" label="发生时间" width="180"/>
-              </el-table>
+              <div class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <el-table :data="runtimeLogs" border stripe v-loading="runtimeLoading">
+                    <el-table-column type="index" label="序号" width="60" align="center"/>
+                    <el-table-column prop="level" label="级别" width="90" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="getLevelTag(row.level)" effect="dark" size="small">{{ row.level }}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="loggerName" label="Logger" min-width="240" show-overflow-tooltip/>
+                    <el-table-column prop="threadName" label="线程" min-width="150" show-overflow-tooltip/>
+                    <el-table-column prop="sourceApp" label="来源应用" width="110"/>
+                    <el-table-column prop="messageDigest" label="日志摘要" min-width="260" show-overflow-tooltip/>
+                    <el-table-column prop="occurredAt" label="发生时间" min-width="170"/>
+                  </el-table>
+                </div>
 
-              <div class="pagination">
-                <el-pagination
-                    v-model:current-page="runtimePagination.page"
-                    v-model:page-size="runtimePagination.size"
-                    :page-sizes="[10, 20, 50, 100]"
-                    :total="runtimePagination.total"
-                    layout="total, sizes, prev, pager, next, jumper"
-                    @size-change="handleRuntimeSizeChange"
-                    @current-change="handleRuntimePageChange"
-                />
+                <div class="table-wrap__pagination">
+                  <el-pagination
+                      v-model:current-page="runtimePagination.page"
+                      v-model:page-size="runtimePagination.size"
+                      :page-sizes="[10, 20, 50, 100]"
+                      :total="runtimePagination.total"
+                      layout="total, sizes, prev, pager, next, jumper"
+                      @size-change="handleRuntimeSizeChange"
+                      @current-change="handleRuntimePageChange"
+                  />
+                </div>
               </div>
             </div>
           </el-tab-pane>
@@ -976,60 +955,58 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.page-content {
-  min-height: calc(100% - 32px);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 20px;
+  grid-template-rows: 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
-.main-panel,
-.stream-card {
+.main-panel {
+  min-height: 0;
+  overflow: hidden;
   background: #ffffff;
   border-radius: 22px;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-  overflow: hidden;
 }
 
-.tab-content {
-  padding: 10px 0 0;
-}
-
-.toolbar {
+.log-tab-content {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  height: 100%;
 }
 
-.search-form {
-  flex: 1;
+.log-tab-content .search {
+  flex-shrink: 0;
 }
 
-.toolbar-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.pagination {
-  margin-top: 18px;
-  display: flex;
-  justify-content: flex-end;
+.stream-panel {
+  min-height: 0;
 }
 
 .stream-card {
+  height: 100%;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
   padding: 22px 20px;
-  position: sticky;
-  top: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stream-card > .stream-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .panel-head {
@@ -1088,16 +1065,6 @@ onBeforeUnmount(() => {
   gap: 10px;
   margin-top: 16px;
   flex-wrap: wrap;
-}
-
-.stream-list {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 780px;
-  overflow: auto;
-  padding-right: 4px;
 }
 
 .stream-empty {
@@ -1159,30 +1126,32 @@ onBeforeUnmount(() => {
   border: none;
   box-shadow: none;
   border-radius: 22px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 :deep(.el-tabs--border-card > .el-tabs__header) {
   background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   border-bottom: 1px solid #e2e8f0;
   padding: 8px 14px 0;
+  flex-shrink: 0;
 }
 
 :deep(.el-tabs--border-card > .el-tabs__content) {
-  padding: 18px 18px 20px;
+  padding: 14px 18px 16px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-:deep(.el-form--inline .el-form-item) {
-  margin-right: 14px;
-  margin-bottom: 12px;
+:deep(.el-tab-pane) {
+  height: 100%;
 }
 
 @media (max-width: 1400px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
-  }
-
-  .stream-card {
-    position: static;
   }
 }
 

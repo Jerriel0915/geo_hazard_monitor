@@ -373,10 +373,12 @@ html, body, #app {
 .table-wrap__pagination {
   display: flex;
   justify-content: flex-end;
-  padding: 10px 16px;
+  align-items: center;
+  padding: 4px 16px;
   background: #fff;
   border-top: 1px solid #f1f5f9;
   flex-shrink: 0;
+  min-height: 40px;
 }
 
 /* ---------- el-table 默认微调（仅在 .table-wrap 内生效）---------- */
@@ -404,18 +406,177 @@ html, body, #app {
 
 /* ---------- el-pagination 默认微调（仅在 .table-wrap 内生效）---------- */
 .table-wrap .el-pagination {
-  font-size: 13px;
+  font-size: 12px;
+  --el-pagination-button-height: 28px;
+  --el-pagination-font-size: 12px;
+  color: #64748b;
 }
 
+/* 上一页/下一页按钮 */
 .table-wrap .el-pagination .btn-prev,
 .table-wrap .el-pagination .btn-next {
+  width: auto;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
 }
 
+/* 页码按钮 */
 .table-wrap .el-pagination .el-pager li {
+  height: 28px;
+  min-width: 28px;
+  line-height: 28px;
+  font-size: 12px;
   border-radius: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  margin: 0 2px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.table-wrap .el-pagination .el-pager li.is-active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+/* 总条数 */
+.table-wrap .el-pagination .el-pagination__total {
+  font-size: 12px;
+  height: 28px;
+  line-height: 28px;
+  color: #94a3b8;
+  margin-right: 12px;
+}
+
+/* 每页条数选择器 */
+.table-wrap .el-pagination .el-pagination__sizes .el-select {
+  height: 28px;
+}
+
+.table-wrap .el-pagination .el-pagination__sizes .el-select .el-input__wrapper {
+  font-size: 12px;
+  height: 28px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.table-wrap .el-pagination .el-pagination__sizes .el-select .el-input__inner {
+  font-size: 12px;
+}
+
+/* 前往第几页 */
+.table-wrap .el-pagination .el-pagination__jump {
+  font-size: 12px;
+  height: 28px;
+  line-height: 28px;
+  color: #64748b;
+}
+
+.table-wrap .el-pagination .el-pagination__jump .el-input__wrapper {
+  height: 28px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.table-wrap .el-pagination .el-pagination__jump .el-input__inner {
+  font-size: 12px;
+}
+
+/* ---------- 独立分页栏（卡片页等无 .table-wrap 场景）---------- */
+.pagination-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 4px 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  min-height: 40px;
+  margin-top: 12px;
+}
+
+.pagination-bar .el-pagination {
+  font-size: 12px;
+  --el-pagination-button-height: 28px;
+  --el-pagination-font-size: 12px;
+  color: #64748b;
+}
+
+.pagination-bar .el-pagination .btn-prev,
+.pagination-bar .el-pagination .btn-next {
+  width: auto;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.pagination-bar .el-pagination .el-pager li {
+  height: 28px;
+  min-width: 28px;
+  line-height: 28px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  margin: 0 2px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.pagination-bar .el-pagination .el-pager li.is-active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.pagination-bar .el-pagination .el-pagination__total {
+  font-size: 12px;
+  height: 28px;
+  line-height: 28px;
+  color: #94a3b8;
+  margin-right: 12px;
+}
+
+.pagination-bar .el-pagination .el-pagination__sizes .el-select {
+  height: 28px;
+}
+
+.pagination-bar .el-pagination .el-pagination__sizes .el-select .el-input__wrapper {
+  font-size: 12px;
+  height: 28px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.pagination-bar .el-pagination .el-pagination__sizes .el-select .el-input__inner {
+  font-size: 12px;
+}
+
+.pagination-bar .el-pagination .el-pagination__jump {
+  font-size: 12px;
+  height: 28px;
+  line-height: 28px;
+  color: #64748b;
+}
+
+.pagination-bar .el-pagination .el-pagination__jump .el-input__wrapper {
+  height: 28px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.pagination-bar .el-pagination .el-pagination__jump .el-input__inner {
+  font-size: 12px;
 }
 
 /* ---------- 状态徽标 ---------- */
