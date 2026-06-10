@@ -109,26 +109,20 @@
           <span class="panel-title">6小时在线率(6h有数据)</span>
         </div>
         <div class="panel-body">
-          <table class="online-table">
-            <thead>
-            <tr>
-              <th>类型</th>
-              <th>总量</th>
-              <th>在线</th>
-              <th>在线率(%)</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="item in online6hData" :key="item.type">
-              <td>{{ item.type }}</td>
-              <td>{{ item.total }}</td>
-              <td>{{ item.online }}</td>
-              <td><span :class="['rate-badge', item.rate >= 90 ? 'high' : item.rate >= 70 ? 'medium' : 'low']">{{
-                  item.rate
-                }}%</span></td>
-            </tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="online6hSorted" border stripe size="small">
+                <el-table-column prop="type" label="监测类型" min-width="140" />
+                <el-table-column prop="total" label="总量" width="80" align="center" />
+                <el-table-column prop="online" label="在线" width="80" align="center" />
+                <el-table-column prop="rate" label="在线率(%)" width="120" align="center">
+                  <template #default="{ row }">
+                    <span :class="['rate-badge', row.rate >= 90 ? 'high' : row.rate >= 70 ? 'medium' : 'low']">{{ row.rate }}%</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </div>
       </div>
       <div class="table-panel">
@@ -136,26 +130,20 @@
           <span class="panel-title">12小时在线率(12h有数据)</span>
         </div>
         <div class="panel-body">
-          <table class="online-table">
-            <thead>
-            <tr>
-              <th>类型</th>
-              <th>总量</th>
-              <th>在线</th>
-              <th>在线率(%)</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="item in online12hData" :key="item.type">
-              <td>{{ item.type }}</td>
-              <td>{{ item.total }}</td>
-              <td>{{ item.online }}</td>
-              <td><span :class="['rate-badge', item.rate >= 90 ? 'high' : item.rate >= 70 ? 'medium' : 'low']">{{
-                  item.rate
-                }}%</span></td>
-            </tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="online12hSorted" border stripe size="small">
+                <el-table-column prop="type" label="监测类型" min-width="140" />
+                <el-table-column prop="total" label="总量" width="80" align="center" />
+                <el-table-column prop="online" label="在线" width="80" align="center" />
+                <el-table-column prop="rate" label="在线率(%)" width="120" align="center">
+                  <template #default="{ row }">
+                    <span :class="['rate-badge', row.rate >= 90 ? 'high' : row.rate >= 70 ? 'medium' : 'low']">{{ row.rate }}%</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </div>
       </div>
       <div class="table-panel">
@@ -163,26 +151,20 @@
           <span class="panel-title">24小时在线率(24h有数据)</span>
         </div>
         <div class="panel-body">
-          <table class="online-table">
-            <thead>
-            <tr>
-              <th>类型</th>
-              <th>总量</th>
-              <th>在线</th>
-              <th>在线率(%)</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="item in online24hData" :key="item.type">
-              <td>{{ item.type }}</td>
-              <td>{{ item.total }}</td>
-              <td>{{ item.online }}</td>
-              <td><span :class="['rate-badge', item.rate >= 90 ? 'high' : item.rate >= 70 ? 'medium' : 'low']">{{
-                  item.rate
-                }}%</span></td>
-            </tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="online24hSorted" border stripe size="small">
+                <el-table-column prop="type" label="监测类型" min-width="140" />
+                <el-table-column prop="total" label="总量" width="80" align="center" />
+                <el-table-column prop="online" label="在线" width="80" align="center" />
+                <el-table-column prop="rate" label="在线率(%)" width="120" align="center">
+                  <template #default="{ row }">
+                    <span :class="['rate-badge', row.rate >= 90 ? 'high' : row.rate >= 70 ? 'medium' : 'low']">{{ row.rate }}%</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -551,37 +533,41 @@ const pyramidData = [
   {name: '孔隙水压力', count: 3, width: 10}
 ]
 
-const online6hData = computed(() =>
-    (deviceActive6h.value?.byType ?? []).map(t => ({
-      type: t.monitorTypeName,
-      total: t.total,
-      online: t.online,
-      rate: t.onlineRate
-    }))
-)
-const online12hData = computed(() =>
-    (deviceActive12h.value?.byType ?? []).map(t => ({
-      type: t.monitorTypeName,
-      total: t.total,
-      online: t.online,
-      rate: t.onlineRate
-    }))
-)
-const online24hData = computed(() =>
-    (deviceActive24h.value?.byType ?? []).map(t => ({
-      type: t.monitorTypeName,
-      total: t.total,
-      online: t.online,
-      rate: t.onlineRate
-    }))
-)
+// 汇总所有监测类型名称（6h + 12h + 24h 的并集）
+const allMonitorTypes = computed(() => {
+  const set = new Set<string>()
+  ;[deviceActive6h.value, deviceActive12h.value, deviceActive24h.value].forEach(d => {
+    (d?.byType ?? []).forEach(t => set.add(t.monitorTypeName))
+  })
+  return [...set]
+})
+
+function buildTimeWindowData(source: RateByTypeVO | null): { type: string; total: number; online: number; rate: number }[] {
+  const map = new Map<string, { total: number; online: number; rate: number }>()
+  ;(source?.byType ?? []).forEach(t => {
+    map.set(t.monitorTypeName, { total: t.total, online: t.online, rate: t.onlineRate })
+  })
+  return allMonitorTypes.value
+    .map(name => {
+      const found = map.get(name)
+      return { type: name, total: found?.total ?? 0, online: found?.online ?? 0, rate: found?.rate ?? 0 }
+    })
+    .sort((a, b) => b.rate - a.rate)
+}
+
+const online6hSorted = computed(() => buildTimeWindowData(deviceActive6h.value))
+const online12hSorted = computed(() => buildTimeWindowData(deviceActive12h.value))
+const online24hSorted = computed(() => buildTimeWindowData(deviceActive24h.value))
 </script>
 
 <style scoped>
 .operation-view {
-  min-height: 100%;
+  height: 100%;
   background: transparent;
-  padding: 24px 0 0 0;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -683,7 +669,7 @@ const online24hData = computed(() =>
 }
 
 .panel-body {
-  padding: 16px;
+  padding: 0;
 }
 
 .pie-echarts-container {
@@ -697,6 +683,8 @@ const online24hData = computed(() =>
 }
 
 .table-row {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 16px;
 }
@@ -708,32 +696,6 @@ const online24hData = computed(() =>
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-}
-
-.online-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.online-table th {
-  padding: 12px 12px;
-  text-align: center;
-  font-size: 15px;
-  color: #64748b;
-  font-weight: 600;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.online-table td {
-  padding: 12px 12px;
-  text-align: center;
-  font-size: 16px;
-  color: #334155;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.online-table tbody tr:hover {
-  background: #f8fafc;
 }
 
 .rate-badge {
