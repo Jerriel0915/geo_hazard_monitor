@@ -701,7 +701,6 @@ onMounted(async () => {
   }
   initAlarmTrendChart()
   initHazardTrendChart()
-  initAvgMonitorRateChart()
   setTimeout(() => {
     animateStats.value = true
   }, 500)
