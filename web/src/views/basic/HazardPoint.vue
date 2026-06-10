@@ -118,9 +118,24 @@
                   <span v-else class="empty-text">-</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="deviceCount" label="设备数量" width="90" align="center">
+              <el-table-column label="设备数量" width="110" align="center">
                 <template #default="{ row }">
-                  <el-tag type="info" effect="plain">{{ row.deviceCount || 0 }}</el-tag>
+                  <el-tooltip
+                      :content="(row.deviceCount ?? 0) > 0 ? `管理 ${row.name} 的 ${row.deviceCount} 台绑定设备` : `为 ${row.name} 绑定设备`"
+                      placement="top"
+                  >
+                    <span
+                        class="sensor-count-cell"
+                        :class="{
+                        'is-active': (row.deviceCount ?? 0) > 0,
+                        'is-zero': row.deviceCount === 0
+                      }"
+                        @click="handleBindDevice(row)"
+                    >
+                      <el-icon v-if="(row.deviceCount ?? 0) > 0" class="cell-icon"><Connection/></el-icon>
+                      <span>{{ row.deviceCount || 0 }}</span>
+                    </span>
+                  </el-tooltip>
                 </template>
               </el-table-column>
               <el-table-column label="操作" min-width="200" fixed="right" align="center">
@@ -953,7 +968,17 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {ArrowLeft, ArrowRight, DArrowLeft, DArrowRight, Delete, Edit, Location, Search} from '@element-plus/icons-vue'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Connection,
+  DArrowLeft,
+  DArrowRight,
+  Delete,
+  Edit,
+  Location,
+  Search
+} from '@element-plus/icons-vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import VueApexCharts from 'vue3-apexcharts'
@@ -3726,5 +3751,49 @@ onUnmounted(() => {
 :deep(.el-tree-node__content) {
   height: 32px;
   font-size: 13px;
+}
+
+/* 设备数量单元格（列表行内可点击徽标，与设备管理页保持一致） */
+.sensor-count-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 32px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #909399;
+  background: #f4f4f5;
+  border: 1px solid #e9e9eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.sensor-count-cell:hover {
+  background: #ecf5ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.sensor-count-cell.is-active {
+  color: #1890ff;
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.sensor-count-cell.is-active:hover {
+  background: #1890ff;
+  color: #fff;
+  border-color: #1890ff;
+}
+
+.sensor-count-cell.is-zero {
+  color: #909399;
+}
+
+.sensor-count-cell .cell-icon {
+  font-size: 12px;
 }
 </style>
