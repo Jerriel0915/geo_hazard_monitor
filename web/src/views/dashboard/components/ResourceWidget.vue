@@ -43,21 +43,22 @@
         </div>
       </div>
       <div class="device-type-section">
-        <div class="type-title">设备分类</div>
-        <div class="type-bars">
-          <div v-for="type in resourceStats.deviceTypes" :key="type.name" class="type-bar-row">
-            <span class="type-name">{{ type.name }}</span>
-            <span class="type-count">{{ type.count }}</span>
-          </div>
+        <div class="list-header">
+          <span class="list-title">设备分类</span>
+          <span class="list-count">{{ resourceStats.deviceTypes.length }}类</span>
         </div>
+        <div ref="chartRef" class="rose-chart"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { Box, Location, Setting } from '@element-plus/icons-vue'
-defineProps<{
+import * as echarts from 'echarts'
+
+const props = defineProps<{
   resourceStats: {
     totalResources: number
     deviceTotal: number
@@ -65,6 +66,97 @@ defineProps<{
     deviceTypes: { name: string; count: number }[]
   }
 }>()
+
+const chartRef = ref<HTMLElement | null>(null)
+let chartInstance: echarts.ECharts | null = null
+let resizeObserver: ResizeObserver | null = null
+
+const ROSE_COLORS = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4']
+
+const renderChart = () => {
+  if (!chartRef.value) return
+  const rect = chartRef.value.getBoundingClientRect()
+  if (rect.height < 40 || rect.width < 40) return
+
+  if (!chartInstance) {
+    chartInstance = echarts.init(chartRef.value)
+  }
+  const data = props.resourceStats.deviceTypes.map((t, i) => ({
+    name: t.name,
+    value: t.count,
+    itemStyle: { color: ROSE_COLORS[i % ROSE_COLORS.length] }
+  }))
+
+  chartInstance.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c}台 ({d}%)',
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: 'rgba(0,0,0,0.08)',
+      textStyle: { color: '#1d2129', fontSize: 12 }
+    },
+    legend: {
+      orient: 'vertical',
+      right: 0,
+      top: 'middle',
+      icon: 'circle',
+      itemWidth: 8,
+      itemHeight: 8,
+      itemGap: 10,
+      textStyle: { fontSize: 11, color: '#4e5969', lineHeight: 16 },
+      formatter: (name: string) => {
+        const item = props.resourceStats.deviceTypes.find(t => t.name === name)
+        return item ? `${name}  ${item.count}` : name
+      }
+    },
+    series: [{
+      type: 'pie',
+      roseType: 'area',
+      radius: ['10%', '75%'],
+      center: ['35%', '50%'],
+      itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      emphasis: {
+        label: { show: true, fontSize: 12, fontWeight: 'bold' }
+      },
+      data
+    }]
+  }, true)
+}
+
+watch(() => props.resourceStats.deviceTypes, () => {
+  nextTick(renderChart)
+}, { deep: true })
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => {
+    if (chartInstance) {
+      chartInstance.resize()
+    } else {
+      renderChart()
+    }
+  })
+  if (chartRef.value) {
+    resizeObserver.observe(chartRef.value)
+  }
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+})
+
+const handleResize = () => {
+  chartInstance?.resize()
+}
 </script>
 
 <style scoped>
@@ -77,6 +169,9 @@ defineProps<{
   padding: 16px 18px;
   margin-bottom: 12px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
@@ -87,6 +182,7 @@ defineProps<{
 
 .panel-section:last-child {
   margin-bottom: 0;
+  flex-grow: 1;
 }
 
 .section-header {
@@ -121,6 +217,8 @@ defineProps<{
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1;
+  min-height: 0;
 }
 
 .resource-main {
@@ -232,40 +330,35 @@ defineProps<{
 .device-type-section {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding-top: 12px;
-}
-
-.type-title {
-  font-size: 11px;
-  font-weight: 500;
-  color: #86909c;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.type-bars {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
-.type-bar-row {
+.list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 0;
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
-.type-name {
+.list-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.list-count {
   font-size: 12px;
-  color: #4e5969;
+  color: #9ca3af;
   font-weight: 500;
 }
 
-.type-count {
-  font-size: 13px;
-  color: #1890ff;
-  font-weight: 700;
-  font-family: var(--font-display, inherit);
+.rose-chart {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 </style>
