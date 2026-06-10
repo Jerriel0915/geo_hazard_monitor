@@ -367,7 +367,7 @@ html, body, #app {
 .table-wrap__scroll {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  /* 不在外层滚动，让 el-table 自己管理滚动以保证表头吸顶 */
 }
 
 .table-wrap__pagination {
@@ -383,6 +383,7 @@ html, body, #app {
 .table-wrap .el-table {
   --el-table-border-color: #f1f5f9;
   font-size: 13px;
+  height: 100%;
 }
 
 .table-wrap .el-table th.el-table__cell {

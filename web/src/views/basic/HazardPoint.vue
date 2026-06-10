@@ -98,16 +98,16 @@
               @selection-change="handleSelectionChange"
             >
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column prop="code" label="编号" min-width="120" align="center" />
+              <el-table-column prop="code" label="编号" width="100" align="center" />
               <el-table-column prop="name" label="名称" min-width="140" align="center" />
-              <el-table-column prop="statusName" label="状态" width="90" align="center">
+              <el-table-column prop="statusName" label="状态" width="100" align="center">
                 <template #default="{ row }">
                   <span :class="['status-badge', `status--${row.status.toLowerCase()}`]">
                     {{ row.statusName }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="groupName" label="分组" width="100" align="center">
+              <el-table-column prop="groupName" label="分组" width="110" align="center">
                 <template #default="{ row }">
                   <span>{{ row.groupName || '未分组' }}</span>
                 </template>
