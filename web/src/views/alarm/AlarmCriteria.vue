@@ -1,6 +1,12 @@
 <template>
-  <div class="page-content">
-    <div class="page-title">告警判据</div>
+  <div class="alarm-criteria-page">
+    <!-- 页头 -->
+    <div class="page-header">
+      <div class="header-left">
+        <h2 class="page-title">告警判据</h2>
+        <span class="page-subtitle">监测阈值与多级告警规则配置</span>
+      </div>
+    </div>
     <div class="page-body">
       <el-tabs v-model="activeTab" class="criteria-tabs" @tab-change="handleTabChange">
 
@@ -20,23 +26,23 @@
             <div class="right-panel">
               <CriteriaDetailPanel
                   v-if="selectedMonitorType"
-                  :title="selectedMonitorTypeName + ' — 通用判据'"
+                  :title="selectedMonitorTypeName"
                   :criteria-list="currentTypeCriteria"
                   :context="'monitor'"
                   :alarm-levels="alarmLevels"
                   :monitor-contents="monitorContents"
                   :saving="saving"
+                  :indicator-tree="indicatorTree"
+                  :node-map="nodeMap"
                   @create="openCreateDialog('monitor')"
                   @edit="openEditDialog"
                   @delete="handleDelete"
                   @toggle="handleToggle"
                   @save-form="handleSaveForm('monitor')"
-                  @expr-open="openExprDialog"
-                  @expr-confirm="handleExprConfirm"
                   v-model:selected-id="selectedTypeCriteriaId"
-                  v-model:level-form="levelForm"
+                  :level-form="levelForm"
               />
-              <div v-else class="empty-hint">请选择左侧监测类型</div>
+              <el-empty v-else description="请在左侧选择一个监测类型，查看和编辑告警判据规则" :image-size="140" />
             </div>
           </div>
         </el-tab-pane>
@@ -87,17 +93,17 @@
                   :alarm-levels="alarmLevels"
                   :monitor-contents="monitorContents"
                   :saving="saving"
+                  :indicator-tree="indicatorTree"
+                  :node-map="nodeMap"
                   @create="openCreateDialog('hazard')"
                   @edit="openEditDialog"
                   @delete="handleDelete"
                   @toggle="handleToggle"
                   @save-form="handleSaveForm('hazard')"
-                  @expr-open="openExprDialog"
-                  @expr-confirm="handleExprConfirm"
                   v-model:selected-id="selectedHpCriteriaId"
-                  v-model:level-form="levelForm"
+                  :level-form="levelForm"
               />
-              <div v-else class="empty-hint">请依次选择隐患点 → 设备 → 传感器</div>
+              <el-empty v-else description="请依次选择隐患点 → 设备 → 传感器" :image-size="140" />
             </div>
           </div>
         </el-tab-pane>
@@ -117,34 +123,26 @@
       </template>
     </el-dialog>
 
-    <!-- ========== 表达式编辑弹窗 ========== -->
-    <ExpressionEditDialog
-        v-model="exprDialogVisible"
-        :expression="exprDialogExpression"
-        :description="exprDialogDescription"
-        :indicators="exprDialogIndicators"
-        @confirm="handleExprConfirm"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref} from 'vue'
-import {ElMessage, ElMessageBox} from 'element-plus'
-import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
-import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
-import {getDeviceSensors, getSensorDetail} from '@/api/sensor'
 import {
-  type AlarmCriteriaCreatePayload,
-  type AlarmCriteriaItem,
+  toggleCriteria as apiToggleCriteria,
   createCriteria,
   deleteCriteria,
   getCriteriaList,
-  toggleCriteria as apiToggleCriteria,
-  updateCriteria
+  updateCriteria,
+  type AlarmCriteriaCreatePayload,
+  type AlarmCriteriaItem
 } from '@/api/alarm'
-import ExpressionEditDialog from './components/ExpressionEditDialog.vue'
+import { getBoundDevices, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
+import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
+import { getDeviceSensors, getSensorDetail } from '@/api/sensor'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed, onMounted, reactive, ref } from 'vue'
 import CriteriaDetailPanel from './components/CriteriaDetailPanel.vue'
+import { useIndicatorTree, type Condition, type ConditionGroup, type LevelFormState } from './composables/useIndicatorTree'
 
 // ── 常量 ──
 const alarmLevels = [
@@ -156,6 +154,9 @@ const alarmLevels = [
 
 // ── Tab ──
 const activeTab = ref('monitorType')
+
+// ── 指标树 ──
+const {treeData: indicatorTree, nodeMap, buildFromMonitorType, buildFromSensors, clear: clearIndicatorTree} = useIndicatorTree()
 
 // ── 监测类型 ──
 const selectedMonitorType = ref<number | null>(null)
@@ -187,57 +188,64 @@ const currentHpCriteria = computed(() => {
 })
 
 // ── 级别表单 ──
-interface LevelFormState {
-  expression: string;
-  persistCount: number;
-  silencePeriod: number
-}
+const emptyLevel = (): LevelFormState => ({
+  groups: [],
+  groupLogic: 'AND',
+  persistCount: 1,
+  silencePeriod: 0,
+  description: ''
+})
 const levelForm = reactive<Record<string, LevelFormState>>({
-  blue: {expression: '', persistCount: 1, silencePeriod: 0},
-  yellow: {expression: '', persistCount: 1, silencePeriod: 0},
-  orange: {expression: '', persistCount: 1, silencePeriod: 0},
-  red: {expression: '', persistCount: 1, silencePeriod: 0},
+  blue: emptyLevel(),
+  yellow: emptyLevel(),
+  orange: emptyLevel(),
+  red: emptyLevel(),
 })
 
-function opToSymbol(op: string): string {
-  const m: Record<string, string> = {GT: '>', GTE: '>=', LT: '<', LTE: '<=', EQ: '==', NEQ: '!=', BETWEEN: '~'}
-  return m[op] || op
+/** 迁移旧 subject（无点分前缀）为 payload.current.xxx */
+function migrateSubject(subject: string): string {
+  if (!subject) return subject
+  if (subject.includes('.')) return subject
+  return `payload.current.${subject}`
+}
+
+/** 迁移旧格式 conditions → groups 结构 */
+function migrateToGroups(lc: any): { groups: ConditionGroup[]; groupLogic: 'AND' | 'OR' } {
+  if (Array.isArray(lc?.groups)) {
+    return {
+      groups: lc.groups,
+      groupLogic: lc.groupLogic || 'AND',
+    }
+  }
+  // 旧格式：flat conditions + logicOperator
+  const conditions: Condition[] = (lc?.conditions || []).map((c: any) => ({
+    ...c,
+    subject: migrateSubject(c.subject),
+  }))
+  if (conditions.length === 0) return {groups: [], groupLogic: 'AND'}
+  return {
+    groups: [{conditions, logicOperator: lc?.logicOperator || 'AND'}],
+    groupLogic: 'AND',
+  }
 }
 
 function initLevelForm(c: AlarmCriteriaItem) {
-  let config: Record<string, { conditions?: any[]; description?: string }> = {}
+  let config: Record<string, any> = {}
   try {
     if (c.levelConfig && c.levelConfig !== '{}') config = JSON.parse(c.levelConfig)
   } catch {
   }
   for (const key of ['blue', 'yellow', 'orange', 'red'] as const) {
     const lc = config[key]
-    levelForm[key].expression = lc?.conditions?.map((cond: any) =>
-        `${cond.subject || ''} ${opToSymbol(cond.operator)} ${cond.threshold ?? ''}`).join(' ') || ''
-    levelForm[key].persistCount = c.persistCount ?? 1
-    levelForm[key].silencePeriod = c.silencePeriod ?? 0
+    const migrated = migrateToGroups(lc)
+    Object.assign(levelForm[key], {
+      groups: migrated.groups,
+      groupLogic: migrated.groupLogic,
+      persistCount: lc?.persistCount ?? c.persistCount ?? 1,
+      silencePeriod: lc?.silencePeriod ?? c.silencePeriod ?? 0,
+      description: lc?.description || '',
+    })
   }
-}
-
-// ── 表达式弹窗 ──
-const exprDialogVisible = ref(false);
-const exprDialogLevelKey = ref('')
-const exprDialogExpression = ref('');
-const exprDialogDescription = ref('')
-const exprDialogIndicators = computed(() => monitorContents.value.map(mc => ({
-  code: mc.code,
-  name: mc.name,
-  unit: mc.unit
-})))
-
-function openExprDialog(key: string) {
-  exprDialogLevelKey.value = key;
-  exprDialogExpression.value = levelForm[key].expression;
-  exprDialogVisible.value = true
-}
-
-function handleExprConfirm(p: { expression: string; description: string }) {
-  if (exprDialogLevelKey.value) levelForm[exprDialogLevelKey.value].expression = p.expression
 }
 
 // ── 级联选择 ──
@@ -282,7 +290,10 @@ async function onSensorSelect(sensorId: number) {
       contentName: s?.monitorTypeName || '',
       monitorTypeId: typeId
     }
-    if (typeId) await loadMonitorContents(typeId)
+    if (typeId) {
+      await loadMonitorContents(typeId)
+      await buildFromMonitorType(typeId)
+    }
     await loadAllCriteria()
     const list = currentHpCriteria.value;
     selectedHpCriteriaId.value = list.length > 0 ? list[0].id : null
@@ -385,6 +396,7 @@ function getTypeCriteriaCount(typeId: number) {
 async function selectMonitorType(id: number) {
   selectedMonitorType.value = id;
   await loadMonitorContents(id);
+  await buildFromMonitorType(id);
   const list = currentTypeCriteria.value;
   selectedTypeCriteriaId.value = list.length > 0 ? list[0].id : null;
   if (selectedTypeCriteriaId.value && list[0]) initLevelForm(list[0])
@@ -398,6 +410,7 @@ async function handleTabChange() {
   cascade.sensorMeta = null;
   selectedTypeCriteriaId.value = null;
   selectedHpCriteriaId.value = null;
+  clearIndicatorTree()
   await loadAllCriteria()
 }
 
@@ -433,26 +446,19 @@ async function handleSave() {
 }
 
 function buildLevelConfigFromForm(): string {
-  const config: Record<string, { logicOperator: string; conditions: any[]; description: string }> = {}
+  const config: Record<string, any> = {}
   for (const key of ['blue', 'yellow', 'orange', 'red'] as const) {
-    const expr = levelForm[key].expression.trim();
-    if (!expr) continue
-    const parts = expr.split(/\s+(且|或)\s+/i);
-    const logicOp = expr.match(/\s+(且)\s+/i) ? 'AND' : 'OR'
+    const lf = levelForm[key]
+    if (lf.groups.length === 0 && !lf.description) continue
     config[key] = {
-      logicOperator: logicOp, conditions: parts.filter(p => p !== '且' && p !== '或').map(part => {
-        const m = part.match(/^(.+?)\s*(>=|<=|!=|==|>|<)\s*([0-9.]+)$/);
-        if (m) return {subject: m[1].trim(), operator: mapOp(m[2]), threshold: parseFloat(m[3])};
-        return {subject: part.trim(), operator: 'GT', threshold: 0}
-      }), description: ''
+      groupLogic: lf.groupLogic,
+      groups: lf.groups,
+      description: lf.description,
+      persistCount: lf.persistCount,
+      silencePeriod: lf.silencePeriod,
     }
   }
   return JSON.stringify(config)
-}
-
-function mapOp(s: string): string {
-  const m: Record<string, string> = {'>': 'GT', '<': 'LT', '>=': 'GTE', '<=': 'LTE', '==': 'EQ', '!=': 'NEQ'};
-  return m[s] || 'GT'
 }
 
 async function handleSaveForm(context: 'monitor' | 'hazard') {
@@ -513,27 +519,85 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.alarm-criteria-page {
+  padding: 20px;
+  background: #f0f2f5;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: #86909c;
+}
+
 .page-body {
-  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.criteria-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .criteria-tabs :deep(.el-tabs__header) {
   margin: 0 0 16px 0;
+  flex-shrink: 0;
+}
+
+.criteria-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
+}
+
+.criteria-tabs :deep(.el-tab-pane) {
+  height: 100%;
 }
 
 .criteria-container {
   display: flex;
   gap: 20px;
-  min-height: 500px;
+  height: 100%;
 }
 
 .left-panel {
   width: 260px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
   padding: 8px;
-  max-height: 620px;
   overflow-y: auto;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
 }
 
 .cascade-panel {
@@ -609,17 +673,19 @@ onMounted(async () => {
 
 .right-panel {
   flex: 1;
-  border: none;
-  border-radius: 4px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
   padding: 20px;
   overflow-y: auto;
-  max-height: 620px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  min-width: 0;
 }
 
 .empty-hint {
   text-align: center;
   color: #999;
-  padding: 60px 0;
+  padding: 40px 0;
   font-size: 14px;
 }
 </style>
