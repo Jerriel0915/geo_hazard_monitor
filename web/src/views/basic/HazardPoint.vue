@@ -98,32 +98,32 @@
               @selection-change="handleSelectionChange"
             >
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column prop="code" label="编号" width="150" align="center" />
-              <el-table-column prop="name" label="名称" min-width="200" align="center" />
-              <el-table-column prop="statusName" label="状态" width="100" align="center">
+              <el-table-column prop="code" label="编号" min-width="120" align="center" />
+              <el-table-column prop="name" label="名称" min-width="140" align="center" />
+              <el-table-column prop="statusName" label="状态" width="90" align="center">
                 <template #default="{ row }">
                   <span :class="['status-badge', `status--${row.status.toLowerCase()}`]">
                     {{ row.statusName }}
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="groupName" label="分组" width="120" align="center">
+              <el-table-column prop="groupName" label="分组" width="100" align="center">
                 <template #default="{ row }">
                   <span>{{ row.groupName || '未分组' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="coordinates" label="中心坐标" width="180" align="center">
+              <el-table-column prop="coordinates" label="中心坐标" min-width="160" align="center">
                 <template #default="{ row }">
                   <span v-if="row.longitude && row.latitude">{{ row.longitude }}, {{ row.latitude }}</span>
                   <span v-else class="empty-text">-</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="deviceCount" label="设备数量" width="100" align="center">
+              <el-table-column prop="deviceCount" label="设备数量" width="90" align="center">
                 <template #default="{ row }">
                   <el-tag type="info" effect="plain">{{ row.deviceCount || 0 }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="200" fixed="right" align="center">
+              <el-table-column label="操作" min-width="200" fixed="right" align="center">
                 <template #default="{ row }">
                   <div class="op-cell">
                     <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
@@ -3202,6 +3202,12 @@ onUnmounted(() => {
   flex-direction: column;
   padding-left: 12px;
   min-width: 0;
+}
+
+/* 搜索栏收窄（全局 .search padding:15px 偏高） */
+.content-panel .search {
+  padding: 8px 15px;
+  margin-bottom: 12px;
 }
 
 /* ========== 统计条 ========== */

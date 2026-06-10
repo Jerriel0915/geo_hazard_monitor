@@ -143,15 +143,21 @@
                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" size="small" class="tab-sch-date" />
                 <el-button size="small" @click="alarmFilter.desc=''; alarmFilter.timeRange=[]">重置</el-button>
               </div>
-              <el-table :data="filteredAlarmList" border stripe size="small" max-height="280">
-                <el-table-column prop="alarmTime" label="告警时间" width="160" />
-                <el-table-column prop="alarmLevel" label="告警等级" width="90">
-                  <template #default="{ row }">
-                    <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="alarmContent" label="描述" min-width="220" show-overflow-tooltip />
-              </el-table>
+              <div class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <div style="max-height: 280px;">
+                    <el-table :data="filteredAlarmList" border stripe size="small">
+                      <el-table-column prop="alarmTime" label="告警时间" width="160" />
+                      <el-table-column prop="alarmLevel" label="告警等级" width="90">
+                        <template #default="{ row }">
+                          <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="alarmContent" label="描述" min-width="220" show-overflow-tooltip />
+                    </el-table>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 通知记录 -->
@@ -162,17 +168,23 @@
                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" size="small" class="tab-sch-date" />
                 <el-button size="small" @click="notifyFilter.account=''; notifyFilter.timeRange=[]">重置</el-button>
               </div>
-              <el-table :data="filteredNotifyList" border stripe size="small" max-height="280">
-                <el-table-column prop="notifyTime" label="通知时间" width="160" />
-                <el-table-column prop="channelType" label="渠道类型" width="100" />
-                <el-table-column prop="target" label="账号/电话/邮箱" width="160" show-overflow-tooltip />
-                <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
-                <el-table-column prop="success" label="是否成功" width="90">
-                  <template #default="{ row }">
-                    <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag>
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="table-wrap">
+                <div class="table-wrap__scroll">
+                  <div style="max-height: 280px;">
+                    <el-table :data="filteredNotifyList" border stripe size="small">
+                      <el-table-column prop="notifyTime" label="通知时间" width="160" />
+                      <el-table-column prop="channelType" label="渠道类型" width="100" />
+                      <el-table-column prop="target" label="账号/电话/邮箱" width="160" show-overflow-tooltip />
+                      <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
+                      <el-table-column prop="success" label="是否成功" width="90">
+                        <template #default="{ row }">
+                          <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

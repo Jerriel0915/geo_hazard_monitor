@@ -97,36 +97,53 @@ html, body, #app {
   margin-bottom: 15px;
 }
 
-/* 表格操作列按钮对齐 */
+/* ============================================
+ * 全局按钮统一样式
+ * 统一高度、内边距、字号、圆角，颜色由 type 属性控制
+ * ============================================ */
+.el-button {
+  height: 32px;
+  padding: 0 15px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+}
+
+/* 小尺寸变体 */
+.el-button--small {
+  height: 24px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+/* 链接/文本按钮去掉默认 padding，让它们紧凑贴文字 */
+.el-button.is-link,
+.el-button--text,
+.el-button.is-text {
+  height: auto;
+  padding: 0;
+}
+
+/* 圆形图标按钮 */
+.el-button.is-circle {
+  padding: 0;
+}
+
+/* 表格操作列按钮对齐 + 竖线分隔 */
 .op-cell {
   display: inline-flex;
   align-items: center;
+  gap: 0;
 }
-.op-cell .el-button + .el-button {
-  margin-left: 0;
-}
-.op-cell .el-dropdown {
-  margin-left: 0;
-}
-/* 操作列按钮间竖线分隔 */
-.op-cell .el-button + .el-button,
-.op-cell .el-dropdown {
-  position: relative;
-}
-.op-cell .el-button + .el-button::before,
-.op-cell .el-dropdown::before {
+
+.op-cell > :not(:last-child)::after {
   content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  display: inline-block;
   width: 1px;
-  height: 10px;
+  height: 12px;
   background: #dcdfe6;
-}
-/* 去除更多按钮hover时的蓝色背景 */
-.op-cell .el-dropdown .el-button:hover {
-  background-color: transparent !important;
+  margin: 0 6px;
 }
 
 /* ============================================
@@ -139,7 +156,8 @@ html, body, #app {
   padding: 15px;
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 60px);
+  height: 100%;
+  overflow: hidden;
 }
 
 /* ---------- Header 标题栏 ---------- */
@@ -369,7 +387,7 @@ html, body, #app {
 .table-wrap .el-table th.el-table__cell {
   background: #f8fafc !important;
   color: #475569;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   border-bottom: 2px solid #e2e8f0;
 }
