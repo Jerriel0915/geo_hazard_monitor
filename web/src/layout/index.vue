@@ -3,13 +3,20 @@
     <header class="header">
       <div class="header-left">
         <span class="logo">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
-            <line x1="8" y1="2" x2="8" y2="18"/>
-            <line x1="16" y1="6" x2="16" y2="22"/>
-          </svg>
+          <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M40 5L70 25V55L40 75L10 55V25L40 5Z" fill="url(#logoGrad)" opacity="0.9"/>
+                <path d="M40 15L60 30V50L40 65L20 50V30L40 15Z" fill="white" opacity="0.3"/>
+                <path d="M40 25L50 32V48L40 55L30 48V32L40 25Z" fill="white" opacity="0.5"/>
+                <circle cx="40" cy="40" r="8" fill="white" opacity="0.8"/>
+                <defs>
+                  <linearGradient id="logoGrad" x1="10" y1="5" x2="70" y2="75" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#42a5f5"/>
+                    <stop offset="1" stop-color="#1e88e5"/>
+                  </linearGradient>
+                </defs>
+              </svg>
         </span>
-        <span class="title">地质灾害监测预警系统1.0</span>
+        <span class="title">地质灾害监测预警系统v1.0</span>
         <span class="home-icon-wrapper" @click="goToDashboard">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round" class="home-icon">
@@ -237,10 +244,10 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
-import {useRouter} from 'vue-router'
-import {getAuthInfo, getUserInfo} from '@/utils/userApi'
-import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
+import { getTopNotices, markRead, markReadAll, type SysNotice } from '@/api/notice'
+import { getAuthInfo, getUserInfo } from '@/utils/userApi'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 
 /** 通知消息（来自 SysNotice 后端） */
@@ -382,8 +389,7 @@ const menuList = [
     children: [
       { name: 'Report', label: '报告管理' },
       { name: 'Query', label: '查询中心' },
-      { name: 'Analysis', label: '数据分析' },
-      { name: 'Screen', label: '运营大屏' }
+      { name: 'Analysis', label: '数据分析' }
     ]
   },
   {
@@ -393,7 +399,7 @@ const menuList = [
     children: [
       { name: 'MonitorType', label: '监测类型' },
       { name: 'Device', label: '设备管理' },
-      { name: 'VideoDevice', label: '视频设备管理' },
+      { name: 'VideoDevice', label: '视频设备' },
       {name: 'DataParse', label: '数据解析'},
       {name: 'ServiceStatus', label: '服务状态'}
     ]
@@ -463,7 +469,7 @@ const menuLabelMap: Record<string, string> = {
   HazardPoint: '隐患点管理',
   MonitorType: '监测类型',
   Device: '设备管理',
-  VideoDevice: '视频设备管理',
+  VideoDevice: '视频设备',
   RealtimeAlarm: '待办告警',
   AlarmCriteria: '告警判据',
   AlarmNotification: '历史告警',
@@ -694,15 +700,6 @@ const goToDashboard = () => {
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(4px);
-  transition: all 0.3s ease;
-}
-
-.logo:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
 }
 
 .logo .icon {

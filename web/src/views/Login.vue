@@ -30,12 +30,12 @@
               </svg>
             </div>
             <div class="logo-text">
-              <span class="logo-title">地质环境监测</span>
-              <span class="logo-subtitle">智能预警系统</span>
+              <span class="logo-title">地质灾害监测预警系统v1.0</span>
+              <span class="logo-subtitle"></span>
             </div>
           </div>
           <h1 class="brand-slogan">守护自然安全<br/>构建智慧监测</h1>
-          <p class="brand-desc">基于物联网与大数据的智能化地质灾害监测预警平台，实现实时监测、风险评估与应急指挥的全链路服务</p>
+          <p class="brand-desc">基于物联网与大数据的智能化地质灾害监测预警平台，实现实时监测、专业预警的全链路服务</p>
           <div class="brand-features">
             <div class="feature-item">
               <div class="feature-icon">
@@ -302,10 +302,10 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, onUnmounted, reactive, ref} from 'vue'
-import {useRouter} from 'vue-router'
-import {ElMessage} from 'element-plus'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
