@@ -212,12 +212,10 @@ html, body, #app {
   flex-shrink: 0;
 }
 
-.search__input {
-  width: 260px;
-}
-
-.search__select {
-  width: 140px;
+/* 检索控件均分宽度，按钮保持自适应 */
+.search > :not(.el-button) {
+  flex: 1 1 0%;
+  min-width: 80px;
 }
 
 /* ---------- Grid 卡片网格 ---------- */

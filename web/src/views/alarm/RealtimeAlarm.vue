@@ -31,14 +31,11 @@
       <el-date-picker
         v-model="queryParams.alarmTimeRange"
         type="daterange"
-        range-separator="至"
+        range-separator=""
         start-placeholder="告警时间:开始"
         end-placeholder="告警时间:结束"
         value-format="YYYY-MM-DD"
       />
-      <el-input-number v-model="queryParams.alarmCountMin" :min="0" :controls="false" placeholder="告警次数(最小)" style="width: 140px" />
-      <span style="color: #86909c; font-size: 13px;">至</span>
-      <el-input-number v-model="queryParams.alarmCountMax" :min="0" :controls="false" placeholder="告警次数(最大)" style="width: 140px" />
       <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple class="search__select">
         <el-option label="一级" value="1" />
         <el-option label="二级" value="2" />
@@ -415,7 +412,7 @@ const handleQuery = () => {
   ElMessage.success('查询成功')
 }
 
-// 重置
+// 重置（静默，不弹窗）
 const handleReset = () => {
   queryParams.hazardPointName = ''
   queryParams.personName = ''
@@ -425,7 +422,9 @@ const handleReset = () => {
   queryParams.alarmLevel = []
   queryParams.alarmType = []
   queryParams.status = []
-  handleQuery()
+  pagination.currentPage = 1
+  pagination.total = filteredData.value.length
+  tableData.value = paginatedData.value
 }
 
 // 表格选择变化
