@@ -60,64 +60,70 @@
       </div>
     </div>
 
-    <div class="charts-row">
-      <div class="chart-panel alarm-level">
-        <div class="panel-header">
-          <span class="panel-title">告警等级分布</span>
+    <div class="content-row">
+      <div class="left-panels">
+        <div class="charts-row">
+          <div class="chart-panel alarm-level">
+            <div class="panel-header">
+              <span class="panel-title">告警等级分布</span>
+            </div>
+            <div class="panel-body">
+              <div ref="levelChartRef" class="echarts-container"></div>
+            </div>
+          </div>
+
+          <div class="chart-panel alarm-trend">
+            <div class="panel-header">
+              <span class="panel-title">告警趋势分析</span>
+              <span class="panel-subtitle">近12个月告警统计及未来预测</span>
+            </div>
+            <div class="panel-body">
+              <div ref="trendChartRef" class="echarts-container echarts-container-trend"></div>
+            </div>
+          </div>
         </div>
-        <div class="panel-body">
-          <div ref="levelChartRef" class="echarts-container"></div>
+
+        <div class="charts-row">
+          <div class="chart-panel alarm-source">
+            <div class="panel-header">
+              <span class="panel-title">告警来源分布</span>
+            </div>
+            <div class="panel-body">
+              <div ref="sourceChartRef" class="echarts-container echarts-container-lg"></div>
+            </div>
+          </div>
+
+          <div class="chart-panel alarm-hazard">
+            <div class="panel-header">
+              <span class="panel-title">高风险隐患点</span>
+            </div>
+            <div class="panel-body">
+              <div ref="hazardChartRef" class="echarts-container echarts-container-lg"></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="chart-panel alarm-trend">
-        <div class="panel-header">
-          <span class="panel-title">告警趋势分析</span>
-          <span class="panel-subtitle">近12个月告警统计及未来预测</span>
-        </div>
-        <div class="panel-body">
-          <div ref="trendChartRef" class="echarts-container echarts-container-trend"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="charts-row">
-      <div class="chart-panel alarm-source">
-        <div class="panel-header">
-          <span class="panel-title">告警来源分布</span>
-        </div>
-        <div class="panel-body">
-          <div ref="sourceChartRef" class="echarts-container echarts-container-lg"></div>
-        </div>
-      </div>
-
-      <div class="chart-panel alarm-hazard">
-        <div class="panel-header">
-          <span class="panel-title">高风险隐患点</span>
-        </div>
-        <div class="panel-body">
-          <div ref="hazardChartRef" class="echarts-container echarts-container-lg"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="alarm-list-section">
-      <div class="list-header">
-        <span class="list-title">实时告警事件</span>
-        <span class="refresh-time">下次刷新时间：{{ nextRefreshTime }}</span>
-      </div>
-      <div class="alarm-list">
-        <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
-          <div class="alarm-level-dot" :class="alarm.level"></div>
-          <div class="alarm-content">
-            <div class="alarm-title">{{ alarm.title }}</div>
-            <div class="alarm-meta">
-              <span>{{ alarm.source }}</span>
-              <span>·</span>
-              <span>{{ alarm.time }}</span>
-              <span v-if="alarm.priority" class="alarm-priority" :class="`priority-${alarm.priority}`">
-                {{ alarm.priority === 1 ? '紧急' : alarm.priority === 2 ? '重要' : '一般' }}
-              </span>
+      <div class="right-panel">
+        <div class="alarm-list-section">
+          <div class="list-header">
+            <span class="list-title">实时告警事件</span>
+            <span class="refresh-time">下次刷新时间：{{ nextRefreshTime }}</span>
+          </div>
+          <div class="alarm-list">
+            <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
+              <div class="alarm-level-dot" :class="alarm.level"></div>
+              <div class="alarm-content">
+                <div class="alarm-title">{{ alarm.title }}</div>
+                <div class="alarm-meta">
+                  <span>{{ alarm.source }}</span>
+                  <span>·</span>
+                  <span>{{ alarm.time }}</span>
+                  <span v-if="alarm.priority" class="alarm-priority" :class="`priority-${alarm.priority}`">
+                    {{ alarm.priority === 1 ? '紧急' : alarm.priority === 2 ? '重要' : '一般' }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -278,17 +284,17 @@ const initLevelChart = () => {
       top: 'center',
       textStyle: {
         color: '#334155',
-        fontSize: 16
+        fontSize: 12
       },
-      itemWidth: 14,
-      itemHeight: 14,
+      itemWidth: 12,
+      itemHeight: 12,
       itemGap: 10
     },
     series: [{
       name: '告警等级',
       type: 'pie',
-      radius: ['40%', '65%'],
-      center: ['35%', '50%'],
+      radius: ['50%', '70%'],
+      center: ['40%', '50%'],
       avoidLabelOverlap: true,
       itemStyle: {
         borderRadius: 4,
@@ -300,7 +306,7 @@ const initLevelChart = () => {
         position: 'outside',
         formatter: '{b}\n{c}次 ({d}%)',
         color: '#334155',
-        fontSize: 16
+        fontSize: 12
       },
       labelLine: {
         show: true,
@@ -327,6 +333,7 @@ const initTrendChart = () => {
   const option = {
     tooltip: {
       trigger: 'axis',
+      confine: true,
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#e2e8f0',
       borderWidth: 1,
@@ -340,14 +347,14 @@ const initTrendChart = () => {
       bottom: 0,
       textStyle: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       }
     },
     grid: {
       left: '3%',
       right: '4%',
       bottom: '18%',
-      top: '5%',
+      top: '12%',
       containLabel: true
     },
     xAxis: {
@@ -361,7 +368,7 @@ const initTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       }
     },
     yAxis: {
@@ -369,14 +376,14 @@ const initTrendChart = () => {
       name: '告警次数',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       axisLine: {
         show: false
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       splitLine: {
         lineStyle: {
@@ -513,8 +520,8 @@ const initSourceChart = () => {
     grid: {
       left: '8%',
       right: '4%',
-      bottom: '15%',
-      top: '10%',
+      bottom: '5%',
+      top: '5%',
       containLabel: true
     },
     xAxis: {
@@ -522,7 +529,7 @@ const initSourceChart = () => {
       data: sourceDistribution.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 16
+        fontSize: 12
       },
       axisLine: {
         lineStyle: {
@@ -535,11 +542,11 @@ const initSourceChart = () => {
       name: '告警次数',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       splitLine: {
         lineStyle: {
@@ -555,13 +562,13 @@ const initSourceChart = () => {
         percent: item.rate,
         itemStyle: { color: getSourceColor(index) }
       })),
-      barWidth: '50%',
+      barWidth: '45%',
       label: {
         show: true,
         position: 'top',
         formatter: '{c}次 ({d}%)',
         color: '#1e293b',
-        fontSize: 16,
+        fontSize: 12,
         fontWeight: 600
       }
     }]
@@ -589,8 +596,8 @@ const initHazardChart = () => {
     grid: {
       left: '8%',
       right: '4%',
-      bottom: '15%',
-      top: '10%',
+      bottom: '5%',
+      top: '5%',
       containLabel: true
     },
     xAxis: {
@@ -598,7 +605,7 @@ const initHazardChart = () => {
       data: hazardData.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 16
+        fontSize: 12
       },
       axisLine: {
         lineStyle: {
@@ -609,13 +616,14 @@ const initHazardChart = () => {
     yAxis: {
       type: 'value',
       name: '告警次数',
+      max: Math.max(...hazardData.value.map(d => d.count)) * 1.4,
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       splitLine: {
         lineStyle: {
@@ -630,13 +638,13 @@ const initHazardChart = () => {
         value: item.count,
         itemStyle: { color: getLevelColor(item.level) }
       })),
-      barWidth: '50%',
+      barWidth: '45%',
       label: {
         show: true,
         position: 'top',
         formatter: '{c}次',
         color: '#1e293b',
-        fontSize: 16,
+        fontSize: 12,
         fontWeight: 600
       }
     }]
@@ -759,9 +767,12 @@ window.addEventListener('resize', handleResize)
 
 <style scoped>
 .alarm-stats-view {
-  min-height: 100%;
+  height: 100%;
   background: transparent;
-  padding: 20px 0 0 0;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -769,6 +780,7 @@ window.addEventListener('resize', handleResize)
   display: flex;
   gap: 12px;
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .stat-card {
@@ -776,7 +788,7 @@ window.addEventListener('resize', handleResize)
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 10px 14px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -799,7 +811,7 @@ window.addEventListener('resize', handleResize)
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #1e293b;
   transition: all 0.3s ease;
@@ -815,26 +827,46 @@ window.addEventListener('resize', handleResize)
   margin-top: 2px;
 }
 
+/* 左右分栏 */
+.content-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+}
+
+.left-panels {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .charts-row {
   display: flex;
   gap: 12px;
-  margin-bottom: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
 .chart-panel {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
+  min-height: 0;
 }
 
 .panel-header {
   padding: 10px 14px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .panel-title {
@@ -850,29 +882,51 @@ window.addEventListener('resize', handleResize)
 }
 
 .panel-body {
+  flex: 1;
   padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
 }
 
 .alarm-level .panel-body {
-  padding-top: 42px;
+  padding-top: 12px;
 }
 
 .echarts-container {
   width: 100%;
-  height: 180px;
+  height: 100%;
 }
 
 
 .echarts-container-lg {
-  height: 310px; /*  用来控制两个板块的高度 */
+  height: 100%;
 }
 
 .echarts-container-trend {
-  height: 260px;
+  height: 100%;
+}
+
+/* 右侧告警列表 */
+.right-panel {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .alarm-list-section {
-  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .list-header {
@@ -881,9 +935,8 @@ window.addEventListener('resize', handleResize)
   align-items: center;
   padding: 10px 14px;
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px 8px 0 0;
-  border-bottom: none;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .list-title {
@@ -898,9 +951,9 @@ window.addEventListener('resize', handleResize)
 }
 
 .alarm-list {
-  border: 1px solid #e2e8f0;
-  border-top: none;
-  border-radius: 0 0 8px 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   background: #ffffff;
 }
 
@@ -925,27 +978,18 @@ window.addEventListener('resize', handleResize)
   border-radius: 50%;
   margin-right: 12px;
   align-self: center;
+  flex-shrink: 0;
 }
 
-.alarm-level-dot.level1 {
-  background: #ef4444;
-}
-
-.alarm-level-dot.level2 {
-  background: #f97316;
-}
-
-.alarm-level-dot.level3 {
-  background: #eab308;
-}
-
-.alarm-level-dot.level4 {
-  background: #22c55e;
-}
+.alarm-level-dot.level1 { background: #ef4444; }
+.alarm-level-dot.level2 { background: #f97316; }
+.alarm-level-dot.level3 { background: #eab308; }
+.alarm-level-dot.level4 { background: #22c55e; }
 
 .alarm-content {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .alarm-title {
@@ -956,12 +1000,15 @@ window.addEventListener('resize', handleResize)
 
 .alarm-meta {
   display: flex;
-  font-size: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
   color: #64748b;
 }
 
 .alarm-meta .alarm-priority {
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .alarm-meta .priority-1 {
