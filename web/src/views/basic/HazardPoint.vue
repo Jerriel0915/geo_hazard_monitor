@@ -557,27 +557,33 @@
               <span class="btn-icon">+</span> 添加判据
             </el-button>
           </div>
-          <el-table :data="alarmCriteriaList" border size="small">
-            <el-table-column prop="name" label="判据名称" width="150" align="center" />
-            <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
-            <el-table-column prop="expression" label="表达式" width="250" align="center" />
-            <el-table-column prop="alarmLevel" label="告警等级" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="isEnabled" label="状态" width="80" align="center">
-              <template #default="{ row }">
-                <el-switch v-model="row.isEnabled" @change="handleToggleAlarm(row)" />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100" align="center">
-              <template #default="{ row }">
-                <el-button type="text" size="small" @click="handleEditAlarm(row)">编辑</el-button>
-                <el-button type="text" size="small" class="danger-text" @click="handleDeleteAlarm(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="alarmCriteriaList" border size="small">
+                <el-table-column prop="name" label="判据名称" width="140" align="center" />
+                <el-table-column prop="monitorTypeName" label="监测类型" width="140" align="center" />
+                <el-table-column prop="expression" label="表达式" min-width="240" align="center" />
+                <el-table-column prop="alarmLevel" label="告警等级" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="isEnabled" label="状态" width="80" align="center">
+                  <template #default="{ row }">
+                    <el-switch v-model="row.isEnabled" @change="handleToggleAlarm(row)" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="120" align="center">
+                  <template #default="{ row }">
+                    <div class="op-cell">
+                      <el-button type="primary" text size="small" @click="handleEditAlarm(row)">编辑</el-button>
+                      <el-button type="danger" text size="small" @click="handleDeleteAlarm(row)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </div>
 
         <div class="config-section">
@@ -587,49 +593,55 @@
               <span class="btn-icon">+</span> 添加规则
             </el-button>
           </div>
-          <el-table :data="dispatchRules" border size="small">
-            <el-table-column prop="type" label="类型" width="110" align="center">
-              <template #default="{ row }">
-                <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
-                  {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="告警等级/关联设备" min-width="200">
-              <template #default="{ row }">
-                <template v-if="row.type === 'alarm'">
-                  <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
-                </template>
-                <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
-                  <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
-                </template>
-                <span v-else class="empty-text">-</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="通知人员" min-width="150">
-              <template #default="{ row }">
-                <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="channels" label="通知渠道" width="150">
-              <template #default="{ row }">
-                <span v-for="(c, idx) in row.channels" :key="c">
-                  {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="80" align="center">
-              <template #default="{ row }">
-                <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)" />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100" align="center">
-              <template #default="{ row }">
-                <el-button type="text" size="small" @click="handleEditDispatchRule(row)">编辑</el-button>
-                <el-button type="text" size="small" class="danger-text" @click="handleDeleteDispatchRule(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="dispatchRules" border size="small">
+                <el-table-column prop="type" label="类型" width="120" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
+                      {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="告警等级/关联设备" min-width="190">
+                  <template #default="{ row }">
+                    <template v-if="row.type === 'alarm'">
+                      <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
+                    </template>
+                    <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
+                      <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+                    </template>
+                    <span v-else class="empty-text">-</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="通知人员" min-width="140">
+                  <template #default="{ row }">
+                    <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="channels" label="通知渠道" min-width="140">
+                  <template #default="{ row }">
+                    <span v-for="(c, idx) in row.channels" :key="c">
+                      {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="80" align="center">
+                  <template #default="{ row }">
+                    <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="120" align="center">
+                  <template #default="{ row }">
+                    <div class="op-cell">
+                      <el-button type="primary" text size="small" @click="handleEditDispatchRule(row)">编辑</el-button>
+                      <el-button type="danger" text size="small" @click="handleDeleteDispatchRule(row)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </div>
       </div>
 

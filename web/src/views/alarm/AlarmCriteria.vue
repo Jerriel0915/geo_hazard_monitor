@@ -1,10 +1,10 @@
 <template>
-  <div class="alarm-criteria-page">
+  <div class="page">
     <!-- 页头 -->
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">告警判据</h2>
-        <span class="page-subtitle">监测阈值与多级告警规则配置</span>
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">告警判据</h2>
+        <span class="header__subtitle">监测阈值与多级告警规则配置</span>
       </div>
     </div>
     <div class="page-body">
@@ -495,42 +495,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.alarm-criteria-page {
-  padding: 20px;
-  background: #f0f2f5;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-shrink: 0;
-}
-
-.header-left {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: #86909c;
-}
-
 .page-body {
   flex: 1;
   min-height: 0;

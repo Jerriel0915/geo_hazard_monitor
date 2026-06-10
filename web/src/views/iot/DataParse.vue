@@ -27,7 +27,8 @@
       <el-button @click="handleReset">重置</el-button>
     </div>
 
-    <div class="cards-container" v-loading="loading">
+    <div class="main-card">
+      <div class="cards-container" v-loading="loading">
       <el-empty v-if="filteredList.length === 0" description="暂无解析策略" />
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in filteredList" :key="item.id">
@@ -112,6 +113,7 @@
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
       />
+    </div>
     </div>
 
     <el-dialog
@@ -808,28 +810,27 @@ onMounted(() => {
 <style scoped>
 
 
-
-
-
-
-.search-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.search-input {
-  width: 280px;
-}
-
 .status-select {
   width: 150px;
 }
 
+.main-card {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
 .cards-container {
-  min-height: 400px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 15px 20px;
 }
 
 .parse-card {
