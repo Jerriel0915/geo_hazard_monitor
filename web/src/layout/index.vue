@@ -244,11 +244,11 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
-import {useRouter} from 'vue-router'
-import {loadPermissions} from '@/utils/permission'
-import {getAuthInfo, getUserInfo} from '@/utils/userApi'
-import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
+import { getTopNotices, markRead, markReadAll, type SysNotice } from '@/api/notice'
+import { loadPermissions } from '@/utils/permission'
+import { getAuthInfo, getUserInfo } from '@/utils/userApi'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 
 /** 通知消息（来自 SysNotice 后端） */
@@ -390,8 +390,7 @@ const menuList = [
     children: [
       { name: 'Report', label: '报告管理' },
       { name: 'Query', label: '查询中心' },
-      { name: 'Analysis', label: '数据分析' },
-      { name: 'Screen', label: '运营大屏' }
+      { name: 'Analysis', label: '数据分析' }
     ]
   },
   {
@@ -401,7 +400,7 @@ const menuList = [
     children: [
       { name: 'MonitorType', label: '监测类型' },
       { name: 'Device', label: '设备管理' },
-      { name: 'VideoDevice', label: '视频设备管理' },
+      { name: 'VideoDevice', label: '视频设备' },
       {name: 'DataParse', label: '数据解析'},
       {name: 'ServiceStatus', label: '服务状态'}
     ]
@@ -703,16 +702,8 @@ const goToDashboard = () => {
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(4px);
-  transition: all 0.3s ease;
 }
 
-.logo:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-}
 
 .logo .icon {
   width: 24px;
