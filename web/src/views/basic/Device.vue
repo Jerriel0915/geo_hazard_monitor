@@ -641,26 +641,24 @@
     <!-- 地图坐标选择弹窗 -->
     <el-dialog
         v-model="mapDialogVisible"
-        title="在地图上选择安装位置"
-        width="680px"
+        :title="mapViewOnly ? '查看安装位置' : '在地图上选择安装位置'"
+        width="700px"
         :close-on-click-modal="false"
         destroy-on-close
-        @opened="initMapPicker"
+        @opened="pickerRef?.invalidate()"
     >
-      <div class="map-picker-container">
-        <div ref="mapPickerRef" class="map-picker-inner"></div>
-        <div class="map-picker-info">
-          <span v-if="pickerLng != null && pickerLat != null" class="picker-coord">
-            已选坐标：经度 {{ pickerLng!.toFixed(6) }}，纬度 {{ pickerLat!.toFixed(6) }}
-          </span>
-          <span v-else class="picker-coord picker-hint">点击地图选择坐标</span>
-        </div>
-      </div>
+      <MapPointPicker
+          ref="pickerRef"
+          v-model="pickerLngLat"
+          :readonly="mapViewOnly"
+          :overlay-polygon="boundHpPolygon"
+          height="400px"
+      />
       <template #footer>
         <el-button v-if="mapViewOnly" @click="mapDialogVisible = false">关闭</el-button>
         <template v-else>
           <el-button @click="mapDialogVisible = false">取消</el-button>
-          <el-button type="primary" :disabled="pickerLng == null" @click="confirmMapPicker">确定</el-button>
+          <el-button type="primary" @click="confirmMapPicker">确认坐标</el-button>
         </template>
       </template>
     </el-dialog>
@@ -673,8 +671,8 @@ import {ElMessage, ElMessageBox} from 'element-plus'
 import {Cpu, User} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import MapPointPicker from '@/components/map/MapPointPicker.vue'
+import { type LatLng, deserialize } from '@/lib/boundaryCoords'
 import {
   changeDeviceAuthStatus,
   copyDevice as copyDeviceApi,
@@ -690,6 +688,7 @@ import {
   updateDevice as updateDeviceApi
 } from '@/api/device'
 import {getMonitorTypeListWithContents} from '@/api/monitorType'
+import {getHazardPointDetail} from '@/api/hazardPoint'
 import {
   createSensor,
   deleteSensor,
@@ -847,7 +846,9 @@ const deviceIconDialogVisible = ref(false)
 // 地图坐标选择
 const mapDialogVisible = ref(false)
 const mapViewOnly = ref(false)
-const mapPickerRef = ref<HTMLDivElement | null>(null)
+const pickerRef = ref<InstanceType<typeof MapPointPicker> | null>(null)
+const pickerLngLat = ref<LatLng | null>(null)
+const boundHpPolygon = ref<LatLng[] | null>(null)
 const pickerLng = ref<number | null>(null)
 const pickerLat = ref<number | null>(null)
 
@@ -887,95 +888,41 @@ const onLocationBlur = () => {
   formData.latitude = null
   locationText.value = ''
 }
-let mapPickerInstance: L.Map | null = null
-let mapPickerMarker: L.Marker | null = null
-const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
-
-const openMapPicker = () => {
+const openMapPicker = async () => {
   onLocationBlur()
   mapViewOnly.value = false
-  pickerLng.value = formData.longitude
-  pickerLat.value = formData.latitude
+  pickerLngLat.value = formData.longitude != null && formData.latitude != null
+    ? { lng: formData.longitude, lat: formData.latitude }
+    : null
+
+  // 拉取设备绑定的 HP 边界作为叠加层
+  boundHpPolygon.value = null
+  if (formData.boundHazardPointId) {
+    try {
+      const resp: any = await getHazardPointDetail(String(formData.boundHazardPointId))
+      if (resp.code === 200) {
+        const bc = deserialize(resp.data.boundaryCoords)
+        if (bc.polygon.length >= 3) boundHpPolygon.value = bc.polygon
+      }
+    } catch { /* 静默 */ }
+  }
   mapDialogVisible.value = true
 }
 
 const openViewMap = (row: DeviceItem) => {
   mapViewOnly.value = true
-  pickerLng.value = row.longitude ?? null
-  pickerLat.value = row.latitude ?? null
+  pickerLngLat.value = row.longitude != null && row.latitude != null
+    ? { lng: row.longitude, lat: row.latitude }
+    : null
   mapDialogVisible.value = true
 }
 
-const initMapPicker = () => {
-  nextTick(() => {
-    if (!mapPickerRef.value) return
-    // 销毁旧地图实例（dialog destroy-on-close 后 DOM 已重建，旧实例无效）
-    if (mapPickerInstance) {
-      mapPickerInstance.remove()
-      mapPickerInstance = null
-    }
-    mapPickerMarker = null
-
-    const center: [number, number] = pickerLat.value != null && pickerLng.value != null
-      ? [pickerLat.value, pickerLng.value]
-      : [30.65, 104.10]
-
-    mapPickerInstance = L.map(mapPickerRef.value, {
-      center,
-      zoom: pickerLat.value != null ? 15 : 12,
-      zoomControl: true
-    })
-
-    L.tileLayer(
-      `https://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`,
-      { maxZoom: 18, minZoom: 3 }
-    ).addTo(mapPickerInstance)
-
-    L.tileLayer(
-      `https://t0.tianditu.gov.cn/cia_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cia&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`,
-      { maxZoom: 18, minZoom: 3 }
-    ).addTo(mapPickerInstance)
-
-    mapPickerInstance.on('click', (e: L.LeafletMouseEvent) => {
-      if (mapViewOnly.value) return
-      const { lat, lng } = e.latlng
-      pickerLng.value = lng
-      pickerLat.value = lat
-      if (!mapPickerInstance) return
-      if (mapPickerMarker) {
-        mapPickerMarker.setLatLng([lat, lng])
-      } else {
-        mapPickerMarker = L.marker([lat, lng], {
-          icon: L.icon({
-            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41]
-          })
-        }).addTo(mapPickerInstance)
-      }
-    })
-
-    // 如果已有坐标，放一个标记
-    if (pickerLat.value != null && pickerLng.value != null) {
-      mapPickerMarker = L.marker([pickerLat.value, pickerLng.value], {
-        icon: L.icon({
-          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41]
-        })
-      }).addTo(mapPickerInstance)
-    }
-  })
-}
-
 const confirmMapPicker = () => {
-  formData.longitude = pickerLng.value
-  formData.latitude = pickerLat.value
-  syncFormToText()
+  if (pickerLngLat.value) {
+    formData.longitude = pickerLngLat.value.lng
+    formData.latitude = pickerLngLat.value.lat
+    syncFormToText()
+  }
   mapDialogVisible.value = false
 }
 
@@ -983,6 +930,7 @@ const clearLocation = () => {
   formData.longitude = null
   formData.latitude = null
   locationText.value = ''
+  pickerLngLat.value = null
 }
 
 const sensorFormRef = ref()
@@ -1002,6 +950,7 @@ const formData = reactive<{
   latitude: number | null
   status: number
   sensorList: SensorItem[]
+  boundHazardPointId: number | null
 }>({
   code: '',
   name: '',
@@ -1012,6 +961,7 @@ const formData = reactive<{
   vendorName: '',
   icon: '',
   iconPath: '',
+  boundHazardPointId: null,
   longitude: null,
   latitude: null,
   status: 1,
@@ -1982,8 +1932,6 @@ onMounted(() => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .icon-item:hover {

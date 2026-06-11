@@ -217,8 +217,17 @@
 
           <!-- 底部操作栏 -->
           <div class="event-footer">
+            <div class="action-left">
+              <el-input
+                v-model="remark"
+                type="textarea"
+                :rows="2"
+                placeholder="请输入处置备注..."
+                class="remark-input"
+              />
+            </div>
             <div class="action-right">
-              <el-button type="primary" size="small" @click="openFeedbackDialog">
+              <el-button type="primary" size="small" @click="handleFeedback">
                 <el-icon><ChatDotRound /></el-icon> 反馈
               </el-button>
               <el-button type="warning" size="small" @click="handleFalseAlarm">
@@ -238,86 +247,6 @@
         </div>
       </div>
     </div>
-  </el-dialog>
-
-  <!-- 处置反馈弹窗 -->
-  <el-dialog
-    v-model="feedbackFormVisible"
-    title="处置反馈"
-    width="520px"
-    :close-on-click-modal="false"
-    destroy-on-close
-  >
-    <el-form :model="feedbackForm" label-width="80px">
-      <el-form-item label="反馈内容">
-        <el-input
-          v-model="feedbackForm.content"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入反馈内容"
-        />
-      </el-form-item>
-      <el-form-item label="反馈文件">
-        <div class="upload-area" @click="handleUploadClick">
-          <div class="upload-icon">+</div>
-          <div class="upload-text">添加文件</div>
-        </div>
-        <p class="upload-hint">支持图片、PDF、Word、Excel格式，最多上传3个文件</p>
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <div class="feedback-form-footer">
-        <el-button @click="feedbackFormVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmFeedback">确定</el-button>
-      </div>
-    </template>
-  </el-dialog>
-
-  <!-- 发送通知弹窗 -->
-  <el-dialog
-    v-model="notifyFormVisible"
-    title="发送通知"
-    width="520px"
-    :close-on-click-modal="false"
-    destroy-on-close
-  >
-    <el-form :model="notifyForm" label-width="80px">
-      <el-form-item label="消息内容">
-        <el-input
-          v-model="notifyForm.content"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入消息内容"
-        />
-      </el-form-item>
-      <el-form-item label="通知渠道">
-        <div class="channel-group">
-          <el-button
-            v-for="ch in channelOptions"
-            :key="ch.value"
-            :type="notifyForm.channels.includes(ch.value) ? 'primary' : 'default'"
-            size="small"
-            @click="toggleChannel(ch.value)"
-          >{{ ch.label }}</el-button>
-        </div>
-      </el-form-item>
-      <el-form-item label="通知人员">
-        <el-select
-          v-model="notifyForm.personnel"
-          placeholder="请选择通知人员"
-          style="width: 100%"
-        >
-          <el-option label="普通人" value="normal" />
-          <el-option label="管理员" value="admin" />
-        </el-select>
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <div class="feedback-form-footer">
-        <el-button @click="notifyFormVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmNotify">确定</el-button>
-      </div>
-    </template>
   </el-dialog>
 </template>
 
@@ -344,25 +273,8 @@ const emit = defineEmits<{
   (e: 'notify', data: any): void
 }>()
 
+const remark = ref('')
 const activeTab = ref('monitor')
-const feedbackFormVisible = ref(false)
-const feedbackForm = reactive({ content: '' })
-const notifyFormVisible = ref(false)
-const notifyForm = reactive({ content: '', channels: [] as string[], personnel: '' })
-const channelOptions = [
-  { label: '短信', value: 'sms' },
-  { label: '邮件', value: 'email' },
-  { label: '系统消息', value: 'system' },
-]
-
-const toggleChannel = (value: string) => {
-  const idx = notifyForm.channels.indexOf(value)
-  if (idx > -1) {
-    notifyForm.channels.splice(idx, 1)
-  } else {
-    notifyForm.channels.push(value)
-  }
-}
 const activeDataTab = ref('monitor')
 const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
@@ -564,32 +476,10 @@ const getAlarmLevelType = (level: string) => ({ '1': 'danger', '2': 'warning', '
 const getAlarmLevelText = (level: string) => ({ '1': '一级', '2': '二级', '3': '三级', '4': '四级' } as Record<string, string>)[level] || level
 const getAlarmTypeText = (type: string) => ({ 'threshold': '阈值预警', 'comprehensive': '综合预警' } as Record<string, string>)[type] || type
 
-const openFeedbackDialog = () => {
-  feedbackForm.content = ''
-  feedbackFormVisible.value = true
-}
-
-const confirmFeedback = () => {
-  feedbackFormVisible.value = false
-  emit('submit')
-}
-
-const handleUploadClick = () => {
-  // TODO: 接入文件上传接口
-}
+const handleFeedback = () => { emit('submit') }
 const handleFalseAlarm = () => { emit('false-alarm', props.data) }
 const handleCloseAlarm = () => { emit('close-alarm', props.data) }
-const handleNotify = () => {
-  notifyForm.content = ''
-  notifyForm.channels = []
-  notifyForm.personnel = ''
-  notifyFormVisible.value = true
-}
-
-const confirmNotify = () => {
-  notifyFormVisible.value = false
-  emit('notify', props.data)
-}
+const handleNotify = () => { emit('notify', props.data); ElMessage.info('通知功能已触发') }
 const handleClose = () => { emit('update:modelValue', false); emit('close') }
 </script>
 
@@ -771,48 +661,12 @@ const handleClose = () => { emit('update:modelValue', false); emit('close') }
 
 /* ====== 底部操作栏 ====== */
 .event-footer {
-  display: flex; gap: 10px; justify-content: flex-end;
+  display: flex; gap: 10px;
   background: #fff; border-radius: 8px; border: 1px solid #e9ecef;
   padding: 10px 12px;
 }
-.action-right { display: flex; gap: 6px; align-items: center; }
-
-/* ====== 处置反馈弹窗 ====== */
-.upload-area {
-  width: 120px;
-  height: 120px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.3s;
-}
-.upload-area:hover { border-color: #1890ff; }
-.upload-icon {
-  font-size: 32px;
-  color: #c0c4cc;
-  line-height: 1;
-}
-.upload-text {
-  font-size: 13px;
-  color: #909399;
-  margin-top: 6px;
-}
-.upload-hint {
-  font-size: 12px;
-  color: #c0c4cc;
-  margin-top: 8px;
-}
-.channel-group {
-  display: flex;
-  gap: 8px;
-}
-.feedback-form-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
+.action-left { flex: 1; }
+.remark-input { width: 100%; resize: none; }
+.remark-input :deep(.el-textarea__inner) { font-size: 12px; padding: 8px; }
+.action-right { display: flex; gap: 6px; align-items: flex-end; }
 </style>

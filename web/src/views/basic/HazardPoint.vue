@@ -284,50 +284,18 @@
     <el-dialog
       v-model="mapDialogVisible"
       title="绘制隐患点范围"
-      width="800px"
+      width="900px"
       :close-on-click-modal="false"
-      destroy-on-close
+      :before-close="beforeMapClose"
     >
-      <div class="map-container">
-        <div id="hazard-point-map" ref="mapRef" style="width: 100%; height: 400px;"></div>
-      </div>
-      <div class="map-actions">
-        <el-button-group>
-          <el-button type="primary" size="small" @click="setDrawMode('point')">
-            <el-icon>
-              <Location/>
-            </el-icon>
-            设置中心点
-          </el-button>
-          <el-button size="small" @click="setDrawMode('polygon')">
-            <el-icon>
-              <Edit/>
-            </el-icon>
-            绘制范围
-          </el-button>
-          <el-button size="small" @click="setDrawMode('strike')">
-            <el-icon>
-              <DArrowRight/>
-            </el-icon>
-            绘制走向
-          </el-button>
-          <el-button size="small" @click="clearDraw">
-            <el-icon>
-              <Delete/>
-            </el-icon>
-            清除
-          </el-button>
-        </el-button-group>
-      </div>
-      <div class="map-info">
-        <div>中心坐标: {{ formData.longitude.toFixed(6) }}, {{ formData.latitude.toFixed(6) }}</div>
-        <div v-if="polygonCoords.length > 0">范围顶点数: {{ polygonCoords.length }}</div>
-        <div v-if="strikeCoords.length >= 2">走向角度: {{ strikeAngle }}°</div>
-      </div>
-      <template #footer>
-        <el-button @click="mapDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleMapConfirm">确定</el-button>
-      </template>
+      <MapBoundaryEditor
+        ref="mapEditorRef"
+        :initial-value="formData.boundaryCoords"
+        :initial-center="formCenter"
+        height="500px"
+        @done="onMapDone"
+        @cancel="mapDialogVisible = false"
+      />
     </el-dialog>
 
     <el-dialog
@@ -993,6 +961,8 @@ import {
 } from '@element-plus/icons-vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import MapBoundaryEditor from '@/components/map/MapBoundaryEditor.vue'
+import { EMPTY_BOUNDARY, serialize, deserialize, type BoundaryCoords, type LatLng } from '@/lib/boundaryCoords'
 import VueApexCharts from 'vue3-apexcharts'
 import {
   batchOperateHazardPoints,
@@ -1219,13 +1189,8 @@ const chartOptions = ref({
 })
 
 const mapDialogVisible = ref(false)
-const mapRef = ref<HTMLDivElement | null>(null)
-let mapInstance: L.Map | null = null
-let drawLayer: L.LayerGroup | null = null
-let currentDrawMode = ref('point')
-const polygonCoords = ref<L.LatLng[]>([])
-const strikeCoords = ref<L.LatLng[]>([])
-const strikeAngle = ref(0)
+const mapEditorRef = ref<InstanceType<typeof MapBoundaryEditor> | null>(null)
+const formCenter = ref<LatLng>({ lat: 30.67, lng: 104.06 })
 
 const detailDialogVisible = ref(false)
 const currentRow = ref<HazardPointItem | null>(null)
@@ -1392,7 +1357,8 @@ const formData = reactive({
   longitude: 104.06,
   latitude: 30.67,
   strike: 0,
-  description: ''
+  description: '',
+  boundaryCoords: deserialize(null) as BoundaryCoords
 })
 
 const formRules = {
@@ -1446,7 +1412,7 @@ const buildHazardPointPayload = () => ({
   latitude: formData.latitude,
   strike: formData.strike || 0,
   description: formData.description,
-  boundaryCoords: (formData as any).boundaryCoords || undefined
+  boundaryCoords: serialize(formData.boundaryCoords)
 })
 
 const getStatusType = (status: string) => {
@@ -1790,30 +1756,15 @@ const handleGroupSubmit = async () => {
 }
 
 const startResize = (e: MouseEvent) => {
-  e.preventDefault()
   const startX = e.clientX
   const startWidth = groupPanelWidth.value
-  let rafId: number | null = null
-
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
 
   const onMouseMove = (e: MouseEvent) => {
-    if (rafId !== null) return
-    rafId = requestAnimationFrame(() => {
-      rafId = null
-      const diff = e.clientX - startX
-      groupPanelWidth.value = Math.max(150, Math.min(400, startWidth + diff))
-    })
+    const diff = e.clientX - startX
+    groupPanelWidth.value = Math.max(150, Math.min(400, startWidth + diff))
   }
 
   const onMouseUp = () => {
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId)
-      rafId = null
-    }
-    document.body.style.cursor = ''
-    document.body.style.userSelect = ''
     document.removeEventListener('mousemove', onMouseMove)
     document.removeEventListener('mouseup', onMouseUp)
   }
@@ -1889,9 +1840,8 @@ const handleAdd = () => {
     strike: 0,
     description: ''
   })
-  polygonCoords.value = []
-  strikeCoords.value = []
-  strikeAngle.value = 0
+  formData.boundaryCoords = deserialize(null)
+  formCenter.value = { lat: 30.67, lng: 104.06 }
   dialogVisible.value = true
 }
 
@@ -1907,23 +1857,11 @@ const handleEdit = (row: HazardPointItem) => {
     groupId: row.groupId || '',
     longitude: row.longitude || 104.06,
     latitude: row.latitude || 30.67,
-    strike: row.strike || 0,
     description: row.description || ''
   })
   // 解析 boundaryCoords 回显
-  polygonCoords.value = [];
-  strikeCoords.value = [];
-  strikeAngle.value = 0
-  const bc: any = (row as any).boundaryCoords
-  if (bc) {
-    try {
-      const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
-      if (obj.polygon) polygonCoords.value = obj.polygon.map((c: number[]) => L.latLng(c[0], c[1]))
-      if (obj.strikeCoords) strikeCoords.value = obj.strikeCoords.map((c: number[]) => L.latLng(c[0], c[1]))
-      if (obj.strikeAngle != null) strikeAngle.value = obj.strikeAngle
-    } catch {
-    }
-  }
+  formData.boundaryCoords = deserialize((row as any).boundaryCoords)
+  formCenter.value = { lat: Number(row.latitude) || 30.67, lng: Number(row.longitude) || 104.06 }
   dialogVisible.value = true
 }
 
@@ -2213,136 +2151,22 @@ const handleComplete = async (row: HazardPointItem) => {
 
 const handleOpenMap = () => {
   mapDialogVisible.value = true
-  nextTick(() => {
-    initMap()
-  })
 }
 
-const initMap = () => {
-  if (!mapRef.value) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-  }
-
-  mapInstance = L.map(mapRef.value).setView([formData.latitude, formData.longitude], 15)
-
-  L.tileLayer('https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
-    maxZoom: 18,
-    attribution: '天地图'
-  }).addTo(mapInstance)
-
-  L.tileLayer('https://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
-    maxZoom: 18
-  }).addTo(mapInstance)
-
-  drawLayer = new L.LayerGroup().addTo(mapInstance)
-
-  if (formData.longitude && formData.latitude) {
-    L.marker([formData.latitude, formData.longitude], {
-      icon: L.divIcon({
-        className: 'center-marker',
-        html: '<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:50%;font-size:12px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">★</div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
-      })
-    }).addTo(drawLayer)
-  }
-
-  mapInstance.on('click', (e: L.LeafletMouseEvent) => {
-    if (currentDrawMode.value === 'point') {
-      formData.longitude = e.latlng.lng
-      formData.latitude = e.latlng.lat
-      if (drawLayer) {
-        drawLayer.clearLayers()
-        L.marker([e.latlng.lat, e.latlng.lng], {
-          icon: L.divIcon({
-            className: 'center-marker',
-            html: '<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:50%;font-size:12px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">★</div>',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
-          })
-        }).addTo(drawLayer)
-      }
-    } else if (currentDrawMode.value === 'polygon') {
-      polygonCoords.value.push(e.latlng)
-      if (drawLayer) {
-        drawLayer.clearLayers()
-        if (polygonCoords.value.length > 1) {
-          L.polyline([...polygonCoords.value], { color: '#1890ff', dashArray: '5,5' }).addTo(drawLayer)
-        }
-        polygonCoords.value.forEach((coord, i) => {
-          L.marker([coord.lat, coord.lng], {
-            icon: L.divIcon({
-              className: 'vertex-marker',
-              html: `<div style="background:#67C23A;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;">${i + 1}</div>`,
-              iconSize: [24, 20],
-              iconAnchor: [12, 10]
-            })
-          }).addTo(drawLayer!)
-        })
-      }
-    } else if (currentDrawMode.value === 'strike') {
-      strikeCoords.value.push(e.latlng)
-      if (drawLayer) {
-        drawLayer.clearLayers()
-        if (strikeCoords.value.length >= 2) {
-          const p1 = strikeCoords.value[0]
-          const p2 = strikeCoords.value[1]
-          L.polyline([p1, p2], { color: '#f56c6c', weight: 3 }).addTo(drawLayer)
-          const angle = Math.atan2(p2.lat - p1.lat, p2.lng - p1.lng) * (180 / Math.PI)
-          strikeAngle.value = Math.round((angle + 360) % 360)
-          formData.strike = strikeAngle.value
-        }
-        strikeCoords.value.forEach((coord, i) => {
-          L.marker([coord.lat, coord.lng], {
-            icon: L.divIcon({
-              className: 'strike-marker',
-              html: `<div style="background:#f56c6c;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;">${i === 0 ? '起' : '终'}</div>`,
-              iconSize: [24, 20],
-              iconAnchor: [12, 10]
-            })
-          }).addTo(drawLayer!)
-        })
-      }
-    }
-  })
+const beforeMapClose = (done: () => void) => {
+  // 无取消按钮，直接关闭；若有 dirty 检测需求可在此处加
+  done()
 }
 
-const setDrawMode = (mode: string) => {
-  currentDrawMode.value = mode
-  if (mode === 'polygon') {
-    polygonCoords.value = []
-  } else if (mode === 'strike') {
-    strikeCoords.value = []
-    strikeAngle.value = 0
+const onMapDone = (value: BoundaryCoords, center: LatLng | null) => {
+  formData.boundaryCoords = value
+  if (center) {
+    formCenter.value = center
   }
-}
-
-const clearDraw = () => {
-  if (drawLayer) {
-    drawLayer.clearLayers()
-  }
-  polygonCoords.value = []
-  strikeCoords.value = []
-  strikeAngle.value = 0
-}
-
-const handleMapConfirm = () => {
-  const coords: any = {}
-  if (polygonCoords.value.length > 0) coords.polygon = polygonCoords.value.map(c => [c.lat, c.lng])
-  if (strikeCoords.value.length >= 2) {
-    coords.strikeCoords = strikeCoords.value.map(c => [c.lat, c.lng])
-    coords.strikeAngle = strikeAngle.value
-  }
-  ;(formData as any).boundaryCoords = Object.keys(coords).length > 0 ? JSON.stringify(coords) : undefined
   mapDialogVisible.value = false
-  if (mapInstance) {
-    mapInstance.remove();
-    mapInstance = null
-  }
-  ElMessage.success('隐患点范围设置成功')
 }
+
+// ── Old Leaflet map code replaced by <MapBoundaryEditor> component ──
 
 //初始化绑定设备
 const initBoundDevices = async (hazardPointId: string) => {
@@ -3148,12 +2972,13 @@ onUnmounted(() => {
 /* ========== 左侧分组面板 ========== */
 .group-panel {
   background: #fafafa;
+  border-right: 1px solid #e8e8e8;
   display: flex;
   flex-direction: column;
-  transition: none;
+  transition: width 0.3s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: 8px 0 0 8px;
 }
 
 .group-panel__header {
@@ -3295,7 +3120,7 @@ onUnmounted(() => {
 
 /* ========== 分隔手柄 ========== */
 .resize-handle {
-  width: 8px;
+  width: 6px;
   height: 100%;
   cursor: col-resize;
   background: transparent;
@@ -3303,28 +3128,18 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  position: relative;
-  user-select: none;
-}
-
-/* 常驻竖线标识 */
-.resize-handle::before {
-  content: '';
-  width: 2px;
-  height: 30px;
-  background: #dcdfe6;
-  border-radius: 1px;
-  transition: all 0.2s;
 }
 
 .resize-handle:hover {
-  background: rgba(24, 144, 255, 0.08);
+  background: #1890ff;
 }
 
-.resize-handle:hover::before {
-  background: #1890ff;
+.resize-handle:hover::after {
+  content: '';
+  width: 2px;
   height: 40px;
+  background: #1890ff;
+  border-radius: 1px;
 }
 
 /* ========== 右侧内容面板 ========== */
@@ -3332,7 +3147,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-left: 6px;
+  padding-left: 12px;
   min-width: 0;
 }
 

@@ -37,11 +37,6 @@ public class HazardPointCreateRequest implements Serializable {
     @Digits(integer = 2, fraction = 6, message = "纬度最多支持6位小数")
     private BigDecimal latitude;
 
-    @DecimalMin(value = "0.00", message = "走向角度不能小于0")
-    @DecimalMax(value = "360.00", message = "走向角度不能大于360")
-    @Digits(integer = 3, fraction = 2, message = "走向角度最多支持2位小数")
-    private BigDecimal strike;
-
     /**
      * 边界范围 JSON
      */

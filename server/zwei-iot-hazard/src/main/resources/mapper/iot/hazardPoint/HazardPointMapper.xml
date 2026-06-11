@@ -12,7 +12,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="groupName" column="group_name"/>
         <result property="longitude" column="longitude"/>
         <result property="latitude" column="latitude"/>
-        <result property="strike" column="strike"/>
         <result property="boundaryCoords" column="boundary_coords"/>
         <result property="description" column="description"/>
         <result property="status" column="status"/>
@@ -26,7 +25,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectHazardPointVo">
-        SELECT h.id, h.code, h.name, h.group_id, g.name AS group_name, h.longitude, h.latitude, h.strike,
+        SELECT h.id, h.code, h.name, h.group_id, g.name AS group_name, h.longitude, h.latitude,
                h.boundary_coords,
                h.description, h.status, h.device_count, h.del_flag, h.create_by, h.create_time,
                h.update_by, h.update_time,
@@ -83,7 +82,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="groupId != null">group_id,</if>
             <if test="longitude != null">longitude,</if>
             <if test="latitude != null">latitude,</if>
-            <if test="strike != null">strike,</if>
         <if test="boundaryCoords != null">boundary_coords,</if>
             <if test="description != null">description,</if>
             <if test="status != null">status,</if>
@@ -95,7 +93,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="groupId != null">#{groupId},</if>
             <if test="longitude != null">#{longitude},</if>
             <if test="latitude != null">#{latitude},</if>
-            <if test="strike != null">#{strike},</if>
         <if test="boundaryCoords != null">#{boundaryCoords},</if>
             <if test="description != null">#{description},</if>
             <if test="status != null">#{status},</if>
@@ -110,7 +107,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             group_id = #{groupId},
             longitude = #{longitude},
             latitude = #{latitude},
-            strike = #{strike},
             boundary_coords = #{boundaryCoords},
             description = #{description},
             update_by = #{updateBy},

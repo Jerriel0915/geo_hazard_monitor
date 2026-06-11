@@ -8,6 +8,7 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.*;
+import com.zwei.iot.hazardpoint.service.BoundaryCoordsValidator;
 import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import com.zwei.iot.hazardpoint.service.IVideoDeviceHazardPointService;
@@ -34,14 +35,17 @@ public class HazardPointController extends BaseController
     private final IHazardPointService hazardPointService;
     private final IDeviceHazardPointService deviceHazardPointService;
     private final IVideoDeviceHazardPointService videoDeviceHazardPointService;
+    private final BoundaryCoordsValidator boundaryCoordsValidator;
 
     @Autowired
     public HazardPointController(IHazardPointService hazardPointService,
                                 IDeviceHazardPointService deviceHazardPointService,
-                                IVideoDeviceHazardPointService videoDeviceHazardPointService) {
+                                IVideoDeviceHazardPointService videoDeviceHazardPointService,
+                                BoundaryCoordsValidator boundaryCoordsValidator) {
         this.hazardPointService = hazardPointService;
         this.deviceHazardPointService = deviceHazardPointService;
         this.videoDeviceHazardPointService = videoDeviceHazardPointService;
+        this.boundaryCoordsValidator = boundaryCoordsValidator;
     }
 
     /**
@@ -76,7 +80,6 @@ public class HazardPointController extends BaseController
             vo.setGroupName(item.getGroupName());
             vo.setLongitude(item.getLongitude());
             vo.setLatitude(item.getLatitude());
-            vo.setStrike(item.getStrike());
             vo.setDescription(item.getDescription());
             vo.setStatusName(item.getStatusName());
             vo.setDeviceCount(item.getDeviceCount());
@@ -123,6 +126,11 @@ public class HazardPointController extends BaseController
         }
         HazardPoint hazardPoint = buildHazardPoint(request);
         hazardPoint.setCreateBy(getUsername());
+
+        if (hazardPoint.getBoundaryCoords() != null && !hazardPoint.getBoundaryCoords().isEmpty()) {
+            boundaryCoordsValidator.parseAndValidate(hazardPoint.getBoundaryCoords());
+        }
+
         int rows = hazardPointService.insertHazardPoint(hazardPoint);
         return rows > 0
                 ? AjaxResult.success("新增成功", Map.of("id", hazardPoint.getId()))
@@ -144,6 +152,11 @@ public class HazardPointController extends BaseController
         HazardPoint hazardPoint = buildHazardPoint(request);
         hazardPoint.setId(id);
         hazardPoint.setUpdateBy(getUsername());
+
+        if (hazardPoint.getBoundaryCoords() != null && !hazardPoint.getBoundaryCoords().isEmpty()) {
+            boundaryCoordsValidator.parseAndValidate(hazardPoint.getBoundaryCoords());
+        }
+
         int rows = hazardPointService.updateHazardPoint(hazardPoint);
         return rows > 0 ? AjaxResult.success("修改成功") : AjaxResult.error("隐患点不存在");
     }
@@ -331,7 +344,6 @@ public class HazardPointController extends BaseController
         hazardPoint.setGroupId(request.getGroupId());
         hazardPoint.setLongitude(request.getLongitude());
         hazardPoint.setLatitude(request.getLatitude());
-        hazardPoint.setStrike(request.getStrike());
         hazardPoint.setBoundaryCoords(request.getBoundaryCoords());
         hazardPoint.setDescription(trimToNull(request.getDescription()));
         return hazardPoint;
@@ -344,7 +356,6 @@ public class HazardPointController extends BaseController
         hazardPoint.setGroupId(request.getGroupId());
         hazardPoint.setLongitude(request.getLongitude());
         hazardPoint.setLatitude(request.getLatitude());
-        hazardPoint.setStrike(request.getStrike());
         hazardPoint.setBoundaryCoords(request.getBoundaryCoords());
         hazardPoint.setDescription(trimToNull(request.getDescription()));
         return hazardPoint;

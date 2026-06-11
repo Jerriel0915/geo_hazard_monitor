@@ -1,6 +1,7 @@
 package com.zwei.iot.hazardpoint.service.impl;
 
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
+import com.zwei.iot.device.service.IDeviceHazardRelationService.HazardPointRef;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
@@ -44,6 +45,18 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
         if (hpIds != null && !hpIds.isEmpty()) {
             HazardPoint hp = hazardPointMapper.selectHazardPointById(hpIds.get(0));
             return hp != null ? hp.getName() : null;
+        }
+        return null;
+    }
+
+    @Override
+    public HazardPointRef getHazardPointByDeviceId(Long deviceId) {
+        List<Long> hpIds = deviceHazardPointMapper.selectHazardPointIdsByDeviceIds(Collections.singletonList(deviceId));
+        if (hpIds != null && !hpIds.isEmpty()) {
+            HazardPoint hp = hazardPointMapper.selectHazardPointById(hpIds.get(0));
+            if (hp != null) {
+                return new HazardPointRef(hp.getId(), hp.getName());
+            }
         }
         return null;
     }

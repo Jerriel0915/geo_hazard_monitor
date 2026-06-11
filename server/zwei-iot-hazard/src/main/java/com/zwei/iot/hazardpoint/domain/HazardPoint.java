@@ -43,9 +43,6 @@ public class HazardPoint extends BaseEntity
     /** 中心纬度 */
     private BigDecimal latitude;
 
-    /** 走向角度 */
-    private BigDecimal strike;
-
     /**
      * 边界范围 JSON
      */
@@ -87,7 +84,6 @@ public class HazardPoint extends BaseEntity
                 ", groupName='" + groupName + '\'' +
                 ", longitude=" + longitude +
                 ", latitude=" + latitude +
-                ", strike=" + strike +
                 ", description='" + description + '\'' +
                 ", status=" + status +
                 ", statusName='" + statusName + '\'' +
@@ -99,11 +95,11 @@ public class HazardPoint extends BaseEntity
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         HazardPoint that = (HazardPoint) o;
-        return Objects.equals(getId(), that.getId()) && Objects.equals(getCode(), that.getCode()) && Objects.equals(getName(), that.getName()) && Objects.equals(getGroupId(), that.getGroupId()) && Objects.equals(getGroupName(), that.getGroupName()) && Objects.equals(getLongitude(), that.getLongitude()) && Objects.equals(getLatitude(), that.getLatitude()) && Objects.equals(getStrike(), that.getStrike()) && Objects.equals(getDescription(), that.getDescription()) && Objects.equals(getStatus(), that.getStatus()) && Objects.equals(getStatusName(), that.getStatusName()) && Objects.equals(getDeviceCount(), that.getDeviceCount()) && Objects.equals(getDelFlag(), that.getDelFlag());
+        return Objects.equals(getId(), that.getId()) && Objects.equals(getCode(), that.getCode()) && Objects.equals(getName(), that.getName()) && Objects.equals(getGroupId(), that.getGroupId()) && Objects.equals(getGroupName(), that.getGroupName()) && Objects.equals(getLongitude(), that.getLongitude()) && Objects.equals(getLatitude(), that.getLatitude()) && Objects.equals(getDescription(), that.getDescription()) && Objects.equals(getStatus(), that.getStatus()) && Objects.equals(getStatusName(), that.getStatusName()) && Objects.equals(getDeviceCount(), that.getDeviceCount()) && Objects.equals(getDelFlag(), that.getDelFlag());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), getCode(), getName(), getGroupId(), getGroupName(), getLongitude(), getLatitude(), getStrike(), getDescription(), getStatus(), getStatusName(), getDeviceCount(), getDelFlag());
+        return Objects.hash(getId(), getCode(), getName(), getGroupId(), getGroupName(), getLongitude(), getLatitude(), getDescription(), getStatus(), getStatusName(), getDeviceCount(), getDelFlag());
     }
 }
