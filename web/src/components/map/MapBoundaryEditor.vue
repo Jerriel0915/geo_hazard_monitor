@@ -19,8 +19,9 @@
           @click="onToolClick('aux')">⤴ 辅助线</el-button>
       </el-button-group>
 
-      <el-button v-if="editor.mode.value === 'edit' && editor.selectedId.value"
+      <el-button v-if="editor.mode.value === 'edit'"
         size="small" type="danger" plain
+        :disabled="!editor.selectedId.value"
         @click="editor.removeSelected">× 删除选中</el-button>
       <el-button v-if="editor.mode.value === 'edit' && editor.manualCenterLocked.value"
         size="small" @click="editor.resetCenter">⌖ 重置中心</el-button>
@@ -111,9 +112,16 @@ watch(() => props.initialCenter, (v) => {
 const hintText = computed(() => {
   if (props.readonly) return ''
   if (editor.tool.value === 'polygon') return '点击地图添加顶点 · 双击或回车闭合 · Esc 取消'
-  if (editor.tool.value === 'strike') return '点击设置走向起点和终点 (共 2 点)'
-  if (editor.tool.value === 'aux') return '点击添加顶点 · 双击或回车结束 · Esc 取消'
-  if (editor.mode.value === 'edit') return '拖动顶点/中心修改 · 点选后按 Delete 键删除'
+  if (editor.tool.value === 'strike') {
+    // After 1st click, strikeLine exists (degenerate or not) — prompt for endpoint
+    return '点击设置走向终点 (起点已固定)'
+  }
+  if (editor.tool.value === 'aux') {
+    const last = editor.auxiliaryLines.value[editor.auxiliaryLines.value.length - 1]
+    if (!last || last.length < 1) return '点击添加第一个顶点'
+    return '点击添加下一个顶点 · 双击或回车结束 · Esc 取消'
+  }
+  if (editor.mode.value === 'edit') return '拖动顶点/端点/中心修改 · 点选后按 Delete 键删除'
   return '点击「编辑」开始'
 })
 
@@ -185,4 +193,10 @@ defineExpose({ invalidate: editor.invalidate })
 .editor-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .editor-hint { font-size: 12px; color: #909399; height: 20px; line-height: 20px; }
 .editor-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid #ebeef5; }
+
+/* P3: pulse animation for strike start marker during DRAW */
+@keyframes ghost-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%      { transform: scale(1.4); opacity: 0.2; }
+}
 </style>

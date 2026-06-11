@@ -279,3 +279,96 @@ describe('useMapEditor — overlay polygon (point variant)', () => {
     expect(e.canSave.value).toBe(false) // point variant, no point yet
   })
 })
+
+describe('useMapEditor — drawing ghost (P3)', () => {
+  let container: ReturnType<typeof ref<HTMLDivElement | null>>
+  beforeEach(() => { container = ref(null) })
+  afterEach(() => { container.value = null })
+
+  it('exposes mouseLatLng as null by default', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    expect((e as any).mouseLatLng.value).toBeNull()
+  })
+
+  it('exposes ghostGroup as null by default', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    expect((e as any).ghostGroup.value).toBeNull()
+  })
+
+  it('exposes clearGhost as a callable function', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    expect(typeof (e as any).clearGhost).toBe('function')
+    expect(() => (e as any).clearGhost()).not.toThrow()
+  })
+})
+
+describe('useMapEditor — strike endpoint drag (P4)', () => {
+  let container: ReturnType<typeof ref<HTMLDivElement | null>>
+  beforeEach(() => { container = ref(null) })
+  afterEach(() => { container.value = null })
+
+  it('moveStrikeEndpoint(0, ...) replaces start point', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    e.setStrike({ lat: 0, lng: 0 }, { lat: 1, lng: 1 })
+    e.moveStrikeEndpoint(0, { lat: 5, lng: 5 })
+    expect(e.strikeLine.value).toEqual([{ lat: 5, lng: 5 }, { lat: 1, lng: 1 }])
+  })
+
+  it('moveStrikeEndpoint(1, ...) replaces end point', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    e.setStrike({ lat: 0, lng: 0 }, { lat: 1, lng: 1 })
+    e.moveStrikeEndpoint(1, { lat: 9, lng: 9 })
+    expect(e.strikeLine.value).toEqual([{ lat: 0, lng: 0 }, { lat: 9, lng: 9 }])
+  })
+
+  it('moveStrikeEndpoint is no-op when no strike', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    e.moveStrikeEndpoint(0, { lat: 5, lng: 5 })
+    expect(e.strikeLine.value).toBeNull()
+  })
+
+  it('draggingStrikeIndex is exposed as null by default', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    expect((e as any).draggingStrikeIndex.value).toBeNull()
+  })
+})
+
+describe('useMapEditor — aux point drag (P5)', () => {
+  let container: ReturnType<typeof ref<HTMLDivElement | null>>
+  beforeEach(() => { container = ref(null) })
+  afterEach(() => { container.value = null })
+
+  it('moveAuxPoint replaces the right (line, point)', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    e.addAuxLine([{ lat: 0, lng: 0 }, { lat: 1, lng: 1 }, { lat: 2, lng: 2 }])
+    e.moveAuxPoint(0, 1, { lat: 9, lng: 9 })
+    expect(e.auxiliaryLines.value[0][1]).toEqual({ lat: 9, lng: 9 })
+    expect(e.auxiliaryLines.value[0][0]).toEqual({ lat: 0, lng: 0 })
+    expect(e.auxiliaryLines.value[0][2]).toEqual({ lat: 2, lng: 2 })
+  })
+
+  it('moveAuxPoint on a different line does not affect other lines', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    e.addAuxLine([{ lat: 0, lng: 0 }, { lat: 1, lng: 1 }])
+    e.addAuxLine([{ lat: 10, lng: 10 }, { lat: 11, lng: 11 }])
+    e.moveAuxPoint(1, 0, { lat: 99, lng: 99 })
+    expect(e.auxiliaryLines.value[0][0]).toEqual({ lat: 0, lng: 0 })
+    expect(e.auxiliaryLines.value[1][0]).toEqual({ lat: 99, lng: 99 })
+  })
+
+  it('removing an aux line does not shift other indices', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    e.addAuxLine([{ lat: 0, lng: 0 }, { lat: 1, lng: 1 }])
+    e.addAuxLine([{ lat: 10, lng: 10 }, { lat: 11, lng: 11 }])
+    e.addAuxLine([{ lat: 20, lng: 20 }, { lat: 21, lng: 21 }])
+    e.removeAuxLine(1)
+    expect(e.auxiliaryLines.value.length).toBe(2)
+    expect(e.auxiliaryLines.value[0][0]).toEqual({ lat: 0, lng: 0 })
+    expect(e.auxiliaryLines.value[1][0]).toEqual({ lat: 20, lng: 20 })
+  })
+
+  it('draggingAuxKey is exposed as null by default', () => {
+    const e = useMapEditor({ container, variant: 'boundary' })
+    expect((e as any).draggingAuxKey.value).toBeNull()
+  })
+})

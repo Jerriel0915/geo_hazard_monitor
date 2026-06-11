@@ -291,7 +291,7 @@
       <MapBoundaryEditor
         ref="mapEditorRef"
         :initial-value="formData.boundaryCoords"
-        :initial-center="formCenter"
+        :initial-center="mapInitialCenter"
         height="500px"
         @done="onMapDone"
         @cancel="mapDialogVisible = false"
@@ -1190,7 +1190,10 @@ const chartOptions = ref({
 
 const mapDialogVisible = ref(false)
 const mapEditorRef = ref<InstanceType<typeof MapBoundaryEditor> | null>(null)
-const formCenter = ref<LatLng>({ lat: 30.67, lng: 104.06 })
+const mapInitialCenter = computed<LatLng>(() => ({
+  lat: formData.latitude,
+  lng: formData.longitude
+}))
 
 const detailDialogVisible = ref(false)
 const currentRow = ref<HazardPointItem | null>(null)
@@ -1841,7 +1844,6 @@ const handleAdd = () => {
     description: ''
   })
   formData.boundaryCoords = deserialize(null)
-  formCenter.value = { lat: 30.67, lng: 104.06 }
   dialogVisible.value = true
 }
 
@@ -1861,7 +1863,6 @@ const handleEdit = (row: HazardPointItem) => {
   })
   // 解析 boundaryCoords 回显
   formData.boundaryCoords = deserialize((row as any).boundaryCoords)
-  formCenter.value = { lat: Number(row.latitude) || 30.67, lng: Number(row.longitude) || 104.06 }
   dialogVisible.value = true
 }
 
@@ -2161,7 +2162,8 @@ const beforeMapClose = (done: () => void) => {
 const onMapDone = (value: BoundaryCoords, center: LatLng | null) => {
   formData.boundaryCoords = value
   if (center) {
-    formCenter.value = center
+    formData.longitude = center.lng
+    formData.latitude = center.lat
   }
   mapDialogVisible.value = false
 }

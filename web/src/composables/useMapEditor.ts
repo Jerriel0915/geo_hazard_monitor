@@ -96,6 +96,15 @@ export interface UseMapEditorReturn {
 
   clearAll: () => void
   snapshot: () => EditorSnapshot
+
+  // P3: drawing visual feedback
+  mouseLatLng: Ref<LatLng | null>
+  ghostGroup: ShallowRef<L.LayerGroup | null>
+  clearGhost: () => void
+  // P4: strike endpoint drag protection
+  draggingStrikeIndex: Ref<0 | 1 | null>
+  // P5: aux point drag protection
+  draggingAuxKey: Ref<{ line: number; point: number } | null>
 }
 
 export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
@@ -184,6 +193,15 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
   const draggingVertexIndex = ref<number | null>(null)
   const draggingCenter = ref<boolean>(false)
   const draggingPoint = ref<boolean>(false)
+  // P3: drawing visual feedback
+  const mouseLatLng = ref<LatLng | null>(null)
+  const ghostGroup = shallowRef<L.LayerGroup | null>(null)
+  // P4: strike endpoint markers (draggable in edit mode)
+  const strikeEndpointMarkers = shallowRef<(L.Marker | null)[]>([])
+  const draggingStrikeIndex = ref<0 | 1 | null>(null)
+  // P5: aux point markers (draggable in edit mode)
+  const auxPointMarkers = shallowRef<(L.Marker | null)[][]>([])
+  const draggingAuxKey = ref<{ line: number; point: number } | null>(null)
 
   // ── Render effect: redraw layers on data change ──
   const renderTimer = { id: null as number | null }
@@ -273,33 +291,106 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
       return marker
     })
 
-    // strike line
+    // strike line + endpoint markers
     if (strikeLine.value) {
       const [a, b] = strikeLine.value
-      const isSelected = selectedId.value?.kind === 'strike-endpoint'
+      const isLineSelected = selectedId.value?.kind === 'strike-endpoint'
       if (strikeLayer.value) {
         strikeLayer.value.setLatLngs([[a.lat, a.lng], [b.lat, b.lng]])
-        strikeLayer.value.setStyle({ weight: isSelected ? 5 : 3 })
+        strikeLayer.value.setStyle({ weight: isLineSelected ? 5 : 3 })
       } else {
         strikeLayer.value = L.polyline([[a.lat, a.lng], [b.lat, b.lng]], {
-          color: '#f56c6c', weight: isSelected ? 5 : 3
+          color: '#f56c6c', weight: isLineSelected ? 5 : 3
         }).addTo(map)
         strikeLayer.value.on('click', () => select({ kind: 'strike-endpoint', index: 0 }))
       }
+      // P4: draggable endpoint markers
+      strikeEndpointMarkers.value.forEach(m => { if (m) m.remove() })
+      strikeEndpointMarkers.value = strikeLine.value.map((pt, i) => {
+        if (i === draggingStrikeIndex.value) return strikeEndpointMarkers.value[i] ?? null
+        const isSelected = isLineSelected && selectedId.value!.index === i
+        return L.marker([pt.lat, pt.lng], {
+          icon: L.divIcon({
+            className: 'strike-endpoint-marker',
+            html: `<div style="background:#f56c6c;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;${isSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}">${i + 1}</div>`,
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+          }),
+          draggable: mode.value === 'edit' && canEdit.value
+        }).addTo(map)
+      })
+      strikeEndpointMarkers.value.forEach((m, i) => {
+        if (!m) return
+        m.on('dragstart', () => { draggingStrikeIndex.value = i as 0 | 1 })
+        m.on('drag', (e: any) => {
+          if (mode.value !== 'edit' || !canEdit.value) {
+            e.target.setLatLng([strikeLine.value![i].lat, strikeLine.value![i].lng])
+            return
+          }
+          const ll = e.target.getLatLng()
+          moveStrikeEndpoint(i as 0 | 1, { lat: ll.lat, lng: ll.lng })
+        })
+        m.on('dragend', () => { draggingStrikeIndex.value = null })
+        m.on('click', (e: any) => {
+          L.DomEvent.stopPropagation(e)
+          if (mode.value === 'edit') select({ kind: 'strike-endpoint', index: i as 0 | 1 })
+        })
+      })
     } else if (strikeLayer.value) {
       strikeLayer.value.remove()
       strikeLayer.value = null
+      strikeEndpointMarkers.value.forEach(m => { if (m) m.remove() })
+      strikeEndpointMarkers.value = []
     }
 
-    // aux lines
+    // aux lines + per-vertex markers
     auxLayers.value.forEach(l => l.remove())
-    auxLayers.value = auxiliaryLines.value.map((line, idx) => {
-      const isSelected = selectedId.value?.kind === 'aux-line' && selectedId.value.index === idx
+    auxPointMarkers.value.forEach(row => row.forEach(m => { if (m) m.remove() }))
+    auxLayers.value = []
+    auxPointMarkers.value = []
+    auxiliaryLines.value.forEach((line, lineIdx) => {
+      const isLineSelected = selectedId.value?.kind === 'aux-line' && selectedId.value.index === lineIdx
       const pl = L.polyline(line.map(p => [p.lat, p.lng] as L.LatLngExpression), {
-        color: '#fa8c16', weight: isSelected ? 3 : 2, dashArray: '5 4'
+        color: '#fa8c16', weight: isLineSelected ? 3 : 2, dashArray: '5 4'
       }).addTo(map)
-      pl.on('click', () => select({ kind: 'aux-line', index: idx }))
-      return pl
+      pl.on('click', () => select({ kind: 'aux-line', index: lineIdx }))
+      auxLayers.value.push(pl)
+      // P5: per-vertex markers (drag in edit mode)
+      const row: (L.Marker | null)[] = line.map((pt, ptIdx) => {
+        if (draggingAuxKey.value &&
+            draggingAuxKey.value.line === lineIdx &&
+            draggingAuxKey.value.point === ptIdx) {
+          return auxPointMarkers.value[lineIdx]?.[ptIdx] ?? null
+        }
+        return L.marker([pt.lat, pt.lng], {
+          icon: L.divIcon({
+            className: 'aux-point-marker',
+            html: `<div style="background:#fa8c16;color:#fff;width:16px;height:16px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:2px solid #fff;${isLineSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          }),
+          draggable: mode.value === 'edit' && canEdit.value
+        }).addTo(map)
+      })
+      row.forEach((m, ptIdx) => {
+        if (!m) return
+        m.on('dragstart', () => { draggingAuxKey.value = { line: lineIdx, point: ptIdx } })
+        m.on('drag', (e: any) => {
+          if (mode.value !== 'edit' || !canEdit.value) {
+            const cur = auxiliaryLines.value[lineIdx][ptIdx]
+            e.target.setLatLng([cur.lat, cur.lng])
+            return
+          }
+          const ll = e.target.getLatLng()
+          moveAuxPoint(lineIdx, ptIdx, { lat: ll.lat, lng: ll.lng })
+        })
+        m.on('dragend', () => { draggingAuxKey.value = null })
+        m.on('click', (e: any) => {
+          L.DomEvent.stopPropagation(e)
+          if (mode.value === 'edit') select({ kind: 'aux-line', index: lineIdx })
+        })
+      })
+      auxPointMarkers.value.push(row)
     })
 
     // center marker — update in place; skip when being dragged
@@ -368,11 +459,71 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     { deep: true }
   )
 
+  // ── P3: drawing ghost (mouse follower + preview line) ──
+  function clearGhost() {
+    if (ghostGroup.value) {
+      ghostGroup.value.remove()
+      ghostGroup.value = null
+    }
+  }
+
+  function renderGhost() {
+    const map = leaflet.map.value
+    if (!map) return
+    clearGhost()
+    if (mode.value !== 'edit' || !tool.value || !mouseLatLng.value) return
+    const ml = mouseLatLng.value
+    const t = tool.value
+    const layers: L.Layer[] = []
+
+    // Cursor ghost dot — blue ring, white fill
+    layers.push(L.circleMarker([ml.lat, ml.lng], {
+      radius: 6, color: '#3b82f6', fillColor: '#fff', fillOpacity: 1, weight: 2
+    }))
+
+    if (t === 'strike' && strikeLine.value) {
+      // 1 point placed: dashed line from start to cursor
+      const start = strikeLine.value[0]
+      layers.push(L.polyline([[start.lat, start.lng], [ml.lat, ml.lng]], {
+        color: '#f56c6c', weight: 2, dashArray: '3 3', opacity: 0.6
+      }))
+      // Pulse marker at start with "起点 ✓" label
+      layers.push(L.marker([start.lat, start.lng], {
+        icon: L.divIcon({
+          className: 'strike-start-pulse',
+          html: '<div style="position:relative"><div style="position:absolute;inset:-10px;background:#f56c6c33;border-radius:50%;animation:ghost-pulse 1.4s infinite"></div><div style="background:#f56c6c;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.5)"></div></div><div style="position:absolute;top:50%;left:130%;transform:translate(0,-50%);background:#1f2937;color:#fbbf24;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;white-space:nowrap;border:1px solid #f59e0b">起点 ✓</div>',
+          iconSize: [80, 20],
+          iconAnchor: [9, 10]
+        })
+      }))
+    } else if (t === 'aux' && auxiliaryLines.value.length > 0) {
+      // Dashed polyline through all placed vertices → cursor
+      const last = auxiliaryLines.value[auxiliaryLines.value.length - 1]
+      if (last && (last as any).__drawing) {
+        const pts: L.LatLngExpression[] = [...last.map(p => [p.lat, p.lng] as L.LatLngExpression), [ml.lat, ml.lng]]
+        layers.push(L.polyline(pts, {
+          color: '#fa8c16', weight: 2, dashArray: '3 3', opacity: 0.6
+        }))
+      }
+    }
+
+    ghostGroup.value = L.layerGroup(layers).addTo(map)
+  }
+
+  watch([mouseLatLng, () => tool.value, () => strikeLine.value, () => auxiliaryLines.value, () => mode.value],
+    () => renderGhost(),
+    { deep: true }
+  )
+
   // ── Map click handler for DRAW-* sub-states + point variant ──
   let mapClickHandler: ((e: L.LeafletMouseEvent) => void) | null = null
+  let mapMoveHandler: ((e: L.LeafletMouseEvent) => void) | null = null
+  let mapOutHandler: (() => void) | null = null
   watch([leaflet.map, () => tool.value, () => mode.value, () => options.variant], ([map, t, m, variant]) => {
     if (!map) return
     if (mapClickHandler) { map.off('click', mapClickHandler); mapClickHandler = null }
+    if (mapMoveHandler) { map.off('mousemove', mapMoveHandler); mapMoveHandler = null }
+    if (mapOutHandler) { map.off('mouseout', mapOutHandler); mapOutHandler = null }
     // point variant: map click sets the point (when not readonly and not mid-draw)
     if (variant === 'point' && !options.readonly && m !== 'edit') {
       if ((map as any).dragging) (map as any).dragging.enable()
@@ -415,6 +566,13 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     } else {
       if ((map as any).dragging) (map as any).dragging.enable()
     }
+    // P3: register mousemove/mouseout for the ghost cursor
+    mapMoveHandler = (e: L.LeafletMouseEvent) => {
+      mouseLatLng.value = { lat: e.latlng.lat, lng: e.latlng.lng }
+    }
+    mapOutHandler = () => { mouseLatLng.value = null }
+    map.on('mousemove', mapMoveHandler)
+    map.on('mouseout', mapOutHandler)
   }, { immediate: true })
 
   // ── Keyboard handler ──
@@ -569,6 +727,12 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     addAuxLine, moveAuxPoint, removeAuxLine,
     setCenter, moveCenter, resetCenter,
     select, clearSelection, removeSelected,
-    clearAll, snapshot
+    clearAll, snapshot,
+    // P3
+    mouseLatLng, ghostGroup, clearGhost,
+    // P4
+    draggingStrikeIndex,
+    // P5
+    draggingAuxKey
   }
 }
