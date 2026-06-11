@@ -27,8 +27,8 @@ export function getDeviceIconColor(
 ): IconColor {
     if (status === 2) return 'red'
     if (status === 3) return 'repair'
-    // status=1（正常）或未设置：根据在线状态区分 green / gray
-    return onlineStatus === 1 ? 'green' : 'gray'
+    // 默认绿色；仅当显式离线（onlineStatus === 0）时显示灰色
+    return onlineStatus === 0 ? 'gray' : 'green'
 }
 
 /**

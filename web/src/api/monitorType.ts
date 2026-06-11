@@ -16,14 +16,17 @@ export interface MonitorContentItem {
 export interface MonitorTypeItem {
   id: number
   code: string
-  categoryId?: number
-  categoryName?: string
   name: string
+  deviceType?: number
+  deviceTypeName?: string
   icon: string
   description: string
   sortOrder: number
   status: number
   createTime: string
+  createBy?: string
+  updateTime?: string
+  updateBy?: string
   contents?: MonitorContentItem[]
 }
 
@@ -32,13 +35,11 @@ export interface MonitorTypeQueryParams {
   pageSize?: number
   code?: string
   name?: string
-  categoryId?: number
   status?: number
 }
 
 export interface MonitorTypeCreatePayload {
   code: string
-  categoryId: number
   name: string
   icon?: string
   description?: string
@@ -48,7 +49,6 @@ export interface MonitorTypeCreatePayload {
 
 export interface MonitorTypeUpdatePayload {
   name: string
-  categoryId?: number
   icon?: string
   description?: string
   sortOrder?: number

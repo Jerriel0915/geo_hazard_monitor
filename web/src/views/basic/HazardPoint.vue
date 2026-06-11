@@ -1790,15 +1790,30 @@ const handleGroupSubmit = async () => {
 }
 
 const startResize = (e: MouseEvent) => {
+  e.preventDefault()
   const startX = e.clientX
   const startWidth = groupPanelWidth.value
+  let rafId: number | null = null
+
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
 
   const onMouseMove = (e: MouseEvent) => {
-    const diff = e.clientX - startX
-    groupPanelWidth.value = Math.max(150, Math.min(400, startWidth + diff))
+    if (rafId !== null) return
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      const diff = e.clientX - startX
+      groupPanelWidth.value = Math.max(150, Math.min(400, startWidth + diff))
+    })
   }
 
   const onMouseUp = () => {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
     document.removeEventListener('mousemove', onMouseMove)
     document.removeEventListener('mouseup', onMouseUp)
   }
@@ -3133,13 +3148,12 @@ onUnmounted(() => {
 /* ========== 左侧分组面板 ========== */
 .group-panel {
   background: #fafafa;
-  border-right: 1px solid #e8e8e8;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s;
+  transition: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   flex-shrink: 0;
-  border-radius: 8px 0 0 8px;
+  border-radius: 8px;
 }
 
 .group-panel__header {
@@ -3281,7 +3295,7 @@ onUnmounted(() => {
 
 /* ========== 分隔手柄 ========== */
 .resize-handle {
-  width: 6px;
+  width: 8px;
   height: 100%;
   cursor: col-resize;
   background: transparent;
@@ -3289,18 +3303,28 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  user-select: none;
+}
+
+/* 常驻竖线标识 */
+.resize-handle::before {
+  content: '';
+  width: 2px;
+  height: 30px;
+  background: #dcdfe6;
+  border-radius: 1px;
+  transition: all 0.2s;
 }
 
 .resize-handle:hover {
-  background: #1890ff;
+  background: rgba(24, 144, 255, 0.08);
 }
 
-.resize-handle:hover::after {
-  content: '';
-  width: 2px;
-  height: 40px;
+.resize-handle:hover::before {
   background: #1890ff;
-  border-radius: 1px;
+  height: 40px;
 }
 
 /* ========== 右侧内容面板 ========== */
@@ -3308,7 +3332,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-left: 12px;
+  padding-left: 6px;
   min-width: 0;
 }
 

@@ -38,35 +38,42 @@
           border
           stripe
           v-loading="loading"
+          size="small"
         >
-          <el-table-column prop="code" label="编号" width="120" align="center" />
-          <el-table-column label="图标" width="80" align="center">
+          <el-table-column prop="code" label="编号" width="110" align="center" />
+          <el-table-column label="图标" width="70" align="center">
             <template #default="{ row }">
               <img v-if="row.icon" :src="row.icon" class="table-icon" alt="icon" />
               <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="名称" min-width="160" align="center" />
-          <el-table-column prop="categoryName" label="监测大类" width="120" align="center">
+          <el-table-column prop="name" label="名称" min-width="140" align="center" show-overflow-tooltip />
+          <el-table-column prop="status" label="状态" width="80" align="center">
             <template #default="{ row }">
-              <el-tag type="info" effect="plain">{{ row.categoryName || '-' }}</el-tag>
+              <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain" size="small">
+                {{ row.status === 1 ? '启用' : '停用' }}
+              </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="description" label="描述" min-width="200" align="center">
+          <el-table-column prop="description" label="描述" min-width="160" align="center" show-overflow-tooltip>
             <template #default="{ row }">
               <span>{{ row.description || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="sortOrder" label="排序号" width="90" align="center" />
-          <el-table-column prop="status" label="状态" width="90" align="center">
+          <el-table-column prop="sortOrder" label="排序号" width="75" align="center" />
+          <el-table-column prop="createBy" label="创建人" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
-                {{ row.status === 1 ? '启用' : '禁用' }}
-              </el-tag>
+              <span>{{ row.createBy || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" min-width="170" align="center" />
-          <el-table-column label="操作" width="200" fixed="right" align="center">
+          <el-table-column prop="createTime" label="创建时间" width="155" align="center" />
+          <el-table-column prop="updateBy" label="修改人" width="100" align="center">
+            <template #default="{ row }">
+              <span>{{ row.updateBy || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="updateTime" label="修改时间" width="155" align="center" />
+          <el-table-column label="操作" width="210" fixed="right" align="center">
             <template #default="{ row }">
               <div class="op-cell">
                 <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
@@ -143,23 +150,6 @@
               </div>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="监测大类" prop="categoryId">
-              <el-select
-                v-model="formData.categoryId"
-                placeholder="请选择监测大类"
-                :disabled="isView"
-                style="width: 100%"
-              >
-                <el-option
-                  v-for="item in categoryOptions"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
         </el-row>
 
         <el-row :gutter="20">
@@ -176,9 +166,13 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="状态">
-              <el-tag :type="formData.status === 1 ? 'success' : 'info'" effect="plain">
-                {{ formData.status === 1 ? '启用' : '禁用' }}
-              </el-tag>
+              <el-switch
+                :model-value="formData.status === 1"
+                @update:model-value="formData.status = $event ? 1 : 0"
+                active-text="启用"
+                inactive-text="停用"
+                :disabled="isView"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -324,7 +318,6 @@
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox, type FormInstance, type FormRules} from 'element-plus'
 import {Search} from '@element-plus/icons-vue'
-import request from '@/utils/request'
 import {
   createMonitorContent,
   createMonitorType,
@@ -358,7 +351,6 @@ const IndicatorTypeEnum = {
 } as const
 
 const indicatorTypeOptions = Object.values(IndicatorTypeEnum)
-const categoryOptions = ref<{ id: number; name: string }[]>([])
 const typeIconList: IconItem[] = getIconList()
 
 const loading = ref(false)
@@ -383,7 +375,6 @@ const formData = reactive<{
   code: string
   name: string
   icon: string
-  categoryId: number | null
   description: string
   sortOrder: number
   status: number
@@ -392,7 +383,6 @@ const formData = reactive<{
   code: '',
   name: '',
   icon: '',
-  categoryId: null,
   description: '',
   sortOrder: 0,
   status: 1,
@@ -408,7 +398,6 @@ const formRules: FormRules = {
     { required: true, message: '请输入监测类型名称', trigger: 'blur' },
     { max: 200, message: '监测类型名称长度不能超过200个字符', trigger: 'blur' }
   ],
-  categoryId: [{ required: true, message: '请选择监测大类', trigger: 'change' }],
   description: [{ max: 500, message: '描述长度不能超过500个字符', trigger: 'blur' }]
 }
 
@@ -426,14 +415,17 @@ const normalizeMonitorContent = (item: any): MonitorContentItem => ({
 const normalizeMonitorType = (item: any): MonitorTypeItem => ({
   id: Number(item?.id),
   code: String(item?.code || ''),
-  categoryId: item?.categoryId ?? undefined,
-  categoryName: item?.categoryName || '',
   name: String(item?.name || ''),
+  deviceType: item?.deviceType ?? undefined,
+  deviceTypeName: item?.deviceTypeName || '',
   icon: String(item?.icon || ''),
   description: String(item?.description || ''),
   sortOrder: Number(item?.sortOrder ?? 0),
   status: Number(item?.status ?? 1),
   createTime: String(item?.createTime || ''),
+  createBy: String(item?.createBy || ''),
+  updateTime: String(item?.updateTime || ''),
+  updateBy: String(item?.updateBy || ''),
   contents: Array.isArray(item?.contents) ? item.contents.map(normalizeMonitorContent) : undefined
 })
 
@@ -459,7 +451,6 @@ const resetFormData = () => {
     code: '',
     name: '',
     icon: '',
-    categoryId: null,
     description: '',
     sortOrder: 0,
     status: 1,
@@ -510,7 +501,6 @@ const fillFormFromDetail = (detail: MonitorTypeItem) => {
     code: detail.code,
     name: detail.name,
     icon: detail.icon || '',
-    categoryId: detail.categoryId ?? null,
     description: detail.description || '',
     sortOrder: detail.sortOrder ?? 0,
     status: detail.status ?? 1,
@@ -593,7 +583,6 @@ const validateModelAttrs = () => {
 const buildMonitorTypeCreatePayload = () => ({
   code: formData.code.trim(),
   name: formData.name.trim(),
-  categoryId: formData.categoryId as number,
   icon: formData.icon || '',
   description: formData.description.trim(),
   sortOrder: formData.sortOrder ?? 0,
@@ -602,7 +591,6 @@ const buildMonitorTypeCreatePayload = () => ({
 
 const buildMonitorTypeUpdatePayload = () => ({
   name: formData.name.trim(),
-  categoryId: formData.categoryId ?? undefined,
   icon: formData.icon || '',
   description: formData.description.trim(),
   sortOrder: formData.sortOrder ?? 0
@@ -774,15 +762,17 @@ const handleMoreCommand = (command: string, row: MonitorTypeItem) => {
 
 const handleExport = () => {
   const rows = [
-    ['编号', '名称', '设备类型', '描述', '排序号', '状态', '创建时间'],
+    ['编号', '名称', '状态', '描述', '排序号', '创建人', '创建时间', '修改人', '修改时间'],
     ...tableData.value.map((item) => [
       item.code,
       item.name,
-      item.categoryName || '',
+      item.status === 1 ? '启用' : '停用',
       item.description || '',
       item.sortOrder,
-      item.status === 1 ? '启用' : '禁用',
-      item.createTime || ''
+      item.createBy || '-',
+      item.createTime || '',
+      item.updateBy || '-',
+      item.updateTime || ''
     ])
   ]
   downloadCsv(`monitor-types-${Date.now()}.csv`, rows)
@@ -878,16 +868,8 @@ const handleTypeIconSelect = (item: IconItem) => {
   typeIconDialogVisible.value = false
 }
 
-const loadCategoryOptions = async () => {
-  try {
-    const res = await request.get('/monitor-categories')
-    categoryOptions.value = (res.data || [])
-  } catch { /* ignore */ }
-}
-
 onMounted(() => {
   loadTableData()
-  loadCategoryOptions()
 })
 </script>
 
