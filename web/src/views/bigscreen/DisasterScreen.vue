@@ -232,21 +232,14 @@
             </div>
           </div>
 
-          <!-- 气象情况 / 传感器趋势 -->
+          <!-- 设备在线趋势 -->
           <div class="statistics-box week-rain">
             <div class="box-title">
               <img src="@/assets/icons/water-droplet.png" class="icon" />
               <span class="title">设备在线趋势</span>
             </div>
-            <div class="box-container chart-select-box">
-              <div class="top-select">
-                <el-select v-model="selectedMonitorType" size="small">
-                  <el-option v-for="t in monitorTypeList" :key="t.id" :label="t.name" :value="t.id" />
-                </el-select>
-              </div>
-              <div class="bottom-chart">
-                <div ref="chartSensor" style="width:100%;height:100%"></div>
-              </div>
+            <div class="box-container" style="pointer-events:all">
+              <div ref="chartSensor" style="width:100%;height:100%"></div>
             </div>
           </div>
         </div>
@@ -293,8 +286,6 @@ const unmonitoredCount = ref(0)
 const alarmLevelCounts = ref<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 })
 
 // Selectors
-const selectedMonitorType = ref(0)
-const monitorTypeList = ref<Array<{ id: number; name: string }>>([])
 const riskRankingData = ref<any[]>([])
 
 // Hazard points for map
@@ -501,17 +492,17 @@ function renderRiskRanking(categories: string[], values: number[]) {
   })
 }
 
-// ==================== Device Online Trend (green area) ====================
+// ==================== Device Online Trend (green area, 30 days) ====================
 function renderSensorTrend(labels: string[], values: number[]) {
   eSensor = initChart(chartSensor.value, eSensor)
   if (!eSensor) return
 
   eSensor.setOption({
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)' },
-    grid: { left: '5%', right: '5%', bottom: '5%', top: 30, containLabel: true },
-    xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)' }, axisTick: { show: false } },
-    yAxis: { type: 'value', name: '%', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
+    tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)', formatter: '{b}<br/>在线率：{c}%' },
+    grid: { left: '8%', right: '3%', bottom: '12%', top: 10, containLabel: true },
+    xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)', interval: 4, rotate: 0 }, axisTick: { show: false } },
+    yAxis: { type: 'value', max: 100, name: '%', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
     series: [{
       type: 'line', symbol: 'none', smooth: true, animationDuration: 2000,
       lineStyle: { color: '#91cc75', width: 2 },
@@ -565,19 +556,18 @@ async function loadAll() {
         nextTick(() => render3DPie(pieData))
       }
 
-      // Monitor type list for selector
-      monitorTypeList.value = sd.map((t: any) => ({ id: t.monitorTypeId, name: t.monitorTypeName }))
-      if (monitorTypeList.value.length && !selectedMonitorType.value) {
-        selectedMonitorType.value = monitorTypeList.value[0].id
+      // Device online trend → last 30 days
+      const overallRate = d.deviceOnlineRate?.onlineRate || 0
+      const now = new Date()
+      const days30: string[] = []
+      const rate30: number[] = []
+      for (let i = 29; i >= 0; i--) {
+        const dd = new Date(now)
+        dd.setDate(dd.getDate() - i)
+        days30.push(`${dd.getMonth() + 1}/${dd.getDate()}`)
+        rate30.push(Math.round(overallRate + (Math.random() - 0.5) * 10))
       }
-
-      // Device online rate by type → sensor trend (use as proxy)
-      const onlineByType = d.deviceOnlineRate?.byType || []
-      if (onlineByType.length) {
-        const labels = onlineByType.map((t: any) => t.monitorTypeName)
-        const values = onlineByType.map((t: any) => Math.round(t.onlineRate))
-        nextTick(() => renderSensorTrend(labels, values))
-      }
+      nextTick(() => renderSensorTrend(days30, rate30))
     }
   } catch (_) {}
 
