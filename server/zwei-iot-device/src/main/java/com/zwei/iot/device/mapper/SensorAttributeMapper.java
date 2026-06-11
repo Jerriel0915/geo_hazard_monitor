@@ -22,6 +22,14 @@ public interface SensorAttributeMapper {
     List<SensorAttribute> selectAttributeListBySensorId(@Param("sensorId") Long sensorId);
 
     /**
+     * 根据设备ID查询所有传感器属性（JOIN device_sensor，批量查询避免 N+1）
+     *
+     * @param deviceId 设备ID
+     * @return 属性列表
+     */
+    List<SensorAttribute> selectAttributeListByDeviceId(@Param("deviceId") Long deviceId);
+
+    /**
      * 根据ID查询属性详情
      *
      * @param id 属性ID

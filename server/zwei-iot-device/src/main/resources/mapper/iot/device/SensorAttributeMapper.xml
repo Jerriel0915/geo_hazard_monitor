@@ -50,6 +50,28 @@
         ORDER BY sa.id ASC
     </select>
 
+    <!-- 根据设备ID查询所有传感器属性（JOIN device_sensor，一次查询避免 N+1） -->
+    <select id="selectAttributeListByDeviceId" parameterType="Long" resultMap="SensorAttributeResult">
+        SELECT sa.id,
+               sa.sensor_id,
+               sa.monitor_content_id,
+               sa.attr_code,
+               sa.attr_name,
+               sa.initial_value,
+               sa.unit,
+               sa.range_min,
+               sa.range_max,
+               sa.icon,
+               sa.create_by,
+               sa.create_time,
+               sa.update_by,
+               sa.update_time
+        FROM sensor_attribute sa
+        INNER JOIN device_sensor ds ON sa.sensor_id = ds.id
+        WHERE ds.device_id = #{deviceId}
+        ORDER BY sa.id ASC
+    </select>
+
     <!-- 根据ID查询属性详情 -->
     <select id="selectAttributeById" parameterType="Long" resultMap="SensorAttributeResult">
         <include refid="selectAttributeVo"/>

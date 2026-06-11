@@ -9,8 +9,10 @@ import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
 import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
+import com.zwei.iot.device.mapper.ProductMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.*;
+import com.zwei.iot.device.service.IProductTslService;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -57,6 +59,8 @@ public class DeviceServiceImpl implements IDeviceService {
     private final DeviceAuthLogService deviceAuthLogService;
     private final ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider;
     private final IDeviceStatusLogService deviceStatusLogService;
+    private final IProductTslService productTslService;
+    private final ProductMapper productMapper;
 
     @Autowired
     public DeviceServiceImpl(DeviceMapper deviceMapper, DeviceSensorMapper sensorMapper,
@@ -65,7 +69,9 @@ public class DeviceServiceImpl implements IDeviceService {
                              DeviceAuthAccountGenerator accountGenerator,
                              DeviceAuthLogService deviceAuthLogService,
                              ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider,
-                             IDeviceStatusLogService deviceStatusLogService) {
+                             IDeviceStatusLogService deviceStatusLogService,
+                             IProductTslService productTslService,
+                             ProductMapper productMapper) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
@@ -74,6 +80,8 @@ public class DeviceServiceImpl implements IDeviceService {
         this.deviceAuthLogService = deviceAuthLogService;
         this.deviceSessionServiceProvider = deviceSessionServiceProvider;
         this.deviceStatusLogService = deviceStatusLogService;
+        this.productTslService = productTslService;
+        this.productMapper = productMapper;
     }
 
     /**
@@ -190,6 +198,7 @@ public class DeviceServiceImpl implements IDeviceService {
         deleteSensorAttributesByDeviceId(id);
         sensorMapper.deleteSensorByDeviceId(id);
         hazardRelationService.deleteBindingsByDeviceIds(List.of(id));
+        productMapper.deleteByDeviceId(id);
         int rows = deviceMapper.deleteDeviceById(id);
         refreshHazardPointDeviceCounts(hazardPointIds);
         return rows;
@@ -205,6 +214,7 @@ public class DeviceServiceImpl implements IDeviceService {
         for (Long id : ids) {
             deleteSensorAttributesByDeviceId(id);
             sensorMapper.deleteSensorByDeviceId(id);
+            productMapper.deleteByDeviceId(id);
         }
         hazardRelationService.deleteBindingsByDeviceIds(deviceIds);
         int rows = deviceMapper.deleteDeviceByIds(ids);
@@ -266,6 +276,7 @@ public class DeviceServiceImpl implements IDeviceService {
                 attributeMapper.batchInsertAttribute(attrs);
             }
         }
+        productTslService.regenerate(copy.getId());
         return copy.getId();
     }
 

@@ -8,6 +8,7 @@ import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.device.service.IProductTslService;
 import com.zwei.iot.device.service.ITimeSeriesSchemaService;
 import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
@@ -46,6 +47,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     private final IMonitorTypeService monitorTypeService;
     private final IMonitorContentService monitorContentService;
     private final ITimeSeriesSchemaService timeSeriesSchemaService;
+    private final IProductTslService productTslService;
 
     @Autowired
     public DeviceSensorServiceImpl(DeviceMapper deviceMapper,
@@ -53,13 +55,15 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
                                    SensorAttributeMapper attributeMapper,
                                    IMonitorTypeService monitorTypeService,
                                    IMonitorContentService monitorContentService,
-                                   ITimeSeriesSchemaService timeSeriesSchemaService) {
+                                   ITimeSeriesSchemaService timeSeriesSchemaService,
+                                   IProductTslService productTslService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
         this.monitorTypeService = monitorTypeService;
         this.monitorContentService = monitorContentService;
         this.timeSeriesSchemaService = timeSeriesSchemaService;
+        this.productTslService = productTslService;
     }
 
     /**
@@ -117,6 +121,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         // 注册时预创建 IoTDB 时序 schema，将 DDL 从写入热路径提前到注册冷路径
         timeSeriesSchemaService.createSensorSchema(sensor.getDeviceId(), sensor.getSensorNo(),
                 attrList.stream().map(SensorAttribute::getAttrCode).toList());
+        productTslService.regenerate(sensor.getDeviceId());
         return sensor.getId();
     }
 
@@ -174,6 +179,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             existingIds.removeAll(retainedIds);
             throw new ServiceException("属性列表不完整，缺少属性 ID: " + existingIds + "，删除属性请使用 DELETE /api/v1/sensors/{sensorId}/attributes/{attrId}");
         }
+        productTslService.regenerate(existing.getDeviceId());
         return rows;
     }
 
@@ -183,8 +189,14 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     @Transactional
     public int deleteSensorById(Long id) {
+        DeviceSensor sensor = sensorMapper.selectSensorById(id);
+        if (sensor == null) {
+            throw new ServiceException("传感器不存在");
+        }
         attributeMapper.deleteAttributeBySensorId(id);
-        return sensorMapper.deleteSensorById(id);
+        int rows = sensorMapper.deleteSensorById(id);
+        productTslService.regenerate(sensor.getDeviceId());
+        return rows;
     }
 
     /**
@@ -309,11 +321,16 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     }
 
     @Override
+    @Transactional
     public void deleteSensorAttribute(Long sensorId, Long attrId) {
         SensorAttribute attr = attributeMapper.selectAttributeById(attrId);
         if (attr == null || !Objects.equals(attr.getSensorId(), sensorId)) {
             throw new ServiceException("属性不存在或不属于当前传感器");
         }
         attributeMapper.deleteAttributeById(attrId);
+        DeviceSensor sensor = sensorMapper.selectSensorById(sensorId);
+        if (sensor != null) {
+            productTslService.regenerate(sensor.getDeviceId());
+        }
     }
 }
