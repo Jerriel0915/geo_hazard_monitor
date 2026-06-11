@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { nextTick, ref, computed } from 'vue'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
+import {mount} from '@vue/test-utils'
+import {computed, nextTick, ref} from 'vue'
 import ElementPlus from 'element-plus'
 import MapBoundaryEditor from '../MapBoundaryEditor.vue'
-import type { BoundaryCoords } from '../../lib/boundaryCoords'
+import type {BoundaryCoords} from '../../../lib/boundaryCoords'
 
 // Shared state — vi.mock factory returns refs that read/write these
 const state = {

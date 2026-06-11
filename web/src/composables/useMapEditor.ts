@@ -1,8 +1,8 @@
-import { ref, computed, watch, shallowRef, onBeforeUnmount, type Ref, type ShallowRef, type ComputedRef } from 'vue'
-import L, { type Map as LMap } from 'leaflet'
-import type { LatLng, BoundaryCoords } from '@/lib/boundaryCoords'
-import { centroid, strikeAngle as computeStrikeAngle } from '@/lib/boundaryCoords'
-import { useLeafletMap } from './useLeafletMap'
+import {computed, type ComputedRef, onBeforeUnmount, type Ref, ref, type ShallowRef, shallowRef, watch} from 'vue'
+import L, {type Map as LMap} from 'leaflet'
+import type {BoundaryCoords, LatLng} from '@/lib/boundaryCoords'
+import {centroid, strikeAngle as computeStrikeAngle} from '@/lib/boundaryCoords'
+import {useLeafletMap} from './useLeafletMap'
 
 export type EditorMode = 'view' | 'edit'
 export type EditorTool = null | 'polygon' | 'strike' | 'aux'
@@ -21,6 +21,84 @@ export interface EditorSnapshot {
   center: LatLng | null
   manualCenterLocked: boolean
   strikeAngle: number | null
+}
+
+/**
+ * Unified "draggable vertex" helper. Used by polygon vertices, strike
+ * endpoints, AND aux points — all three go through the same logic
+ * so the drag-during-render protection, click-to-select, and
+ * snap-back-if-not-in-edit-mode behavior are guaranteed identical.
+ *
+ * Pattern:
+ *   - If `isDragging` is true, return `existing` untouched (its
+ *     position is managed by Leaflet's drag handler; we'd interrupt
+ *     the drag if we re-touched it).
+ *   - If `existing` is set, update its position in place.
+ *   - Otherwise create a new marker with `draggable: true` and wire
+ *     dragstart/drag/dragend/click handlers.
+ *
+ * The drag handler always allows the drag (Leaflet) but calls
+ * `canMove()` to decide whether to commit the new position. If not,
+ * it snaps back to `snapBackTo()`.
+ */
+interface DraggableVertexOpts {
+  position: LatLng
+  existing: L.Marker | null | undefined
+  isDragging: boolean
+  iconHtml: string
+  iconSize: [number, number]
+  iconAnchor: [number, number]
+  iconClass?: string
+  onDragStart: () => void
+  onDrag: (pos: LatLng) => void
+  onDragEnd: () => void
+  onClick: () => void
+  canMove: () => boolean
+  snapBackTo: () => LatLng
+}
+
+function ensureDraggableVertex(
+    map: L.Map,
+    opts: DraggableVertexOpts
+): L.Marker {
+  if (opts.isDragging) return opts.existing ?? createNew()
+  if (opts.existing) {
+    opts.existing.setLatLng([opts.position.lat, opts.position.lng])
+    return opts.existing
+  }
+  return createNew()
+
+  function createNew(): L.Marker {
+    const m = L.marker([opts.position.lat, opts.position.lng], {
+      icon: L.divIcon({
+        className: opts.iconClass ?? 'draggable-vertex-marker',
+        html: opts.iconHtml,
+        iconSize: opts.iconSize,
+        iconAnchor: opts.iconAnchor
+      }),
+      // Always draggable; the drag handler enforces canMove() and
+      // snaps back if not allowed. Creating as draggable:true is
+      // essential so markers made in view mode become draggable
+      // the moment the user enters edit mode (without recreating).
+      draggable: true
+    }).addTo(map)
+    m.on('dragstart', () => opts.onDragStart())
+    m.on('drag', (e: any) => {
+      if (!opts.canMove()) {
+        const sb = opts.snapBackTo()
+        e.target.setLatLng([sb.lat, sb.lng])
+        return
+      }
+      const ll = e.target.getLatLng()
+      opts.onDrag({lat: ll.lat, lng: ll.lng})
+    })
+    m.on('dragend', () => opts.onDragEnd())
+    m.on('click', (e: any) => {
+      L.DomEvent.stopPropagation(e)
+      opts.onClick()
+    })
+    return m
+  }
 }
 
 export interface VertexHandle {
@@ -247,48 +325,28 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     }
     // 2. For each polygon vertex, ensure a marker exists at the right position
     vertexMarkers.value = polygon.value.map((p, i) => {
-      // Skip the marker that's currently being dragged — its position is
-      // managed by Leaflet's drag handler. Removing/recreating it
-      // would interrupt the drag.
-      if (i === draggingVertexIndex.value) return vertexMarkers.value[i]
-
-      const existing = vertexMarkers.value[i]
       const isSelected = selectedId.value?.kind === 'polygon-vertex' && selectedId.value.index === i
-      const newIcon = L.divIcon({
-        className: 'vertex-marker',
-        html: vertexHtml(i + 1, isSelected, mode.value === 'edit'),
+      return ensureDraggableVertex(map, {
+        position: p,
+        existing: vertexMarkers.value[i],
+        isDragging: i === draggingVertexIndex.value,
+        iconHtml: vertexHtml(i + 1, isSelected, mode.value === 'edit'),
         iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        iconAnchor: [14, 14],
+        iconClass: 'vertex-marker',
+        onDragStart: () => {
+          draggingVertexIndex.value = i
+        },
+        onDrag: pos => moveVertex({kind: 'polygon-vertex', index: i}, pos),
+        onDragEnd: () => {
+          draggingVertexIndex.value = null
+        },
+        onClick: () => {
+          if (mode.value === 'edit') select({kind: 'polygon-vertex', index: i})
+        },
+        canMove: () => mode.value === 'edit' && canEdit.value,
+        snapBackTo: () => polygon.value[i]
       })
-      if (existing) {
-        // Update in place: position + icon (icon for selection/mode halo)
-        existing.setLatLng([p.lat, p.lng])
-        existing.setIcon(newIcon)
-        return existing
-      }
-      // Create new
-      const marker = L.marker([p.lat, p.lng], {
-        icon: newIcon,
-        // Always draggable; drag handler checks mode
-        draggable: true
-      }).addTo(map)
-      marker.on('dragstart', () => { draggingVertexIndex.value = i })
-      marker.on('drag', (e: any) => {
-        if (mode.value !== 'edit' || !canEdit.value) {
-          e.target.setLatLng([polygon.value[i].lat, polygon.value[i].lng])
-          return
-        }
-        const ll = e.target.getLatLng()
-        moveVertex({ kind: 'polygon-vertex', index: i }, { lat: ll.lat, lng: ll.lng })
-      })
-      marker.on('dragend', () => {
-        draggingVertexIndex.value = null
-      })
-      marker.on('click', (e: any) => {
-        L.DomEvent.stopPropagation(e)
-        if (mode.value === 'edit') select({ kind: 'polygon-vertex', index: i })
-      })
-      return marker
     })
 
     // strike line + endpoint markers
@@ -304,36 +362,38 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
         }).addTo(map)
         strikeLayer.value.on('click', () => select({ kind: 'strike-endpoint', index: 0 }))
       }
-      // P4: draggable endpoint markers
-      strikeEndpointMarkers.value.forEach(m => { if (m) m.remove() })
+        // P4: draggable endpoint markers (incremental — don't kill the dragging one)
+        // 1. Remove only the non-dragging markers (in case of length change)
+        while (strikeEndpointMarkers.value.length > 2) {
+            const m = strikeEndpointMarkers.value.pop()
+            if (m) m.remove()
+        }
+        while (strikeEndpointMarkers.value.length < 2) {
+            strikeEndpointMarkers.value.push(null)
+        }
+        // 2. For each endpoint, ensure a marker exists at the right position
       strikeEndpointMarkers.value = strikeLine.value.map((pt, i) => {
-        if (i === draggingStrikeIndex.value) return strikeEndpointMarkers.value[i] ?? null
         const isSelected = isLineSelected && selectedId.value!.index === i
-        return L.marker([pt.lat, pt.lng], {
-          icon: L.divIcon({
-            className: 'strike-endpoint-marker',
-            html: `<div style="background:#f56c6c;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;${isSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}">${i + 1}</div>`,
-            iconSize: [18, 18],
-            iconAnchor: [9, 9]
-          }),
-          draggable: mode.value === 'edit' && canEdit.value
-        }).addTo(map)
-      })
-      strikeEndpointMarkers.value.forEach((m, i) => {
-        if (!m) return
-        m.on('dragstart', () => { draggingStrikeIndex.value = i as 0 | 1 })
-        m.on('drag', (e: any) => {
-          if (mode.value !== 'edit' || !canEdit.value) {
-            e.target.setLatLng([strikeLine.value![i].lat, strikeLine.value![i].lng])
-            return
-          }
-          const ll = e.target.getLatLng()
-          moveStrikeEndpoint(i as 0 | 1, { lat: ll.lat, lng: ll.lng })
-        })
-        m.on('dragend', () => { draggingStrikeIndex.value = null })
-        m.on('click', (e: any) => {
-          L.DomEvent.stopPropagation(e)
-          if (mode.value === 'edit') select({ kind: 'strike-endpoint', index: i as 0 | 1 })
+        return ensureDraggableVertex(map, {
+          position: pt,
+          existing: strikeEndpointMarkers.value[i],
+          isDragging: i === draggingStrikeIndex.value,
+          iconHtml: `<div style="background:#f56c6c;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;${isSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}">${i + 1}</div>`,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+          iconClass: 'strike-endpoint-marker',
+          onDragStart: () => {
+            draggingStrikeIndex.value = i as 0 | 1
+          },
+          onDrag: pos => moveStrikeEndpoint(i as 0 | 1, pos),
+          onDragEnd: () => {
+            draggingStrikeIndex.value = null
+          },
+          onClick: () => {
+            if (mode.value === 'edit') select({kind: 'strike-endpoint', index: i as 0 | 1})
+          },
+          canMove: () => mode.value === 'edit' && canEdit.value,
+          snapBackTo: () => strikeLine.value![i]
         })
       })
     } else if (strikeLayer.value) {
@@ -343,11 +403,16 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
       strikeEndpointMarkers.value = []
     }
 
-    // aux lines + per-vertex markers
+      // aux lines + per-vertex markers (incremental — don't kill dragging one)
     auxLayers.value.forEach(l => l.remove())
-    auxPointMarkers.value.forEach(row => row.forEach(m => { if (m) m.remove() }))
     auxLayers.value = []
-    auxPointMarkers.value = []
+      // Trim auxPointMarkers if there are fewer lines now
+      while (auxPointMarkers.value.length > auxiliaryLines.value.length) {
+          const row = auxPointMarkers.value.pop()
+          if (row) row.forEach(m => {
+              if (m) m.remove()
+          })
+      }
     auxiliaryLines.value.forEach((line, lineIdx) => {
       const isLineSelected = selectedId.value?.kind === 'aux-line' && selectedId.value.index === lineIdx
       const pl = L.polyline(line.map(p => [p.lat, p.lng] as L.LatLngExpression), {
@@ -355,42 +420,44 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
       }).addTo(map)
       pl.on('click', () => select({ kind: 'aux-line', index: lineIdx }))
       auxLayers.value.push(pl)
-      // P5: per-vertex markers (drag in edit mode)
-      const row: (L.Marker | null)[] = line.map((pt, ptIdx) => {
-        if (draggingAuxKey.value &&
-            draggingAuxKey.value.line === lineIdx &&
-            draggingAuxKey.value.point === ptIdx) {
-          return auxPointMarkers.value[lineIdx]?.[ptIdx] ?? null
+        // P5: per-vertex markers (incremental — don't kill the dragging one)
+        const existingRow = auxPointMarkers.value[lineIdx] || []
+        // Trim if line is shorter
+        while (auxPointMarkers.value.length <= lineIdx) auxPointMarkers.value.push([])
+        while (auxPointMarkers.value[lineIdx].length > line.length) {
+            const m = auxPointMarkers.value[lineIdx].pop()
+            if (m) m.remove()
         }
-        return L.marker([pt.lat, pt.lng], {
-          icon: L.divIcon({
-            className: 'aux-point-marker',
-            html: `<div style="background:#fa8c16;color:#fff;width:16px;height:16px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:2px solid #fff;${isLineSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}"></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-          }),
-          draggable: mode.value === 'edit' && canEdit.value
-        }).addTo(map)
-      })
-      row.forEach((m, ptIdx) => {
-        if (!m) return
-        m.on('dragstart', () => { draggingAuxKey.value = { line: lineIdx, point: ptIdx } })
-        m.on('drag', (e: any) => {
-          if (mode.value !== 'edit' || !canEdit.value) {
-            const cur = auxiliaryLines.value[lineIdx][ptIdx]
-            e.target.setLatLng([cur.lat, cur.lng])
-            return
-          }
-          const ll = e.target.getLatLng()
-          moveAuxPoint(lineIdx, ptIdx, { lat: ll.lat, lng: ll.lng })
+        // Ensure row is at least as long as line
+        while (auxPointMarkers.value[lineIdx].length < line.length) {
+            auxPointMarkers.value[lineIdx].push(null)
+        }
+      const row: L.Marker[] = line.map((pt, ptIdx) => {
+        return ensureDraggableVertex(map, {
+          position: pt,
+          existing: auxPointMarkers.value[lineIdx][ptIdx],
+          isDragging: !!(draggingAuxKey.value &&
+            draggingAuxKey.value.line === lineIdx &&
+              draggingAuxKey.value.point === ptIdx),
+          iconHtml: `<div style="background:#fa8c16;color:#fff;width:16px;height:16px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:2px solid #fff;${isLineSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+          iconClass: 'aux-point-marker',
+          onDragStart: () => {
+            draggingAuxKey.value = {line: lineIdx, point: ptIdx}
+          },
+          onDrag: pos => moveAuxPoint(lineIdx, ptIdx, pos),
+          onDragEnd: () => {
+            draggingAuxKey.value = null
+          },
+          onClick: () => {
+            if (mode.value === 'edit') select({kind: 'aux-line', index: lineIdx})
+          },
+          canMove: () => mode.value === 'edit' && canEdit.value,
+          snapBackTo: () => auxiliaryLines.value[lineIdx][ptIdx]
         })
-        m.on('dragend', () => { draggingAuxKey.value = null })
-        m.on('click', (e: any) => {
-          L.DomEvent.stopPropagation(e)
-          if (mode.value === 'edit') select({ kind: 'aux-line', index: lineIdx })
-        })
       })
-      auxPointMarkers.value.push(row)
+      auxPointMarkers.value[lineIdx] = row
     })
 
     // center marker — update in place; skip when being dragged

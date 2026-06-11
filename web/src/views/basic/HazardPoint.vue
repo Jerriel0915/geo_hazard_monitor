@@ -259,9 +259,9 @@
         </el-row>
         <el-form-item label="中心坐标" prop="coordinates">
           <div class="coordinate-input">
-            <el-input-number v-model="formData.longitude" :precision="6" :step="0.000001" placeholder="经度" class="coord-input" />
+            <el-input-number v-model="formData.longitude" placeholder="经度" class="coord-input"/>
             <span class="coord-separator">,</span>
-            <el-input-number v-model="formData.latitude" :precision="6" :step="0.000001" placeholder="纬度" class="coord-input" />
+            <el-input-number v-model="formData.latitude" placeholder="纬度" class="coord-input"/>
             <el-button type="primary" size="small" @click="handleOpenMap">
               <el-icon>
                 <Location/>
@@ -954,7 +954,6 @@ import {
   Connection,
   DArrowLeft,
   DArrowRight,
-  Delete,
   Edit,
   Location,
   Search
@@ -962,7 +961,7 @@ import {
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import MapBoundaryEditor from '@/components/map/MapBoundaryEditor.vue'
-import { EMPTY_BOUNDARY, serialize, deserialize, type BoundaryCoords, type LatLng } from '@/lib/boundaryCoords'
+import {type BoundaryCoords, deserialize, type LatLng, serialize} from '@/lib/boundaryCoords'
 import VueApexCharts from 'vue3-apexcharts'
 import {
   batchOperateHazardPoints,
@@ -1362,6 +1361,20 @@ const formData = reactive({
   strike: 0,
   description: '',
   boundaryCoords: deserialize(null) as BoundaryCoords
+})
+
+// Backend DB stores lat/lng as DECIMAL(10,6) — auto-truncate to 6
+// decimals on any mutation so the form input and the saved payload
+// always agree with what the column can hold.
+function round6(n: number): number {
+  return Math.round(n * 1e6) / 1e6
+}
+
+watch(() => formData.longitude, v => {
+  formData.longitude = round6(v)
+})
+watch(() => formData.latitude, v => {
+  formData.latitude = round6(v)
 })
 
 const formRules = {
