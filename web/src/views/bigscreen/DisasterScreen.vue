@@ -226,7 +226,7 @@
               <img src="@/assets/icons/big-rain.png" class="icon" />
               <span class="title">风险排名</span>
             </div>
-            <div class="box-container">
+            <div class="box-container" style="pointer-events:all">
               <div v-if="riskRankingData.length" ref="chartRisk" style="width:100%;height:100%"></div>
               <div v-else class="noData">暂无数据</div>
             </div>
@@ -446,15 +446,15 @@ function renderMonthlyTrend(data: number[]) {
   const months = Array.from({ length: 12 }, (_, i) => String(i + 1))
   eMonthly.setOption({
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)' },
+    tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)', formatter: '{b}月<br/>告警事件：{c} 条' },
     grid: { top: 10, left: 30, right: 0, bottom: 33 },
     legend: { show: false },
     xAxis: { type: 'category', data: months, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)' }, axisTick: { show: false } },
     yAxis: { type: 'value', name: '条', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
     series: [{
       type: 'line', symbol: 'none', smooth: true, animationDuration: 2000,
-      lineStyle: { color: '#00b4ff', width: 2 },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0,180,255,0.35)' }, { offset: 1, color: 'rgba(0,180,255,0.02)' }]) },
+      lineStyle: { width: 0 },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(238,102,102,0.35)' }, { offset: 1, color: 'rgba(238,102,102,0.02)' }]) },
       data
     }]
   })
@@ -467,21 +467,34 @@ function renderRiskRanking(categories: string[], values: number[]) {
 
   eRisk.setOption({
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)' },
+    tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)', formatter: '{b}<br/>告警事件：{c} 条' },
     grid: { left: '5%', right: '5%', bottom: '5%', top: 10, containLabel: true },
     xAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)', rotate: 20 }, axisTick: { show: false } },
     yAxis: { type: 'value', name: '条', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
     series: [{
       type: 'bar',
       barWidth: '15%',
-      data: values,
-      itemStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#ee6666' },
-          { offset: 0.5, color: '#b8456e' },
-          { offset: 1, color: '#5c3d5e' }
-        ]),
-        borderRadius: [4, 4, 0, 0]
+      data: values.map((v, i) => ({
+        value: v,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#ee6666' },
+            { offset: 0.5, color: '#b8456e' },
+            { offset: 1, color: '#5c3d5e' }
+          ]),
+          borderRadius: [4, 4, 0, 0]
+        }
+      })),
+      emphasis: {
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#ff8888' },
+            { offset: 0.5, color: '#ee6666' },
+            { offset: 1, color: '#8a4a6e' }
+          ]),
+          shadowBlur: 10,
+          shadowColor: 'rgba(238,102,102,0.5)'
+        }
       },
       label: { show: true, position: 'top', color: '#fff', fontSize: 11, fontFamily: 'Swis721 Cn BT' }
     }]
