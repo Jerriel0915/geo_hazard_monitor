@@ -17,6 +17,7 @@ import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.DeviceRegistrationLogService;
 import com.zwei.iot.device.service.IDeviceRegistryService;
+import com.zwei.iot.device.service.IProductTslService;
 import com.zwei.iot.device.service.ITimeSeriesSchemaService;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import com.zwei.iot.monitor.domain.MonitorContent;
@@ -75,6 +76,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     private final IMonitorContentService monitorContentService;
     private final DeviceAuthAccountGenerator accountGenerator;
     private final ITimeSeriesSchemaService timeSeriesSchemaService;
+    private final IProductTslService productTslService;
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     @Value("${zwei.iot.device-registry.register-codes:ABCDEF123456}")
@@ -89,7 +91,8 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
                                      IMonitorTypeService monitorTypeService,
                                      IMonitorContentService monitorContentService,
                                      DeviceAuthAccountGenerator accountGenerator,
-                                     ITimeSeriesSchemaService timeSeriesSchemaService) {
+                                     ITimeSeriesSchemaService timeSeriesSchemaService,
+                                     IProductTslService productTslService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
@@ -99,6 +102,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         this.monitorContentService = monitorContentService;
         this.accountGenerator = accountGenerator;
         this.timeSeriesSchemaService = timeSeriesSchemaService;
+        this.productTslService = productTslService;
     }
 
     @Override
@@ -124,6 +128,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
             Device device = buildDevice(request);
             deviceMapper.insertDevice(device);
             createSensors(device, request);
+            productTslService.regenerate(device.getId());
             registrationLogMapper.insert(buildLog(request, payload, device.getId(), REGISTER_RESULT_SUCCESS, null));
             return new DeviceRegistryResult(deviceMapper.selectDeviceById(device.getId()), true);
         } catch (RuntimeException ex) {

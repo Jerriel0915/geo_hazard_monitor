@@ -17,6 +17,7 @@ import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.service.IMonitorContentService;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
 import com.zwei.iot.device.service.ITimeSeriesSchemaService;
+import com.zwei.iot.device.service.IProductTslService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,9 @@ class DeviceRegistryServiceImplTest {
 
     @Mock
     private ITimeSeriesSchemaService timeSeriesSchemaService;
+
+    @Mock
+    private IProductTslService productTslService;
 
     @InjectMocks
     private DeviceRegistryServiceImpl service;

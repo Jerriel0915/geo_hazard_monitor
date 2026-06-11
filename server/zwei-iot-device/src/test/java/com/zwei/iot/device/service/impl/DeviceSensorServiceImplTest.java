@@ -7,6 +7,7 @@ import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
+import com.zwei.iot.device.service.IProductTslService;
 import com.zwei.iot.device.service.ITimeSeriesSchemaService;
 import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.domain.MonitorType;
@@ -49,6 +50,9 @@ class DeviceSensorServiceImplTest {
 
     @Mock
     private ITimeSeriesSchemaService timeSeriesSchemaService;
+
+    @Mock
+    private IProductTslService productTslService;
 
     @InjectMocks
     private DeviceSensorServiceImpl service;

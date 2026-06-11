@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.device.mapper.ProductMapper">
+
+    <resultMap id="ProductResult" type="com.zwei.iot.device.domain.Product">
+        <id     property="id"          column="id"/>
+        <result property="productKey"  column="product_key"/>
+        <result property="deviceId"    column="device_id"/>
+        <result property="tslJson"     column="tsl_json"/>
+        <result property="tslVersion"  column="tsl_version"/>
+        <result property="createBy"    column="create_by"/>
+        <result property="createTime"  column="create_time"/>
+        <result property="updateBy"    column="update_by"/>
+        <result property="updateTime"  column="update_time"/>
+        <result property="delFlag"     column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectProductVo">
+        SELECT id, product_key, device_id, tsl_json, tsl_version,
+               create_by, create_time, update_by, update_time, del_flag
+        FROM product
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <select id="selectByProductKey" parameterType="String" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        WHERE product_key = #{productKey} AND del_flag = 0
+    </select>
+
+    <select id="selectByDeviceId" parameterType="Long" resultMap="ProductResult">
+        <include refid="selectProductVo"/>
+        WHERE device_id = #{deviceId} AND del_flag = 0
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.iot.device.domain.Product"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product (product_key, device_id, tsl_json, tsl_version,
+                             create_by, create_time, update_by, update_time, del_flag)
+        VALUES (#{productKey}, #{deviceId}, #{tslJson}, #{tslVersion},
+                #{createBy}, SYSDATE(), #{updateBy}, SYSDATE(), 0)
+    </insert>
+
+    <!-- upsert triggers on uk_device_id UNIQUE constraint -->
+    <insert id="upsert" parameterType="com.zwei.iot.device.domain.Product">
+        INSERT INTO product (product_key, device_id, tsl_json, tsl_version,
+                             create_by, create_time, update_by, update_time, del_flag)
+        VALUES (#{productKey}, #{deviceId}, #{tslJson}, #{tslVersion},
+                #{createBy}, SYSDATE(), #{updateBy}, SYSDATE(), 0)
+        ON DUPLICATE KEY UPDATE
+            tsl_json    = VALUES(tsl_json),
+            tsl_version = VALUES(tsl_version),
+            update_by   = VALUES(update_by),
+            update_time = SYSDATE()
+    </insert>
+
+    <update id="deleteByDeviceId" parameterType="Long">
+        UPDATE product SET
+            product_key = CONCAT(product_key, '#DEL#', device_id),
+            device_id   = NULL,
+            del_flag    = 1,
+            update_time = SYSDATE()
+        WHERE device_id = #{deviceId} AND del_flag = 0
+    </update>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM product WHERE del_flag = 0
+    </select>
+
+</mapper>

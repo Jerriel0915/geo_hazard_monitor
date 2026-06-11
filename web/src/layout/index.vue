@@ -92,25 +92,46 @@
         <span>‹</span>
       </div>
       <div class="tabs-container" ref="tabsContainerRef">
+        <!-- 首页：锁定首位，不可拖动也不可关闭 -->
         <div
-          v-for="tab in tabs"
-          :key="tab.name"
-          class="tab-item"
-          :class="{ active: activeTab === tab.name }"
-          @click="switchTab(tab.name)"
+            v-if="dashboardTab"
+            :key="dashboardTab.name"
+            class="tab-item tab-item--locked"
+            :class="{ active: activeTab === dashboardTab.name }"
+            @click="switchTab(dashboardTab.name)"
         >
-          <span>{{ tab.label }}</span>
-          <span
-            v-if="tabs.length > 1"
-            class="tab-close"
-            @click.stop="closeTab(tab.name)"
-          ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="18"
-                                                                                                             y1="6"
-                                                                                                             x2="6"
-                                                                                                             y2="18"/><line
-              x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          <span>{{ dashboardTab.label }}</span>
         </div>
+        <!-- 其他 tabs：可拖动重排 -->
+        <draggable
+            v-model="draggableTabs"
+            item-key="name"
+            tag="div"
+            class="tabs-draggable-wrap"
+            :animation="200"
+            ghost-class="tab-ghost"
+            chosen-class="tab-chosen"
+            drag-class="tab-drag"
+        >
+          <template #item="{ element: tab }">
+            <div
+                class="tab-item"
+                :class="{ active: activeTab === tab.name }"
+                @click="switchTab(tab.name)"
+            >
+              <span>{{ tab.label }}</span>
+              <span
+                  class="tab-close"
+                  @click.stop="closeTab(tab.name)"
+              ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="18"
+                                                                                                                 y1="6"
+                                                                                                                 x2="6"
+                                                                                                                 y2="18"/><line
+                  x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            </div>
+          </template>
+        </draggable>
       </div>
       <div class="tabs-scroll-btn" @click="scrollTabs('right')">
         <span>›</span>
@@ -247,8 +268,9 @@
 import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
 import {loadPermissions} from '@/utils/permission'
 import {getAuthInfo, getUserInfo} from '@/utils/userApi'
-import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
-import {useRouter} from 'vue-router'
+import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import draggable from 'vuedraggable'
 
 
 /** 通知消息（来自 SysNotice 后端） */
@@ -262,9 +284,22 @@ interface NoticeMessage {
 }
 
 const router = useRouter()
+const route = useRoute()
 const tabsContainerRef = ref<HTMLElement | null>(null)
 const tabs = ref<Array<{ name: string; label: string }>>([])
 const activeTab = ref('Dashboard')
+
+/** 首页 tab（锁定不可拖、不可关） */
+const dashboardTab = computed(() => tabs.value.find(t => t.name === 'Dashboard'))
+
+/** 其他 tabs（可拖动），通过 getter/setter 桥接到 tabs.value */
+const draggableTabs = computed<Array<{ name: string; label: string }>>({
+  get: () => tabs.value.filter(t => t.name !== 'Dashboard'),
+  set: (newOrder) => {
+    const dash = tabs.value.find(t => t.name === 'Dashboard') ?? {name: 'Dashboard', label: '首页'}
+    tabs.value = [dash, ...newOrder]
+  }
+})
 const infoDialogVisible = ref(false)
 const pwdDialogVisible = ref(false)
 
@@ -513,6 +548,8 @@ const switchTab = (name: string) => {
 }
 
 const closeTab = (name: string) => {
+  // 首页锁定：不允许关闭
+  if (name === 'Dashboard') return
   const index = tabs.value.findIndex(tab => tab.name === name)
   if (index !== -1) {
     tabs.value.splice(index, 1)
@@ -538,7 +575,10 @@ const handleTabAction = (command: string) => {
     activeMenu.value = ''
     router.push('/dashboard')
   } else if (command === 'closeOther') {
-    tabs.value = tabs.value.filter(tab => tab.name === activeTab.value)
+    // 保留首页 + 当前激活页
+    tabs.value = tabs.value.filter(
+        tab => tab.name === activeTab.value || tab.name === 'Dashboard'
+    )
   }
 }
 
@@ -589,8 +629,55 @@ const markAllAsRead = async () => {
   } catch { /* ignore */ }
 }
 
+/** localStorage key：tabs 状态持久化 */
+const TABS_STORAGE_KEY = 'zwei.layout.tabs'
+
+/** 校验 storage 中读出的 tabs 数据结构 */
+const isValidTab = (t: unknown): t is { name: string; label: string } => {
+  return !!t
+      && typeof t === 'object'
+      && typeof (t as any).name === 'string'
+      && typeof (t as any).label === 'string'
+      && typeof menuRouteMap[(t as any).name] === 'string' // 名称必须在路由表中
+}
+
+/** 同步 tabs/activeTab/activeMenu 到当前路由 */
+const syncTabWithRoute = (routeName: string | null | undefined) => {
+  if (!routeName) return
+  const label = menuLabelMap[routeName]
+  if (!label) return // 路由未在 tabs 体系中（如 H5Disposal/SysNotice 等），不处理
+  if (!tabs.value.find(t => t.name === routeName)) {
+    tabs.value.push({name: routeName, label})
+  }
+  activeTab.value = routeName
+  activeMenu.value = routeName === 'Dashboard' ? '' : routeName
+}
+
 onMounted(async () => {
-  tabs.value = [{ name: 'Dashboard', label: '首页' }]
+  // 1. 从 localStorage 恢复已打开的 tabs
+  try {
+    const raw = localStorage.getItem(TABS_STORAGE_KEY)
+    if (raw) {
+      const saved = JSON.parse(raw)
+      if (Array.isArray(saved)) {
+        const valid = saved.filter(isValidTab)
+        if (valid.length > 0) tabs.value = valid
+      }
+    }
+  } catch { /* ignore parse error */
+  }
+
+  // 2. 兜底：必须始终包含首页且置于首位
+  if (!tabs.value.find(t => t.name === 'Dashboard')) {
+    tabs.value = [{name: 'Dashboard', label: '首页'}, ...tabs.value]
+  } else if (tabs.value[0]?.name !== 'Dashboard') {
+    const others = tabs.value.filter(t => t.name !== 'Dashboard')
+    tabs.value = [{name: 'Dashboard', label: '首页'}, ...others]
+  }
+
+  // 3. 关键修复：以当前实际路由覆盖 activeTab，并确保对应 tab 存在
+  syncTabWithRoute(String(route.name || 'Dashboard'))
+
   try {
     await loadPermissions()
     const auth = await getAuthInfo()
@@ -615,6 +702,19 @@ onUnmounted(() => {
     noticeEventSource = null
   }
 })
+
+// 路由变化时同步 tabs/activeTab/activeMenu（支持浏览器前进后退、菜单外的 router.push）
+watch(() => route.name, (name) => {
+  if (name) syncTabWithRoute(String(name))
+})
+
+// tabs 变化时持久化到 localStorage
+watch(tabs, (val) => {
+  try {
+    localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(val))
+  } catch { /* 配额超限等异常忽略 */
+  }
+}, {deep: true})
 
 const scrollTabs = (direction: 'left' | 'right') => {
   if (tabsContainerRef.value) {
@@ -1228,6 +1328,34 @@ const goToDashboard = () => {
 .tab-close:hover {
   background: rgba(0, 0, 0, 0.1);
   transform: rotate(90deg);
+}
+
+/* 可拖动 tabs 容器：用 display: contents 让 children 直接参与 .tabs-container 的 flex 布局 */
+.tabs-draggable-wrap {
+  display: contents;
+}
+
+/* 首页锁定 tab：保留 pointer，不参与拖动 */
+.tab-item--locked {
+  cursor: pointer;
+}
+
+/* Sortable.js ghost: 拖动时原位置的占位 */
+.tab-ghost {
+  opacity: 0.4;
+  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%) !important;
+  border: 1px dashed #1890ff !important;
+}
+
+/* Sortable.js chosen: 被按住选中等待拖动 */
+.tab-chosen {
+  cursor: grabbing !important;
+}
+
+/* Sortable.js drag: 正在被拖动的元素 */
+.tab-drag {
+  opacity: 0.8;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.25);
 }
 
 .tabs-actions {
