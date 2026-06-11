@@ -678,7 +678,8 @@
               :data="leftDeviceTree"
               :props="{ label: 'label', children: 'children' }"
               show-checkbox
-              node-key="id"
+                check-strictly
+                node-key="key"
               :filter-node-method="filterLeftNode"
             >
               <template #default="{ node, data }">
@@ -694,7 +695,7 @@
         </div>
 
         <div class="transfer-actions">
-          <el-tooltip content="将左侧选中的设备绑定到当前隐患点" placement="left">
+          <el-tooltip content="将左侧选中的设备加入待绑定列表" placement="left">
             <el-button
                 type="primary"
                 size="small"
@@ -707,7 +708,7 @@
               <span class="btn-label">选中</span>
             </el-button>
           </el-tooltip>
-          <el-tooltip content="将左侧所有设备全部绑定到当前隐患点" placement="left">
+          <el-tooltip content="将左侧所有设备加入待绑定列表" placement="left">
             <el-button
                 type="primary"
                 size="small"
@@ -724,7 +725,7 @@
 
           <div class="transfer-divider"/>
 
-          <el-tooltip content="将右侧选中的设备从当前隐患点解绑" placement="right">
+          <el-tooltip content="将右侧选中的设备移出待绑定列表" placement="right">
             <el-button
                 type="warning"
                 size="small"
@@ -737,7 +738,7 @@
               </el-icon>
             </el-button>
           </el-tooltip>
-          <el-tooltip content="将右侧所有设备从当前隐患点全部解绑" placement="right">
+          <el-tooltip content="将右侧所有设备移出待绑定列表" placement="right">
             <el-button
                 type="warning"
                 size="small"
@@ -770,7 +771,8 @@
               :data="rightDeviceTree"
               :props="{ label: 'label', children: 'children' }"
               show-checkbox
-              node-key="id"
+                check-strictly
+                node-key="key"
               :filter-node-method="filterRightNode"
             >
               <template #default="{ node, data }">
@@ -1092,7 +1094,10 @@ interface DispatchRule {
 }
 
 interface TreeNode {
+  /** 原始 ID（设备 id 或传感器 id），保留以供回传后端 */
   id: string
+  /** el-tree 全局唯一 key：设备 `dev_<id>`，传感器 `sen_<deviceId>_<id>` */
+  key: string
   label: string
   icon?: string
   status?: string
@@ -1100,6 +1105,19 @@ interface TreeNode {
   bindCount?: number
   children?: TreeNode[]
   [key: string]: any
+}
+
+/** 从 el-tree 的 checkedKeys 中过滤出设备 ID（忽略传感器 key） */
+const extractDeviceIds = (checkedKeys: Array<string | number>): number[] => {
+  const ids: number[] = []
+  for (const k of checkedKeys) {
+    const s = String(k)
+    if (s.startsWith('dev_')) {
+      const n = Number(s.slice(4))
+      if (!Number.isNaN(n)) ids.push(n)
+    }
+  }
+  return ids
 }
 
 const loading = ref(false)
@@ -1235,6 +1253,8 @@ const leftTreeRef = ref()
 const rightTreeRef = ref()
 const selectedLeftKeys = ref<string[]>([])
 const selectedRightKeys = ref<string[]>([])
+// 弹窗打开时的已绑定设备 ID 快照，用于"确定"时计算 diff
+const initialBoundDeviceIds = ref<Set<number>>(new Set())
 
 const alarmConfigDialogVisible = ref(false)
 const alarmDialogVisible = ref(false)
@@ -2339,12 +2359,14 @@ const loadUnboundDevices = async (keyword?: string) => {
     if (response.code === 200) {
       return response.data.map((item: any) => ({
         id: String(item.id),
+        key: `dev_${item.id}`,
         label: item.label,
         bindCount: item.bindCount,
         status: String(item.status), // 转为字符串
         iconPath: item.iconPath,
         children: item.children?.map((child: any) => ({
           id: String(child.id),
+          key: `sen_${item.id}_${child.id}`,
           label: child.label,
           iconPath: child.iconPath,
           status: String(child.status) // 转为字符串
@@ -2375,12 +2397,14 @@ const refreshDeviceLists = async () => {
   rightDeviceTree.value = boundDevices.value.map(device => {
     const statusCode = device.deviceStatus === 'NORMAL' ? 1 : device.deviceStatus === 'FAULT' ? 2 : 3
     return {
-      id: device.deviceId,
+      id: String(device.deviceId),
+      key: `dev_${device.deviceId}`,
       label: `${device.deviceCode} - ${device.deviceName}`,
       iconPath: getDeviceIconPath({icon: 'device', status: statusCode, onlineStatus: device.onlineStatus}),
       status: String(statusCode),
       children: device.sensors.map(sensor => ({
-        id: sensor.id,
+        id: String(sensor.id),
+        key: `sen_${device.deviceId}_${sensor.id}`,
         label: sensor.name,
         iconPath: sensor.iconPath
       }))
@@ -2404,6 +2428,13 @@ const handleBindDevice = async (row: HazardPointItem) => {
 
   await refreshDeviceLists()
 
+  // 记录初始已绑定设备 ID 集合，作为"确定"时计算 diff 的基线
+  initialBoundDeviceIds.value = new Set(
+      boundDevices.value
+          .map(d => Number(d.deviceId))
+          .filter(id => !Number.isNaN(id))
+  )
+
   selectedLeftKeys.value = []
   selectedRightKeys.value = []
 }
@@ -2418,149 +2449,143 @@ const filterRightNode = (value: string, data: any) => {
   return data.label.toLowerCase().includes(value.toLowerCase())
 }
 
-const handleLeftCheck = (data: any, checkedInfo: any) => {
-  // el-tree @check 事件第二个参数是 CheckedInfo 对象
-  // (checkedKeys, checkedNodes, halfCheckedKeys, halfCheckedNodes)
-  // 这里同步给 selectedLeftKeys 以便其他地方使用（实际提交以 leftTreeRef.getCheckedKeys() 为准）
-  if (Array.isArray(checkedInfo?.checkedKeys)) {
-    selectedLeftKeys.value = checkedInfo.checkedKeys.map((k: any) => String(k))
-  }
-}
-
-const handleRightCheck = (data: any, checkedInfo: any) => {
-  if (Array.isArray(checkedInfo?.checkedKeys)) {
-    selectedRightKeys.value = checkedInfo.checkedKeys.map((k: any) => String(k))
-  }
-}
-
-const transferToRight = async () => {
-  // 以 el-tree 的内部选中状态为准（getCheckedKeys），避免 selectedLeftKeys 与 UI 不同步
+const transferToRight = () => {
+  // 以 el-tree 的内部选中状态为准（getCheckedKeys），过滤出设备 key
   const checkedKeys: Array<string | number> = leftTreeRef.value?.getCheckedKeys() ?? []
-  if (checkedKeys.length === 0) {
+  const deviceIds = extractDeviceIds(checkedKeys)
+  if (deviceIds.length === 0) {
     ElMessage.warning('请选择要绑定的设备')
     return
   }
 
-  const deviceIds = checkedKeys.map(id => parseInt(String(id)))
+  // 仅做前端转移：将选中的设备节点从左树移到右树，等"确定"再提交后端
+  const movedIds = new Set(deviceIds.map(String))
+  const moved = leftDeviceTree.value.filter(node => movedIds.has(node.id))
+  leftDeviceTree.value = leftDeviceTree.value.filter(node => !movedIds.has(node.id))
+  rightDeviceTree.value = [...rightDeviceTree.value, ...moved]
 
-  bindLoading.value = true
-  try {
-    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, { deviceIds })
-    if (response.code === 200) {
-      ElMessage.success('绑定成功')
-      await refreshDeviceLists()
-      selectedLeftKeys.value = []
-      selectedRightKeys.value = []
-    } else {
-      ElMessage.error(response.msg || '绑定失败')
-    }
-  } catch (error) {
-    showRequestErrorMessage(error, '绑定失败')
-  } finally {
-    bindLoading.value = false
-  }
+  leftTreeRef.value?.setCheckedKeys([])
+  selectedLeftKeys.value = []
 }
 
-const transferToLeft = async () => {
+const transferToLeft = () => {
   const checkedKeys: Array<string | number> = rightTreeRef.value?.getCheckedKeys() ?? []
-  if (checkedKeys.length === 0) {
+  const deviceIds = extractDeviceIds(checkedKeys)
+  if (deviceIds.length === 0) {
     ElMessage.warning('请选择要解绑的设备')
     return
   }
 
-  const deviceIds = checkedKeys.map(id => parseInt(String(id)))
+  const movedIds = new Set(deviceIds.map(String))
+  const moved = rightDeviceTree.value.filter(node => movedIds.has(node.id))
+  rightDeviceTree.value = rightDeviceTree.value.filter(node => !movedIds.has(node.id))
+  leftDeviceTree.value = [...leftDeviceTree.value, ...moved]
 
-  bindLoading.value = true
-  try {
-    const response: any = await unbindDevicesFromHazardPoint(currentRow.value!.id, deviceIds)
-    if (response.code === 200) {
-      ElMessage.success('解绑成功')
-      await refreshDeviceLists()
-      selectedLeftKeys.value = []
-      selectedRightKeys.value = []
-    } else {
-      ElMessage.error(response.msg || '解绑失败')
-    }
-  } catch (error) {
-    showRequestErrorMessage(error, '解绑失败')
-  } finally {
-    bindLoading.value = false
-  }
+  rightTreeRef.value?.setCheckedKeys([])
+  selectedRightKeys.value = []
 }
 
 const transferAllToRight = async () => {
-  const allDeviceIds = leftDeviceTree.value.map(node => parseInt(node.id))
-  if (allDeviceIds.length === 0) {
+  if (leftDeviceTree.value.length === 0) {
     ElMessage.warning('没有可绑定的设备')
     return
   }
 
   try {
     await ElMessageBox.confirm(
-        `确定要将左侧 ${allDeviceIds.length} 台设备全部绑定到当前隐患点吗？`,
+        `确定要将左侧 ${leftDeviceTree.value.length} 台设备全部加入待绑定列表吗？（点击"确定"后生效）`,
         '批量绑定确认',
-        {type: 'warning', confirmButtonText: '全部绑定', cancelButtonText: '取消'}
+        {type: 'warning', confirmButtonText: '全部加入', cancelButtonText: '取消'}
     )
   } catch {
     return
   }
 
-  bindLoading.value = true
-  try {
-    const response: any = await bindDevicesToHazardPoint(currentRow.value!.id, { deviceIds: allDeviceIds })
-    if (response.code === 200) {
-      ElMessage.success('全部绑定成功')
-      await refreshDeviceLists()
-      selectedLeftKeys.value = []
-      selectedRightKeys.value = []
-    } else {
-      ElMessage.error(response.msg || '绑定失败')
-    }
-  } catch (error) {
-    showRequestErrorMessage(error, '绑定失败')
-  } finally {
-    bindLoading.value = false
-  }
+  // 仅做前端转移
+  rightDeviceTree.value = [...rightDeviceTree.value, ...leftDeviceTree.value]
+  leftDeviceTree.value = []
+
+  leftTreeRef.value?.setCheckedKeys([])
+  selectedLeftKeys.value = []
 }
 
 const transferAllToLeft = async () => {
-  const allDeviceIds = rightDeviceTree.value.map(node => parseInt(node.id))
-  if (allDeviceIds.length === 0) {
+  if (rightDeviceTree.value.length === 0) {
     ElMessage.warning('没有可解绑的设备')
     return
   }
 
   try {
     await ElMessageBox.confirm(
-        `确定要将当前隐患点的 ${allDeviceIds.length} 台设备全部解绑吗？此操作不可撤销。`,
+        `确定要将当前隐患点的 ${rightDeviceTree.value.length} 台设备全部移到待绑定列表吗？（点击"确定"后生效）`,
         '批量解绑确认',
-        {type: 'warning', confirmButtonText: '全部解绑', cancelButtonText: '取消'}
+        {type: 'warning', confirmButtonText: '全部移除', cancelButtonText: '取消'}
     )
   } catch {
     return
   }
 
+  leftDeviceTree.value = [...leftDeviceTree.value, ...rightDeviceTree.value]
+  rightDeviceTree.value = []
+
+  rightTreeRef.value?.setCheckedKeys([])
+  selectedRightKeys.value = []
+}
+
+const handleBindDeviceSubmit = async () => {
+  if (!currentRow.value) {
+    bindDeviceDialogVisible.value = false
+    return
+  }
+
+  // 计算 diff: finalRight - initial = toBind; initial - finalRight = toUnbind
+  const finalIds = new Set<number>()
+  for (const node of rightDeviceTree.value) {
+    const n = Number(node.id)
+    if (!Number.isNaN(n)) finalIds.add(n)
+  }
+
+  const toBind: number[] = []
+  for (const id of finalIds) {
+    if (!initialBoundDeviceIds.value.has(id)) toBind.push(id)
+  }
+  const toUnbind: number[] = []
+  for (const id of initialBoundDeviceIds.value) {
+    if (!finalIds.has(id)) toUnbind.push(id)
+  }
+
+  // 无变更则直接关闭
+  if (toBind.length === 0 && toUnbind.length === 0) {
+    bindDeviceDialogVisible.value = false
+    return
+  }
+
   bindLoading.value = true
   try {
-    const response: any = await unbindDevicesFromHazardPoint(currentRow.value!.id, allDeviceIds)
-    if (response.code === 200) {
-      ElMessage.success('全部解绑成功')
-      await refreshDeviceLists()
-      selectedLeftKeys.value = []
-      selectedRightKeys.value = []
-    } else {
-      ElMessage.error(response.msg || '解绑失败')
+    // 先解绑后绑定，避免 toBind 与已存在的唯一键冲突
+    if (toUnbind.length > 0) {
+      const unbindResp: any = await unbindDevicesFromHazardPoint(currentRow.value.id, toUnbind)
+      if (unbindResp.code !== 200) {
+        ElMessage.error(unbindResp.msg || '解绑失败')
+        return
+      }
     }
+    if (toBind.length > 0) {
+      const bindResp: any = await bindDevicesToHazardPoint(currentRow.value.id, {deviceIds: toBind})
+      if (bindResp.code !== 200) {
+        ElMessage.error(bindResp.msg || '绑定失败')
+        return
+      }
+    }
+
+    ElMessage.success(`保存成功（新增绑定 ${toBind.length}，解绑 ${toUnbind.length}）`)
+    bindDeviceDialogVisible.value = false
+    loadTableData()
   } catch (error) {
-    showRequestErrorMessage(error, '解绑失败')
+    showRequestErrorMessage(error, '保存失败')
   } finally {
     bindLoading.value = false
   }
-}
-
-const handleBindDeviceSubmit = () => {
-  bindDeviceDialogVisible.value = false
-  loadTableData()
 }
 
 const handleConfigAlarm = (row: HazardPointItem) => {
