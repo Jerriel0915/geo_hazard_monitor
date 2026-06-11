@@ -164,39 +164,39 @@
       <!-- RIGHT SIDEBAR -->
       <div class="right">
         <div class="statistics-container">
-          <!-- 月度警情趋势 -->
+          <!-- 告警趋势 -->
           <div class="statistics-box year-prevention-cure">
             <div class="box-title">
               <img src="@/assets/icons/shield.png" class="icon" />
-              <span class="title">警情趋势</span>
+              <span class="title">告警趋势</span>
             </div>
             <div class="box-container">
               <div class="top-count">
                 <div class="count-item">
                   <div class="left-icon"><img src="@/assets/images/disaster/red-alert.png" class="icon" /></div>
                   <div class="right-info">
-                    <span class="title titleRed">红色预警</span>
+                    <span class="title titleRed">红色告警</span>
                     <span class="number"><CountUp :end="alarmLevelCounts[4]" :duration="2" /></span>
                   </div>
                 </div>
                 <div class="count-item">
                   <div class="left-icon"><img src="@/assets/images/disaster/orange-alert.png" class="icon" /></div>
                   <div class="right-info">
-                    <span class="title titleOrange">橙色预警</span>
+                    <span class="title titleOrange">橙色告警</span>
                     <span class="number"><CountUp :end="alarmLevelCounts[3]" :duration="2" /></span>
                   </div>
                 </div>
                 <div class="count-item">
                   <div class="left-icon"><img src="@/assets/images/disaster/yellow-alert.png" class="icon" /></div>
                   <div class="right-info">
-                    <span class="title titleYellow">黄色预警</span>
+                    <span class="title titleYellow">黄色告警</span>
                     <span class="number"><CountUp :end="alarmLevelCounts[2]" :duration="2" /></span>
                   </div>
                 </div>
                 <div class="count-item">
                   <div class="left-icon"><img src="@/assets/images/disaster/blue-alert.png" class="icon" /></div>
                   <div class="right-info">
-                    <span class="title titleBlue">蓝色预警</span>
+                    <span class="title titleBlue">蓝色告警</span>
                     <span class="number"><CountUp :end="alarmLevelCounts[1]" :duration="2" /></span>
                   </div>
                 </div>
@@ -551,7 +551,7 @@ function renderMonthlyTrend(data: number[]) {
     series: [{
       type: 'line', symbol: 'none', smooth: true, animationDuration: 2000,
       lineStyle: { width: 0 },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(238,102,102,0.35)' }, { offset: 1, color: 'rgba(238,102,102,0.02)' }]) },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(255,40,40,0.5)' }, { offset: 1, color: 'rgba(255,40,40,0.02)' }]) },
       data
     }]
   })
