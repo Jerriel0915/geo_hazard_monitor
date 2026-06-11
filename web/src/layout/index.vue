@@ -568,7 +568,7 @@ const toggleMessagePanel = () => {
 }
 
 const openBigScreen = () => {
-  window.open('/report/screen', '_blank')
+  window.open('/bigscreen/disaster', '_blank')
 }
 
 const markMessageAsRead = async (msg: NoticeMessage) => {

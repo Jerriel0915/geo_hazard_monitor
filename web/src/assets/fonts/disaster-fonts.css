@@ -1,0 +1,35 @@
+/* 灾害监测大屏专用字体 */
+@font-face {
+  font-family: 'SourceHanSansCN-Bold';
+  src: url('./SourceHanSansCN-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN-Medium';
+  src: url('./SourceHanSansCN-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN-Normal';
+  src: url('./SourceHanSansCN-Normal.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Swis721 Cn BT';
+  src: url('./Swis721 Cn BT.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DIN Alternate Bold';
+  src: url('./DIN Alternate Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}

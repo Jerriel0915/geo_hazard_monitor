@@ -65,7 +65,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/report/screen',
     name: 'Screen',
-    component: () => import('@/views/report/Screen.vue')
+    component: () => import('@/views/bigscreen/Screen.vue')
+  },
+  {
+    path: '/bigscreen/disaster',
+    name: 'DisasterScreen',
+    component: () => import('@/views/bigscreen/DisasterScreen.vue')
   }
 ]
 
