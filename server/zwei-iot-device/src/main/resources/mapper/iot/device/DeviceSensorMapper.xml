@@ -70,6 +70,23 @@
         WHERE ds.sensor_code = #{sensorCode} AND ds.del_flag = 0 AND ds.id != #{id} LIMIT 1
     </select>
 
+    <!-- 统计设备下未删除的传感器数量 -->
+    <select id="countByDeviceId" resultType="int">
+        SELECT COUNT(*)
+        FROM device_sensor
+        WHERE device_id = #{deviceId}
+          AND del_flag = 0
+    </select>
+
+    <!-- 校验同一设备下主题编号（sensorNo）是否唯一 -->
+    <select id="checkSensorNoUnique" resultMap="DeviceSensorResult">
+        <include refid="selectSensorVo"/>
+        WHERE ds.device_id = #{deviceId}
+        AND ds.sensor_no = #{sensorNo}
+        AND ds.del_flag = 0
+        LIMIT 1
+    </select>
+
     <!-- ==================== 新增操作 ==================== -->
 
     <!-- 新增传感器 -->

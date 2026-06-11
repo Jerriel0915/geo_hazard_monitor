@@ -45,7 +45,7 @@ public interface ISysNoticeService
 
     /**
      * 删除公告信息
-     * 
+     *
      * @param noticeId 公告ID
      * @return 结果
      */
@@ -53,9 +53,18 @@ public interface ISysNoticeService
 
     /**
      * 批量删除公告信息
-     * 
+     *
      * @param noticeIds 需要删除的公告ID
      * @return 结果
      */
     public int deleteNoticeByIds(Long[] noticeIds);
+
+    /**
+     * 校验公告标题唯一
+     *
+     * @param noticeTitle 公告标题
+     * @param noticeId    排除的公告ID（新增传 null）
+     * @return true=唯一，false=已存在
+     */
+    boolean checkNoticeTitleUnique(String noticeTitle, Long noticeId);
 }

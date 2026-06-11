@@ -1,39 +1,29 @@
 <template>
-  <div class="monitor-type-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">监测类型管理</h2>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">监测类型管理</h2>
+        <span class="header__subtitle">监测大类、类型与监测内容字典维护</span>
       </div>
-      <div class="header-right">
-        <el-button type="primary" @click="handleAdd">
-          <span class="btn-icon">+</span> 新增
-        </el-button>
-        <el-button @click="handleExport" :disabled="tableData.length === 0">
-          <span class="btn-icon">↓</span> 导出当前页
-        </el-button>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">+ 新增</el-button>
+        <el-button @click="handleExport" :disabled="tableData.length === 0">导出当前页</el-button>
       </div>
     </div>
 
-    <div class="search-bar">
-      <el-select v-model="searchType" class="search-type-select">
+    <div class="search">
+      <el-select v-model="searchType">
         <el-option label="按编号" value="code" />
         <el-option label="按名称" value="name" />
       </el-select>
       <el-input
         v-model="searchKeyword"
         :placeholder="searchType === 'code' ? '搜索监测类型编号' : '搜索监测类型名称'"
-        class="search-input"
         clearable
         @clear="handleSearch"
         @keyup.enter="handleSearch"
-      >
-        <template #prefix>
-          <el-icon class="search-icon">
-            <Search/>
-          </el-icon>
-        </template>
-      </el-input>
-      <el-select v-model="searchStatus" clearable placeholder="状态" class="status-select">
+      />
+      <el-select v-model="searchStatus" clearable placeholder="状态">
         <el-option label="启用" :value="1" />
         <el-option label="禁用" :value="0" />
       </el-select>
@@ -41,62 +31,63 @@
       <el-button @click="handleReset">重置</el-button>
     </div>
 
-    <div class="table-container">
-      <el-table
-        :data="tableData"
-        border
-        stripe
-        v-loading="loading"
-        :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
-      >
-        <el-table-column prop="code" label="编号" width="150" align="center" />
-        <el-table-column label="图标" width="80" align="center">
-          <template #default="{ row }">
-            <img v-if="row.icon" :src="row.icon" class="table-icon" alt="icon" />
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="name" label="名称" min-width="180" align="center" />
-        <el-table-column prop="categoryName" label="监测大类" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag type="info" effect="plain">{{ row.categoryName || '-' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="220" align="center">
-          <template #default="{ row }">
-            <span class="table-text">{{ row.description || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="sortOrder" label="排序号" width="100" align="center" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
-              {{ row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
-        <el-table-column label="操作" width="200" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="op-cell">
-              <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
-              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
-                <el-button type="primary" text size="small">更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="delete">
-                      <span style="color: #f56c6c">删除</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table
+          :data="tableData"
+          border
+          stripe
+          v-loading="loading"
+        >
+          <el-table-column prop="code" label="编号" width="120" align="center" />
+          <el-table-column label="图标" width="80" align="center">
+            <template #default="{ row }">
+              <img v-if="row.icon" :src="row.icon" class="table-icon" alt="icon" />
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="名称" min-width="160" align="center" />
+          <el-table-column prop="categoryName" label="监测大类" width="120" align="center">
+            <template #default="{ row }">
+              <el-tag type="info" effect="plain">{{ row.categoryName || '-' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="描述" min-width="200" align="center">
+            <template #default="{ row }">
+              <span>{{ row.description || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="sortOrder" label="排序号" width="90" align="center" />
+          <el-table-column prop="status" label="状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
+                {{ row.status === 1 ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" min-width="170" align="center" />
+          <el-table-column label="操作" width="200" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="op-cell">
+                <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+                <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                  <el-button type="primary" text size="small">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="delete">
+                        <span style="color: #f56c6c">删除</span>
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
-      <div class="pagination-container">
+      <div class="table-wrap__pagination">
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -901,64 +892,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.monitor-type-page {
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  min-height: calc(100% - 40px);
-}
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
 
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-}
 
-.header-right {
-  display: flex;
-  gap: 10px;
-}
 
-.btn-icon {
-  margin-right: 4px;
-}
 
-.search-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-}
 
-.search-type-select {
-  width: 110px;
-}
 
-.search-input {
-  width: 280px;
-}
 
-.device-type-select,
-.status-select {
-  width: 140px;
-}
 
-.search-icon {
-  font-size: 14px;
-}
 
-.table-container {
-  background: #fff;
-}
 
 .table-icon {
   width: 28px;
@@ -966,27 +909,10 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.empty-text {
-  color: #909399;
-}
 
-.table-text {
-  color: #606266;
-}
 
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
 
-.danger-text {
-  color: #f56c6c !important;
-}
 
-.danger-text:hover {
-  color: #f56c6c !important;
-}
 
 .divider-title {
   font-size: 14px;
@@ -1094,4 +1020,5 @@ onMounted(() => {
 :deep(.el-divider) {
   margin: 20px 0 15px;
 }
+
 </style>

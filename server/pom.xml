@@ -170,11 +170,6 @@
                 <artifactId>zwei-iot-alarm</artifactId>
                 <version>${zwei.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.zwei</groupId>
-                <artifactId>zwei-iot</artifactId>
-                <version>${zwei.version}</version>
-            </dependency>
 
             <!-- Source: https://mvnrepository.com/artifact/org.dromara.mica-mqtt/mica-mqtt-server-spring-boot-starter -->
             <dependency>
@@ -229,7 +224,6 @@
         <module>zwei-iot-hazard</module>
         <module>zwei-iot-video</module>
         <module>zwei-iot-alarm</module>
-        <module>zwei-iot</module>
         <module>zwei-monitor</module>
     </modules>
     <packaging>pom</packaging>

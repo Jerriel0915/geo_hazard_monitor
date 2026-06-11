@@ -1,113 +1,100 @@
 <template>
-  <div class="page-content">
-    <div class="page-title">通知设置</div>
-    <div class="page-body">
-      <div class="search-bar">
-        <el-form :model="alarmSearchForm" inline>
-          <el-form-item label="隐患点">
-            <el-input v-model="alarmSearchForm.hazardPoint" placeholder="请输入隐患点名称" clearable/>
-          </el-form-item>
-          <el-form-item label="类型">
-            <el-select v-model="alarmSearchForm.type" placeholder="全部类型" clearable style="width: 150px">
-              <el-option label="监测告警" value="alarm"/>
-              <el-option label="设备离线通知" value="offline"/>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="alarmSearchForm.status" placeholder="全部状态" clearable style="width: 120px">
-              <el-option label="启用" :value="1"/>
-              <el-option label="禁用" :value="0"/>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="渠道">
-            <el-select v-model="alarmSearchForm.channel" placeholder="全部渠道" clearable style="width: 120px">
-              <el-option label="短信" value="sms"/>
-              <el-option label="邮件" value="email"/>
-              <el-option label="系统消息" value="system"/>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleAlarmSearch">查询</el-button>
-            <el-button @click="handleAlarmReset">重置</el-button>
-          </el-form-item>
-        </el-form>
-        <div class="action-btns">
-          <el-button type="primary" @click="handleAddAlarmRule">新增规则</el-button>
-          <el-button type="success" @click="handleBatchEnableAlarm" :disabled="selectedAlarmRules.length === 0">
-            批量启用
-          </el-button>
-          <el-button type="warning" @click="handleBatchDisableAlarm" :disabled="selectedAlarmRules.length === 0">
-            批量禁用
-          </el-button>
-          <el-button type="success" @click="handleImportAlarm">导入</el-button>
-          <el-button type="warning" @click="handleExportAlarm">导出</el-button>
-        </div>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">通知设置</h2>
+        <span class="header__subtitle">告警分发规则配置与通知渠道管理</span>
+      </div>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAddAlarmRule">新增规则</el-button>
+        <el-button type="success" @click="handleBatchEnableAlarm" :disabled="selectedAlarmRules.length === 0">批量启用</el-button>
+        <el-button type="warning" @click="handleBatchDisableAlarm" :disabled="selectedAlarmRules.length === 0">批量禁用</el-button>
+        <el-button type="success" @click="handleImportAlarm">导入</el-button>
+        <el-button type="warning" @click="handleExportAlarm">导出</el-button>
+      </div>
+    </div>
+
+    <div class="search">
+      <el-input v-model="alarmSearchForm.hazardPoint" placeholder="隐患点名称" clearable />
+      <el-select v-model="alarmSearchForm.type" placeholder="类型" clearable>
+        <el-option label="监测告警" value="alarm"/>
+        <el-option label="设备离线通知" value="offline"/>
+      </el-select>
+      <el-select v-model="alarmSearchForm.status" placeholder="状态" clearable>
+        <el-option label="启用" :value="1"/>
+        <el-option label="禁用" :value="0"/>
+      </el-select>
+      <el-select v-model="alarmSearchForm.channel" placeholder="渠道" clearable>
+        <el-option label="短信" value="sms"/>
+        <el-option label="邮件" value="email"/>
+        <el-option label="系统消息" value="system"/>
+      </el-select>
+      <el-button type="primary" @click="handleAlarmSearch">查询</el-button>
+      <el-button @click="handleAlarmReset">重置</el-button>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table :data="alarmRuleList" border stripe v-loading="loading" @selection-change="handleAlarmSelectionChange">
+          <el-table-column type="selection" width="55" align="center"/>
+          <el-table-column label="隐患点" min-width="160">
+            <template #default="{ row }">
+              <span v-for="(name, idx) in row.hazardPointNames" :key="idx">
+                <el-tag size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="type" label="类型" width="160" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
+                {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="告警等级/关联设备" min-width="180">
+            <template #default="{ row }">
+              <template v-if="row.type === 'alarm'">
+                <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
+                <span v-if="!row.level || row.level.length === 0" class="empty-text">无</span>
+              </template>
+              <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
+                <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+              </template>
+              <span v-else class="empty-text">无</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="persons" label="通知人员" min-width="140">
+            <template #default="{ row }">
+              <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="channels" label="通知渠道" min-width="150">
+            <template #default="{ row }">
+              <span v-for="(c, idx) in row.channels" :key="c">
+                {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="执行描述" min-width="180">
+            <template #default="{ row }">
+              {{ getExecDescription(row.execTime) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="80" align="center">
+            <template #default="{ row }">
+              <el-switch v-model="row.status" :active-value="1" :inactive-value="0" size="small"/>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" text size="small" @click="handleEditAlarmRule(row)">编辑</el-button>
+              <el-button type="danger" text size="small" @click="handleDeleteAlarmRule(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
       </div>
 
-      <el-table :data="alarmRuleList" border stripe v-loading="loading" @selection-change="handleAlarmSelectionChange">
-        <el-table-column type="selection" width="55" align="center"/>
-        <el-table-column label="隐患点" min-width="180">
-          <template #default="{ row }">
-            <span v-for="(name, idx) in row.hazardPointNames" :key="idx">
-              <el-tag size="small" style="margin-right: 4px;">{{ name }}</el-tag>
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="type" label="类型" width="110" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
-              {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="告警等级/关联设备" min-width="200">
-          <template #default="{ row }">
-            <template v-if="row.type === 'alarm'">
-              <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small"
-                      style="margin-right: 4px;">{{ lvl }}
-              </el-tag>
-              <span v-if="!row.level || row.level.length === 0" class="text-gray">无</span>
-            </template>
-            <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
-              <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{
-                  name
-                }}
-              </el-tag>
-            </template>
-            <span v-else class="text-gray">无</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="persons" label="通知人员" min-width="150">
-          <template #default="{ row }">
-            <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="channels" label="通知渠道" width="150">
-          <template #default="{ row }">
-            <span v-for="(c, idx) in row.channels" :key="c">
-              {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="执行描述" width="200">
-          <template #default="{ row }">
-            {{ getExecDescription(row.execTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="80" align="center">
-          <template #default="{ row }">
-            <el-switch v-model="row.status" :active-value="1" :inactive-value="0"/>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <span class="action-link" @click="handleEditAlarmRule(row)">编辑</span>
-            <span class="action-link action-danger" @click="handleDeleteAlarmRule(row)">删除</span>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination">
+      <div class="table-wrap__pagination">
         <el-pagination
             v-model:current-page="alarmPagination.page"
             v-model:page-size="alarmPagination.size"
@@ -758,69 +745,6 @@ const handleExportAlarm = () => {
 </script>
 
 <style scoped>
-.page-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: calc(100% - 32px);
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.page-body {
-  padding: 0;
-}
-
-/* 告警分发样式 */
-.search-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.action-btns {
-  display: flex;
-  gap: 8px;
-}
-
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.text-gray {
-  color: #909399;
-}
-
-.action-link {
-  margin-right: 16px;
-  color: #1890ff;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.action-link.action-danger {
-  color: #f56c6c;
-  margin-right: 0;
-}
-
-.form-hint {
-  color: #909399;
-  font-size: 12px;
-  margin-left: 8px;
-}
-
 .exec-type-group {
   display: flex;
   gap: 20px;

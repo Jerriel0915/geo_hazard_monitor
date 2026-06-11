@@ -52,15 +52,21 @@
               <el-button type="primary" size="small" @click="queryAlarmRecords">查询</el-button>
               <el-button size="small" @click="resetAlarmRecords">重置</el-button>
             </div>
-            <el-table :data="filteredAlarmRecords" border stripe style="width: 100%" max-height="300">
-              <el-table-column prop="alarmTime" label="告警时间" width="180" />
-              <el-table-column prop="alarmLevel" label="告警等级" width="100">
-                <template #default="{ row }">
-                  <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-            </el-table>
+            <div class="table-wrap">
+              <div class="table-wrap__scroll">
+                <div style="max-height: 300px;">
+                  <el-table :data="filteredAlarmRecords" border stripe style="width: 100%">
+                    <el-table-column prop="alarmTime" label="告警时间" width="180" />
+                    <el-table-column prop="alarmLevel" label="告警等级" width="100">
+                      <template #default="{ row }">
+                        <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+                  </el-table>
+                </div>
+              </div>
+            </div>
             <div v-if="filteredAlarmRecords.length === 0" class="empty-hint">暂无告警记录</div>
           </el-tab-pane>
 
@@ -85,31 +91,43 @@
               <el-button type="primary" size="small" @click="queryNotifyRecords">查询</el-button>
               <el-button size="small" @click="resetNotifyRecords">重置</el-button>
             </div>
-            <el-table :data="filteredNotifyRecords" border stripe style="width: 100%" max-height="300">
-              <el-table-column prop="notifyTime" label="通知时间" width="180" />
-              <el-table-column prop="channelType" label="渠道类型" width="100" />
-              <el-table-column prop="account" label="账号/电话/邮箱" min-width="160" show-overflow-tooltip />
-              <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
-              <el-table-column prop="success" label="是否成功" width="90">
-                <template #default="{ row }">
-                  <el-tag :type="row.success ? 'success' : 'danger'" size="small">
-                    {{ row.success ? '成功' : '失败' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
+            <div class="table-wrap">
+              <div class="table-wrap__scroll">
+                <div style="max-height: 300px;">
+                  <el-table :data="filteredNotifyRecords" border stripe style="width: 100%">
+                    <el-table-column prop="notifyTime" label="通知时间" width="180" />
+                    <el-table-column prop="channelType" label="渠道类型" width="100" />
+                    <el-table-column prop="account" label="账号/电话/邮箱" min-width="160" show-overflow-tooltip />
+                    <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
+                    <el-table-column prop="success" label="是否成功" width="90">
+                      <template #default="{ row }">
+                        <el-tag :type="row.success ? 'success' : 'danger'" size="small">
+                          {{ row.success ? '成功' : '失败' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </div>
+            </div>
             <div v-if="filteredNotifyRecords.length === 0" class="empty-hint">暂无通知记录</div>
           </el-tab-pane>
 
           <!-- 处置记录 -->
           <el-tab-pane label="处置记录" name="disposalRecords">
-            <el-table :data="disposalRecords" border stripe style="width: 100%" max-height="350">
-              <el-table-column prop="disposalTime" label="处置时间" width="180" />
-              <el-table-column prop="disposalType" label="处置类型" width="100" />
-              <el-table-column prop="operator" label="处置人员" width="120" />
-              <el-table-column prop="result" label="处置结果" min-width="150" show-overflow-tooltip />
-              <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
-            </el-table>
+            <div class="table-wrap">
+              <div class="table-wrap__scroll">
+                <div style="max-height: 350px;">
+                  <el-table :data="disposalRecords" border stripe style="width: 100%">
+                    <el-table-column prop="disposalTime" label="处置时间" width="180" />
+                    <el-table-column prop="disposalType" label="处置类型" width="100" />
+                    <el-table-column prop="operator" label="处置人员" width="120" />
+                    <el-table-column prop="result" label="处置结果" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
+                  </el-table>
+                </div>
+              </div>
+            </div>
             <div v-if="disposalRecords.length === 0" class="empty-hint">暂无处置记录</div>
           </el-tab-pane>
         </el-tabs>

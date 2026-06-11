@@ -24,4 +24,13 @@ public interface IAlarmStrategyService {
     int toggle(Long id, Integer isEnabled);
 
     List<Long> getHazardPointIds(Long strategyId);
+
+    /**
+     * 校验策略名称唯一
+     *
+     * @param name 策略名称
+     * @param id   排除的策略ID（新增传 0L）
+     * @return true=唯一，false=已存在
+     */
+    boolean checkStrategyNameUnique(String name, Long id);
 }

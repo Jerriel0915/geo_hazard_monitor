@@ -42,6 +42,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</where>
 		order by notice_id desc
     </select>
+
+    <!-- 校验公告标题唯一 -->
+    <select id="checkNoticeTitleUnique" resultMap="SysNoticeResult">
+        <include refid="selectNoticeVo"/>
+        where notice_title = #{noticeTitle}
+        <if test="noticeId != null">
+            AND notice_id != #{noticeId}
+        </if>
+        limit 1
+    </select>
     
     <insert id="insertNotice" parameterType="SysNotice">
         insert into sys_notice (

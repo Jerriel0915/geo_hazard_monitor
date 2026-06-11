@@ -44,6 +44,9 @@ public class AlarmCriteriaController extends BaseController {
     @PostMapping
     @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:create')")
     public AjaxResult create(@RequestBody CriteriaCreateRequest request) {
+        if (!criteriaService.checkCriteriaUnique(request.getName(), request.getHazardPointId(), 0L)) {
+            return error("新增失败，该隐患点下已存在同名判据");
+        }
         AlarmCriteria criteria = AlarmCriteria.builder()
                 .name(request.getName())
                 .monitorTypeId(request.getMonitorTypeId())
@@ -63,6 +66,9 @@ public class AlarmCriteriaController extends BaseController {
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:update')")
     public AjaxResult update(@PathVariable Long id, @RequestBody CriteriaCreateRequest request) {
+        if (!criteriaService.checkCriteriaUnique(request.getName(), request.getHazardPointId(), id)) {
+            return error("修改失败，该隐患点下已存在同名判据");
+        }
         AlarmCriteria criteria = AlarmCriteria.builder()
                 .id(id)
                 .name(request.getName())

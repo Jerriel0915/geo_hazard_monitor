@@ -52,16 +52,6 @@
       <div class="resize-handle" @mousedown="startResize"></div>
 
       <div class="content-panel">
-        <div class="stats-bar">
-          <span class="stat-item">隐患点 <strong>{{ statsTotal }}</strong></span>
-          <span class="stat-sep">|</span>
-          <span class="stat-item">监测中 <strong class="c-green">{{ statsMonitoring }}</strong></span>
-          <span class="stat-sep">|</span>
-          <span class="stat-item">关联设备 <strong class="c-amber">{{ statsDeviceTotal }}</strong></span>
-          <span class="stat-sep">|</span>
-          <span class="stat-item">分组 <strong class="c-purple">{{ statsGroupCount }}</strong></span>
-        </div>
-
         <div class="search">
           <el-select v-model="searchType" placeholder="搜索方式" class="search__select">
             <el-option label="按名称" value="name" />
@@ -98,8 +88,8 @@
               @selection-change="handleSelectionChange"
             >
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column prop="code" label="编号" width="150" align="center" />
-              <el-table-column prop="name" label="名称" min-width="200" align="center" />
+              <el-table-column prop="code" label="编号" width="100" align="center" />
+              <el-table-column prop="name" label="名称" min-width="140" align="center" />
               <el-table-column prop="statusName" label="状态" width="100" align="center">
                 <template #default="{ row }">
                   <span :class="['status-badge', `status--${row.status.toLowerCase()}`]">
@@ -107,23 +97,38 @@
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="groupName" label="分组" width="120" align="center">
+              <el-table-column prop="groupName" label="分组" width="110" align="center">
                 <template #default="{ row }">
                   <span>{{ row.groupName || '未分组' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="coordinates" label="中心坐标" width="180" align="center">
+              <el-table-column prop="coordinates" label="中心坐标" min-width="160" align="center">
                 <template #default="{ row }">
                   <span v-if="row.longitude && row.latitude">{{ row.longitude }}, {{ row.latitude }}</span>
                   <span v-else class="empty-text">-</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="deviceCount" label="设备数量" width="100" align="center">
+              <el-table-column label="设备数量" width="110" align="center">
                 <template #default="{ row }">
-                  <el-tag type="info" effect="plain">{{ row.deviceCount || 0 }}</el-tag>
+                  <el-tooltip
+                      :content="(row.deviceCount ?? 0) > 0 ? `管理 ${row.name} 的 ${row.deviceCount} 台绑定设备` : `为 ${row.name} 绑定设备`"
+                      placement="top"
+                  >
+                    <span
+                        class="sensor-count-cell"
+                        :class="{
+                        'is-active': (row.deviceCount ?? 0) > 0,
+                        'is-zero': row.deviceCount === 0
+                      }"
+                        @click="handleBindDevice(row)"
+                    >
+                      <el-icon v-if="(row.deviceCount ?? 0) > 0" class="cell-icon"><Connection/></el-icon>
+                      <span>{{ row.deviceCount || 0 }}</span>
+                    </span>
+                  </el-tooltip>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="200" fixed="right" align="center">
+              <el-table-column label="操作" min-width="200" fixed="right" align="center">
                 <template #default="{ row }">
                   <div class="op-cell">
                     <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
@@ -137,7 +142,6 @@
                           </el-dropdown-item>
                           <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="complete">完结</el-dropdown-item>
                           <el-dropdown-item command="bindDevice">绑定设备</el-dropdown-item>
-                          <el-dropdown-item command="alarmConfig">告警配置</el-dropdown-item>
                           <el-dropdown-item command="delete" divided>
                             <span style="color: #f56c6c">删除</span>
                           </el-dropdown-item>
@@ -151,6 +155,15 @@
           </div>
 
           <div class="table-wrap__pagination">
+            <div class="pagination-stats">
+              <span>隐患点 <strong>{{ statsTotal }}</strong></span>
+              <span class="pagination-stats__sep">|</span>
+              <span>监测中 <strong class="c-green">{{ statsMonitoring }}</strong></span>
+              <span class="pagination-stats__sep">|</span>
+              <span>关联设备 <strong class="c-amber">{{ statsDeviceTotal }}</strong></span>
+              <span class="pagination-stats__sep">|</span>
+              <span>分组 <strong class="c-purple">{{ statsGroupCount }}</strong></span>
+            </div>
             <el-pagination
               v-model:current-page="currentPage"
               v-model:page-size="pageSize"
@@ -542,27 +555,33 @@
               <span class="btn-icon">+</span> 添加判据
             </el-button>
           </div>
-          <el-table :data="alarmCriteriaList" border size="small">
-            <el-table-column prop="name" label="判据名称" width="150" align="center" />
-            <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
-            <el-table-column prop="expression" label="表达式" width="250" align="center" />
-            <el-table-column prop="alarmLevel" label="告警等级" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="isEnabled" label="状态" width="80" align="center">
-              <template #default="{ row }">
-                <el-switch v-model="row.isEnabled" @change="handleToggleAlarm(row)" />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100" align="center">
-              <template #default="{ row }">
-                <el-button type="text" size="small" @click="handleEditAlarm(row)">编辑</el-button>
-                <el-button type="text" size="small" class="danger-text" @click="handleDeleteAlarm(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="alarmCriteriaList" border size="small">
+                <el-table-column prop="name" label="判据名称" width="140" align="center" />
+                <el-table-column prop="monitorTypeName" label="监测类型" width="140" align="center" />
+                <el-table-column prop="expression" label="表达式" min-width="240" align="center" />
+                <el-table-column prop="alarmLevel" label="告警等级" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="isEnabled" label="状态" width="80" align="center">
+                  <template #default="{ row }">
+                    <el-switch v-model="row.isEnabled" @change="handleToggleAlarm(row)" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="120" align="center">
+                  <template #default="{ row }">
+                    <div class="op-cell">
+                      <el-button type="primary" text size="small" @click="handleEditAlarm(row)">编辑</el-button>
+                      <el-button type="danger" text size="small" @click="handleDeleteAlarm(row)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </div>
 
         <div class="config-section">
@@ -572,49 +591,55 @@
               <span class="btn-icon">+</span> 添加规则
             </el-button>
           </div>
-          <el-table :data="dispatchRules" border size="small">
-            <el-table-column prop="type" label="类型" width="110" align="center">
-              <template #default="{ row }">
-                <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
-                  {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="告警等级/关联设备" min-width="200">
-              <template #default="{ row }">
-                <template v-if="row.type === 'alarm'">
-                  <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
-                </template>
-                <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
-                  <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
-                </template>
-                <span v-else class="empty-text">-</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="通知人员" min-width="150">
-              <template #default="{ row }">
-                <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="channels" label="通知渠道" width="150">
-              <template #default="{ row }">
-                <span v-for="(c, idx) in row.channels" :key="c">
-                  {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="80" align="center">
-              <template #default="{ row }">
-                <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)" />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100" align="center">
-              <template #default="{ row }">
-                <el-button type="text" size="small" @click="handleEditDispatchRule(row)">编辑</el-button>
-                <el-button type="text" size="small" class="danger-text" @click="handleDeleteDispatchRule(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="dispatchRules" border size="small">
+                <el-table-column prop="type" label="类型" width="120" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.type === 'alarm' ? 'danger' : 'warning'" size="small">
+                      {{ row.type === 'alarm' ? '监测告警' : '设备离线通知' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="告警等级/关联设备" min-width="190">
+                  <template #default="{ row }">
+                    <template v-if="row.type === 'alarm'">
+                      <el-tag v-for="(lvl, idx) in row.level" :key="idx" :type="getAlarmLevelType(lvl)" size="small" style="margin-right: 4px;">{{ lvl }}</el-tag>
+                    </template>
+                    <template v-else-if="row.type === 'offline' && row.deviceNames && row.deviceNames.length > 0">
+                      <el-tag v-for="(name, idx) in row.deviceNames" :key="idx" size="small" style="margin-right: 4px;">{{ name }}</el-tag>
+                    </template>
+                    <span v-else class="empty-text">-</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="通知人员" min-width="140">
+                  <template #default="{ row }">
+                    <el-tag v-for="p in row.persons" :key="p" size="small" style="margin-right: 4px;">{{ p }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="channels" label="通知渠道" min-width="140">
+                  <template #default="{ row }">
+                    <span v-for="(c, idx) in row.channels" :key="c">
+                      {{ getChannelLabel(c) }}{{ idx < row.channels.length - 1 ? '、' : '' }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="80" align="center">
+                  <template #default="{ row }">
+                    <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="120" align="center">
+                  <template #default="{ row }">
+                    <div class="op-cell">
+                      <el-button type="primary" text size="small" @click="handleEditDispatchRule(row)">编辑</el-button>
+                      <el-button type="danger" text size="small" @click="handleDeleteDispatchRule(row)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -649,12 +674,11 @@
           </div>
           <div class="transfer-tree">
             <el-tree
+                ref="leftTreeRef"
               :data="leftDeviceTree"
               :props="{ label: 'label', children: 'children' }"
               show-checkbox
               node-key="id"
-              :default-checked-keys="selectedLeftKeys"
-              @check="handleLeftCheck"
               :filter-node-method="filterLeftNode"
             >
               <template #default="{ node, data }">
@@ -670,18 +694,63 @@
         </div>
 
         <div class="transfer-actions">
-          <el-button type="primary" size="small" @click="transferToRight">
-            <span class="arrow-icon">→</span>
-          </el-button>
-          <el-button type="primary" size="small" @click="transferAllToRight">
-            <span class="arrow-icon">⇒</span>
-          </el-button>
-          <el-button size="small" @click="transferToLeft">
-            <span class="arrow-icon">←</span>
-          </el-button>
-          <el-button size="small" @click="transferAllToLeft">
-            <span class="arrow-icon">⇐</span>
-          </el-button>
+          <el-tooltip content="将左侧选中的设备绑定到当前隐患点" placement="left">
+            <el-button
+                type="primary"
+                size="small"
+                :disabled="bindLoading"
+                @click="transferToRight"
+            >
+              <el-icon>
+                <ArrowRight/>
+              </el-icon>
+              <span class="btn-label">选中</span>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="将左侧所有设备全部绑定到当前隐患点" placement="left">
+            <el-button
+                type="primary"
+                size="small"
+                plain
+                :disabled="bindLoading"
+                @click="transferAllToRight"
+            >
+              <el-icon>
+                <DArrowRight/>
+              </el-icon>
+              <span class="btn-label">全部</span>
+            </el-button>
+          </el-tooltip>
+
+          <div class="transfer-divider"/>
+
+          <el-tooltip content="将右侧选中的设备从当前隐患点解绑" placement="right">
+            <el-button
+                type="warning"
+                size="small"
+                :disabled="bindLoading"
+                @click="transferToLeft"
+            >
+              <span class="btn-label">选中</span>
+              <el-icon>
+                <ArrowLeft/>
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="将右侧所有设备从当前隐患点全部解绑" placement="right">
+            <el-button
+                type="warning"
+                size="small"
+                plain
+                :disabled="bindLoading"
+                @click="transferAllToLeft"
+            >
+              <span class="btn-label">全部</span>
+              <el-icon>
+                <DArrowLeft/>
+              </el-icon>
+            </el-button>
+          </el-tooltip>
         </div>
 
         <div class="transfer-panel">
@@ -697,12 +766,11 @@
           </div>
           <div class="transfer-tree">
             <el-tree
+                ref="rightTreeRef"
               :data="rightDeviceTree"
               :props="{ label: 'label', children: 'children' }"
               show-checkbox
               node-key="id"
-              :default-checked-keys="selectedRightKeys"
-              @check="handleRightCheck"
               :filter-node-method="filterRightNode"
             >
               <template #default="{ node, data }">
@@ -910,7 +978,17 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {DArrowRight, Delete, Edit, Location, Search} from '@element-plus/icons-vue'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Connection,
+  DArrowLeft,
+  DArrowRight,
+  Delete,
+  Edit,
+  Location,
+  Search
+} from '@element-plus/icons-vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import VueApexCharts from 'vue3-apexcharts'
@@ -1153,6 +1231,8 @@ const leftSearchText = ref('')
 const rightSearchText = ref('')
 const leftDeviceTree = ref<TreeNode[]>([])
 const rightDeviceTree = ref<TreeNode[]>([])
+const leftTreeRef = ref()
+const rightTreeRef = ref()
 const selectedLeftKeys = ref<string[]>([])
 const selectedRightKeys = ref<string[]>([])
 
@@ -1435,8 +1515,7 @@ const loadTableData = async () => {
       ElMessage.error(response.msg || '获取数据失败')
     }
   } catch (error) {
-    console.error('请求失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '加载隐患点失败')
   } finally {
     loading.value = false
   }
@@ -1739,7 +1818,7 @@ const handleRefresh = async () => {
     await Promise.all([loadTableData(), loadGroupList()])
     ElMessage.success('刷新成功')
   } catch (error) {
-    ElMessage.error('刷新失败')
+    showRequestErrorMessage(error, '刷新失败')
   } finally {
     refreshing.value = false
   }
@@ -1836,8 +1915,7 @@ const handleView = async (row: HazardPointItem) => {
       initDetailMap()
     })
   } catch (error) {
-    console.error('获取详情失败:', error)
-    ElMessage.error('获取详情失败')
+    showRequestErrorMessage(error, '获取详情失败')
   } finally {
     loading.value = false
   }
@@ -1948,8 +2026,7 @@ const handleDelete = async (row: any) => {
         ElMessage.error(res.msg || '删除失败')
       }
     } catch (error) {
-      console.error('删除失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '删除失败')
     } finally {
       loading.value = false
     }
@@ -1978,8 +2055,7 @@ const handleBatchDelete = async () => {
         ElMessage.error(res.msg || '批量删除失败')
       }
     } catch (error) {
-      console.error('批量删除失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量删除失败')
     } finally {
       loading.value = false
     }
@@ -2013,8 +2089,7 @@ const handleExportHazardPoints = async () => {
     downloadBlobFile(response.data, fileName)
     ElMessage.success(selectedIds.length > 0 ? '已按选中隐患点导出' : '已按当前筛选条件导出')
   } catch (error: any) {
-    console.error('导出失败:', error)
-    ElMessage.error(error?.message || '导出失败')
+    showRequestErrorMessage(error, '导出失败')
   }
 }
 
@@ -2043,8 +2118,7 @@ const handleSubmit = async () => {
           ElMessage.error(res.msg || '操作失败')
         }
       } catch (error: any) {
-        console.error('提交失败:', error)
-        ElMessage.error(error?.response?.data?.msg || error?.message || '网络请求失败')
+        showRequestErrorMessage(error, '提交失败')
       } finally {
         loading.value = false
       }
@@ -2071,8 +2145,7 @@ const handleTogglePause = async (row: HazardPointItem) => {
         ElMessage.error(res.msg || `${actionText}失败`)
       }
     } catch (error) {
-      console.error(`${actionText}失败:`, error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, `${actionText}失败`)
     } finally {
       loading.value = false
     }
@@ -2096,8 +2169,7 @@ const handleComplete = async (row: HazardPointItem) => {
         ElMessage.error(res.msg || '完结失败')
       }
     } catch (error) {
-      console.error('完结失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '完结失败')
     } finally {
       loading.value = false
     }
@@ -2347,32 +2419,29 @@ const filterRightNode = (value: string, data: any) => {
 }
 
 const handleLeftCheck = (data: any, checkedInfo: any) => {
-  const node = data as TreeNode
-  if (checkedInfo.checked) {
-    selectedLeftKeys.value.push(node.id)
-  } else {
-    const index = selectedLeftKeys.value.indexOf(node.id)
-    if (index > -1) selectedLeftKeys.value.splice(index, 1)
+  // el-tree @check 事件第二个参数是 CheckedInfo 对象
+  // (checkedKeys, checkedNodes, halfCheckedKeys, halfCheckedNodes)
+  // 这里同步给 selectedLeftKeys 以便其他地方使用（实际提交以 leftTreeRef.getCheckedKeys() 为准）
+  if (Array.isArray(checkedInfo?.checkedKeys)) {
+    selectedLeftKeys.value = checkedInfo.checkedKeys.map((k: any) => String(k))
   }
 }
 
 const handleRightCheck = (data: any, checkedInfo: any) => {
-  const node = data as TreeNode
-  if (checkedInfo.checked) {
-    selectedRightKeys.value.push(node.id)
-  } else {
-    const index = selectedRightKeys.value.indexOf(node.id)
-    if (index > -1) selectedRightKeys.value.splice(index, 1)
+  if (Array.isArray(checkedInfo?.checkedKeys)) {
+    selectedRightKeys.value = checkedInfo.checkedKeys.map((k: any) => String(k))
   }
 }
 
 const transferToRight = async () => {
-  if (selectedLeftKeys.value.length === 0) {
+  // 以 el-tree 的内部选中状态为准（getCheckedKeys），避免 selectedLeftKeys 与 UI 不同步
+  const checkedKeys: Array<string | number> = leftTreeRef.value?.getCheckedKeys() ?? []
+  if (checkedKeys.length === 0) {
     ElMessage.warning('请选择要绑定的设备')
     return
   }
 
-  const deviceIds = selectedLeftKeys.value.map(id => parseInt(id))
+  const deviceIds = checkedKeys.map(id => parseInt(String(id)))
 
   bindLoading.value = true
   try {
@@ -2386,20 +2455,20 @@ const transferToRight = async () => {
       ElMessage.error(response.msg || '绑定失败')
     }
   } catch (error) {
-    console.error('绑定失败:', error)
-    ElMessage.error('绑定失败')
+    showRequestErrorMessage(error, '绑定失败')
   } finally {
     bindLoading.value = false
   }
 }
 
 const transferToLeft = async () => {
-  if (selectedRightKeys.value.length === 0) {
+  const checkedKeys: Array<string | number> = rightTreeRef.value?.getCheckedKeys() ?? []
+  if (checkedKeys.length === 0) {
     ElMessage.warning('请选择要解绑的设备')
     return
   }
 
-  const deviceIds = selectedRightKeys.value.map(id => parseInt(id))
+  const deviceIds = checkedKeys.map(id => parseInt(String(id)))
 
   bindLoading.value = true
   try {
@@ -2413,8 +2482,7 @@ const transferToLeft = async () => {
       ElMessage.error(response.msg || '解绑失败')
     }
   } catch (error) {
-    console.error('解绑失败:', error)
-    ElMessage.error('解绑失败')
+    showRequestErrorMessage(error, '解绑失败')
   } finally {
     bindLoading.value = false
   }
@@ -2424,6 +2492,16 @@ const transferAllToRight = async () => {
   const allDeviceIds = leftDeviceTree.value.map(node => parseInt(node.id))
   if (allDeviceIds.length === 0) {
     ElMessage.warning('没有可绑定的设备')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+        `确定要将左侧 ${allDeviceIds.length} 台设备全部绑定到当前隐患点吗？`,
+        '批量绑定确认',
+        {type: 'warning', confirmButtonText: '全部绑定', cancelButtonText: '取消'}
+    )
+  } catch {
     return
   }
 
@@ -2439,8 +2517,7 @@ const transferAllToRight = async () => {
       ElMessage.error(response.msg || '绑定失败')
     }
   } catch (error) {
-    console.error('绑定失败:', error)
-    ElMessage.error('绑定失败')
+    showRequestErrorMessage(error, '绑定失败')
   } finally {
     bindLoading.value = false
   }
@@ -2450,6 +2527,16 @@ const transferAllToLeft = async () => {
   const allDeviceIds = rightDeviceTree.value.map(node => parseInt(node.id))
   if (allDeviceIds.length === 0) {
     ElMessage.warning('没有可解绑的设备')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+        `确定要将当前隐患点的 ${allDeviceIds.length} 台设备全部解绑吗？此操作不可撤销。`,
+        '批量解绑确认',
+        {type: 'warning', confirmButtonText: '全部解绑', cancelButtonText: '取消'}
+    )
+  } catch {
     return
   }
 
@@ -2465,8 +2552,7 @@ const transferAllToLeft = async () => {
       ElMessage.error(response.msg || '解绑失败')
     }
   } catch (error) {
-    console.error('解绑失败:', error)
-    ElMessage.error('解绑失败')
+    showRequestErrorMessage(error, '解绑失败')
   } finally {
     bindLoading.value = false
   }
@@ -2845,8 +2931,8 @@ const queryChart = async (baseParams: Record<string, unknown>) => {
     ElMessage.success(`加载 ${series.length} 条曲线，共 ${series[0]?.labels.length || 0} 个数据点`)
     await nextTick()
     buildChartOptions()
-  } catch {
-    ElMessage.error('获取图表数据失败')
+  } catch (error) {
+    showRequestErrorMessage(error, '获取图表数据失败')
   }
 }
 
@@ -2865,8 +2951,8 @@ const queryPage = async (baseParams: Record<string, unknown>) => {
     })
     monitorDataList.value = res.rows || []
     ElMessage.success(`加载 ${monitorDataList.value.length} 条数据`)
-  } catch {
-    ElMessage.error('获取监测数据失败')
+  } catch (error) {
+    showRequestErrorMessage(error, '获取监测数据失败')
   }
 }
 
@@ -2898,8 +2984,7 @@ const handleBatchPause = async () => {
         ElMessage.error(res.msg || '批量停测失败')
       }
     } catch (error) {
-      console.error('批量停测失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量停测失败')
     }
   }).catch(() => {})
 }
@@ -2924,8 +3009,7 @@ const handleBatchResume = async () => {
         ElMessage.error(res.msg || '批量恢复失败')
       }
     } catch (error) {
-      console.error('批量恢复失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量恢复失败')
     }
   }).catch(() => {})
 }
@@ -2950,8 +3034,7 @@ const handleBatchComplete = async () => {
         ElMessage.error(res.msg || '批量完结失败')
       }
     } catch (error) {
-      console.error('批量完结失败:', error)
-      ElMessage.error('网络请求失败')
+      showRequestErrorMessage(error, '批量完结失败')
     }
   }).catch(() => {})
 }
@@ -3204,37 +3287,32 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-/* ========== 统计条 ========== */
-.stats-bar {
+/* 分页栏左侧统计数据 */
+.pagination-stats {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 14px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  margin-bottom: 12px;
+  gap: 10px;
   font-size: 12px;
   color: #64748b;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  margin-right: auto;
 }
 
-.stat-item strong {
-  font-size: 15px;
+.pagination-stats strong {
+  font-size: 14px;
   font-weight: 700;
   color: #1f2937;
-  margin-left: 3px;
+  margin-left: 2px;
 }
 
-.stat-item .c-green { color: #10b981; }
-.stat-item .c-amber { color: #f59e0b; }
-.stat-item .c-purple { color: #6366f1; }
-
-.stat-sep {
+.pagination-stats__sep {
   color: #e2e8f0;
-  font-size: 14px;
 }
 
+.c-green { color: #10b981; }
+.c-amber { color: #f59e0b; }
+.c-purple { color: #6366f1; }
+
+/* ========== 统计条 ========== */
 /* ========== 分页激活态 ========== */
 :deep(.el-pagination .el-pager li.is-active) {
   background: #3b82f6;
@@ -3371,11 +3449,27 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   gap: 8px;
 }
 
-.arrow-icon {
-  font-size: 16px;
+.transfer-actions .el-button {
+  width: 90px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.transfer-actions .btn-label {
+  font-size: 12px;
+}
+
+.transfer-divider {
+  width: 24px;
+  height: 1px;
+  background: #e4e7ed;
+  margin: 2px 0;
 }
 
 .tree-node {
@@ -3662,5 +3756,49 @@ onUnmounted(() => {
 :deep(.el-tree-node__content) {
   height: 32px;
   font-size: 13px;
+}
+
+/* 设备数量单元格（列表行内可点击徽标，与设备管理页保持一致） */
+.sensor-count-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 32px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #909399;
+  background: #f4f4f5;
+  border: 1px solid #e9e9eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.sensor-count-cell:hover {
+  background: #ecf5ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.sensor-count-cell.is-active {
+  color: #1890ff;
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.sensor-count-cell.is-active:hover {
+  background: #1890ff;
+  color: #fff;
+  border-color: #1890ff;
+}
+
+.sensor-count-cell.is-zero {
+  color: #909399;
+}
+
+.sensor-count-cell .cell-icon {
+  font-size: 12px;
 }
 </style>

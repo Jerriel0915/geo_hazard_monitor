@@ -1,9 +1,14 @@
 <template>
-  <div class="page-content">
-    <div class="page-title">系统设置</div>
-    <div class="page-body">
-      <!-- 系统参数 -->
-      <div class="tab-content params-content">
+  <div class="page settings-page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">系统设置</h2>
+        <span class="header__subtitle">系统参数配置与全局偏好管理</span>
+      </div>
+    </div>
+
+    <div class="settings-body">
+      <div class="settings-card">
         <div class="params-sidebar">
           <div
               v-for="cat in paramCategories"
@@ -14,8 +19,8 @@
           >
             {{ cat.label }}
           </div>
-        </div>
-        <div class="params-main">
+      </div>
+      <div class="params-main">
           <el-form
               ref="paramsFormRef"
               :model="paramsFormData"
@@ -140,12 +145,10 @@
             </div>
           </el-form>
           <div class="params-actions">
-            <el-button type="primary" size="large" @click="handleSaveParams" :loading="saveLoading">
-              保存配置
-            </el-button>
-            <el-button size="large" @click="handleResetParams">重置</el-button>
+            <el-button type="primary" @click="handleSaveParams" :loading="saveLoading">保存配置</el-button>
+            <el-button @click="handleResetParams">重置</el-button>
           </div>
-        </div>
+      </div>
       </div>
     </div>
 
@@ -596,52 +599,45 @@ const handleResetParams = () => {
 </script>
 
 <style scoped>
-.page-content {
+
+.settings-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.settings-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
   background: #fff;
   border-radius: 8px;
-  padding: 20px;
-  min-height: calc(100% - 32px);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: clip;
 }
 
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.page-body {
-  padding: 0;
-}
-
-.tab-content {
-  padding: 16px 0;
-}
-
-/* 系统参数样式 */
-.params-content {
-  display: flex;
-  gap: 20px;
-  min-height: calc(100vh - 280px);
-}
-
+/* 左侧导航 */
 .params-sidebar {
   width: 160px;
   flex-shrink: 0;
   border-right: 1px solid #e8e8e8;
-  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 12px;
 }
 
 .category-item {
-  padding: 12px 16px;
+  padding: 10px 14px;
   cursor: pointer;
   border-radius: 6px;
-  margin-bottom: 4px;
-  font-size: 14px;
+  margin-bottom: 2px;
+  font-size: 13px;
   color: #606266;
-  transition: all 0.3s;
+  transition: all 0.15s;
+  flex-shrink: 0;
 }
 
 .category-item:hover {
@@ -655,11 +651,12 @@ const handleResetParams = () => {
   font-weight: 500;
 }
 
+/* 右侧内容 */
 .params-main {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
-  max-height: calc(100vh - 280px);
-  padding-right: 12px;
+  padding: 0 20px;
 }
 
 .param-section {
@@ -679,6 +676,10 @@ const handleResetParams = () => {
   margin-left: 12px;
   color: #909399;
   font-size: 12px;
+}
+
+.settings-page {
+  height: calc(100% + 1px);
 }
 
 .params-actions {
@@ -767,98 +768,5 @@ const handleResetParams = () => {
 .feature-types {
   color: #606266;
   font-size: 13px;
-}
-
-/* 告警分发样式 */
-.search-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.action-btns {
-  display: flex;
-  gap: 8px;
-}
-
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-:deep(.el-form--inline .el-form-item) {
-  margin-right: 16px;
-  margin-bottom: 10px;
-}
-
-.action-link {
-  display: inline-block;
-  padding: 4px 10px;
-  margin: 0 4px;
-  color: #303133;
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.action-link:hover {
-  color: #1890ff;
-}
-
-.action-link.action-warning {
-  color: #faad14;
-}
-
-.action-link.action-warning:hover {
-  color: #d48806;
-}
-
-.action-link.action-success {
-  color: #52c41a;
-}
-
-.action-link.action-success:hover {
-  color: #389e0d;
-}
-
-.action-link.action-danger {
-  color: #f5222d;
-}
-
-.action-link.action-danger:hover {
-  color: #cf1322;
-}
-
-.form-hint {
-  display: block;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #909399;
-}
-
-.exec-type-group {
-  display: flex;
-  gap: 30px;
-  margin-bottom: 12px;
-}
-
-.exec-time-config {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.exec-label {
-  font-size: 14px;
-  color: #606266;
-}
-
-.text-gray {
-  color: #909399;
 }
 </style>

@@ -1,8 +1,9 @@
 package com.zwei.system.mapper;
 
-import java.util.List;
-import org.apache.ibatis.annotations.Param;
 import com.zwei.common.core.domain.entity.SysDictData;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * 字典表 数据层
@@ -46,11 +47,23 @@ public interface SysDictDataMapper
 
     /**
      * 查询字典数据
-     * 
+     *
      * @param dictType 字典类型
      * @return 字典数据
      */
     public int countDictDataByType(String dictType);
+
+    /**
+     * 校验字典数据在指定 dict_type 下 dict_value 唯一
+     *
+     * @param dictType  字典类型
+     * @param dictValue 字典键值
+     * @param dictCode  排除的字典ID（新增传 null）
+     * @return 命中的字典数据（null 表示唯一）
+     */
+    SysDictData checkDictDataUnique(@Param("dictType") String dictType,
+                                    @Param("dictValue") String dictValue,
+                                    @Param("dictCode") Long dictCode);
 
     /**
      * 通过字典ID删除字典数据信息

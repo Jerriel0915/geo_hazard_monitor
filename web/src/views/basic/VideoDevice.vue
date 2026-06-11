@@ -1,35 +1,25 @@
 <template>
-  <div class="video-device-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">视频设备</h2>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">视频设备</h2>
+        <span class="header__subtitle">视频监控设备管理与流媒体配置</span>
       </div>
-      <div class="header-right">
-        <el-button type="primary" @click="handleAdd">
-          <span class="btn-icon">+</span> 新增
-        </el-button>
-        <el-button @click="handleExport">
-          <span class="btn-icon">↓</span> 导出
-        </el-button>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">+ 新增</el-button>
+        <el-button @click="handleExport">导出</el-button>
       </div>
     </div>
 
-    <div class="search-bar">
+    <div class="search">
       <el-input
           v-model="searchKeyword"
           placeholder="搜索编号或名称"
-          class="search-input"
           clearable
           @clear="handleSearch"
           @keyup.enter="handleSearch"
-      >
-        <template #prefix>
-          <el-icon class="search-icon">
-            <Search/>
-          </el-icon>
-        </template>
-      </el-input>
-      <el-select v-model="searchProtocol" placeholder="选择协议" clearable class="protocol-select">
+      />
+      <el-select v-model="searchProtocol" placeholder="选择协议" clearable>
         <el-option label="RTMP" value="RTMP" />
         <el-option label="RTSP" value="RTSP" />
         <el-option label="ONVIF" value="ONVIF" />
@@ -38,76 +28,77 @@
       <el-button @click="handleReset">重置</el-button>
     </div>
 
-    <div class="table-container">
-      <el-table
-          :data="tableData"
-          border
-          stripe
-          v-loading="loading"
-          :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
-      >
-        <el-table-column label="图标" width="80" align="center">
-          <template #default="{ row }">
-            <img v-if="row.iconPath" :src="row.iconPath" class="table-icon" alt="icon" />
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="code" label="编号" width="150" align="center" />
-        <el-table-column prop="name" label="名称" min-width="180" align="center" />
-        <el-table-column prop="protocolName" label="协议类型" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getProtocolType(row.protocolCode)" effect="plain">{{ row.protocolName }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="streamUrl" label="视频流地址" min-width="300" align="center">
-          <template #default="{ row }">
-            <span class="stream-url">{{ row.streamUrl }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="hazardPointNames" label="关联隐患点" min-width="200" align="center">
-          <template #default="{ row }">
-            <span v-if="row.hazardPointNames" class="hazard-tags">
-              <el-tag v-for="hp in row.hazardPointNames.split(',')" :key="hp" size="small" class="hazard-tag">{{ hp }}</el-tag>
-            </span>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" effect="plain">
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="lastOnlineTime" label="最近在线时间" width="180" align="center">
-          <template #default="{ row }">
-            <span v-if="row.lastOnlineTime">{{ row.lastOnlineTime }}</span>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="installTime" label="安装时间" width="180" align="center" />
-        <el-table-column label="操作" width="200" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="op-cell">
-              <el-button type="primary" text size="small" @click="handlePlay(row)">播放</el-button>
-              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
-                <el-button type="primary" text size="small">更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="bindHazardPoint">关联隐患点</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
-                      <span style="color: #f56c6c">删除</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table
+            :data="tableData"
+            border
+            stripe
+            v-loading="loading"
+        >
+          <el-table-column label="图标" width="80" align="center">
+            <template #default="{ row }">
+              <img v-if="row.iconPath" :src="row.iconPath" class="table-icon" alt="icon" />
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="code" label="编号" width="130" align="center" />
+          <el-table-column prop="name" label="名称" min-width="160" align="center" />
+          <el-table-column prop="protocolName" label="协议类型" width="120" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getProtocolType(row.protocolCode)" effect="plain">{{ row.protocolName }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="streamUrl" label="视频流地址" min-width="280" align="center">
+            <template #default="{ row }">
+              <span class="stream-url">{{ row.streamUrl }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="hazardPointNames" label="关联隐患点" min-width="180" align="center">
+            <template #default="{ row }">
+              <span v-if="row.hazardPointNames" class="hazard-tags">
+                <el-tag v-for="hp in row.hazardPointNames.split(',')" :key="hp" size="small" class="hazard-tag">{{ hp }}</el-tag>
+              </span>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)" effect="plain">
+                {{ getStatusLabel(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="lastOnlineTime" label="最近在线时间" min-width="170" align="center">
+            <template #default="{ row }">
+              <span v-if="row.lastOnlineTime">{{ row.lastOnlineTime }}</span>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="installTime" label="安装时间" min-width="170" align="center" />
+          <el-table-column label="操作" width="200" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="op-cell">
+                <el-button type="primary" text size="small" @click="handlePlay(row)">播放</el-button>
+                <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+                <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                  <el-button type="primary" text size="small">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="bindHazardPoint">关联隐患点</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>
+                        <span style="color: #f56c6c">删除</span>
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
-      <div class="pagination-container">
+      <div class="table-wrap__pagination">
         <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -301,12 +292,13 @@
 </template>
 
 <script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
+import {Search} from '@element-plus/icons-vue'
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { nextTick, onMounted, reactive, ref } from 'vue'
+import {nextTick, onMounted, reactive, ref} from 'vue'
+import {getRequestErrorMessage} from '@/utils/errorHandler'
 
 // 获取token
 const getToken = () => localStorage.getItem('token')
@@ -480,7 +472,7 @@ const loadTableData = async () => {
     }
   } catch (error) {
     console.error('请求失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   } finally {
     loading.value = false
   }
@@ -524,7 +516,7 @@ const fetchDetail = async (id: string) => {
     }
   } catch (error) {
     console.error('获取详情失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
     return null
   }
 }
@@ -557,7 +549,7 @@ const createVideoDevice = async () => {
     }
   } catch (error) {
     console.error('新增失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   } finally {
     submitLoading.value = false
   }
@@ -589,7 +581,7 @@ const updateVideoDevice = async () => {
     }
   } catch (error) {
     console.error('修改失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   } finally {
     submitLoading.value = false
   }
@@ -611,7 +603,7 @@ const deleteVideoDevice = async (id: string) => {
     }
   } catch (error) {
     console.error('删除失败:', error)
-    ElMessage.error('网络请求失败')
+    ElMessage.error(getRequestErrorMessage(error, '网络请求失败'))
   }
 }
 
@@ -784,7 +776,8 @@ const handleBindSubmit = async () => {
     bindDialogVisible.value = false
     loadTableData() // 刷新列表
   } catch (error) {
-    ElMessage.error('关联失败')
+    console.error('关联失败:', error)
+    ElMessage.error(getRequestErrorMessage(error, '关联失败'))
   } finally {
     bindLoading.value = false
   }
@@ -972,59 +965,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.video-device-page {
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  min-height: calc(100% - 40px);
-}
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
 
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-}
 
-.header-right {
-  display: flex;
-  gap: 10px;
-}
 
-.btn-icon {
-  margin-right: 4px;
-}
 
-.search-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-}
 
-.search-input {
-  width: 300px;
-}
 
-.search-icon {
-  font-size: 14px;
-}
 
-.protocol-select {
-  width: 150px;
-}
 
-.table-container {
-  background: #fff;
-}
 
 .table-icon {
   width: 28px;
@@ -1048,23 +997,9 @@ onMounted(() => {
   word-break: break-all;
 }
 
-.empty-text {
-  color: #909399;
-}
 
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
 
-.danger-text {
-  color: #f56c6c !important;
-}
 
-.danger-text:hover {
-  color: #f56c6c !important;
-}
 
 .device-icon-selector {
   display: flex;
@@ -1213,4 +1148,5 @@ onMounted(() => {
 :deep(.el-form-item) {
   margin-bottom: 18px;
 }
+
 </style>

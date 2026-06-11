@@ -86,6 +86,37 @@ public interface DeviceSensorMapper {
      */
     DeviceSensor checkSensorCodeUnique(@Param("sensorCode") String sensorCode, @Param("id") Long id);
 
+    /**
+     * 校验同一设备下主题编号（sensorNo）是否唯一。
+     * <p>
+     * 数据库已有 {@code UNIQUE KEY uk_device_sensor_no(device_id, sensor_no)} 作最终兜底，
+     * 此方法用于在 INSERT 前给出友好中文错误。
+     *
+     * @param deviceId 设备ID
+     * @param sensorNo 主题编号
+     * @return 传感器信息（null表示该设备下该 sensorNo 不存在）
+     */
+    DeviceSensor checkSensorNoUnique(@Param("deviceId") Long deviceId, @Param("sensorNo") String sensorNo);
+
+    /**
+     * 统计设备下未删除的传感器数量。
+     * <p>
+     * 用于前端在"新增传感器"表单中预填 sensorNo 占位：
+     * 占位格式 {@code {indicator_type}_{count+1}}，其中 ID 即为该计数 +1。
+     *
+     * @param deviceId 设备ID
+     * @return 设备下未逻辑删除的传感器数量（空设备返回 0）
+     */
+    int countByDeviceId(@Param("deviceId") Long deviceId);
+
+    /**
+     * 查询当前最大传感器ID（用于前端预测下一个 sensorNo 占位）。
+     * 仅统计未逻辑删除的记录。
+     *
+     * @return 最大 ID；表为空时返回 null
+     */
+    Long selectMaxId();
+
     // ==================== 统计查询 ====================
 
     int countAll();

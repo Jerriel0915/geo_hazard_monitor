@@ -1,65 +1,59 @@
 <template>
-  <div class="notice-container">
-    <div class="page-header">
-      <h2>通知公告管理</h2>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">通知公告管理</h2>
+        <span class="header__subtitle">系统通知与公告的发布与管理</span>
+      </div>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">新增公告</el-button>
+      </div>
     </div>
 
-    <!-- 搜索栏 -->
-    <el-card class="search-card">
-      <el-form :model="queryParams" inline>
-        <el-form-item label="标题">
-          <el-input v-model="queryParams.noticeTitle" placeholder="请输入标题" clearable @clear="handleQuery" style="width: 200px" />
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="queryParams.noticeType" placeholder="全部" clearable @clear="handleQuery" style="width: 120px">
-            <el-option label="通知" value="1" />
-            <el-option label="公告" value="2" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <div class="search">
+      <el-input v-model="queryParams.noticeTitle" placeholder="标题" clearable @clear="handleQuery" />
+      <el-select v-model="queryParams.noticeType" placeholder="类型" clearable @clear="handleQuery">
+        <el-option label="通知" value="1" />
+        <el-option label="公告" value="2" />
+      </el-select>
+      <el-button type="primary" @click="handleQuery">查询</el-button>
+      <el-button @click="resetQuery">重置</el-button>
+    </div>
 
-    <!-- 表格 -->
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>公告列表</span>
-          <el-button type="primary" @click="handleAdd">新增公告</el-button>
-        </div>
-      </template>
-      <el-table :data="noticeList" v-loading="loading" stripe>
-        <el-table-column prop="noticeId" label="ID" width="80" />
-        <el-table-column prop="noticeTitle" label="标题" min-width="200" show-overflow-tooltip />
-        <el-table-column label="类型" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.noticeType === '1' ? 'warning' : 'success'" size="small">
-              {{ row.noticeType === '1' ? '通知' : '公告' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.status === '0' ? '' : 'danger'" size="small">
-              {{ row.status === '0' ? '正常' : '关闭' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createBy" label="创建人" width="100" />
-        <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column label="操作" width="260" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
-            <el-button link type="primary" size="small" @click="handleEdit(row)">修改</el-button>
-            <el-button link type="primary" size="small" @click="handleReadUsers(row)">已读人员</el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div class="pagination-wrap">
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table :data="noticeList" v-loading="loading" border stripe>
+          <el-table-column prop="noticeId" label="ID" width="80" />
+          <el-table-column prop="noticeTitle" label="标题" min-width="200" show-overflow-tooltip />
+          <el-table-column label="类型" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.noticeType === '1' ? 'warning' : 'success'" size="small">
+                {{ row.noticeType === '1' ? '通知' : '公告' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.status === '0' ? '' : 'danger'" size="small">
+                {{ row.status === '0' ? '正常' : '关闭' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createBy" label="创建人" width="100" />
+          <el-table-column prop="createTime" label="创建时间" min-width="160" />
+          <el-table-column label="操作" width="220" fixed="right">
+            <template #default="{ row }">
+              <div class="op-cell">
+                <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                <el-button type="primary" text size="small" @click="handleEdit(row)">修改</el-button>
+                <el-button type="primary" text size="small" @click="handleReadUsers(row)">已读</el-button>
+                <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="table-wrap__pagination">
         <el-pagination
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
@@ -70,9 +64,8 @@
           @current-change="handleQuery"
         />
       </div>
-    </el-card>
+    </div>
 
-    <!-- 新增/编辑对话框 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="700px" destroy-on-close>
       <el-form :model="form" label-width="80px" :rules="rules" ref="formRef">
         <el-form-item label="标题" prop="noticeTitle">
@@ -103,7 +96,6 @@
       </template>
     </el-dialog>
 
-    <!-- 查看对话框 -->
     <el-dialog title="通知详情" v-model="viewVisible" width="700px">
       <div class="notice-detail">
         <h3>{{ viewData.noticeTitle }}</h3>
@@ -116,15 +108,18 @@
       </div>
     </el-dialog>
 
-    <!-- 已读人员对话框 -->
     <el-dialog title="已读人员" v-model="readUsersVisible" width="800px">
-      <el-table :data="readUsers" v-loading="readUsersLoading" stripe max-height="400">
-        <el-table-column prop="userName" label="用户名" width="120" />
-        <el-table-column prop="nickName" label="昵称" width="120" />
-        <el-table-column prop="deptName" label="部门" min-width="150" />
-        <el-table-column prop="phonenumber" label="手机号" width="140" />
-        <el-table-column prop="readTime" label="阅读时间" width="160" />
-      </el-table>
+      <div class="table-wrap">
+        <div class="table-wrap__scroll">
+          <el-table :data="readUsers" v-loading="readUsersLoading" border stripe>
+            <el-table-column prop="userName" label="用户名" width="120" />
+            <el-table-column prop="nickName" label="昵称" width="120" />
+            <el-table-column prop="deptName" label="部门" min-width="150" />
+            <el-table-column prop="phonenumber" label="手机号" width="140" />
+            <el-table-column prop="readTime" label="阅读时间" min-width="160" />
+          </el-table>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -251,17 +246,7 @@ handleQuery()
 </script>
 
 <style scoped>
-.notice-container {
-  padding: 16px;
-}
-.page-header { margin-bottom: 16px; }
-.page-header h2 { margin: 0; font-size: 18px; }
-.search-card { margin-bottom: 16px; }
-.table-card { margin-bottom: 16px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
 .notice-detail h3 { margin: 0 0 12px; }
 .notice-meta { display: flex; gap: 16px; color: #909399; font-size: 13px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #ebeef5; }
 .notice-content { line-height: 1.8; }
-:deep(.el-card__header) { padding: 12px 16px; }
 </style>

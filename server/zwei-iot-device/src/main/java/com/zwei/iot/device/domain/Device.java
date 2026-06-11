@@ -144,6 +144,11 @@ public class Device extends BaseEntity {
     private Integer delFlag;
 
     /**
+     * 传感器数量（列表查询时由子查询填充）
+     */
+    private Integer sensorCount;
+
+    /**
      * 传感器列表（查询详情时返回）
      */
     private Object sensors;

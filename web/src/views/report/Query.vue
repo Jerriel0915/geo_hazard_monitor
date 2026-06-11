@@ -1,15 +1,20 @@
 <template>
-  <div class="query-page">
-    <div class="page-header">
-      <h2 class="page-title">查询中心</h2>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">查询中心</h2>
+        <span class="header__subtitle">多维度监测数据灵活查询与导出</span>
+      </div>
+      <div class="header__right">
+        <el-button @click="handleExportCsv">导出CSV</el-button>
+      </div>
     </div>
 
-    <div class="search-bar">
+    <div class="search">
       <el-select
         v-model="selectedHazardPointId"
         placeholder="隐患点"
         clearable
-        class="filter-select"
         @change="onHazardPointChange"
       >
         <el-option
@@ -24,7 +29,6 @@
         v-model="selectedDeviceType"
         placeholder="设备类型"
         clearable
-        class="filter-select"
         @change="onDeviceTypeChange"
       >
         <el-option
@@ -39,7 +43,6 @@
         v-model="selectedDeviceId"
         placeholder="设备"
         clearable
-        class="filter-select"
         @change="onDeviceChange"
       >
         <el-option
@@ -57,7 +60,6 @@
         collapse-tags
         collapse-tags-tooltip
         clearable
-        class="filter-select attr-select"
       >
         <el-option
           v-for="attr in availableAttrs"
@@ -70,73 +72,73 @@
       <el-date-picker
         v-model="timeRange"
         type="datetimerange"
-        range-separator="至"
+        range-separator=""
         start-placeholder="开始时间"
         end-placeholder="结束时间"
         value-format="YYYY-MM-DD HH:mm:ss"
-        class="date-picker"
       />
 
       <el-button type="primary" @click="handleQuery">查询</el-button>
       <el-button @click="handleReset">重置</el-button>
-      <el-button @click="handleExportCsv">导出CSV</el-button>
     </div>
 
-    <div class="table-container">
-      <el-table
-        :data="tableData"
-        border
-        stripe
-        v-loading="loading"
-        :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
-      >
-        <el-table-column prop="time" label="时间" width="180" align="center" />
-        <el-table-column prop="deviceName" label="设备名称" width="150" align="center" />
-        <el-table-column
-          v-for="col in dynamicColumns"
-          :key="col.code"
-          :prop="col.code"
-          :label="`${col.name}(${col.unit})`"
-          min-width="140"
-          align="center"
-        />
-        <el-table-column
-          v-if="dynamicColumns.length === 0"
-          label="监测数据"
-          align="center"
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table
+          :data="tableData"
+          border
+          stripe
+          v-loading="loading"
         >
-          <template #default>
-            <span class="empty-text">请选择设备类型</span>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+          <el-table-column prop="time" label="时间" min-width="180" align="center" />
+          <el-table-column prop="deviceName" label="设备名称" width="150" align="center" />
+          <el-table-column
+            v-for="col in dynamicColumns"
+            :key="col.code"
+            :prop="col.code"
+            :label="`${col.name}(${col.unit})`"
+            min-width="140"
+            align="center"
+          />
+          <el-table-column
+            v-if="dynamicColumns.length === 0"
+            label="监测数据"
+            align="center"
+          >
+            <template #default>
+              <span class="empty-text">请选择设备类型</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleQuery"
-        @current-change="handleQuery"
-      />
+      <div class="table-wrap__pagination">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleQuery"
+          @current-change="handleQuery"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import {computed, onMounted, ref} from 'vue'
+import {ElMessage} from 'element-plus'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 import {
-  getHazardPointOptions,
-  getDeviceTypeOptions,
-  getDeviceOptions,
-  getMonitorQueryData,
-  type HazardPointOption,
+  type DeviceOption,
   type DeviceTypeOption,
-  type DeviceOption
+  getDeviceOptions,
+  getDeviceTypeOptions,
+  getHazardPointOptions,
+  getMonitorQueryData,
+  type HazardPointOption
 } from '@/api/report'
 
 const loading = ref(false)
@@ -205,7 +207,7 @@ const loadOptions = async () => {
     hazardPointOptions.value = hps
     deviceTypeOptions.value = dts
   } catch (error) {
-    ElMessage.error('加载选项失败')
+    showRequestErrorMessage(error, '加载选项失败')
   }
 }
 
@@ -217,6 +219,7 @@ const loadDeviceOptions = async () => {
     })
     deviceOptions.value = devices
   } catch (error) {
+    console.error('加载设备选项失败:', error)
     deviceOptions.value = []
   }
 }
@@ -241,7 +244,7 @@ const handleQuery = async () => {
     tableData.value = data.rows || []
     total.value = data.total || 0
   } catch (error) {
-    ElMessage.error('查询失败')
+    showRequestErrorMessage(error, '查询失败')
   } finally {
     loading.value = false
   }
@@ -288,59 +291,3 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.query-page {
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  min-height: calc(100% - 40px);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-}
-
-.search-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.filter-select {
-  width: 160px;
-}
-
-.attr-select {
-  width: 240px;
-}
-
-.date-picker {
-  width: 360px;
-}
-
-.table-container {
-  background: #fff;
-}
-
-.empty-text {
-  color: #909399;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
-</style>

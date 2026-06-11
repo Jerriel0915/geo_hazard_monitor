@@ -1,32 +1,30 @@
 <template>
-  <div class="page-content">
-    <div class="page-title">组织管理</div>
-    <div class="toolbar">
-      <el-form :model="searchForm" inline>
-        <el-form-item label="组织编码">
-          <el-input v-model="searchForm.code" placeholder="请输入组织编码" clearable />
-        </el-form-item>
-        <el-form-item label="组织名称">
-          <el-input v-model="searchForm.name" placeholder="请输入组织名称" clearable />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 140px">
-            <el-option label="启用" :value="0" />
-            <el-option label="禁用" :value="1" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-      <el-button type="primary" @click="handleAddRoot">新增组织</el-button>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">组织管理</h2>
+        <span class="header__subtitle">组织架构与部门信息维护</span>
+      </div>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAddRoot">新增组织</el-button>
+      </div>
     </div>
 
-    <div class="content">
+    <div class="search">
+      <el-input v-model="searchForm.code" placeholder="组织编码" clearable />
+      <el-input v-model="searchForm.name" placeholder="组织名称" clearable />
+      <el-select v-model="searchForm.status" placeholder="状态" clearable>
+        <el-option label="启用" :value="0" />
+        <el-option label="禁用" :value="1" />
+      </el-select>
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+      <el-button @click="handleReset">重置</el-button>
+    </div>
+
+    <div class="page-body">
       <div class="tree-panel">
-        <div class="panel-title">组织树</div>
-        <el-input v-model="treeKeyword" placeholder="输入组织名称过滤" clearable />
+        <div class="tree-panel__title">组织树</div>
+        <el-input v-model="treeKeyword" placeholder="输入组织名称过滤" clearable size="small" />
         <el-tree
           ref="treeRef"
           class="tree-body"
@@ -41,67 +39,74 @@
       </div>
 
       <div class="list-panel">
-        <div class="panel-title">组织列表</div>
-        <el-table :data="listData" border stripe v-loading="loading" @row-click="handleRowClick">
-          <el-table-column prop="code" label="组织编码" width="140" />
-          <el-table-column prop="name" label="组织名称" min-width="180" />
-          <el-table-column prop="level" label="层级" width="80" align="center" />
-          <el-table-column prop="leader" label="负责人" width="120" />
-          <el-table-column prop="phone" label="联系电话" width="150" />
-          <el-table-column prop="status" label="状态" width="90" align="center">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 0 ? 'success' : 'danger'">
-                {{ row.status === 0 ? '启用' : '禁用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column label="操作" width="220" fixed="right">
-            <template #default="{ row }">
-              <span class="action-link" @click.stop="handleAddChild(row)">新增下级</span>
-              <span class="action-link" @click.stop="handleEdit(row)">编辑</span>
-              <span class="action-link action-danger" @click.stop="handleDelete(row)">删除</span>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="list-panel__scroll">
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="listData" border stripe v-loading="loading" @row-click="handleRowClick">
+                <el-table-column prop="code" label="组织编码" width="120" />
+                <el-table-column prop="name" label="组织名称" min-width="140" />
+                <el-table-column prop="level" label="层级" width="70" align="center" />
+                <el-table-column prop="leader" label="负责人" width="100" />
+                <el-table-column prop="phone" label="联系电话" width="140" />
+                <el-table-column prop="status" label="状态" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="row.status === 0 ? 'success' : 'danger'">
+                      {{ row.status === 0 ? '启用' : '禁用' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="创建时间" min-width="170" />
+                <el-table-column label="操作" width="220" fixed="right">
+                  <template #default="{ row }">
+                    <div class="op-cell">
+                      <el-button type="primary" text size="small" @click.stop="handleAddChild(row)">新增下级</el-button>
+                      <el-button type="primary" text size="small" @click.stop="handleEdit(row)">编辑</el-button>
+                      <el-button type="danger" text size="small" @click.stop="handleDelete(row)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
 
-        <div class="pagination">
-          <el-pagination
-            v-model:current-page="pagination.pageNum"
-            v-model:page-size="pagination.pageSize"
-            :total="pagination.total"
-            :page-sizes="[10, 20, 50, 100]"
-            layout="total, sizes, prev, pager, next, jumper"
-            @current-change="loadList"
-            @size-change="handleSizeChange"
-          />
-        </div>
-
-        <div class="detail-card">
-          <div class="detail-header">
-            <span>组织详情</span>
-            <el-button v-if="currentOrg" link type="primary" @click="handleEdit(currentOrg)">编辑</el-button>
+            <div class="table-wrap__pagination">
+              <el-pagination
+                v-model:current-page="pagination.pageNum"
+                v-model:page-size="pagination.pageSize"
+                :total="pagination.total"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                @current-change="loadList"
+                @size-change="handleSizeChange"
+              />
+            </div>
           </div>
-          <el-descriptions v-if="currentOrg" :column="2" border>
-            <el-descriptions-item label="组织编码">{{ currentOrg.code || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="组织名称">{{ currentOrg.name || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="父级路径">{{ currentOrg.parentIds || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="层级">{{ currentOrg.level ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="负责人">{{ currentOrg.leader || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="联系电话">{{ currentOrg.phone || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="邮箱">{{ currentOrg.email || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="区域">{{ currentOrg.region || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="currentOrg.status === 0 ? 'success' : 'danger'">
-                {{ currentOrg.status === 0 ? '启用' : '禁用' }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="排序">{{ currentOrg.sortOrder ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="地址" :span="2">{{ currentOrg.address || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ currentOrg.createTime || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="更新时间">{{ currentOrg.updateTime || '-' }}</el-descriptions-item>
-          </el-descriptions>
-          <el-empty v-else description="请选择组织节点或列表数据" />
+
+          <div class="detail-card">
+            <div class="detail-card__header">
+              <span class="detail-card__title">组织详情</span>
+              <el-button v-if="currentOrg" text size="small" type="primary" @click="handleEdit(currentOrg)">编辑</el-button>
+            </div>
+            <el-descriptions v-if="currentOrg" :column="2" border size="small">
+              <el-descriptions-item label="组织编码">{{ currentOrg.code || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="组织名称">{{ currentOrg.name || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="父级路径">{{ currentOrg.parentIds || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="层级">{{ currentOrg.level ?? '-' }}</el-descriptions-item>
+              <el-descriptions-item label="负责人">{{ currentOrg.leader || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="联系电话">{{ currentOrg.phone || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="邮箱">{{ currentOrg.email || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="区域">{{ currentOrg.region || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="状态">
+                <el-tag :type="currentOrg.status === 0 ? 'success' : 'danger'">
+                  {{ currentOrg.status === 0 ? '启用' : '禁用' }}
+                </el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="排序">{{ currentOrg.sortOrder ?? '-' }}</el-descriptions-item>
+              <el-descriptions-item label="地址" :span="2">{{ currentOrg.address || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="创建时间">{{ currentOrg.createTime || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="更新时间">{{ currentOrg.updateTime || '-' }}</el-descriptions-item>
+            </el-descriptions>
+            <el-empty v-else description="请选择组织节点或列表数据" />
+          </div>
         </div>
       </div>
     </div>
@@ -388,87 +393,81 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: calc(100% - 32px);
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.toolbar {
+.page-body {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.content {
-  display: flex;
-  gap: 16px;
 }
 
 .tree-panel {
-  width: 320px;
-  padding: 16px;
-  border: 1px solid #e8e8e8;
+  width: 220px;
+  flex-shrink: 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #fafafa;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
 }
 
 .tree-body {
-  margin-top: 12px;
-  max-height: 720px;
+  margin-top: 8px;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 
 .list-panel {
   flex: 1;
-  padding: 16px;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-}
-
-.panel-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.pagination {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 滚动区：表格 + 详情 */
+.list-panel__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 表格撑满滚动区，最低高度保证能展示足够多行 */
+.list-panel__scroll .table-wrap {
+  flex: 0 0 auto;
+  min-height: 420px;
 }
 
 .detail-card {
-  margin-top: 20px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.detail-header {
+.detail-card__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
 
-.action-link {
-  display: inline-block;
-  margin-right: 8px;
-  color: #1890ff;
-  cursor: pointer;
-}
-
-.action-danger {
-  color: #f56c6c;
+.detail-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
 }
 </style>

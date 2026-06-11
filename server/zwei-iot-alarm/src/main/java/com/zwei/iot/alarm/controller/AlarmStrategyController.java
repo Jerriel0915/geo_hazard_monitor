@@ -43,6 +43,9 @@ public class AlarmStrategyController extends BaseController {
     @PostMapping
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:create')")
     public AjaxResult create(@RequestBody StrategyCreateRequest request) {
+        if (!strategyService.checkStrategyNameUnique(request.getName(), 0L)) {
+            return error("新增失败，策略名称已存在");
+        }
         AlarmStrategy strategy = AlarmStrategy.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -63,6 +66,9 @@ public class AlarmStrategyController extends BaseController {
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:update')")
     public AjaxResult update(@PathVariable Long id, @RequestBody StrategyCreateRequest request) {
+        if (!strategyService.checkStrategyNameUnique(request.getName(), id)) {
+            return error("修改失败，策略名称已存在");
+        }
         AlarmStrategy strategy = AlarmStrategy.builder()
                 .id(id)
                 .name(request.getName())

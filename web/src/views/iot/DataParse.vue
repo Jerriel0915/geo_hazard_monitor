@@ -1,35 +1,25 @@
 <template>
-  <div class="data-parse-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">数据解析</h2>
+  <div class="page data-parse-page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">数据解析</h2>
+        <span class="header__subtitle">MQTT 消息解析策略配置与管理</span>
       </div>
-      <div class="header-right">
-        <el-button type="primary" @click="handleAdd">
-          <span class="btn-icon">+</span> 新增解析策略
-        </el-button>
-        <el-button @click="handleRefresh" :loading="refreshing">
-          <span class="btn-icon">↻</span> 刷新
-        </el-button>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">+ 新增解析策略</el-button>
+        <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>
       </div>
     </div>
 
-    <div class="search-bar">
+    <div class="search">
       <el-input
           v-model="searchKeyword"
           placeholder="搜索策略名称或主题"
-          class="search-input"
           clearable
           @clear="handleSearch"
           @keyup.enter="handleSearch"
-      >
-        <template #prefix>
-          <el-icon class="search-icon">
-            <Search/>
-          </el-icon>
-        </template>
-      </el-input>
-      <el-select v-model="searchStatus" placeholder="启用状态" clearable class="status-select">
+      />
+      <el-select v-model="searchStatus" placeholder="启用状态" clearable>
         <el-option label="启用" :value="1" />
         <el-option label="停用" :value="0" />
       </el-select>
@@ -37,7 +27,8 @@
       <el-button @click="handleReset">重置</el-button>
     </div>
 
-    <div class="cards-container" v-loading="loading">
+    <div class="main-card">
+      <div class="cards-container" v-loading="loading">
       <el-empty v-if="filteredList.length === 0" description="暂无解析策略" />
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in filteredList" :key="item.id">
@@ -109,7 +100,7 @@
       </el-row>
     </div>
 
-    <div class="pagination-container">
+    <div class="pagination-bar">
       <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -122,6 +113,7 @@
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
       />
+    </div>
     </div>
 
     <el-dialog
@@ -816,62 +808,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.data-parse-page {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: calc(100% - 32px);
-}
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.page-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-icon {
-  margin-right: 5px;
-}
-
-.search-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.search-input {
-  width: 280px;
-}
 
 .status-select {
   width: 150px;
 }
 
+.main-card {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
 .cards-container {
-  min-height: 400px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 15px 20px;
 }
 
 .parse-card {
@@ -969,11 +928,6 @@ onMounted(() => {
   flex: 1;
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
 
 .parse-dialog .el-tabs {
   min-height: 500px;

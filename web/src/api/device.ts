@@ -27,6 +27,12 @@ export interface DeviceItem {
   latitude?: number | null
   createTime?: string
   sensors?: any[]
+  /**
+   * 传感器数量
+   * - 列表接口当前不返回该字段，UI 层以占位符 - 展示
+   * - 后端在 Device 实体中已具备 sensors 字段，分页查询可补一个子查询以填充 sensorCount
+   */
+  sensorCount?: number
 }
 
 export interface DeviceCreatePayload {
@@ -85,6 +91,9 @@ export interface DevicePageParams {
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
   const response = await promise
+    if (response && typeof response.code === 'number' && response.code !== 200) {
+        throw new Error(response.msg || '操作失败')
+    }
   return response.data
 }
 

@@ -1,114 +1,139 @@
 <template>
-  <div class="device-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">设备管理</h2>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">设备管理</h2>
+        <span class="header__subtitle">监测设备全生命周期管理与传感器配置</span>
       </div>
-      <div class="header-right">
-        <el-button type="primary" @click="handleAdd">
-          <span class="btn-icon">+</span> 新增
-        </el-button>
-        <el-button @click="handleExport">
-          <span class="btn-icon">↓</span> 导出
-        </el-button>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">+ 新增</el-button>
+        <el-button @click="handleExport">导出</el-button>
       </div>
     </div>
 
-    <div class="search-bar">
+    <div class="search">
       <el-input
           v-model="searchKeyword"
           placeholder="搜索编号或名称"
-          class="search-input"
           clearable
           @clear="handleSearch"
           @keyup.enter="handleSearch"
-      >
-        <template #prefix>
-          <el-icon class="search-icon">
-            <Search/>
-          </el-icon>
-        </template>
-      </el-input>
-      <el-select v-model="searchStatus" placeholder="设备状态" clearable class="status-select">
+      />
+      <el-select v-model="searchStatus" placeholder="设备状态" clearable>
         <el-option label="正常" :value="1" />
         <el-option label="故障" :value="2" />
         <el-option label="维修" :value="3" />
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
-      <!--      <el-button @click="handleRefresh" :loading="refreshing">刷新</el-button>-->
     </div>
 
-    <div class="table-container">
-      <el-table
-          :data="tableData"
-          border
-          stripe
-          v-loading="loading"
-          :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 'bold' }"
-      >
-        <el-table-column label="图标" width="80" align="center">
-          <template #default="{ row }">
-            <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="code" label="编号" width="150" align="center" />
-        <el-table-column prop="name" label="名称" min-width="180" align="center" />
-        <el-table-column prop="sn" label="SN" width="160" align="center">
-          <template #default="{ row }">
-            <span>{{ row.sn || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
-          <template #default="{ row }">
-            <span>{{ row.authUsername || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="statusName" label="设备状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="在线状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.onlineStatus === 1 ? 'success' : 'info'" effect="plain">
-              {{ row.onlineStatus === 1 ? '在线' : '离线' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="lastReportTime" label="最近上报" width="180" align="center">
-          <template #default="{ row }">
-            <span v-if="row.lastReportTime">{{ row.lastReportTime }}</span>
-            <span v-else class="empty-text">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
-        <el-table-column label="操作" width="200" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="op-cell">
-              <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
-              <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
-                <el-button type="primary" text size="small">更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="account">账号</el-dropdown-item>
-                    <el-dropdown-item command="maintenance">运维</el-dropdown-item>
-                    <el-dropdown-item command="sensors">传感器</el-dropdown-item>
-                    <el-dropdown-item command="copy">复制</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
-                      <span style="color: #f56c6c">删除</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table
+            :data="tableData"
+            border
+            stripe
+            v-loading="loading"
+        >
+          <el-table-column label="图标" width="80" align="center">
+            <template #default="{ row }">
+              <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="code" label="编号" width="130" align="center" />
+          <el-table-column prop="name" label="名称" min-width="160" align="center" />
+          <el-table-column label="传感器数量" width="110" align="center">
+            <template #default="{ row }">
+              <el-tooltip
+                  :content="row.sensorCount != null ? `查看 ${row.name} 的传感器配置` : `为 ${row.name} 配置传感器`"
+                  placement="top"
+              >
+                <span
+                    class="sensor-count-cell"
+                    :class="{
+                    'is-active': row.sensorCount != null && row.sensorCount > 0,
+                    'is-zero': row.sensorCount === 0
+                  }"
+                    @click="handleOpenSensorsFromList(row)"
+                >
+                  <el-icon v-if="row.sensorCount != null && row.sensorCount > 0" class="cell-icon"><Cpu/></el-icon>
+                  <span v-if="row.sensorCount != null">{{ row.sensorCount }}</span>
+                  <span v-else>—</span>
+                </span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column prop="sn" label="SN" min-width="160" align="center">
+            <template #default="{ row }">
+              <span>{{ row.sn || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
+            <template #default="{ row }">
+              <el-tooltip
+                  v-if="row.authUsername"
+                  :content="`查看 ${row.name} 的接入账号`"
+                  placement="top"
+              >
+                <span class="link-cell" @click="handleOpenAccountFromList(row)">
+                  <el-icon class="link-icon"><User/></el-icon>
+                  <span>{{ row.authUsername }}</span>
+                </span>
+              </el-tooltip>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="statusName" label="设备状态" width="100" align="center">
+            <template #default="{ row }">
+              <el-tooltip :content="`对 ${row.name} 进行运维操作`" placement="top">
+                <span class="status-cell" @click="handleOpenMaintenanceFromList(row)">
+                  <el-tag :type="getStatusType(row.status)" effect="plain">{{ row.statusName }}</el-tag>
+                </span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column label="在线状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.onlineStatus === 1 ? 'success' : 'info'" effect="plain">
+                {{ row.onlineStatus === 1 ? '在线' : '离线' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="lastReportTime" label="最近上报" min-width="170" align="center">
+            <template #default="{ row }">
+              <span v-if="row.lastReportTime">{{ row.lastReportTime }}</span>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" min-width="170" align="center" />
+          <el-table-column label="操作" width="200" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="op-cell">
+                <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+                <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
+                  <el-button type="primary" text size="small">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="account">账号</el-dropdown-item>
+                      <el-dropdown-item command="maintenance">运维</el-dropdown-item>
+                      <el-dropdown-item command="sensors">传感器</el-dropdown-item>
+                      <el-dropdown-item command="copy">复制</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>
+                        <span style="color: #f56c6c">删除</span>
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
-      <div class="pagination-container">
+      <div class="table-wrap__pagination">
         <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -389,47 +414,47 @@
         </el-tab-pane>
 
         <el-tab-pane label="运维记录" name="operation">
-          <el-tabs v-model="operationTab" type="card">
-            <el-tab-pane label="上下线记录" name="online">
-              <el-table :data="onlineLogs" border size="small" max-height="400">
-                <el-table-column prop="eventTime" label="时间" width="170"/>
-                <el-table-column prop="eventType" label="类型" width="80">
-                  <template #default="{row}">
-                    <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
-                        row.eventType
-                      }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="clientId" label="Client ID" min-width="160"/>
-                <el-table-column prop="clientIp" label="IP" width="140"/>
-                <el-table-column prop="reason" label="原因" min-width="120"/>
-              </el-table>
-            </el-tab-pane>
-            <el-tab-pane label="维修记录" name="maintenance">
-              <el-table :data="maintenanceLogs" border size="small" max-height="400">
-                <el-table-column label="操作" width="80">
-                  <template #default="{row}">
-                    <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
-                            size="small">
-                      {{ row.statusText }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column label="状态变化" width="110">
-                  <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
-                      getStatusLabel(row.newStatus)
+          <div class="ops-section">
+            <div class="ops-section__title">运行状态变更</div>
+            <el-table :data="onlineLogs" border size="small" max-height="400">
+              <el-table-column prop="eventTime" label="时间" width="170"/>
+              <el-table-column prop="eventType" label="类型" width="80">
+                <template #default="{row}">
+                  <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
+                      row.eventType
                     }}
-                  </template>
-                </el-table-column>
-                <el-table-column prop="operatorName" label="操作人" width="90"/>
-                <el-table-column prop="operatorPhone" label="电话" width="120"/>
-                <el-table-column prop="operationDate" label="操作日期" width="160"/>
-                <el-table-column prop="createTime" label="记录时间" width="160"/>
-                <el-table-column prop="description" label="描述" min-width="120"/>
-              </el-table>
-            </el-tab-pane>
-          </el-tabs>
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="clientId" label="Client ID" min-width="160"/>
+              <el-table-column prop="clientIp" label="IP" width="140"/>
+              <el-table-column prop="reason" label="原因" min-width="120"/>
+            </el-table>
+          </div>
+          <div class="ops-section">
+            <div class="ops-section__title">维修记录</div>
+            <el-table :data="maintenanceLogs" border size="small" max-height="400">
+              <el-table-column label="操作" width="80">
+                <template #default="{row}">
+                  <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
+                          size="small">
+                    {{ row.statusText }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态变化" width="110">
+                <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
+                    getStatusLabel(row.newStatus)
+                  }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="operatorName" label="操作人" width="90"/>
+              <el-table-column prop="operatorPhone" label="电话" width="120"/>
+              <el-table-column prop="operationDate" label="操作日期" width="160"/>
+              <el-table-column prop="createTime" label="记录时间" width="160"/>
+              <el-table-column prop="description" label="描述" min-width="120"/>
+            </el-table>
+          </div>
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
@@ -517,7 +542,12 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="主题编号" prop="sensorNo">
-              <el-input v-model="sensorFormData.sensorNo" placeholder="请输入主题编号（默认同编号）" />
+              <el-input
+                  v-model="sensorFormData.sensorNo"
+                  :placeholder="sensorNoPlaceholder"
+                  :disabled="sensorFormData.monitorTypeId == null"
+                  @input="handleSensorNoInput"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -580,7 +610,13 @@
 
       <template #footer>
         <el-button @click="sensorFormDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSensorSubmit" :loading="sensorFormSubmitLoading">确定</el-button>
+        <el-button
+            type="primary"
+            :loading="sensorFormSubmitLoading"
+            :disabled="sensorFormMode === 'add' && sensorFormData.monitorTypeId == null"
+            @click="handleSensorSubmit"
+        >确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -634,8 +670,9 @@
 <script setup lang="ts">
 import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {Search} from '@element-plus/icons-vue'
+import {Cpu, User} from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -658,6 +695,7 @@ import {
   deleteSensor,
   deleteSensorAttribute,
   getDeviceSensors,
+  getNextSensorNo,
   getSensorDetail,
   type SensorItem,
   updateSensor
@@ -699,6 +737,20 @@ interface MonitorTypeItem {
     rangeMin: number
     rangeMax: number
     unit: string
+    icon?: string
+  }[]
+  /**
+   * 监测类型下的监测内容列表（含 indicatorType，用于生成 sensorNo 占位）。
+   * 由 loadMonitorTypeList 从 getMonitorTypeListWithContents() 透传保留。
+   */
+  contents?: {
+    id: number
+    code: string
+    name: string
+    indicatorType: string
+    unit: string
+    rangeMin?: number | null
+    rangeMax?: number | null
     icon?: string
   }[]
 }
@@ -747,7 +799,6 @@ const detailDialogVisible = ref(false)
 const detailPwdVisible = ref(false)
 const currentRow = ref<DeviceItem | null>(null)
 const detailTab = ref('info')
-const operationTab = ref('online')
 const onlineLogs = ref<any[]>([])
 const maintenanceLogs = ref<any[]>([])
 const loadOpsLogs = async (deviceId: number) => {
@@ -787,6 +838,9 @@ const sensorTableData = ref<SensorItem[]>([])
 const sensorFormDialogVisible = ref(false)
 const sensorFormTitle = ref('新增传感器')
 const sensorFormMode = ref<'add' | 'edit'>('add')
+// sensorNo 自动占位相关：nextId 来自后端预测；manuallyEdited 标记用户是否手动改过
+const nextSensorId = ref<number | null>(null)
+const sensorNoManuallyEdited = ref(false)
 
 const deviceIconDialogVisible = ref(false)
 
@@ -1033,8 +1087,7 @@ const loadTableData = async () => {
     tableData.value = data.rows || []
     total.value = data.total || 0
   } catch (error) {
-    console.error('请求失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '加载设备列表失败')
   } finally {
     loading.value = false
   }
@@ -1046,8 +1099,7 @@ const fetchDetail = async (id: number) => {
   try {
     return await getDeviceDetail(id)
   } catch (error) {
-    console.error('获取详情失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '获取设备详情失败')
     return null
   } finally {
     loading.value = false
@@ -1087,9 +1139,8 @@ const createDevice = async () => {
       password: result.password,
       authStatus: 1
     })
-  } catch (error) {
-    console.error('新增失败:', error)
-    ElMessage.error('网络请求失败')
+  } catch (error: any) {
+    showRequestErrorMessage(error, '新增设备失败')
   } finally {
     submitLoading.value = false
   }
@@ -1115,9 +1166,8 @@ const updateDevice = async () => {
     ElMessage.success('修改成功')
     dialogVisible.value = false
     await loadTableData()
-  } catch (error) {
-    console.error('修改失败:', error)
-    ElMessage.error('网络请求失败')
+  } catch (error: any) {
+    showRequestErrorMessage(error, '修改设备失败')
   } finally {
     submitLoading.value = false
   }
@@ -1130,8 +1180,7 @@ const deleteDevice = async (id: number) => {
     ElMessage.success('删除成功')
     await loadTableData()
   } catch (error) {
-    console.error('删除失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '删除设备失败')
   }
 }
 
@@ -1142,8 +1191,7 @@ const copyDevice = async (id: number) => {
     ElMessage.success('复制成功')
     await loadTableData()
   } catch (error) {
-    console.error('复制失败:', error)
-    ElMessage.error('网络请求失败')
+    showRequestErrorMessage(error, '复制设备失败')
   }
 }
 
@@ -1169,12 +1217,22 @@ const loadMonitorTypeList = async () => {
             rangeMax: content.rangeMax ?? 999999,
             unit: content.unit || '',
             icon: content.icon || ''
+          })),
+          // 透传 contents 供 sensorNo 占位生成读取 indicatorType
+          contents: (item.contents || []).map((content: any) => ({
+            id: Number(content.id),
+            code: content.code,
+            name: content.name,
+            indicatorType: content.indicatorType || '',
+            unit: content.unit || '',
+            rangeMin: content.rangeMin ?? null,
+            rangeMax: content.rangeMax ?? null,
+            icon: content.icon || ''
           }))
         } as MonitorTypeItem))
     monitorTypeList.value = details
   } catch (error) {
-    console.error('获取监测类型失败:', error)
-    ElMessage.error('获取监测类型失败')
+    showRequestErrorMessage(error, '获取监测类型失败')
   }
 }
 
@@ -1199,7 +1257,7 @@ const handleRefresh = async () => {
     await loadTableData()
     ElMessage.success('刷新成功')
   } catch (error) {
-    ElMessage.error('刷新失败')
+    showRequestErrorMessage(error, '刷新失败')
   } finally {
     refreshing.value = false
   }
@@ -1269,7 +1327,6 @@ const handleView = async (row: DeviceItem) => {
     currentRow.value = detail
     sensorList.value = detail.sensors || []
   }
-  operationTab.value = 'online'
   loadOpsLogs(Number(row.id))
   detailDialogVisible.value = true
 }
@@ -1327,7 +1384,7 @@ const handleMaintenanceSubmit = () => {
       maintenanceDialogVisible.value = false
       await loadTableData()
     } catch (e: any) {
-      ElMessage.error(e?.response?.data?.msg || '操作失败')
+      showRequestErrorMessage(e, '操作失败')
     } finally {
       maintenanceLoading.value = false
     }
@@ -1351,9 +1408,31 @@ const handleExport = () => {
   }, 1000)
 }
 
+// 对当前页 tableData 做 code / sn 快速查重，命中后再依赖后端兜底做全局校验
+const validateDeviceIdentity = () => {
+  const code = formData.code?.trim()
+  const sn = formData.sn?.trim()
+  const excludeId = formData.id
+  if (code) {
+    const conflict = tableData.value.find((d) => d.id !== excludeId && d.code === code)
+    if (conflict) {
+      ElMessage.warning(`设备编号 ${code} 已被【${conflict.name}】占用`)
+      return false
+    }
+  }
+  if (sn) {
+    const conflict = tableData.value.find((d) => d.id !== excludeId && d.sn === sn)
+    if (conflict) {
+      ElMessage.warning(`设备 SN ${sn} 已被【${conflict.name}】占用`)
+      return false
+    }
+  }
+  return true
+}
+
 const handleSubmit = () => {
   formRef.value.validate((valid: boolean) => {
-    if (valid) {
+    if (valid && validateDeviceIdentity()) {
       if (formData.id) {
         updateDevice()
       } else {
@@ -1377,8 +1456,7 @@ const handleViewAuth = async (row: DeviceItem) => {
   try {
     await openAuthDialog(row)
   } catch (error) {
-    console.error('获取设备账号失败:', error)
-    ElMessage.error('获取设备账号失败')
+    showRequestErrorMessage(error, '获取设备账号失败')
   }
 }
 
@@ -1414,8 +1492,7 @@ const handleToggleAuthStatus = async (row?: DeviceItem | null) => {
     if (error === 'cancel' || error?.action === 'cancel' || error?.action === 'close') {
       return
     }
-    console.error(`${actionText}账号失败:`, error)
-    ElMessage.error(`${actionText}账号失败`)
+    showRequestErrorMessage(error, `${actionText}账号失败`)
   } finally {
     authStatusLoading.value = false
   }
@@ -1449,8 +1526,7 @@ const handleResetPassword = async () => {
     if (error === 'cancel' || error?.action === 'cancel' || error?.action === 'close') {
       return
     }
-    console.error('重置密码失败:', error)
-    ElMessage.error('重置密码失败')
+    showRequestErrorMessage(error, '重置密码失败')
   } finally {
     authResetLoading.value = false
   }
@@ -1462,13 +1538,30 @@ const handleConfigSensors = async (row: DeviceItem) => {
   sensorDialogVisible.value = true
 }
 
+// 列表行内“传感器数量”单元格快捷入口：直接打开该设备的传感器配置弹窗
+const handleOpenSensorsFromList = async (row: DeviceItem) => {
+  if (!row.id) return
+  await handleConfigSensors(row)
+}
+
+// 列表行内“接入账号”单元格快捷入口：直接打开该设备的账号弹窗
+const handleOpenAccountFromList = async (row: DeviceItem) => {
+  if (!row.id) return
+  await handleViewAuth(row)
+}
+
+// 列表行内“设备状态”单元格快捷入口：直接打开该设备的运维弹窗
+const handleOpenMaintenanceFromList = (row: DeviceItem) => {
+  if (!row.id) return
+  handleMaintenance(row)
+}
+
 const loadSensorTableData = async (deviceId: number) => {
   sensorLoading.value = true
   try {
     sensorTableData.value = await getDeviceSensors(deviceId)
   } catch (error) {
-    console.error('获取传感器列表失败:', error)
-    ElMessage.error('获取传感器列表失败')
+    showRequestErrorMessage(error, '获取传感器列表失败')
     sensorTableData.value = []
   } finally {
     sensorLoading.value = false
@@ -1486,13 +1579,69 @@ const resetSensorForm = () => {
     status: 1,
     attrList: []
   })
+  // 重置"用户是否手动改过 sensorNo"标记；切换监测类型时据此决定是否重算占位
+  sensorNoManuallyEdited.value = false
 }
 
-const handleAddSensor = () => {
+// input 提示文本
+const sensorNoPlaceholder = computed(() => {
+  if (sensorFormData.monitorTypeId == null) {
+    return '请先选择监测类型'
+  }
+  if (!nextSensorId.value) {
+    return '加载中…'
+  }
+  return `默认 {TYPE}_${nextSensorId.value}（本设备第 ${nextSensorId.value} 个传感器），可手动修改`
+})
+
+/**
+ * 计算 sensorNo 占位值：{@code {indicator_type(大写)}_{nextId}}。
+ * 取所选监测类型下第一个监测内容的 indicatorType（与 attrList[0] 一致）。
+ */
+const computeSensorNoPlaceholder = (): string => {
+  if (sensorFormData.monitorTypeId == null || nextSensorId.value == null) {
+    return ''
+  }
+  const mt = monitorTypeList.value.find(m => m.id === sensorFormData.monitorTypeId)
+  const firstContent = mt?.contents?.[0]
+  const indicatorType = (firstContent?.indicatorType || '').trim().toUpperCase()
+  if (!indicatorType) {
+    return ''
+  }
+  return `${indicatorType}_${nextSensorId.value}`
+}
+
+// 拉取指定设备的下一个预测传感器序号；失败时让用户手动填
+const fetchNextSensorNo = async (deviceId?: number) => {
+  const id = deviceId ?? currentSensorDevice.value?.id
+  if (id == null) {
+    nextSensorId.value = null
+    return
+  }
+  try {
+    const {nextNo} = await getNextSensorNo(Number(id))
+    nextSensorId.value = nextNo
+  } catch {
+    nextSensorId.value = null
+  }
+}
+
+// 用户手动修改 sensorNo：标记一下，切换监测类型时不再覆盖
+const handleSensorNoInput = () => {
+  sensorNoManuallyEdited.value = true
+}
+
+const handleAddSensor = async () => {
   sensorFormTitle.value = '新增传感器'
   sensorFormMode.value = 'add'
   resetSensorForm()
   sensorFormDialogVisible.value = true
+  // 拉取当前设备的下一个预测序号（设备下未删除传感器数 +1）
+  nextSensorId.value = null
+  await fetchNextSensorNo()
+  if (!sensorNoManuallyEdited.value) {
+    sensorFormData.sensorNo = computeSensorNoPlaceholder()
+  }
 }
 
 const handleEditSensor = async (row: SensorItem) => {
@@ -1522,8 +1671,7 @@ const handleEditSensor = async (row: SensorItem) => {
     })
     sensorFormDialogVisible.value = true
   } catch (error) {
-    console.error('获取传感器详情失败:', error)
-    ElMessage.error('获取传感器详情失败')
+    showRequestErrorMessage(error, '获取传感器详情失败')
   }
 }
 
@@ -1538,8 +1686,7 @@ const handleDeleteSensor = (row: SensorItem) => {
       ElMessage.success('删除成功')
       await loadSensorTableData(Number(currentSensorDevice.value?.id))
     } catch (error) {
-      console.error('删除传感器失败:', error)
-      ElMessage.error('删除传感器失败')
+      showRequestErrorMessage(error, '删除传感器失败')
     }
   }).catch(() => {})
 }
@@ -1557,6 +1704,10 @@ const handleMonitorTypeChange = (row: SensorFormModel) => {
       rangeMax: attr.rangeMax,
       icon: attr.icon
     }))
+    // 若用户未手动改过 sensorNo，则根据新监测类型重算占位
+    if (!sensorNoManuallyEdited.value) {
+      row.sensorNo = computeSensorNoPlaceholder()
+    }
   }
 }
 
@@ -1592,6 +1743,43 @@ const validateSensorAttrs = () => {
   return true
 }
 
+// 对当前设备已加载的 sensorTableData 做 sensorCode 快速查重，命中后再依赖后端兜底做全局校验
+const validateSensorCode = () => {
+  if (sensorFormMode.value !== 'add') {
+    return true
+  }
+  const code = sensorFormData.sensorCode?.trim()
+  if (!code) {
+    return true
+  }
+  const conflict = sensorTableData.value.find((s) => s.sensorCode === code)
+  if (conflict) {
+    ElMessage.warning(`传感器编号 ${code} 已被【${conflict.sensorName}】占用`)
+    return false
+  }
+  return true
+}
+
+/**
+ * 校验主题编号（sensorNo）在当前设备的已加载传感器列表中是否重复。
+ * 镜像 validateSensorCode。空值不校验（由后端兜底生成）。
+ */
+const validateSensorNo = (): boolean => {
+  if (sensorFormMode.value !== 'add') {
+    return true
+  }
+  const no = sensorFormData.sensorNo?.trim()
+  if (!no) {
+    return true
+  }
+  const conflict = sensorTableData.value.find((s) => s.sensorNo === no)
+  if (conflict) {
+    ElMessage.warning(`主题编号 ${no} 已被【${conflict.sensorName}】占用`)
+    return false
+  }
+  return true
+}
+
 const buildSensorPayload = () => ({
   sensorCode: sensorFormData.sensorCode.trim(),
   sensorNo: sensorFormData.sensorNo.trim() || undefined,
@@ -1622,7 +1810,7 @@ const handleDeleteAttr = async (index: number) => {
 
 const handleSensorSubmit = () => {
   sensorFormRef.value.validate(async (valid: boolean) => {
-    if (!valid || !validateSensorAttrs()) {
+    if (!valid || !validateSensorAttrs() || !validateSensorCode() || !validateSensorNo()) {
       return
     }
 
@@ -1642,9 +1830,8 @@ const handleSensorSubmit = () => {
       }
       sensorFormDialogVisible.value = false
       await loadSensorTableData(Number(currentSensorDevice.value?.id))
-    } catch (error) {
-      console.error('保存传感器失败:', error)
-      ElMessage.error('保存传感器失败')
+    } catch (error: any) {
+      showRequestErrorMessage(error, '保存传感器失败')
     } finally {
       sensorFormSubmitLoading.value = false
     }
@@ -1668,60 +1855,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.device-page {
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  min-height: calc(100% - 40px);
-}
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
 
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-}
 
-.header-right {
-  display: flex;
-  gap: 10px;
-}
 
-.btn-icon {
-  margin-right: 4px;
-}
 
-.search-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-}
 
-.search-input {
-  width: 250px;
-}
 
-.search-icon {
-  font-size: 14px;
-}
 
-.status-select,
-.run-status-select {
-  width: 120px;
-}
 
-.table-container {
-  background: #fff;
-}
 
 .table-icon {
   width: 28px;
@@ -1729,23 +1871,9 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.empty-text {
-  color: #909399;
-}
 
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
 
-.danger-text {
-  color: #f56c6c !important;
-}
 
-.danger-text:hover {
-  color: #f56c6c !important;
-}
 
 .divider-title {
   font-size: 14px;
@@ -1932,4 +2060,111 @@ onMounted(() => {
   color: #909399;
   font-style: italic;
 }
+
+/* 运维记录 - 上下线/维修 两块上下排列 */
+.ops-section {
+  margin-bottom: 18px;
+}
+
+.ops-section:last-child {
+  margin-bottom: 0;
+}
+
+.ops-section__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  border-left: 3px solid #1890ff;
+  padding-left: 8px;
+  background: #fafbfc;
+}
+
+/* 传感器数量单元格（列表行内可点击徽标） */
+.sensor-count-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 32px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #909399;
+  background: #f4f4f5;
+  border: 1px solid #e9e9eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.sensor-count-cell:hover {
+  background: #ecf5ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.sensor-count-cell.is-active {
+  color: #1890ff;
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.sensor-count-cell.is-active:hover {
+  background: #1890ff;
+  color: #fff;
+  border-color: #1890ff;
+}
+
+.sensor-count-cell.is-zero {
+  color: #909399;
+}
+
+.sensor-count-cell .cell-icon {
+  font-size: 12px;
+}
+
+/* 接入账号单元格（蓝色文字链接样式） */
+.link-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1890ff;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.link-cell:hover {
+  color: #096dd9;
+  background: #e6f7ff;
+  text-decoration: underline;
+}
+
+.link-cell .link-icon {
+  font-size: 13px;
+}
+
+/* 设备状态单元格（点击整行打开运维弹窗，hover 微微高亮） */
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.status-cell:hover {
+  background: #f5f7fa;
+  transform: scale(1.05);
+}
+
+.status-cell:hover :deep(.el-tag) {
+  filter: brightness(0.95);
+}
+
 </style>

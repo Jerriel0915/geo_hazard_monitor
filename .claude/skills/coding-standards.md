@@ -147,6 +147,7 @@ ServiceException("监测内容不存在或已停用: id="+attr.getMonitorContent
 
 - 全量使用**逻辑删除**（`del_flag` 列），不使用物理 DELETE
 - 因此**不使用数据库外键约束**（FK 无法感知 del_flag=0 过滤，导致僵尸引用）
+  - **唯一例外**：`device_hazard_point` / `video_device_hazard_point` 两表保留 FK（核心绑定）
 - 参照完整性通过应用层 Service 校验保证
 - 字段注释需区分语义，避免模糊命名（如 `sensor_code` vs `sensor_no`）
 - 唯一约束使用 UNIQUE KEY，删除时通过重写列值（如 `#DEL#` 后缀）释放
@@ -177,3 +178,175 @@ ServiceException("监测内容不存在或已停用: id="+attr.getMonitorContent
 @DisplayName("IDeviceSessionService 不可用时不应抛异常")
 void resetDeviceAuthPassword_serviceUnavailable_shouldNotThrow() { ... }
 ```
+
+---
+
+## 九、第三方库约定（本节增量补扫追加）
+
+### 9.1 MyBatis 使用约定
+
+- **XML Mapper 位置**：`src/main/resources/mapper/{module}/{Entity}Mapper.xml`（与 Java 接口同包同名）
+- **Mapper 接口**：放置在 `com.zwei.{module}.{sub}.mapper` 包下，与 XML 配套
+- **动态 SQL 优先**用 `<where>` / `<if>` / `<foreach>`，避免在 Java 代码中拼接 SQL 字符串
+- **分页**：使用 `PageHelper.startPage(pageNum, pageSize)`，Controller 层通过 `TableDataInfo` 统一返回
+- **返回集合**：`SELECT` 查询统一返回 `List<T>`，单条用 `T selectById(Long id)` 返回 `T` 或 `null`
+- **批量操作**：用 `<foreach collection="list" item="x" separator=";">` 批量 INSERT/UPDATE，避免 N+1
+- **逻辑删除**：所有 SELECT 必须带 `del_flag = 0` 条件（除 `selectDeleted` 显式方法）
+- **乐观锁**：`@Version` 字段 + `version` 列（仅高并发业务表，如 `alarm_criteria`）
+
+### 9.2 FastJSON2 序列化约定
+
+- 统一使用 `com.alibaba.fastjson2.JSON` / `JSONObject` / `JSONArray`（**不混用 fastjson 1.x**）
+- 反序列化：`JSON.parseObject(text, Type.class)` 或 `JSON.parseArray(text, Item.class)`
+- 序列化：`JSON.toJSONString(obj)` 默认输出紧凑格式
+- 字段为 null：默认输出 `"field":null`；如需忽略 null，用 `JSON.toJSONString(obj, JSONWriter.Feature.WriteMapNullValue)` 控制
+- 大文本字段（如 `notice_content` longblob）：在 Domain 上使用 `transient` 或自定义 `PropertyFilter` 排除
+- **日期格式**：默认输出毫秒时间戳；如需 `yyyy-MM-dd HH:mm:ss`，使用
+  `JSON.toJSONString(obj, JSONWriter.Feature.WriteDateUseDateFormat)`
+
+### 9.3 Spring 注解使用约定
+
+- **依赖注入**：**统一构造器注入**（`@Autowired` 可省略，4.0+ 默认支持），禁止 `@Resource` 字段注入
+- **可选依赖**：`ObjectProvider<T>` 注入，调用 `getIfAvailable()`，避免 `NoSuchBeanDefinitionException`
+- **事务**：`@Transactional(rollbackFor = Exception.class)` 显式指定回滚异常；只读方法加 `readOnly = true`
+- **缓存**：`@Cacheable(value="...", key="#id")` / `@CacheEvict(value="...", key="#id")` / `@Caching` 多操作
+- **异步**：本项目目前**未启用 `@Async`**（所有异步通过 `ExecutorService` 手动管理）；新增异步必须先讨论
+
+---
+
+## 十、异步/线程池使用约定（追加）
+
+### 10.1 当前已用线程池
+
+| 模块                    | 线程名                       | 类型         | 用途                      |
+|-----------------------|---------------------------|------------|-------------------------|
+| `zwei-iot-timeseries` | `monitor-ingest-consumer` | 单线程 daemon | Redis Stream 消费         |
+| `zwei-iot-alarm`      | `groovy-eval`             | 单线程 daemon | Groovy 脚本执行             |
+| `zwei-iot-alarm`      | alarm-CRON 调度             | Quartz 线程池 | `ComprehensiveAlarmJob` |
+
+### 10.2 创建线程池
+
+```java
+// ✅ 推荐：显式 ThreadFactory + Daemon
+this.executorService = Executors.newSingleThreadExecutor(r -> {
+    Thread thread = new Thread(r, "{业务名}-{角色}");
+    thread.setDaemon(true);  // 不阻塞 JVM 退出
+    return thread;
+});
+```
+
+```java
+// ❌ 禁止：裸 Executors.newFixedThreadPool()（无界队列风险）
+// ❌ 禁止：Thread.start() 显式启动未命名线程
+```
+
+### 10.3 优雅停机
+
+```java
+@PreDestroy
+public void stop() throws InterruptedException {
+    running = false;                // 1. 设置 volatile 标志
+    executorService.shutdownNow();   // 2. 中断任务
+    executorService.awaitTermination(5, TimeUnit.SECONDS);  // 3. 等待兜底
+}
+```
+
+### 10.4 Spring `@EnableScheduling` / `@Scheduled`
+
+- 轻量定时任务可使用 `@Scheduled(cron = "...")`，由 Spring 调度
+- 复杂任务（需监控/可暂停）使用 `zwei-quartz` 模块的 Quartz Job
+- 定时清理等数据级任务统一通过 `sys_job` 表配置（参考 `sys_config.log.cleanup.cron`）
+
+---
+
+## 十一、Redis 使用约定（追加）
+
+### 11.1 Key 命名规范
+
+```
+{业务域}:{实体}:{主键/类型}:[{子键1}:{子键2}:...]
+```
+
+**已使用 Key 模式清单**：
+
+| Key 模式                                                                       | 用途           | TTL                    | 序列化             |
+|------------------------------------------------------------------------------|--------------|------------------------|-----------------|
+| `login:token:{token}`                                                        | JWT token 缓存 | 30 分钟                  | String          |
+| `sys_user_online:{token}`                                                    | 在线用户         | 同 session              | JSON            |
+| `alarm:pre-trigger:{cid}:{hpId}:{level}`                                     | 告警预触发计数      | `preTriggerTtlSeconds` | String (Long)   |
+| `alarm:last-trigger:{cid}:{hpId}`                                            | 告警最近触发时间     | 同上                     | String (millis) |
+| `alarm:criteria:enabled`                                                     | 启用判据缓存       | 5 分钟                   | JSON (List)     |
+| `stream:monitor:ingest`                                                      | 监测数据缓冲       | 永久 (Stream trim)       | Stream          |
+| `{dedupeKeyPrefix}{deviceId}:{sensorNo}:{attrCode}:{dataTime}:{payloadHash}` | 幂等去重         | `dedupeTtlSeconds`     | String "1"      |
+| `cache:hazardPoint::{id}` (Spring Cache)                                     | 隐患点缓存        | 5 分钟                   | JSON            |
+
+### 11.2 序列化器
+
+- 默认 `RedisTemplate<Object, Object>` + `StringRedisSerializer` / `JdkSerializationRedisSerializer`
+- 复杂对象显式使用 `JSON.toJSONString()` / `JSON.parseObject()` 转换
+- **禁止** 存储 `byte[]` / `InputStream` / 非 Serializable POJO 直接到 Redis
+
+### 11.3 过期时间
+
+- **必须**显式设置 TTL（避免内存泄漏）
+- TTL 单位：业务配置项用 `Duration` 类型注入（`Duration.ofSeconds(60)`），配置键统一 `-ttl-seconds` / `-ttl-minutes` 后缀
+- 业务常量直接用 `Duration.ofMinutes(5)` 等
+
+### 11.4 分布式锁（待评估）
+
+当前项目**未使用** `Redisson` / `SETNX` 锁。如需新增：
+
+- 优先用 `RedisTemplate.opsForValue().setIfAbsent(key, val, Duration)`
+- 锁粒度按主键 ID，不锁整表
+
+---
+
+## 十二、Controller 响应规范（追加）
+
+### 12.1 统一返回结构
+
+**所有** Controller 方法（除 SSE/文件下载）必须返回 `AjaxResult`：
+
+```java
+@GetMapping("/list")
+public AjaxResult list(SysUser user) {
+    return AjaxResult.success(service.selectUserList(user));
+}
+
+@PostMapping
+public AjaxResult add(@RequestBody SysUser user) {
+    return toAjax(service.insertUser(user));  // 自动转 success/error
+}
+```
+
+### 12.2 分页返回
+
+```java
+@GetMapping("/page")
+public TableDataInfo page(SysUser user, int pageNum, int pageSize) {
+    startPage();  // PageHelper
+    List<SysUser> list = service.selectUserList(user);
+    return getDataTable(list);  // 自动包 { total, rows, pageNum, pageSize }
+}
+```
+
+### 12.3 错误抛出
+
+- 业务校验失败：`throw new ServiceException("用户不存在")`，由 `GlobalExceptionHandler` 统一拦截
+- 鉴权失败：使用 `@PreAuthorize("@ss.hasPermi('system:user:list')")` 由 Spring Security 拦截
+- 限流：使用 `@RateLimiter` 注解（AOP 切面）
+
+### 12.4 参数校验
+
+- DTO 入参用 `@Valid` + JSR-303 注解（`@NotBlank` / `@NotNull` / `@Size`）
+- 路径变量用 `@PathVariable` + 自定义校验
+- Controller 方法**不**做业务校验，只做参数格式校验；业务校验在 Service 层
+
+---
+
+## 变更记录
+
+| 时间               | 变更                                                                                                 |
+|------------------|----------------------------------------------------------------------------------------------------|
+| 2026-05-08       | 初版 (8 个章节: 注释/JavaDoc/模块边界/错误处理/日志/数据库/命名/测试)                                                      |
+| 2026-06-10 19:08 | 增量补扫追加 4 节: 九 第三方库约定 (MyBatis/FastJSON2/Spring 注解) / 十 异步与线程池 / 十一 Redis 使用约定 / 十二 Controller 响应规范 |

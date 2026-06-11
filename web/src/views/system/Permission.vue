@@ -1,83 +1,76 @@
 <template>
-  <div class="page-content">
-    <div class="page-title">权限管理</div>
-    <div class="page-body">
-      <el-tabs v-model="activeTab" type="border-card">
-        <el-tab-pane label="角色管理" name="role">
-          <div class="tab-content">
-            <div class="search-bar">
-              <el-form :model="roleSearchForm" inline>
-                <el-form-item label="角色编码">
-                  <el-input v-model="roleSearchForm.code" placeholder="请输入角色编码" clearable />
-                </el-form-item>
-                <el-form-item label="角色名称">
-                  <el-input v-model="roleSearchForm.name" placeholder="请输入角色名称" clearable />
-                </el-form-item>
-                <el-form-item label="状态">
-                  <el-select v-model="roleSearchForm.status" placeholder="全部状态" clearable style="width: 140px">
-                    <el-option label="正常" :value="0" />
-                    <el-option label="停用" :value="1" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="handleRoleSearch">查询</el-button>
-                  <el-button @click="handleRoleReset">重置</el-button>
-                </el-form-item>
-              </el-form>
-              <div class="toolbar">
-                <el-button @click="loadRoles">刷新</el-button>
-                <el-button type="primary" @click="handleAddRole">新增角色</el-button>
-              </div>
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">权限管理</h2>
+        <span class="header__subtitle">角色管理与菜单权限配置</span>
+      </div>
+    </div>
+
+    <el-tabs v-model="activeTab" class="perm-tabs">
+      <el-tab-pane label="角色管理" name="role">
+        <div class="perm-tab-content">
+          <div class="search">
+            <el-input v-model="roleSearchForm.code" placeholder="角色编码" clearable />
+            <el-input v-model="roleSearchForm.name" placeholder="角色名称" clearable />
+            <el-select v-model="roleSearchForm.status" placeholder="状态" clearable>
+              <el-option label="正常" :value="0" />
+              <el-option label="停用" :value="1" />
+            </el-select>
+            <el-button type="primary" @click="handleRoleSearch">查询</el-button>
+            <el-button @click="handleRoleReset">重置</el-button>
+            <el-button type="primary" @click="handleAddRole">新增角色</el-button>
+          </div>
+
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table :data="roleList" border stripe v-loading="roleLoading">
+                <el-table-column type="index" label="序号" width="60" align="center" />
+                <el-table-column prop="name" label="角色名称" min-width="140" />
+                <el-table-column prop="code" label="角色编码" min-width="140" />
+                <el-table-column prop="dataScope" label="数据范围" min-width="120">
+                  <template #default="{ row }">
+                    {{ getDataScopeLabel(row.dataScope) }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="getRoleStatusType(row.status)">{{ getRoleStatusLabel(row.status) }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="菜单权限数" width="100" align="center">
+                  <template #default="{ row }">
+                    {{ row.menuIds?.length ?? '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="description" label="角色说明" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="createTime" label="创建时间" min-width="170" />
+                <el-table-column label="操作" width="220" fixed="right">
+                  <template #default="{ row }">
+                    <div v-if="row.id === 1" class="super-admin-tag">超级管理员</div>
+                    <div v-else class="op-cell">
+                      <el-button type="primary" text size="small" @click="handleEditRole(row)">编辑</el-button>
+                      <el-button type="primary" text size="small" @click="handleConfigPermission(row)">权限配置</el-button>
+                      <el-dropdown trigger="hover" @command="(cmd: string) => handleRoleMoreCommand(cmd, row)">
+                        <el-button type="primary" text size="small">更多</el-button>
+                        <template #dropdown>
+                          <el-dropdown-menu>
+                            <el-dropdown-item :command="'toggle_' + row.id">
+                              {{ row.status === 0 ? '停用' : '启用' }}
+                            </el-dropdown-item>
+                            <el-dropdown-item command="delete" divided>
+                              <span style="color: #f56c6c">删除</span>
+                            </el-dropdown-item>
+                          </el-dropdown-menu>
+                        </template>
+                      </el-dropdown>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
             </div>
 
-            <el-table :data="roleList" border stripe v-loading="roleLoading">
-              <el-table-column type="index" label="序号" width="60" align="center" />
-              <el-table-column prop="name" label="角色名称" width="160" />
-              <el-table-column prop="code" label="角色编码" width="160" />
-              <el-table-column prop="dataScope" label="数据范围" width="160">
-                <template #default="{ row }">
-                  {{ getDataScopeLabel(row.dataScope) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" width="90" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getRoleStatusType(row.status)">{{ getRoleStatusLabel(row.status) }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="菜单权限数" width="110" align="center">
-                <template #default="{ row }">
-                  {{ row.menuIds?.length ?? '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="description" label="角色说明" min-width="220" show-overflow-tooltip />
-              <el-table-column prop="createTime" label="创建时间" width="180" />
-              <el-table-column label="操作" width="220" fixed="right">
-                <template #default="{ row }">
-                  <div class="op-cell" v-if="row.id === 1">
-                    <span class="super-admin-tag">超级管理员</span>
-                  </div>
-                  <div class="op-cell" v-else>
-                    <el-button type="primary" text size="small" @click="handleEditRole(row)">编辑</el-button>
-                    <el-button type="primary" text size="small" @click="handleConfigPermission(row)">权限配置</el-button>
-                    <el-dropdown trigger="hover" @command="(cmd: string) => handleRoleMoreCommand(cmd, row)">
-                      <el-button type="primary" text size="small">更多</el-button>
-                      <template #dropdown>
-                        <el-dropdown-menu>
-                          <el-dropdown-item :command="'toggle_' + row.id">
-                            {{ row.status === 0 ? '停用' : '启用' }}
-                          </el-dropdown-item>
-                          <el-dropdown-item command="delete" divided>
-                            <span style="color: #f56c6c">删除</span>
-                          </el-dropdown-item>
-                        </el-dropdown-menu>
-                      </template>
-                    </el-dropdown>
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
-
-            <div class="pagination">
+            <div class="table-wrap__pagination">
               <el-pagination
                 v-model:current-page="rolePagination.pageNum"
                 v-model:page-size="rolePagination.pageSize"
@@ -91,63 +84,67 @@
               />
             </div>
           </div>
-        </el-tab-pane>
+        </div>
+      </el-tab-pane>
 
-        <el-tab-pane label="菜单管理" name="menu">
-          <div class="tab-content">
-            <div class="search-bar">
-              <div />
-              <div class="toolbar">
-                <el-button @click="loadMenus">刷新</el-button>
-                <el-button type="primary" @click="handleAddMenu">新增菜单</el-button>
-              </div>
-            </div>
-
-            <el-table
-              :data="menuList"
-              border
-              stripe
-              row-key="id"
-              default-expand-all
-              v-loading="menuLoading"
-              :tree-props="{ children: 'children' }"
-            >
-              <el-table-column prop="name" label="菜单名称" min-width="180" />
-              <el-table-column prop="code" label="菜单编码" width="160" />
-              <el-table-column prop="path" label="路由路径" width="220" show-overflow-tooltip />
-              <el-table-column prop="type" label="类型" width="90" align="center">
-                <template #default="{ row }">
-                  <el-tag size="small" :type="getMenuTypeTag(row.type)">{{ getMenuTypeLabel(row.type) }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="visible" label="显示状态" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag size="small" :type="row.visible === 0 ? 'success' : 'info'">
-                    {{ row.visible === 0 ? '显示' : '隐藏' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
-              <el-table-column prop="perms" label="权限标识" min-width="220" show-overflow-tooltip />
-              <el-table-column label="覆盖状态" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.perms" size="small" :type="isPermMissingFromDb(row.perms) ? 'warning' : 'success'">
-                    {{ isPermMissingFromDb(row.perms) ? '仅代码' : '已注册' }}
-                  </el-tag>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="150" fixed="right">
-                <template #default="{ row }">
-                  <span class="action-link" @click="handleEditMenu(row)">编辑</span>
-                  <span v-if="row.id !== 1" class="action-link action-danger" @click="handleDeleteMenu(row)">删除</span>
-                </template>
-              </el-table-column>
-            </el-table>
+      <el-tab-pane label="菜单管理" name="menu">
+        <div class="perm-tab-content">
+          <div class="search">
+            <span></span>
+            <el-button @click="loadMenus">刷新</el-button>
+            <el-button type="primary" @click="handleAddMenu">新增菜单</el-button>
           </div>
-        </el-tab-pane>
-      </el-tabs>
-    </div>
+
+          <div class="table-wrap">
+            <div class="table-wrap__scroll">
+              <el-table
+                :data="menuList"
+                border
+                stripe
+                row-key="id"
+                default-expand-all
+                v-loading="menuLoading"
+                :tree-props="{ children: 'children' }"
+              >
+                <el-table-column prop="name" label="菜单名称" min-width="180" />
+                <el-table-column prop="code" label="菜单编码" min-width="160" />
+                <el-table-column prop="path" label="路由路径" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="type" label="类型" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="getMenuTypeTag(row.type)">{{ getMenuTypeLabel(row.type) }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="visible" label="显示状态" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="row.visible === 0 ? 'success' : 'info'">
+                      {{ row.visible === 0 ? '显示' : '隐藏' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
+                <el-table-column prop="perms" label="权限标识" min-width="220" show-overflow-tooltip />
+                <el-table-column label="覆盖状态" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag v-if="row.perms" size="small" :type="isPermMissingFromDb(row.perms) ? 'warning' : 'success'">
+                      {{ isPermMissingFromDb(row.perms) ? '仅代码' : '已注册' }}
+                    </el-tag>
+                    <span v-else>-</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="150" fixed="right">
+                  <template #default="{ row }">
+                    <div class="op-cell">
+                      <el-button type="primary" text size="small" @click="handleEditMenu(row)">编辑</el-button>
+                      <el-button v-if="row.id !== 1" type="danger" text size="small" @click="handleDeleteMenu(row)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
 
     <el-dialog
       :title="roleDialogTitle"
@@ -806,48 +803,30 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: calc(100% - 32px);
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.page-body {
-  padding: 0;
-}
-
-.tab-content {
-  padding: 16px 0;
-}
-
-.search-bar {
+.perm-tabs {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
 }
 
-.toolbar {
-  display: flex;
-  gap: 10px;
+.perm-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
 }
 
-.pagination {
-  margin-top: 20px;
+.perm-tabs :deep(.el-tab-pane) {
+  height: 100%;
+}
+
+.perm-tab-content {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  height: 100%;
+}
+
+.perm-tab-content .search {
+  flex-shrink: 0;
 }
 
 .perm-config {
@@ -862,57 +841,8 @@ onMounted(async () => {
   color: #606266;
 }
 
-:deep(.el-form--inline .el-form-item) {
-  margin-right: 16px;
-  margin-bottom: 10px;
-}
-
-.action-link {
-  display: inline-block;
-  padding: 4px 10px;
-  margin: 0 4px;
-  color: #303133;
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.action-link:hover {
-  color: #1890ff;
-}
-
-.action-link.action-warning {
-  color: #faad14;
-}
-
-.action-link.action-warning:hover {
-  color: #d48806;
-}
-
-.action-link.action-success {
-  color: #52c41a;
-}
-
-.action-link.action-success:hover {
-  color: #389e0d;
-}
-
-.action-link.action-danger {
-  color: #f5222d;
-}
-
-.action-link.action-danger:hover {
-  color: #cf1322;
-}
-
 .super-admin-tag {
   color: #909399;
   font-size: 13px;
-}
-
-.op-cell {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 </style>

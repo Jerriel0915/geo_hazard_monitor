@@ -45,9 +45,12 @@ public class AccessLogFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
+        // SSE 长连接端点不记录访问日志，避免每个重连周期产生大量无意义记录
         return !path.startsWith("/api/v1/")
                 || path.startsWith("/api/v1/logs/")
                 || path.startsWith("/api/v1/auth/")
+                || path.startsWith("/api/v1/system/notice/stream")
+                || path.startsWith("/api/v1/alarm/stream")
                 || "/register".equals(path)
                 || "/error".equals(path);
     }

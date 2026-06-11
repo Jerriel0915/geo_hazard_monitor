@@ -1,6 +1,7 @@
 package com.zwei.iot.alarm.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
 import com.zwei.iot.alarm.domain.AlarmCriteriaLog;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaLogMapper;
@@ -54,6 +55,9 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
 
     @Override
     public int insert(AlarmCriteria criteria) {
+        if (!checkCriteriaUnique(criteria.getName(), criteria.getHazardPointId(), 0L)) {
+            throw new ServiceException("新增失败，该隐患点下已存在同名判据");
+        }
         criteria.setVersion(1);
         criteria.setCreateTime(new Date());
         int rows = criteriaMapper.insertCriteria(criteria);
@@ -66,6 +70,9 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
 
     @Override
     public int update(AlarmCriteria criteria) {
+        if (!checkCriteriaUnique(criteria.getName(), criteria.getHazardPointId(), criteria.getId())) {
+            throw new ServiceException("修改失败，该隐患点下已存在同名判据");
+        }
         AlarmCriteria old = criteriaMapper.selectCriteriaById(criteria.getId());
         if (old == null) return 0;
         criteria.setUpdateTime(new Date());
@@ -102,6 +109,11 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     @Override
     public List<AlarmCriteriaLog> selectLogsByCriteriaId(Long criteriaId) {
         return criteriaLogMapper.selectLogsByCriteriaId(criteriaId);
+    }
+
+    @Override
+    public boolean checkCriteriaUnique(String name, Long hazardPointId, Long id) {
+        return criteriaMapper.checkCriteriaUnique(name, hazardPointId, id) == null;
     }
 
     private void recordLog(Long criteriaId, int version, String changeType, String oldValue, String newValue) {
