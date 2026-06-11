@@ -70,11 +70,22 @@
 
         <div class="left-bottom">
           <div class="statistics-container">
-            <!-- 年度隐患点变化 -->
+            <!-- 系统健康度 雷达图 -->
+            <div class="statistics-box health-radar-box">
+              <div class="box-title">
+                <img src="@/assets/icons/signal.png" class="icon" />
+                <span class="title">系统健康度</span>
+              </div>
+              <div class="box-container radar-container">
+                <div ref="chartRadar" style="width:100%;height:100%"></div>
+              </div>
+            </div>
+
+            <!-- 隐患点变化情况 -->
             <div class="statistics-box year-disaster">
               <div class="box-title">
                 <img src="@/assets/icons/signal.png" class="icon" />
-                <span class="title">年度隐患点变化情况</span>
+                <span class="title">隐患点变化情况</span>
               </div>
               <div class="box-container">
                 <div class="count-item">
@@ -146,33 +157,17 @@
               </div>
             </div>
 
-            <!-- 年度隐患分类占比 (3D饼图) -->
+            <!-- 隐患分类占比 (3D饼图) -->
             <div class="statistics-box year-waring">
               <div class="box-title">
                 <img src="@/assets/icons/five-pointed-star.png" class="icon" />
-                <span class="title">年度隐患分类占比</span>
+                <span class="title">隐患分类占比</span>
               </div>
               <div class="box-container waring-box">
                 <div class="bgBox">
                   <video class="bg" muted autoplay loop src="@/assets/images/disaster/warning-video.webm"></video>
                 </div>
                 <div class="chartWaring" ref="chart3DPie"></div>
-              </div>
-            </div>
-
-            <!-- 威胁分布情况 -->
-            <div class="statistics-box danger-disaster">
-              <div class="box-title">
-                <img src="@/assets/icons/exclamation-point.png" class="icon" />
-                <span class="title">威胁分布情况</span>
-              </div>
-              <div class="box-container">
-                <div class="danger-box danger-box1">
-                  <div ref="chartThreat1" style="width:100%;height:100%"></div>
-                </div>
-                <div class="danger-box danger-box2">
-                  <div ref="chartThreat2" style="width:100%;height:100%"></div>
-                </div>
               </div>
             </div>
           </div>
@@ -186,7 +181,7 @@
           <div class="statistics-box year-prevention-cure">
             <div class="box-title">
               <img src="@/assets/icons/shield.png" class="icon" />
-              <span class="title">月度警情趋势</span>
+              <span class="title">警情趋势</span>
             </div>
             <div class="box-container">
               <div class="top-count">
@@ -231,16 +226,9 @@
               <img src="@/assets/icons/big-rain.png" class="icon" />
               <span class="title">风险排名</span>
             </div>
-            <div class="box-container chart-select-box">
-              <div class="top-select">
-                <el-select v-model="selectedGroup" @change="onGroupChange" size="small">
-                  <el-option v-for="g in groupList" :key="g.value" :label="g.label" :value="g.value" />
-                </el-select>
-              </div>
-              <div class="bottom-chart">
-                <div v-if="riskRankingData.length" ref="chartRisk" style="width:100%;height:100%"></div>
-                <div v-else class="noData">暂无数据</div>
-              </div>
+            <div class="box-container">
+              <div v-if="riskRankingData.length" ref="chartRisk" style="width:100%;height:100%"></div>
+              <div v-else class="noData">暂无数据</div>
             </div>
           </div>
 
@@ -248,7 +236,7 @@
           <div class="statistics-box week-rain">
             <div class="box-title">
               <img src="@/assets/icons/water-droplet.png" class="icon" />
-              <span class="title">传感器监测趋势</span>
+              <span class="title">设备在线趋势</span>
             </div>
             <div class="box-container chart-select-box">
               <div class="top-select">
@@ -281,7 +269,7 @@ import ThreeMap from './components/ThreeMap.vue'
 import { getPie3D, getParametricEquation } from './components/getPie3D'
 import { getDashboardFull, getHazardPointTrend, getSensorDistribution, type DashboardFullVO } from '@/api/monitor'
 import { getPendingAlarms } from '@/api/alarm'
-import { getHazardPointPage, getHazardPointGroups } from '@/api/hazardPoint'
+import { getHazardPointPage } from '@/api/hazardPoint'
 
 // ==================== State ====================
 const dateTime = ref('')
@@ -294,6 +282,8 @@ const realTimeData = ref(0)
 const realTimeAlarm = ref(0)
 const disasterCount = ref(0)
 const monitorPointCount = ref(0)
+const healthScore = ref(0)
+const healthItems = ref<Array<{ name: string; value: number; color: string }>>([])
 const yearNewCount = ref(0)
 const yearCompletedCount = ref(0)
 const currentHazardCount = ref(0)
@@ -303,8 +293,6 @@ const unmonitoredCount = ref(0)
 const alarmLevelCounts = ref<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 })
 
 // Selectors
-const selectedGroup = ref(0)
-const groupList = ref<Array<{ label: string; value: number }>>([])
 const selectedMonitorType = ref(0)
 const monitorTypeList = ref<Array<{ id: number; name: string }>>([])
 const riskRankingData = ref<any[]>([])
@@ -314,15 +302,13 @@ const hazardPoints = ref<Array<{ longitude: number; latitude: number; name: stri
 
 // Chart refs
 const chart3DPie = ref<HTMLDivElement | null>(null)
-const chartThreat1 = ref<HTMLDivElement | null>(null)
-const chartThreat2 = ref<HTMLDivElement | null>(null)
+const chartRadar = ref<HTMLDivElement | null>(null)
 const chartMonthly = ref<HTMLDivElement | null>(null)
 const chartRisk = ref<HTMLDivElement | null>(null)
 const chartSensor = ref<HTMLDivElement | null>(null)
 
 let e3DPie: echarts.ECharts | null = null
-let eThreat1: echarts.ECharts | null = null
-let eThreat2: echarts.ECharts | null = null
+let eRadar: echarts.ECharts | null = null
 let eMonthly: echarts.ECharts | null = null
 let eRisk: echarts.ECharts | null = null
 let eSensor: echarts.ECharts | null = null
@@ -409,26 +395,50 @@ function render3DPie(data: Array<{ name: string; value: number; itemStyle?: any 
 }
 
 // ==================== Threat Distribution Charts ====================
-function renderThreatCharts() {
-  eThreat1 = initChart(chartThreat1.value, eThreat1)
-  eThreat2 = initChart(chartThreat2.value, eThreat2)
-  if (!eThreat1 || !eThreat2) return
+// ==================== Health Radar ====================
+function renderHealthRadar(items: Array<{ name: string; value: number; color: string }>, overallScore: number) {
+  eRadar = initChart(chartRadar.value, eRadar)
+  if (!eRadar) return
 
-  const baseBar = (title: string, data: number[], categories: string[]) => ({
-    backgroundColor: '',
-    tooltip: { trigger: 'axis' as const, confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)' },
-    title: { text: title, textStyle: { fontSize: 14 }, top: 10, left: 'center' },
-    grid: { x: 0, x2: 0, y2: 18 },
-    xAxis: { type: 'category' as const, data: categories, axisTick: { show: false }, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)' } },
-    yAxis: { show: false },
-    series: [{ type: 'bar' as const, barWidth: 8, data, itemStyle: { color: new echarts.graphic.LinearGradient(0, 1, 0, 0, [{ offset: 0, color: 'rgba(13,48,66,0.1)' }, { offset: 0.6, color: 'rgba(23,100,146,0.6)' }, { offset: 1, color: 'rgba(24,177,235,1)' }]), label: { show: true, distance: 15, position: 'top' as const, formatter: '{c}万', color: '#fff' } } }]
+  const indicators = items.map(i => ({ name: i.name, max: 100 }))
+  const values = items.map(i => i.value)
+
+  eRadar.setOption({
+    backgroundColor: 'transparent',
+    radar: {
+      center: ['50%', '50%'],
+      radius: '65%',
+      indicator: indicators,
+      axisName: { color: '#8899bb', fontSize: 12, borderRadius: 3, padding: [2, 4] },
+      splitArea: { areaStyle: { color: ['rgba(0,180,255,.02)', 'rgba(0,180,255,.04)', 'rgba(0,180,255,.02)', 'rgba(0,180,255,.04)', 'rgba(0,180,255,.02)'] } },
+      axisLine: { lineStyle: { color: 'rgba(0,180,255,.12)' } },
+      splitLine: { lineStyle: { color: 'rgba(0,180,255,.08)' } }
+    },
+    graphic: [{
+      type: 'group',
+      left: 'center',
+      top: 'middle',
+      children: [
+        { type: 'text', style: { text: String(overallScore), fill: '#fff', fontSize: 32, fontWeight: 'bold', fontFamily: 'Swis721 Cn BT', textAlign: 'center' }, left: 'center', top: -16 },
+        { type: 'text', style: { text: '综合评分', fill: '#8899bb', fontSize: 12, textAlign: 'center' }, left: 'center', top: 20 }
+      ]
+    }],
+    series: [{
+      type: 'radar',
+      symbol: 'circle',
+      symbolSize: 6,
+      data: [{
+        value: values,
+        name: '健康度',
+        areaStyle: { color: 'rgba(0,229,255,.15)' },
+        lineStyle: { color: '#00e5ff', width: 2 },
+        itemStyle: { color: '#00e5ff' }
+      }]
+    }]
   })
-
-  eThreat1.setOption(baseBar('威胁人口', [76, 87, 60, 48], ['<10', '50-100', '100-500', '>500']))
-  eThreat2.setOption(baseBar('威胁财产', [60, 48, 76, 87], ['<10', '50-100', '100-500', '>500']))
 }
 
-// ==================== Monthly Alarm Trend ====================
+// ==================== Alarm Trend (area chart) ====================
 function renderMonthlyTrend(data: number[]) {
   eMonthly = initChart(chartMonthly.value, eMonthly)
   if (!eMonthly) return
@@ -441,31 +451,44 @@ function renderMonthlyTrend(data: number[]) {
     legend: { show: false },
     xAxis: { type: 'category', data: months, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)' }, axisTick: { show: false } },
     yAxis: { type: 'value', name: '条', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
-    series: [{ type: 'line', showAllSymbol: true, symbolSize: 12, smooth: false, animationDuration: 2000, lineStyle: { color: 'rgba(76,92,106,0.8)' }, data }]
+    series: [{
+      type: 'line', symbol: 'none', smooth: true, animationDuration: 2000,
+      lineStyle: { color: '#00b4ff', width: 2 },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0,180,255,0.35)' }, { offset: 1, color: 'rgba(0,180,255,0.02)' }]) },
+      data
+    }]
   })
 }
 
-// ==================== Risk Ranking ====================
-function renderRiskRanking(categories: string[], highData: number[], medData: number[], lowData: number[]) {
+// ==================== Risk Ranking (top10 line) ====================
+function renderRiskRanking(categories: string[], values: number[]) {
   eRisk = initChart(chartRisk.value, eRisk)
   if (!eRisk) return
 
   eRisk.setOption({
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)' },
-    grid: { left: '5%', right: '5%', bottom: '5%', top: 30, containLabel: true },
-    legend: { right: 10, top: 0, textStyle: { color: '#fff' }, itemWidth: 10, itemHeight: 10 },
-    xAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)' }, axisTick: { show: false } },
+    grid: { left: '5%', right: '5%', bottom: '5%', top: 10, containLabel: true },
+    xAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)', rotate: 20 }, axisTick: { show: false } },
     yAxis: { type: 'value', name: '条', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
-    series: [
-      { name: '高', type: 'bar', barWidth: '10%', data: highData, itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#c0252b' }, { offset: 1, color: '#79525a' }]) } },
-      { name: '中', type: 'bar', barWidth: '10%', data: medData, itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#fab72a' }, { offset: 1, color: '#787b5f' }]) } },
-      { name: '低', type: 'bar', barWidth: '10%', data: lowData, itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#006843' }, { offset: 1, color: '#2b373e' }]) } }
-    ]
+    series: [{
+      type: 'bar',
+      barWidth: '15%',
+      data: values,
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: '#ee6666' },
+          { offset: 0.5, color: '#b8456e' },
+          { offset: 1, color: '#5c3d5e' }
+        ]),
+        borderRadius: [4, 4, 0, 0]
+      },
+      label: { show: true, position: 'top', color: '#fff', fontSize: 11, fontFamily: 'Swis721 Cn BT' }
+    }]
   })
 }
 
-// ==================== Sensor Trend ====================
+// ==================== Device Online Trend (green area) ====================
 function renderSensorTrend(labels: string[], values: number[]) {
   eSensor = initChart(chartSensor.value, eSensor)
   if (!eSensor) return
@@ -475,8 +498,13 @@ function renderSensorTrend(labels: string[], values: number[]) {
     tooltip: { trigger: 'axis', confine: true, backgroundColor: '#1e2329', textStyle: { color: '#fff' }, borderColor: 'rgba(219,225,232,0.4)' },
     grid: { left: '5%', right: '5%', bottom: '5%', top: 30, containLabel: true },
     xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: '#466171' } }, axisLabel: { color: 'rgb(121,139,152)' }, axisTick: { show: false } },
-    yAxis: { type: 'value', name: 'mm', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
-    series: [{ type: 'line', smooth: false, animationDuration: 2000, lineStyle: { color: 'rgba(76,92,106,0.8)' }, data: values }]
+    yAxis: { type: 'value', name: '%', nameTextStyle: { color: 'rgb(121,139,152)' }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: 'rgb(121,139,152)' } },
+    series: [{
+      type: 'line', symbol: 'none', smooth: true, animationDuration: 2000,
+      lineStyle: { color: '#91cc75', width: 2 },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(145,204,117,0.35)' }, { offset: 1, color: 'rgba(145,204,117,0.02)' }]) },
+      data: values
+    }]
   })
 }
 
@@ -505,6 +533,13 @@ async function loadAll() {
       generalMonitorCount.value = d.overview.device.total
       proMonitorCount.value = d.overview.sensor.enabled
       unmonitoredCount.value = d.overview.sensor.disabled
+
+      // Health score → radar chart
+      if (d.healthScore) {
+        healthScore.value = d.healthScore.overallScore
+        healthItems.value = (d.healthScore.items || []).map((i: any) => ({ name: i.name, value: i.value, color: i.color }))
+        nextTick(() => renderHealthRadar(healthItems.value, healthScore.value))
+      }
 
       // Sensor distribution → 3D pie chart
       const sd = d.sensorDistribution?.list || []
@@ -538,11 +573,6 @@ async function loadAll() {
 
   // Load hazard points
   await loadHazardPoints()
-
-  // Render static charts
-  nextTick(() => {
-    renderThreatCharts()
-  })
 }
 
 async function loadAlarms() {
@@ -571,19 +601,17 @@ async function loadAlarms() {
     })
     nextTick(() => renderMonthlyTrend(monthlyCounts))
 
-    // Risk ranking by hazard point
+    // Risk ranking by hazard point (top 10)
     const hpCounts: Record<string, number> = {}
     rows.forEach((a: any) => {
       const name = a.hazardPointName || '未知'
       hpCounts[name] = (hpCounts[name] || 0) + 1
     })
-    const sorted = Object.entries(hpCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    const sorted = Object.entries(hpCounts).sort((a, b) => b[1] - a[1]).slice(0, 10)
     const categories = sorted.map(([name]) => name.length > 4 ? name.slice(0, 4) + '...' : name)
-    const highData = sorted.map(([, count]) => Math.round(count * 0.4))
-    const medData = sorted.map(([, count]) => Math.round(count * 0.35))
-    const lowData = sorted.map(([, count]) => Math.round(count * 0.25))
+    const values = sorted.map(([, count]) => count)
     riskRankingData.value = sorted
-    nextTick(() => renderRiskRanking(categories, highData, medData, lowData))
+    nextTick(() => renderRiskRanking(categories, values))
   } catch (_) {}
 }
 
@@ -604,33 +632,14 @@ async function loadHazardPoints() {
   } catch (_) {}
 }
 
-async function loadGroups() {
-  try {
-    const r: any = await getHazardPointGroups()
-    const groups = r?.data || r?.rows || r || []
-    groupList.value = Array.isArray(groups)
-      ? groups.map((g: any) => ({ label: g.name || g.label, value: g.id || g.value }))
-      : []
-    if (groupList.value.length) {
-      groupList.value.unshift({ label: '全部', value: 0 })
-    }
-  } catch (_) {}
-}
-
-function onGroupChange() {
-  // Re-filter risk ranking by selected group
-  loadAlarms()
-}
-
 function resizeAll() {
-  ;[e3DPie, eThreat1, eThreat2, eMonthly, eRisk, eSensor].forEach(c => c?.resize())
+  ;[e3DPie, eRadar, eMonthly, eRisk, eSensor].forEach(c => c?.resize())
 }
 
 // ==================== Lifecycle ====================
 onMounted(() => {
   tick()
   clockTimer = setInterval(tick, 1000)
-  loadGroups()
   loadAll()
   refreshTimer = setInterval(loadAll, 60000)
   window.addEventListener('resize', resizeAll)
@@ -639,7 +648,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (clockTimer) clearInterval(clockTimer)
   if (refreshTimer) clearInterval(refreshTimer)
-  ;[e3DPie, eThreat1, eThreat2, eMonthly, eRisk, eSensor].forEach(c => c?.dispose())
+  ;[e3DPie, eRadar, eMonthly, eRisk, eSensor].forEach(c => c?.dispose())
   window.removeEventListener('resize', resizeAll)
 })
 </script>
