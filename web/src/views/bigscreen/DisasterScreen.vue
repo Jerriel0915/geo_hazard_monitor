@@ -714,12 +714,25 @@ async function loadAlarms() {
   } catch (_) {}
 }
 
+const MOCK_HAZARD_POINTS = [
+  { longitude: 103.83, latitude: 30.07, name: '都江堰滑坡点', alarmLevel: 4 },
+  { longitude: 104.73, latitude: 31.47, name: '绵竹崩塌点', alarmLevel: 3 },
+  { longitude: 103.00, latitude: 29.65, name: '泸定泥石流点', alarmLevel: 2 },
+  { longitude: 104.13, latitude: 30.67, name: '成都龙泉驿监测点', alarmLevel: 1 },
+  { longitude: 106.75, latitude: 31.87, name: '达州监测点', alarmLevel: 0 },
+  { longitude: 102.83, latitude: 30.00, name: '雅安监测点', alarmLevel: 0 },
+  { longitude: 105.58, latitude: 30.07, name: '遂宁监测点', alarmLevel: 0 },
+  { longitude: 104.63, latitude: 30.07, name: '资阳监测点', alarmLevel: 0 },
+  { longitude: 101.72, latitude: 26.58, name: '攀枝花监测点', alarmLevel: 0 },
+  { longitude: 107.50, latitude: 31.20, name: '巴中监测点', alarmLevel: 0 },
+]
+
 async function loadHazardPoints() {
   try {
     const r = await getHazardPointPage({ pageNum: 1, pageSize: 200 })
     if (r.code === 200 && r.data) {
       const rows: any[] = r.data.rows || []
-      hazardPoints.value = rows
+      const points = rows
         .filter((p: any) => p.longitude && p.latitude)
         .map((p: any) => ({
           longitude: p.longitude,
@@ -727,8 +740,14 @@ async function loadHazardPoints() {
           name: p.name,
           alarmLevel: p.alarmLevel
         }))
+      if (points.length) {
+        hazardPoints.value = points
+        return
+      }
     }
   } catch (_) {}
+  // Fallback to mock data
+  hazardPoints.value = MOCK_HAZARD_POINTS
 }
 
 function resizeAll() {

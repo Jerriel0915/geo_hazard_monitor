@@ -41,6 +41,7 @@ let mirrorReflector: Reflector | null = null
 let spriteGroup: THREE.Group | null = null
 let spriteTextures: THREE.Texture[] = []
 let markerRipplingGroup: THREE.Mesh[] = []
+let pillarParticles: PillarParticle[] = []
 let oldAreas: THREE.Mesh[] | null = null
 let animationFrameId: number | null = null
 
@@ -58,6 +59,31 @@ let _terrainMapCenter = new THREE.Vector3()
 let _centerMapSize = new THREE.Vector3()
 
 const codeList = ['100000', '100000B', '510000', '510000B', '440000', '440000B', '440300']
+
+const ALARM_COLORS: Record<number, { pillar: string; particle: string; glow: string }> = {
+  0: { pillar: '#91cc75', particle: '#b4e09d', glow: '#3d6b2e' },
+  1: { pillar: '#00aaff', particle: '#00ccff', glow: '#005588' },
+  2: { pillar: '#ffd666', particle: '#ffe066', glow: '#886600' },
+  3: { pillar: '#ff9c2e', particle: '#ffb366', glow: '#884400' },
+  4: { pillar: '#ff3333', particle: '#ff6666', glow: '#880000' },
+}
+
+const ALARM_PARTICLE_SPEED: Record<number, number> = {
+  0: 0.15,
+  1: 0.2,
+  2: 0.35,
+  3: 0.5,
+  4: 0.7,
+}
+
+interface PillarParticle {
+  points: THREE.Points
+  baseY: number
+  height: number
+  speed: number
+  count: number
+  positions: Float32Array
+}
 
 function countTrailingZeros(num: number | string): number {
   let n = Number(num)
@@ -87,6 +113,7 @@ function animateCallback() {
 
   if (spriteGroup) updateSpriteGroup()
   updateMarkerRippling()
+  updatePillarParticles()
 }
 
 async function initRenderer(areaCode: string) {
@@ -117,6 +144,7 @@ async function initRenderer(areaCode: string) {
   controls.minPolarAngle = -Math.PI / 2
   controls.maxPolarAngle = Math.PI / 2.2
   controls.enableDamping = true
+  controls.enableZoom = false
   controls.addEventListener('start', () => {
     stopAutoRotation()
   })
@@ -161,7 +189,7 @@ async function initRenderer(areaCode: string) {
   window.addEventListener('resize', onResize)
 
   animate()
-  await initAreas(areaCode, 6)
+  await initAreas(areaCode, 3)
 }
 
 async function initAreas(areaCode: string, depth: number) {
@@ -313,6 +341,14 @@ function removeAreas() {
     markerRipplingGroup = []
     spriteTextures = []
   }
+
+  // Clean up pillar particles
+  pillarParticles.forEach(pp => {
+    pp.points.geometry.dispose()
+    ;(pp.points.material as THREE.PointsMaterial).map?.dispose()
+    ;(pp.points.material as THREE.PointsMaterial).dispose()
+  })
+  pillarParticles = []
 }
 
 function removeAreasTree(list: THREE.Object3D[]) {
@@ -503,16 +539,18 @@ function createJsonMapLabel(name: string, point: number[], depth: number, adcode
 async function initMarkers(areaCode: string, depth: number): Promise<THREE.Object3D[]> {
   const markerList: THREE.Object3D[] = []
 
-  // If we have hazard points from props, use those
+  // If we have hazard points from props, create light pillars
   if (props.hazardPoints && props.hazardPoints.length > 0) {
     props.hazardPoints.forEach((hp) => {
-      const point = {
-        type: 1,
-        point: [hp.longitude, hp.latitude] as [number, number],
-        waring: (hp.alarmLevel ?? 0) >= 3
-      }
-      const markers = createJsonMapMarker(point, depth, areaCode)
-      markerList.push(...markers)
+      const level = hp.alarmLevel ?? 0
+      const marker = createLightPillar(
+        [hp.longitude, hp.latitude],
+        depth,
+        areaCode,
+        level,
+        hp.name
+      )
+      markerList.push(marker)
     })
     return markerList
   }
@@ -540,6 +578,142 @@ async function initMarkers(areaCode: string, depth: number): Promise<THREE.Objec
   })
 
   return markerList
+}
+
+function createLightPillar(
+  lngLat: [number, number],
+  depth: number,
+  areaCode: string,
+  alarmLevel: number,
+  _name?: string
+): THREE.Group {
+  const zeroNumer = countTrailingZeros(areaCode)
+  const offsetXY = geoMercator()
+  const [x, y] = offsetXY(lngLat)!
+  const colors = ALARM_COLORS[alarmLevel] ?? ALARM_COLORS[0]
+  const isSmall = zeroNumer <= 4
+
+  const group = new THREE.Group()
+  group.position.set(x, -y, depth)
+
+  const pillarHeight = isSmall ? 25 : 40
+  const pillarRadiusBottom = isSmall ? 0.8 : 1.5
+  const pillarRadiusTop = isSmall ? 0.12 : 0.25
+
+  // 1. Bottom glow ring
+  const ringGeo = new THREE.RingGeometry(pillarRadiusBottom * 1.2, pillarRadiusBottom * 2.8, 32)
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(colors.glow),
+    transparent: true,
+    opacity: 0.4,
+    side: THREE.DoubleSide,
+  })
+  const ring = new THREE.Mesh(ringGeo, ringMat)
+  ring.rotation.x = -Math.PI / 2
+  ring.position.z = 0.1
+  group.add(ring)
+
+  // 2. Main pillar cylinder
+  const pillarGeo = new THREE.CylinderGeometry(
+    Math.max(0.01, pillarRadiusTop),
+    Math.max(0.01, pillarRadiusBottom),
+    pillarHeight,
+    16,
+    1,
+    true
+  )
+  const pillarMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(colors.pillar),
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+  })
+  const pillar = new THREE.Mesh(pillarGeo, pillarMat)
+  pillar.rotation.x = Math.PI / 2
+  pillar.position.z = pillarHeight / 2
+  group.add(pillar)
+
+  // 3. Halo cylinder (wider, more transparent)
+  const haloGeo = new THREE.CylinderGeometry(
+    Math.max(0.01, pillarRadiusTop * 2.2),
+    Math.max(0.01, pillarRadiusBottom * 1.7),
+    pillarHeight,
+    16,
+    1,
+    true
+  )
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(colors.glow),
+    transparent: true,
+    opacity: 0.12,
+    side: THREE.DoubleSide,
+  })
+  const halo = new THREE.Mesh(haloGeo, haloMat)
+  halo.rotation.x = Math.PI / 2
+  halo.position.z = pillarHeight / 2
+  group.add(halo)
+
+  // 4. Particle system
+  const particleCount = 15
+  const positions = new Float32Array(particleCount * 3)
+  const spread = pillarRadiusBottom * 0.6
+  for (let i = 0; i < particleCount; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * spread * 2
+    positions[i * 3 + 1] = (Math.random() - 0.5) * spread * 2
+    positions[i * 3 + 2] = Math.random() * pillarHeight
+  }
+  const particleGeo = new THREE.BufferGeometry()
+  particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+  const particleTex = new THREE.TextureLoader().load('/texture/ascending-particle.png')
+  const particleMat = new THREE.PointsMaterial({
+    color: new THREE.Color(colors.particle),
+    size: isSmall ? 1.5 : 2.5,
+    map: particleTex,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+  })
+  const points = new THREE.Points(particleGeo, particleMat)
+  group.add(points)
+
+  pillarParticles.push({
+    points,
+    baseY: 0,
+    height: pillarHeight,
+    speed: ALARM_PARTICLE_SPEED[alarmLevel] ?? 0.15,
+    count: particleCount,
+    positions,
+  })
+
+  // 5. Ripple for alarm points (level >= 3)
+  if (alarmLevel >= 3) {
+    const rippleGeo = new THREE.CircleGeometry(pillarRadiusBottom * 2, 32)
+    const rippleTex = new THREE.TextureLoader().load('/texture/marker-circle.png')
+    const rippleColor = alarmLevel === 4 ? '#ff3333' : '#ff9c2e'
+    const rippleMat = new THREE.MeshBasicMaterial({
+      map: rippleTex,
+      transparent: true,
+      opacity: 0.8,
+      color: rippleColor,
+      side: THREE.FrontSide,
+    })
+    const ripple = new THREE.Mesh(rippleGeo, rippleMat)
+    ripple.rotation.x = -Math.PI / 2
+    ripple.position.z = 0.1
+    ripple.userData.zeroNumer = zeroNumer
+    ripple.userData.scale = { x: 1, y: 1, z: 1 }
+    group.add(ripple)
+    markerRipplingGroup.push(ripple)
+  }
+
+  if (isSmall) {
+    group.scale.set(0.1, 0.1, 0.1)
+  }
+
+  return group
 }
 
 function createJsonMapMarker(point: { point: [number, number]; waring: boolean; type?: number }, depth: number, areaCode: string): THREE.Object3D[] {
@@ -620,6 +794,21 @@ function updateMarkerRippling() {
   })
 }
 
+function updatePillarParticles() {
+  pillarParticles.forEach(pp => {
+    const pos = pp.positions
+    for (let i = 0; i < pp.count; i++) {
+      pos[i * 3 + 2] += pp.speed
+      if (pos[i * 3 + 2] > pp.baseY + pp.height) {
+        pos[i * 3 + 2] = pp.baseY
+        pos[i * 3] = (Math.random() - 0.5) * 2
+        pos[i * 3 + 1] = (Math.random() - 0.5) * 2
+      }
+    }
+    pp.points.geometry.attributes.position.needsUpdate = true
+  })
+}
+
 function setJsonMapCenter(map: THREE.Object3D, notCamera: boolean, offset: number[], offsetDis: number) {
   map.rotation.x = -Math.PI / 2
   const box = new THREE.Box3().setFromObject(map)
@@ -636,47 +825,8 @@ function setJsonMapCenter(map: THREE.Object3D, notCamera: boolean, offset: numbe
   map.position.z = map.position.z - center.z - offset[1]
 }
 
-function onMouseClick(event: MouseEvent) {
-  if (!scene || !camera || !renderer || isRotating) return
-
-  const raycaster = new THREE.Raycaster()
-  const rect = renderer.domElement.getBoundingClientRect()
-  const mouse = new THREE.Vector2(
-    ((event.clientX - rect.left) / rect.width) * 2 - 1,
-    -((event.clientY - rect.top) / rect.height) * 2 + 1
-  )
-  raycaster.setFromCamera(mouse, camera)
-
-  const childrens = getAreaMeshes()
-  const intersects = raycaster.intersectObjects(childrens)
-
-  if (intersects.length > 0) {
-    const object = (intersects[1]?.object || intersects[0].object) as THREE.Mesh
-    if (!object.userData.isTexture && object.type === 'Mesh' && object.geometry?.type === 'ExtrudeGeometry') {
-      const adcode = object.userData.adcode
-      if (oldChooseCode === adcode) {
-        onAreaClicked(adcode)
-      } else {
-        const originDepth = object.userData.originDepth
-        revertOldAreas()
-        const areas = getMeshByCode(adcode, childrens)
-        oldAreas = areas
-        oldChooseCode = adcode
-        areas.forEach((areaItem: any) => {
-          areaItem.material.forEach((mat: any) => {
-            mat.color = new THREE.Color('#ffc06a')
-            mat.opacity = mat.type === 'MeshPhongMaterial' ? 1 : 0.5
-          })
-          const geo = areaItem.geometry as THREE.ExtrudeGeometry
-          const opts = { ...geo.parameters.options, depth: originDepth * 2 }
-          geo.dispose()
-          areaItem.geometry = new THREE.ExtrudeGeometry(geo.parameters.shapes, opts)
-        })
-      }
-    }
-  } else {
-    revertOldAreas()
-  }
+function onMouseClick(_event: MouseEvent) {
+  // Disabled: no region pop-up on click
 }
 
 function getMeshByCode(code: number, list: THREE.Mesh[]): THREE.Mesh[] {
@@ -727,7 +877,7 @@ function onAreaClicked(code: number) {
 
 function backMainBack() {
   removeAreas()
-  initAreas('510000', 6)
+  initAreas('510000', 3)
   showBack.value = false
 }
 
@@ -901,8 +1051,16 @@ function onResize() {
 
 watch(() => props.activeTab, () => {
   removeAreas()
-  initAreas('510000', 6)
+  initAreas('510000', 3)
   showBack.value = false
+})
+
+watch(() => props.hazardPoints, (newVal) => {
+  if (newVal && newVal.length > 0 && initAreaCode) {
+    removeAreas()
+    initAreas(initAreaCode, 3)
+    showBack.value = false
+  }
 })
 
 onMounted(() => {
