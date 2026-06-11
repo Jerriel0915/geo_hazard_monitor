@@ -144,11 +144,11 @@
               </div>
             </div>
 
-            <!-- 隐患分类占比 (3D饼图) -->
+            <!-- 设备分类 (3D饼图) -->
             <div class="statistics-box year-waring">
               <div class="box-title">
                 <img src="@/assets/icons/five-pointed-star.png" class="icon" />
-                <span class="title">隐患分类占比</span>
+                <span class="title">设备分类</span>
               </div>
               <div class="box-container waring-box">
                 <div class="bgBox">
@@ -305,69 +305,170 @@ function initChart(el: HTMLDivElement | null, existing: echarts.ECharts | null):
 }
 
 // ==================== 3D Pie Chart ====================
+const PIE_COLORS = ['#00d4ff', '#36cfc9', '#ff6b6b', '#ffd666', '#73d13d', '#b37feb']
+const PIE_COLORS_HOVER = ['#40e0ff', '#5cdbd3', '#ff9c9c', '#ffe066', '#95de64', '#d3adf7']
+
 function render3DPie(data: Array<{ name: string; value: number; itemStyle?: any }>) {
   e3DPie = initChart(chart3DPie.value, e3DPie)
   if (!e3DPie) return
 
-  const seriesData = data.map(d => ({
+  const seriesData = data.map((d, i) => ({
     ...d,
-    label: { show: false, color: '#fff', position: 'center' as const, fontSize: 14 }
+    itemStyle: { color: PIE_COLORS[i % PIE_COLORS.length], opacity: 0.85 },
   }))
-  if (seriesData.length) seriesData[0].label.show = true
 
+  const total = seriesData.reduce((s, d) => s + d.value, 0)
   const series = getPie3D(seriesData)
+  // Center label: show current highlighted item name + percentage
+  let centerLabel = seriesData[0] ? { name: seriesData[0].name, pct: total > 0 ? (seriesData[0].value / total * 100).toFixed(1) : '0' } : { name: '', pct: '0' }
+
   const option: any = {
-    legend: {
-      orient: 'vertical', right: '-1%', y: 'center', icon: 'square',
-      itemHeight: 6, itemGap: 5,
-      textStyle: { color: 'auto', fontSize: 12, fontFamily: 'SourceHanSansCN-Medium', padding: [0, 0, 0, -20] }
+    tooltip: {
+      show: true,
+      formatter: (params: any) => {
+        const pct = total > 0 ? ((params.seriesName && seriesData.find(s => s.name === params.seriesName)?.value || 0) / total * 100).toFixed(1) : '0'
+        return `<div style="background:rgba(6,24,32,0.9);border:1px solid rgba(0,180,255,0.4);border-radius:6px;padding:8px 14px;color:#e0f0ff;font-size:14px;font-family:SourceHanSansCN-Medium;">
+          <b style="font-size:16px;">${params.seriesName}</b><br/>
+          <span style="color:#00d4ff;font-size:20px;font-weight:bold;font-family:Swis721 Cn BT;">${seriesData.find(s => s.name === params.seriesName)?.value || 0}</span>
+          <span style="color:#8899bb;margin-left:6px;">(${pct}%)</span>
+        </div>`
+      },
+      backgroundColor: 'transparent', borderWidth: 0, extraCssText: 'box-shadow:none;background:transparent;'
     },
+    legend: {
+      orient: 'vertical', right: '0%', y: 'center', icon: 'square',
+      itemHeight: 8, itemGap: 10,
+      formatter: (name: string) => {
+        const item = seriesData.find(d => d.name === name)
+        if (!item) return name
+        const pct = total > 0 ? (item.value / total * 100).toFixed(1) : '0'
+        return `${name}  {pct|${pct}%}`
+      },
+      textStyle: {
+        color: '#8899bb', fontSize: 13, fontFamily: 'SourceHanSansCN-Medium', padding: [0, 0, 0, -10],
+        rich: { pct: { fontSize: 13, fontWeight: 'bold', color: '#ffffff', fontFamily: 'Swis721 Cn BT' } }
+      }
+    },
+    graphic: [
+      {
+        type: 'group',
+        left: '26%',
+        top: '6%',
+        children: [
+          {
+            type: 'text',
+            style: {
+              text: centerLabel.pct + '%',
+              fill: '#ffffff',
+              fontSize: 28,
+              fontWeight: 'bold',
+              fontFamily: 'Swis721 Cn BT',
+              textAlign: 'center',
+              textShadowColor: 'rgba(0,180,255,0.6)',
+              textShadowBlur: 10,
+            },
+            x: 0, y: -14,
+            z: 100,
+            id: 'pieCenterPct',
+          },
+          {
+            type: 'text',
+            style: {
+              text: centerLabel.name,
+              fill: '#8899bb',
+              fontSize: 16,
+              fontFamily: 'SourceHanSansCN-Medium',
+              textAlign: 'center',
+            },
+            x: 0, y: -100,
+            z: 100,
+            id: 'pieCenterName',
+          }
+        ]
+      }
+    ],
     xAxis3D: { min: -1, max: 1 },
     yAxis3D: { min: -1, max: 1 },
     zAxis3D: { min: -1, max: 1 },
-    grid3D: { show: false, boxHeight: 10, top: '-10%', left: '-16%', viewControl: { alpha: 30, rotateSensitivity: 0, zoomSensitivity: 0, panSensitivity: 0, autoRotate: false } },
+    grid3D: {
+      show: false, boxHeight: 10, top: '-10%', left: '-16%',
+      viewControl: { alpha: 30, rotateSensitivity: 0, zoomSensitivity: 0, panSensitivity: 0, autoRotate: false },
+      environment: 'auto'
+    },
     series
   }
   e3DPie.setOption(option)
 
-  // Add 2D pie overlay for labels
-  option.series.push({
-    backgroundColor: 'transparent', type: 'pie', left: '-30%', top: '-25%',
-    label: { opacity: 1, fontSize: 14, formatter: '{d}%\n{b}', lineHeight: 20 },
-    startAngle: -40, clockwise: false, radius: ['20%', '50%'], center: ['50%', '50%'],
-    data: seriesData, itemStyle: { opacity: 0 }
-  })
-  e3DPie.setOption(option)
+  // Helper: update center label
+  function updateCenterLabel(idx: number) {
+    const item = seriesData[idx]
+    if (!item) return
+    centerLabel = { name: item.name, pct: total > 0 ? (item.value / total * 100).toFixed(1) : '0' }
+    option.graphic[0].children[0].style.text = centerLabel.pct + '%'
+    option.graphic[0].children[1].style.text = centerLabel.name
+  }
 
-  // Auto highlight rotation
-  let curIdx = 0
-  let hoveredIdx = ''
-  const interval = setInterval(() => {
-    curIdx = (curIdx + 1) % seriesData.length
-    if (e3DPie && !e3DPie.isDisposed()) {
-      seriesData.forEach((item, idx) => { item.label.show = idx === curIdx })
-
-      if (hoveredIdx !== '' && option.series[hoveredIdx]) {
-        option.series[hoveredIdx].parametricEquation = getParametricEquation(
-          option.series[hoveredIdx].pieData.startRatio,
-          option.series[hoveredIdx].pieData.endRatio,
-          option.series[hoveredIdx].pieStatus.selected, false,
-          option.series[hoveredIdx].pieStatus.k, 1
+  // 3D surface hover interaction
+  e3DPie.on('mouseover', (params: any) => {
+    if (params.seriesIndex === undefined || !option.series[params.seriesIndex]?.parametricEquation) return
+    const idx = params.seriesIndex
+    for (let i = 0; i < seriesData.length; i++) {
+      if (option.series[i]?.parametricEquation) {
+        option.series[i].parametricEquation = getParametricEquation(
+          option.series[i].pieData.startRatio, option.series[i].pieData.endRatio,
+          false, false, option.series[i].pieStatus.k, 1
         )
+        option.series[i].itemStyle = { ...option.series[i].itemStyle, color: PIE_COLORS[i % PIE_COLORS.length], opacity: 0.85 }
       }
-      if (option.series[curIdx]) {
-        option.series[curIdx].parametricEquation = getParametricEquation(
-          option.series[curIdx].pieData.startRatio,
-          option.series[curIdx].pieData.endRatio,
-          option.series[curIdx].pieStatus.selected, false,
-          option.series[curIdx].pieStatus.k, 2.5
-        )
-        hoveredIdx = String(curIdx)
-      }
-      try { e3DPie.setOption(option) } catch {}
-    } else {
-      clearInterval(interval)
     }
+    option.series[idx].parametricEquation = getParametricEquation(
+      option.series[idx].pieData.startRatio, option.series[idx].pieData.endRatio,
+      false, true, option.series[idx].pieStatus.k, 2.5
+    )
+    option.series[idx].itemStyle = { ...option.series[idx].itemStyle, color: PIE_COLORS_HOVER[idx % PIE_COLORS_HOVER.length], opacity: 1 }
+    updateCenterLabel(idx)
+    e3DPie?.setOption(option)
+  })
+  e3DPie.on('mouseout', () => {
+    for (let i = 0; i < seriesData.length; i++) {
+      if (option.series[i]?.parametricEquation) {
+        option.series[i].parametricEquation = getParametricEquation(
+          option.series[i].pieData.startRatio, option.series[i].pieData.endRatio,
+          false, false, option.series[i].pieStatus.k, 1
+        )
+        option.series[i].itemStyle = { ...option.series[i].itemStyle, color: PIE_COLORS[i % PIE_COLORS.length], opacity: 0.85 }
+      }
+    }
+    e3DPie?.setOption(option)
+  })
+
+  // Auto rotation: cycle highlight every 3s
+  let curIdx = 0
+  let userHovering = false
+  e3DPie.getZr().on('mousemove', () => { userHovering = true })
+  e3DPie.getZr().on('globalout', () => { userHovering = false })
+
+  const interval = setInterval(() => {
+    if (userHovering) return
+    if (!e3DPie || e3DPie.isDisposed()) { clearInterval(interval); return }
+
+    if (option.series[curIdx]?.parametricEquation) {
+      option.series[curIdx].parametricEquation = getParametricEquation(
+        option.series[curIdx].pieData.startRatio, option.series[curIdx].pieData.endRatio,
+        false, false, option.series[curIdx].pieStatus.k, 1
+      )
+      option.series[curIdx].itemStyle = { ...option.series[curIdx].itemStyle, color: PIE_COLORS[curIdx % PIE_COLORS.length], opacity: 0.85 }
+    }
+    curIdx = (curIdx + 1) % seriesData.length
+    if (option.series[curIdx]?.parametricEquation) {
+      option.series[curIdx].parametricEquation = getParametricEquation(
+        option.series[curIdx].pieData.startRatio, option.series[curIdx].pieData.endRatio,
+        false, true, option.series[curIdx].pieStatus.k, 2.5
+      )
+      option.series[curIdx].itemStyle = { ...option.series[curIdx].itemStyle, color: PIE_COLORS_HOVER[curIdx % PIE_COLORS_HOVER.length], opacity: 1 }
+    }
+    updateCenterLabel(curIdx)
+    try { e3DPie.setOption(option) } catch {}
   }, 3000)
 }
 
@@ -791,6 +892,7 @@ onBeforeUnmount(() => {
 .box-container::-webkit-scrollbar { display: none; }
 
 /* 3D Pie waring box */
+.waring-box { pointer-events: all; }
 .waring-box .chartWaring {
   padding: 1rem; width: 100%; height: 100%;
   position: absolute; left: 0; top: 0; z-index: 999;
