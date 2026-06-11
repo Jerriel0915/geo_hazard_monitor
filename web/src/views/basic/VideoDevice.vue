@@ -157,17 +157,20 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="经度">
-              <el-input-number v-model="formData.longitude" :precision="6" :min="-180" :max="180" style="width: 100%" placeholder="请输入经度" />
+              <el-input-number v-model="formData.longitude" :precision="6" :min="-180" :max="180" style="width: 100%" placeholder="请输入经度" :controls="false" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="coord-col">
             <el-form-item label="纬度">
-              <el-input-number v-model="formData.latitude" :precision="6" :min="-90" :max="90" style="width: 100%" placeholder="请输入纬度" />
+              <el-input-number v-model="formData.latitude" :precision="6" :min="-90" :max="90" placeholder="请输入纬度" :controls="false" class="coord-input" />
             </el-form-item>
+            <el-button class="coord-pick-btn" @click="handleOpenFormMap" title="地图拾取坐标">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+            </el-button>
           </el-col>
         </el-row>
         <el-form-item label="视频流地址" prop="streamUrl">
-          <el-input v-model="formData.streamUrl" placeholder="请输入视频流地址" type="textarea" :rows="3" />
+          <el-input v-model="formData.streamUrl" placeholder="请输入视频流地址" />
         </el-form-item>
       </el-form>
 
@@ -230,6 +233,30 @@
       <template #footer>
         <el-button @click="mapDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleMapConfirm" :loading="mapLoading">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑弹窗的地图拾取弹窗 -->
+    <el-dialog
+        v-model="formMapDialogVisible"
+        title="地图拾取坐标"
+        width="800px"
+        :close-on-click-modal="false"
+        destroy-on-close
+        @opened="initFormMap"
+        @closed="cleanupFormMap"
+    >
+      <div class="map-container">
+        <div id="form-coord-map" ref="formMapRef" style="width: 100%; height: 400px;"></div>
+      </div>
+      <div class="drawn-info" v-if="formMapCoord.lng !== null">
+        <el-tag type="success" size="small">
+          当前坐标: {{ formMapCoord.lng.toFixed(6) }}, {{ formMapCoord.lat.toFixed(6) }}
+        </el-tag>
+      </div>
+      <template #footer>
+        <el-button @click="formMapDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleFormMapConfirm" :disabled="formMapCoord.lng === null">确定</el-button>
       </template>
     </el-dialog>
 
@@ -381,6 +408,12 @@ let mapInstance: L.Map | null = null
 let currentMarker: L.Marker | null = null
 const selectedHazardPoints = ref<HazardPointItem[]>([])
 const currentHazardPointIndex = ref(0)
+
+const formMapDialogVisible = ref(false)
+const formMapRef = ref<HTMLDivElement | null>(null)
+let formMapInstance: L.Map | null = null
+let formMapMarker: L.Marker | null = null
+const formMapCoord = reactive({ lng: null as number | null, lat: null as number | null })
 
 const videoIconDialogVisible = ref(false)
 
@@ -867,6 +900,80 @@ const handleMapConfirm = () => {
   }, 500)
 }
 
+const handleOpenFormMap = () => {
+  formMapCoord.lng = null
+  formMapCoord.lat = null
+  formMapDialogVisible.value = true
+}
+
+const initFormMap = () => {
+  if (!formMapRef.value) return
+
+  if (formMapInstance) {
+    formMapInstance.remove()
+    formMapInstance = null
+  }
+
+  const initLng = formData.longitude || 104.06
+  const initLat = formData.latitude || 30.67
+  formMapInstance = L.map(formMapRef.value).setView([initLat, initLng], 13)
+
+  L.tileLayer('https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
+    maxZoom: 18,
+    attribution: '天地图'
+  }).addTo(formMapInstance)
+
+  L.tileLayer('https://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
+    maxZoom: 18
+  }).addTo(formMapInstance)
+
+  // Show existing position if set
+  if (formData.longitude && formData.latitude) {
+    formMapMarker = L.marker([formData.latitude, formData.longitude], {
+      icon: L.divIcon({
+        className: 'device-marker',
+        html: '<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap">当前位置</div>',
+        iconSize: [80, 30],
+        iconAnchor: [40, 15]
+      })
+    }).addTo(formMapInstance)
+  }
+
+  formMapInstance.on('click', (e: L.LeafletMouseEvent) => {
+    formMapCoord.lng = e.latlng.lng
+    formMapCoord.lat = e.latlng.lat
+    if (formMapMarker) {
+      formMapInstance!.removeLayer(formMapMarker)
+    }
+    formMapMarker = L.marker([e.latlng.lat, e.latlng.lng], {
+      icon: L.divIcon({
+        className: 'device-marker',
+        html: '<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap">选中位置</div>',
+        iconSize: [80, 30],
+        iconAnchor: [40, 15]
+      })
+    }).addTo(formMapInstance!)
+  })
+}
+
+const handleFormMapConfirm = () => {
+  if (formMapCoord.lng !== null && formMapCoord.lat !== null) {
+    formData.longitude = formMapCoord.lng
+    formData.latitude = formMapCoord.lat
+  }
+  formMapDialogVisible.value = false
+}
+
+const cleanupFormMap = () => {
+  if (formMapInstance) {
+    formMapInstance.remove()
+    formMapInstance = null
+  }
+  formMapMarker = null
+  formMapCoord.lng = null
+  formMapCoord.lat = null
+}
+
 const handlePlay = (row: VideoDeviceItem) => {
   playUrl.value = row.streamUrl
   videoLoaded.value = false
@@ -1029,6 +1136,23 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.coord-col {
+  position: relative;
+}
+
+.coord-input {
+  width: calc(100% - 40px);
+}
+
+.coord-pick-btn {
+  position: absolute;
+  right: 1px;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
 .map-container {
   border: 1px solid #e8e8e8;
   border-radius: 4px;
@@ -1076,6 +1200,8 @@ onMounted(() => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .icon-item:hover {

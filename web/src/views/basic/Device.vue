@@ -909,10 +909,12 @@ const openViewMap = (row: DeviceItem) => {
 const initMapPicker = () => {
   nextTick(() => {
     if (!mapPickerRef.value) return
+    // 销毁旧地图实例（dialog destroy-on-close 后 DOM 已重建，旧实例无效）
     if (mapPickerInstance) {
-      mapPickerInstance.invalidateSize()
-      return
+      mapPickerInstance.remove()
+      mapPickerInstance = null
     }
+    mapPickerMarker = null
 
     const center: [number, number] = pickerLat.value != null && pickerLng.value != null
       ? [pickerLat.value, pickerLng.value]
@@ -1980,6 +1982,8 @@ onMounted(() => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .icon-item:hover {
