@@ -32,17 +32,7 @@
         <div class="count-item">
           <div class="top-title">
             <div class="icon"><img src="@/assets/icons/point-circle-light.png" /></div>
-            <span class="title">灾险情</span>
-          </div>
-          <div class="bottom-count">
-            <span class="number"><CountUp :end="disasterCount" :duration="3" /></span>
-            <span class="unit">条</span>
-          </div>
-        </div>
-        <div class="count-item">
-          <div class="top-title">
-            <div class="icon"><img src="@/assets/icons/point-circle-light.png" /></div>
-            <span class="title">自动化监测点</span>
+            <span class="title">隐患点</span>
           </div>
           <div class="bottom-count">
             <span class="number"><CountUp :end="monitorPointCount" :duration="3" /></span>
@@ -832,7 +822,8 @@ onBeforeUnmount(() => {
 }
 
 .right-count { display: flex; margin: auto; }
-.right-count .count-item { margin-right: 2.5rem; }
+.right-count .count-item { margin-right: 2.5rem; text-align: center; }
+.right-count .top-title { display: inline-flex; align-items: center; justify-content: center; }
 .right-count .top-title .icon {
   display: inline-block; vertical-align: middle; width: 1.6rem; height: 1.6rem;
 }
@@ -842,10 +833,10 @@ onBeforeUnmount(() => {
   font-size: 1.5rem; color: rgba(217, 231, 255, 0.8); letter-spacing: 0.2rem;
   font-family: 'SourceHanSansCN-Bold';
 }
-.right-count .bottom-count { margin-top: 1rem; padding-left: 2rem; }
+.right-count .bottom-count { margin-top: 1rem; text-align: center; }
 .right-count .bottom-count .number {
   text-shadow: rgb(19, 128, 255) 0 0 1rem;
-  font-size: 2.2rem;
+  font-size: 2.6rem;
   font-family: 'Swis721 Cn BT';
 }
 .right-count .bottom-count .unit {
