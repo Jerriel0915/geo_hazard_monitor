@@ -55,19 +55,6 @@
     <!-- LEFT SIDEBAR -->
     <div class="page-container">
       <div class="left">
-        <div class="left-top">
-          <div class="left-tab">
-            <div class="tab-item tab1" :class="{ active: activeTab === 1 }" @click.stop="activeTab = 1">
-              <div class="circle"></div>
-              <div class="info"></div>
-            </div>
-            <div class="tab-item tab2" :class="{ active: activeTab === 2 }" @click.stop="activeTab = 2">
-              <div class="circle"></div>
-              <div class="info"></div>
-            </div>
-          </div>
-        </div>
-
         <div class="left-bottom">
           <div class="statistics-container">
             <!-- 系统健康度 雷达图 -->
@@ -76,7 +63,7 @@
                 <img src="@/assets/icons/signal.png" class="icon" />
                 <span class="title">系统健康度</span>
               </div>
-              <div class="box-container radar-container">
+              <div class="box-container radar-container" style="pointer-events:all">
                 <div ref="chartRadar" style="width:100%;height:100%"></div>
               </div>
             </div>
@@ -248,7 +235,7 @@
 
     <!-- 3D MAP -->
     <div class="map-container">
-      <ThreeMap :activeTab="activeTab" :hazardPoints="hazardPoints" />
+      <ThreeMap :activeTab="1" :hazardPoints="hazardPoints" />
     </div>
   </div>
 </template>
@@ -266,7 +253,6 @@ import { getHazardPointPage } from '@/api/hazardPoint'
 
 // ==================== State ====================
 const dateTime = ref('')
-const activeTab = ref(1)
 let clockTimer: ReturnType<typeof setInterval> | null = null
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
@@ -396,6 +382,20 @@ function renderHealthRadar(items: Array<{ name: string; value: number; color: st
 
   eRadar.setOption({
     backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#1e2329',
+      textStyle: { color: '#fff' },
+      borderColor: 'rgba(219,225,232,0.4)',
+      formatter: (params: any) => {
+        const val = params.value as number[]
+        let html = `<b>${params.name}</b><br/>`
+        items.forEach((item, i) => {
+          html += `${item.name}：<span style="color:${item.color};font-weight:bold">${val[i]}</span> 分<br/>`
+        })
+        return html
+      }
+    },
     radar: {
       center: ['50%', '50%'],
       radius: '65%',
@@ -416,14 +416,19 @@ function renderHealthRadar(items: Array<{ name: string; value: number; color: st
     }],
     series: [{
       type: 'radar',
-      symbol: 'circle',
-      symbolSize: 6,
+      symbol: 'none',
       data: [{
         value: values,
         name: '健康度',
-        areaStyle: { color: 'rgba(0,229,255,.15)' },
-        lineStyle: { color: '#00e5ff', width: 2 },
-        itemStyle: { color: '#00e5ff' }
+        areaStyle: {
+          color: new echarts.graphic.RadialGradient(0.5, 0.5, 1, [
+            { offset: 0, color: 'rgba(0,229,255,0.45)' },
+            { offset: 0.5, color: 'rgba(0,180,255,0.2)' },
+            { offset: 1, color: 'rgba(0,120,255,0.05)' }
+          ])
+        },
+        lineStyle: { color: 'transparent', width: 0 },
+        itemStyle: { color: 'transparent' }
       }]
     }]
   })
@@ -724,31 +729,6 @@ onBeforeUnmount(() => {
   padding-top: 1rem;
   padding-right: 2rem;
 }
-.left-top {
-  width: 100%;
-  display: flex;
-}
-.left-tab { display: flex; }
-.tab-item {
-  cursor: pointer;
-  position: relative;
-  pointer-events: all;
-}
-.tab-item .circle {
-  width: 3.2143rem; height: 3.2143rem;
-  border-radius: 50%;
-  background: url('@/assets/images/disaster/circle.png') no-repeat center / 100% 100%;
-  position: absolute;
-  left: 0.7rem; top: 0.4286rem;
-  display: none;
-  animation: rotate 3s linear infinite;
-}
-.tab-item .info { text-align: center; width: 11.0714rem; height: 4.1429rem; }
-.tab-item.tab1 .info { background: url('@/assets/images/disaster/monitor-device.png') no-repeat center / 100% 100%; }
-.tab-item.tab1:hover .circle, .tab-item.tab1.active .circle { display: block; }
-.tab-item.tab2 .circle { left: 0.8571rem; }
-.tab-item.tab2 .info { background: url('@/assets/images/disaster/danger-information.png') no-repeat center / 100% 100%; }
-.tab-item.tab2:hover .circle, .tab-item.tab2.active .circle { display: block; }
 
 .right-count { display: flex; margin: auto; }
 .right-count .count-item { margin-right: 2.5rem; }
