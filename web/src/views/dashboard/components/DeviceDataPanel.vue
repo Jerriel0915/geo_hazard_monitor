@@ -99,11 +99,11 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, watch } from 'vue'
-import * as echarts from 'echarts'
-import { Close, DataAnalysis, Upload } from '@element-plus/icons-vue'
-import { getDeviceSensors } from '@/api/sensor'
-import { type ChartData, getChartData } from '@/api/monitorData'
+import {nextTick, onUnmounted, ref, watch} from 'vue'
+import echarts from '@/utils/echarts'
+import {Close, DataAnalysis, Upload} from '@element-plus/icons-vue'
+import {getDeviceSensors} from '@/api/sensor'
+import {type ChartData, getChartData} from '@/api/monitorData'
 
 const props = defineProps<{
   device: any

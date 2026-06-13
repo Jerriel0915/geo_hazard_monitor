@@ -271,7 +271,7 @@
               @error="onVideoError"
           ></video>
           <div v-if="!videoLoaded" class="video-loading">
-            <el-spinner type="dots"/>
+            <span class="custom-spinner"></span>
             <span>加载中...</span>
           </div>
           <div v-if="videoError" class="video-error">
@@ -292,7 +292,6 @@
 </template>
 
 <script setup lang="ts">
-import {Search} from '@element-plus/icons-vue'
 import axios from 'axios'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import L from 'leaflet'
@@ -1137,6 +1136,22 @@ onMounted(() => {
 
 .video-loading {
   gap: 10px;
+}
+
+/* 替代 el-spinner：纯 CSS 旋转动画，无外部依赖 */
+.custom-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #409eff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .video-controls {

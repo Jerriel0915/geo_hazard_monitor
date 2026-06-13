@@ -1,42 +1,60 @@
+# syntax=docker/dockerfile:1.7
 # ==================== 阶段一：后端构建 ====================
-# 多阶段构建：减少最终镜像体积
+# 多阶段构建：Maven 编译 + JRE 运行
 
 # ---- 构建阶段 ----
 FROM maven:3.9-eclipse-temurin-17 AS builder
 
 WORKDIR /app
 
-# 复制依赖文件，先下载依赖（利用 Docker 缓存层）
-COPY pom.xml .
-COPY zwei-common/pom.xml zwei-common/
-COPY zwei-framework/pom.xml zwei-framework/
-COPY zwei-system/pom.xml zwei-system/
-COPY zwei-log/pom.xml zwei-log/
-COPY zwei-monitor/pom.xml zwei-monitor/
-COPY zwei-quartz/pom.xml zwei-quartz/
-COPY zwei-iot-monitor/pom.xml zwei-iot-monitor/
-COPY zwei-iot-device/pom.xml zwei-iot-device/
-COPY zwei-iot-timeseries/pom.xml zwei-iot-timeseries/
-COPY zwei-iot-broker/pom.xml zwei-iot-broker/
-COPY zwei-iot-hazard/pom.xml zwei-iot-hazard/
-COPY zwei-iot-video/pom.xml zwei-iot-video/
-COPY zwei-iot-alarm/pom.xml zwei-iot-alarm/
-COPY zwei-admin/pom.xml zwei-admin/
+# 阿里云 Maven 镜像 — 国内拉 Maven Central 是慢的最大单点
+RUN mkdir -p /root/.m2 && cat > /root/.m2/settings.xml <<'EOF'
+<settings>
+  <mirrors>
+    <mirror>
+      <id>aliyun</id>
+      <mirrorOf>central</mirrorOf>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+  </mirrors>
+</settings>
+EOF
 
-RUN mvn dependency:go-offline -B
+# 分层复制 POM — 只有 POM 变更才重新下载依赖
+COPY pom.xml .
+COPY zwei-common/pom.xml    zwei-common/
+COPY zwei-framework/pom.xml zwei-framework/
+COPY zwei-system/pom.xml    zwei-system/
+COPY zwei-log/pom.xml       zwei-log/
+COPY zwei-monitor/pom.xml   zwei-monitor/
+COPY zwei-quartz/pom.xml    zwei-quartz/
+COPY zwei-iot-monitor/pom.xml    zwei-iot-monitor/
+COPY zwei-iot-device/pom.xml     zwei-iot-device/
+COPY zwei-iot-timeseries/pom.xml zwei-iot-timeseries/
+COPY zwei-iot-broker/pom.xml     zwei-iot-broker/
+COPY zwei-iot-hazard/pom.xml     zwei-iot-hazard/
+COPY zwei-iot-video/pom.xml      zwei-iot-video/
+COPY zwei-iot-alarm/pom.xml      zwei-iot-alarm/
+COPY zwei-admin/pom.xml    zwei-admin/
+
+# BuildKit 缓存 ~/.m2 — 跨次构建复用依赖，二次构建几乎 0 秒
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn dependency:go-offline -B -q --no-transfer-progress
 
 # 复制源码并构建
 COPY . .
-RUN mvn clean package -DskipTests -B
+
+# -T 1C = 每 CPU 核心 1 线程并行编译 14 个模块
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn clean package -DskipTests -B -q --no-transfer-progress -T 1C
 
 # ---- 运行阶段 ----
 FROM eclipse-temurin:17-jre
 
 # 安装必要工具（用于健康检查）
 RUN apt-get update \
-&& apt-get install -y --no-install-recommends curl ca-certificates \
-&& rm -rf /var/lib/apt/lists/*
-
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

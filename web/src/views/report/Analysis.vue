@@ -231,7 +231,7 @@
 import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 import {
   type ChartDataItem,
   type DeviceOption,

@@ -1,12 +1,12 @@
-import { createApp } from 'vue'
+import {createApp} from 'vue'
 import axios from 'axios'
 import './style.css'
 import './assets/custom-icon/iconfont.css'
 import App from './App.vue'
 import router from './router'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import { handleAuthFailure } from './utils/auth'
+// Element Plus 按需导入（组件+样式由 vite 插件自动注入，命令式 API 在各文件显式 import）
+import 'element-plus/theme-chalk/index.css'
+import {handleAuthFailure} from './utils/auth'
 
 axios.interceptors.request.use(
   (config) => {
@@ -36,5 +36,4 @@ axios.interceptors.response.use(
 
 const app = createApp(App)
 app.use(router)
-app.use(ElementPlus)
 app.mount('#app')

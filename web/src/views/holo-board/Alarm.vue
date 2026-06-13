@@ -134,7 +134,7 @@
 
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from 'vue'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 
 const alarmStats = ref({
   recentThreeMonthsAlarms: 156,

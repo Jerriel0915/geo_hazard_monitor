@@ -54,9 +54,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { Box, Location, Setting } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import {nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {Box, Location, Setting} from '@element-plus/icons-vue'
+import echarts from '@/utils/echarts'
 
 const props = defineProps<{
   resourceStats: {

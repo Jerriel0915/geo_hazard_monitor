@@ -442,15 +442,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { 
-  ArrowLeft, Bell, ChatDotRound, CircleClose, Clock, MapLocation, Plus,
-  Picture, Document, Files,
-  Location, Monitor, TrendCharts, Warning, WarnTriangleFilled 
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {ElMessage} from 'element-plus'
+import {
+  ArrowLeft,
+  Bell,
+  ChatDotRound,
+  CircleClose,
+  Clock,
+  Document,
+  Files,
+  Location,
+  MapLocation,
+  Monitor,
+  Picture,
+  Plus,
+  TrendCharts,
+  Warning,
+  WarnTriangleFilled
 } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 
 const route = useRoute()
 const router = useRouter()

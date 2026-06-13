@@ -231,15 +231,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import {nextTick, onBeforeUnmount, onMounted, ref} from 'vue'
+import echarts from '@/utils/echarts'
 import 'echarts-gl'
 import CountUp from './components/CountUp.vue'
 import ThreeMap from './components/ThreeMap.vue'
-import { getPie3D, getParametricEquation } from './components/getPie3D'
-import { getDashboardFull, getHazardPointTrend, getSensorDistribution, type DashboardFullVO } from '@/api/monitor'
-import { getPendingAlarms } from '@/api/alarm'
-import { getHazardPointPage } from '@/api/hazardPoint'
+import {getParametricEquation, getPie3D} from './components/getPie3D'
+import {type DashboardFullVO, getDashboardFull} from '@/api/monitor'
+import {getPendingAlarms} from '@/api/alarm'
+import {getHazardPointPage} from '@/api/hazardPoint'
 
 // ==================== State ====================
 const dateTime = ref('')

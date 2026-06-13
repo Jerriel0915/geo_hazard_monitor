@@ -2681,7 +2681,7 @@ const onDataSensorChange = (sensorId: string | number) => {
   }))
 }
 
-// ==================== ApexCharts 图表配置 ====================
+// ==================== ECharts 图表配置 ====================
 const CHART_COLORS = [
   '#5470C6', '#91CC75', '#FAC858', '#EE6666', '#73C0DE',
   '#3BA272', '#FC8452', '#9A60B4', '#EA7CCC', '#909399'

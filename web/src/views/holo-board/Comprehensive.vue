@@ -329,7 +329,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 import L from 'leaflet'
 import {
   type DashboardOverview,

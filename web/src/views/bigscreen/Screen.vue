@@ -160,13 +160,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import {nextTick, onMounted, onUnmounted, ref} from 'vue'
+import echarts from '@/utils/echarts'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { getDashboardFull, getDeviceOnlineRate, getHazardPointTrend, getSensorDistribution, type DashboardFullVO } from '@/api/monitor'
-import { getRealtimeAlarmPage } from '@/api/realtimeAlarm'
-import { getHazardPointPage } from '@/api/hazardPoint'
+import {type DashboardFullVO, getDashboardFull} from '@/api/monitor'
+import {getRealtimeAlarmPage} from '@/api/realtimeAlarm'
+import {getHazardPointPage} from '@/api/hazardPoint'
 
 /* ========== 时钟 ========== */
 const dateStr = ref(''); const timeStr = ref(''); const weekDay = ref('')

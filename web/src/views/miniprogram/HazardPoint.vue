@@ -161,7 +161,7 @@
 <script setup lang="ts">
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 import VueApexCharts from 'vue3-apexcharts'
 import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
 import {

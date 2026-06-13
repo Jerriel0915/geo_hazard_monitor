@@ -170,7 +170,7 @@
 
 <script setup lang="ts">
 import {nextTick, onUnmounted, ref} from 'vue'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 import {Close, DataAnalysis, Download, Drizzling, Monitor, Odometer, Sunny, Upload} from '@element-plus/icons-vue'
 import {getDeviceSensors} from '@/api/sensor'
 import {type ChartData, getChartData} from '@/api/monitorData'

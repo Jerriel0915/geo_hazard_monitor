@@ -251,11 +251,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Bell, Box, ChatDotRound, Check, CircleClose, Clock, Close, Coin, Connection, List, MapLocation, Monitor, View, Warning, WarnTriangleFilled } from '@element-plus/icons-vue'
-import type { Component } from 'vue'
-import * as echarts from 'echarts'
+import type {Component} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {ElMessage} from 'element-plus'
+import {
+  Bell,
+  Box,
+  ChatDotRound,
+  Check,
+  CircleClose,
+  Clock,
+  Close,
+  Coin,
+  Connection,
+  List,
+  MapLocation,
+  Monitor,
+  View,
+  Warning,
+  WarnTriangleFilled
+} from '@element-plus/icons-vue'
+import echarts from '@/utils/echarts'
 
 const props = defineProps<{
   modelValue: boolean
