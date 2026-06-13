@@ -167,6 +167,7 @@ import 'leaflet/dist/leaflet.css'
 import {type DashboardFullVO, getDashboardFull} from '@/api/monitor'
 import {getRealtimeAlarmPage} from '@/api/realtimeAlarm'
 import {getHazardPointPage} from '@/api/hazardPoint'
+import {TIANDITU_KEY as TK} from '@/composables/useLeafletMap'
 
 /* ========== 时钟 ========== */
 const dateStr = ref(''); const timeStr = ref(''); const weekDay = ref('')
@@ -272,7 +273,6 @@ function chLineSimple(labels:string[],vs:number[]){
 /* ========== 地图 ========== */
 const mapContainer=ref<HTMLDivElement|null>(null)
 let m: L.Map|null = null; let mL:L.LayerGroup|null=null; let mBg:L.TileLayer|null=null; let mLb:L.TileLayer|null=null
-const TK='8dda07d4649c77efd0537a0ff0a1df13'
 const fB:[number,number][]=[[30.60,104.00],[30.70,104.15],[30.65,104.25],[30.55,104.20],[30.60,104.00]]
 
 function initMap(){

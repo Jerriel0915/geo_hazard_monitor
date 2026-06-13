@@ -323,7 +323,6 @@
 <script setup lang="ts">
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox, type FormInstance, type FormRules} from 'element-plus'
-import {Search} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {
   createMonitorContent,
@@ -338,6 +337,7 @@ import {
   updateMonitorType
 } from '@/api/monitorType'
 import {getIconList, type IconItem} from '@/constants/monitorIcons'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 
 type SearchType = 'code' | 'name'
 
@@ -436,22 +436,6 @@ const normalizeMonitorType = (item: any): MonitorTypeItem => ({
   createTime: String(item?.createTime || ''),
   contents: Array.isArray(item?.contents) ? item.contents.map(normalizeMonitorContent) : undefined
 })
-
-const getRequestErrorInfo = (error: any, fallbackMessage = '网络请求失败') => {
-  const status = error?.response?.status
-  const backendMessage = error?.response?.data?.msg
-  const message = backendMessage || error?.message || fallbackMessage
-  return { status, message }
-}
-
-const showRequestErrorMessage = (error: any, fallbackMessage = '网络请求失败') => {
-  const { status, message } = getRequestErrorInfo(error, fallbackMessage)
-  if (status === 400) {
-    ElMessage.warning(message)
-    return
-  }
-  ElMessage.error(message)
-}
 
 const resetFormData = () => {
   Object.assign(formData, {

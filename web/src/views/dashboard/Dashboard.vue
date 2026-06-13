@@ -132,6 +132,8 @@ import LayoutConfigDialog from './components/LayoutConfigDialog.vue'
 import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
 import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import ResourceWidget from './components/ResourceWidget.vue'
+import {LAYER_OPTIONS as layerOptions} from './composables/useDashboardMap'
+import {buildTiandituUrl} from '@/composables/useLeafletMap'
 
 const getDeviceTypeIcon = (type: string) => {
   switch (type) {
@@ -154,38 +156,6 @@ let labelLayer: L.TileLayer | null = null
 let isLabelVisible = true
 const activeLayerKeys = ref<string[]>([])
 const hazardPointDataMap = new Map<number, any>()
-
-const TIANDI_TU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
-
-const layerOptions = [
-  {
-    id: 'image',
-    name: '影像图',
-    color: '#87CEEB',
-    baseUrl: 'img_w',
-    baseLayer: 'img',
-    labelUrl: 'cia_w',
-    labelLayer: 'cia'
-  },
-  {
-    id: 'vector',
-    name: '矢量图',
-    color: '#90EE90',
-    baseUrl: 'vec_w',
-    baseLayer: 'vec',
-    labelUrl: 'cva_w',
-    labelLayer: 'cva'
-  },
-  {
-    id: 'terrain',
-    name: '地形图',
-    color: '#DEB887',
-    baseUrl: 'ter_w',
-    baseLayer: 'ter',
-    labelUrl: 'cta_w',
-    labelLayer: 'cta'
-  }
-]
 
 const currentLayer = ref('image')
 const showLayerList = ref(false)
@@ -1194,7 +1164,7 @@ const addLayer = (layerId: string) => {
     labelLayer = null
   }
 
-  baseLayer = L.tileLayer(`https://t0.tianditu.gov.cn/${layer.baseUrl}/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer.baseLayer}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDI_TU_KEY}`, {
+  baseLayer = L.tileLayer(buildTiandituUrl(layer.baseUrl, layer.baseLayer), {
     maxZoom: 18,
     minZoom: 1
   }).addTo(mapInstance)
@@ -1214,7 +1184,7 @@ const addLabelOverlay = () => {
     labelLayer = null
   }
 
-  labelLayer = L.tileLayer(`https://t0.tianditu.gov.cn/${layer.labelUrl}/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer.labelLayer}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDI_TU_KEY}`, {
+  labelLayer = L.tileLayer(buildTiandituUrl(layer.labelUrl, layer.labelLayer), {
     maxZoom: 18,
     minZoom: 1
   }).addTo(mapInstance)

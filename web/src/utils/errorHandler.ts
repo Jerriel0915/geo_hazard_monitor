@@ -14,8 +14,16 @@ export function getRequestErrorMessage(error: any, fallback: string): string {
 
 /**
  * 控制台记录 + ElMessage 弹窗统一封装。
+ *
+ * HTTP 400 使用 warning 级别（参数校验失败），其余使用 error 级别。
  */
 export function showRequestErrorMessage(error: any, fallback: string): void {
     console.error(`${fallback}:`, error)
-    ElMessage.error(getRequestErrorMessage(error, fallback))
+    const status = error?.response?.status
+    const message = getRequestErrorMessage(error, fallback)
+    if (status === 400) {
+        ElMessage.warning(message)
+    } else {
+        ElMessage.error(message)
+    }
 }

@@ -1,11 +1,11 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { ref, shallowRef, watch, onBeforeUnmount, nextTick, type Ref, type ShallowRef } from 'vue'
-import type { LatLng } from '@/lib/boundaryCoords'
+import {nextTick, onBeforeUnmount, ref, type Ref, shallowRef, type ShallowRef, watch} from 'vue'
+import type {LatLng} from '@/lib/boundaryCoords'
 
-const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
+export const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 
-function buildTiandituUrl(layer: string, style: string): string {
+export function buildTiandituUrl(layer: string, style: string): string {
   return `https://t0.tianditu.gov.cn/${layer}/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${style}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`
 }
 

@@ -131,7 +131,7 @@
               <el-table-column label="操作" min-width="200" fixed="right" align="center">
                 <template #default="{ row }">
                   <div class="op-cell">
-                    <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                    <el-button type="primary" text size="small" @click="handleViewAndOpen(row)">查看</el-button>
                     <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
                     <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
                       <el-button type="primary" text size="small">更多</el-button>
@@ -946,8 +946,8 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
-import {ElMessage, ElMessageBox} from 'element-plus'
+import {computed, nextTick, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
+import {ElMessage} from 'element-plus'
 import {
   ArrowLeft,
   ArrowRight,
@@ -961,230 +961,152 @@ import {
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import MapBoundaryEditor from '@/components/map/MapBoundaryEditor.vue'
-import {type BoundaryCoords, deserialize, type LatLng, serialize} from '@/lib/boundaryCoords'
+import {type BoundaryCoords, type LatLng} from '@/lib/boundaryCoords'
 import VueApexCharts from 'vue3-apexcharts'
 import {
-  batchOperateHazardPoints,
-  bindDevicesToHazardPoint,
-  completeHazardPoint,
-  createHazardPoint,
-  createHazardPointGroup,
-  deleteHazardPoint,
-  deleteHazardPointGroup,
-  deleteHazardPoints,
-  exportHazardPoints,
-  getBoundDevices,
-  getHazardPointDetail,
-  getHazardPointGroups,
-  getHazardPointPage,
-  getUnboundDevices,
-  pauseHazardPoint,
-  unbindDevicesFromHazardPoint,
-  updateHazardPoint,
-  updateHazardPointGroup
-} from '@/api/hazardPoint'
-import {getDeviceSensors} from '@/api/sensor'
-import type {ChartData, LatestDataItem, MonitorDataPageItem} from '@/api/monitorData'
-import {getChartData, getLatestData, getMonitorDataPage} from '@/api/monitorData'
-import {getDeviceIconPath} from '@/utils/deviceIcon'
+  getAlarmLevelType,
+  getChannelLabel,
+  getStatusTagType,
+  getStatusType,
+  type HazardPointItem,
+  useHazardPointCrud,
+} from './composables/useHazardPointCrud'
+import {type GroupItem, useHazardPointGroups} from './composables/useHazardPointGroups'
+import {type DispatchRule, useHazardPointAlarm} from './composables/useHazardPointAlarm'
+import {type BoundDevice, useHazardPointDeviceBind} from './composables/useHazardPointDeviceBind'
+import {useHazardPointMonitor} from './composables/useHazardPointMonitor'
 
-interface HazardPointItem {
-  id: string
-  code: string
-  name: string
-  groupId?: string
-  groupName: string
-  status: string
-  statusName: string
-  statusColor?: string
-  longitude?: number
-  latitude?: number
-  strike?: number
-  boundaryCoords?: string
-  description?: string
-  deviceCount: number
-  createTime?: string
-  createBy?: string
-  updateBy?: string
-  updateTime?: string
-}
+// ── Local refs shared between composables ──
+const boundDevices = ref<BoundDevice[]>([])
 
-interface GroupItem {
-  id: string
-  name: string
-  code: string
-  description: string
-  sortOrder: number
-  count: number
-}
-
-interface SensorItem {
-  id: string
-  name: string
-  iconPath: string
-}
-
-interface BoundDevice {
-  deviceId: string
-  deviceCode: string
-  deviceName: string
-  bindTime: string
-  deviceStatus: string
-  onlineStatus?: number
-  sensors: SensorItem[]
-}
-
-interface AlarmCriteria {
-  id: string
-  name: string
-  deviceId: string
-  deviceName: string
-  monitorTypeId: string
-  monitorTypeName: string
-  monitorContentCode: string
-  monitorContentName: string
-  expression: string
-  alarmLevel: string
-  alarmLevelText: string
-  isEnabled: boolean
-}
-
-interface DispatchRule {
-  id: string
-  type: 'alarm' | 'offline'
-  level: string[]
-  deviceIds: string[]
-  deviceNames?: string[]
-  persons: string[]
-  channels: string[]
-  execTime: string
-  status: number
-  remark: string
-}
-
-interface TreeNode {
-  /** 原始 ID（设备 id 或传感器 id），保留以供回传后端 */
-  id: string
-  /** el-tree 全局唯一 key：设备 `dev_<id>`，传感器 `sen_<deviceId>_<id>` */
-  key: string
-  label: string
-  icon?: string
-  status?: string
-  statusText?: string
-  bindCount?: number
-  children?: TreeNode[]
-  [key: string]: any
-}
-
-/** 从 el-tree 的 checkedKeys 中过滤出设备 ID（忽略传感器 key） */
-const extractDeviceIds = (checkedKeys: Array<string | number>): number[] => {
-  const ids: number[] = []
-  for (const k of checkedKeys) {
-    const s = String(k)
-    if (s.startsWith('dev_')) {
-      const n = Number(s.slice(4))
-      if (!Number.isNaN(n)) ids.push(n)
-    }
-  }
-  return ids
-}
-
-const loading = ref(false)
-const refreshing = ref(false)
-const tableData = ref<HazardPointItem[]>([])
-const groupList = ref<GroupItem[]>([])
+// ── CRUD composable ──
 const selectedGroupId = ref<string | null>(null)
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-const searchKeyword = ref('')
-const searchStatus = ref('')
-const groupPanelWidth = ref(200)
-const activeTab = ref('basic')
-const selectedRows = ref<HazardPointItem[]>([])
-const searchType = ref('name')  // 默认按名称搜索
-const bindLoading = ref(false)  //  绑定设备加载中
 
-// 分组面板相关
-const displayGroupList = ref<GroupItem[]>([])
-const loadingGroups = ref(false)
-const groupPageSize = ref(10)
-const groupCurrentPage = ref(1)
-
-const dialogVisible = ref(false)
-const dialogTitle = ref('')
-const isEdit = ref(false)
-const formRef = ref()
-
-// 分组管理弹窗
-const groupDialogVisible = ref(false)
-const groupDialogTitle = ref('')
-const isEditGroup = ref(false)
-const groupFormRef = ref()
-const groupFormData = reactive({
-  id: '',
-  name: '',
-  code: '',
-  description: '',
-  sortOrder: 0
+const {
+  searchKeyword,
+  searchStatus,
+  searchType,
+  loading,
+  refreshing,
+  tableData,
+  selectedRows,
+  currentPage,
+  pageSize,
+  total,
+  dialogVisible,
+  dialogTitle: crudDialogTitle,
+  isEdit,
+  formRef,
+  formData,
+  formRules,
+  currentRow,
+  statsTotal,
+  statsMonitoring,
+  statsDeviceTotal,
+  statsGroupCount: _crudStatsGroupCount,
+  loadTableData,
+  fetchDetail: fetchHazardPointDetail,
+  handleSearch,
+  handleReset,
+  handleRefresh,
+  handleSizeChange,
+  handlePageChange,
+  handleSelectionChange,
+  handleAdd,
+  handleEdit,
+  handleSubmit,
+  handleView,
+  handleMoreCommand,
+  handleDelete,
+  handleTogglePause,
+  handleComplete,
+  handleBatchDelete,
+  handleBatchPause,
+  handleBatchResume,
+  handleBatchComplete,
+  handleExport: rawHandleExport,
+} = useHazardPointCrud({
+  groupId: selectedGroupId,
+  onRefreshGroups: () => loadGroupList(),
+  onExtraCommand: (command: string, row: HazardPointItem) => {
+    if (command === 'bindDevice') {
+      handleBindDevice(row);
+      return true
+    }
+    if (command === 'alarmConfig') {
+      handleConfigAlarm(row);
+      return true
+    }
+    return false
+  },
 })
 
-//#region 分组名称校验
-const validateGroupName = (_rule: any, value: string, callback: any) => {
-  if (!value) {
-    callback()
-    return
-  }
-  const exists = groupList.value.some(g => g.name === value && g.id !== groupFormData.id)
-  if (exists) {
-    callback(new Error('分组名称已存在'))
-  } else {
-    callback()
-  }
-}
+// 模板中引用 dialogTitle 时用 crudDialogTitle 别名
+const dialogTitle = crudDialogTitle
 
-const groupFormRules = {
-  name: [
-    { required: true, message: '请输入分组名称', trigger: 'blur' },
-    { validator: validateGroupName, trigger: 'blur' }
-  ]
-}
+// 导出按钮在模板中绑定
+const handleExportHazardPoints = rawHandleExport
 
-const getRequestErrorInfo = (error: any, fallbackMessage = '网络请求失败') => {
-  const status = error?.response?.status
-  const backendMessage = error?.response?.data?.msg
-  const message = backendMessage || error?.message || fallbackMessage
-  return { status, message }
-}
+// ── Groups composable ──
+const {
+  groupList,
+  displayGroupList,
+  loadingGroups,
+  groupPanelWidth,
+  groupDialogVisible,
+  groupDialogTitle: groupDlgTitle,
+  isEditGroup,
+  groupFormRef,
+  groupFormData,
+  groupFormRules,
+  groupOptions,
+  statsGroupCount: groupStatsGroupCount,
+  loadGroupList,
+  loadGroupPage,
+  handleGroupListScroll,
+  startResize,
+  handleAddGroup,
+  handleAddGroupFromSelect,
+  handleEditGroupFromSelect,
+  handleDeleteGroupFromSelect,
+  handleEditGroup,
+  handleDeleteGroup,
+  handleGroupSubmit,
+} = useHazardPointGroups({
+  total, // from CRUD composable
+})
 
-const showRequestErrorMessage = (error: any, fallbackMessage = '网络请求失败') => {
-  const { status, message } = getRequestErrorInfo(error, fallbackMessage)
-  if (status === 400) {
-    ElMessage.warning(message)
-    return
-  }
-  ElMessage.error(message)
-}
+// Alias for template
+const groupDialogTitle = groupDlgTitle
+
+// Use group-aware version for template
+const statsGroupCount = groupStatsGroupCount
+
+// ── Remaining local state ──
+const activeTab = ref('basic')
 
 const detailMapRef = ref<HTMLDivElement | null>(null)
 let detailMapInstance: L.Map | null = null
 
-const dataDisplayMode = ref('chart')
-const monitorDataList = ref<MonitorDataPageItem[]>([])
-const chartSeriesData = ref<ChartData[]>([])
-const chartOptions = ref({
-  series: [] as any[],
-  chart: {} as any,
-  xaxis: {} as any,
-  yaxis: {} as any,
-  stroke: {} as any,
-  fill: {} as any,
-  legend: {} as any,
-  tooltip: {} as any,
-  dataLabels: {} as any,
-  grid: {} as any,
-  colors: [] as string[],
-  markers: {} as any,
+// ── Monitor data composable ──
+const {
+  dataDisplayMode,
+  monitorDataList,
+  chartSeriesData,
+  chartOptions,
+  latestDataList,
+  monitorSensors,
+  monitorAttrs,
+  dataFilter,
+  initLatestData,
+  onDataDeviceChange,
+  onDataSensorChange,
+  handleQueryData,
+  handleImportData,
+  handleExportData,
+} = useHazardPointMonitor({
+  currentRow,
+  activeTab,
 })
 
 const mapDialogVisible = ref(false)
@@ -1195,598 +1117,75 @@ const mapInitialCenter = computed<LatLng>(() => ({
 }))
 
 const detailDialogVisible = ref(false)
-const currentRow = ref<HazardPointItem | null>(null)
-const boundDevices = ref<BoundDevice[]>([])
-const alarmCriteriaList = ref<AlarmCriteria[]>([])
-const dispatchRules = ref<DispatchRule[]>([])
-const monitorSensors = ref<{ id: number; name: string }[]>([])
-const monitorAttrs = ref<{ code: string; label: string }[]>([])
-const monitorSensorMap = ref<Map<number, any>>(new Map())
 
-const dataFilter = reactive({
-  deviceId: '' as string | number,
-  sensorId: '' as string | number,
-  attrCode: '',
-  valueType: 'current',
-  timeRange: null as [string, string] | null
+// ── Device bind composable ──
+const {
+  bindDeviceDialogVisible,
+  bindLoading,
+  leftSearchText,
+  rightSearchText,
+  leftDeviceTree,
+  rightDeviceTree,
+  leftTreeRef,
+  rightTreeRef,
+  filterLeftNode,
+  filterRightNode,
+  handleSearchUnboundDevices,
+  initBoundDevices,
+  handleBindDevice,
+  transferToRight,
+  transferToLeft,
+  transferAllToRight,
+  transferAllToLeft,
+  handleBindDeviceSubmit,
+} = useHazardPointDeviceBind({
+  currentRow,
+  boundDevices,
+  onSaved: () => loadTableData(),
 })
 
-const bindDeviceDialogVisible = ref(false)
-const leftSearchText = ref('')
-const rightSearchText = ref('')
-const leftDeviceTree = ref<TreeNode[]>([])
-const rightDeviceTree = ref<TreeNode[]>([])
-const leftTreeRef = ref()
-const rightTreeRef = ref()
-const selectedLeftKeys = ref<string[]>([])
-const selectedRightKeys = ref<string[]>([])
-// 弹窗打开时的已绑定设备 ID 快照，用于"确定"时计算 diff
-const initialBoundDeviceIds = ref<Set<number>>(new Set())
-
-const alarmConfigDialogVisible = ref(false)
-const alarmDialogVisible = ref(false)
-const isEditAlarm = ref(false)
-const alarmFormRef = ref()
-const alarmFormData = reactive({
-  id: '',
-  name: '',
-  deviceId: '',
-  deviceName: '',
-  monitorTypeId: '',
-  monitorTypeName: '',
-  monitorContentCode: '',
-  monitorContentName: '',
-  unit: '',
-  blueExpression: '',
-  blueDescription: '',
-  yellowExpression: '',
-  yellowDescription: '',
-  orangeExpression: '',
-  orangeDescription: '',
-  redExpression: '',
-  redDescription: ''
+// ── Alarm composable ──
+const {
+  alarmConfigDialogVisible,
+  alarmDialogVisible,
+  isEditAlarm,
+  alarmFormRef,
+  alarmFormData,
+  alarmFormRules,
+  alarmCriteriaList,
+  currentEditingAlarmLevel,
+  monitorTypeList,
+  filteredMonitorContent,
+  dispatchRules,
+  dispatchDialogVisible,
+  isEditDispatch,
+  dispatchFormRef,
+  dispatchFormData,
+  dispatchFormRules,
+  userList,
+  initAlarmCriteria,
+  initDispatchRules,
+  handleConfigAlarm,
+  handleAddAlarmCriteria,
+  handleEditAlarm,
+  handleAlarmDeviceChange,
+  handleMonitorTypeChange,
+  handleMonitorContentChange,
+  insertExpression,
+  handleAlarmSubmit,
+  handleToggleAlarm,
+  handleDeleteAlarm,
+  handleAddDispatchRule,
+  handleEditDispatchRule,
+  handleDispatchSubmit,
+  handleDeleteDispatchRule,
+} = useHazardPointAlarm({
+  currentRow,
+  boundDevices: boundDevices as Ref<{ deviceId: string; deviceName: string }[]>,
 })
-const alarmFormRules = {
-  name: [{ required: true, message: '请输入判据名称', trigger: 'blur' }],
-  deviceId: [{ required: true, message: '请选择设备', trigger: 'blur' }],
-  monitorTypeId: [{ required: true, message: '请选择监测类型', trigger: 'blur' }],
-  monitorContentCode: [{ required: true, message: '请选择监测内容', trigger: 'blur' }]
-}
-
-//#region 告警等级类型
-const currentEditingAlarmLevel = ref('')
-
-
-//#region 监测类型
-const monitorTypeList = ref<{ id: string; name: string; code: string; contents: { value: string; label: string; unit: string }[] }[]>([
-  { id: '1', name: '地表位移监测', code: 'DISPLACEMENT', contents: [
-    { value: 'displacement_x', label: 'X方向位移', unit: 'mm' },
-    { value: 'displacement_y', label: 'Y方向位移', unit: 'mm' },
-    { value: 'displacement_z', label: 'Z方向位移', unit: 'mm' },
-    { value: 'total_displacement', label: '总位移', unit: 'mm' }
-  ]},
-  { id: '2', name: '裂缝监测', code: 'CRACK', contents: [
-    { value: 'crack_width', label: '裂缝宽度', unit: 'mm' },
-    { value: 'crack_length', label: '裂缝长度', unit: 'm' },
-    { value: 'crack_depth', label: '裂缝深度', unit: 'm' }
-  ]},
-  { id: '3', name: '雨量监测', code: 'RAINFALL', contents: [
-    { value: 'rainfall_hour', label: '小时雨量', unit: 'mm' },
-    { value: 'rainfall_day', label: '日雨量', unit: 'mm' },
-    { value: 'rainfall_week', label: '周雨量', unit: 'mm' },
-    { value: 'rainfall_month', label: '月雨量', unit: 'mm' }
-  ]},
-  { id: '4', name: '水位监测', code: 'WATER_LEVEL', contents: [
-    { value: 'water_level', label: '水位', unit: 'm' },
-    { value: 'water_temp', label: '水温', unit: '℃' },
-    { value: 'water_pressure', label: '水压', unit: 'kPa' }
-  ]},
-  { id: '5', name: '地温监测', code: 'SOIL_TEMP', contents: [
-    { value: 'soil_temp_10cm', label: '10cm地温', unit: '℃' },
-    { value: 'soil_temp_30cm', label: '30cm地温', unit: '℃' },
-    { value: 'soil_temp_50cm', label: '50cm地温', unit: '℃' }
-  ]},
-  { id: '6', name: '含水率监测', code: 'MOISTURE', contents: [
-    { value: 'soil_moisture', label: '土壤含水率', unit: '%' },
-    { value: 'volumetric_water', label: '体积含水率', unit: '%' }
-  ]},
-  { id: '7', name: '倾斜监测', code: 'INCLINATION', contents: [
-    { value: 'inclination_x', label: 'X方向倾角', unit: '°' },
-    { value: 'inclination_y', label: 'Y方向倾角', unit: '°' },
-    { value: 'total_inclination', label: '总倾角', unit: '°' }
-  ]},
-  { id: '8', name: '应力应变监测', code: 'STRESS', contents: [
-    { value: 'axial_stress', label: '轴向应力', unit: 'MPa' },
-    { value: 'radial_stress', label: '径向应力', unit: 'MPa' },
-    { value: 'strain', label: '应变', unit: 'με' }
-  ]}
-])
-
-const filteredMonitorContent = computed(() => {
-  if (!alarmFormData.monitorTypeId) {
-    return []
-  }
-  const mt = monitorTypeList.value.find(t => t.id === alarmFormData.monitorTypeId)
-  return mt ? mt.contents : []
-})
-
-const dispatchDialogVisible = ref(false)
-const isEditDispatch = ref(false)
-const dispatchFormRef = ref()
-const dispatchFormData = reactive({
-  id: '',
-  hazardPointId: '',
-  type: 'alarm' as 'alarm' | 'offline',
-  level: [] as string[],
-  deviceIds: [] as string[],
-  persons: [] as string[],
-  channels: ['system'] as string[],
-  execTime: '',
-  execType: 'realtime' as 'realtime' | 'timed',
-  execFrequencyNum: 1,
-  execFrequencyUnit: 'hour' as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year',
-  execTimePoints: '',
-  status: 1 as 0 | 1,
-  remark: ''
-})
-const dispatchFormRules = {
-  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  level: [{ required: true, type: 'array', min: 1, message: '请选择告警等级', trigger: 'change' }],
-  deviceIds: [{ required: true, type: 'array', min: 1, message: '请选择设备', trigger: 'change' }],
-  persons: [{ required: true, type: 'array', min: 1, message: '请选择通知人员', trigger: 'change' }],
-  channels: [{ required: true, type: 'array', min: 1, message: '请选择通知渠道', trigger: 'change' }]
-}
-
-const userList = ref<{ id: string; name: string; phone: string }[]>([
-  { id: '1', name: '张三', phone: '13923755477' },
-  { id: '2', name: '李四', phone: '13558981389' },
-  { id: '3', name: '王强', phone: '13889771288' },
-  { id: '4', name: '陈经理', phone: '13900001111' }
-])
-
-const groupOptions = computed(() => groupList.value.filter(g => g.id !== 'all'))
-
-// 统计卡片数据
-const statsTotal = computed(() => total.value)
-const statsMonitoring = computed(() => tableData.value.filter(r => r.status === 'MONITORING').length)
-const statsDeviceTotal = computed(() => tableData.value.reduce((sum, r) => sum + (r.deviceCount || 0), 0))
-const statsGroupCount = computed(() => Math.max(0, groupList.value.length - 1)) // 排除"全部"
-
-const formData = reactive({
-  code: '',
-  name: '',
-  groupId: '',
-  longitude: 104.06,
-  latitude: 30.67,
-  strike: 0,
-  description: '',
-  boundaryCoords: deserialize(null) as BoundaryCoords
-})
-
-// Backend DB stores lat/lng as DECIMAL(10,6) — auto-truncate to 6
-// decimals on any mutation so the form input and the saved payload
-// always agree with what the column can hold.
-function round6(n: number): number {
-  return Math.round(n * 1e6) / 1e6
-}
-
-watch(() => formData.longitude, v => {
-  formData.longitude = round6(v)
-})
-watch(() => formData.latitude, v => {
-  formData.latitude = round6(v)
-})
-
-const formRules = {
-  code: [{ required: true, message: '请输入隐患点编号', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入隐患点名称', trigger: 'blur' }]
-}
-
-const getStatusValue = () => {
-  if (!searchStatus.value) {
-    return undefined
-  }
-  const statusMap: Record<string, number> = {
-    MONITORING: 1,
-    PAUSED: 2,
-    COMPLETED: 3
-  }
-  return statusMap[searchStatus.value]
-}
-
-const buildHazardPointQueryParams = () => {
-  const params: Record<string, any> = {
-    pageNum: currentPage.value,
-    pageSize: pageSize.value
-  }
-
-  if (searchKeyword.value) {
-    if (searchType.value === 'name') {
-      params.name = searchKeyword.value
-    } else {
-      params.code = searchKeyword.value
-    }
-  }
-
-  const status = getStatusValue()
-  if (status !== undefined) {
-    params.status = status
-  }
-
-  if (selectedGroupId.value) {
-    params.groupId = parseInt(selectedGroupId.value)
-  }
-
-  return params
-}
-
-const buildHazardPointPayload = () => ({
-  code: formData.code,
-  name: formData.name,
-  groupId: formData.groupId ? Number(formData.groupId) : null,
-  longitude: formData.longitude,
-  latitude: formData.latitude,
-  strike: formData.strike || 0,
-  description: formData.description,
-  boundaryCoords: serialize(formData.boundaryCoords)
-})
-
-const getStatusType = (status: string) => {
-  const types: Record<string, string> = {
-    'MONITORING': 'success',
-    'PAUSED': 'warning',
-    'COMPLETED': 'info'
-  }
-  return types[status] || 'default'
-}
-
-const getStatusTagType = (status: string) => {
-  const types: Record<string, string> = {
-    'NORMAL': 'success',
-    'FAULT': 'danger',
-    'OFFLINE': 'warning'
-  }
-  return types[status] || 'default'
-}
-
-const normalizeHazardPoint = (item: any): HazardPointItem => ({
-  id: String(item.id),
-  code: item.code || '',
-  name: item.name || '',
-  groupId: item.groupId ? String(item.groupId) : '',
-  groupName: item.groupName || '',
-  status: item.status === 1 ? 'MONITORING' : item.status === 2 ? 'PAUSED' : 'COMPLETED',
-  statusName: item.statusName || '',
-  longitude: item.longitude,
-  latitude: item.latitude,
-  strike: item.strike,
-  boundaryCoords: item.boundaryCoords,
-  description: item.description,
-  deviceCount: item.deviceCount || 0,
-  createTime: item.createTime,
-  createBy: item.createBy,
-  updateBy: item.updateBy,
-  updateTime: item.updateTime
-})
-
-//#region 告警等级类型
-const getAlarmLevelType = (level: string) => {
-  const types: Record<string, string> = {
-    '蓝色预警': 'primary',
-    '黄色预警': 'warning',
-    '橙色预警': 'warning',
-    '红色预警': 'danger',
-    '四级(注意)': 'primary',
-    '三级(警示)': 'warning',
-    '二级(警戒)': 'warning',
-    '一级(警报)': 'danger'
-  }
-  return types[level] || 'default'
-}
-
-// 通知渠道标签
-const getChannelLabel = (channel: string) => {
-  const labels: Record<string, string> = {
-    'SYSTEM': '系统消息',
-    'SMS': '短信',
-    'WECHAT': '微信',
-    'EMAIL': '邮件',
-    'system': '系统消息',
-    'sms': '短信',
-    'email': '邮件'
-  }
-  return labels[channel] || channel
-}
 
 const handleToggleDispatchStatus = (row: DispatchRule) => {
   ElMessage.success(`规则${row.status === 1 ? '启用' : '禁用'}成功`)
-}
-
-// ==================== 加载隐患点列表 ====================
-// 用途：分页查询隐患点，支持编号/名称搜索、状态筛选、分组筛选
-const loadTableData = async () => {
-  loading.value = true
-  try {
-    const response: any = await getHazardPointPage(buildHazardPointQueryParams())
-
-    if (response.code === 200) {
-      const data = response.data
-      tableData.value = data.rows.map((item: any) => normalizeHazardPoint(item))
-      total.value = data.total
-    } else {
-      ElMessage.error(response.msg || '获取数据失败')
-    }
-  } catch (error) {
-    showRequestErrorMessage(error, '加载隐患点失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-const fetchHazardPointDetail = async (id: string) => {
-  const response: any = await getHazardPointDetail(id)
-  if (response.code !== 200) {
-    throw new Error(response.msg || '获取详情失败')
-  }
-  return normalizeHazardPoint(response.data)
-}
-
-const downloadBlobFile = (blob: Blob, fileName: string) => {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-
-const getExportFileName = (contentDisposition?: string) => {
-  if (!contentDisposition) {
-    return `hazard-points-${Date.now()}.xlsx`
-  }
-  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
-  if (utf8Match?.[1]) {
-    return decodeURIComponent(utf8Match[1])
-  }
-  const normalMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
-  if (normalMatch?.[1]) {
-    return decodeURIComponent(normalMatch[1])
-  }
-  return `hazard-points-${Date.now()}.xlsx`
-}
-
-// ==================== 加载分组列表 ====================
-// 用途：从后端获取分组列表，并添加"全部"选项
-const loadGroupList = async () => {
-  loadingGroups.value = true
-  try {
-    const response: any = await getHazardPointGroups()
-
-    if (response.code === 200) {
-      const groups = response.data.map((item: any) => ({
-        id: String(item.id),
-        name: item.name,
-        code: item.code,
-        description: item.description,
-        sortOrder: item.sortOrder,
-        count: item.count
-      }))
-
-      // 添加"全部"选项
-      groupList.value = [
-        {
-          id: 'all',
-          name: '全部',
-          code: 'ALL',
-          description: '所有隐患点',
-          sortOrder: -1,
-          count: total.value
-        },
-        ...groups
-      ]
-
-      loadGroupPage(1) // 加载第一页分组（用于左侧列表分页）
-    } else {
-      ElMessage.error(response.msg || '获取分组失败')
-    }
-  } catch (error) {
-    console.error('获取分组失败:', error)
-    showRequestErrorMessage(error, '获取分组失败')
-  } finally {
-    loadingGroups.value = false
-  }
-}
-
-const loadGroupPage = (page: number) => {
-  groupCurrentPage.value = page
-  const start = (page - 1) * groupPageSize.value
-  const end = start + groupPageSize.value
-  displayGroupList.value = [...groupList.value].sort((a, b) => a.sortOrder - b.sortOrder).slice(start, end)
-}
-
-const handleGroupListScroll = (e: Event) => {
-  const target = e.target as HTMLElement
-  if (target.scrollTop + target.clientHeight >= target.scrollHeight - 10 && !loadingGroups.value) {
-    loadingGroups.value = true
-    setTimeout(() => {
-      const nextPage = groupCurrentPage.value + 1
-      const totalPages = Math.ceil(groupList.value.length / groupPageSize.value)
-      if (nextPage <= totalPages) {
-        const start = (nextPage - 1) * groupPageSize.value
-        const end = start + groupPageSize.value
-        const newGroups = [...groupList.value].sort((a, b) => a.sortOrder - b.sortOrder).slice(start, end)
-        displayGroupList.value = [...displayGroupList.value, ...newGroups]
-        groupCurrentPage.value = nextPage
-      }
-      loadingGroups.value = false
-    }, 500)
-  }
-}
-
-const handleAddGroup = () => {
-  groupDialogTitle.value = '新增分组'
-  isEditGroup.value = false
-  Object.assign(groupFormData, {
-    id: '',
-    name: '',
-    description: '',
-    sortOrder: groupList.value.length
-  })
-  groupDialogVisible.value = true
-}
-
-const handleAddGroupFromSelect = () => {
-  handleAddGroup()
-}
-
-const handleEditGroupFromSelect = (option: any) => {
-  const group = groupList.value.find(g => g.id === option.id)
-  if (!group || group.id === 'all' || group.id === '1') {
-    ElMessage.warning('该分组不允许修改')
-    return
-  }
-  groupDialogTitle.value = '修改分组'
-  isEditGroup.value = true
-  Object.assign(groupFormData, {
-    id: group.id,
-    name: group.name,
-    description: group.description,
-    sortOrder: group.sortOrder
-  })
-  groupDialogVisible.value = true
-}
-
-// ==================== 删除分组（从下拉选择框）====================
-// 用途：复用 handleDeleteGroup 的逻辑
-const handleDeleteGroupFromSelect = (option: any) => {
-  const group = groupList.value.find(g => g.id === option.id)
-  if (group) {
-    handleDeleteGroup(group)
-  }
-}
-
-// ==================== 打开编辑分组弹窗 ====================
-// 用途：把选中分组的数据填入表单，打开编辑对话框
-const handleEditGroup = (group: GroupItem) => {
-  if (group.id === 'all') {
-    ElMessage.warning('"全部"分组不允许修改')
-    return
-  }
-  groupDialogTitle.value = '编辑分组'
-  isEditGroup.value = true
-  Object.assign(groupFormData, {
-    id: group.id,
-    code: group.code,
-    name: group.name,
-    description: group.description,
-    sortOrder: group.sortOrder
-  })
-  groupDialogVisible.value = true
-}
-
-// ==================== 删除分组 ====================
-// 用途：调用删除接口，删除选中的分组
-const handleDeleteGroup = (group: GroupItem) => {
-  if (group.id === 'all') {
-    ElMessage.warning('"全部"分组不允许删除')
-    return
-  }
-
-  if (group.count > 0) {
-    ElMessage.warning(`分组"${group.name}"下仍绑定 ${group.count} 个隐患点，禁止删除`)
-    return
-  }
-
-  ElMessageBox.confirm(`确定要删除分组"${group.name}"吗?`, '删除确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    loading.value = true
-    try {
-      const res: any = await deleteHazardPointGroup(group.id)
-
-      if (res.code === 200) {
-        ElMessage.success('删除成功')
-        loadGroupList()  // 刷新分组列表
-      } else {
-        ElMessage.error(res.msg || '删除失败')
-      }
-    } catch (error: any) {
-      console.error('删除失败:', error)
-      const { status } = getRequestErrorInfo(error, '删除失败')
-      showRequestErrorMessage(error, '删除失败')
-      if (status === 404) {
-        loadGroupList()
-      }
-    } finally {
-      loading.value = false
-    }
-  }).catch(() => {})
-}
-
-// ==================== 提交分组（新增/编辑） ====================
-// 用途：调用新增或编辑分组接口
-const handleGroupSubmit = async () => {
-  groupFormRef.value.validate(async (valid: boolean) => {
-    if (valid) {
-      loading.value = true
-      try {
-        let res: any
-
-        if (isEditGroup.value) {
-          res = await updateHazardPointGroup(groupFormData.id, {
-            name: groupFormData.name,
-            description: groupFormData.description,
-            sortOrder: groupFormData.sortOrder,
-            status: 1
-          })
-        } else {
-          const code = `G${Date.now()}`
-          res = await createHazardPointGroup({
-            code: code,
-            name: groupFormData.name,
-            description: groupFormData.description,
-            sortOrder: groupFormData.sortOrder,
-            status: 1
-          })
-        }
-
-        if (res.code === 200) {
-          ElMessage.success(isEditGroup.value ? '修改成功' : '新增成功')
-          groupDialogVisible.value = false
-          loadGroupList()  // 刷新分组列表
-        } else {
-          ElMessage.error(res.msg || '操作失败')
-        }
-      } catch (error) {
-        console.error('提交失败:', error)
-        showRequestErrorMessage(error, '操作失败')
-      } finally {
-        loading.value = false
-      }
-    }
-  })
-}
-
-const startResize = (e: MouseEvent) => {
-  const startX = e.clientX
-  const startWidth = groupPanelWidth.value
-
-  const onMouseMove = (e: MouseEvent) => {
-    const diff = e.clientX - startX
-    groupPanelWidth.value = Math.max(150, Math.min(400, startWidth + diff))
-  }
-
-  const onMouseUp = () => {
-    document.removeEventListener('mousemove', onMouseMove)
-    document.removeEventListener('mouseup', onMouseUp)
-  }
-
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
 }
 
 // ==================== 选择分组 ====================
@@ -1796,116 +1195,18 @@ const handleSelectGroup = (group: GroupItem) => {
   handleSearch()
 }
 
-// ==================== 搜索隐患点 ====================
-// 用途：根据分组ID和搜索关键词查询隐患点
-const handleSearch = () => {
-  currentPage.value = 1
-  loadTableData()
-}
-
-// 重置搜索条件
-const handleReset = () => {
-  searchKeyword.value = ''
-  searchStatus.value = ''
-  searchType.value = 'name'
-  selectedGroupId.value = null
-  currentPage.value = 1
-  loadTableData()
-}
-
-// 刷新页面（同时刷新隐患点列表和分组列表）
-const handleRefresh = async () => {
-  refreshing.value = true
-  try {
-    await Promise.all([loadTableData(), loadGroupList()])
-    ElMessage.success('刷新成功')
-  } catch (error) {
-    showRequestErrorMessage(error, '刷新失败')
-  } finally {
-    refreshing.value = false
-  }
-}
-
-// ==================== 分页 ====================
-// 用途：根据当前页码和每页数量查询隐患点
-const handleSizeChange = () => {
-  loadTableData()
-}
-
-// ==================== 分页 ====================
-// 用途：根据当前页码和每页数量查询隐患点
-const handlePageChange = () => {
-  loadTableData()
-}
-
-const handleSelectionChange = (val: HazardPointItem[]) => {
-  selectedRows.value = val
-}
-
-// ==================== 打开新增弹窗 ====================
-// 用途：清空表单，打开新增对话框
-const handleAdd = () => {
-  dialogTitle.value = '新增隐患点'
-  isEdit.value = false
-  Object.assign(formData, {
-    code: '',
-    name: '',
-    groupId: '',
-    longitude: 104.06,
-    latitude: 30.67,
-    strike: 0,
-    description: ''
+// 点击操作列"查看"时加载详情并打开详情弹窗（额外处理：加载关联数据+地图）
+const handleViewAndOpen = async (row: HazardPointItem) => {
+  await handleView(row)
+  activeTab.value = 'basic'
+  initBoundDevices(row.id)
+  initAlarmCriteria(row.id)
+  initDispatchRules(row.id)
+  initLatestData(row.id)
+  detailDialogVisible.value = true
+  nextTick(() => {
+    initDetailMap()
   })
-  formData.boundaryCoords = deserialize(null)
-  dialogVisible.value = true
-}
-
-// ==================== 打开编辑弹窗 ====================
-// 用途：把选中行的数据填入表单，打开编辑对话框
-const handleEdit = (row: HazardPointItem) => {
-  currentRow.value = row  // 保存当前行，用于修改接口
-  dialogTitle.value = '编辑隐患点'
-  isEdit.value = true
-  Object.assign(formData, {
-    code: row.code,
-    name: row.name,
-    groupId: row.groupId || '',
-    longitude: row.longitude || 104.06,
-    latitude: row.latitude || 30.67,
-    description: row.description || ''
-  })
-  // 解析 boundaryCoords 回显
-  formData.boundaryCoords = deserialize((row as any).boundaryCoords)
-  dialogVisible.value = true
-}
-
-// ==================== 操作列下拉菜单路由 ====================
-const handleRowCommand = (command: string, row: HazardPointItem) => {
-  switch (command) {
-    case 'togglePause': handleTogglePause(row); break
-    case 'complete': handleComplete(row); break
-    case 'delete': handleDelete(row); break
-  }
-}
-
-const handleView = async (row: HazardPointItem) => {
-  loading.value = true
-  try {
-    currentRow.value = await fetchHazardPointDetail(row.id)
-    activeTab.value = 'basic'
-    initBoundDevices(row.id)
-    initAlarmCriteria(row.id)
-    initDispatchRules(row.id)
-    initLatestData(row.id)
-    detailDialogVisible.value = true
-    nextTick(() => {
-      initDetailMap()
-    })
-  } catch (error) {
-    showRequestErrorMessage(error, '获取详情失败')
-  } finally {
-    loading.value = false
-  }
 }
 
 const initDetailMap = () => {
@@ -1983,186 +1284,6 @@ const initDetailMap = () => {
   }
 }
 
-// ==================== 删除隐患点 ====================
-// 用途：调用删除接口，删除选中的隐患点
-const handleMoreCommand = (command: string, row: any) => {
-  const map: Record<string, () => void> = {
-    togglePause: () => handleTogglePause(row),
-    complete: () => handleComplete(row),
-    bindDevice: () => handleBindDevice(row),
-    alarmConfig: () => handleConfigAlarm(row),
-    delete: () => handleDelete(row)
-  }
-  map[command]?.()
-}
-const handleDelete = async (row: any) => {
-  ElMessageBox.confirm(`确定要删除隐患点"${row.name}"吗？`, '删除确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    loading.value = true
-    try {
-      const res: any = await deleteHazardPoint(row.id)
-
-      if (res.code === 200) {
-        ElMessage.success('删除成功')
-        loadTableData() // 刷新列表
-        loadGroupList() // 刷新分组列表
-      } else {
-        ElMessage.error(res.msg || '删除失败')
-      }
-    } catch (error) {
-      showRequestErrorMessage(error, '删除失败')
-    } finally {
-      loading.value = false
-    }
-  }).catch(() => {})
-}
-
-const handleBatchDelete = async () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要删除的隐患点')
-    return
-  }
-  ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 个隐患点吗？`, '批量删除确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    loading.value = true
-    try {
-      const ids = selectedRows.value.map(row => parseInt(row.id))
-      const res: any = await deleteHazardPoints(ids)
-      if (res.code === 200) {
-        ElMessage.success('批量删除成功')
-        loadTableData()
-        loadGroupList()
-      } else {
-        ElMessage.error(res.msg || '批量删除失败')
-      }
-    } catch (error) {
-      showRequestErrorMessage(error, '批量删除失败')
-    } finally {
-      loading.value = false
-    }
-  }).catch(() => {})
-}
-
-const handleExportHazardPoints = async () => {
-  try {
-    const exportPayload: Record<string, any> = {}
-    const selectedIds = selectedRows.value.map(row => parseInt(row.id))
-
-    if (selectedIds.length > 0) {
-      exportPayload.ids = selectedIds
-    } else {
-      const params = buildHazardPointQueryParams()
-      exportPayload.code = params.code
-      exportPayload.name = params.name
-      exportPayload.groupId = params.groupId
-      exportPayload.status = params.status
-    }
-
-    const response = await exportHazardPoints(exportPayload)
-    const contentType = String(response.headers['content-type'] || '')
-    if (contentType.includes('application/json')) {
-      const text = await response.data.text()
-      const result = JSON.parse(text)
-      throw new Error(result.msg || '导出失败')
-    }
-
-    const fileName = getExportFileName(response.headers['content-disposition'])
-    downloadBlobFile(response.data, fileName)
-    ElMessage.success(selectedIds.length > 0 ? '已按选中隐患点导出' : '已按当前筛选条件导出')
-  } catch (error: any) {
-    showRequestErrorMessage(error, '导出失败')
-  }
-}
-
-// ==================== 新增/编辑隐患点 ====================
-// 用途：提交表单，调用新增或修改接口
-const handleSubmit = async () => {
-  formRef.value.validate(async (valid: boolean) => {
-    if (valid) {
-      loading.value = true
-      try {
-        let res: any
-        const payload = buildHazardPointPayload()
-
-        if (isEdit.value && currentRow.value?.id) {
-          res = await updateHazardPoint(currentRow.value.id, payload)
-        } else {
-          res = await createHazardPoint(payload)
-        }
-
-        if (res.code === 200) {
-          ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
-          dialogVisible.value = false
-          loadTableData() // 刷新列表
-          loadGroupList() // 刷新分组列表
-        } else {
-          ElMessage.error(res.msg || '操作失败')
-        }
-      } catch (error: any) {
-        showRequestErrorMessage(error, '提交失败')
-      } finally {
-        loading.value = false
-      }
-    }
-  })
-}
-
-const handleTogglePause = async (row: HazardPointItem) => {
-  const pause = row.status !== 'PAUSED'
-  const actionText = pause ? '停测' : '恢复'
-  ElMessageBox.confirm(`确定要${actionText}隐患点"${row.name}"吗？`, `${actionText}确认`, {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: pause ? 'warning' : 'info'
-  }).then(async () => {
-    loading.value = true
-    try {
-      const res: any = await pauseHazardPoint(row.id, pause)
-
-      if (res.code === 200) {
-        ElMessage.success(`${actionText}成功`)
-        loadTableData()
-      } else {
-        ElMessage.error(res.msg || `${actionText}失败`)
-      }
-    } catch (error) {
-      showRequestErrorMessage(error, `${actionText}失败`)
-    } finally {
-      loading.value = false
-    }
-  }).catch(() => {})
-}
-
-const handleComplete = async (row: HazardPointItem) => {
-  ElMessageBox.confirm(`确定要完结隐患点"${row.name}"吗？完结后将停止监测。`, '完结确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    loading.value = true
-    try {
-      const res: any = await completeHazardPoint(row.id)
-
-      if (res.code === 200) {
-        ElMessage.success('完结成功')
-        loadTableData()
-      } else {
-        ElMessage.error(res.msg || '完结失败')
-      }
-    } catch (error) {
-      showRequestErrorMessage(error, '完结失败')
-    } finally {
-      loading.value = false
-    }
-  }).catch(() => {})
-}
-
 const handleOpenMap = () => {
   mapDialogVisible.value = true
 }
@@ -2182,770 +1303,6 @@ const onMapDone = (value: BoundaryCoords, center: LatLng | null) => {
 }
 
 // ── Old Leaflet map code replaced by <MapBoundaryEditor> component ──
-
-//初始化绑定设备
-const initBoundDevices = async (hazardPointId: string) => {
-  try {
-    const response: any = await getBoundDevices(hazardPointId)
-    if (response.code === 200) {
-      boundDevices.value = response.data.map((item: any) => ({
-        deviceId: String(item.deviceId || item.id),
-        deviceCode: item.deviceCode,
-        deviceName: item.deviceName,
-        bindTime: item.bindTime,
-        deviceStatus: item.deviceStatus === 1 ? 'NORMAL' : item.deviceStatus === 2 ? 'FAULT' : 'OFFLINE',
-        sensors: item.sensors || []
-      }))
-    } else {
-      boundDevices.value = []
-    }
-  } catch (error) {
-    console.error('获取绑定设备失败:', error)
-    boundDevices.value = []
-  }
-}
-
-//设备绑定相关函数
-const loadUnboundDevices = async (keyword?: string) => {
-  if (!currentRow.value) return []
-  try {
-    const response: any = await getUnboundDevices(currentRow.value.id, keyword)
-    if (response.code === 200) {
-      return response.data.map((item: any) => ({
-        id: String(item.id),
-        key: `dev_${item.id}`,
-        label: item.label,
-        bindCount: item.bindCount,
-        status: String(item.status), // 转为字符串
-        iconPath: item.iconPath,
-        children: item.children?.map((child: any) => ({
-          id: String(child.id),
-          key: `sen_${item.id}_${child.id}`,
-          label: child.label,
-          iconPath: child.iconPath,
-          status: String(child.status) // 转为字符串
-        })) || []
-      }))
-    }
-    return []
-  } catch (error) {
-    console.error('获取未绑定设备失败:', error)
-    return []
-  }
-}
-
-const handleSearchUnboundDevices = async () => {
-  if (!currentRow.value) return
-  const devices = await loadUnboundDevices(leftSearchText.value)
-  leftDeviceTree.value = devices
-}
-
-const refreshDeviceLists = async () => {
-  if (!currentRow.value) return
-
-  await initBoundDevices(currentRow.value.id)
-
-  const unboundDevices = await loadUnboundDevices()
-  leftDeviceTree.value = unboundDevices
-
-  rightDeviceTree.value = boundDevices.value.map(device => {
-    const statusCode = device.deviceStatus === 'NORMAL' ? 1 : device.deviceStatus === 'FAULT' ? 2 : 3
-    return {
-      id: String(device.deviceId),
-      key: `dev_${device.deviceId}`,
-      label: `${device.deviceCode} - ${device.deviceName}`,
-      iconPath: getDeviceIconPath({icon: 'device', status: statusCode, onlineStatus: device.onlineStatus}),
-      status: String(statusCode),
-      children: device.sensors.map(sensor => ({
-        id: String(sensor.id),
-        key: `sen_${device.deviceId}_${sensor.id}`,
-        label: sensor.name,
-        iconPath: sensor.iconPath
-      }))
-    }
-  })
-}
-
-const initAlarmCriteria = (hazardPointId: string) => {
-  // TODO: 接入后端告警判据查询接口
-  alarmCriteriaList.value = []
-}
-
-const initDispatchRules = (hazardPointId: string) => {
-  // TODO: 接入后端告警分发规则查询接口
-  dispatchRules.value = []
-}
-
-const handleBindDevice = async (row: HazardPointItem) => {
-  currentRow.value = row
-  bindDeviceDialogVisible.value = true
-
-  await refreshDeviceLists()
-
-  // 记录初始已绑定设备 ID 集合，作为"确定"时计算 diff 的基线
-  initialBoundDeviceIds.value = new Set(
-      boundDevices.value
-          .map(d => Number(d.deviceId))
-          .filter(id => !Number.isNaN(id))
-  )
-
-  selectedLeftKeys.value = []
-  selectedRightKeys.value = []
-}
-
-const filterLeftNode = (value: string, data: any) => {
-  if (!value) return true
-  return data.label.toLowerCase().includes(value.toLowerCase())
-}
-
-const filterRightNode = (value: string, data: any) => {
-  if (!value) return true
-  return data.label.toLowerCase().includes(value.toLowerCase())
-}
-
-const transferToRight = () => {
-  // 以 el-tree 的内部选中状态为准（getCheckedKeys），过滤出设备 key
-  const checkedKeys: Array<string | number> = leftTreeRef.value?.getCheckedKeys() ?? []
-  const deviceIds = extractDeviceIds(checkedKeys)
-  if (deviceIds.length === 0) {
-    ElMessage.warning('请选择要绑定的设备')
-    return
-  }
-
-  // 仅做前端转移：将选中的设备节点从左树移到右树，等"确定"再提交后端
-  const movedIds = new Set(deviceIds.map(String))
-  const moved = leftDeviceTree.value.filter(node => movedIds.has(node.id))
-  leftDeviceTree.value = leftDeviceTree.value.filter(node => !movedIds.has(node.id))
-  rightDeviceTree.value = [...rightDeviceTree.value, ...moved]
-
-  leftTreeRef.value?.setCheckedKeys([])
-  selectedLeftKeys.value = []
-}
-
-const transferToLeft = () => {
-  const checkedKeys: Array<string | number> = rightTreeRef.value?.getCheckedKeys() ?? []
-  const deviceIds = extractDeviceIds(checkedKeys)
-  if (deviceIds.length === 0) {
-    ElMessage.warning('请选择要解绑的设备')
-    return
-  }
-
-  const movedIds = new Set(deviceIds.map(String))
-  const moved = rightDeviceTree.value.filter(node => movedIds.has(node.id))
-  rightDeviceTree.value = rightDeviceTree.value.filter(node => !movedIds.has(node.id))
-  leftDeviceTree.value = [...leftDeviceTree.value, ...moved]
-
-  rightTreeRef.value?.setCheckedKeys([])
-  selectedRightKeys.value = []
-}
-
-const transferAllToRight = async () => {
-  if (leftDeviceTree.value.length === 0) {
-    ElMessage.warning('没有可绑定的设备')
-    return
-  }
-
-  try {
-    await ElMessageBox.confirm(
-        `确定要将左侧 ${leftDeviceTree.value.length} 台设备全部加入待绑定列表吗？（点击"确定"后生效）`,
-        '批量绑定确认',
-        {type: 'warning', confirmButtonText: '全部加入', cancelButtonText: '取消'}
-    )
-  } catch {
-    return
-  }
-
-  // 仅做前端转移
-  rightDeviceTree.value = [...rightDeviceTree.value, ...leftDeviceTree.value]
-  leftDeviceTree.value = []
-
-  leftTreeRef.value?.setCheckedKeys([])
-  selectedLeftKeys.value = []
-}
-
-const transferAllToLeft = async () => {
-  if (rightDeviceTree.value.length === 0) {
-    ElMessage.warning('没有可解绑的设备')
-    return
-  }
-
-  try {
-    await ElMessageBox.confirm(
-        `确定要将当前隐患点的 ${rightDeviceTree.value.length} 台设备全部移到待绑定列表吗？（点击"确定"后生效）`,
-        '批量解绑确认',
-        {type: 'warning', confirmButtonText: '全部移除', cancelButtonText: '取消'}
-    )
-  } catch {
-    return
-  }
-
-  leftDeviceTree.value = [...leftDeviceTree.value, ...rightDeviceTree.value]
-  rightDeviceTree.value = []
-
-  rightTreeRef.value?.setCheckedKeys([])
-  selectedRightKeys.value = []
-}
-
-const handleBindDeviceSubmit = async () => {
-  if (!currentRow.value) {
-    bindDeviceDialogVisible.value = false
-    return
-  }
-
-  // 计算 diff: finalRight - initial = toBind; initial - finalRight = toUnbind
-  const finalIds = new Set<number>()
-  for (const node of rightDeviceTree.value) {
-    const n = Number(node.id)
-    if (!Number.isNaN(n)) finalIds.add(n)
-  }
-
-  const toBind: number[] = []
-  for (const id of finalIds) {
-    if (!initialBoundDeviceIds.value.has(id)) toBind.push(id)
-  }
-  const toUnbind: number[] = []
-  for (const id of initialBoundDeviceIds.value) {
-    if (!finalIds.has(id)) toUnbind.push(id)
-  }
-
-  // 无变更则直接关闭
-  if (toBind.length === 0 && toUnbind.length === 0) {
-    bindDeviceDialogVisible.value = false
-    return
-  }
-
-  bindLoading.value = true
-  try {
-    // 先解绑后绑定，避免 toBind 与已存在的唯一键冲突
-    if (toUnbind.length > 0) {
-      const unbindResp: any = await unbindDevicesFromHazardPoint(currentRow.value.id, toUnbind)
-      if (unbindResp.code !== 200) {
-        ElMessage.error(unbindResp.msg || '解绑失败')
-        return
-      }
-    }
-    if (toBind.length > 0) {
-      const bindResp: any = await bindDevicesToHazardPoint(currentRow.value.id, {deviceIds: toBind})
-      if (bindResp.code !== 200) {
-        ElMessage.error(bindResp.msg || '绑定失败')
-        return
-      }
-    }
-
-    ElMessage.success(`保存成功（新增绑定 ${toBind.length}，解绑 ${toUnbind.length}）`)
-    bindDeviceDialogVisible.value = false
-    loadTableData()
-  } catch (error) {
-    showRequestErrorMessage(error, '保存失败')
-  } finally {
-    bindLoading.value = false
-  }
-}
-
-const handleConfigAlarm = (row: HazardPointItem) => {
-  currentRow.value = row
-  initAlarmCriteria(row.id)
-  initDispatchRules(row.id)
-  alarmConfigDialogVisible.value = true
-}
-
-const handleAddAlarmCriteria = () => {
-  isEditAlarm.value = false
-  Object.assign(alarmFormData, {
-    id: '',
-    name: '',
-    deviceId: '',
-    deviceName: '',
-    monitorContentCode: '',
-    monitorContentName: '',
-    blueExpression: '',
-    blueDescription: '',
-    yellowExpression: '',
-    yellowDescription: '',
-    orangeExpression: '',
-    orangeDescription: '',
-    redExpression: '',
-    redDescription: ''
-  })
-  alarmDialogVisible.value = true
-}
-
-const handleEditAlarm = (row: AlarmCriteria) => {
-  isEditAlarm.value = true
-  Object.assign(alarmFormData, {
-    id: row.id,
-    name: row.name,
-    deviceId: row.deviceId,
-    deviceName: row.deviceName,
-    monitorTypeId: row.monitorTypeId,
-    monitorTypeName: row.monitorTypeName,
-    monitorContentCode: row.monitorContentCode,
-    monitorContentName: row.monitorContentName,
-    unit: ''
-  })
-  alarmDialogVisible.value = true
-}
-
-const handleAlarmDeviceChange = (val: string) => {
-  const device = boundDevices.value.find(d => d.deviceId === val)
-  if (device) {
-    alarmFormData.deviceName = device.deviceName
-  }
-}
-
-const handleMonitorTypeChange = (val: string) => {
-  const mt = monitorTypeList.value.find(t => t.id === val)
-  if (mt) {
-    alarmFormData.monitorTypeName = mt.name
-    alarmFormData.monitorContentCode = ''
-    alarmFormData.monitorContentName = ''
-    alarmFormData.unit = ''
-  }
-}
-
-const handleMonitorContentChange = (val: string) => {
-  const mt = monitorTypeList.value.find(t => t.id === alarmFormData.monitorTypeId)
-  if (mt) {
-    const content = mt.contents.find(c => c.value === val)
-    if (content) {
-      alarmFormData.monitorContentName = content.label
-      alarmFormData.unit = content.unit
-    }
-  }
-}
-
-const insertExpression = (text: string) => {
-  if (currentEditingAlarmLevel.value) {
-    const field = currentEditingAlarmLevel.value + 'Expression'
-    alarmFormData[field as keyof typeof alarmFormData] += text
-  }
-}
-
-const handleAlarmSubmit = () => {
-  alarmFormRef.value.validate((valid: boolean) => {
-    if (valid) {
-      ElMessage.success(isEditAlarm.value ? '判据修改成功' : '判据添加成功')
-      alarmDialogVisible.value = false
-      if (currentRow.value) {
-        initAlarmCriteria(currentRow.value.id)
-      }
-    }
-  })
-}
-
-const handleToggleAlarm = (row: AlarmCriteria) => {
-  ElMessage.success(`判据${row.isEnabled ? '启用' : '停用'}成功`)
-}
-
-const handleDeleteAlarm = (row: AlarmCriteria) => {
-  ElMessageBox.confirm(`确定要删除判据"${row.name}"吗?`, '删除确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
-    if (currentRow.value) {
-      initAlarmCriteria(currentRow.value.id)
-    }
-  }).catch(() => {})
-}
-
-const handleAddDispatchRule = () => {
-  isEditDispatch.value = false
-  Object.assign(dispatchFormData, {
-    id: '',
-    hazardPointId: currentRow.value?.id || '',
-    type: 'alarm',
-    level: [],
-    deviceIds: [],
-    persons: [],
-    channels: ['system'],
-    execTime: '',
-    status: 1,
-    remark: ''
-  })
-  dispatchDialogVisible.value = true
-}
-
-const handleEditDispatchRule = (row: DispatchRule) => {
-  isEditDispatch.value = true
-  const execTime = row.execTime || ''
-  let execType: 'realtime' | 'timed' = 'realtime'
-  let execFrequencyNum = 1
-  let execFrequencyUnit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' = 'hour'
-  let execTimePoints = ''
-
-  if (execTime) {
-    const parts = execTime.split('|')
-    if (parts.length === 2) {
-      execType = 'timed'
-      execFrequencyUnit = parts[0] as 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'
-      execTimePoints = parts[1]
-    }
-  }
-
-  Object.assign(dispatchFormData, {
-    id: row.id,
-    hazardPointId: currentRow.value?.id || '',
-    type: row.type,
-    level: row.level || [],
-    deviceIds: row.deviceIds || [],
-    persons: row.persons || [],
-    channels: row.channels || ['system'],
-    execTime: execTime,
-    execType,
-    execFrequencyNum,
-    execFrequencyUnit,
-    execTimePoints,
-    status: row.status || 1,
-    remark: row.remark || ''
-  })
-  dispatchDialogVisible.value = true
-}
-
-const handleDispatchSubmit = () => {
-  dispatchFormRef.value.validate((valid: boolean) => {
-    if (valid) {
-      let execTimeValue = ''
-      if (dispatchFormData.execType === 'timed' && dispatchFormData.execTimePoints) {
-        execTimeValue = `${dispatchFormData.execFrequencyUnit}|${dispatchFormData.execTimePoints}`
-      }
-      dispatchFormData.execTime = execTimeValue
-
-      ElMessage.success(isEditDispatch.value ? '规则修改成功' : '规则添加成功')
-      dispatchDialogVisible.value = false
-      if (currentRow.value) {
-        initDispatchRules(currentRow.value.id)
-      }
-    }
-  })
-}
-
-const handleDeleteDispatchRule = (row: DispatchRule) => {
-  const ruleDesc = row.remark || (row.type === 'alarm' ? '监测告警规则' : '设备离线通知规则')
-  ElMessageBox.confirm(`确定要删除规则"${ruleDesc}"吗?`, '删除确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
-    if (currentRow.value) {
-      initDispatchRules(currentRow.value.id)
-    }
-  }).catch(() => {})
-}
-
-const latestDataList = ref<LatestDataItem[]>([])
-
-const initLatestData = async (hazardPointId: string) => {
-  try {
-    latestDataList.value = await getLatestData(Number(hazardPointId))
-  } catch {
-    latestDataList.value = []
-  }
-}
-
-// 设备选择 → 加载传感器列表
-
-const onDataDeviceChange = async (deviceId: string | number) => {
-  dataFilter.sensorId = ''
-  dataFilter.attrCode = ''
-  monitorSensors.value = []
-  monitorAttrs.value = []
-  if (!deviceId) return
-  try {
-    const sensors = await getDeviceSensors(Number(deviceId))
-    const map = new Map(monitorSensorMap.value)
-    for (const s of sensors) {
-      if (s.id != null) {
-        map.set(s.id, s)
-        monitorSensors.value.push({id: s.id, name: s.sensorName})
-      }
-    }
-    monitorSensorMap.value = map
-  } catch { /* ignore */
-  }
-}
-
-// 传感器选择 → 加载属性指标
-const onDataSensorChange = (sensorId: string | number) => {
-  dataFilter.attrCode = ''
-  if (!sensorId) {
-    monitorAttrs.value = [];
-    return
-  }
-  const sensor = monitorSensorMap.value.get(Number(sensorId))
-  monitorAttrs.value = (sensor?.attrList || []).map((a: any) => ({
-    code: a.attrCode,
-    label: `${a.attrName || a.attrCode}${a.unit ? ` (${a.unit})` : ''}`
-  }))
-}
-
-// ==================== ECharts 图表配置 ====================
-const CHART_COLORS = [
-  '#5470C6', '#91CC75', '#FAC858', '#EE6666', '#73C0DE',
-  '#3BA272', '#FC8452', '#9A60B4', '#EA7CCC', '#909399'
-]
-
-const buildChartOptions = () => {
-  const seriesData = chartSeriesData.value
-  if (seriesData.length === 0) return
-
-  const allLabels = new Set<string>()
-  for (const s of seriesData) for (const l of s.labels) allLabels.add(l)
-  const xCategories = Array.from(allLabels).sort()
-
-  chartOptions.value = {
-    chart: {
-      type: 'area' as const,
-      height: '100%',
-      fontFamily: 'inherit',
-      toolbar: {
-        tools: {
-          download: true,
-          selection: true,
-          zoom: true,
-          zoomin: true,
-          zoomout: true,
-          pan: true,
-          reset: true
-        }
-      },
-      zoom: { enabled: true, type: 'x' as const },
-      animations: { enabled: true, easing: 'easeinout' as const, speed: 800 }
-    },
-    colors: CHART_COLORS,
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth' as const, width: 2 },
-    fill: {
-      type: 'gradient',
-      gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0.02, stops: [0, 100] }
-    },
-    markers: {
-      size: 0,
-      hover: { size: 5 }
-    },
-    grid: {
-      borderColor: '#e7e7e7',
-      strokeDashArray: 4,
-      padding: { top: 10, right: 10, bottom: 5, left: 10 }
-    },
-    legend: {
-      position: 'top' as const,
-      horizontalAlign: 'center' as const,
-      fontSize: '13px',
-      fontWeight: 500,
-      markers: { width: 12, height: 12, radius: 6, offsetX: -4 },
-      itemMargin: { horizontal: 16, vertical: 4 },
-      offsetY: -4
-    },
-    xaxis: {
-      type: 'category' as const,
-      categories: xCategories,
-      labels: {
-        rotate: -30,
-        style: { fontSize: '11px', colors: '#666' }
-      },
-      tickAmount: Math.min(xCategories.length, 10),
-      tooltip: { enabled: false }
-    },
-    yaxis: {
-      title: {
-        text: seriesData[0]?.unit || '',
-        style: { fontSize: '12px', color: '#888' }
-      },
-      labels: {
-        formatter: (val: number) => val != null ? Number(val.toFixed(2)).toString() : ''
-      }
-    },
-    tooltip: {
-      shared: true,
-      intersect: false
-    },
-    series: seriesData.map((s) => {
-      const points = s.labels.map((l, i) => ({ x: l, y: s.values[i] }))
-      return { name: s.seriesName, data: points }
-    })
-  }
-}
-
-const handleQueryData = async () => {
-  if (!currentRow.value) {
-    ElMessage.warning('请先选择隐患点');
-    return
-  }
-  const baseParams = {
-    hazardPointId: Number(currentRow.value.id),
-    valueType: dataFilter.valueType || undefined,
-    startTime: dataFilter.timeRange?.[0] || undefined,
-    endTime: dataFilter.timeRange?.[1] || undefined
-  }
-  if (dataFilter.deviceId) Object.assign(baseParams, {deviceId: Number(dataFilter.deviceId)})
-  if (dataFilter.sensorId) Object.assign(baseParams, {sensorId: Number(dataFilter.sensorId)})
-  if (dataFilter.attrCode) Object.assign(baseParams, {attrCode: dataFilter.attrCode})
-
-  if (dataDisplayMode.value === 'chart') {
-    await queryChart(baseParams)
-  } else {
-    await queryPage(baseParams)
-  }
-}
-
-const queryChart = async (baseParams: Record<string, unknown>) => {
-  if (!baseParams.startTime || !baseParams.endTime) {
-    ElMessage.warning('图表模式需要选择时间范围')
-    return
-  }
-  try {
-    const series = await getChartData({
-      hazardPointId: baseParams.hazardPointId as number,
-      deviceId: baseParams.deviceId as number | undefined,
-      sensorId: baseParams.sensorId as number | undefined,
-      attrCode: baseParams.attrCode as string | undefined,
-      valueType: baseParams.valueType as string | undefined,
-      startTime: baseParams.startTime as string,
-      endTime: baseParams.endTime as string
-    })
-    chartSeriesData.value = series
-    ElMessage.success(`加载 ${series.length} 条曲线，共 ${series[0]?.labels.length || 0} 个数据点`)
-    await nextTick()
-    buildChartOptions()
-  } catch (error) {
-    showRequestErrorMessage(error, '获取图表数据失败')
-  }
-}
-
-const queryPage = async (baseParams: Record<string, unknown>) => {
-  try {
-    const res = await getMonitorDataPage({
-      hazardPointId: baseParams.hazardPointId as number,
-      deviceId: baseParams.deviceId as number | undefined,
-      sensorId: baseParams.sensorId as number | undefined,
-      attrCode: baseParams.attrCode as string | undefined,
-      valueType: baseParams.valueType as string | undefined,
-      startTime: baseParams.startTime as string | undefined,
-      endTime: baseParams.endTime as string | undefined,
-      pageNum: 1,
-      pageSize: 100
-    })
-    monitorDataList.value = res.rows || []
-    ElMessage.success(`加载 ${monitorDataList.value.length} 条数据`)
-  } catch (error) {
-    showRequestErrorMessage(error, '获取监测数据失败')
-  }
-}
-
-const handleImportData = () => {
-  ElMessage.info('导入功能开发中，敬请期待')
-}
-
-const handleExportData = () => {
-  ElMessage.info('导出功能开发中，敬请期待')
-}
-
-const handleBatchPause = async () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要停测的隐患点')
-    return
-  }
-  ElMessageBox.confirm('确定要暂停选中的隐患点监测吗？', '批量停测确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const ids = selectedRows.value.map(row => parseInt(row.id))
-      const res: any = await batchOperateHazardPoints(ids, 'pause')
-      if (res.code === 200) {
-        ElMessage.success('批量停测成功')
-        loadTableData()
-      } else {
-        ElMessage.error(res.msg || '批量停测失败')
-      }
-    } catch (error) {
-      showRequestErrorMessage(error, '批量停测失败')
-    }
-  }).catch(() => {})
-}
-
-const handleBatchResume = async () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要恢复的隐患点')
-    return
-  }
-  ElMessageBox.confirm('确定要恢复选中的隐患点监测吗？', '批量恢复确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'info'
-  }).then(async () => {
-    try {
-      const ids = selectedRows.value.map(row => parseInt(row.id))
-      const res: any = await batchOperateHazardPoints(ids, 'resume')
-      if (res.code === 200) {
-        ElMessage.success('批量恢复成功')
-        loadTableData()
-      } else {
-        ElMessage.error(res.msg || '批量恢复失败')
-      }
-    } catch (error) {
-      showRequestErrorMessage(error, '批量恢复失败')
-    }
-  }).catch(() => {})
-}
-
-const handleBatchComplete = async () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要完结的隐患点')
-    return
-  }
-  ElMessageBox.confirm('确定要完结选中的隐患点吗？完结后将停止监测。', '批量完结确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const ids = selectedRows.value.map(row => parseInt(row.id))
-      const res: any = await batchOperateHazardPoints(ids, 'complete')
-      if (res.code === 200) {
-        ElMessage.success('批量完结成功')
-        loadTableData()
-      } else {
-        ElMessage.error(res.msg || '批量完结失败')
-      }
-    } catch (error) {
-      showRequestErrorMessage(error, '批量完结失败')
-    }
-  }).catch(() => {})
-}
-
-watch(dataDisplayMode, (mode) => {
-  if (mode === 'chart') {
-    nextTick(() => buildChartOptions())
-  }
-})
-
-watch(activeTab, (tab) => {
-  if (tab === 'monitorData') {
-    if (!dataFilter.timeRange) {
-      const end = new Date()
-      const start = new Date(end.getTime() - 3 * 24 * 60 * 60 * 1000)
-      const fmt = (d: Date) => {
-        const pad = (n: number) => String(n).padStart(2, '0')
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-      }
-      dataFilter.timeRange = [fmt(start), fmt(end)]
-    }
-    if (dataDisplayMode.value === 'chart') {
-      nextTick(() => buildChartOptions())
-    }
-  }
-})
-
-watch(dataFilter, () => {
-  if (dataFilter.deviceId && dataFilter.sensorId && dataDisplayMode.value === 'chart') {
-    handleQueryData()
-  }
-})
 
 // 关闭详情弹窗时重置状态
 watch(detailDialogVisible, (visible) => {

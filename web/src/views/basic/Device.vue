@@ -111,7 +111,7 @@
           <el-table-column label="操作" width="200" fixed="right" align="center">
             <template #default="{ row }">
               <div class="op-cell">
-                <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
+                <el-button type="primary" text size="small" @click="handleViewLocal(row)">查看</el-button>
                 <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
                 <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
                   <el-button type="primary" text size="small">更多</el-button>
@@ -660,20 +660,7 @@ import request from '@/utils/request'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import MapPointPicker from '@/components/map/MapPointPicker.vue'
 import {deserialize, type LatLng} from '@/lib/boundaryCoords'
-import {
-  changeDeviceAuthStatus,
-  copyDevice as copyDeviceApi,
-  createDevice as createDeviceApi,
-  deleteDevice as deleteDeviceApi,
-  type DeviceAuthAccount,
-  type DeviceItem,
-  type DevicePageParams,
-  getDeviceAuthAccount,
-  getDeviceDetail,
-  getDevicePage,
-  resetDevicePassword,
-  updateDevice as updateDeviceApi
-} from '@/api/device'
+import {changeDeviceAuthStatus, type DeviceAuthAccount, getDeviceAuthAccount, resetDevicePassword} from '@/api/device'
 import {getMonitorTypeListWithContents} from '@/api/monitorType'
 import {getHazardPointDetail} from '@/api/hazardPoint'
 import {
@@ -688,6 +675,18 @@ import {
 } from '@/api/sensor'
 import {getIconList} from '@/constants/monitorIcons'
 import {getDeviceIconPath} from '@/utils/deviceIcon'
+import {type DeviceItem, useDeviceCrud} from './composables/useDeviceCrud'
+
+const {
+  searchKeyword, searchStatus,
+  loading, refreshing, submitLoading, tableData, currentPage, pageSize, total,
+  dialogVisible, dialogTitle, isEdit, isView, formRef, formData, formRules,
+  detailDialogVisible, detailPwdVisible, detailTab, currentRow,
+  getStatusType, getStatusLabel, copyPwd, formatCoord, nowString,
+  loadTableData,
+  handleSearch, handleReset, handleRefresh, handleSizeChange, handlePageChange,
+  handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopy, handleExport,
+} = useDeviceCrud()
 
 const deviceIconList = getIconList()
 
@@ -716,33 +715,20 @@ interface SensorFormModel {
 interface MonitorTypeItem {
   id: number
   name: string
-  modelAttrs: {
-    attrCode: string
-    attrName: string
-    rangeMin: number
-    rangeMax: number
-    unit: string
-    icon?: string
-  }[]
-  /**
-   * 监测类型下的监测内容列表（含 indicatorType）。
-   * 由 loadMonitorTypeList 从 getMonitorTypeListWithContents() 透传保留。
-   */
+  modelAttrs: { attrCode: string; attrName: string; rangeMin: number; rangeMax: number; unit: string; icon?: string }[]
   contents?: {
-    id: number
-    code: string
-    name: string
-    indicatorType: string
-    unit: string
-    rangeMin?: number | null
-    rangeMax?: number | null
+    id: number;
+    code: string;
+    name: string;
+    indicatorType: string;
+    unit: string;
+    rangeMin?: number | null;
+    rangeMax?: number | null;
     icon?: string
   }[]
 }
 
-const loading = ref(false)
-const refreshing = ref(false)
-const submitLoading = ref(false)
+// ── Remaining local state ──
 const sensorLoading = ref(false)
 const sensorFormSubmitLoading = ref(false)
 const authResetLoading = ref(false)
@@ -753,7 +739,6 @@ const maintenanceFormRef = ref()
 const maintenanceDeviceId = ref<number | null>(null)
 const maintenanceDeviceName = ref('')
 const maintenanceDeviceStatus = ref<number>(1)
-const tableData = ref<DeviceItem[]>([])
 const maintenanceForm = reactive({
   operationType: null as number | null,
   operatorName: '',
@@ -768,49 +753,18 @@ const maintenanceFormRules = {
 }
 const sensorList = ref<SensorItem[]>([])
 const monitorTypeList = ref<MonitorTypeItem[]>([])
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-const searchKeyword = ref('')
-const searchStatus = ref<number | ''>('')
-
-const dialogVisible = ref(false)
-const dialogTitle = ref('')
-const isEdit = ref(false)
-const isView = ref(false)
-const formRef = ref()
-
-const detailDialogVisible = ref(false)
-const detailPwdVisible = ref(false)
-const currentRow = ref<DeviceItem | null>(null)
-const detailTab = ref('info')
 const onlineLogs = ref<any[]>([])
 const maintenanceLogs = ref<any[]>([])
+
 const loadOpsLogs = async (deviceId: number) => {
   try {
-    const [online, maint] = await Promise.all([
-      request.get(`/devices/${deviceId}/online-logs`),
-      request.get(`/devices/${deviceId}/maintenance-logs`)
-    ])
-    onlineLogs.value = online.data || []
+    const [online, maint] = await Promise.all([request.get(`/devices/${deviceId}/online-logs`), request.get(`/devices/${deviceId}/maintenance-logs`)])
+    onlineLogs.value = online.data || [];
     maintenanceLogs.value = maint.data || []
   } catch {
     onlineLogs.value = [];
     maintenanceLogs.value = []
   }
-}
-const copyPwd = async (pwd: string) => {
-  try {
-    await navigator.clipboard.writeText(pwd);
-    ElMessage.success('密码已复制')
-  } catch {
-    ElMessage.warning('复制失败，请手动复制')
-  }
-}
-
-const formatCoord = (lng?: number | null, lat?: number | null) => {
-  if (lng == null || lat == null) return '-'
-  return `${lng.toFixed(6)}, ${lat.toFixed(6)}`
 }
 
 const authDialogVisible = ref(false)
@@ -921,38 +875,7 @@ const clearLocation = () => {
 
 const sensorFormRef = ref()
 
-const formData = reactive<{
-  id?: number
-  code: string
-  name: string
-  sn: string
-  deviceType: number | null
-  networkType: number | null
-  protocolType: string
-  vendorName: string
-  icon: string
-  iconPath: string
-  longitude: number | null
-  latitude: number | null
-  status: number
-  sensorList: SensorItem[]
-  boundHazardPointId: number | null
-}>({
-  code: '',
-  name: '',
-  sn: '',
-  deviceType: 0,
-  networkType: 0,
-  protocolType: 'MQTT',
-  vendorName: '',
-  icon: '',
-  iconPath: '',
-  boundHazardPointId: null,
-  longitude: null,
-  latitude: null,
-  status: 1,
-  sensorList: []
-})
+const boundHazardPointId = computed(() => (formData as any).boundHazardPointId as number | null)
 
 const sensorFormData = reactive<SensorFormModel>({
   sensorCode: '',
@@ -963,29 +886,14 @@ const sensorFormData = reactive<SensorFormModel>({
   attrList: []
 })
 
-const formRules = {
-  code: [{ required: true, message: '请输入设备编号', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入设备名称', trigger: 'blur' }]
-}
-
 const sensorFormRules = {
   sensorCode: [{ required: true, message: '请输入传感器编号', trigger: 'blur' }],
   sensorName: [{ required: true, message: '请输入传感器名称', trigger: 'blur' }],
   monitorTypeId: [{ required: true, message: '请选择监测类型', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+  status: [{required: true, message: '请选择状态', trigger: 'change'}],
 }
 
-const getStatusType = (status: number) => {
-  const types: Record<number, string> = { 1: 'success', 2: 'danger', 3: 'info' }
-  return types[status] || 'default'
-}
-
-const getStatusLabel = (status: number) => {
-  const labels: Record<number, string> = {1: '正常', 2: '故障', 3: '停用'}
-  return labels[status] || '未知'
-}
-
-// 根据设备当前状态计算可选的操作类型
+// ── Maintenance dialog ──
 const availableOperationTypes = computed(() => {
   const status = maintenanceDeviceStatus.value
   const options: { label: string, value: number }[] = []
@@ -998,139 +906,6 @@ const availableOperationTypes = computed(() => {
   }
   return options
 })
-
-// 格式化当前时间
-const nowString = () => {
-  const d = new Date()
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
-// ==================== API 请求 ====================
-
-// 分页查询设备
-const loadTableData = async () => {
-  loading.value = true
-  try {
-    const params: DevicePageParams = {
-      pageNum: currentPage.value,
-      pageSize: pageSize.value
-    }
-    if (searchKeyword.value) {
-      params.code = searchKeyword.value
-    }
-    if (searchStatus.value !== '') params.status = searchStatus.value
-    const data = await getDevicePage(params)
-    tableData.value = data.rows || []
-    total.value = data.total || 0
-  } catch (error) {
-    showRequestErrorMessage(error, '加载设备列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-// 获取设备详情
-const fetchDetail = async (id: number) => {
-  loading.value = true
-  try {
-    return await getDeviceDetail(id)
-  } catch (error) {
-    showRequestErrorMessage(error, '获取设备详情失败')
-    return null
-  } finally {
-    loading.value = false
-  }
-}
-
-// 新增设备
-const createDevice = async () => {
-  submitLoading.value = true
-  try {
-    const result = await createDeviceApi({
-      code: formData.code,
-      name: formData.name,
-      sn: formData.sn || undefined,
-      deviceType: formData.deviceType,
-      networkType: formData.networkType,
-      protocolType: formData.protocolType,
-      vendorName: formData.vendorName || undefined,
-      icon: formData.icon,
-      iconPath: formData.iconPath,
-      longitude: formData.longitude,
-      latitude: formData.latitude,
-      status: formData.status
-    })
-    ElMessage.success('新增成功')
-    dialogVisible.value = false
-    await loadTableData()
-    const row = tableData.value.find(item => item.id === result.id)
-    await openAuthDialog(row || {
-      id: result.id,
-      code: formData.code,
-      name: formData.name,
-      status: formData.status
-    }, {
-      deviceId: result.id,
-      username: result.username,
-      password: result.password,
-      authStatus: 1
-    })
-  } catch (error: any) {
-    showRequestErrorMessage(error, '新增设备失败')
-  } finally {
-    submitLoading.value = false
-  }
-}
-
-// 修改设备
-const updateDevice = async () => {
-  submitLoading.value = true
-  try {
-    await updateDeviceApi(Number(formData.id), {
-      name: formData.name,
-      sn: formData.sn || undefined,
-      deviceType: formData.deviceType,
-      networkType: formData.networkType,
-      protocolType: formData.protocolType,
-      vendorName: formData.vendorName || undefined,
-      icon: formData.icon,
-      iconPath: formData.iconPath,
-      longitude: formData.longitude,
-      latitude: formData.latitude,
-      status: formData.status
-    })
-    ElMessage.success('修改成功')
-    dialogVisible.value = false
-    await loadTableData()
-  } catch (error: any) {
-    showRequestErrorMessage(error, '修改设备失败')
-  } finally {
-    submitLoading.value = false
-  }
-}
-
-// 删除设备
-const deleteDevice = async (id: number) => {
-  try {
-    await deleteDeviceApi(id)
-    ElMessage.success('删除成功')
-    await loadTableData()
-  } catch (error) {
-    showRequestErrorMessage(error, '删除设备失败')
-  }
-}
-
-// 复制设备
-const copyDevice = async (id: number) => {
-  try {
-    await copyDeviceApi(id)
-    ElMessage.success('复制成功')
-    await loadTableData()
-  } catch (error) {
-    showRequestErrorMessage(error, '复制设备失败')
-  }
-}
 
 const openAuthDialog = async (device: DeviceItem, account?: DeviceAuthAccount) => {
   currentAuthDevice.value = device
@@ -1173,99 +948,10 @@ const loadMonitorTypeList = async () => {
   }
 }
 
-// ==================== 事件处理方法 ====================
-
-const handleSearch = () => {
-  currentPage.value = 1
-  loadTableData()
-}
-
-const handleReset = () => {
-  searchKeyword.value = ''
-  searchStatus.value = ''
-  currentPage.value = 1
-  loadTableData()
-}
-
-// 刷新页面
-const handleRefresh = async () => {
-  refreshing.value = true
-  try {
-    await loadTableData()
-    ElMessage.success('刷新成功')
-  } catch (error) {
-    showRequestErrorMessage(error, '刷新失败')
-  } finally {
-    refreshing.value = false
-  }
-}
-
-const handleSizeChange = () => {
-  loadTableData()
-}
-
-const handlePageChange = () => {
-  loadTableData()
-}
-
-const handleAdd = () => {
-  dialogTitle.value = '新增设备'
-  isEdit.value = false
-  isView.value = false
-  Object.assign(formData, {
-    id: undefined,
-    code: '',
-    name: '',
-    sn: '',
-    deviceType: 0,
-    networkType: 0,
-    protocolType: 'MQTT',
-    vendorName: '',
-    icon: '',
-    iconPath: '',
-    longitude: null,
-    latitude: null,
-    status: 1,
-    sensorList: []
-  })
-  syncFormToText()
-  dialogVisible.value = true
-}
-
-const handleEdit = async (row: DeviceItem) => {
-  dialogTitle.value = '编辑设备'
-  isEdit.value = true
-  isView.value = false
-  Object.assign(formData, {
-    id: row.id,
-    code: row.code,
-    name: row.name,
-    sn: row.sn || '',
-    deviceType: row.deviceType ?? 0,
-    networkType: row.networkType ?? 0,
-    protocolType: row.protocolType || 'MQTT',
-    vendorName: row.vendorName || '',
-    icon: row.icon || '',
-    iconPath: row.iconPath || '',
-    longitude: row.longitude ?? null,
-    latitude: row.latitude ?? null,
-    status: row.status,
-    sensorList: []
-  })
-  syncFormToText()
-  dialogVisible.value = true
-}
-
-const handleView = async (row: DeviceItem) => {
-  detailPwdVisible.value = false
-  currentRow.value = row
-  const detail = await fetchDetail(Number(row.id))
-  if (detail) {
-    currentRow.value = detail
-    sensorList.value = detail.sensors || []
-  }
+const handleViewLocal = async (row: DeviceItem) => {
+  await handleView(row)
+  sensorList.value = (currentRow.value as any)?.sensors || []
   loadOpsLogs(Number(row.id))
-  detailDialogVisible.value = true
 }
 
 const handleMoreCommand = (command: string, row: DeviceItem) => {
@@ -1274,7 +960,7 @@ const handleMoreCommand = (command: string, row: DeviceItem) => {
     maintenance: () => handleMaintenance(row),
     sensors: () => handleConfigSensors(row),
     copy: () => handleCopy(row),
-    delete: () => handleDelete(row)
+    delete: () => handleDelete(row),
   }
   map[command]?.()
 }
@@ -1326,67 +1012,6 @@ const handleMaintenanceSubmit = () => {
       maintenanceLoading.value = false
     }
   })
-}
-
-const handleDelete = (row: DeviceItem) => {
-  ElMessageBox.confirm(`确定要删除设备"${row.name}"吗?`, '删除确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    deleteDevice(Number(row.id))
-  }).catch(() => {})
-}
-
-const handleExport = () => {
-  ElMessage.info('正在导出...')
-  setTimeout(() => {
-    ElMessage.success('导出成功')
-  }, 1000)
-}
-
-// 对当前页 tableData 做 code / sn 快速查重，命中后再依赖后端兜底做全局校验
-const validateDeviceIdentity = () => {
-  const code = formData.code?.trim()
-  const sn = formData.sn?.trim()
-  const excludeId = formData.id
-  if (code) {
-    const conflict = tableData.value.find((d) => d.id !== excludeId && d.code === code)
-    if (conflict) {
-      ElMessage.warning(`设备编号 ${code} 已被【${conflict.name}】占用`)
-      return false
-    }
-  }
-  if (sn) {
-    const conflict = tableData.value.find((d) => d.id !== excludeId && d.sn === sn)
-    if (conflict) {
-      ElMessage.warning(`设备 SN ${sn} 已被【${conflict.name}】占用`)
-      return false
-    }
-  }
-  return true
-}
-
-const handleSubmit = () => {
-  formRef.value.validate((valid: boolean) => {
-    if (valid && validateDeviceIdentity()) {
-      if (formData.id) {
-        updateDevice()
-      } else {
-        createDevice()
-      }
-    }
-  })
-}
-
-const handleCopy = (row: DeviceItem) => {
-  ElMessageBox.confirm(`确定要复制设备"${row.name}"吗?`, '复制确认', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'info'
-  }).then(() => {
-    copyDevice(Number(row.id))
-  }).catch(() => {})
 }
 
 const handleViewAuth = async (row: DeviceItem) => {

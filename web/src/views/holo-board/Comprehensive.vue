@@ -86,65 +86,7 @@
         </div>
       </div>
 
-      <div class="panel-section resource-section">
-        <div class="section-header">
-          <span class="section-title">资源统计</span>
-        </div>
-        <div class="resource-compact">
-          <div class="resource-main">
-            <div class="resource-total">
-              <div class="total-circle">
-                <svg class="total-ring" viewBox="0 0 100 100">
-                  <circle class="ring-bg" cx="50" cy="50" r="45"/>
-                  <circle class="ring-hazard" cx="50" cy="50" r="45" :stroke-dasharray="`113 170`"
-                          stroke-dashoffset="0"/>
-                  <circle class="ring-device" cx="50" cy="50" r="45" :stroke-dasharray="`142 141`"
-                          stroke-dashoffset="-113"/>
-                </svg>
-                <div class="total-value">{{ resourceStats.totalResources }}</div>
-              </div>
-              <div class="total-label">资源总数</div>
-            </div>
-            <div class="resource-breakdown">
-              <div class="breakdown-item hazard">
-                <div class="breakdown-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14"
-                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                  </svg>
-                </div>
-                <div class="breakdown-info">
-                  <span class="breakdown-value">{{ resourceStats.hazardTotal }}</span>
-                  <span class="breakdown-label">隐患点</span>
-                </div>
-              </div>
-              <div class="breakdown-item device">
-                <div class="breakdown-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a"
-                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path
-                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                  </svg>
-                </div>
-                <div class="breakdown-info">
-                  <span class="breakdown-value">{{ resourceStats.deviceTotal }}</span>
-                  <span class="breakdown-label">设备</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="device-type-section">
-            <div class="type-title">设备分类</div>
-            <div class="type-bars">
-              <div v-for="type in resourceStats.deviceTypes" :key="type.name" class="type-bar-row">
-                <span class="type-name">{{ type.name }}</span>
-                <span class="type-count">{{ type.count }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ResourceSection :stats="resourceStats"/>
     </div>
 
     <div class="center-panel">
@@ -216,76 +158,7 @@
     </div>
 
     <div class="right-panel">
-      <div class="panel-section online-section">
-        <div class="section-header">
-          <span class="section-title">设备在线状态</span>
-        </div>
-        <div class="online-overview">
-          <div class="online-rate-section">
-            <div class="online-rate">
-              <span class="rate-value">{{ onlineStats.onlineRate }}</span>
-              <span class="rate-unit">%</span>
-            </div>
-            <div class="online-text">设备在线率</div>
-          </div>
-          <div class="online-count-section">
-            <div class="online-numbers">
-              <span class="online-count">{{ onlineStats.onlineCount }}</span>
-              <span class="online-separator">/</span>
-              <span class="total-count">{{ onlineStats.totalCount }}</span>
-            </div>
-            <div class="online-label">台设备在线</div>
-          </div>
-        </div>
-        <div class="online-chart">
-          <div class="chart-title">分类型在线统计</div>
-          <div class="type-bars">
-            <div v-for="type in onlineStats.typeStats" :key="type.name" class="type-bar-item">
-              <div class="bar-label">{{ type.name }}</div>
-              <div class="bar-container">
-                <div class="bar-fill" :style="{ width: (type.online / type.total * 100) + '%' }"></div>
-              </div>
-              <div class="bar-count">{{ type.online }}/{{ type.total }}</div>
-            </div>
-          </div>
-        </div>
-        <div class="online-trend">
-          <div class="trend-header">
-            <span class="trend-title">历史在线趋势</span>
-            <span class="trend-subtitle">最近7天</span>
-          </div>
-          <div class="trend-chart">
-            <div class="trend-y-axis">
-              <span v-for="label in trendYLabels" :key="label">{{ label }}</span>
-            </div>
-            <div class="trend-area">
-              <svg class="trend-svg" viewBox="0 0 280 100" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="rgba(82, 196, 26, 0.4)"/>
-                    <stop offset="100%" stop-color="rgba(82, 196, 26, 0)"/>
-                  </linearGradient>
-                </defs>
-                <path :d="trendAreaPath" fill="url(#trendGradient)"/>
-                <path :d="trendLinePath" fill="none" stroke="#52c41a" stroke-width="2"/>
-                <circle
-                    v-for="(point, index) in trendDataPoints"
-                    :key="index"
-                    :cx="point.x"
-                    :cy="point.y"
-                    r="4"
-                    fill="#52c41a"
-                    stroke="#fff"
-                    stroke-width="2"
-                />
-              </svg>
-              <div class="trend-x-axis">
-                <span v-for="label in trendXLabels" :key="label">{{ label }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <OnlineSection :stats="onlineStats" :points="trendDataPoints" :y-labels="trendYLabels" :x-labels="trendXLabels"/>
 
       <div class="panel-section alarm-section">
         <div class="section-header">
@@ -340,7 +213,9 @@ import {
   type SensorDistributionVO
 } from '@/api/monitor'
 
-const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
+import {TIANDITU_KEY} from '@/composables/useLeafletMap'
+import ResourceSection from './components/ResourceSection.vue'
+import OnlineSection from './components/OnlineSection.vue'
 
 interface DeviceInfo {
   name: string
