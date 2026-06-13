@@ -1260,64 +1260,6 @@ LOCK TABLES `log_stream_checkpoint` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `monitor_category`
---
-
-DROP TABLE IF EXISTS `monitor_category`;
-/*!40101 SET @saved_cs_client = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `monitor_category`
-(
-    `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `code`        varchar(100) NOT NULL COMMENT '大类编码',
-    `name`        varchar(200) NOT NULL COMMENT '大类名称',
-    `icon`        varchar(200) DEFAULT NULL COMMENT '图标路径',
-    `sort_order`  int          DEFAULT '0' COMMENT '排序号',
-    `status`      tinyint      DEFAULT '1' COMMENT '状态: 0-禁用, 1-启用',
-    `create_by`   varchar(64)  DEFAULT NULL COMMENT '创建者',
-    `create_time` datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_by`   varchar(64)  DEFAULT NULL COMMENT '更新者',
-    `update_time` datetime     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `del_flag`    tinyint      DEFAULT '0' COMMENT '删除标记: 0-正常, 1-删除',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_monitor_category_code` (`code`),
-    KEY `idx_monitor_category_status` (`status`),
-    KEY `idx_monitor_category_del_flag` (`del_flag`)
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 9
-  DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci COMMENT ='监测大类表';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `monitor_category`
---
-
-LOCK TABLES `monitor_category` WRITE;
-/*!40000 ALTER TABLE `monitor_category`
-    DISABLE KEYS */;
-INSERT INTO `monitor_category`
-VALUES (1, 'RAINFALL', '雨量', '/jc-icon/green/wj_green.png', 1, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0),
-       (2, 'DISPLACEMENT', '位移', '/jc-icon/green/jsd_green.png', 2, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0),
-       (3, 'TEMPERATURE', '温湿度', '/jc-icon/green/ky_green.png', 3, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0),
-       (4, 'WATER_LEVEL', '水位', '/jc-icon/green/sg_green.png', 4, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0),
-       (5, 'CRACK', '裂缝', '/jc-icon/green/jsd_green.png', 5, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0),
-       (6, 'INCLINATION', '倾斜', '/jc-icon/green/nw_green.png', 6, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0),
-       (7, 'SOIL_TEMP', '地温', '/jc-icon/green/gnss_green.png', 7, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0),
-       (8, 'SOIL_MOISTURE', '含水率', '/jc-icon/green/lf_green.png', 8, 1, 'system', '2026-06-06 14:48:47', NULL,
-        '2026-06-06 14:48:47', 0);
-/*!40000 ALTER TABLE `monitor_category`
-    ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `monitor_content`
 --
 
@@ -1400,7 +1342,6 @@ CREATE TABLE `monitor_type`
 (
     `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `code`        varchar(100) NOT NULL COMMENT '监测类型编码',
-    `category_id` bigint       DEFAULT NULL COMMENT '监测大类ID',
     `name`        varchar(200) NOT NULL COMMENT '监测类型名称',
     `icon`        varchar(200) DEFAULT NULL COMMENT '图标路径',
     `description` varchar(500) DEFAULT NULL COMMENT '描述',
@@ -1414,8 +1355,7 @@ CREATE TABLE `monitor_type`
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_monitor_type_code` (`code`),
     KEY `idx_monitor_type_status` (`status`),
-    KEY `idx_monitor_type_del_flag` (`del_flag`),
-    KEY `idx_monitor_type_category` (`category_id`)
+    KEY `idx_monitor_type_del_flag` (`del_flag`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 10
   DEFAULT CHARSET = utf8mb4
@@ -1430,23 +1370,23 @@ LOCK TABLES `monitor_type` WRITE;
 /*!40000 ALTER TABLE `monitor_type`
     DISABLE KEYS */;
 INSERT INTO `monitor_type`
-VALUES (1, 'JCLX001', 1, '雨量监测', '/jc-icon/green/wj_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+VALUES (1, 'JCLX001', '雨量监测', '/jc-icon/green/wj_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (2, 'JCLX002', 2, '位移监测', '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+       (2, 'JCLX002', '位移监测', '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (3, 'JCLX003', 3, '温湿度监测', '/jc-icon/green/ky_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+       (3, 'JCLX003', '温湿度监测', '/jc-icon/green/ky_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (4, 'JCLX004', 4, '水位监测', '/jc-icon/green/sg_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+       (4, 'JCLX004', '水位监测', '/jc-icon/green/sg_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (5, 'JCLX005', 5, '裂缝监测', '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+       (5, 'JCLX005', '裂缝监测', '/jc-icon/green/jsd_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (6, 'JCLX006', 6, '倾斜监测', '/jc-icon/green/nw_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+       (6, 'JCLX006', '倾斜监测', '/jc-icon/green/nw_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (7, 'JCLX007', 7, '地温监测', '/jc-icon/green/gnss_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+       (7, 'JCLX007', '地温监测', '/jc-icon/green/gnss_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (8, 'JCLX008', 8, '含水率监测', '/jc-icon/green/lf_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
+       (8, 'JCLX008', '含水率监测', '/jc-icon/green/lf_green.png', '', 0, 1, NULL, '2026-05-08 22:06:01', 'admin',
         '2026-06-06 14:48:48', 0),
-       (9, 'JCXL456', 2, '测试', '/jc-icon/green/wj_green.png', '', 0, 1, 'admin', '2026-05-21 20:28:01', 'admin',
+       (9, 'JCXL456', '测试', '/jc-icon/green/wj_green.png', '', 0, 1, 'admin', '2026-05-21 20:28:01', 'admin',
         '2026-06-06 14:48:48', 0);
 /*!40000 ALTER TABLE `monitor_type`
     ENABLE KEYS */;
@@ -2209,16 +2149,6 @@ VALUES (1, '系统管理', 0, 1, 'system', NULL, '', '', 1, 0, 'M', '0', '0', ''
         '2026-06-09 19:39:08', '', NULL, ''),
        (3114, '视频设备删除', 3110, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:videoDevice:remove', '#', 'admin',
         '2026-06-09 19:39:08', '', NULL, ''),
-       (3120, '监测类别管理', 2000, 5, 'monitor-category', 'basic/monitor-category/index', '', '', 1, 0, 'C', '1', '0',
-        'basic:monitorCategory:list', 'cascader', 'admin', '2026-06-09 19:39:08', '', NULL, '监测类别管理菜单'),
-       (3121, '监测类别查询', 3120, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:monitorCategory:query', '#', 'admin',
-        '2026-06-09 19:39:08', '', NULL, ''),
-       (3122, '监测类别新增', 3120, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:monitorCategory:add', '#', 'admin',
-        '2026-06-09 19:39:08', '', NULL, ''),
-       (3123, '监测类别修改', 3120, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:monitorCategory:edit', '#', 'admin',
-        '2026-06-09 19:39:08', '', NULL, ''),
-       (3124, '监测类别删除', 3120, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:monitorCategory:remove', '#',
-        'admin', '2026-06-09 19:39:08', '', NULL, ''),
        (3130, '监测类型管理', 2000, 6, 'monitor-type', 'basic/monitor-type/index', '', '', 1, 0, 'C', '1', '0',
         'basic:monitorType:list', 'component', 'admin', '2026-06-09 19:39:08', '', NULL, '监测类型管理菜单'),
        (3131, '监测类型查询', 3130, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'basic:monitorType:query', '#', 'admin',

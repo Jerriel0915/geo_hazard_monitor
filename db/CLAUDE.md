@@ -37,7 +37,7 @@
 | **alarm** 告警     | 8   | `alarm_criteria` / `alarm_record` / `alarm_strategy`                                                                                               | 告警判据/记录/策略/分发/通知                |
 | **device** 设备    | 7   | `device` / `device_sensor` / `device_hazard_point`                                                                                                 | 设备主表/传感器/属性/绑定/在线状态             |
 | **hazard** 隐患点   | 2   | `hazard_point` / `hazard_point_group`                                                                                                              | 隐患点 + 分组                        |
-| **monitor** 监测字典 | 3   | `monitor_category` / `monitor_type` / `monitor_content`                                                                                            | 大类/类型/内容 (3 级字典)                |
+| **monitor** 监测字典 | 2   | `monitor_type` / `monitor_content`                                                                                                                 | 类型/内容 (2 级字典)                   |
 | **log** 日志       | 4   | `log_auth_record` / `log_operation_record` / `log_runtime_record` / `log_stream_checkpoint`                                                        | 认证/操作/运行/流断点                    |
 | **report** 报告    | 2   | `report_template` / `report_record`                                                                                                                | 报告模板 + 生成记录                     |
 | **video** 视频     | 2   | `video_device` / `video_device_hazard_point`                                                                                                       | 视频设备 + 隐患点绑定                    |
@@ -83,11 +83,10 @@
 
 ### 监测字典域 (3)
 
-| 表名                 | 中文名   | 字段数 | 关键索引                                                  | 说明                        |
-|--------------------|-------|-----|-------------------------------------------------------|---------------------------|
-| `monitor_category` | 监测大类表 | 11  | uk_monitor_category_code                              | 雨量/位移/温湿度/水位/裂缝/倾斜/地温/含水率 |
-| `monitor_content`  | 监测内容表 | 15  | uk_monitor_content_code / idx_monitor_content_type_id | 小时雨量/X轴位移/温度/...          |
-| `monitor_type`     | 监测类型表 | 13  | uk_monitor_type_code / idx_monitor_type_category      | 雨量监测/位移监测/...             |
+| 表名                | 中文名   | 字段数 | 关键索引                                                  | 说明               |
+|-------------------|-------|-----|-------------------------------------------------------|------------------|
+| `monitor_content` | 监测内容表 | 15  | uk_monitor_content_code / idx_monitor_content_type_id | 小时雨量/X轴位移/温度/... |
+| `monitor_type`    | 监测类型表 | 12  | uk_monitor_type_code                                  | 雨量监测/位移监测/...    |
 
 ### 日志域 (4)
 
@@ -156,7 +155,6 @@ erDiagram
     sys_dict_type ||--o{ sys_dict_data : "包含"
     sys_config ||--|| sys_user : "运行时配置"
 
-    monitor_category ||--o{ monitor_type : "包含"
     monitor_type ||--o{ monitor_content : "包含"
     monitor_content ||--o{ sensor_attribute : "对应"
     monitor_type ||--o{ device_sensor : "选用"
@@ -235,7 +233,6 @@ erDiagram
 
 | 表                  | 记录数 | 关键记录                                              |
 |--------------------|-----|---------------------------------------------------|
-| `monitor_category` | 8   | 雨量/位移/温湿度/水位/裂缝/倾斜/地温/含水率                         |
 | `monitor_type`     | 9   | JCLX001-008 + 1 测试                                |
 | `monitor_content`  | 13  | rainfall_hour/rainfall_day/displacement_x/y/z/... |
 

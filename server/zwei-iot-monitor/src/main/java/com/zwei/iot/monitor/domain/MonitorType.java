@@ -36,8 +36,6 @@ public class MonitorType extends BaseEntity {
      * 监测类型编码
      */
     private String code;
-    private Long categoryId;
-    private String categoryName;
 
     /**
      * 监测类型名称

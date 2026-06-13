@@ -157,7 +157,7 @@ server/
 │                          MyBatis/Redis/Druid config, AOP aspects, global exception handler
 ├── zwei-system/           RBAC implementation: users, roles, menus, departments, dicts
 │                          └── notice/  通知公告子包（包级隔离，含SSE推送+多通道架构预留）
-├── zwei-iot-monitor/      IoT — 监测字典: 监测大类(category) + 监测类型(type) + 监测内容(content)
+├── zwei-iot-monitor/      IoT — 监测字典: 监测类型(type) + 监测内容(content)
 ├── zwei-iot-device/       IoT — 设备全生命周期 + 传感器 + 注册中心 + 跨模块 Service 接口定义
 ├── zwei-iot-timeseries/   IoT — IoTDB 读写 + MQTT 数据解析 + 监测数据查询
 ├── zwei-iot-broker/       IoT — MQTT 设备鉴权 + 会话管理 + 发布订阅 ACL

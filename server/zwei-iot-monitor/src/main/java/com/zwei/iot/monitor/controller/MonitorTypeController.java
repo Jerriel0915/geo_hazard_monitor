@@ -173,7 +173,6 @@ public class MonitorTypeController extends BaseController {
     private MonitorType buildMonitorTypeForCreate(MonitorTypeCreateRequest request) {
         MonitorType monitorType = new MonitorType();
         monitorType.setCode(request.getCode());
-        monitorType.setCategoryId(request.getCategoryId());
         monitorType.setName(request.getName());
         monitorType.setIcon(request.getIcon());
         monitorType.setDescription(request.getDescription());
@@ -185,7 +184,6 @@ public class MonitorTypeController extends BaseController {
     private MonitorType buildMonitorTypeForUpdate(Long id, MonitorTypeUpdateRequest request) {
         MonitorType monitorType = new MonitorType();
         monitorType.setId(id);
-        monitorType.setCategoryId(request.getCategoryId());
         monitorType.setName(request.getName());
         monitorType.setIcon(request.getIcon());
         monitorType.setDescription(request.getDescription());
