@@ -187,8 +187,10 @@
               </div>
 
               <!-- Login Button -->
-              <button type="button" class="login-btn" @click="login">
-                登 录
+              <button type="button" class="login-btn" :class="{ loading: loginLoading }" :disabled="loginLoading"
+                      @click="login">
+                <span v-if="loginLoading" class="btn-spinner"></span>
+                {{ loginLoading ? '登录中...' : '登 录' }}
               </button>
             </el-form>
           </div>
@@ -236,8 +238,10 @@
 
             <el-checkbox v-model="rememberMe">记住我</el-checkbox>
 
-            <button type="button" class="login-btn" @click="login">
-              登 录
+            <button type="button" class="login-btn" :class="{ loading: loginLoading }" :disabled="loginLoading"
+                    @click="login">
+              <span v-if="loginLoading" class="btn-spinner"></span>
+              {{ loginLoading ? '登录中...' : '登 录' }}
             </button>
           </div>
 
@@ -312,6 +316,7 @@ const router = useRouter()
 const loginFormRef = ref()
 const loginMethod = ref('account')
 const showPassword = ref(false)
+const loginLoading = ref(false)
 
 // 登录表单数据
 const loginForm = reactive({
@@ -378,6 +383,8 @@ const sendSms = async () => {
 
 // 登录函数
 const login = async () => {
+  if (loginLoading.value) return
+  loginLoading.value = true
   try {
     const loginData: Record<string, any> = {
       rememberMe: rememberMe.value
@@ -423,6 +430,8 @@ const login = async () => {
     console.error('登录失败:', error)
     ElMessage.error(error?.response?.data?.msg || error?.message || '登录失败')
     if (captchaEnabled.value) getCaptcha()
+  } finally {
+    loginLoading.value = false
   }
 }
 
@@ -872,6 +881,36 @@ onUnmounted(() => {
 .login-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+.login-btn:disabled,
+.login-btn.loading {
+  background: #91caff;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.login-btn.loading::before {
+  display: none;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 8px;
+  vertical-align: -3px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* WeChat Login */

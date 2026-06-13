@@ -281,11 +281,18 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios'
-import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
+import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {handleAuthFailure} from '@/utils/auth'
-import {showRequestErrorMessage} from '@/utils/errorHandler'
+import {
+  getAuthEventTag,
+  getBusinessTypeTag,
+  getLevelTag,
+  getLiveSubtypeTag,
+  getRequestMethodTag,
+  getStreamEventTag
+} from '@/utils/logTags'
+import {useLogQuery} from './composables/useLogQuery'
 
 type TabKey = 'operation' | 'auth' | 'runtime'
 type StreamStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -371,39 +378,66 @@ const authEventOptions = ['LOGIN_SUCCESS', 'LOGIN_FAIL', 'LOGOUT', 'UNAUTHORIZED
 
 const activeTab = ref<TabKey>('operation')
 
-const operationLoading = ref(false)
-const authLoading = ref(false)
-const runtimeLoading = ref(false)
-
-const operationLogs = ref<OperationLogRecord[]>([])
-const authLogs = ref<AuthLogRecord[]>([])
-const runtimeLogs = ref<RuntimeLogRecord[]>([])
-
-const operationPagination = reactive({page: 1, size: 10, total: 0})
-const authPagination = reactive({page: 1, size: 10, total: 0})
-const runtimePagination = reactive({page: 1, size: 10, total: 0})
-
-const opSearchForm = reactive({
-  username: '',
-  title: '',
-  apiPath: '',
-  execStatus: '',
-  timeRange: [] as string[]
+// ── Tab queries (operation / auth / runtime) ──
+const opQuery = useLogQuery<{
+  username: string;
+  title: string;
+  apiPath: string;
+  execStatus: string;
+  timeRange: string[]
+}, OperationLogRecord>({
+  endpoint: '/api/v1/logs/operations/page',
+  initialForm: {username: '', title: '', apiPath: '', execStatus: '', timeRange: []}
+})
+const authQuery = useLogQuery<{
+  username: string;
+  authEventType: string;
+  resultStatus: string;
+  timeRange: string[]
+}, AuthLogRecord>({
+  endpoint: '/api/v1/logs/auth/page',
+  initialForm: {username: '', authEventType: '', resultStatus: '', timeRange: []}
+})
+const runtimeQuery = useLogQuery<{
+  level: string;
+  loggerName: string;
+  keyword: string;
+  timeRange: string[]
+}, RuntimeLogRecord>({
+  endpoint: '/api/v1/logs/runtime/page',
+  initialForm: {level: '', loggerName: '', keyword: '', timeRange: []}
 })
 
-const authSearchForm = reactive({
-  username: '',
-  authEventType: '',
-  resultStatus: '',
-  timeRange: [] as string[]
-})
-
-const runtimeSearchForm = reactive({
-  level: '',
-  loggerName: '',
-  keyword: '',
-  timeRange: [] as string[]
-})
+const {
+  loading: operationLoading,
+  records: operationLogs,
+  pagination: operationPagination,
+  searchForm: opSearchForm,
+  search: handleOperationSearch,
+  reset: handleOperationReset,
+  handleSizeChange: handleOperationSizeChange,
+  handlePageChange: handleOperationPageChange
+} = opQuery
+const {
+  loading: authLoading,
+  records: authLogs,
+  pagination: authPagination,
+  searchForm: authSearchForm,
+  search: handleAuthSearch,
+  reset: handleAuthReset,
+  handleSizeChange: handleAuthSizeChange,
+  handlePageChange: handleAuthPageChange
+} = authQuery
+const {
+  loading: runtimeLoading,
+  records: runtimeLogs,
+  pagination: runtimePagination,
+  searchForm: runtimeSearchForm,
+  search: handleRuntimeSearch,
+  reset: handleRuntimeReset,
+  handleSizeChange: handleRuntimeSizeChange,
+  handlePageChange: handleRuntimePageChange
+} = runtimeQuery
 
 const sseTypes = ref<SseType[]>(['auth', 'runtime'])
 const subscriberKey = ref('web-log-console')
@@ -454,99 +488,9 @@ const buildTimeParams = (range: string[]) => ({
   endTime: range?.length === 2 ? range[1] : undefined
 })
 
-const fetchOperationLogs = async () => {
-  operationLoading.value = true
-  try {
-    const response = await axios.get<ApiResponse<PageResult<OperationLogRecord>>>('/api/v1/logs/operations/page', {
-      params: {
-        pageNum: operationPagination.page,
-        pageSize: operationPagination.size,
-        username: opSearchForm.username || undefined,
-        title: opSearchForm.title || undefined,
-        apiPath: opSearchForm.apiPath || undefined,
-        execStatus: opSearchForm.execStatus || undefined,
-        ...buildTimeParams(opSearchForm.timeRange)
-      },
-      headers: requestHeaders()
-    })
-    if (response.data.code === 200) {
-      operationLogs.value = response.data.data.rows || []
-      operationPagination.total = response.data.data.total || 0
-    } else {
-      ElMessage.error(response.data.msg || '获取操作日志失败')
-    }
-  } catch (error) {
-    console.error('获取操作日志失败:', error)
-    showRequestErrorMessage(error, '获取操作日志失败')
-  } finally {
-    operationLoading.value = false
-  }
-}
-
-const fetchAuthLogs = async () => {
-  authLoading.value = true
-  try {
-    const response = await axios.get<ApiResponse<PageResult<AuthLogRecord>>>('/api/v1/logs/auth/page', {
-      params: {
-        pageNum: authPagination.page,
-        pageSize: authPagination.size,
-        username: authSearchForm.username || undefined,
-        authEventType: authSearchForm.authEventType || undefined,
-        resultStatus: authSearchForm.resultStatus || undefined,
-        ...buildTimeParams(authSearchForm.timeRange)
-      },
-      headers: requestHeaders()
-    })
-    if (response.data.code === 200) {
-      authLogs.value = response.data.data.rows || []
-      authPagination.total = response.data.data.total || 0
-    } else {
-      ElMessage.error(response.data.msg || '获取认证日志失败')
-    }
-  } catch (error) {
-    console.error('获取认证日志失败:', error)
-    showRequestErrorMessage(error, '获取认证日志失败')
-  } finally {
-    authLoading.value = false
-  }
-}
-
-const fetchRuntimeLogs = async () => {
-  runtimeLoading.value = true
-  try {
-    const response = await axios.get<ApiResponse<PageResult<RuntimeLogRecord>>>('/api/v1/logs/runtime/page', {
-      params: {
-        pageNum: runtimePagination.page,
-        pageSize: runtimePagination.size,
-        level: runtimeSearchForm.level || undefined,
-        loggerName: runtimeSearchForm.loggerName || undefined,
-        keyword: runtimeSearchForm.keyword || undefined,
-        ...buildTimeParams(runtimeSearchForm.timeRange)
-      },
-      headers: requestHeaders()
-    })
-    if (response.data.code === 200) {
-      runtimeLogs.value = response.data.data.rows || []
-      runtimePagination.total = response.data.data.total || 0
-    } else {
-      ElMessage.error(response.data.msg || '获取运行日志失败')
-    }
-  } catch (error) {
-    console.error('获取运行日志失败:', error)
-    showRequestErrorMessage(error, '获取运行日志失败')
-  } finally {
-    runtimeLoading.value = false
-  }
-}
-
 const refreshActiveTab = () => {
-  if (activeTab.value === 'operation') {
-    fetchOperationLogs()
-  } else if (activeTab.value === 'auth') {
-    fetchAuthLogs()
-  } else {
-    fetchRuntimeLogs()
-  }
+  const q = activeTab.value === 'operation' ? opQuery : activeTab.value === 'auth' ? authQuery : runtimeQuery
+  q.fetch()
 }
 
 const handleTabChange = (tabName: string | number) => {
@@ -554,81 +498,7 @@ const handleTabChange = (tabName: string | number) => {
   refreshActiveTab()
 }
 
-const handleOperationSearch = () => {
-  operationPagination.page = 1
-  fetchOperationLogs()
-}
-
-const handleOperationReset = () => {
-  opSearchForm.username = ''
-  opSearchForm.title = ''
-  opSearchForm.apiPath = ''
-  opSearchForm.execStatus = ''
-  opSearchForm.timeRange = []
-  operationPagination.page = 1
-  fetchOperationLogs()
-}
-
-const handleOperationSizeChange = (value: number) => {
-  operationPagination.size = value
-  operationPagination.page = 1
-  fetchOperationLogs()
-}
-
-const handleOperationPageChange = (value: number) => {
-  operationPagination.page = value
-  fetchOperationLogs()
-}
-
-const handleAuthSearch = () => {
-  authPagination.page = 1
-  fetchAuthLogs()
-}
-
-const handleAuthReset = () => {
-  authSearchForm.username = ''
-  authSearchForm.authEventType = ''
-  authSearchForm.resultStatus = ''
-  authSearchForm.timeRange = []
-  authPagination.page = 1
-  fetchAuthLogs()
-}
-
-const handleAuthSizeChange = (value: number) => {
-  authPagination.size = value
-  authPagination.page = 1
-  fetchAuthLogs()
-}
-
-const handleAuthPageChange = (value: number) => {
-  authPagination.page = value
-  fetchAuthLogs()
-}
-
-const handleRuntimeSearch = () => {
-  runtimePagination.page = 1
-  fetchRuntimeLogs()
-}
-
-const handleRuntimeReset = () => {
-  runtimeSearchForm.level = ''
-  runtimeSearchForm.loggerName = ''
-  runtimeSearchForm.keyword = ''
-  runtimeSearchForm.timeRange = []
-  runtimePagination.page = 1
-  fetchRuntimeLogs()
-}
-
-const handleRuntimeSizeChange = (value: number) => {
-  runtimePagination.size = value
-  runtimePagination.page = 1
-  fetchRuntimeLogs()
-}
-
-const handleRuntimePageChange = (value: number) => {
-  runtimePagination.page = value
-  fetchRuntimeLogs()
-}
+// ========== SSE stream logic (unchanged) ==========
 
 const clearReconnectTimer = () => {
   if (reconnectTimer !== null) {
@@ -836,6 +706,9 @@ const startStream = async (isReconnect = false) => {
     })
 
     if (handleAuthFailure(undefined, response.status)) {
+      keepStreamAlive = false
+      streamAbortController = null
+      sseStatus.value = 'disconnected'
       return
     }
 
@@ -870,78 +743,15 @@ const startStream = async (isReconnect = false) => {
       return
     }
     sseStatus.value = 'error'
-    ElMessage.warning('实时日志流连接中断，正在尝试重连')
+    if (!isReconnect) {
+      ElMessage.warning('实时日志流连接中断，正在尝试重连')
+    }
     scheduleReconnect()
   }
 }
 
 const clearLiveEvents = () => {
   liveEvents.value = []
-}
-
-const getRequestMethodTag = (method?: string) => {
-  const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-    GET: 'success',
-    POST: 'warning',
-    PUT: 'info',
-    DELETE: 'danger'
-  }
-  return map[String(method || '').toUpperCase()] || 'info'
-}
-
-const getBusinessTypeTag = (type?: string) => {
-  const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-    INSERT: 'success',
-    UPDATE: 'warning',
-    DELETE: 'danger',
-    EXPORT: 'info',
-    OTHER: 'info'
-  }
-  return map[String(type || '').toUpperCase()] || 'info'
-}
-
-const getAuthEventTag = (type?: string) => {
-  const key = String(type || '').toUpperCase()
-  if (key.includes('SUCCESS') || key === 'LOGOUT') {
-    return 'success'
-  }
-  if (key.includes('UNAUTHORIZED') || key.includes('INVALID')) {
-    return 'warning'
-  }
-  return 'danger'
-}
-
-const getLevelTag = (level?: string) => {
-  const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-    INFO: 'info',
-    WARN: 'warning',
-    ERROR: 'danger'
-  }
-  return map[String(level || '').toUpperCase()] || 'info'
-}
-
-const getStreamEventTag = (event: string) => {
-  const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-    ready: 'success',
-    replay: 'warning',
-    operation: 'info',
-    auth: 'danger',
-    runtime: 'warning'
-  }
-  return map[event] || 'info'
-}
-
-const getLiveSubtypeTag = (logType: string) => {
-  if (logType === 'OPERATION') {
-    return 'warning'
-  }
-  if (logType === 'AUTH') {
-    return 'danger'
-  }
-  if (logType === 'RUNTIME') {
-    return 'info'
-  }
-  return ''
 }
 
 onMounted(() => {
