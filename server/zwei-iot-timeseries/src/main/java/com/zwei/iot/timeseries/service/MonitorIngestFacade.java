@@ -58,7 +58,7 @@ public class MonitorIngestFacade {
         if (parsedTopic == null) {
             throw new ServiceException("监测主题格式非法");
         }
-        SensorMetadata metadata = metadataService.requireSensorMetadata(deviceId, parsedTopic.sensorNo());
+        SensorMetadata metadata = metadataService.requireSensorMetadata(deviceId, parsedTopic.sensorCode());
         MonitorPayloadParser parser = parsers.stream()
                 .filter(item -> item.supports(parsedTopic))
                 .findFirst()

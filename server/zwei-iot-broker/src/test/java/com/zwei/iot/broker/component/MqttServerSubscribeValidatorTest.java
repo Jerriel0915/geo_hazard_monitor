@@ -147,7 +147,7 @@ class MqttServerSubscribeValidatorTest {
 
         @ParameterizedTest
         @CsvSource({
-                "deviceCode, sensorNo,  true",
+                "deviceCode, sensorCode,  true",
                 "DEVICE,     SENSOR,     true",
                 "dev_123,   sen_456,    true",
                 "dev-123,   sen-456,    true",
@@ -155,8 +155,8 @@ class MqttServerSubscribeValidatorTest {
                 "dev 123,   sen 456,    false"
         })
         @DisplayName("合法与非法字符测试")
-        void characterSetTests(String deviceCode, String sensorNo, boolean expectFormatValid) {
-            String topic = "sys/v1/" + deviceCode + "/" + sensorNo + "/updata";
+        void characterSetTests(String deviceCode, String sensorCode, boolean expectFormatValid) {
+            String topic = "sys/v1/" + deviceCode + "/" + sensorCode + "/updata";
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
             if (!expectFormatValid) {
                 assertFalse(result, "非法字符应返回 false");
@@ -175,10 +175,10 @@ class MqttServerSubscribeValidatorTest {
         })
         @DisplayName("设备存在时返回 true，不存在时返回 false")
         void sensorExists_shouldValidateCorrectly(
-                String deviceCode, String sensorNo, int resultSize, boolean expected) {
-            String topic = "sys/v1/" + deviceCode + "/" + sensorNo + "/updata";
+                String deviceCode, String sensorCode, int resultSize, boolean expected) {
+            String topic = "sys/v1/" + deviceCode + "/" + sensorCode + "/updata";
             List<DeviceSensor> mockResult = resultSize > 0
-                    ? List.of(DeviceSensor.builder().deviceCode(deviceCode).sensorNo(sensorNo).build())
+                    ? List.of(DeviceSensor.builder().deviceCode(deviceCode).sensorCode(sensorCode).build())
                     : Collections.emptyList();
             when(deviceSensorService.selectSensorList(any())).thenReturn(mockResult);
 
@@ -193,7 +193,7 @@ class MqttServerSubscribeValidatorTest {
 
         @Test
         @DisplayName("设备不存在时应记录 debug 日志")
-        void sensorNotFound_shouldReturnFalse() {
+        void sensorCodetFound_shouldReturnFalse() {
             String topic = "sys/v1/existDevice/existSensor/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(Collections.emptyList());
 
@@ -208,7 +208,7 @@ class MqttServerSubscribeValidatorTest {
         void sensorFound_shouldReturnTrue() {
             String topic = "sys/v1/existDevice/existSensor/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(
-                    List.of(DeviceSensor.builder().deviceCode("existDevice").sensorNo("existSensor").build())
+                    List.of(DeviceSensor.builder().deviceCode("existDevice").sensorCode("existSensor").build())
             );
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -255,7 +255,7 @@ class MqttServerSubscribeValidatorTest {
         void differentQoS_shouldWork(MqttQoS qos) {
             String topic = "sys/v1/device/sensor/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(
-                    List.of(DeviceSensor.builder().deviceCode("device").sensorNo("sensor").build())
+                    List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );
 
             boolean result = validator.isValid(channelContext, "client-1", topic, qos);
@@ -273,7 +273,7 @@ class MqttServerSubscribeValidatorTest {
         void differentClientIds_shouldWork() {
             String topic = "sys/v1/device/sensor/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(
-                    List.of(DeviceSensor.builder().deviceCode("device").sensorNo("sensor").build())
+                    List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );
 
             boolean result1 = validator.isValid(channelContext, "client-alpha", topic, MqttQoS.QOS1);
@@ -293,7 +293,7 @@ class MqttServerSubscribeValidatorTest {
         void fullValidTopic_shouldPassAllChecks() {
             String topic = "sys/v1/my-device-001/my-sensor-001/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(
-                    List.of(DeviceSensor.builder().deviceCode("my-device-001").sensorNo("my-sensor-001").build())
+                    List.of(DeviceSensor.builder().deviceCode("my-device-001").sensorCode("my-sensor-001").build())
             );
 
             boolean result = validator.isValid(channelContext, "test-client", topic, MqttQoS.QOS2);
@@ -307,7 +307,7 @@ class MqttServerSubscribeValidatorTest {
         void topicWithUnderscoresAndDashes_shouldWork() {
             String topic = "sys/v1/device_with_underscore/sensor-with-dash/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(
-                    List.of(DeviceSensor.builder().deviceCode("device_with_underscore").sensorNo("sensor-with-dash").build())
+                    List.of(DeviceSensor.builder().deviceCode("device_with_underscore").sensorCode("sensor-with-dash").build())
             );
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -320,7 +320,7 @@ class MqttServerSubscribeValidatorTest {
         void pureAlphanumericTopic_shouldWork() {
             String topic = "sys/v1/Device123/Sensor456/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(
-                    List.of(DeviceSensor.builder().deviceCode("Device123").sensorNo("Sensor456").build())
+                    List.of(DeviceSensor.builder().deviceCode("Device123").sensorCode("Sensor456").build())
             );
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -338,7 +338,7 @@ class MqttServerSubscribeValidatorTest {
         void nullChannelContext_shouldWork() {
             String topic = "sys/v1/device/sensor/updata";
             when(deviceSensorService.selectSensorList(any())).thenReturn(
-                    List.of(DeviceSensor.builder().deviceCode("device").sensorNo("sensor").build())
+                    List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );
 
             boolean result = validator.isValid(null, "client-1", topic, MqttQoS.QOS1);

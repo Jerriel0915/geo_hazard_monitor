@@ -10,7 +10,6 @@
         <result property="deviceId" column="device_id"/>
         <result property="deviceCode" column="device_code"/>
         <result property="sensorCode" column="sensor_code"/>
-        <result property="sensorNo" column="sensor_no"/>
         <result property="sensorName" column="sensor_name"/>
         <result property="monitorTypeId" column="monitor_type_id"/>
         <result property="monitorTypeCode" column="monitor_type_code"/>
@@ -29,7 +28,6 @@
                ds.device_id,
                ds.device_code,
                ds.sensor_code,
-               ds.sensor_no,
                ds.sensor_name,
                ds.monitor_type_id,
                ds.monitor_type_code,
@@ -78,15 +76,6 @@
           AND del_flag = 0
     </select>
 
-    <!-- 校验同一设备下主题编号（sensorNo）是否唯一 -->
-    <select id="checkSensorNoUnique" resultMap="DeviceSensorResult">
-        <include refid="selectSensorVo"/>
-        WHERE ds.device_id = #{deviceId}
-        AND ds.sensor_no = #{sensorNo}
-        AND ds.del_flag = 0
-        LIMIT 1
-    </select>
-
     <!-- ==================== 新增操作 ==================== -->
 
     <!-- 新增传感器 -->
@@ -96,7 +85,6 @@
         <if test="deviceId != null">device_id,</if>
         <if test="deviceCode != null">device_code,</if>
         <if test="sensorCode != null and sensorCode != ''">sensor_code,</if>
-        <if test="sensorNo != null and sensorNo != ''">sensor_no,</if>
         <if test="sensorName != null and sensorName != ''">sensor_name,</if>
         <if test="monitorTypeId != null">monitor_type_id,</if>
         <if test="monitorTypeCode != null">monitor_type_code,</if>
@@ -108,7 +96,6 @@
         <if test="deviceId != null">#{deviceId},</if>
         <if test="deviceCode != null">#{deviceCode},</if>
         <if test="sensorCode != null and sensorCode != ''">#{sensorCode},</if>
-        <if test="sensorNo != null and sensorNo != ''">#{sensorNo},</if>
         <if test="sensorName != null and sensorName != ''">#{sensorName},</if>
         <if test="monitorTypeId != null">#{monitorTypeId},</if>
         <if test="monitorTypeCode != null">#{monitorTypeCode},</if>
@@ -126,7 +113,6 @@
         UPDATE device_sensor
         <set>
             <if test="deviceCode != null and deviceCode != ''">device_code = #{deviceCode},</if>
-            <if test="sensorNo != null and sensorNo != ''">sensor_no = #{sensorNo},</if>
             <if test="sensorName != null and sensorName != ''">sensor_name = #{sensorName},</if>
             <if test="monitorTypeId != null">monitor_type_id = #{monitorTypeId},</if>
             <if test="monitorTypeCode != null">monitor_type_code = #{monitorTypeCode},</if>
@@ -168,8 +154,6 @@
             <if test="deviceId != null">ds.device_id = #{deviceId}</if>
             <if test="deviceCode != null and deviceCode != ''">AND ds.device_code = #{deviceCode}</if>
             <if test="sensorCode != null and sensorCode != ''">AND ds.sensor_code = #{sensorCode}</if>
-            <!-- MQTT 鉴权中心按 topic 中的 sensor_no 做发布权限校验，因此这里补充 sensor_no 过滤。 -->
-            <if test="sensorNo != null and sensorNo != ''">AND ds.sensor_no = #{sensorNo}</if>
             <if test="sensorName != null and sensorName != ''">AND ds.sensor_name LIKE CONCAT('%', #{sensorName}, '%')</if>
             <if test="monitorTypeId != null">AND ds.monitor_type_id = #{monitorTypeId}</if>
             <if test="monitorTypeCode != null and monitorTypeCode != ''">AND ds.monitor_type_code = #{monitorTypeCode}</if>

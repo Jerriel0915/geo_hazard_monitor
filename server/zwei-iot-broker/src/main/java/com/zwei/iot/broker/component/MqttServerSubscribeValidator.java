@@ -20,17 +20,14 @@ import java.util.regex.Pattern;
  * MQTT 订阅权限校验器。
  *
  * <p>拦截设备侧 SUBSCRIBE 请求，仅允许设备订阅所属传感器对应的主题：
- * {@code sys/v1/{deviceCode}/{sensorNo}/updata}。
+ * {@code sys/v1/{deviceCode}/{sensorCode}/updata}。
  *
  * <h3>校验流程</h3>
  * <ol>
  *   <li>topic 非空 + 前缀 "sys/v1/" 快速过滤</li>
- *   <li>严格正则匹配（字母数字 + _ -，64 字符上限）</li>
- *   <li>数据库存在性校验：按 deviceCode + sensorNo 查 device_sensor 表</li>
+ *   <li>严格正则匹配（字母数字 + _ -，100 字符上限）</li>
+ *   <li>数据库存在性校验：按 deviceCode + sensorCode 查 device_sensor 表</li>
  * </ol>
- *
- * <p>注意：主题第二段为 sensor_no（设备内唯一），非 sensor_code（全局唯一）。
- * 查询时按 sensor_no 而非 sensor_code 定位传感器。
  *
  * @author Jerriel
  * @date: 2026-05-20
@@ -41,8 +38,7 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
     // 统一前缀，快速判断
     private static final String TOPIC_PREFIX = "sys/v1/";
     // 严格正则，只允许出现字母数字和特殊符号'_' '-'，且主题必须以 /updata 结尾
-    // 注意：主题第二段为 sensor_no（设备内唯一），非 sensor_code（全局唯一）
-    private static final Pattern TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
+    private static final Pattern TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,100})/updata$");
 
     private final IDeviceSensorService deviceSensorService;
     private final MqttExceptionReporter mqttExceptionReporter;
@@ -56,9 +52,7 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
 
     /**
      * 是否可以订阅
-     * 设备只能订阅主题：sys/v1/{deviceCode}/{sensorNo}/updata
-     * <p>
-     * 主题第二段为 sensor_no（设备内唯一主题编号），非 sensor_code（全局唯一业务标识）。
+     * 设备只能订阅主题：sys/v1/{deviceCode}/{sensorCode}/updata
      *
      * @param context     ChannelContext
      * @param clientId    客户端 id
@@ -94,19 +88,19 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
         }
 
         String deviceCode = matcher.group("deviceCode");
-        String sensorNo = matcher.group("sensorNo");
+        String sensorCode = matcher.group("sensorCode");
 
         try {
             DeviceSensor sensor = DeviceSensor.builder()
                     .deviceCode(deviceCode)
-                    .sensorNo(sensorNo)
+                    .sensorCode(sensorCode)
                     .build();
             boolean exists = StringUtils.isNotEmpty(deviceSensorService.selectSensorList(sensor));
             if (!exists) {
                 return mqttExceptionReporter.rejectWithDebug(new MqttBusinessException.PermissionDenied(
                         mqttExceptionReporter.context(clientId, topicFilter, qoS)
                                 .putAttribute("deviceCode", deviceCode)
-                                .putAttribute("sensorNo", sensorNo)
+                                .putAttribute("sensorCode", sensorCode)
                                 .build(),
                         "测点不存在或无权限订阅"
                 ));
@@ -116,7 +110,7 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
             return mqttExceptionReporter.rejectWithError(new MqttCommunicationException.SubscribeFailed(
                     mqttExceptionReporter.context(clientId, topicFilter, qoS)
                             .putAttribute("deviceCode", deviceCode)
-                            .putAttribute("sensorNo", sensorNo)
+                            .putAttribute("sensorCode", sensorCode)
                             .build(),
                     "订阅校验异常",
                     e

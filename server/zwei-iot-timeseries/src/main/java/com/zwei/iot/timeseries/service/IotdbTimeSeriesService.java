@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentMap;
  * <ol>
  *   <li><b>惰性建模</b>：首次写入/查询某个测点时自动创建 aligned timeseries，无需预先 DDL。
  *      使用 {@code ConcurrentHashMap} 缓存已创建的 measurement 路径，避免重复建表</li>
- *   <li><b>路径模型</b>：{@code root.{database}.d{deviceId}.s{sensorNo}.{attrCode}}</li>
+ *   <li><b>路径模型</b>：{@code root.{database}.d{deviceId}.s{sensorCode}.{attrCode}}</li>
  *   <li><b>Aligned Timeseries</b>：每个传感器路径下包含业务指标列（DOUBLE+GORILLA）和质量码列（INT32+RLE），
  *       同一时间戳的多个指标共用一个时间戳存储，节省空间</li>
  *   <li><b>建库幂等</b>：应用启动后首个写入触发 {@code CREATE DATABASE IF NOT EXISTS}，
@@ -83,13 +83,13 @@ public class IotdbTimeSeriesService {
         ensureDatabase();
         // 确保所有 measurement 已创建
         for (StandardMeasurementPoint point : points) {
-            ensureMeasurement(point.attrCode(), point.deviceId(), point.sensorNo(), "DOUBLE", "GORILLA");
-            ensureMeasurement("quality", point.deviceId(), point.sensorNo(), "INT32", "RLE");
+            ensureMeasurement(point.attrCode(), point.deviceId(), point.sensorCode(), "DOUBLE", "GORILLA");
+            ensureMeasurement("quality", point.deviceId(), point.sensorCode(), "INT32", "RLE");
         }
         // 批量组装 SQL → 单连接 executeBatch()
         List<String> sqlList = new ArrayList<>(points.size());
         for (StandardMeasurementPoint point : points) {
-            sqlList.add("INSERT INTO " + pathResolver.buildSensorPath(point.deviceId(), point.sensorNo())
+            sqlList.add("INSERT INTO " + pathResolver.buildSensorPath(point.deviceId(), point.sensorCode())
                     + "(timestamp," + point.attrCode() + ",quality) ALIGNED VALUES("
                     + point.dataTime() + "," + point.value() + "," + point.quality() + ")");
         }
@@ -103,15 +103,15 @@ public class IotdbTimeSeriesService {
      * 避免每条消息写入时触发 DDL 的 ERROR 日志。
      *
      * @param deviceId  设备ID
-     * @param sensorNo  传感器编号
+     * @param sensorCode  传感器编号
      * @param attrCodes 指标编码列表（不含 quality，quality 列自动创建）
      */
-    public void createSensorSchema(Long deviceId, String sensorNo, List<String> attrCodes) {
+    public void createSensorSchema(Long deviceId, String sensorCode, List<String> attrCodes) {
         // 确保数据库表存在
         ensureDatabase();
-        ensureMeasurement("quality", deviceId, sensorNo, "INT32", "RLE");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
         for (String attrCode : attrCodes) {
-            ensureMeasurement(attrCode, deviceId, sensorNo, "DOUBLE", "GORILLA");
+            ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
         }
     }
 
@@ -119,20 +119,20 @@ public class IotdbTimeSeriesService {
      * 查询指定测点指标的最新值。
      *
      * @param deviceId 设备ID
-     * @param sensorNo 传感器编号
+     * @param sensorCode 传感器编号
      * @param attrCode 指标编码
      * @return 最新查询结果；无数据时返回 {@code null}
      * @throws ServiceException 当查询失败时抛出
      */
-    public IotdbQueryRow queryLatest(Long deviceId, String sensorNo, String attrCode) {
-        ensureMeasurement(attrCode, deviceId, sensorNo, "DOUBLE", "GORILLA");
-        ensureMeasurement("quality", deviceId, sensorNo, "INT32", "RLE");
-        String sql = "SELECT " + attrCode + ", quality FROM " + pathResolver.buildSensorPath(deviceId, sensorNo)
+    public IotdbQueryRow queryLatest(Long deviceId, String sensorCode, String attrCode) {
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
+        String sql = "SELECT " + attrCode + ", quality FROM " + pathResolver.buildSensorPath(deviceId, sensorCode)
                 + " ORDER BY TIME DESC LIMIT 1";
         // IoTDB JDBC ResultSet 中列名为完整路径，需用 buildMeasurementPath 构造。
         // 同时移除 setFetchSize / setQueryTimeout（IoTDB JDBC 不支持）。
-        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode);
-        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, "quality");
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
             ResultSet resultSet = statement.executeQuery(sql);
@@ -154,20 +154,20 @@ public class IotdbTimeSeriesService {
      * 查询指定时间范围内的指标序列。
      *
      * @param deviceId  设备ID
-     * @param sensorNo  传感器编号
+     * @param sensorCode  传感器编号
      * @param attrCode  指标编码
      * @param startTime 开始时间，毫秒时间戳，可空
      * @param endTime   结束时间，毫秒时间戳，可空
      * @return 区间内的时序结果集合
      * @throws ServiceException 当查询失败时抛出
      */
-    public List<IotdbQueryRow> queryRange(Long deviceId, String sensorNo, String attrCode, Long startTime, Long endTime) {
-        ensureMeasurement(attrCode, deviceId, sensorNo, "DOUBLE", "GORILLA");
-        ensureMeasurement("quality", deviceId, sensorNo, "INT32", "RLE");
+    public List<IotdbQueryRow> queryRange(Long deviceId, String sensorCode, String attrCode, Long startTime, Long endTime) {
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(attrCode)
                 .append(", quality FROM ")
-                .append(pathResolver.buildSensorPath(deviceId, sensorNo));
+                .append(pathResolver.buildSensorPath(deviceId, sensorCode));
         if (startTime != null || endTime != null) {
             sql.append(" WHERE ");
             if (startTime != null) {
@@ -181,8 +181,8 @@ public class IotdbTimeSeriesService {
             }
         }
         // IoTDB JDBC ResultSet 中列名为完整路径。
-        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode);
-        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, "quality");
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
@@ -209,7 +209,7 @@ public class IotdbTimeSeriesService {
      * 查询指定时间范围内的指标序列（支持聚合）。
      *
      * @param deviceId  设备ID
-     * @param sensorNo  传感器编号
+     * @param sensorCode  传感器编号
      * @param attrCode  指标编码
      * @param startTime 开始时间，毫秒时间戳，可空
      * @param endTime   结束时间，毫秒时间戳，可空
@@ -217,14 +217,14 @@ public class IotdbTimeSeriesService {
      * @return 区间内的时序结果集合
      * @throws ServiceException 当查询失败时抛出
      */
-    public List<IotdbQueryRow> queryRange(Long deviceId, String sensorNo, String attrCode,
+    public List<IotdbQueryRow> queryRange(Long deviceId, String sensorCode, String attrCode,
                                           Long startTime, Long endTime, ValueType valueType) {
         if (valueType == null || !valueType.isAggregated()) {
-            return queryRange(deviceId, sensorNo, attrCode, startTime, endTime);
+            return queryRange(deviceId, sensorCode, attrCode, startTime, endTime);
         }
-        ensureMeasurement(attrCode, deviceId, sensorNo, "DOUBLE", "GORILLA");
-        ensureMeasurement("quality", deviceId, sensorNo, "INT32", "RLE");
-        String sensorPath = pathResolver.buildSensorPath(deviceId, sensorNo);
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
+        String sensorPath = pathResolver.buildSensorPath(deviceId, sensorCode);
         String aggFunc = valueType.getAggFunction();
         String interval = valueType.getGroupInterval();
         StringBuilder sql = new StringBuilder("SELECT ")
@@ -246,8 +246,8 @@ public class IotdbTimeSeriesService {
                 .append("), ").append(interval).append(")");
         List<IotdbQueryRow> rows = new ArrayList<>();
         // IoTDB 聚合查询列名：{aggFunc}({fullPath})
-        String attrCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode) + ")";
-        String qualityCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorNo, "quality") + ")";
+        String attrCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
+        String qualityCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality") + ")";
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
             ResultSet resultSet = statement.executeQuery(sql.toString());
@@ -273,7 +273,7 @@ public class IotdbTimeSeriesService {
      * 分页查询指定时间范围内的指标序列，使用 IoTDB 原生 LIMIT/OFFSET。
      *
      * @param deviceId  设备ID
-     * @param sensorNo  传感器编号
+     * @param sensorCode  传感器编号
      * @param attrCode  指标编码
      * @param startTime 开始时间，毫秒时间戳，可空
      * @param endTime   结束时间，毫秒时间戳，可空
@@ -281,14 +281,14 @@ public class IotdbTimeSeriesService {
      * @param offset    偏移量
      * @return 区间内的时序结果集合，按时间降序
      */
-    public List<IotdbQueryRow> queryRangePaged(Long deviceId, String sensorNo, String attrCode,
+    public List<IotdbQueryRow> queryRangePaged(Long deviceId, String sensorCode, String attrCode,
                                                Long startTime, Long endTime, int limit, int offset) {
-        ensureMeasurement(attrCode, deviceId, sensorNo, "DOUBLE", "GORILLA");
-        ensureMeasurement("quality", deviceId, sensorNo, "INT32", "RLE");
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(attrCode)
                 .append(", quality FROM ")
-                .append(pathResolver.buildSensorPath(deviceId, sensorNo));
+                .append(pathResolver.buildSensorPath(deviceId, sensorCode));
         boolean hasWhere = false;
         if (startTime != null) {
             sql.append(" WHERE time >= ").append(startTime);
@@ -298,8 +298,8 @@ public class IotdbTimeSeriesService {
             sql.append(hasWhere ? " AND " : " WHERE ").append("time < ").append(endTime);
         }
         sql.append(" ORDER BY TIME DESC LIMIT ").append(limit).append(" OFFSET ").append(offset);
-        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode);
-        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorNo, "quality");
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
@@ -326,18 +326,18 @@ public class IotdbTimeSeriesService {
      * 统计指定测点指标在时间范围内的数据条数。
      *
      * @param deviceId  设备ID
-     * @param sensorNo  传感器编号
+     * @param sensorCode  传感器编号
      * @param attrCode  指标编码
      * @param startTime 开始时间，毫秒时间戳，可空
      * @param endTime   结束时间，毫秒时间戳，可空
      * @return 数据条数
      */
-    public long countRange(Long deviceId, String sensorNo, String attrCode, Long startTime, Long endTime) {
-        ensureMeasurement(attrCode, deviceId, sensorNo, "DOUBLE", "GORILLA");
+    public long countRange(Long deviceId, String sensorCode, String attrCode, Long startTime, Long endTime) {
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
         StringBuilder sql = new StringBuilder("SELECT COUNT(")
                 .append(attrCode)
                 .append(") FROM ")
-                .append(pathResolver.buildSensorPath(deviceId, sensorNo));
+                .append(pathResolver.buildSensorPath(deviceId, sensorCode));
         boolean hasWhere = false;
         if (startTime != null) {
             sql.append(" WHERE time >= ").append(startTime);
@@ -346,7 +346,7 @@ public class IotdbTimeSeriesService {
         if (endTime != null) {
             sql.append(hasWhere ? " AND " : " WHERE ").append("time < ").append(endTime);
         }
-        String countCol = "COUNT(" + pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode) + ")";
+        String countCol = "COUNT(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
             ResultSet resultSet = statement.executeQuery(sql.toString());
@@ -355,7 +355,7 @@ public class IotdbTimeSeriesService {
             }
             return 0;
         } catch (SQLException e) {
-            log.warn("统计 IoTDB 数据条数失败: deviceId={}, sensorNo={}, attrCode={}", deviceId, sensorNo, attrCode, e);
+            log.warn("统计 IoTDB 数据条数失败: deviceId={}, sensorCode={}, attrCode={}", deviceId, sensorCode, attrCode, e);
             return 0;
         }
     }
@@ -408,10 +408,10 @@ public class IotdbTimeSeriesService {
      */
     private void ensureMeasurement(String attrCode,
                                    Long deviceId,
-                                   String sensorNo,
+                                   String sensorCode,
                                    String dataType,
                                    String encoding) {
-        String measurementPath = pathResolver.buildMeasurementPath(deviceId, sensorNo, attrCode);
+        String measurementPath = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
         if (createdMeasurements.containsKey(measurementPath)) {
             return;
         }

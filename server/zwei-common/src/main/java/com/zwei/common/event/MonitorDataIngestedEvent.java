@@ -12,18 +12,18 @@ public class MonitorDataIngestedEvent {
 
     private final Long deviceId;
     private final Long sensorId;
-    private final String sensorNo;
+    private final String sensorCode;
     private final String attrCode;
     private final Double value;
     private final Long dataTime;     // epoch millis
     private final String sourceType; // "sys" or "gb"
 
-    public MonitorDataIngestedEvent(Long deviceId, Long sensorId, String sensorNo,
+    public MonitorDataIngestedEvent(Long deviceId, Long sensorId, String sensorCode,
                                     String attrCode, Double value, Long dataTime,
                                     String sourceType) {
         this.deviceId = deviceId;
         this.sensorId = sensorId;
-        this.sensorNo = sensorNo;
+        this.sensorCode = sensorCode;
         this.attrCode = attrCode;
         this.value = value;
         this.dataTime = dataTime;
@@ -38,8 +38,8 @@ public class MonitorDataIngestedEvent {
         return sensorId;
     }
 
-    public String getSensorNo() {
-        return sensorNo;
+    public String getSensorCode() {
+        return sensorCode;
     }
 
     public String getAttrCode() {

@@ -52,11 +52,11 @@ public class MqttDeviceAuthService {
     /**
      * 平台通用 JSON 上报主题。设备标识使用 deviceCode 与订阅主题保持一致。
      */
-    private static final Pattern SYS_TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
+    private static final Pattern SYS_TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,100})/updata$");
     /**
      * 国标兼容主题。当前鉴权中心只做 topic 级别准入，不解析报文体。
      */
-    private static final Pattern GB_TOPIC_PATTERN = Pattern.compile("^gb/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
+    private static final Pattern GB_TOPIC_PATTERN = Pattern.compile("^gb/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,100})/updata$");
     private static final String PROTOCOL_MQTT = "MQTT";
     private static final int AUTH_STATUS_ENABLED = 1;
     private static final int AUTH_SUCCESS = 1;
@@ -370,11 +370,11 @@ public class MqttDeviceAuthService {
     private PublishTarget parsePublishTarget(String topic) {
         Matcher sysMatcher = SYS_TOPIC_PATTERN.matcher(topic == null ? "" : topic);
         if (sysMatcher.matches()) {
-            return new PublishTarget(sysMatcher.group("deviceCode"), sysMatcher.group("sensorNo"));
+            return new PublishTarget(sysMatcher.group("deviceCode"), sysMatcher.group("sensorCode"));
         }
         Matcher gbMatcher = GB_TOPIC_PATTERN.matcher(topic == null ? "" : topic);
         if (gbMatcher.matches()) {
-            return new PublishTarget(gbMatcher.group("deviceCode"), gbMatcher.group("sensorNo"));
+            return new PublishTarget(gbMatcher.group("deviceCode"), gbMatcher.group("sensorCode"));
         }
         return null;
     }
@@ -464,6 +464,6 @@ public class MqttDeviceAuthService {
     /**
      * 主题解析出的设备与测点标识。
      */
-    private record PublishTarget(String deviceCode, String sensorNo) {
+    private record PublishTarget(String deviceCode, String sensorCode) {
     }
 }

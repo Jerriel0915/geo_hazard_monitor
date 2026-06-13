@@ -12,7 +12,6 @@ import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.ProductMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.*;
-import com.zwei.iot.device.service.IProductTslService;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -256,7 +255,6 @@ public class DeviceServiceImpl implements IDeviceService {
                     .deviceId(copy.getId())
                     .deviceCode(copy.getCode())
                     .sensorCode(originalSensor.getSensorCode() + "_copy")
-                    .sensorNo(originalSensor.getSensorNo())
                     .sensorName(originalSensor.getSensorName())
                     .monitorTypeId(originalSensor.getMonitorTypeId())
                     .monitorTypeCode(originalSensor.getMonitorTypeCode())
@@ -380,9 +378,6 @@ public class DeviceServiceImpl implements IDeviceService {
         for (DeviceSensor sensor : sensors) {
             List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(sensor.getId());
             sensor.setAttrList(attrs);
-            if (sensor.getSensorNo() == null || sensor.getSensorNo().isBlank()) {
-                sensor.setSensorNo(sensor.getSensorCode());
-            }
         }
         return sensors;
     }

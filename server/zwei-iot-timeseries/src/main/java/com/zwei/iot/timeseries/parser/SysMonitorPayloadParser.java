@@ -172,7 +172,7 @@ public class SysMonitorPayloadParser implements MonitorPayloadParser {
         // 校验传感器编号一致性：payload 中的 sensorNo 必须与 topic 中的一致，
         // 防止设备将 A 传感器的数据包装为 B 传感器的主题上报。
         String payloadSensorNo = root.getString("sensorNo");
-        if (StringUtils.isNotBlank(payloadSensorNo) && !Objects.equals(payloadSensorNo, topic.sensorNo())) {
+        if (StringUtils.isNotBlank(payloadSensorNo) && !Objects.equals(payloadSensorNo, topic.sensorCode())) {
             throw new ServiceException("payload 中 sensorNo 与 topic 不一致");
         }
         // 从报文中提取上报时间，若无则使用当前系统时间
@@ -233,7 +233,7 @@ public class SysMonitorPayloadParser implements MonitorPayloadParser {
         for (Map.Entry<String, Object> entry : deviceObject.entrySet()) {
             String measurementKey = entry.getKey();
             // 过滤：仅保留与当前传感器编号匹配的测点（键格式：{监测项}_{sensorNo}）
-            if (!measurementMatchesSensor(topic.sensorNo(), measurementKey)) {
+            if (!measurementMatchesSensor(topic.sensorCode(), measurementKey)) {
                 continue;
             }
             Object rawValue = entry.getValue();
@@ -392,7 +392,7 @@ public class SysMonitorPayloadParser implements MonitorPayloadParser {
                                                 String payloadHash) {
         return StandardMeasurementPoint.builder()
                 .deviceId(metadata.deviceId())
-                .sensorNo(topic.sensorNo())
+                .sensorCode(topic.sensorCode())
                 .sensorId(metadata.sensorId())
                 .attrCode(attrCode)
                 .attrName(attrName)
@@ -465,14 +465,14 @@ public class SysMonitorPayloadParser implements MonitorPayloadParser {
     /**
      * 判断测点键是否与目标传感器匹配。
      * 匹配规则：测点键以 "_" 结尾，后接传感器编号。
-     * 例如 sensorNo="01"，measurementKey="temperature_01" → 匹配
+     * 例如 sensorCode="01"，measurementKey="temperature_01" → 匹配
      *
-     * @param sensorNo       传感器编号
+     * @param sensorCode     传感器编码
      * @param measurementKey 报文中的测点键
      * @return 匹配时返回 {@code true}
      */
-    private boolean measurementMatchesSensor(String sensorNo, String measurementKey) {
-        return measurementKey != null && measurementKey.endsWith("_" + sensorNo);
+    private boolean measurementMatchesSensor(String sensorCode, String measurementKey) {
+        return measurementKey != null && measurementKey.endsWith("_" + sensorCode);
     }
 
     /**

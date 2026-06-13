@@ -102,7 +102,7 @@ public class AlarmEvaluationEngine {
         Long monitorContentId = null;
         String sensorAttrCode = event.getAttrCode();
         try {
-            SensorMetadata metadata = sensorQueryService.requireSensorMetadata(event.getDeviceId(), event.getSensorNo());
+            SensorMetadata metadata = sensorQueryService.requireSensorMetadata(event.getDeviceId(), event.getSensorCode());
             for (SensorAttribute attr : metadata.attributes()) {
                 if (sensorAttrCode.equals(attr.getAttrCode())) {
                     monitorContentId = attr.getMonitorContentId();
@@ -210,7 +210,7 @@ public class AlarmEvaluationEngine {
             Map<String, Object> vars = new HashMap<>();
             vars.put("deviceId", event.getDeviceId());
             vars.put("sensorId", event.getSensorId());
-            vars.put("sensorNo", event.getSensorNo());
+            vars.put("sensorCode", event.getSensorCode());
             vars.put("attrCode", event.getAttrCode());
             vars.put("value", event.getValue());
             vars.put("hazardPointIds", intersected);

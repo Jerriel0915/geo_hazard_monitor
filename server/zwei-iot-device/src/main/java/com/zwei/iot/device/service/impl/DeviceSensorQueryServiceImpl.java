@@ -23,10 +23,10 @@ public class DeviceSensorQueryServiceImpl implements IDeviceSensorQueryService {
     }
 
     @Override
-    public SensorMetadata requireSensorMetadata(Long deviceId, String sensorNo) {
-        DeviceSensor condition = DeviceSensor.builder().deviceId(deviceId).sensorNo(sensorNo).status(1).build();
+    public SensorMetadata requireSensorMetadata(Long deviceId, String sensorCode) {
+        DeviceSensor condition = DeviceSensor.builder().deviceId(deviceId).sensorCode(sensorCode).status(1).build();
         List<DeviceSensor> sensors = sensorMapper.selectSensorList(condition);
-        if (sensors == null || sensors.isEmpty()) throw new ServiceException("传感器不存在或未启用: " + sensorNo);
+        if (sensors == null || sensors.isEmpty()) throw new ServiceException("传感器不存在或未启用: " + sensorCode);
         DeviceSensor sensor = sensors.get(0);
         List<SensorAttribute> attributes = attributeMapper.selectAttributeListBySensorId(sensor.getId());
         attributes.sort(Comparator.comparing(SensorAttribute::getId));

@@ -13,5 +13,8 @@ public class TimeSeriesSchemaServiceImpl implements ITimeSeriesSchemaService {
     @Autowired
     public TimeSeriesSchemaServiceImpl(IotdbTimeSeriesService iotdbTimeSeriesService) { this.iotdbTimeSeriesService = iotdbTimeSeriesService; }
 
-    @Override public void createSensorSchema(Long deviceId, String sensorNo, List<String> attrCodes) { iotdbTimeSeriesService.createSensorSchema(deviceId, sensorNo, attrCodes); }
+    @Override
+    public void createSensorSchema(Long deviceId, String sensorCode, List<String> attrCodes) {
+        iotdbTimeSeriesService.createSensorSchema(deviceId, sensorCode, attrCodes);
+    }
 }

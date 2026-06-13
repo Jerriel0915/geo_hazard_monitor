@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
  * <h3>路径模型</h3>
  * <pre>
  * 数据库:    root.{database}
- * 传感器:    root.{database}.d{deviceId}.s{sensorNo}
- * 指标列:    root.{database}.d{deviceId}.s{sensorNo}.{attrCode}
+ * 传感器:    root.{database}.d{deviceId}.s{sensorCode}
+ * 指标列:    root.{database}.d{deviceId}.s{sensorCode}.{attrCode}
  * </pre>
  *
  * <p>示例：设备 101 传感器 "1" 的雨量指标 → {@code root.geo_hazard.d101.s1.rainfall_hour}
@@ -36,22 +36,22 @@ public class IotdbPathResolver {
      * 生成传感器级路径。
      *
      * @param deviceId 设备ID
-     * @param sensorNo 传感器编号
+     * @param sensorCode 传感器编码
      * @return 传感器路径
      */
-    public String buildSensorPath(Long deviceId, String sensorNo) {
-        return properties.getDatabase() + ".d" + deviceId + ".s" + sensorNo;
+    public String buildSensorPath(Long deviceId, String sensorCode) {
+        return properties.getDatabase() + ".d" + deviceId + ".s" + sensorCode;
     }
 
     /**
      * 生成指标级路径。
      *
      * @param deviceId 设备ID
-     * @param sensorNo 传感器编号
+     * @param sensorCode 传感器编码
      * @param attrCode 指标编码
      * @return 指标路径
      */
-    public String buildMeasurementPath(Long deviceId, String sensorNo, String attrCode) {
-        return buildSensorPath(deviceId, sensorNo) + "." + attrCode;
+    public String buildMeasurementPath(Long deviceId, String sensorCode, String attrCode) {
+        return buildSensorPath(deviceId, sensorCode) + "." + attrCode;
     }
 }

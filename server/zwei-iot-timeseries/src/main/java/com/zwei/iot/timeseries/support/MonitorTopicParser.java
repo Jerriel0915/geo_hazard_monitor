@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
  *
  * <h3>支持的 MQTT 主题格式</h3>
  * <pre>
- * sys/v1/{deviceCode}/{sensorNo}/updata   → 通用 JSON 格式
- * gb/v1/{deviceCode}/{sensorNo}/updata    → 国标字节流格式
+ * sys/v1/{deviceCode}/{sensorCode}/updata   → 通用 JSON 格式
+ * gb/v1/{deviceCode}/{sensorCode}/updata    → 国标字节流格式
  * </pre>
  *
  * <p>解析失败时返回 null，由上游 {@link MonitorIngestFacade} 统一处理。
@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 @Component
 public class MonitorTopicParser {
     private static final Pattern TOPIC_PATTERN =
-            Pattern.compile("^(sys|gb)/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorNo>[A-Za-z0-9_-]{1,64})/updata$");
+            Pattern.compile("^(sys|gb)/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,100})/updata$");
 
     /**
      * 解析监测数据主题。
@@ -37,7 +37,7 @@ public class MonitorTopicParser {
         return new MonitorTopic(
                 matcher.group(1),
                 matcher.group("deviceCode"),
-                matcher.group("sensorNo")
+                matcher.group("sensorCode")
         );
     }
 }

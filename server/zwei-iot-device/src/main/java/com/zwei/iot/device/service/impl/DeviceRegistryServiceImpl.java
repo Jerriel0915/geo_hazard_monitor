@@ -32,7 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 /**
  * 设备自注册服务 — 设备侧通过 API 主动注册到平台。
@@ -44,7 +47,7 @@ import java.util.*;
  *   <li><b>SN 冲突检测</b>：同 SN 设备已存在 → 校验请求一致性并返回已有设备（支持设备重注册）</li>
  *   <li><b>设备创建</b>：生成认证账号（6位用户名+8位密码）、分配 deviceCode</li>
  *   <li><b>传感器创建</b>：按 monitorTypes 为每个监测类型创建一个传感器 + 对应属性；
- *       若有子设备则递归创建（sensorNo = childSn + "_" + baseSensorNo）</li>
+ *       若有子设备则递归创建（sensorCode = deviceCode + "_" + childSn + "_" + baseSid）</li>
  *   <li><b>IoTDB Schema 预创建</b>：在注册冷路径预建时序，避免写入热路径触发 DDL</li>
  * </ol>
  *
@@ -54,9 +57,8 @@ import java.util.*;
  *
  * <h3>传感器标识生成规则</h3>
  * <ul>
- *   <li>sensorNo = monitorTypes[].sid（设备内唯一）</li>
- *   <li>sensorCode = deviceCode + "_" + sensorNo（全局唯一，冲突时追加 _N 后缀）</li>
- *   <li>子设备传感器：sensorNo = childSn + "_" + baseSensorNo</li>
+ *   <li>sensorCode = deviceCode + "_" + monitorTypes[].sid（全局唯一，冲突时追加 _N 后缀）</li>
+ *   <li>子设备传感器：sensorCode = deviceCode + "_" + childSn + "_" + baseSensorNo</li>
  * </ul>
  */
 @Service
@@ -179,14 +181,12 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     }
 
     private void createSensors(Device device, DeviceRegisterRequest request) {
-        Set<String> sensorNoSet = new HashSet<>();
         for (DeviceRegisterMonitorTypeRequest monitorType : request.getMonitorTypes()) {
             RegistrationSensorSpec spec = buildSensorSpec(
                     device,
                     normalizeRequired(request.getDeviceName(), "deviceName不能为空"),
                     null,
-                    monitorType,
-                    sensorNoSet
+                    monitorType
             );
             insertSensor(device, spec);
         }
@@ -199,8 +199,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
                         device,
                         normalizeRequired(childDevice.getDeviceName(), "子设备名称不能为空"),
                         normalizeRequired(childDevice.getSn(), "子设备SN不能为空"),
-                        monitorType,
-                        sensorNoSet
+                        monitorType
                 );
                 insertSensor(device, spec);
             }
@@ -210,20 +209,16 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     private RegistrationSensorSpec buildSensorSpec(Device device,
                                                    String deviceName,
                                                    String childSn,
-                                                   DeviceRegisterMonitorTypeRequest monitorTypeRequest,
-                                                   Set<String> sensorNoSet) {
+                                                   DeviceRegisterMonitorTypeRequest monitorTypeRequest) {
         MonitorType monitorType = requireMonitorType(monitorTypeRequest.getType());
         List<MonitorContent> contents = monitorContentService.selectMonitorContentAll(monitorType.getId());
-        String baseSensorNo = normalizeRequired(monitorTypeRequest.getSid(), "传感器编号不能为空");
-        String sensorNo = childSn == null ? baseSensorNo : childSn + "_" + baseSensorNo;
-        if (!sensorNoSet.add(sensorNo)) {
-            throw new ServiceException("传感器编号重复: " + sensorNo, 400);
-        }
-        String sensorCode = buildUniqueSensorCode(device.getCode(), sensorNo);
+        String sid = normalizeRequired(monitorTypeRequest.getSid(), "传感器编号不能为空");
+        String sensorCodeSuffix = childSn == null ? sid : childSn + "_" + sid;
+        String sensorCode = buildUniqueSensorCode(device.getCode(), sensorCodeSuffix);
         String sensorName = childSn == null
                 ? deviceName + "-" + monitorType.getName()
                 : deviceName + "-" + monitorType.getName() + "(" + childSn + ")";
-        return new RegistrationSensorSpec(sensorCode, sensorNo, sensorName, monitorType, contents);
+        return new RegistrationSensorSpec(sensorCode, sensorName, monitorType, contents);
     }
 
     private void insertSensor(Device device, RegistrationSensorSpec spec) {
@@ -231,7 +226,6 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
                 .deviceId(device.getId())
                 .deviceCode(device.getCode())
                 .sensorCode(spec.sensorCode())
-                .sensorNo(spec.sensorNo())
                 .sensorName(spec.sensorName())
                 .monitorTypeId(spec.monitorType().getId())
                 .monitorTypeCode(spec.monitorType().getCode())
@@ -245,7 +239,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         List<String> attrCodes = spec.contents() != null
                 ? spec.contents().stream().map(MonitorContent::getCode).toList()
                 : List.of();
-        timeSeriesSchemaService.createSensorSchema(device.getId(), sensor.getSensorNo(), attrCodes);
+        timeSeriesSchemaService.createSensorSchema(device.getId(), sensor.getSensorCode(), attrCodes);
 
         List<MonitorContent> contents = spec.contents();
         if (contents == null || contents.isEmpty()) {
@@ -341,9 +335,9 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         return candidate;
     }
 
-    private String buildUniqueSensorCode(String deviceCode, String sensorNo) {
-        String normalizedSensorNo = sensorNo.replaceAll("[^A-Za-z0-9_-]", "_");
-        String base = deviceCode + "_" + normalizedSensorNo;
+    private String buildUniqueSensorCode(String deviceCode, String suffix) {
+        String normalizedSuffix = suffix.replaceAll("[^A-Za-z0-9_-]", "_");
+        String base = deviceCode + "_" + normalizedSuffix;
         String candidate = base;
         int index = 1;
         while (sensorMapper.selectSensorByCode(candidate) != null) {
@@ -403,7 +397,6 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     }
 
     private record RegistrationSensorSpec(String sensorCode,
-                                          String sensorNo,
                                           String sensorName,
                                           MonitorType monitorType,
                                           List<MonitorContent> contents) {

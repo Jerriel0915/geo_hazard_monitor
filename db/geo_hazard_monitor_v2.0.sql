@@ -842,8 +842,7 @@ CREATE TABLE `device_sensor`
     `id`                bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `device_id`         bigint       NOT NULL COMMENT '设备ID',
     `device_code`       varchar(100) DEFAULT NULL COMMENT '设备编号',
-    `sensor_code`       varchar(100) NOT NULL COMMENT '传感器全局编码（全局唯一，API CRUD 主标识）',
-    `sensor_no`         varchar(32)  NOT NULL COMMENT '传感器主题编号（设备内唯一，MQTT 主题路由 / IoTDB 路径键）',
+    `sensor_code` varchar(100) NOT NULL COMMENT '传感器编码（全局唯一，API CRUD 主标识 / MQTT 主题路由 / IoTDB 路径键）',
     `sensor_name`       varchar(200) NOT NULL COMMENT '传感器名称',
     `monitor_type_id`   bigint       NOT NULL COMMENT '监测类型ID',
     `monitor_type_code` varchar(100) DEFAULT NULL COMMENT '监测类型编码',
@@ -857,7 +856,6 @@ CREATE TABLE `device_sensor`
     `last_report_time`  datetime     DEFAULT NULL COMMENT '最后数据上报时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_device_sensor_code` (`sensor_code`),
-    UNIQUE KEY `uk_device_sensor_no` (`device_id`, `sensor_no`),
     KEY `idx_device_sensor_device_id` (`device_id`),
     KEY `idx_device_sensor_type_id` (`monitor_type_id`),
     KEY `idx_device_sensor_status` (`status`),
@@ -877,7 +875,7 @@ LOCK TABLES `device_sensor` WRITE;
 /*!40000 ALTER TABLE `device_sensor`
     DISABLE KEYS */;
 INSERT INTO `device_sensor`
-VALUES (2, 1, 'test_device_001', 'test_sensor_001', 'test_sensor_001', '测试传感器001', 1, 'JCLX001', '雨量监测', 1,
+VALUES (2, 1, 'test_device_001', 'test_sensor_001', '测试传感器001', 1, 'JCLX001', '雨量监测', 1,
         'admin', '2026-05-29 15:32:42', NULL, '2026-06-05 20:07:49', 0, '2026-06-05 20:07:40');
 /*!40000 ALTER TABLE `device_sensor`
     ENABLE KEYS */;

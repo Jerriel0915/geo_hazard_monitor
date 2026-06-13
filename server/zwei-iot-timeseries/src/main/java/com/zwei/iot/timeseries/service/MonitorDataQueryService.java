@@ -63,7 +63,7 @@ public class MonitorDataQueryService {
         for (ResolvedMeasurement measurement : resolveMeasurements(hazardPointName, hazardPointId, null, null, null)) {
             IotdbQueryRow latest = iotdbTimeSeriesService.queryLatest(
                     measurement.deviceId(),
-                    measurement.sensorNo(),
+                    measurement.sensorCode(),
                     measurement.attrCode()
             );
             if (latest == null || latest.value() == null) {
@@ -112,21 +112,21 @@ public class MonitorDataQueryService {
             int offset = (safePageNum - 1) * safePageSize;
             rows = new ArrayList<>();
             for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
-                    m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis, safePageSize, offset)) {
+                    m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, safePageSize, offset)) {
                 if (r.value() != null) {
                     rows.add(buildRow(m, r));
                 }
             }
-            total = iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis);
+            total = iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis);
         } else {
             // 多测点：每个测点查询 limit = pageNum * pageSize，合并排序后截取
             int perMeasurementLimit = safePageNum * safePageSize;
             total = 0;
             List<MonitorDataVO> allRows = new ArrayList<>();
             for (ResolvedMeasurement m : measurements) {
-                total += iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis);
+                total += iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis);
                 for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
-                        m.deviceId(), m.sensorNo(), m.attrCode(), startMillis, endMillis, perMeasurementLimit, 0)) {
+                        m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, perMeasurementLimit, 0)) {
                     if (r.value() != null) {
                         allRows.add(buildRow(m, r));
                     }
@@ -176,7 +176,7 @@ public class MonitorDataQueryService {
         for (ResolvedMeasurement measurement : measurements) {
             List<IotdbQueryRow> rows = iotdbTimeSeriesService.queryRange(
                     measurement.deviceId(),
-                    measurement.sensorNo(),
+                    measurement.sensorCode(),
                     measurement.attrCode(),
                     startMillis,
                     endMillis,
@@ -253,7 +253,7 @@ public class MonitorDataQueryService {
                             boundDevice.getDeviceId(),
                             boundDevice.getDeviceName(),
                             sensor.getId(),
-                            sensor.getSensorNo(),
+                            sensor.getSensorCode(),
                             sensor.getSensorName(),
                             attribute.getAttrCode(),
                             attribute.getAttrName(),
@@ -319,7 +319,7 @@ public class MonitorDataQueryService {
                                        Long deviceId,
                                        String deviceName,
                                        Long sensorId,
-                                       String sensorNo,
+                                       String sensorCode,
                                        String sensorName,
                                        String attrCode,
                                        String attrName,

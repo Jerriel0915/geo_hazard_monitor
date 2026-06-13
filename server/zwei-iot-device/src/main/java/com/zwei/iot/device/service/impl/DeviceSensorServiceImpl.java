@@ -103,11 +103,6 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             throw new ServiceException("传感器编码已存在");
         }
         fillDeviceFields(sensor, device);
-        // 主题编号（sensorNo）若已填，需校验同设备内唯一；DB 唯一索引兜底
-        if (sensor.getSensorNo() != null && !sensor.getSensorNo().isBlank()
-                && !checkSensorNoUnique(device.getId(), sensor.getSensorNo())) {
-            throw new ServiceException("该设备下主题编号已存在：" + sensor.getSensorNo());
-        }
         fillMonitorTypeFields(sensor, requireSensorMonitorType(sensor.getMonitorTypeId()));
         populateFromContent(attrList);
         validateAttributeList(attrList);
@@ -119,7 +114,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
             attributeMapper.insertAttribute(attr);
         }
         // 注册时预创建 IoTDB 时序 schema，将 DDL 从写入热路径提前到注册冷路径
-        timeSeriesSchemaService.createSensorSchema(sensor.getDeviceId(), sensor.getSensorNo(),
+        timeSeriesSchemaService.createSensorSchema(sensor.getDeviceId(), sensor.getSensorCode(),
                 attrList.stream().map(SensorAttribute::getAttrCode).toList());
         productTslService.regenerate(sensor.getDeviceId());
         return sensor.getId();
@@ -209,22 +204,10 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     }
 
     /**
-     * 校验同一设备下主题编号（sensorNo）是否唯一
-     */
-    @Override
-    public boolean checkSensorNoUnique(Long deviceId, String sensorNo) {
-        if (deviceId == null || sensorNo == null || sensorNo.isBlank()) {
-            return true;
-        }
-        DeviceSensor result = sensorMapper.checkSensorNoUnique(deviceId, sensorNo);
-        return result == null;
-    }
-
-    /**
      * 预测指定设备下一个可用的传感器序号（设备下未删除传感器数 +1；空设备返回 1）
      */
     @Override
-    public int getNextSensorNo(Long deviceId) {
+    public int getNextSensorCode(Long deviceId) {
         if (deviceId == null) {
             return 1;
         }
@@ -280,9 +263,6 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     private void fillDeviceFields(DeviceSensor sensor, Device device) {
         sensor.setDeviceId(device.getId());
         sensor.setDeviceCode(device.getCode());
-        if (sensor.getSensorNo() == null || sensor.getSensorNo().isBlank()) {
-            sensor.setSensorNo(sensor.getSensorCode());
-        }
     }
 
     private void fillMonitorTypeFields(DeviceSensor sensor, MonitorType monitorType) {

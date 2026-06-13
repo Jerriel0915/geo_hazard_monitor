@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * <h3>职责</h3>
  * <ol>
  *   <li>应用启动后自动创建 Redis Stream 消费组，单线程轮询消费</li>
- *   <li>基于 device_id + sensor_no + attr_code + data_time + payload_hash 幂等去重</li>
+ *   <li>基于 device_id + sensor_code + attr_code + data_time + payload_hash 幂等去重</li>
  *   <li>写入 IoTDB 成功后回写运维指标（device_online_status.last_report_at、device_sensor.last_report_time）</li>
  *   <li>写入失败 → 三段退避重试（可配置延迟秒数列表）→ 超限进入死信队列</li>
  * </ol>
@@ -170,7 +170,7 @@ public class MonitorIngestConsumerService {
         StandardMeasurementPoint point = JSON.parseObject(payload, StandardMeasurementPoint.class);
         try {
             // ── 阶段1: 幂等去重 ──
-            // 去重键 = device_id:sensor_no:attr_code:data_time:payload_hash
+            // 去重键 = device_id:sensor_code:attr_code:data_time:payload_hash
             // 利用 Redis SETNX 原子操作保证 TTL 窗口内同一条数据只落库一次
             if (isDuplicate(point)) {
                 ack(record);
@@ -193,8 +193,8 @@ public class MonitorIngestConsumerService {
                     .lastReportTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             .format(new java.util.Date(point.dataTime())))
                     .build());
-            log.info("时序数据落库成功 deviceId={} sensorNo={} attrCode={} attrName={} value={} {} dataTime={}",
-                    point.deviceId(), point.sensorNo(), point.attrCode(), point.attrName(),
+            log.info("时序数据落库成功 deviceId={} sensorCode={} attrCode={} attrName={} value={} {} dataTime={}",
+                    point.deviceId(), point.sensorCode(), point.attrCode(), point.attrName(),
                     point.value(), point.unit() != null ? point.unit() : "",
                     new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(point.dataTime())));
             ack(record);
@@ -223,7 +223,7 @@ public class MonitorIngestConsumerService {
      */
     private boolean isDuplicate(StandardMeasurementPoint point) {
         String key = properties.getDedupeKeyPrefix()
-                + point.deviceId() + ":" + point.sensorNo() + ":" + point.attrCode() + ":" + point.dataTime() + ":" + point.payloadHash();
+                + point.deviceId() + ":" + point.sensorCode() + ":" + point.attrCode() + ":" + point.dataTime() + ":" + point.payloadHash();
         Boolean success = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofSeconds(properties.getDedupeTtlSeconds()));
         return Boolean.FALSE.equals(success);
     }

@@ -58,16 +58,16 @@ public class SensorController extends BaseController {
     /**
      * 预测指定设备下一个可用的传感器序号。
      * <p>
-     * 前端在"新增传感器"表单中调用此接口拼接 sensorNo 占位（{@code {TYPE}_{序号}}）。
-     * 序号 = 该设备下未删除传感器数 +1。并发场景下后端 service 预检 + DB 唯一索引兜底。
+     * 前端在"新增传感器"表单中调用此接口拼接 sensorCode 占位（{@code {TYPE}_{序号}}）。
+     * 序号 = 该设备下未删除传感器数 +1。
      *
      * @param deviceId 设备ID
      * @return 预测的下一个传感器序号
      */
     @PreAuthorize("@ss.hasPermi('basic:sensor:query')")
-    @GetMapping("/sensors/next-no")
-    public AjaxResult nextNo(@RequestParam Long deviceId) {
-        return AjaxResult.success("成功", java.util.Map.of("nextNo", sensorService.getNextSensorNo(deviceId)));
+    @GetMapping("/sensors/next-code")
+    public AjaxResult nextCode(@RequestParam Long deviceId) {
+        return AjaxResult.success("成功", java.util.Map.of("nextNo", sensorService.getNextSensorCode(deviceId)));
     }
 
     /**
@@ -142,9 +142,6 @@ public class SensorController extends BaseController {
         sensor.setSensorName(request.getSensorName().trim());
         sensor.setMonitorTypeId(request.getMonitorTypeId());
         sensor.setStatus(request.getStatus());
-        if (request.getSensorNo() != null && !request.getSensorNo().isBlank()) {
-            sensor.setSensorNo(request.getSensorNo().trim());
-        }
         return sensor;
     }
 
