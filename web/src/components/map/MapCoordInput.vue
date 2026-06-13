@@ -1,20 +1,6 @@
 <template>
   <div class="map-coord-input">
     <template v-if="mode === 'single'">
-      <div class="coord-input-row">
-        <el-input
-          v-model="text"
-          :placeholder="placeholder || '输入坐标 (lat,lng)'"
-          size="small"
-          style="flex:1"
-          @keyup.enter="handleSubmit"
-          @blur="handleSubmit"
-        />
-        <el-button size="small" type="primary" :disabled="!text.trim()" @click="handleSubmit">
-          使用
-        </el-button>
-      </div>
-      <p class="input-hint">支持 "lat,lng" 或 "lng,lat" 智能识别</p>
     </template>
 
     <template v-else>
@@ -38,9 +24,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { LatLng } from '@/lib/boundaryCoords'
-import { parseSingle, parseMultiline } from '@/lib/coordParser'
+import {computed, ref} from 'vue'
+import type {LatLng} from '@/lib/boundaryCoords'
+import {parseMultiline, parseSingle} from '@/lib/coordParser'
 
 const props = defineProps<{
   mode: 'single' | 'multiline'

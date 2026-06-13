@@ -25,6 +25,8 @@ export interface DeviceItem {
   lastAuthIp?: string
   longitude?: number | null
   latitude?: number | null
+    /** 关联的隐患点 ID(用于地图选点时叠加其边界) */
+    boundHazardPointId?: number | null
   createTime?: string
   sensors?: any[]
   /**

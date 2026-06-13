@@ -1,4 +1,14 @@
-import {computed, type ComputedRef, onBeforeUnmount, type Ref, ref, type ShallowRef, shallowRef, watch} from 'vue'
+import {
+  computed,
+  type ComputedRef,
+  onBeforeUnmount,
+  type Ref,
+  ref,
+  type ShallowRef,
+  shallowRef,
+  unref,
+  watch
+} from 'vue'
 import L, {type Map as LMap} from 'leaflet'
 import type {BoundaryCoords, LatLng} from '@/lib/boundaryCoords'
 import {centroid, strikeAngle as computeStrikeAngle} from '@/lib/boundaryCoords'
@@ -113,7 +123,8 @@ export interface UseMapEditorOptions {
   initialCenter?: LatLng | null
   initialPoint?: LatLng | null
   pointValue?: Ref<LatLng | null>
-  overlayPolygon?: LatLng[] | null
+    // 既可传 Ref(响应式),也可传普通值(非响应式,初始一次性)
+    overlayPolygon?: Ref<LatLng[] | null> | LatLng[] | null
   defaultCenter?: LatLng
   defaultZoom?: number
   readonly?: boolean
@@ -199,7 +210,16 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
   // ── Point variant v-model bridge ──
   const localPoint = ref<LatLng | null>(options.initialPoint ?? options.pointValue?.value ?? null)
   if (options.pointValue) {
+      // 外部 → 内部:prop 变化时同步到编辑器内部
     watch(options.pointValue, v => { if (v) localPoint.value = v }, { immediate: true })
+      // 内部 → 外部:地图点击/拖拽图钉时反向推回 prop,让父组件 v-model 收到更新
+      //(不加这个反向,父组件 watch(pickerLngLat) 永远触发不了,坐标输入栏也不会跟随)
+      watch(localPoint, v => {
+          const curr = options.pointValue!.value
+          if (v && (!curr || v.lat !== curr.lat || v.lng !== curr.lng)) {
+              options.pointValue!.value = v
+          }
+      })
   }
 
   // ── 派生 ──
@@ -678,7 +698,11 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
   }
 
   // ── Overlay polygon (point variant 用: 显示所属隐患点范围) ──
-  watch([leaflet.map, () => options.overlayPolygon], ([map, overlay]) => {
+    // 注意:用 computed(unref(...)) 包装,而非 () => options.overlayPolygon。
+    // 后者读到的是 setup 时的快照,prop 后续变化不会触发 watch 重绘。
+    // computed 会追踪 unref 内部对 Ref.value 的访问,从而真正响应 prop 变化。
+    const overlayPolygonSource = computed(() => unref(options.overlayPolygon))
+    watch([leaflet.map, overlayPolygonSource], ([map, overlay]) => {
     if (!map) return
     if (overlayLayer.value) { overlayLayer.value.remove(); overlayLayer.value = null }
     if (!overlay || overlay.length < 3) return

@@ -10,9 +10,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useMapEditor } from '@/composables/useMapEditor'
-import type { LatLng } from '@/lib/boundaryCoords'
+import {computed, ref, toRef, watch} from 'vue'
+import {useMapEditor} from '@/composables/useMapEditor'
+import type {LatLng} from '@/lib/boundaryCoords'
 import MapCoordInput from './MapCoordInput.vue'
 
 const props = withDefaults(defineProps<{
@@ -39,12 +39,15 @@ const heightStyle = computed(() => typeof props.height === 'number' ? `${props.h
 const containerRef = ref<HTMLElement | null>(null)
 const localPoint = ref<LatLng | null>(props.modelValue)
 
+// overlayPolygon 用 toRef 包装成 Ref,让 useMapEditor 内的 watch 能响应 prop 变化
+const overlayPolygonRef = toRef(props, 'overlayPolygon')
+
 const editor = useMapEditor({
   container: containerRef,
   variant: 'point',
   initialPoint: props.modelValue,
   pointValue: localPoint,
-  overlayPolygon: props.overlayPolygon ?? null,
+  overlayPolygon: overlayPolygonRef,
   defaultCenter: props.defaultCenter,
   defaultZoom: props.defaultZoom,
   readonly: props.readonly

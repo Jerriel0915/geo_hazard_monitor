@@ -226,7 +226,7 @@
             <el-form-item label="设备状态" prop="status">
               <el-select v-model="formData.status" placeholder="请选择设备状态" :disabled="isView">
                 <el-option label="正常" :value="1" />
-                <el-option label="故障" :value="2" />
+                <el-option label="维修" :value="2"/>
                 <el-option label="停用" :value="3" />
               </el-select>
             </el-form-item>
@@ -412,48 +412,45 @@
           </el-table>
         </el-tab-pane>
 
-        <el-tab-pane label="运维记录" name="operation">
-          <div class="ops-section">
-            <div class="ops-section__title">运行状态变更</div>
-            <el-table :data="onlineLogs" border size="small" max-height="400">
-              <el-table-column prop="eventTime" label="时间" width="170"/>
-              <el-table-column prop="eventType" label="类型" width="80">
-                <template #default="{row}">
-                  <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
-                      row.eventType
-                    }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="clientId" label="Client ID" min-width="160"/>
-              <el-table-column prop="clientIp" label="IP" width="140"/>
-              <el-table-column prop="reason" label="原因" min-width="120"/>
-            </el-table>
-          </div>
-          <div class="ops-section">
-            <div class="ops-section__title">维修记录</div>
-            <el-table :data="maintenanceLogs" border size="small" max-height="400">
-              <el-table-column label="操作" width="80">
-                <template #default="{row}">
-                  <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
-                          size="small">
-                    {{ row.statusText }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="状态变化" width="110">
-                <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
-                    getStatusLabel(row.newStatus)
+        <el-tab-pane label="运行状态变更" name="online">
+          <el-table :data="onlineLogs" border size="small" max-height="400">
+            <el-table-column prop="eventTime" label="时间" width="170"/>
+            <el-table-column prop="eventType" label="类型" width="80">
+              <template #default="{row}">
+                <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
+                    row.eventType
                   }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="operatorName" label="操作人" width="90"/>
-              <el-table-column prop="operatorPhone" label="电话" width="120"/>
-              <el-table-column prop="operationDate" label="操作日期" width="160"/>
-              <el-table-column prop="createTime" label="记录时间" width="160"/>
-              <el-table-column prop="description" label="描述" min-width="120"/>
-            </el-table>
-          </div>
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="clientId" label="Client ID" min-width="160"/>
+            <el-table-column prop="clientIp" label="IP" width="140"/>
+            <el-table-column prop="reason" label="原因" min-width="120"/>
+          </el-table>
+        </el-tab-pane>
+
+        <el-tab-pane label="维修记录" name="maintenance">
+          <el-table :data="maintenanceLogs" border size="small" max-height="400">
+            <el-table-column label="操作" width="80">
+              <template #default="{row}">
+                <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
+                        size="small">
+                  {{ row.statusText }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态变化" width="110">
+              <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
+                  getStatusLabel(row.newStatus)
+                }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="operatorName" label="操作人" width="90"/>
+            <el-table-column prop="operatorPhone" label="电话" width="120"/>
+            <el-table-column prop="operationDate" label="操作日期" width="160"/>
+            <el-table-column prop="createTime" label="记录时间" width="160"/>
+            <el-table-column prop="description" label="描述" min-width="120"/>
+          </el-table>
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
@@ -625,30 +622,17 @@
       </template>
     </el-dialog>
 
-    <!-- 地图坐标选择弹窗 -->
-    <el-dialog
+    <!-- 地图坐标选择弹窗(公共组件) -->
+    <MapLocationPickerDialog
         v-model="mapDialogVisible"
+        :initial-point="mapInitialPoint"
+        :show-hp-overlay="true"
+        :hazard-point-list="hazardPointList"
+        :initial-hp-id="mapInitialHpId"
+        :readonly="mapViewOnly"
         :title="mapViewOnly ? '查看安装位置' : '在地图上选择安装位置'"
-        width="700px"
-        :close-on-click-modal="false"
-        destroy-on-close
-        @opened="pickerRef?.invalidate()"
-    >
-      <MapPointPicker
-          ref="pickerRef"
-          v-model="pickerLngLat"
-          :readonly="mapViewOnly"
-          :overlay-polygon="boundHpPolygon"
-          height="400px"
-      />
-      <template #footer>
-        <el-button v-if="mapViewOnly" @click="mapDialogVisible = false">关闭</el-button>
-        <template v-else>
-          <el-button @click="mapDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmMapPicker">确认坐标</el-button>
-        </template>
-      </template>
-    </el-dialog>
+        @confirm="onMapConfirm"
+    />
   </div>
 </template>
 
@@ -658,11 +642,11 @@ import {ElMessage, ElMessageBox} from 'element-plus'
 import {Cpu, User} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
-import MapPointPicker from '@/components/map/MapPointPicker.vue'
-import {deserialize, type LatLng} from '@/lib/boundaryCoords'
+import MapLocationPickerDialog from '@/components/map/MapLocationPickerDialog.vue'
+import {type LatLng} from '@/lib/boundaryCoords'
 import {changeDeviceAuthStatus, type DeviceAuthAccount, getDeviceAuthAccount, resetDevicePassword} from '@/api/device'
 import {getMonitorTypeListWithContents} from '@/api/monitorType'
-import {getHazardPointDetail} from '@/api/hazardPoint'
+import {getHazardPointPage} from '@/api/hazardPoint'
 import {
   createSensor,
   deleteSensor,
@@ -786,9 +770,33 @@ const deviceIconDialogVisible = ref(false)
 // 地图坐标选择
 const mapDialogVisible = ref(false)
 const mapViewOnly = ref(false)
-const pickerRef = ref<InstanceType<typeof MapPointPicker> | null>(null)
-const pickerLngLat = ref<LatLng | null>(null)
-const boundHpPolygon = ref<LatLng[] | null>(null)
+const viewPoint = ref<LatLng | null>(null)  // "查看"模式下当前行的位置
+// 弹窗打开时的初始点:编辑时从 formData 派生,查看时从 viewPoint 派生
+const mapInitialPoint = computed<LatLng | null>(() => {
+  if (mapViewOnly.value) return viewPoint.value
+  const lng = formData.longitude
+  const lat = formData.latitude
+  return lng != null && lat != null ? {lng, lat} : null
+})
+
+// 隐患点列表(供地图选点弹窗叠加预览用)
+const hazardPointList = ref<{ id: string, name: string }[]>([])
+const loadHazardPointList = async () => {
+  try {
+    const resp: any = await getHazardPointPage({pageNum: 1, pageSize: 1000})
+    if (resp.code === 200) {
+      const rows: any[] = resp.data?.rows || []
+      hazardPointList.value = rows.map((hp) => ({id: String(hp.id), name: hp.name}))
+    }
+  } catch {
+    // 静默:列表为空不影响弹窗打开
+  }
+}
+
+// 地图选点弹窗的初始叠加 HP:编辑时取 formData.boundHazardPointId
+const mapInitialHpId = computed(() => {
+  return formData.boundHazardPointId != null ? String(formData.boundHazardPointId) : ''
+})
 const pickerLng = ref<number | null>(null)
 const pickerLat = ref<number | null>(null)
 
@@ -828,54 +836,34 @@ const onLocationBlur = () => {
   formData.latitude = null
   locationText.value = ''
 }
-const openMapPicker = async () => {
+const openMapPicker = () => {
   onLocationBlur()
   mapViewOnly.value = false
-  pickerLngLat.value = formData.longitude != null && formData.latitude != null
-    ? { lng: formData.longitude, lat: formData.latitude }
-    : null
-
-  // 拉取设备绑定的 HP 边界作为叠加层
-  boundHpPolygon.value = null
-  if (formData.boundHazardPointId) {
-    try {
-      const resp: any = await getHazardPointDetail(String(formData.boundHazardPointId))
-      if (resp.code === 200) {
-        const bc = deserialize(resp.data.boundaryCoords)
-        if (bc.polygon.length >= 3) boundHpPolygon.value = bc.polygon
-      }
-    } catch { /* 静默 */ }
-  }
+  viewPoint.value = null
   mapDialogVisible.value = true
 }
 
 const openViewMap = (row: DeviceItem) => {
   mapViewOnly.value = true
-  pickerLngLat.value = row.longitude != null && row.latitude != null
-    ? { lng: row.longitude, lat: row.latitude }
+  viewPoint.value = row.longitude != null && row.latitude != null
+      ? {lng: row.longitude, lat: row.latitude}
     : null
   mapDialogVisible.value = true
 }
 
-const confirmMapPicker = () => {
-  if (pickerLngLat.value) {
-    formData.longitude = pickerLngLat.value.lng
-    formData.latitude = pickerLngLat.value.lat
-    syncFormToText()
-  }
-  mapDialogVisible.value = false
+const onMapConfirm = (point: LatLng) => {
+  formData.longitude = point.lng
+  formData.latitude = point.lat
+  syncFormToText()
 }
 
 const clearLocation = () => {
   formData.longitude = null
   formData.latitude = null
   locationText.value = ''
-  pickerLngLat.value = null
 }
 
 const sensorFormRef = ref()
-
-const boundHazardPointId = computed(() => (formData as any).boundHazardPointId as number | null)
 
 const sensorFormData = reactive<SensorFormModel>({
   sensorCode: '',
@@ -1390,6 +1378,7 @@ const handleDeviceIconSelect = (item: { code: string; name: string; icon: string
 onMounted(() => {
   loadTableData()
   loadMonitorTypeList()
+  loadHazardPointList()
 })
 </script>
 
@@ -1598,26 +1587,6 @@ onMounted(() => {
 .picker-hint {
   color: #909399;
   font-style: italic;
-}
-
-/* 运维记录 - 上下线/维修 两块上下排列 */
-.ops-section {
-  margin-bottom: 18px;
-}
-
-.ops-section:last-child {
-  margin-bottom: 0;
-}
-
-.ops-section__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  padding: 6px 0;
-  margin-bottom: 8px;
-  border-left: 3px solid #1890ff;
-  padding-left: 8px;
-  background: #fafbfc;
 }
 
 /* 传感器数量单元格（列表行内可点击徽标） */

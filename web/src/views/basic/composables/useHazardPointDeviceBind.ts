@@ -79,8 +79,9 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
     const rightDeviceTree = ref<TreeNode[]>([])
     const leftTreeRef = ref()
     const rightTreeRef = ref()
-    const selectedLeftKeys = ref<string[]>([])
-    const selectedRightKeys = ref<string[]>([])
+    // 设备勾选状态(以 device key = "dev_<id>" 为单位,不再用 el-tree 自带的 show-checkbox)
+    const selectedLeftKeys = ref<Set<string>>(new Set())
+    const selectedRightKeys = ref<Set<string>>(new Set())
     const initialBoundDeviceIds = ref<Set<number>>(new Set())
 
     // ── Filter ──
@@ -94,13 +95,41 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         return data.label.toLowerCase().includes(value.toLowerCase())
     }
 
+    // ── 勾选状态辅助函数 ──
+    // 传感器节点(data.disabled === true)永远不视为已勾选
+    const isLeftNodeChecked = (data: TreeNode): boolean =>
+        !data.disabled && selectedLeftKeys.value.has(data.key)
+
+    const isRightNodeChecked = (data: TreeNode): boolean =>
+        !data.disabled && selectedRightKeys.value.has(data.key)
+
+    const toggleLeftNode = (data: TreeNode, checked: any): void => {
+        if (data.disabled) return
+        const next = new Set(selectedLeftKeys.value)
+        if (checked) next.add(data.key)
+        else next.delete(data.key)
+        selectedLeftKeys.value = next
+    }
+
+    const toggleRightNode = (data: TreeNode, checked: any): void => {
+        if (data.disabled) return
+        const next = new Set(selectedRightKeys.value)
+        if (checked) next.add(data.key)
+        else next.delete(data.key)
+        selectedRightKeys.value = next
+    }
+
     // ── Load data ──
     const loadUnboundDevices = async (keyword?: string) => {
         if (!opts.currentRow.value) return []
         try {
             const response: any = await getUnboundDevices(opts.currentRow.value.id, keyword)
             if (response.code === 200) {
-                return response.data.map((item: any) => ({
+                // 前端兜底：过滤已绑定到其他隐患点的设备（bindCount > 0）
+                // 后端应彻底修复：SQL 排除所有已绑定设备，而非仅当前 HP
+                return response.data
+                    .filter((item: any) => !item.bindCount || item.bindCount === 0)
+                    .map((item: any) => ({
                     id: String(item.id),
                     key: `dev_${item.id}`,
                     label: item.label,
@@ -114,6 +143,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                             label: child.label,
                             iconPath: child.iconPath,
                             status: String(child.status),
+                            disabled: true,
                         })) || [],
                 }))
             }
@@ -161,11 +191,13 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                 label: `${device.deviceCode} - ${device.deviceName}`,
                 iconPath: getDeviceIconPath({icon: 'device', status: statusCode, onlineStatus: device.onlineStatus}),
                 status: String(statusCode),
+                sensorCount: device.sensors.length,
                 children: device.sensors.map((sensor) => ({
                     id: String(sensor.id),
                     key: `sen_${device.deviceId}_${sensor.id}`,
                     label: sensor.name,
                     iconPath: sensor.iconPath,
+                    disabled: true,
                 })),
             }
         })
@@ -179,14 +211,13 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         initialBoundDeviceIds.value = new Set(
             opts.boundDevices.value.map((d) => Number(d.deviceId)).filter((id) => !Number.isNaN(id)),
         )
-        selectedLeftKeys.value = []
-        selectedRightKeys.value = []
+        selectedLeftKeys.value = new Set()
+        selectedRightKeys.value = new Set()
     }
 
     // ── Transfer operations ──
     const transferToRight = () => {
-        const checkedKeys: Array<string | number> = leftTreeRef.value?.getCheckedKeys() ?? []
-        const deviceIds = extractDeviceIds(checkedKeys)
+        const deviceIds = extractDeviceIds(Array.from(selectedLeftKeys.value))
         if (deviceIds.length === 0) {
             ElMessage.warning('请选择要绑定的设备')
             return
@@ -195,13 +226,11 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         const moved = leftDeviceTree.value.filter((node) => movedIds.has(node.id))
         leftDeviceTree.value = leftDeviceTree.value.filter((node) => !movedIds.has(node.id))
         rightDeviceTree.value = [...rightDeviceTree.value, ...moved]
-        leftTreeRef.value?.setCheckedKeys([])
-        selectedLeftKeys.value = []
+        selectedLeftKeys.value = new Set()
     }
 
     const transferToLeft = () => {
-        const checkedKeys: Array<string | number> = rightTreeRef.value?.getCheckedKeys() ?? []
-        const deviceIds = extractDeviceIds(checkedKeys)
+        const deviceIds = extractDeviceIds(Array.from(selectedRightKeys.value))
         if (deviceIds.length === 0) {
             ElMessage.warning('请选择要解绑的设备')
             return
@@ -210,8 +239,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         const moved = rightDeviceTree.value.filter((node) => movedIds.has(node.id))
         rightDeviceTree.value = rightDeviceTree.value.filter((node) => !movedIds.has(node.id))
         leftDeviceTree.value = [...leftDeviceTree.value, ...moved]
-        rightTreeRef.value?.setCheckedKeys([])
-        selectedRightKeys.value = []
+        selectedRightKeys.value = new Set()
     }
 
     const transferAllToRight = async () => {
@@ -230,8 +258,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         }
         rightDeviceTree.value = [...rightDeviceTree.value, ...leftDeviceTree.value]
         leftDeviceTree.value = []
-        leftTreeRef.value?.setCheckedKeys([])
-        selectedLeftKeys.value = []
+        selectedLeftKeys.value = new Set()
     }
 
     const transferAllToLeft = async () => {
@@ -250,8 +277,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         }
         leftDeviceTree.value = [...leftDeviceTree.value, ...rightDeviceTree.value]
         rightDeviceTree.value = []
-        rightTreeRef.value?.setCheckedKeys([])
-        selectedRightKeys.value = []
+        selectedRightKeys.value = new Set()
     }
 
     // ── Submit ──
@@ -322,6 +348,10 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         // actions
         filterLeftNode,
         filterRightNode,
+        isLeftNodeChecked,
+        isRightNodeChecked,
+        toggleLeftNode,
+        toggleRightNode,
         handleSearchUnboundDevices,
         initBoundDevices,
         refreshDeviceLists,

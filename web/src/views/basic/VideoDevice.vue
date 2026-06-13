@@ -81,17 +81,7 @@
               <div class="op-cell">
                 <el-button type="primary" text size="small" @click="handlePlay(row)">播放</el-button>
                 <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-                <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
-                  <el-button type="primary" text size="small">更多</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="bindHazardPoint">关联隐患点</el-dropdown-item>
-                      <el-dropdown-item command="delete" divided>
-                        <span style="color: #f56c6c">删除</span>
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
+                <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
               </div>
             </template>
           </el-table-column>
@@ -156,13 +146,46 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="经度">
-              <el-input-number v-model="formData.longitude" :precision="6" :min="-180" :max="180" style="width: 100%" placeholder="请输入经度" />
+            <el-form-item label="安装位置">
+              <div class="install-location-wrap">
+                <el-input
+                    v-model="locationText"
+                    size="small"
+                    placeholder="经度,纬度（例如 104.063456, 30.671234）"
+                    class="location-input"
+                    @blur="onLocationBlur"
+                />
+                <el-button
+                    size="small"
+                    class="map-pick-btn"
+                    title="在地图上获取坐标"
+                    @click="openMapPicker"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                </el-button>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="纬度">
-              <el-input-number v-model="formData.latitude" :precision="6" :min="-90" :max="90" style="width: 100%" placeholder="请输入纬度" />
+            <el-form-item label="关联隐患点">
+              <el-select
+                  v-model="formData.hazardPointId"
+                  filterable
+                  clearable
+                  placeholder="请选择隐患点"
+                  style="width: 100%"
+              >
+                <el-option
+                    v-for="hp in hazardPointList"
+                    :key="hp.id"
+                    :label="hp.name"
+                    :value="String(hp.id)"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -177,61 +200,15 @@
       </template>
     </el-dialog>
 
-    <!-- 关联隐患点弹窗 -->
-    <el-dialog
-        v-model="bindDialogVisible"
-        :title="`关联隐患点[${currentBindRow?.name || ''}]`"
-        width="600px"
-        :close-on-click-modal="false"
-        destroy-on-close
-    >
-      <el-form ref="bindFormRef" :model="bindFormData" label-width="100px">
-        <el-form-item label="隐患点" prop="hazardPointIds">
-          <el-select v-model="bindFormData.hazardPointIds" multiple placeholder="请选择隐患点" filterable style="width: 100%">
-            <el-option
-                v-for="hp in hazardPointList"
-                :key="hp.id"
-                :label="hp.name"
-                :value="hp.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="bindFormData.hazardPointIds.length > 0">
-          <el-button type="primary" @click="handleOpenMap">在地图上指定安装位置</el-button>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="bindDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleBindSubmit" :loading="bindLoading">确定</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 地图弹窗：指定设备安装坐标 -->
-    <el-dialog
+    <!-- 地图坐标选择弹窗(公共组件,支持叠加隐患点范围 + 度分秒展示) -->
+    <MapLocationPickerDialog
         v-model="mapDialogVisible"
-        title="指定视频设备安装位置"
-        width="800px"
-        :close-on-click-modal="false"
-        destroy-on-close
-    >
-      <div class="map-container">
-        <div id="video-device-map" ref="mapRef" style="width: 100%; height: 400px;"></div>
-      </div>
-      <div class="map-hazard-list">
-        <div v-for="hp in selectedHazardPoints" :key="hp.id" class="map-hazard-item">
-          <span class="hazard-name">{{ hp.name }}</span>
-          <span class="hazard-coords" v-if="hp.installLng && hp.installLat">
-            坐标: {{ hp.installLng.toFixed(6) }}, {{ hp.installLat.toFixed(6) }}
-          </span>
-          <span class="hazard-coords" v-else>点击地图设置坐标</span>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="mapDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleMapConfirm" :loading="mapLoading">确定</el-button>
-      </template>
-    </el-dialog>
+        :initial-point="mapInitialPoint"
+        :hazard-point-list="hazardPointList"
+        :show-hp-overlay="true"
+        :initial-hp-id="formData.hazardPointId"
+        @confirm="onMapConfirm"
+    />
 
     <!-- 视频图标选择弹窗 -->
     <el-dialog v-model="videoIconDialogVisible" title="选择视频设备图标" width="500px">
@@ -294,10 +271,10 @@
 <script setup lang="ts">
 import axios from 'axios'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import {nextTick, onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
+import MapLocationPickerDialog from '@/components/map/MapLocationPickerDialog.vue'
+import type {LatLng} from '@/lib/boundaryCoords'
 
 // 获取token
 const getToken = () => localStorage.getItem('token')
@@ -326,8 +303,6 @@ interface HazardPointItem {
   name: string
   longitude?: number
   latitude?: number
-  installLng?: number
-  installLat?: number
 }
 
 // 视频设备图标列表
@@ -344,7 +319,6 @@ const videoIconList = Array.from({ length: 10 }, (_, i) => {
 const loading = ref(false)
 const submitLoading = ref(false)
 const bindLoading = ref(false)
-const mapLoading = ref(false)
 const tableData = ref<VideoDeviceItem[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -357,12 +331,6 @@ const dialogTitle = ref('')
 const isEdit = ref(false)
 const formRef = ref()
 
-const bindDialogVisible = ref(false)
-const bindFormRef = ref()
-const bindFormData = reactive({
-  hazardPointIds: [] as string[]
-})
-
 const playDialogVisible = ref(false)
 const playUrl = ref('')
 const videoRef = ref<HTMLVideoElement | null>(null)
@@ -372,14 +340,18 @@ const videoError = ref(false)
 const isPlaying = ref(false)
 
 const hazardPointList = ref<HazardPointItem[]>([])
-const currentBindRow = ref<VideoDeviceItem | null>(null)
 
+// 地图选点弹窗
 const mapDialogVisible = ref(false)
-const mapRef = ref<HTMLDivElement | null>(null)
-let mapInstance: L.Map | null = null
-let currentMarker: L.Marker | null = null
-const selectedHazardPoints = ref<HazardPointItem[]>([])
-const currentHazardPointIndex = ref(0)
+// 弹窗打开时的初始点:从表单当前经纬度派生
+const mapInitialPoint = computed<LatLng | null>(() =>
+    formData.longitude != null && formData.latitude != null
+        ? {lng: formData.longitude, lat: formData.latitude}
+        : null
+)
+
+// 安装位置文本(经度,纬度)与经纬度数值互转
+const locationText = ref('')
 
 const videoIconDialogVisible = ref(false)
 
@@ -393,6 +365,9 @@ const formData = reactive<{
   streamUrl: string
   longitude: number | null
   latitude: number | null
+  hazardPointId: string
+  // 用于编辑时比对原始绑定,以便判断是否需要解绑/绑定
+  originalHazardPointId: string
 }>({
   code: '',
   name: '',
@@ -401,7 +376,9 @@ const formData = reactive<{
   protocolCode: '',
   streamUrl: '',
   longitude: null,
-  latitude: null
+  latitude: null,
+  hazardPointId: '',
+  originalHazardPointId: ''
 })
 
 const formRules = {
@@ -521,71 +498,6 @@ const fetchDetail = async (id: string) => {
 }
 
 // 新增视频设备
-const createVideoDevice = async () => {
-  submitLoading.value = true
-  try {
-    const token = getToken()
-    const response = await axios.post('/api/v1/video-devices', {
-      code: formData.code,
-      name: formData.name,
-      icon: formData.icon,
-      iconPath: formData.iconPath,
-      protocolCode: formData.protocolCode,
-      streamUrl: formData.streamUrl,
-      longitude: formData.longitude,
-      latitude: formData.latitude,
-      status: 1
-    }, {
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('新增成功')
-      dialogVisible.value = false
-      loadTableData()
-    } else {
-      ElMessage.error(response.data.msg || '新增失败')
-    }
-  } catch (error) {
-    console.error('新增失败:', error)
-    showRequestErrorMessage(error, '网络请求失败')
-  } finally {
-    submitLoading.value = false
-  }
-}
-
-// 修改视频设备
-const updateVideoDevice = async () => {
-  submitLoading.value = true
-  try {
-    const token = getToken()
-    const response = await axios.put(`/api/v1/video-devices/${formData.id}`, {
-      name: formData.name,
-      icon: formData.icon,
-      iconPath: formData.iconPath,
-      protocolCode: formData.protocolCode,
-      streamUrl: formData.streamUrl,
-      longitude: formData.longitude,
-      latitude: formData.latitude
-    }, {
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('修改成功')
-      dialogVisible.value = false
-      loadTableData()
-    } else {
-      ElMessage.error(response.data.msg || '修改失败')
-    }
-  } catch (error) {
-    console.error('修改失败:', error)
-    showRequestErrorMessage(error, '网络请求失败')
-  } finally {
-    submitLoading.value = false
-  }
-}
-
 // 删除视频设备
 const deleteVideoDevice = async (id: string) => {
   try {
@@ -680,8 +592,11 @@ const handleAdd = () => {
     protocolCode: '',
     streamUrl: '',
     longitude: null,
-    latitude: null
+    latitude: null,
+    hazardPointId: '',
+    originalHazardPointId: ''
   })
+  locationText.value = ''
   dialogVisible.value = true
 }
 
@@ -689,6 +604,7 @@ const handleEdit = async (row: VideoDeviceItem) => {
   dialogTitle.value = '编辑视频设备'
   isEdit.value = true
   const detail = await fetchDetail(row.id)
+  const initialHpId = row.hazardPointIds ? row.hazardPointIds.split(',').filter(Boolean)[0] || '' : ''
   if (detail) {
     Object.assign(formData, {
       id: detail.id,
@@ -699,25 +615,13 @@ const handleEdit = async (row: VideoDeviceItem) => {
       protocolCode: detail.protocolCode,
       streamUrl: detail.streamUrl,
       longitude: detail.longitude ?? null,
-      latitude: detail.latitude ?? null
+      latitude: detail.latitude ?? null,
+      hazardPointId: initialHpId,
+      originalHazardPointId: initialHpId
     })
+    syncFormToText()
   }
   dialogVisible.value = true
-}
-
-const handleBindHazardPoint = (row: VideoDeviceItem) => {
-  currentBindRow.value = row
-  const hpIds = row.hazardPointIds ? row.hazardPointIds.split(',') : []
-  bindFormData.hazardPointIds = hpIds
-  bindDialogVisible.value = true
-}
-
-const handleMoreCommand = (command: string, row: VideoDeviceItem) => {
-  const map: Record<string, () => void> = {
-    bindHazardPoint: () => handleBindHazardPoint(row),
-    delete: () => handleDelete(row)
-  }
-  map[command]?.()
 }
 
 const handleDelete = (row: VideoDeviceItem) => {
@@ -737,49 +641,131 @@ const handleExport = () => {
   }, 1000)
 }
 
-const handleSubmit = () => {
-  formRef.value.validate((valid: boolean) => {
-    if (valid) {
-      if (formData.id) {
-        updateVideoDevice()
-      } else {
-        createVideoDevice()
-      }
-    }
-  })
+// ==================== 提交(设备保存 + 隐患点绑定 一体化) ====================
+
+/** 把 formData 内的 (lng, lat) 数值同步到 locationText 文本 */
+const syncFormToText = () => {
+  if (formData.longitude != null && formData.latitude != null) {
+    locationText.value = `${formData.longitude}, ${formData.latitude}`
+  } else {
+    locationText.value = ''
+  }
 }
 
-const handleBindSubmit = async () => {
-  if (!currentBindRow.value) return
+/** locationText 失焦时,把 "lng, lat" 解析回 formData */
+const onLocationBlur = () => {
+  const raw = locationText.value.trim()
+  if (!raw) {
+    formData.longitude = null
+    formData.latitude = null
+    return
+  }
+  const parts = raw.split(/[,，\s]+/)
+  if (parts.length >= 2) {
+    const lng = Number(parts[0])
+    const lat = Number(parts[1])
+    if (!isNaN(lng) && !isNaN(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90) {
+      formData.longitude = lng
+      formData.latitude = lat
+      locationText.value = `${lng}, ${lat}`
+      return
+    }
+  }
+  // 解析失败:不破坏原值,仅提示
+  ElMessage.warning('坐标格式无效，请输入"经度,纬度"（例如 104.063456, 30.671234）')
+}
+
+// ── 地图选点弹窗 ──
+
+/** 打开弹窗:先把表单文本同步到 formData,再让公共组件从 formData 派生初始点 */
+const openMapPicker = () => {
+  onLocationBlur()
+  mapDialogVisible.value = true
+}
+
+/** 公共组件确认选点 → 写回 formData + 同步表单文本 */
+const onMapConfirm = (point: LatLng) => {
+  formData.longitude = point.lng
+  formData.latitude = point.lat
+  syncFormToText()
+}
+
+// 同步绑定/解绑隐患点(单选:仅在变更时调用 API)
+const syncHazardPointBindings = async (videoDeviceId: string) => {
+  const orig = formData.originalHazardPointId
+  const curr = formData.hazardPointId
+  if (orig === curr) return
 
   bindLoading.value = true
   try {
-    // 先解绑所有已有的关联
-    const oldHpIds = currentBindRow.value.hazardPointIds ? currentBindRow.value.hazardPointIds.split(',') : []
-    for (const hpId of oldHpIds) {
-      if (hpId && !bindFormData.hazardPointIds.includes(hpId)) {
-        await unbindVideoDevice(hpId, currentBindRow.value.id)
-      }
+    if (orig) {
+      await unbindVideoDevice(orig, videoDeviceId)
     }
-
-    // 绑定新选择的隐患点
-    for (const hp of selectedHazardPoints.value) {
-      if (bindFormData.hazardPointIds.includes(hp.id)) {
-        const installLng = hp.installLng || hp.longitude || 0
-        const installLat = hp.installLat || hp.latitude || 0
-        await bindToHazardPoints(hp.id, currentBindRow.value.id, installLng, installLat)
-      }
+    if (curr) {
+      // 设备位置作为隐患点下的安装位置
+      await bindToHazardPoints(
+          curr,
+          videoDeviceId,
+          formData.longitude ?? 0,
+          formData.latitude ?? 0,
+      )
     }
-
-    ElMessage.success('关联成功')
-    bindDialogVisible.value = false
-    loadTableData() // 刷新列表
-  } catch (error) {
-    console.error('关联失败:', error)
-    showRequestErrorMessage(error, '关联失败')
   } finally {
     bindLoading.value = false
   }
+}
+
+const handleSubmit = async () => {
+  // 提交前同步一次 locationText → formData
+  onLocationBlur()
+
+  formRef.value.validate(async (valid: boolean) => {
+    if (!valid) return
+    submitLoading.value = true
+    try {
+      if (formData.id) {
+        // 编辑
+        await axios.put(`/api/v1/video-devices/${formData.id}`, {
+          name: formData.name,
+          icon: formData.icon,
+          iconPath: formData.iconPath,
+          protocolCode: formData.protocolCode,
+          streamUrl: formData.streamUrl,
+          longitude: formData.longitude,
+          latitude: formData.latitude
+        }, {headers: {Authorization: `Bearer ${getToken()}`}})
+        await syncHazardPointBindings(formData.id)
+        ElMessage.success('修改成功')
+        dialogVisible.value = false
+        loadTableData()
+      } else {
+        // 新增
+        const resp = await axios.post('/api/v1/video-devices', {
+          code: formData.code,
+          name: formData.name,
+          icon: formData.icon,
+          iconPath: formData.iconPath,
+          protocolCode: formData.protocolCode,
+          streamUrl: formData.streamUrl,
+          longitude: formData.longitude,
+          latitude: formData.latitude,
+          status: 1
+        }, {headers: {Authorization: `Bearer ${getToken()}`}})
+        const newId = resp.data?.data?.id ? String(resp.data.data.id) : ''
+        if (newId && formData.hazardPointId) {
+          await syncHazardPointBindings(newId)
+        }
+        ElMessage.success('新增成功')
+        dialogVisible.value = false
+        loadTableData()
+      }
+    } catch (error: any) {
+      console.error('保存失败:', error)
+      showRequestErrorMessage(error, '保存失败')
+    } finally {
+      submitLoading.value = false
+    }
+  })
 }
 
 const handleSelectVideoIcon = () => {
@@ -790,80 +776,6 @@ const handleVideoIconSelect = (item: { code: string; name: string; icon: string;
   formData.icon = item.icon
   formData.iconPath = item.path
   videoIconDialogVisible.value = false
-}
-
-const handleOpenMap = () => {
-  selectedHazardPoints.value = hazardPointList.value
-      .filter(hp => bindFormData.hazardPointIds.includes(hp.id))
-      .map(hp => ({ ...hp }))
-  currentHazardPointIndex.value = 0
-  mapDialogVisible.value = true
-  nextTick(() => {
-    initMap()
-  })
-}
-
-const initMap = () => {
-  if (!mapRef.value) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-  }
-
-  mapInstance = L.map(mapRef.value).setView([30.67, 104.06], 10)
-
-  L.tileLayer('https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
-    maxZoom: 18,
-    attribution: '天地图'
-  }).addTo(mapInstance)
-
-  L.tileLayer('https://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
-    maxZoom: 18
-  }).addTo(mapInstance)
-
-  selectedHazardPoints.value.forEach((hp, index) => {
-    if (hp.longitude && hp.latitude) {
-      const marker = L.marker([hp.latitude, hp.longitude])
-          .addTo(mapInstance!)
-          .bindPopup(`${index + 1}. ${hp.name}`)
-    }
-  })
-
-  mapInstance.on('click', (e: L.LeafletMouseEvent) => {
-    const hp = selectedHazardPoints.value[currentHazardPointIndex.value]
-    if (hp) {
-      hp.installLng = e.latlng.lng
-      hp.installLat = e.latlng.lat
-
-      if (currentMarker) {
-        mapInstance!.removeLayer(currentMarker)
-      }
-      currentMarker = L.marker([e.latlng.lat, e.latlng.lng], {
-        icon: L.divIcon({
-          className: 'device-marker',
-          html: `<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;">${hp.name}</div>`,
-          iconSize: [100, 30],
-          iconAnchor: [50, 15]
-        })
-      }).addTo(mapInstance!)
-
-      currentHazardPointIndex.value = (currentHazardPointIndex.value + 1) % selectedHazardPoints.value.length
-      ElMessage.info(`已设置 ${hp.name} 坐标，请设置下一个隐患点位置`)
-    }
-  })
-}
-
-const handleMapConfirm = () => {
-  mapLoading.value = true
-  setTimeout(() => {
-    mapDialogVisible.value = false
-    if (mapInstance) {
-      mapInstance.remove()
-      mapInstance = null
-    }
-    mapLoading.value = false
-    ElMessage.success('安装位置设置成功')
-  }, 500)
 }
 
 const handlePlay = (row: VideoDeviceItem) => {
@@ -1028,34 +940,20 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.map-container {
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.map-hazard-list {
-  margin-top: 15px;
-}
-
-.map-hazard-item {
+/* ========== 安装位置(参考 Device.vue 风格) ========== */
+.install-location-wrap {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  margin-bottom: 8px;
+  gap: 6px;
+  width: 100%;
 }
 
-.hazard-name {
-  font-weight: bold;
-  color: #303133;
+.install-location-wrap :deep(.el-input) {
+  width: 100%;
 }
 
-.hazard-coords {
-  color: #1890ff;
-  font-size: 13px;
+.map-pick-btn {
+  flex-shrink: 0;
 }
 
 .icon-grid {

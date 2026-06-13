@@ -206,6 +206,7 @@ export function useDeviceCrud() {
             iconPath: row.iconPath || '',
             longitude: row.longitude ?? null,
             latitude: row.latitude ?? null,
+            boundHazardPointId: row.boundHazardPointId ?? null,
             status: row.status,
             sensorList: []
         })

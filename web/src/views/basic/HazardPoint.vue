@@ -327,7 +327,12 @@
 
             <div class="map-section">
               <h3 class="section-title">隐患点区域展示</h3>
-              <div id="detail-map" ref="detailMapRef" style="width: 100%; height: 300px;"></div>
+              <MapBoundaryPreview
+                  v-if="currentRow"
+                  :initial-value="parsedBoundary"
+                  :initial-center="previewCenter"
+                  height="300px"
+              />
             </div>
 
             <div class="system-info-section">
@@ -640,21 +645,27 @@
               <el-button size="small" @click="handleSearchUnboundDevices">搜索</el-button>
             </div>
           </div>
-          <div class="transfer-tree">
+          <div class="transfer-tree device-tree">
             <el-tree
                 ref="leftTreeRef"
               :data="leftDeviceTree"
-              :props="{ label: 'label', children: 'children' }"
-              show-checkbox
-                check-strictly
+                :props="{ label: 'label', children: 'children', disabled: 'disabled' }"
                 node-key="key"
               :filter-node-method="filterLeftNode"
             >
               <template #default="{ node, data }">
                 <span class="tree-node">
+                  <span class="tree-node__check">
+                    <el-checkbox
+                        v-if="!data.disabled"
+                        :model-value="isLeftNodeChecked(data)"
+                        @update:model-value="(val) => toggleLeftNode(data, val)"
+                        @click.stop
+                    />
+                  </span>
                   <img v-if="data.icon" :src="data.icon" class="node-icon" />
                   <span>{{ node.label }}</span>
-                  <span v-if="data.bindCount !== undefined" class="bind-count">({{ data.bindCount }})</span>
+                  <span v-if="data.children?.length" class="bind-count">({{ data.children.length }}传感器)</span>
                   <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini" class="status-tag">{{ data.statusText }}</el-tag>
                 </span>
               </template>
@@ -733,21 +744,27 @@
               size="small"
             />
           </div>
-          <div class="transfer-tree">
+          <div class="transfer-tree device-tree">
             <el-tree
                 ref="rightTreeRef"
               :data="rightDeviceTree"
-              :props="{ label: 'label', children: 'children' }"
-              show-checkbox
-                check-strictly
+                :props="{ label: 'label', children: 'children', disabled: 'disabled' }"
                 node-key="key"
               :filter-node-method="filterRightNode"
             >
               <template #default="{ node, data }">
                 <span class="tree-node">
+                  <span class="tree-node__check">
+                    <el-checkbox
+                        v-if="!data.disabled"
+                        :model-value="isRightNodeChecked(data)"
+                        @update:model-value="(val) => toggleRightNode(data, val)"
+                        @click.stop
+                    />
+                  </span>
                   <img v-if="data.icon" :src="data.icon" class="node-icon" />
                   <span>{{ node.label }}</span>
-                  <span v-if="data.bindCount !== undefined" class="bind-count">({{ data.bindCount }})</span>
+                  <span v-if="data.children?.length" class="bind-count">({{ data.children.length }}传感器)</span>
                   <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini" class="status-tag">{{ data.statusText }}</el-tag>
                 </span>
               </template>
@@ -946,7 +963,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
+import {computed, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import {
   ArrowLeft,
@@ -958,10 +975,9 @@ import {
   Location,
   Search
 } from '@element-plus/icons-vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import MapBoundaryEditor from '@/components/map/MapBoundaryEditor.vue'
-import {type BoundaryCoords, type LatLng} from '@/lib/boundaryCoords'
+import MapBoundaryPreview from '@/components/map/MapBoundaryPreview.vue'
+import {type BoundaryCoords, deserialize, type LatLng} from '@/lib/boundaryCoords'
 import VueApexCharts from 'vue3-apexcharts'
 import {
   getAlarmLevelType,
@@ -1085,8 +1101,17 @@ const statsGroupCount = groupStatsGroupCount
 // ── Remaining local state ──
 const activeTab = ref('basic')
 
-const detailMapRef = ref<HTMLDivElement | null>(null)
-let detailMapInstance: L.Map | null = null
+// ── Detail map preview data (传入 MapBoundaryPreview) ──
+const parsedBoundary = computed(() => {
+  if (!currentRow.value) return null
+  return deserialize((currentRow.value as any).boundaryCoords)
+})
+
+const previewCenter = computed<LatLng | null>(() => {
+  const r = currentRow.value
+  if (!r || r.latitude == null || r.longitude == null) return null
+  return {lat: r.latitude, lng: r.longitude}
+})
 
 // ── Monitor data composable ──
 const {
@@ -1130,6 +1155,10 @@ const {
   rightTreeRef,
   filterLeftNode,
   filterRightNode,
+  isLeftNodeChecked,
+  isRightNodeChecked,
+  toggleLeftNode,
+  toggleRightNode,
   handleSearchUnboundDevices,
   initBoundDevices,
   handleBindDevice,
@@ -1204,84 +1233,7 @@ const handleViewAndOpen = async (row: HazardPointItem) => {
   initDispatchRules(row.id)
   initLatestData(row.id)
   detailDialogVisible.value = true
-  nextTick(() => {
-    initDetailMap()
-  })
-}
-
-const initDetailMap = () => {
-  if (!detailMapRef.value || !currentRow.value) return
-
-  if (detailMapInstance) {
-    detailMapInstance.remove()
-  }
-
-  const lat = currentRow.value.latitude || 30.67
-  const lng = currentRow.value.longitude || 104.06
-
-  detailMapInstance = L.map(detailMapRef.value).setView([lat, lng], 15)
-
-  L.tileLayer('https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
-    maxZoom: 18,
-    attribution: '天地图'
-  }).addTo(detailMapInstance)
-
-  L.tileLayer('https://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=8dda07d4649c77efd0537a0ff0a1df13', {
-    maxZoom: 18
-  }).addTo(detailMapInstance)
-
-  const detailIcon = L.icon({
-    iconUrl: '/img/sy/auto_normal.png',
-    iconSize: [32, 40],
-    iconAnchor: [16, 40],
-    popupAnchor: [0, -40]
-  })
-  const detailMarker = L.marker([lat, lng], {icon: detailIcon}).addTo(detailMapInstance)
-  const detailPopup = L.popup({offset: [0, -36], closeButton: false}).setContent(
-      `<div style="text-align:center;font-size:13px"><b>${currentRow.value.name}</b><br>${lng.toFixed(6)}, ${lat.toFixed(6)}</div>`
-  )
-  detailMarker.on('mouseover', () => {
-    detailMarker.bindPopup(detailPopup).openPopup()
-  })
-  detailMarker.on('mouseout', () => {
-    detailMarker.closePopup()
-  })
-
-  // 渲染多边形边界
-  const bc: any = (currentRow.value as any).boundaryCoords
-  if (bc) {
-    try {
-      const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
-      if (obj.polygon && obj.polygon.length > 0) {
-        const pts = obj.polygon.map((c: number[]) => [c[0], c[1]])
-        L.polygon(pts as any, {
-          color: '#1890ff',
-          fillColor: '#1890ff',
-          fillOpacity: 0.15,
-          weight: 2
-        }).addTo(detailMapInstance!).bindPopup('监测范围')
-      }
-      if (obj.strikeCoords && obj.strikeCoords.length >= 2) {
-        L.polyline(obj.strikeCoords as any, {
-          color: '#f56c6c',
-          weight: 3,
-          dashArray: '6 6'
-        }).addTo(detailMapInstance!).bindPopup(`走向: ${obj.strikeAngle ?? 0}°`)
-      }
-    } catch {
-    }
-  }
-
-  if (currentRow.value.strike) {
-    const strikeRad = (currentRow.value.strike * Math.PI) / 180
-    const offset = 0.002
-    const endLat = lat + Math.sin(strikeRad) * offset
-    const endLng = lng + Math.cos(strikeRad) * offset
-    L.polyline([[lat, lng], [endLat, endLng]], {
-      color: '#1890ff',
-      weight: 3
-    }).addTo(detailMapInstance)
-  }
+  // 地图由 <MapBoundaryPreview> 组件自管理生命周期,无需手动初始化
 }
 
 const handleOpenMap = () => {
@@ -1681,6 +1633,7 @@ onUnmounted(() => {
   padding: 8px;
 }
 
+
 .transfer-actions {
   display: flex;
   flex-direction: column;
@@ -2036,5 +1989,18 @@ onUnmounted(() => {
 
 .sensor-count-cell .cell-icon {
   font-size: 12px;
+}
+</style>
+
+<style>
+/* 设备绑定弹窗 — 传感器节点不再渲染复选框,只渲染纯文字
+   .tree-node__check 占位保持设备行/传感器行的文字纵向对齐 */
+.device-tree .tree-node__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 </style>

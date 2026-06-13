@@ -36,7 +36,7 @@
         ORDER BY dhp.bind_time DESC
     </select>
 
-    <!-- 查询未绑定设备列表（排除已绑定到指定隐患点的设备） -->
+    <!-- 查询未绑定设备列表（排除已绑定到任意隐患点的设备） -->
     <select id="selectUnboundDevices" resultType="com.zwei.iot.hazardpoint.domain.dto.UnboundDeviceVO">
         SELECT d.id,
                CONCAT(d.code, ' - ', d.name) AS label,
@@ -48,8 +48,8 @@
                ) AS bindCount
         FROM device d
         WHERE d.del_flag = 0
-          AND d.id NOT IN (
-              SELECT device_id FROM device_hazard_point WHERE hazard_point_id = #{hazardPointId}
+          AND d.id NOT IN (SELECT device_id
+                           FROM device_hazard_point
           )
           AND (
               #{keyword} IS NULL

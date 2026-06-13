@@ -17,6 +17,24 @@ export const EMPTY_BOUNDARY: BoundaryCoords = {
   auxiliaryLines: []
 }
 
+/**
+ * 把十进制数值转成度分秒字符串。
+ * @param value 经度或纬度数值
+ * @param isLat true=纬度方向(false=N,true=S); false=经度方向(false=E,true=W)
+ */
+export const decimalToDMS = (value: number, isLat: boolean): string => {
+    if (value == null || isNaN(value)) return ''
+    const abs = Math.abs(value)
+    const deg = Math.floor(abs)
+    const minFloat = (abs - deg) * 60
+    const min = Math.floor(minFloat)
+    const sec = (minFloat - min) * 60
+    const dir = isLat
+        ? (value >= 0 ? 'N' : 'S')
+        : (value >= 0 ? 'E' : 'W')
+    return `${deg}°${String(min).padStart(2, '0')}'${sec.toFixed(2)}"${dir}`
+}
+
 type SerializableVertex = [number, number]
 type SerializablePolyline = SerializableVertex[]
 type SerializableAux = SerializablePolyline[]
