@@ -214,9 +214,10 @@
           <el-col :span="12">
             <el-form-item label="图标" prop="icon">
               <div class="device-icon-selector" @click="!isView && handleSelectDeviceIcon()">
-                <img v-if="getDeviceIconPathGreen(formData)" :src="getDeviceIconPathGreen(formData)" class="device-icon-img"
-                     alt="icon"/>
-                <span v-else class="device-icon-placeholder">点击选择图标</span>
+                <img v-if="formData.icon && getDeviceIconPathGreen(formData)" :src="getDeviceIconPathGreen(formData)" class="device-icon-img" alt="icon"/>
+                <div v-else class="device-icon-placeholder">
+                  <el-icon :size="20"><Plus /></el-icon>
+                </div>
               </div>
             </el-form-item>
           </el-col>
@@ -639,7 +640,7 @@
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {Cpu, User} from '@element-plus/icons-vue'
+import {Cpu, User, Plus} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import MapLocationPickerDialog from '@/components/map/MapLocationPickerDialog.vue'
@@ -1679,4 +1680,29 @@ onMounted(() => {
   filter: brightness(0.95);
 }
 
+.device-icon-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.device-icon-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.device-icon-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
 </style>
