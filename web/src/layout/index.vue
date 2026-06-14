@@ -1,5 +1,11 @@
 <template>
   <div class="layout-container">
+    <!-- Edge 浏览器兼容性提示 -->
+    <div v-if="isEdge && !edgeTipDismissed" class="edge-warning-bar">
+      <span class="edge-warning-icon">⚠</span>
+      <span>检测到您正在使用 Edge 浏览器，地图绘制功能可能存在兼容性问题，建议使用 <strong>Chrome</strong> 浏览器以获得最佳体验。</span>
+      <button class="edge-warning-close" @click="edgeTipDismissed = true">✕</button>
+    </div>
     <header class="header">
       <div class="header-left">
         <span class="logo">
@@ -138,7 +144,7 @@
       </div>
       <div class="tabs-actions">
         <el-dropdown @command="handleTabAction">
-          <el-button size="small" type="text">
+          <el-button size="small" link>
             更多操作
             <span class="arrow-icon">▼</span>
           </el-button>
@@ -282,6 +288,10 @@ interface NoticeMessage {
   read: boolean
   type: string
 }
+
+// Edge browser detection
+const isEdge = ref(typeof navigator !== 'undefined' && /Edg\//.test(navigator.userAgent))
+const edgeTipDismissed = ref(false)
 
 const router = useRouter()
 const route = useRoute()
@@ -739,6 +749,42 @@ const goToDashboard = () => {
 </script>
 
 <style scoped>
+/* Edge browser warning bar */
+.edge-warning-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #fff7e6, #fff1cc);
+  border-bottom: 1px solid #ffd666;
+  font-size: 13px;
+  color: #874d00;
+}
+
+.edge-warning-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.edge-warning-bar strong {
+  color: #d46b08;
+}
+
+.edge-warning-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #bfbfbf;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.edge-warning-close:hover {
+  color: #ff4d4f;
+}
+
 :root {
   --primary-color: #1890ff;
   --primary-light: #40a9ff;

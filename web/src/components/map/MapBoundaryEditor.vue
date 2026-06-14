@@ -50,10 +50,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { ElMessageBox, ElMessage } from 'element-plus'
-import { useMapEditor } from '@/composables/useMapEditor'
-import type { BoundaryCoords, LatLng } from '@/lib/boundaryCoords'
+import {computed, ref, watch} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {useMapEditor} from '@/composables/useMapEditor'
+import type {BoundaryCoords, LatLng} from '@/lib/boundaryCoords'
 import MapCoordInput from './MapCoordInput.vue'
 
 const props = withDefaults(defineProps<{
@@ -100,12 +100,21 @@ watch(() => props.initialValue, (v) => {
     editor.strikeLine.value = v.strikeLine ? [...v.strikeLine] : null
     editor.auxiliaryLines.value = v.auxiliaryLines?.map(l => l.slice()) ?? []
     editor.manualCenterLocked.value = false
+  } else {
+    // Switching from a HP that had boundary data to one without:
+    // clear all shapes so the old data doesn't persist.
+    editor.polygon.value = []
+    editor.strikeLine.value = null
+    editor.auxiliaryLines.value = []
   }
 }, { deep: true })
 watch(() => props.initialCenter, (v) => {
   if (v) {
     editor.center.value = { ...v }
     editor.manualCenterLocked.value = true
+    // Pan the map to the new center so switching between hazard points
+    // updates the map viewport (not just the internal center marker).
+    editor.setView(v)
   }
 })
 
@@ -156,6 +165,8 @@ function emitCancel() {
   editor.selectedId.value = null
   editor.tool.value = null
   editor.exitEdit()
+  // Reset map viewport to the initial center so cancelled pans don't persist.
+  if (props.initialCenter) editor.setView(props.initialCenter)
   emit('cancel')
 }
 

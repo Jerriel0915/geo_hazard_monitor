@@ -276,7 +276,10 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     container: options.container,
     center: options.initialCenter ?? options.initialPoint ?? options.defaultCenter ?? { lat: 30.67, lng: 104.06 },
     zoom: options.defaultZoom ?? 14,
-    tianditu: options.tianditu
+      tianditu: options.tianditu,
+      // Disable double-click zoom to avoid Leaflet's 300ms click delay;
+      // this can swallow click events in Edge.
+      doubleClickZoom: false
   })
 
   // ── Leaflet layers (managed by composable) ──
@@ -606,14 +609,20 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
   let mapClickHandler: ((e: L.LeafletMouseEvent) => void) | null = null
   let mapMoveHandler: ((e: L.LeafletMouseEvent) => void) | null = null
   let mapOutHandler: (() => void) | null = null
+    // Prevent accidental panning during draw mode without disabling the
+    // drag handler (map.dragging.disable() breaks click events in Edge).
+    let drawPanGuard: (() => void) | null = null
   watch([leaflet.map, () => tool.value, () => mode.value, () => options.variant], ([map, t, m, variant]) => {
     if (!map) return
     if (mapClickHandler) { map.off('click', mapClickHandler); mapClickHandler = null }
     if (mapMoveHandler) { map.off('mousemove', mapMoveHandler); mapMoveHandler = null }
     if (mapOutHandler) { map.off('mouseout', mapOutHandler); mapOutHandler = null }
+      if (drawPanGuard) {
+          map.off('move', drawPanGuard);
+          drawPanGuard = null
+      }
     // point variant: map click sets the point (when not readonly and not mid-draw)
     if (variant === 'point' && !options.readonly && m !== 'edit') {
-      if ((map as any).dragging) (map as any).dragging.enable()
       mapClickHandler = (e: L.LeafletMouseEvent) => {
         localPoint.value = { lat: e.latlng.lat, lng: e.latlng.lng }
       }
@@ -621,8 +630,23 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
       return
     }
     if (m === 'edit' && t) {
-      // disable map drag while drawing so accidental drags don't pan
-      if ((map as any).dragging) (map as any).dragging.disable()
+        // Lock map center during draw so accidental drags don't pan.
+        // Uses a move-event guard instead of dragging.disable() because
+        // disabling the drag handler breaks click propagation in Edge.
+        // The guard temporarily detaches itself before calling setView
+        // to prevent infinite recursion (setView always fires move).
+        const drawCenter = map.getCenter()
+        drawPanGuard = () => {
+            map.off('move', drawPanGuard!)
+            // Only snap back if the map actually moved (not our own setView).
+            const cc = map.getCenter()
+            if (Math.abs(cc.lat - drawCenter.lat) > 1e-7 || Math.abs(cc.lng - drawCenter.lng) > 1e-7) {
+                map.setView(drawCenter, map.getZoom(), {animate: false})
+            }
+            map.on('move', drawPanGuard!)
+        }
+        map.on('move', drawPanGuard)
+
       mapClickHandler = (e: L.LeafletMouseEvent) => {
         const p: LatLng = { lat: e.latlng.lat, lng: e.latlng.lng }
         if (t === 'polygon') {
@@ -635,7 +659,6 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
             tool.value = null
           }
         } else if (t === 'aux') {
-          // append to last aux line if mid-draw, else create new
           const lastIdx = auxiliaryLines.value.length - 1
           const last = lastIdx >= 0 ? auxiliaryLines.value[lastIdx] : null
           if (last && (last as any).__drawing) {
@@ -650,8 +673,6 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
         }
       }
       map.on('click', mapClickHandler)
-    } else {
-      if ((map as any).dragging) (map as any).dragging.enable()
     }
     // P3: register mousemove/mouseout for the ghost cursor
     mapMoveHandler = (e: L.LeafletMouseEvent) => {
