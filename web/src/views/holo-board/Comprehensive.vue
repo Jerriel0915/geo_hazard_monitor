@@ -135,15 +135,13 @@
         </div>
 
         <div class="analysis-charts">
-          <!-- 第一行：告警趋势分析（保持不变） -->
-          <div class="chart-panel">
+          <!-- 第一行：告警趋势分析 -->
+          <div class="chart-panel alarm-trend-panel">
             <div class="panel-header">
               <span class="panel-title">告警趋势分析</span>
               <span class="panel-subtitle">近12个月告警统计及未来预测</span>
             </div>
-            <div class="chart-body">
-              <div ref="alarmTrendChart" class="echarts-container"></div>
-            </div>
+            <div ref="alarmTrendChart" class="echarts-body" style="transform: scale(0.82);"></div>
           </div>
 
           <!-- 第二行：左右两个图表 -->
@@ -154,9 +152,7 @@
                 <span class="panel-title">隐患点增长分析</span>
                 <span class="panel-subtitle">近12个月新增隐患点统计</span>
               </div>
-              <div class="chart-body">
-                <div ref="hazardTrendChart" class="echarts-container"></div>
-              </div>
+              <div ref="hazardTrendChart" class="echarts-body" style="transform: scale(0.80);"></div>
             </div>
 
             <!-- 右侧：隐患点平均监测率（纯柱状图） -->
@@ -165,9 +161,7 @@
                 <span class="panel-title">隐患点平均监测率</span>
                 <span class="panel-subtitle">各隐患点设备监测有效率统计</span>
               </div>
-              <div class="chart-body">
-                <div ref="monitorRateChart" class="echarts-container"></div>
-              </div>
+              <div ref="monitorRateChart" class="echarts-body" style="transform: scale(0.80);"></div>
             </div>
           </div>
         </div>
@@ -465,10 +459,10 @@ const initMonitorRateChart = () => {
       }
     },
     grid: {
-      left: '8%',
-      right: '5%',
-      bottom: '12%',
-      top: '8%',
+      left: '3%',
+      right: '3%',
+      bottom: '2%',
+      top: '14%',
       containLabel: true
     },
     xAxis: {
@@ -477,7 +471,7 @@ const initMonitorRateChart = () => {
       axisLabel: {
         rotate: 30,
         color: '#6b7280',
-        fontSize: 12,
+        fontSize: 11,
         interval: 0
       },
       axisLine: { lineStyle: { color: '#e2e8f0' } }
@@ -487,7 +481,8 @@ const initMonitorRateChart = () => {
       name: '监测率 (%)',
       min: 0,
       max: 100,
-      axisLabel: { color: '#6b7280', fontSize: 12 },
+      nameTextStyle: { color: '#6b7280', fontSize: 12 },
+      axisLabel: { color: '#6b7280', fontSize: 11 },
       splitLine: { lineStyle: { color: '#f3f4f6' } }
     },
     series: [{
@@ -722,10 +717,10 @@ const initHazardTrendChart = () => {
       textStyle: { color: '#374151' }
     },
     grid: {
-      left: '8%',
-      right: '4%',
-      bottom: '12%',
-      top: '8%',
+      left: '3%',
+      right: '3%',
+      bottom: '2%',
+      top: '5%',
       containLabel: true
     },
     xAxis: {
@@ -788,13 +783,16 @@ const initAlarmTrendChart = () => {
       bottom: 0,
       textStyle: {
         color: '#6b7280',
-        fontSize: 16
-      }
+        fontSize: 12
+      },
+      itemWidth: 14,
+      itemHeight: 8,
+      type: 'scroll'
     },
     grid: {
-      left: '8%',
-      right: '4%',
-      bottom: '18%',
+      left: '3%',
+      right: '3%',
+      bottom: '16%',
       top: '5%',
       containLabel: true
     },
@@ -809,7 +807,8 @@ const initAlarmTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12,
+        rotate: 30
       }
     },
     yAxis: {
@@ -817,7 +816,7 @@ const initAlarmTrendChart = () => {
       name: '告警次数',
       nameTextStyle: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       axisLine: {
         show: false
@@ -827,7 +826,7 @@ const initAlarmTrendChart = () => {
       },
       axisLabel: {
         color: '#6b7280',
-        fontSize: 16
+        fontSize: 12
       },
       splitLine: {
         lineStyle: {
@@ -1224,7 +1223,8 @@ const trendAreaPath = computed(() => {
 }
 
 .left-panel, .right-panel {
-  width: 320px;
+  width: clamp(260px, 22vw, 340px);
+  min-width: 260px;
   padding: 16px;
   overflow-y: auto;
   background: rgba(255, 255, 255, 0.6);
@@ -1250,7 +1250,7 @@ const trendAreaPath = computed(() => {
   flex-direction: column;
   background: rgba(255, 255, 255, 0.7);
   border-radius: 12px;
-  margin: 16px;
+  margin: clamp(8px, 1.5vw, 16px);
   overflow: hidden;
   box-shadow: none;
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -1260,9 +1260,10 @@ const trendAreaPath = computed(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  overflow-y: hidden;
+  gap: 12px;
+  padding: 10px 16px 4px;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .chart-panel {
@@ -1272,40 +1273,41 @@ const trendAreaPath = computed(() => {
   background: rgba(255, 255, 255, 0.8);
   border-radius: 8px;
   overflow: hidden;
-  min-height: 380px;
+  min-height: 0;
 }
 
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
 }
 
 .panel-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: #1f2937;
 }
 
 .panel-subtitle {
-  font-size: 14px;
+  font-size: 12px;
   color: #6b7280;
 }
 
-.chart-body {
+.echarts-body {
   flex: 1;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 0;
+  transform-origin: center center;
+  overflow: hidden;
 }
 
-.echarts-container {
-  width: 100%;
-  height: 350px;
-  min-height: 350px;
+.echarts-body {
+  flex: 1;
+  min-height: 0;
+  transform-origin: center center;
+  overflow: hidden;
 }
 
 
@@ -1725,14 +1727,16 @@ const trendAreaPath = computed(() => {
 /* ========== 统计卡片 — 与运营视图统一风格 ========== */
 .stats-row {
   display: flex;
-  gap: 16px;
-  padding: 20px 32px;
+  gap: 12px;
+  padding: 14px 20px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  flex-wrap: wrap;
 }
 
 .stat-card {
-  flex: 1;
+  flex: 1 1 140px;
+  min-width: 130px;
   display: flex;
   border-radius: 10px;
   overflow: hidden;
@@ -1741,7 +1745,7 @@ const trendAreaPath = computed(() => {
 
 .stat-left {
   width: 38%;
-  min-width: 56px;
+  min-width: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1750,8 +1754,8 @@ const trendAreaPath = computed(() => {
 }
 
 .stat-left svg {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 .stat-right {
@@ -1765,12 +1769,12 @@ const trendAreaPath = computed(() => {
   border: 1.5px solid var(--tc);
   border-left: none;
   border-radius: 0 10px 10px 0;
-  padding: 10px 8px;
+  padding: 8px 6px;
   text-align: center;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: clamp(20px, 3.5vw, 28px);
   font-weight: 800;
   color: var(--tc);
   line-height: 1.1;
@@ -2779,7 +2783,7 @@ const trendAreaPath = computed(() => {
   display: flex;
   gap: 16px;
   flex: 1;
-  min-height: 380px;
+  min-height: 0;
 }
 
 .chart-panel.half {

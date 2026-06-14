@@ -56,7 +56,6 @@ declare module 'vue' {
     ElUpload: typeof import('element-plus/es')['ElUpload']
     FeedBack: typeof import('./src/components/FeedBack.vue')['default']
     FeedbackDialog: typeof import('./src/components/FeedbackDialog.vue')['default']
-    FeedbackFormDialog: typeof import('./src/components/FeedbackFormDialog.vue')['default']
     IconFont: typeof import('./src/components/IconFont.vue')['default']
     MapBoundaryEditor: typeof import('./src/components/map/MapBoundaryEditor.vue')['default']
     MapBoundaryPreview: typeof import('./src/components/map/MapBoundaryPreview.vue')['default']
