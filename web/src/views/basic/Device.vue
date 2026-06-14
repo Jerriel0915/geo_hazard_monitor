@@ -38,7 +38,7 @@
         >
           <el-table-column label="图标" width="80" align="center">
             <template #default="{ row }">
-              <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
+              <img v-if="getDeviceIconPathGreen(row)" :src="getDeviceIconPathGreen(row)" class="table-icon" alt="icon"/>
               <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
@@ -214,7 +214,7 @@
           <el-col :span="12">
             <el-form-item label="图标" prop="icon">
               <div class="device-icon-selector" @click="!isView && handleSelectDeviceIcon()">
-                <img v-if="getDeviceIconPath(formData)" :src="getDeviceIconPath(formData)" class="device-icon-img"
+                <img v-if="getDeviceIconPathGreen(formData)" :src="getDeviceIconPathGreen(formData)" class="device-icon-img"
                      alt="icon"/>
                 <span v-else class="device-icon-placeholder">点击选择图标</span>
               </div>
@@ -395,7 +395,7 @@
           <el-table :data="sensorList" border size="small" v-loading="sensorLoading">
             <el-table-column label="图标" width="60" align="center">
               <template #default="{ row }">
-                <img v-if="getDeviceIconPath(row)" :src="getDeviceIconPath(row)" class="table-icon" alt="icon"/>
+                <img v-if="getDeviceIconPathGreen(row)" :src="getDeviceIconPathGreen(row)" class="table-icon" alt="icon"/>
                 <span v-else class="empty-text">-</span>
               </template>
             </el-table-column>
@@ -605,7 +605,7 @@
     </el-dialog>
 
     <!-- 设备图标选择弹窗 -->
-    <el-dialog v-model="deviceIconDialogVisible" title="选择设备图标" width="600px">
+    <el-dialog v-model="deviceIconDialogVisible" title="选择设备图标" width="750px">
       <div class="icon-grid">
         <div
             v-for="item in deviceIconList"
@@ -658,7 +658,7 @@ import {
   updateSensor
 } from '@/api/sensor'
 import {getIconList} from '@/constants/monitorIcons'
-import {getDeviceIconPath} from '@/utils/deviceIcon'
+import {getDeviceIconPath, getDeviceIconPathGreen} from '@/utils/deviceIcon'
 import {type DeviceItem, useDeviceCrud} from './composables/useDeviceCrud'
 
 const {
@@ -1492,10 +1492,13 @@ onMounted(() => {
 }
 
 .icon-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 15px;
-  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 5px;
+  max-height: 380px;
+  overflow-y: auto;
+  justify-content: flex-start;
 }
 
 .icon-item {
@@ -1503,7 +1506,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  width: 85px;
+  padding: 8px 2px;
   border: 1px solid #e8e8e8;
   border-radius: 4px;
   cursor: pointer;

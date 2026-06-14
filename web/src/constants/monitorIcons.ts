@@ -5,10 +5,16 @@ export interface IconItem {
     path: string
 }
 
+/**
+ * MonitorContent 图标枚举 — 与 jc-icon/green 目录下不带 _map 的文件一一对应。
+ * 新增文件后在此追加条目：{code, name, icon}，其中 icon 为文件名去掉 _green.{png|gif} 的部分。
+ */
 export const MonitorContentIconEnum = {
     BSW: {code: 'BSW', name: '表面水平位移', icon: 'bsw'},
     SSW: {code: 'SSW', name: '深部水平位移', icon: 'ssw'},
+    SSW_SX: {code: 'SSW_SX', name: '深部位移—双向', icon: 'ssw_sx'},
     BC: {code: 'BC', name: '表面沉降', icon: 'bc'},
+    BC_JD: {code: 'BC_JD', name: '表面沉降—角度', icon: 'bc_jd'},
     QJ: {code: 'QJ', name: '倾角', icon: 'qj'},
     LF: {code: 'LF', name: '裂缝', icon: 'lf'},
     JY: {code: 'JY', name: '降雨量', icon: 'jy'},
@@ -30,7 +36,9 @@ export const MonitorContentIconEnum = {
     SP: {code: 'SP', name: '视频', icon: 'sp'},
     NW: {code: 'NW', name: '泥水位', icon: 'nw'},
     DX: {code: 'DX', name: '断线', icon: 'dx'},
-    SG: {code: 'SG', name: '声光', icon: 'sg'}
+    SG: {code: 'SG', name: '声光', icon: 'sg'},
+    // 视频设备图标（无独立 vidio_green.png，使用 vidio1_green.png 作为图标选择器默认）
+    VIDIO: {code: 'VIDIO', name: '视频设备', icon: 'vidio1'},
 } as const
 
 /** Convenience: returns the full icon list with resolved image paths. */
