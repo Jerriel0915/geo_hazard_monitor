@@ -1,3 +1,5 @@
+<!--自定义视图-->
+
 <template>
   <div class="page-content">
     <div class="page-title">自定义视图</div>

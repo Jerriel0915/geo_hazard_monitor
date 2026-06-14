@@ -1,3 +1,4 @@
+<!-- 综合视图 -->
 <template>
   <div class="comprehensive-view">
     <div class="left-panel">
@@ -134,6 +135,7 @@
         </div>
 
         <div class="analysis-charts">
+          <!-- 第一行：告警趋势分析（保持不变） -->
           <div class="chart-panel">
             <div class="panel-header">
               <span class="panel-title">告警趋势分析</span>
@@ -144,16 +146,32 @@
             </div>
           </div>
 
-          <div class="chart-panel">
-            <div class="panel-header">
-              <span class="panel-title">隐患点增长分析</span>
-              <span class="panel-subtitle">近12个月新增隐患点统计 · 近30天各隐患点日均监测次数（总监测次数 / 传感器数量）</span>
+          <!-- 第二行：左右两个图表 -->
+          <div class="double-chart-row">
+            <!-- 左侧：隐患点增长分析（纯折线图） -->
+            <div class="chart-panel half">
+              <div class="panel-header">
+                <span class="panel-title">隐患点增长分析</span>
+                <span class="panel-subtitle">近12个月新增隐患点统计</span>
+              </div>
+              <div class="chart-body">
+                <div ref="hazardTrendChart" class="echarts-container"></div>
+              </div>
             </div>
-            <div class="chart-body">
-              <div ref="hazardTrendChart" class="echarts-container"></div>
+
+            <!-- 右侧：隐患点平均监测率（纯柱状图） -->
+            <div class="chart-panel half">
+              <div class="panel-header">
+                <span class="panel-title">隐患点平均监测率</span>
+                <span class="panel-subtitle">各隐患点设备监测有效率统计</span>
+              </div>
+              <div class="chart-body">
+                <div ref="monitorRateChart" class="echarts-container"></div>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
 
@@ -249,7 +267,19 @@ const showAlgorithmDesc = ref(false)
 const healthTriggerRef = ref<HTMLElement | null>(null)
 const popoverStyle = ref<Record<string, string>>({})
 let hideTimer: ReturnType<typeof setTimeout> | null = null
+// 新增图表 ref
+const monitorRateChart = ref<HTMLDivElement | null>(null)
+let monitorRateChartInstance: echarts.ECharts | null = null
 
+// 隐患点平均监测率数据
+const monitorRateData = ref([
+  { name: '龙潭寺滑坡点', rate: 98.5, deviceCount: 5 },
+  { name: '大坝监测点', rate: 95.2, deviceCount: 4 },
+  { name: '边坡监测点', rate: 88.6, deviceCount: 3 },
+  { name: '泥石流隐患点', rate: 92.3, deviceCount: 6 },
+  { name: '地面沉降点', rate: 96.8, deviceCount: 3 },
+  { name: '桥梁监测点', rate: 99.1, deviceCount: 4 }
+])
 const showPopover = () => {
   if (hideTimer) {
     clearTimeout(hideTimer);
@@ -418,6 +448,73 @@ const monitorDataPoints = computed<ChartPoint[]>(() => {
   }))
 })
 
+// 初始化隐患点平均监测率图表（纯柱状图）
+const initMonitorRateChart = () => {
+  if (!monitorRateChart.value) return
+
+  monitorRateChartInstance = echarts.init(monitorRateChart.value)
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        const data = params[0]
+        const item = monitorRateData.value[data.dataIndex]
+        return `${data.name}<br/>监测率: ${data.value}%<br/>设备数量: ${item.deviceCount}台`
+      }
+    },
+    grid: {
+      left: '8%',
+      right: '5%',
+      bottom: '12%',
+      top: '8%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: monitorRateData.value.map(item => item.name),
+      axisLabel: {
+        rotate: 30,
+        color: '#6b7280',
+        fontSize: 12,
+        interval: 0
+      },
+      axisLine: { lineStyle: { color: '#e2e8f0' } }
+    },
+    yAxis: {
+      type: 'value',
+      name: '监测率 (%)',
+      min: 0,
+      max: 100,
+      axisLabel: { color: '#6b7280', fontSize: 12 },
+      splitLine: { lineStyle: { color: '#f3f4f6' } }
+    },
+    series: [{
+      name: '监测率',
+      type: 'bar',
+      data: monitorRateData.value.map(item => item.rate),
+      barWidth: '50%',
+      itemStyle: {
+        borderRadius: [4, 4, 0, 0],
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: '#52c41a' },
+          { offset: 1, color: '#95de64' }
+        ])
+      },
+      label: {
+        show: true,
+        position: 'top',
+        formatter: '{c}%',
+        color: '#1f2937',
+        fontSize: 11
+      }
+    }]
+  }
+
+  monitorRateChartInstance.setOption(option)
+}
+
 const handleQueryData = () => {
   console.log('查询监测数据:', dataFilter.value)
 }
@@ -575,6 +672,7 @@ onMounted(async () => {
   } catch { /* use defaults */
   }
   initAlarmTrendChart()
+  initMonitorRateChart()
   initHazardTrendChart()
   setTimeout(() => {
     animateStats.value = true
@@ -592,6 +690,10 @@ onUnmounted(() => {
     alarmTrendChartInstance = null
   }
   window.removeEventListener('resize', handleResize)
+  if (monitorRateChartInstance) {
+    monitorRateChartInstance.dispose()
+    monitorRateChartInstance = null
+  }
 })
 
 const handleResize = () => {
@@ -601,19 +703,15 @@ const handleResize = () => {
   if (alarmTrendChartInstance) {
     alarmTrendChartInstance.resize()
   }
+  if (monitorRateChartInstance) {
+    monitorRateChartInstance.resize()
+  }
 }
 
 const initHazardTrendChart = () => {
   if (!hazardTrendChart.value) return
 
   hazardTrendChartInstance = echarts.init(hazardTrendChart.value)
-
-  const barData = [
-    { name: 'A-01', value: 8.5 }, { name: 'B-05', value: 12.3 },
-    { name: 'C-12', value: 5.7 }, { name: 'D-03', value: 9.1 },
-    { name: 'E-08', value: 6.8 }, { name: 'F-02', value: 14.2 },
-    { name: 'G-04', value: 7.9 }, { name: 'H-09', value: 10.4 },
-  ]
 
   const option = {
     tooltip: {
@@ -623,45 +721,29 @@ const initHazardTrendChart = () => {
       borderWidth: 1,
       textStyle: { color: '#374151' }
     },
-    legend: {
-      data: ['新增隐患点', '日均监测(次)'],
-      bottom: 0,
-      textStyle: { color: '#6b7280', fontSize: 14 }
-    },
     grid: {
-      left: '3%',
-      right: '6%',
+      left: '8%',
+      right: '4%',
       bottom: '12%',
-      top: '12%',
+      top: '8%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
-      boundaryGap: true,
+      boundaryGap: false,
       data: hazardTrendData.value.months,
       axisLine: { lineStyle: { color: '#e2e8f0' } },
-      axisLabel: { color: '#6b7280', fontSize: 14 }
+      axisLabel: { color: '#6b7280', fontSize: 12, rotate: 30 }
     },
-    yAxis: [
-      {
-        type: 'value',
-        name: '新增隐患点',
-        nameTextStyle: { color: '#6b7280', fontSize: 14 },
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: '#6b7280', fontSize: 14 },
-        splitLine: { lineStyle: { color: '#f3f4f6' } }
-      },
-      {
-        type: 'value',
-        name: '日均监测(次)',
-        nameTextStyle: { color: '#fa8c16', fontSize: 14 },
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: '#6b7280', fontSize: 14 },
-        splitLine: { show: false }
-      }
-    ],
+    yAxis: {
+      type: 'value',
+      name: '新增隐患点',
+      nameTextStyle: { color: '#6b7280', fontSize: 12 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#6b7280', fontSize: 12 },
+      splitLine: { lineStyle: { color: '#f3f4f6' } }
+    },
     series: [
       {
         name: '新增隐患点',
@@ -673,28 +755,11 @@ const initHazardTrendChart = () => {
         itemStyle: { color: '#6366f1', borderColor: '#fff', borderWidth: 2 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            {offset: 0, color: 'rgba(99, 102, 241, 0.3)'},
-            {offset: 1, color: 'rgba(99, 102, 241, 0.05)'}
+            { offset: 0, color: 'rgba(99, 102, 241, 0.3)' },
+            { offset: 1, color: 'rgba(99, 102, 241, 0.05)' }
           ])
         },
         data: hazardTrendData.value.values
-      },
-      {
-        type: 'bar',
-        name: '日均监测(次)',
-        yAxisIndex: 1,
-        barWidth: '50%',
-        itemStyle: {
-          borderRadius: [4, 4, 0, 0],
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#fa8c16' },
-            { offset: 1, color: '#ffd591' }
-          ])
-        },
-        data: hazardTrendData.value.months.map(m => {
-          const found = barData.find(b => b.name.includes(m.slice(5)))
-          return found ? found.value : null
-        })
       }
     ]
   }
@@ -727,7 +792,7 @@ const initAlarmTrendChart = () => {
       }
     },
     grid: {
-      left: '3%',
+      left: '8%',
       right: '4%',
       bottom: '18%',
       top: '5%',
@@ -1197,7 +1262,7 @@ const trendAreaPath = computed(() => {
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .chart-panel {
@@ -1239,8 +1304,8 @@ const trendAreaPath = computed(() => {
 
 .echarts-container {
   width: 100%;
-  height: 100%;
-  min-height: 250px;
+  height: 350px;
+  min-height: 350px;
 }
 
 
@@ -2707,6 +2772,19 @@ const trendAreaPath = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 3px 0;
+}
+
+/* 双图表行 */
+.double-chart-row {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-height: 380px;
+}
+
+.chart-panel.half {
+  flex: 1;
+  min-width: 0;
 }
 
 .hpv2-device + .hpv2-device { border-top: 1px solid rgba(0, 0, 0, 0.05); }

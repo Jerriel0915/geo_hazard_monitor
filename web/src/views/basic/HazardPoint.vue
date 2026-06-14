@@ -474,7 +474,7 @@
                     <el-checkbox
                         v-if="!data.disabled"
                         :model-value="isLeftNodeChecked(data)"
-                        @update:model-value="(val) => toggleLeftNode(data, val)"
+                        @update:model-value="(val:boolean) => toggleLeftNode(data, val)"
                         @click.stop
                     />
                   </span>
@@ -573,7 +573,7 @@
                     <el-checkbox
                         v-if="!data.disabled"
                         :model-value="isRightNodeChecked(data)"
-                        @update:model-value="(val) => toggleRightNode(data, val)"
+                        @update:model-value="(val:boolean) => toggleRightNode(data, val)"
                         @click.stop
                     />
                   </span>
