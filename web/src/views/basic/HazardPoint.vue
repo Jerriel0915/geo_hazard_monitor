@@ -302,7 +302,6 @@
       width="900px"
       :close-on-click-modal="false"
       :before-close="beforeMapClose"
-      destroy-on-close
     >
       <MapBoundaryEditor
         ref="mapEditorRef"
@@ -314,220 +313,20 @@
       />
     </el-dialog>
 
-    <el-dialog
-      v-model="detailDialogVisible"
-      title="隐患点详情"
-      width="1000px"
-      :close-on-click-modal="false"
-      destroy-on-close
-    >
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="基本信息" name="basic">
-          <div class="basic-info-container">
-            <div class="info-section">
-              <h3 class="section-title">隐患点信息</h3>
-              <el-descriptions :column="2" border>
-                <el-descriptions-item label="隐患点编号">{{ currentRow?.code }}</el-descriptions-item>
-                <el-descriptions-item label="隐患点名称">{{ currentRow?.name }}</el-descriptions-item>
-                <el-descriptions-item label="分组">{{ currentRow?.groupName || '未分组' }}</el-descriptions-item>
-                <el-descriptions-item label="状态">
-                  <el-tag :type="getStatusType(currentRow?.status || '')" size="small">{{ currentRow?.statusName }}</el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="中心坐标" :span="2">
-                  {{ currentRow?.longitude?.toFixed(6) }}, {{ currentRow?.latitude?.toFixed(6) }}
-                </el-descriptions-item>
-                <el-descriptions-item label="走向">{{ currentRow?.strike }}°</el-descriptions-item>
-                <el-descriptions-item label="描述" :span="2">{{ currentRow?.description || '-' }}</el-descriptions-item>
-              </el-descriptions>
-            </div>
-
-            <div class="map-section">
-              <h3 class="section-title">隐患点区域展示</h3>
-              <MapBoundaryPreview
-                  v-if="currentRow"
-                  :initial-value="parsedBoundary"
-                  :initial-center="previewCenter"
-                  height="300px"
-              />
-            </div>
-
-            <div class="system-info-section">
-              <h3 class="section-title">系统信息</h3>
-              <el-descriptions :column="2" border>
-                <el-descriptions-item label="创建人">{{ currentRow?.createBy || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="创建时间">{{ currentRow?.createTime || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="更新人">{{ currentRow?.updateBy || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="更新时间">{{ currentRow?.updateTime || '-' }}</el-descriptions-item>
-              </el-descriptions>
-            </div>
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="绑定设备" name="devices">
-          <div class="table-wrap">
-            <div class="table-wrap__scroll">
-              <el-table :data="boundDevices" border size="small">
-                <el-table-column prop="deviceCode" label="设备编号" width="150" align="center" />
-                <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center" />
-                <el-table-column prop="sensorNames" label="传感器" min-width="150" align="center">
-                  <template #default="{ row }">
-                    <span v-for="sensor in row.sensors" :key="sensor.id" class="sensor-tag">
-                      {{ sensor.name }}
-                    </span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="bindTime" label="绑定时间" width="180" align="center" />
-                <el-table-column prop="deviceStatus" label="设备状态" width="100" align="center">
-                  <template #default="{ row }">
-                    <el-tag :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'warning'" size="small">
-                      {{ row.deviceStatus === 'NORMAL' ? '正常' : row.deviceStatus === 'FAULT' ? '故障' : '离线' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="告警配置" name="alarmConfig">
-          <div class="alarm-config-view">
-            <div class="config-section">
-              <h3 class="section-title">告警判据</h3>
-              <div class="table-wrap">
-                <div class="table-wrap__scroll">
-                  <el-table :data="alarmCriteriaList" border size="small">
-                    <el-table-column prop="name" label="判据名称" width="150" align="center" />
-                    <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center" />
-                    <el-table-column prop="expression" label="表达式" min-width="250" align="center" />
-                    <el-table-column prop="alarmLevel" label="告警等级" width="100" align="center">
-                      <template #default="{ row }">
-                        <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ row.alarmLevelText }}</el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="isEnabled" label="状态" width="80" align="center">
-                      <template #default="{ row }">
-                        <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
-                      </template>
-                    </el-table-column>
-                  </el-table>
-                </div>
-              </div>
-            </div>
-
-            <div class="config-section">
-              <h3 class="section-title">告警分发</h3>
-              <div class="table-wrap">
-                <div class="table-wrap__scroll">
-                  <el-table :data="dispatchRules" border size="small">
-                    <el-table-column prop="name" label="规则名称" width="150" align="center" />
-                    <el-table-column prop="type" label="类型" width="100" align="center">
-                      <template #default="{ row }">
-                        <el-tag :type="row.type === 'ALARM' ? 'warning' : 'info'" size="small">
-                          {{ row.type === 'ALARM' ? '告警分发' : '状态通知' }}
-                        </el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="alarmLevel" label="告警等级" width="120" align="center">
-                      <template #default="{ row }">
-                        <span v-if="row.type === 'ALARM'">{{ row.alarmLevel }}</span>
-                        <span v-else class="empty-text">-</span>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="recipientName" label="接收人" width="120" align="center" />
-                    <el-table-column prop="channel" label="通知渠道" min-width="150" align="center">
-                      <template #default="{ row }">
-                        <span v-for="ch in row.channel.split(',')" :key="ch" class="channel-tag">{{ getChannelLabel(ch) }}</span>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="isEnabled" label="状态" width="80" align="center">
-                      <template #default="{ row }">
-                        <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
-                      </template>
-                    </el-table-column>
-                  </el-table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="监测数据" name="monitorData">
-          <div class="monitor-data-panel">
-            <div class="data-filters">
-              <el-select v-model="dataFilter.deviceId" placeholder="选择设备" clearable style="width: 150px"
-                         @change="onDataDeviceChange">
-                <el-option v-for="d in boundDevices" :key="d.deviceId" :label="d.deviceName" :value="d.deviceId" />
-              </el-select>
-              <el-select v-model="dataFilter.sensorId" placeholder="选择传感器" clearable style="width: 150px"
-                         @change="onDataSensorChange">
-                <el-option v-for="s in monitorSensors" :key="s.id" :label="s.name" :value="s.id"/>
-              </el-select>
-              <el-select v-model="dataFilter.attrCode" placeholder="选择指标" clearable style="width: 160px">
-                <el-option v-for="a in monitorAttrs" :key="a.code" :label="a.label" :value="a.code"/>
-              </el-select>
-              <el-select v-model="dataFilter.valueType" placeholder="聚合粒度" style="width: 120px">
-                <el-option label="原始值" value="current" />
-                <el-option label="小时均值" value="hour" />
-                <el-option label="日均值" value="24h" />
-                <el-option label="3日均值" value="72h" />
-              </el-select>
-              <el-date-picker
-                v-model="dataFilter.timeRange"
-                type="datetimerange"
-                range-separator="至"
-                start-placeholder="开始"
-                end-placeholder="结束"
-                format="YYYY-MM-DD HH:mm:ss"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                style="width: 360px"
-              />
-              <el-button type="primary" size="small" @click="handleQueryData">查询</el-button>
-            </div>
-
-            <div class="data-toolbar">
-              <el-button-group>
-                <el-button :type="dataDisplayMode === 'chart' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'chart'">图表展示</el-button>
-                <el-button :type="dataDisplayMode === 'table' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'table'">表格展示</el-button>
-              </el-button-group>
-              <div class="data-actions">
-                <el-button size="small" @click="handleImportData">导入数据</el-button>
-                <el-button size="small" @click="handleExportData">导出数据</el-button>
-              </div>
-            </div>
-
-            <div class="data-content">
-              <div v-if="dataDisplayMode === 'chart'" class="chart-container">
-                <VueApexCharts
-                  v-if="chartSeriesData.length > 0"
-                  type="area"
-                  height="100%"
-                  :options="chartOptions"
-                  :series="chartOptions.series"
-                />
-                <div v-if="chartSeriesData.length === 0" class="chart-empty-tip">暂无数据，选择条件后将自动加载近3天数据</div>
-              </div>
-              <div v-else class="table-wrap">
-                <div class="table-wrap__scroll">
-                  <el-table :data="monitorDataList" border size="small">
-                    <el-table-column prop="dataTime" label="时间" min-width="180" align="center" />
-                    <el-table-column prop="deviceName" label="设备" width="150" align="center" />
-                    <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
-                    <el-table-column prop="attrName" label="指标" width="100" align="center"/>
-                    <el-table-column prop="value" label="数值" width="100" align="center" />
-                    <el-table-column prop="unit" label="单位" width="80" align="center" />
-                    <el-table-column prop="qualityText" label="质量" width="80" align="center" />
-                  </el-table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
-
-      <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
+    <!-- 隐患点详情组件 -->
+    <HazardPointDetail
+        ref="hazardPointDetailRef"
+        v-model:visible="detailDialogVisible"
+        :hazard-point="currentRow"
+        :bound-devices="boundDevices"
+        :alarm-criteria-list="alarmCriteriaList"
+        :dispatch-rules="dispatchRules"
+        @query-data="handleDetailQueryData"
+        @import-data="handleDetailImportData"
+        @export-data="handleDetailExportData"
+        @device-change="handleDetailDeviceChange"
+        @sensor-change="handleDetailSensorChange"
+    />
 
     <el-dialog
       v-model="alarmConfigDialogVisible"
@@ -982,6 +781,7 @@
 import {computed, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import TableSortHeader from '@/components/TableSortHeader.vue'
+import HazardPointDetail from './components/HazardPointDetail.vue'
 import {useTableSort} from '@/composables/useTableSort'
 import {
   ArrowLeft,
@@ -1012,6 +812,31 @@ import {useHazardPointMonitor} from './composables/useHazardPointMonitor'
 
 // ── Local refs shared between composables ──
 const boundDevices = ref<BoundDevice[]>([])
+
+// 添加ref
+const hazardPointDetailRef = ref<InstanceType<typeof HazardPointDetail> | null>(null)
+
+// 添加事件处理方法
+const handleDetailQueryData = (params: any) => {
+  // 调用监测数据查询
+  handleQueryData()
+}
+
+const handleDetailImportData = () => {
+  handleImportData()
+}
+
+const handleDetailExportData = () => {
+  handleExportData()
+}
+
+const handleDetailDeviceChange = (deviceId: string) => {
+  onDataDeviceChange(deviceId)
+}
+
+const handleDetailSensorChange = (sensorId: string) => {
+  onDataSensorChange(sensorId)
+}
 
 // ── CRUD composable ──
 const selectedGroupId = ref<string | null>(null)
@@ -1255,7 +1080,6 @@ const handleViewAndOpen = async (row: HazardPointItem) => {
   initDispatchRules(row.id)
   initLatestData(row.id)
   detailDialogVisible.value = true
-  // 地图由 <MapBoundaryPreview> 组件自管理生命周期,无需手动初始化
 }
 
 const handleOpenMap = () => {

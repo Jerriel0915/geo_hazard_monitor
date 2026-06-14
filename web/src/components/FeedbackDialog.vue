@@ -217,17 +217,8 @@
 
           <!-- 底部操作栏 -->
           <div class="event-footer">
-            <div class="action-left">
-              <el-input
-                v-model="remark"
-                type="textarea"
-                :rows="2"
-                placeholder="请输入处置备注..."
-                class="remark-input"
-              />
-            </div>
             <div class="action-right">
-              <el-button type="primary" size="small" @click="handleFeedback">
+              <el-button type="primary" size="small" @click="feedbackVisible = true">
                 <el-icon><ChatDotRound /></el-icon> 反馈
               </el-button>
               <el-button type="warning" size="small" @click="handleFalseAlarm">
@@ -236,7 +227,7 @@
               <el-button type="danger" size="small" @click="handleCloseAlarm">
                 <el-icon><CircleClose /></el-icon> 消警
               </el-button>
-              <el-button type="info" size="small" @click="handleNotify">
+              <el-button type="info" size="small" @click="notifyVisible = true">
                 <el-icon><Bell /></el-icon> 通知
               </el-button>
               <el-button size="small" @click="handleClose">
@@ -248,11 +239,15 @@
       </div>
     </div>
   </el-dialog>
+
+  <FeedBack v-model:visible="feedbackVisible" @submit="handleFeedbackSubmit"/>
+  <Notify v-model:visible="notifyVisible" @submit="handleNotifySubmit"/>
 </template>
 
 <script setup lang="ts">
-import type {Component} from 'vue'
 import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import FeedBack from "@/components/FeedBack.vue"
+import Notify from "@/components/Notify.vue"
 import {ElMessage} from 'element-plus'
 import {
   Bell,
@@ -289,10 +284,11 @@ const emit = defineEmits<{
   (e: 'notify', data: any): void
 }>()
 
-const remark = ref('')
 const activeTab = ref('monitor')
 const activeDataTab = ref('monitor')
 const chartRef = ref<HTMLDivElement | null>(null)
+const feedbackVisible = ref(false)
+const notifyVisible = ref(false)
 let chartInstance: echarts.ECharts | null = null
 
 // 生命周期节点
@@ -454,7 +450,7 @@ const updateChart = () => {
       }
     }],
     dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', show: true, start: 0, end: 100, height: 20, bottom: 0 }]
-  } as echarts.EChartsCoreOption, true)
+  },true)
 }
 
 const handleResize = () => { chartInstance?.resize() }
@@ -479,6 +475,32 @@ const dialogTitle = computed(() => {
   return `${props.data.hazardPointName}[${props.data.firstAlarmTime}]`
 })
 
+// 添加反馈提交处理
+const handleFeedbackSubmit = (data: { content: string; files: File[] }) => {
+  console.log('反馈内容:', data.content)
+  console.log('反馈文件:', data.files)
+  ElMessage.success('反馈提交成功')
+  emit('submit')
+}
+
+// 添加通知提交处理
+const handleNotifySubmit = (data: { content: string; channels: { sms: boolean; email: boolean; system: boolean }; personnel: string }) => {
+  console.log('消息内容:', data.content)
+  console.log('通知渠道:', data.channels)
+  console.log('通知人员:', data.personnel)
+
+  // 构建渠道显示文本
+  const channels = []
+  if (data.channels.sms) channels.push('短信')
+  if (data.channels.email) channels.push('邮件')
+  if (data.channels.system) channels.push('系统消息')
+
+  ElMessage.success(`已发送通知给${data.personnel === 'admin' ? '管理员' : '普通人员'}，渠道：${channels.join('、')}`)
+
+  // 如果有原来的 handleNotify 事件，可以继续触发
+  emit('notify', data)
+}
+
 const formatDuration = (startTime: string) => {
   if (!startTime) return '0小时0分0秒'
   const diff = Date.now() - new Date(startTime).getTime()
@@ -492,10 +514,8 @@ const getAlarmLevelType = (level: string) => ({ '1': 'danger', '2': 'warning', '
 const getAlarmLevelText = (level: string) => ({ '1': '一级', '2': '二级', '3': '三级', '4': '四级' } as Record<string, string>)[level] || level
 const getAlarmTypeText = (type: string) => ({ 'threshold': '阈值预警', 'comprehensive': '综合预警' } as Record<string, string>)[type] || type
 
-const handleFeedback = () => { emit('submit') }
 const handleFalseAlarm = () => { emit('false-alarm', props.data) }
 const handleCloseAlarm = () => { emit('close-alarm', props.data) }
-const handleNotify = () => { emit('notify', props.data); ElMessage.info('通知功能已触发') }
 const handleClose = () => { emit('update:modelValue', false); emit('close') }
 </script>
 
@@ -677,12 +697,13 @@ const handleClose = () => { emit('update:modelValue', false); emit('close') }
 
 /* ====== 底部操作栏 ====== */
 .event-footer {
-  display: flex; gap: 10px;
-  background: #fff; border-radius: 8px; border: 1px solid #e9ecef;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
   padding: 10px 12px;
 }
-.action-left { flex: 1; }
-.remark-input { width: 100%; resize: none; }
-.remark-input :deep(.el-textarea__inner) { font-size: 12px; padding: 8px; }
 .action-right { display: flex; gap: 6px; align-items: flex-end; }
 </style>
