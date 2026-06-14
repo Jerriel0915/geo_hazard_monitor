@@ -341,120 +341,12 @@
       </template>
     </el-dialog>
 
-    <!-- 设备详情弹窗 -->
-    <el-dialog
-        v-model="detailDialogVisible"
-        :title="`设备详情 — ${currentRow?.name || ''}`"
-        width="960px"
-        :close-on-click-modal="false"
-        destroy-on-close
-    >
-      <el-tabs v-model="detailTab">
-        <el-tab-pane label="设备详情" name="info">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="设备编号">{{ currentRow?.code }}</el-descriptions-item>
-            <el-descriptions-item label="设备名称">{{ currentRow?.name }}</el-descriptions-item>
-            <el-descriptions-item label="设备SN">{{ currentRow?.sn || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="接入协议">{{ currentRow?.protocolType || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="注册来源">{{ currentRow?.registerSource || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="接入账号">{{ currentRow?.authUsername || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="接入密码">
-              <template v-if="currentRow?.authPassword">
-                <span class="pwd-masked">{{ detailPwdVisible ? currentRow.authPassword : '••••••••' }}</span>
-                <el-button size="small" text type="primary" @click="detailPwdVisible = !detailPwdVisible">
-                  {{ detailPwdVisible ? '隐藏' : '查看' }}
-                </el-button>
-                <el-button size="small" text type="primary" @click="copyPwd(currentRow.authPassword)">复制</el-button>
-              </template>
-              <span v-else>-</span>
-            </el-descriptions-item>
-            <el-descriptions-item label="安装位置">
-              {{ formatCoord(currentRow?.longitude, currentRow?.latitude) }}
-              <el-button v-if="currentRow?.longitude != null" size="small" text type="primary"
-                         @click="openViewMap(currentRow)">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                查看
-              </el-button>
-            </el-descriptions-item>
-            <el-descriptions-item label="设备状态">
-              <el-tag :type="getStatusType(currentRow?.status || 0)" size="small">{{ currentRow?.statusName }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="在线状态">
-              <el-tag :type="currentRow?.onlineStatus === 1 ? 'success' : 'info'" size="small">
-                {{ currentRow?.onlineStatus === 1 ? '在线' : '离线' }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="最近上报时间">{{ currentRow?.lastReportTime || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ currentRow?.createTime || '-' }}</el-descriptions-item>
-          </el-descriptions>
-
-          <el-divider content-position="left">传感器列表</el-divider>
-          <el-table :data="sensorList" border size="small" v-loading="sensorLoading">
-            <el-table-column label="图标" width="60" align="center">
-              <template #default="{ row }">
-                <img v-if="getSensorIconPath(row)" :src="getSensorIconPath(row)" class="table-icon" alt="icon"/>
-                <span v-else class="empty-text">-</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center"/>
-            <el-table-column prop="sensorName" label="传感器名称" width="150" align="center"/>
-            <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center"/>
-            <el-table-column label="属性配置" min-width="250" align="center">
-              <template #default="{ row }">
-                <div v-for="attr in row.attrList" :key="attr.attrCode" class="attr-item">
-                  {{ attr.attrName }}: {{ attr.initialValue }}{{ attr.unit }}
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="运行状态变更" name="online">
-          <el-table :data="onlineLogs" border size="small" max-height="400">
-            <el-table-column prop="eventTime" label="时间" width="170"/>
-            <el-table-column prop="eventType" label="类型" width="80">
-              <template #default="{row}">
-                <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{
-                    row.eventType
-                  }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="clientId" label="Client ID" min-width="160"/>
-            <el-table-column prop="clientIp" label="IP" width="140"/>
-            <el-table-column prop="reason" label="原因" min-width="120"/>
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="维修记录" name="maintenance">
-          <el-table :data="maintenanceLogs" border size="small" max-height="400">
-            <el-table-column label="操作" width="80">
-              <template #default="{row}">
-                <el-tag :type="row.newStatus === 1 ? 'success' : row.newStatus === 2 ? 'danger' : 'info'"
-                        size="small">
-                  {{ row.statusText }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="状态变化" width="110">
-              <template #default="{row}">{{ getStatusLabel(row.oldStatus) }}→{{
-                  getStatusLabel(row.newStatus)
-                }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="operatorName" label="操作人" width="90"/>
-            <el-table-column prop="operatorPhone" label="电话" width="120"/>
-            <el-table-column prop="operationDate" label="操作日期" width="160"/>
-            <el-table-column prop="createTime" label="记录时间" width="160"/>
-            <el-table-column prop="description" label="描述" min-width="120"/>
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
-    </el-dialog>
+    <!-- 设备详情组件 -->
+    <DeviceDetail
+        v-model:visible="detailDialogVisible"
+        :device="currentRow"
+        @view-on-map="openViewMapFromDetail"
+    />
 
     <!-- 传感器配置弹窗 -->
     <el-dialog
@@ -642,6 +534,7 @@ import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Cpu, User, Plus} from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import DeviceDetail from './components/DeviceDetail.vue'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import MapLocationPickerDialog from '@/components/map/MapLocationPickerDialog.vue'
 import {type LatLng} from '@/lib/boundaryCoords'
@@ -659,17 +552,17 @@ import {
   updateSensor
 } from '@/api/sensor'
 import {getIconList} from '@/constants/monitorIcons'
-import {getDeviceIconPath, getDeviceIconPathGreen, getSensorIconPath} from '@/utils/deviceIcon'
+import {getDeviceIconPathGreen} from '@/utils/deviceIcon'
 import {type DeviceItem, useDeviceCrud} from './composables/useDeviceCrud'
 
 const {
   searchKeyword, searchStatus,
-  loading, refreshing, submitLoading, tableData, currentPage, pageSize, total,
+  loading, submitLoading, tableData, currentPage, pageSize, total,
   dialogVisible, dialogTitle, isEdit, isView, formRef, formData, formRules,
-  detailDialogVisible, detailPwdVisible, detailTab, currentRow,
-  getStatusType, getStatusLabel, copyPwd, formatCoord, nowString,
+  detailDialogVisible, currentRow,
+  getStatusType, nowString,
   loadTableData,
-  handleSearch, handleReset, handleRefresh, handleSizeChange, handlePageChange,
+  handleSearch, handleReset, handleSizeChange, handlePageChange,
   handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopy, handleExport,
 } = useDeviceCrud()
 
@@ -895,6 +788,11 @@ const availableOperationTypes = computed(() => {
   }
   return options
 })
+
+
+const openViewMapFromDetail = (device: DeviceItem) => {
+  openViewMap(device)
+}
 
 const openAuthDialog = async (device: DeviceItem, account?: DeviceAuthAccount) => {
   currentAuthDevice.value = device
