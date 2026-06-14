@@ -63,6 +63,7 @@ declare module 'vue' {
     MapPointPicker: typeof import('./src/components/map/MapPointPicker.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    TableSortHeader: typeof import('./src/components/TableSortHeader.vue')['default']
     VideoPlayer: typeof import('./src/components/VideoPlayer.vue')['default']
   }
   export interface GlobalDirectives {

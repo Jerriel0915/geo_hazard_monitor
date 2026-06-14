@@ -85,15 +85,23 @@
         <div class="table-wrap">
           <div class="table-wrap__scroll">
             <el-table
-              :data="tableData"
+              :data="sort.sorted(tableData)"
               border
               stripe
               v-loading="loading"
               @selection-change="handleSelectionChange"
             >
               <el-table-column type="selection" width="55" align="center" />
-              <el-table-column prop="code" label="编号" width="100" align="center" />
-              <el-table-column prop="name" label="名称" min-width="140" align="center" />
+              <el-table-column prop="code" label="编号" width="100" align="center">
+                <template #header>
+                  <TableSortHeader label="编号" :order="sortInfo.order && sortInfo.field === 'code' ? sortInfo.order : ''" @toggle="sort.toggle('code')" />
+                </template>
+              </el-table-column>
+              <el-table-column prop="name" label="名称" min-width="140" align="center">
+                <template #header>
+                  <TableSortHeader label="名称" :order="sortInfo.order && sortInfo.field === 'name' ? sortInfo.order : ''" @toggle="sort.toggle('name')" />
+                </template>
+              </el-table-column>
               <el-table-column prop="statusName" label="状态" width="100" align="center">
                 <template #default="{ row }">
                   <span :class="['status-badge', `status--${row.status.toLowerCase()}`]">
@@ -101,7 +109,10 @@
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column prop="groupName" label="分组" width="110" align="center">
+              <el-table-column label="分组" width="110" align="center">
+                <template #header>
+                  <TableSortHeader label="分组" :order="sortInfo.order && sortInfo.field === 'groupName' ? sortInfo.order : ''" @toggle="sort.toggle('groupName')" />
+                </template>
                 <template #default="{ row }">
                   <span>{{ row.groupName || '未分组' }}</span>
                 </template>
@@ -969,6 +980,8 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
+import TableSortHeader from '@/components/TableSortHeader.vue'
+import {useTableSort} from '@/composables/useTableSort'
 import {
   ArrowLeft,
   ArrowRight,
@@ -1097,10 +1110,13 @@ const {
   total, // from CRUD composable
 })
 
+// 表格排序
+const sort = useTableSort()
+const sortInfo = sort.sortInfo
+
 // Alias for template
 const groupDialogTitle = groupDlgTitle
 
-// Use group-aware version for template
 const statsGroupCount = groupStatsGroupCount
 
 // ── Remaining local state ──

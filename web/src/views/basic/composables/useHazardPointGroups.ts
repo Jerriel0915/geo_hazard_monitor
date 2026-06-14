@@ -1,4 +1,4 @@
-import {computed, reactive, ref, type Ref} from 'vue'
+import {computed, reactive, ref, watch, type Ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {
     createHazardPointGroup,
@@ -75,6 +75,12 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
 
     // ── Computed ──
     const groupOptions = computed(() => groupList.value.filter((g) => g.id !== 'all'))
+
+    // 同步"全部"分组的 count，跟随隐患点总数变化
+    watch(() => opts.total.value, (val) => {
+        const all = groupList.value.find(g => g.id === 'all')
+        if (all) all.count = val
+    })
 
     // ── Data loading ──
     const loadGroupPage = (page: number) => {
