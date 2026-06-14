@@ -395,7 +395,7 @@
           <el-table :data="sensorList" border size="small" v-loading="sensorLoading">
             <el-table-column label="图标" width="60" align="center">
               <template #default="{ row }">
-                <img v-if="getDeviceIconPathGreen(row)" :src="getDeviceIconPathGreen(row)" class="table-icon" alt="icon"/>
+                <img v-if="getSensorIconPath(row)" :src="getSensorIconPath(row)" class="table-icon" alt="icon"/>
                 <span v-else class="empty-text">-</span>
               </template>
             </el-table-column>
@@ -658,7 +658,7 @@ import {
   updateSensor
 } from '@/api/sensor'
 import {getIconList} from '@/constants/monitorIcons'
-import {getDeviceIconPath, getDeviceIconPathGreen} from '@/utils/deviceIcon'
+import {getDeviceIconPath, getDeviceIconPathGreen, getSensorIconPath} from '@/utils/deviceIcon'
 import {type DeviceItem, useDeviceCrud} from './composables/useDeviceCrud'
 
 const {

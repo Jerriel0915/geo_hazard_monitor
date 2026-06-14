@@ -12,6 +12,8 @@
  * <p>命名规则：{@code /jc-icon/{color}/{baseName}_{color}.png}</p>
  */
 
+import {MonitorContentIconEnum} from '@/constants/monitorIcons'
+
 export type IconColor = 'green' | 'gray' | 'red' | 'repair'
 
 /**
@@ -57,6 +59,15 @@ function resolveIconBaseName(input: {
 }
 
 /**
+ * green 目录下无独立的 vidio_green.png（仅有 vidio1~vidio10）。
+ * 当 baseName 为 vidio 或 vidio_green 时纠正为 vidio1。
+ */
+function correctVideoBaseName(baseName: string): string {
+    if (baseName === 'vidio' || baseName === 'vidio_green') return 'vidio1'
+    return baseName
+}
+
+/**
  * 根据设备当前状态动态构造图标 URL。
  * <p>默认颜色档位为 green（正常状态），仅当设备明确为故障/停用/离线时才切换其他颜色。</p>
  * <p>green 目录下无独立的 vidio_green.png，因此将前缀 vidio 纠正为 vidio1。</p>
@@ -75,7 +86,7 @@ export function getDeviceIconPath(device: {
     if (!iconPath || !iconPath.startsWith('/jc-icon/')) return iconPath
     const color = getDeviceIconColor(device.status, device.onlineStatus)
     const baseName = resolveIconBaseName(device)
-    const corrected = baseName === 'vidio' ? 'vidio1' : baseName
+    const corrected = correctVideoBaseName(baseName)
     return `/jc-icon/${color}/${corrected}_${color}.png`
 }
 
@@ -91,6 +102,41 @@ export function getDeviceIconPathGreen(device: {
     const iconPath = device.iconPath || ''
     if (!iconPath || !iconPath.startsWith('/jc-icon/')) return iconPath || `/jc-icon/green/device_green.png`
     const baseName = resolveIconBaseName(device)
-    const corrected = baseName === 'vidio' ? 'vidio1' : baseName
+    const corrected = correctVideoBaseName(baseName)
     return `/jc-icon/green/${corrected}_green.png`
+}
+
+/**
+ * 传感器图标：优先使用 sensor.icon 字段，其次根据 monitorTypeCode 反查图标枚举，
+ * 最后兜底为 device_green.png。
+ * green 目录下无独立的 vidio_green.png，因此将前缀 vidio 纠正为 vidio1。
+ */
+export function getSensorIconPath(sensor: {
+    sensorCode?: string
+    sensorName?: string
+    monitorTypeCode?: string
+    monitorTypeName?: string
+    icon?: string | null
+    iconPath?: string | null
+}): string {
+    // 直接有 icon
+    if (sensor.icon && sensor.icon.trim()) {
+        return `/jc-icon/green/${sensor.icon.trim()}_green.png`
+    }
+    // 从 iconPath 解析
+    if (sensor.iconPath && sensor.iconPath.startsWith('/jc-icon/')) {
+        const baseName = resolveIconBaseName({ iconPath: sensor.iconPath })
+        const corrected = correctVideoBaseName(baseName)
+        return `/jc-icon/green/${corrected}_green.png`
+    }
+    // 根据 monitorTypeCode 反查 MonitorContentIconEnum
+    if (sensor.monitorTypeCode) {
+        const code = sensor.monitorTypeCode.toUpperCase()
+        const enumEntries = Object.values(MonitorContentIconEnum)
+        const found = enumEntries.find(e => e.code === code)
+        if (found) {
+            return `/jc-icon/green/${found.icon}_green.png`
+        }
+    }
+    return ''
 }
