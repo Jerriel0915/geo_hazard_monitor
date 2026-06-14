@@ -454,7 +454,7 @@ const updateChart = () => {
       }
     }],
     dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', show: true, start: 0, end: 100, height: 20, bottom: 0 }]
-  } as echarts.EChartsOption, true)
+  } as echarts.EChartsCoreOption, true)
 }
 
 const handleResize = () => { chartInstance?.resize() }

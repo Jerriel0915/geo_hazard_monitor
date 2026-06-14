@@ -27,6 +27,12 @@
             <if test="username != null and username != ''">
                 and username like concat('%', #{username}, '%')
             </if>
+            <if test="title != null and title != ''">
+                and title like concat('%', #{title}, '%')
+            </if>
+            <if test="apiPath != null and apiPath != ''">
+                and api_path like concat('%', #{apiPath}, '%')
+            </if>
             <if test="keyword != null and keyword != ''">
                 and (title like concat('%', #{keyword}, '%')
                 or api_path like concat('%', #{keyword}, '%')

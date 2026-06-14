@@ -62,6 +62,20 @@ export function useLogQuery<T extends Record<string, any>, R>(
     const fetch = async () => {
         loading.value = true
         try {
+            // 过滤空串/空数组/null，避免向 URL 推送 `username=&timeRange[]=` 之类的噪声
+            const cleanedForm = Object.entries(searchForm).reduce<Record<string, unknown>>(
+                (acc, [key, value]) => {
+                    if (key === 'timeRange') {
+                        return acc
+                    }
+                    if (value === '' || value === null || value === undefined) {
+                        return acc
+                    }
+                    acc[key] = value
+                    return acc
+                },
+                {},
+            )
             const response = await axios.get<{
                 code: number;
                 msg: string;
@@ -70,7 +84,7 @@ export function useLogQuery<T extends Record<string, any>, R>(
                 params: {
                     pageNum: pagination.page,
                     pageSize: pagination.size,
-                    ...searchForm,
+                    ...cleanedForm,
                     ...buildTimeParams((searchForm as any).timeRange || []),
                     ...(opts.extraParams?.() || {}),
                 },
