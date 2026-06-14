@@ -229,7 +229,7 @@ const initBarChart = () => {
 
   barChartInstance = echarts.init(barChartRef.value)
 
-  const option: echarts.EChartsOption = {
+  const option: echarts.EChartsCoreOption = {
     tooltip: {
       trigger: 'axis',
       axisPointer: {
@@ -310,7 +310,7 @@ const initPieChart = () => {
 
   pieChartInstance = echarts.init(pieChartRef.value)
 
-  const option: echarts.EChartsOption = {
+  const option: echarts.EChartsCoreOption = {
     tooltip: {
       trigger: 'item',
       formatter: '{a} <br/>{b}: {c}% ({d}%)'
@@ -376,7 +376,7 @@ const initPyramidChart = () => {
 
   pyramidChartInstance = echarts.init(pyramidChartRef.value)
 
-  const option: echarts.EChartsOption = {
+  const option: echarts.EChartsCoreOption = {
     tooltip: {
       trigger: 'axis',
       axisPointer: {

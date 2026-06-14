@@ -718,7 +718,7 @@ const updateChart = () => {
         }))
       }
     }]
-  } as echarts.EChartsOption, true)
+  } as echarts.EChartsCoreOption, true)
 }
 
 const handleResize = () => { chartInstance?.resize() }

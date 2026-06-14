@@ -3,7 +3,7 @@
     <!-- Edge 浏览器兼容性提示 -->
     <div v-if="isEdge && !edgeTipDismissed" class="edge-warning-bar">
       <span class="edge-warning-icon">⚠</span>
-      <span>检测到您正在使用 Edge 浏览器，地图绘制功能可能存在兼容性问题，建议使用 <strong>Chrome</strong> 浏览器以获得最佳体验。</span>
+      <span>检测到您正在使用 Edge 浏览器，可能存在兼容性问题，建议使用 <strong>Chrome</strong> 浏览器以获得最佳体验。</span>
       <button class="edge-warning-close" @click="edgeTipDismissed = true">✕</button>
     </div>
     <header class="header">

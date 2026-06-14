@@ -26,7 +26,7 @@
 
 | 子包           | 职责                                                                                                                                                                                                                                    |
 |--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `controller` | `MonitorDataController` (最新/分页/图表查询)                                                                                                                                                                                                  |
+| `controller` | `MonitorDataController` (hazardPointId 入口) + `MonitorDataSensorController` (sensorCode 入口,5 端点)                                                                                                                                   |
 | `service`    | `IotdbTimeSeriesService` (核心) / `IotdbJdbcClient` / `MonitorIngestFacade` / `MonitorIngestStreamService` / `MonitorIngestConsumerService` / `MonitorMetadataService` / `MonitorDataQueryService` / `impl/TimeSeriesSchemaServiceImpl` |
 | `parser`     | `MonitorPayloadParser` (接口) / `SysMonitorPayloadParser` / `GbMonitorPayloadParser`                                                                                                                                                    |
 | `support`    | `MonitorTopic` / `MonitorTopicParser` / `IotdbPathResolver`                                                                                                                                                                           |
@@ -98,7 +98,9 @@ Field sensors → MQTT (mica-mqtt) → MqttServerMessageListener
 
 | 类                              | 文件                                              | 关键方法 / 责任                                                                                                                                |
 |--------------------------------|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `IotdbTimeSeriesService`       | `service/IotdbTimeSeriesService.java`           | `writePoints` / `queryLatest` / `queryRange` / `queryRangePaged` / `countRange` / `createSensorSchema` / `queryRange(...ValueType)` (聚合) |
+| `IotdbTimeSeriesService`       | `service/IotdbTimeSeriesService.java`           | `writePoints` / `queryLatest` / `queryRange` / `queryRangePaged` / `countRange` / `createSensorSchema` / `queryAggregate` / `queryDelta` / `queryCompleteness` / `queryTrend` / `queryLatestBySensor` / `queryRangeBySensor` |
+| `MonitorDataAggregationService` | `service/MonitorDataAggregationService.java`    | `aggregate` / `aggregateAllAttrs` / `delta` — 表达式驱动聚合 |
+| `MonitorDataAnalysisService`    | `service/MonitorDataAnalysisService.java`       | `completeness` / `trend` — 派生统计 |
 | `MonitorIngestFacade`          | `service/MonitorIngestFacade.java`              | `ingest(topic, message, deviceId)` — 串联 topic 解析+元数据+解析器+入队                                                                              |
 | `MonitorIngestStreamService`   | `service/MonitorIngestStreamService.java`       | `enqueue(points)` / `enqueueDeadLetter` — Redis Stream 写入/死信                                                                             |
 | `MonitorIngestConsumerService` | `service/MonitorIngestConsumerService.java`     | 入口 `@EventListener(ApplicationReadyEvent)`，循环 `consume()` + `processRecord()` (4 阶段)                                                     |
@@ -108,6 +110,38 @@ Field sensors → MQTT (mica-mqtt) → MqttServerMessageListener
 | `IotdbPathResolver`            | `support/IotdbPathResolver.java`                | `buildSensorPath()` / `buildMeasurementPath()`                                                                                           |
 | `MonitorTopicParser`           | `support/MonitorTopicParser.java`               | `parse(topic)` 提取 (protocol, deviceCode, sensorNo)                                                                                       |
 | `TimeSeriesSchemaServiceImpl`  | `service/impl/TimeSeriesSchemaServiceImpl.java` | `createSensorSchema()` (注册冷路径预建)                                                                                                         |
+
+## 查询能力矩阵
+
+| 维度 | hazardPointId 入口(保留) | sensorCode 入口(新增) |
+|---|---|---|
+| 最新值 | `/api/v1/monitor-data/latest` | `/api/v1/monitor-data/sensor/latest` |
+| 区间数据 | `/api/v1/monitor-data/page` | `/api/v1/monitor-data/sensor/range` (支持 minValue/maxValue) |
+| 聚合 | `/api/v1/monitor-data/chart` | `/api/v1/monitor-data/sensor/aggregate` (多表达式 + 数值范围) |
+| delta | — | `/api/v1/monitor-data/sensor/aggregate` (传 LAST-FIRST 表达式) |
+| 完整度 | — | `/api/v1/monitor-data/sensor/completeness` |
+| 趋势 | — | `/api/v1/monitor-data/sensor/trend` |
+
+## ExpressionSpec DSL
+
+`AggregationFunction` 白名单枚举: `AVG/MAX/MIN/SUM/COUNT/FIRST_VALUE/LAST_VALUE/EXTREME/STDDEV/P50/P95/P99`。
+
+表达式组合通过 sealed `ExpressionSpec`:
+- `FunctionCall(func)` — 单函数
+- `BinaryOp(left, op, right)` — 二元运算,op ∈ {+, -, *, /}
+- `Constant(value)` — 标量
+
+常见组合:
+- `MAX - MIN` → 极差(别名 `MAX-MIN`)
+- `LAST_VALUE - FIRST_VALUE` → **delta**(别名 `DELTA`,自动映射)
+- `(MAX - MIN) / AVG` → 变异系数
+
+## 安全边界
+
+- SQL 拼接仅从 `AggregationFunction` 枚举取值,无法注入任意函数
+- `ExpressionSpec` 是 sealed interface,子类型编译期固定
+- 表达式嵌套深度 ≤ 5,别名长度 ≤ 64
+- `attrCode`/`sensorCode` 走 `IotdbPathResolver`,不直接拼 SQL
 
 ## Redis Key / Stream 模式
 
@@ -182,3 +216,4 @@ A: `IotdbTimeSeriesService` 写入成功后由 `MonitorIngestConsumerService` �
 |------------------|--------------------------------------------------------------------------------------------------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描)                                                                                        |
 | 2026-06-10 19:08 | 增量补扫: 修正路径 `ingest/` → `service/`，`query/` → 实际为 `MonitorDataQueryService`；新增核心实现类索引、Redis Key 模式、四阶段处理流程、三段退避重试说明 |
+| 2026-06-14 | 新增查询能力增强: ExpressionSpec DSL + 数值范围 + 完整度/趋势 — 详见 specs/2026-06-14-timeseries-query-enhancement-design |

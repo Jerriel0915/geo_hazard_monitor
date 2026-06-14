@@ -2,9 +2,7 @@ package com.zwei.iot.timeseries.service;
 
 import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.timeseries.config.IotdbProperties;
-import com.zwei.iot.timeseries.domain.IotdbQueryRow;
-import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
-import com.zwei.iot.timeseries.domain.ValueType;
+import com.zwei.iot.timeseries.domain.*;
 import com.zwei.iot.timeseries.support.IotdbPathResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,9 +12,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -51,6 +47,7 @@ public class IotdbTimeSeriesService {
     private final IotdbJdbcClient jdbcClient;
     private final IotdbProperties properties;
     private final IotdbPathResolver pathResolver;
+    private final ExpressionSpecRenderer renderer;
     private final ConcurrentMap<String, Boolean> createdMeasurements = new ConcurrentHashMap<>();
     private volatile boolean databaseReady;
 
@@ -60,14 +57,17 @@ public class IotdbTimeSeriesService {
      * @param jdbcClient   IoTDB JDBC 客户端
      * @param properties   IoTDB 配置
      * @param pathResolver 路径解析器
+     * @param renderer     表达式渲染器
      */
     @Autowired
     public IotdbTimeSeriesService(IotdbJdbcClient jdbcClient,
                                   IotdbProperties properties,
-                                  IotdbPathResolver pathResolver) {
+                                  IotdbPathResolver pathResolver,
+                                  ExpressionSpecRenderer renderer) {
         this.jdbcClient = jdbcClient;
         this.properties = properties;
         this.pathResolver = pathResolver;
+        this.renderer = renderer;
     }
 
     /**
@@ -359,6 +359,295 @@ public class IotdbTimeSeriesService {
             return 0;
         }
     }
+
+    // ==================== 增强查询方法 (Tasks 6-11) ====================
+
+    /**
+     * 批量查询某传感器下多个 attrCode 的最新值。
+     *
+     * @param deviceId   设备ID
+     * @param sensorCode 传感器编号
+     * @param attrCodes  指标编码列表
+     * @return 每个 attrCode 的最新值行(单测点)
+     */
+    public List<IotdbQueryRow> queryLatestBySensor(Long deviceId, String sensorCode, List<String> attrCodes) {
+        if (attrCodes == null || attrCodes.isEmpty()) {
+            return List.of();
+        }
+        List<IotdbQueryRow> rows = new ArrayList<>();
+        for (String attrCode : attrCodes) {
+            IotdbQueryRow row = queryLatest(deviceId, sensorCode, attrCode);
+            if (row != null && row.value() != null) {
+                rows.add(row);
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * 查询某传感器下多个 attrCode 的区间数据(支持数值范围 WHERE)。
+     *
+     * @param deviceId   设备ID
+     * @param sensorCode 传感器编号
+     * @param attrCodes  指标编码列表
+     * @param startTime  开始时间(毫秒),可空
+     * @param endTime    结束时间(毫秒),可空
+     * @param minValue   数值下限(可空,WHERE {@code attrCode >= minValue})
+     * @param maxValue   数值上限(可空,WHERE {@code attrCode <= maxValue})
+     * @param limit      返回条数上限
+     * @param offset     偏移量
+     * @return {@code Map<attrCode, List<IotdbQueryRow>>}
+     */
+    public Map<String, List<IotdbQueryRow>> queryRangeBySensor(
+            Long deviceId, String sensorCode, List<String> attrCodes,
+            Long startTime, Long endTime,
+            Double minValue, Double maxValue,
+            int limit, int offset) {
+        if (attrCodes == null || attrCodes.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, List<IotdbQueryRow>> result = new LinkedHashMap<>();
+        for (String attrCode : attrCodes) {
+            result.put(attrCode, queryRangeWithValueFilter(
+                    deviceId, sensorCode, attrCode,
+                    startTime, endTime, minValue, maxValue, limit, offset));
+        }
+        return result;
+    }
+
+    private List<IotdbQueryRow> queryRangeWithValueFilter(
+            Long deviceId, String sensorCode, String attrCode,
+            Long startTime, Long endTime,
+            Double minValue, Double maxValue,
+            int limit, int offset) {
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
+        StringBuilder sql = new StringBuilder("SELECT ")
+                .append(attrCode).append(", quality FROM ")
+                .append(pathResolver.buildSensorPath(deviceId, sensorCode));
+        List<String> where = new ArrayList<>();
+        if (startTime != null) where.add("time >= " + startTime);
+        if (endTime != null)   where.add("time < " + endTime);
+        if (minValue != null)  where.add(attrCode + " >= " + minValue);
+        if (maxValue != null)  where.add(attrCode + " <= " + maxValue);
+        if (!where.isEmpty())  sql.append(" WHERE ").append(String.join(" AND ", where));
+        sql.append(" ORDER BY TIME DESC LIMIT ").append(limit).append(" OFFSET ").append(offset);
+
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
+        List<IotdbQueryRow> rows = new ArrayList<>();
+        try (Connection connection = jdbcClient.getConnection();
+             Statement statement = connection.createStatement()) {
+            ResultSet rs = statement.executeQuery(sql.toString());
+            while (rs.next()) {
+                Double v = safeGetDouble(rs, attrCol);
+                if (v == null) continue;
+                rows.add(IotdbQueryRow.builder()
+                        .time(rs.getLong("Time"))
+                        .value(v)
+                        .quality(safeGetInteger(rs, qualityCol))
+                        .build());
+            }
+            return rows;
+        } catch (SQLException e) {
+            throw new ServiceException("查询 IoTDB 区间数据失败")
+                    .setDetailMessage(e.getMessage());
+        }
+    }
+
+    /**
+     * 多表达式聚合查询(支持白名单函数 + 表达式组合 + 数值范围 WHERE + 时间窗口 GROUP BY)。
+     *
+     * <p>对应 IoTDB SQL 模板:</p>
+     * <pre>
+     * SELECT {expr1} AS `alias1`, {expr2} AS `alias2`, ... FROM {sensorPath}
+     * [WHERE time >= start AND time < end AND attr >= min AND attr <= max]
+     * [GROUP BY ([start, end), interval)]
+     * </pre>
+     *
+     * @return 按时间分组的结果列表,每行 = {@code AggregationResultVO}
+     */
+    public List<AggregationResultVO> queryAggregate(
+            Long deviceId, String sensorCode, String attrCode,
+            TimeWindowSpec window,
+            List<ExpressionSpec> expressions,
+            Double minValue, Double maxValue) {
+        if (expressions == null || expressions.isEmpty()) {
+            throw new IllegalArgumentException("表达式列表不能为空");
+        }
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
+
+        String sensorPath = pathResolver.buildSensorPath(deviceId, sensorCode);
+        StringBuilder sql = new StringBuilder("SELECT ");
+        List<String> aliases = new ArrayList<>();
+        for (int i = 0; i < expressions.size(); i++) {
+            ExpressionSpec expr = expressions.get(i);
+            String exprSql = renderer.render(expr, attrCode);
+            String alias = renderer.alias(expr);
+            sql.append(exprSql).append(" AS `").append(alias).append("`");
+            aliases.add(alias);
+            if (i < expressions.size() - 1) sql.append(", ");
+        }
+        sql.append(" FROM ").append(sensorPath);
+
+        // WHERE
+        List<String> where = new ArrayList<>();
+        if (window.startTime() != null) where.add("time >= " + window.startTime());
+        if (window.endTime() != null)   where.add("time < " + window.endTime());
+        if (minValue != null)           where.add(attrCode + " >= " + minValue);
+        if (maxValue != null)           where.add(attrCode + " <= " + maxValue);
+        if (!where.isEmpty())           sql.append(" WHERE ").append(String.join(" AND ", where));
+
+        // GROUP BY
+        if (window.granularity() != TimeWindowSpec.WindowGranularity.RAW) {
+            long start = window.startTime() != null ? window.startTime() : 0L;
+            long end   = window.endTime()   != null ? window.endTime()   : System.currentTimeMillis();
+            String interval = window.granularity().toGroupByInterval();
+            sql.append(" GROUP BY ([")
+                    .append(start).append(", ").append(end)
+                    .append("), ").append(interval).append(")");
+        }
+
+        List<AggregationResultVO> results = new ArrayList<>();
+        try (Connection connection = jdbcClient.getConnection();
+             Statement statement = connection.createStatement()) {
+            ResultSet rs = statement.executeQuery(sql.toString());
+            while (rs.next()) {
+                Map<String, Double> metrics = new LinkedHashMap<>();
+                for (String alias : aliases) {
+                    // IoTDB ResultSet 列名为 AS 后的别名(不带反引号)
+                    Double v = safeGetDouble(rs, alias);
+                    if (v != null) {
+                        metrics.put(alias, v);
+                    }
+                }
+                results.add(new AggregationResultVO(
+                        deviceId, sensorCode, attrCode, null, null,
+                        rs.getLong("Time"),
+                        metrics
+                ));
+            }
+            return results;
+        } catch (SQLException e) {
+            throw new ServiceException("查询 IoTDB 多表达式聚合失败")
+                    .setDetailMessage(e.getMessage());
+        }
+    }
+
+    /**
+     * 计算时间窗口内某指标的首末差值 (LAST_VALUE - FIRST_VALUE)。
+     *
+     * <p>等价于 {@code queryAggregate} 传 {@code BinaryOp(LAST_VALUE, SUB, FIRST_VALUE)}。</p>
+     *
+     * @return 单个 {@link AggregationResultVO},{@code metrics} 含 {@code DELTA} 键
+     */
+    public AggregationResultVO queryDelta(
+            Long deviceId, String sensorCode, String attrCode, TimeWindowSpec window) {
+        ExpressionSpec delta = new ExpressionSpec.BinaryOp(
+                new ExpressionSpec.FunctionCall(AggregationFunction.LAST_VALUE),
+                ExpressionSpec.BinaryOperator.SUB,
+                new ExpressionSpec.FunctionCall(AggregationFunction.FIRST_VALUE));
+        List<AggregationResultVO> results = queryAggregate(
+                deviceId, sensorCode, attrCode, window, List.of(delta), null, null);
+        if (results.isEmpty()) {
+            return null;
+        }
+        AggregationResultVO first = results.get(0);
+        return new AggregationResultVO(
+                first.deviceId(), first.sensorCode(), first.attrCode(),
+                first.attrName(), first.unit(),
+                first.time(), first.metrics());
+    }
+
+    /**
+     * 计算时间窗口内的数据完整度。
+     *
+     * <p>期望点 = (endTime - startTime) / expectedIntervalMs(若为空则用 60s 兜底)。
+     * 实际点 = IoTDB COUNT 查询结果。</p>
+     */
+    public CompletenessReportVO queryCompleteness(
+            Long deviceId, String sensorCode, String attrCode,
+            TimeWindowSpec window, Long expectedIntervalMs) {
+        long start = window.startTime() != null ? window.startTime() : 0L;
+        long end = window.endTime() != null ? window.endTime() : System.currentTimeMillis();
+        long interval = expectedIntervalMs != null && expectedIntervalMs > 0 ? expectedIntervalMs : 60_000L;
+        long expectedPoints = (end - start) / interval;
+        if (expectedPoints <= 0) {
+            expectedPoints = 1;
+        }
+
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        StringBuilder sql = new StringBuilder("SELECT COUNT(")
+                .append(attrCode).append(") FROM ")
+                .append(pathResolver.buildSensorPath(deviceId, sensorCode));
+        if (window.startTime() != null || window.endTime() != null) {
+            sql.append(" WHERE ");
+            if (window.startTime() != null) sql.append("time >= ").append(window.startTime());
+            if (window.startTime() != null && window.endTime() != null) sql.append(" AND ");
+            if (window.endTime() != null) sql.append("time < ").append(window.endTime());
+        }
+        String countCol = "COUNT(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
+        long actualPoints = 0;
+        try (Connection connection = jdbcClient.getConnection();
+             Statement statement = connection.createStatement()) {
+            ResultSet rs = statement.executeQuery(sql.toString());
+            if (rs.next()) {
+                actualPoints = rs.getLong(countCol);
+            }
+        } catch (SQLException e) {
+            log.warn("查询 IoTDB 完整度失败: deviceId={}, sensorCode={}, attrCode={}", deviceId, sensorCode, attrCode, e);
+        }
+        double rate = expectedPoints > 0 ? (double) actualPoints / expectedPoints : 0D;
+        rate = Math.min(rate, 1.0);
+        return new CompletenessReportVO(
+                deviceId, sensorCode, attrCode,
+                expectedPoints, actualPoints, rate, 1.0 - rate,
+                actualPoints > 0 ? end : null);
+    }
+
+    /**
+     * 计算时间窗口内某指标的端点斜率(变化率近似)。
+     *
+     * <p>采用端点斜率近似:(LAST_VALUE - FIRST_VALUE) / 时长,
+     * 不是严格最小二乘回归。噪声大的数据偏差较大。</p>
+     *
+     * @return 趋势报告,无数据时 direction="unknown"
+     */
+    public TrendReportVO queryTrend(
+            Long deviceId, String sensorCode, String attrCode, TimeWindowSpec window) {
+        long start = window.startTime() != null ? window.startTime() : 0L;
+        long end = window.endTime() != null ? window.endTime() : System.currentTimeMillis();
+        long duration = end - start;
+        if (duration <= 0) {
+            return new TrendReportVO(deviceId, sensorCode, attrCode, start, end,
+                    null, null, null, null, null, "unknown");
+        }
+
+        AggregationResultVO delta = queryDelta(deviceId, sensorCode, attrCode, window);
+        if (delta == null || delta.metrics() == null || !delta.metrics().containsKey("DELTA")) {
+            return new TrendReportVO(deviceId, sensorCode, attrCode, start, end,
+                    null, null, null, null, null, "unknown");
+        }
+        double deltaValue = delta.metrics().get("DELTA");
+        double slopePerMs = deltaValue / duration;
+        double ratePerHour = slopePerMs * 3_600_000D;
+        double ratePerDay = slopePerMs * 86_400_000D;
+
+        String direction;
+        if (Math.abs(slopePerMs) < 1.0e-9) {
+            direction = "stable";
+        } else if (slopePerMs > 0) {
+            direction = "rising";
+        } else {
+            direction = "falling";
+        }
+
+        return new TrendReportVO(deviceId, sensorCode, attrCode, start, end,
+                slopePerMs, ratePerHour, ratePerDay, null, null, direction);
+    }
+
+    // ==================== 内部私有方法 ====================
 
     /**
      * 确保 IoTDB 数据库存在。

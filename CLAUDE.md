@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 2026-06-10 21:20 | **移除 `server/zwei-iot` 兼容空壳模块**                                                                                           | 父 POM + `zwei-admin`/`zwei-monitor` POM + Dockerfile 全部引用清空；Maven 验证 14 模块 BUILD SUCCESS                                                                                                  |
 | 2026-06-10 19:08 | **增量补扫 P0-P3**: 6 个核心模块 (alarm/timeseries/device/hazard/video/broker/monitor) 新增"核心实现类索引"小节; 修正多处 `service/impl/` 等子包路径错误 | alarm 5 个 engine 类 + 5 个 service impl + notify 双 SSE; timeseries 4 阶段 + Redis Stream 三段退避; device 设备状态机 + 自注册 7 步; hazard REPEATABLE READ 安全 device_count; broker 10 步鉴权; monitor 8 维度健康分 |
 | 2026-06-10 19:08 | 新增 `db/CLAUDE.md` (59 张表清单 + 业务域分组 + E-R 关系图 + 初始化数据)                                                                     | 9 大业务域 + Mermaid `erDiagram` + 关键记录数                                                                                                                                                      |
+| 2026-06-14 17:30 | 增强 iot-timeseries 查询能力 | 7 domain + 2 service + 1 controller + IotdbTimeSeriesService 新增 6 方法,ExpressionSpec DSL + 数值范围 + 完整度/趋势 |
 | 2026-06-10 19:08 | 模块索引表追加 `db` 行                                                                                                            | MySQL 8.0 全量脚本 + 升级                                                                                                                                                                       |
 
 ## Project Overview
@@ -138,7 +139,7 @@ graph TD
 | `zwei-monitor`        | `server/zwei-monitor`        | 系统监控: 服务器/Redis/MQTT/仪表盘          | [CLAUDE.md](./server/zwei-monitor/CLAUDE.md)        |
 | `zwei-iot-monitor`    | `server/zwei-iot-monitor`    | 监测字典 (category/type/content) — 叶子 | [CLAUDE.md](./server/zwei-iot-monitor/CLAUDE.md)    |
 | `zwei-iot-device`     | `server/zwei-iot-device`     | 设备/传感器/注册 + 跨模块接口定义               | [CLAUDE.md](./server/zwei-iot-device/CLAUDE.md)     |
-| `zwei-iot-timeseries` | `server/zwei-iot-timeseries` | IoTDB 读写 + MQTT payload 解析        | [CLAUDE.md](./server/zwei-iot-timeseries/CLAUDE.md) |
+| `zwei-iot-timeseries` | `server/zwei-iot-timeseries` | IoTDB 读写 + 监测数据查询 + 表达式驱动聚合 + 完整度/趋势 | [CLAUDE.md](./server/zwei-iot-timeseries/CLAUDE.md) |
 | `zwei-iot-broker`     | `server/zwei-iot-broker`     | MQTT 鉴权/会话/ACL                    | [CLAUDE.md](./server/zwei-iot-broker/CLAUDE.md)     |
 | `zwei-iot-hazard`     | `server/zwei-iot-hazard`     | 隐患点/分组/设备绑定                       | [CLAUDE.md](./server/zwei-iot-hazard/CLAUDE.md)     |
 | `zwei-iot-video`      | `server/zwei-iot-video`      | 视频设备 + 隐患点关联                      | [CLAUDE.md](./server/zwei-iot-video/CLAUDE.md)      |

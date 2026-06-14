@@ -10,6 +10,8 @@ import java.util.Date;
 public class OperationLogQuery {
 
     private String username;
+    private String title;
+    private String apiPath;
     private String keyword;
     private String execStatus;
     private Date startTime;
@@ -17,6 +19,22 @@ public class OperationLogQuery {
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getApiPath() {
+        return apiPath;
+    }
+
+    public void setApiPath(String apiPath) {
+        this.apiPath = apiPath;
+    }
     public String getKeyword() { return keyword; }
     public void setKeyword(String keyword) { this.keyword = keyword; }
     public String getExecStatus() { return execStatus; }

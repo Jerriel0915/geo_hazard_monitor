@@ -2,6 +2,7 @@ package com.zwei.iot.device.service;
 
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -18,6 +19,15 @@ public interface IDeviceSensorService {
      * @return 传感器列表
      */
     List<DeviceSensor> selectSensorListByDeviceId(Long deviceId);
+
+    /**
+     * 根据设备ID和传感器编码查询传感器（含 attrList）。
+     *
+     * @param deviceId   设备ID
+     * @param sensorCode 传感器编码
+     * @return 传感器详情（null 表示不存在）
+     */
+    DeviceSensor selectSensorByDeviceIdAndCode(@Param("deviceId") Long deviceId, @Param("sensorCode") String sensorCode);
 
     /**
      * 根据ID查询传感器详情
