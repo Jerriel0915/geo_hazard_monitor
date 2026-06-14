@@ -7,7 +7,7 @@
       </div>
       <div class="header__right">
         <el-button type="primary" @click="handleAdd">+ 新增</el-button>
-        <el-button @click="handleExport" :disabled="tableData.length === 0">导出当前查询结果</el-button>
+        <el-button @click="handleExport" :disabled="loading">导出</el-button>
       </div>
     </div>
 
@@ -65,14 +65,19 @@
               <TableSortHeader label="排序号" :order="sortInfo.order && sortInfo.field === 'sortOrder' ? sortInfo.order : ''" @toggle="sort.toggle('sortOrder')" />
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="状态" width="90" align="center">
+          <el-table-column prop="status" label="状态" width="110" align="center">
             <template #header>
               <TableSortHeader label="状态" :order="sortInfo.order && sortInfo.field === 'status' ? sortInfo.order : ''" @toggle="sort.toggle('status')" />
             </template>
             <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
-                {{ row.status === 1 ? '启用' : '禁用' }}
-              </el-tag>
+              <el-switch
+                :model-value="row.status === 1"
+                :loading="statusTogglingId === row.id"
+                active-text="启用"
+                inactive-text="停用"
+                inline-prompt
+                @change="(val: boolean) => handleStatusChange(row, val)"
+              />
             </template>
           </el-table-column>
           <el-table-column prop="createBy" label="创建人" width="100" align="center" />
@@ -87,21 +92,11 @@
               <TableSortHeader label="修改时间" :order="sortInfo.order && sortInfo.field === 'updateTime' ? sortInfo.order : ''" @toggle="sort.toggle('updateTime')" />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200" fixed="right" align="center">
+          <el-table-column label="操作" width="140" fixed="right" align="center">
             <template #default="{ row }">
               <div class="op-cell">
                 <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
                 <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
-                <el-dropdown trigger="hover" @command="(cmd: string) => handleMoreCommand(cmd, row)">
-                  <el-button type="primary" text size="small">更多</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="delete">
-                        <span style="color: #f56c6c">删除</span>
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
               </div>
             </template>
           </el-table-column>
@@ -214,7 +209,7 @@
             empty-text="暂无监测内容，可按需添加"
             :header-cell-style="{ background: '#f5f7fa', color: '#303133' }"
           >
-            <el-table-column label="内容编码" min-width="180" align="center">
+            <el-table-column label="内容编码" width="150" align="center">
               <template #default="{ row }">
                 <el-input
                   v-model="row.code"
@@ -224,7 +219,7 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="内容名称" min-width="180" align="center">
+            <el-table-column label="内容名称" width="150" align="center">
               <template #default="{ row }">
                 <el-input
                   v-model="row.name"
@@ -234,7 +229,7 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="指标类型" width="160" align="center">
+            <el-table-column label="指标类型" width="110" align="center">
               <template #default="{ row }">
                 <el-select
                   v-model="row.indicatorType"
@@ -251,12 +246,12 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="单位" width="120" align="center">
+            <el-table-column label="单位" width="80" align="center">
               <template #default="{ row }">
                 <el-input v-model="row.unit" placeholder="自动带出" :disabled="true" />
               </template>
             </el-table-column>
-            <el-table-column label="最小值" width="150" align="center">
+            <el-table-column label="最小值" width="110" align="center">
               <template #default="{ row }">
                 <el-input-number
                   v-model="row.rangeMin"
@@ -267,7 +262,7 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="最大值" width="150" align="center">
+            <el-table-column label="最大值" width="110" align="center">
               <template #default="{ row }">
                 <el-input-number
                   v-model="row.rangeMax"
@@ -328,7 +323,7 @@ import {
   type MonitorContentItem,
   type MonitorTypeItem,
   removeMonitorContent,
-  removeMonitorType,
+  toggleMonitorTypeStatus,
   updateMonitorContent,
   updateMonitorType
 } from '@/api/monitorType'
@@ -375,6 +370,7 @@ const isEdit = ref(false)
 const formRef = ref<FormInstance>()
 const typeIconDialogVisible = ref(false)
 const originalContents = ref<MonitorContentItem[]>([])
+const statusTogglingId = ref<number | null>(null)
 
 const formData = reactive<{
   id?: number
@@ -722,30 +718,29 @@ const handleView = async (row: MonitorTypeItem) => {
   }
 }
 
-const handleDelete = (row: MonitorTypeItem) => {
-  ElMessageBox.confirm(`确定要删除监测类型"${row.name}"吗？`, '删除确认', {
-    confirmButtonText: '确定',
+const handleStatusChange = (row: MonitorTypeItem, newVal: boolean) => {
+  const newStatus = newVal ? 1 : 0
+  const actionText = newVal ? '启用' : '停用'
+  const tipText = newVal
+    ? `确定要启用监测类型"${row.name}"吗？`
+    : `确定要停用监测类型"${row.name}"吗？停用后新建传感器将无法选用该类型。`
+
+  ElMessageBox.confirm(tipText, `${actionText}确认`, {
+    confirmButtonText: actionText,
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    loading.value = true
+    statusTogglingId.value = row.id
     try {
-      await removeMonitorType(row.id)
-      ElMessage.success('删除成功')
-      loadTableData()
+      await toggleMonitorTypeStatus(row.id, newStatus)
+      row.status = newStatus
+      ElMessage.success(`已${actionText}`)
     } catch (error) {
-      console.error('删除监测类型失败:', error)
-      showRequestErrorMessage(error, '删除监测类型失败')
+      showRequestErrorMessage(error, '状态切换失败')
     } finally {
-      loading.value = false
+      statusTogglingId.value = null
     }
   }).catch(() => {})
-}
-
-const handleMoreCommand = (command: string, row: MonitorTypeItem) => {
-  if (command === 'delete') {
-    handleDelete(row)
-  }
 }
 
 const handleExport = async () => {

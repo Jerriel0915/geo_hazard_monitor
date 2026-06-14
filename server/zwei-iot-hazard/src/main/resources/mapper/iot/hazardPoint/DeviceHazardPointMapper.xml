@@ -28,7 +28,9 @@
                dhp.install_longitude AS installLongitude,
                dhp.install_latitude AS installLatitude,
                d.status   AS deviceStatus,
-               dos.status AS onlineStatus
+               dos.status AS onlineStatus,
+               d.icon AS icon,
+               d.icon_path AS iconPath
         FROM device_hazard_point dhp
         INNER JOIN device d ON dhp.device_id = d.id AND d.del_flag = 0
         LEFT JOIN device_online_status dos ON dos.device_id = d.id
@@ -41,12 +43,16 @@
         SELECT d.id,
                CONCAT(d.code, ' - ', d.name) AS label,
                d.status,
+               d.icon AS icon,
+               d.icon_path AS iconPath,
+               dos.status AS onlineStatus,
                (
                    SELECT COUNT(*)
                    FROM device_hazard_point dhp2
                    WHERE dhp2.device_id = d.id
                ) AS bindCount
         FROM device d
+        LEFT JOIN device_online_status dos ON dos.device_id = d.id
         WHERE d.del_flag = 0
           AND d.id NOT IN (SELECT device_id
                            FROM device_hazard_point

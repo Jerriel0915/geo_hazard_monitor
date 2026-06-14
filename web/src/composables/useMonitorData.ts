@@ -287,6 +287,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   // ── 监听 hazardPointId 变化自动加载 ──
   watch(() => toValue(opts.hazardPointId), () => {
     reset()
+    filter.timeRange = defaultTimeRange()
     loadDevices()
   }, { immediate: true })
 

@@ -81,9 +81,10 @@ export function getDeviceIconPath(device: {
     status?: number | null
     onlineStatus?: number | null
 }): string {
-    const iconPath = device.iconPath || ''
-    // 外部 URL 或空路径不参与动态配色
-    if (!iconPath || !iconPath.startsWith('/jc-icon/')) return iconPath
+    const rawPath = device.iconPath || ''
+    // 外部 URL（非 jc-icon 路径）直接返回，由调用方自行处理
+    if (rawPath && !rawPath.startsWith('/jc-icon/')) return rawPath
+    // 根据设备状态 + 在线状态动态构造图标路径
     const color = getDeviceIconColor(device.status, device.onlineStatus)
     const baseName = resolveIconBaseName(device)
     const corrected = correctVideoBaseName(baseName)

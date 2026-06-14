@@ -1,4 +1,4 @@
-import {ref, type Ref} from 'vue'
+import {computed, ref, type Ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {
     bindDevicesToHazardPoint,
@@ -21,6 +21,8 @@ export interface BoundDevice {
     bindTime: string
     deviceStatus: string
     onlineStatus?: number
+    icon?: string
+    iconPath?: string
     sensors: { id: string; name: string; iconPath: string }[]
 }
 
@@ -135,7 +137,8 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                     label: item.label,
                     bindCount: item.bindCount,
                     status: String(item.status),
-                    iconPath: item.iconPath,
+                    onlineStatus: item.onlineStatus,
+                    iconPath: getDeviceIconPath({icon: item.icon, iconPath: item.iconPath, status: item.status, onlineStatus: item.onlineStatus}),
                     children:
                         item.children?.map((child: any) => ({
                             id: String(child.id),
@@ -167,7 +170,10 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                     deviceCode: item.deviceCode,
                     deviceName: item.deviceName,
                     bindTime: item.bindTime,
-                    deviceStatus: item.deviceStatus === 1 ? 'NORMAL' : item.deviceStatus === 2 ? 'FAULT' : 'OFFLINE',
+                    deviceStatus: item.deviceStatus === 1 ? 'NORMAL' : item.deviceStatus === 2 ? 'FAULT' : 'DISABLED',
+                    onlineStatus: item.onlineStatus ?? 0,
+                    icon: item.icon || 'device',
+                    iconPath: item.iconPath,
                     sensors: item.sensors || [],
                 }))
             } else {
@@ -189,7 +195,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                 id: String(device.deviceId),
                 key: `dev_${device.deviceId}`,
                 label: `${device.deviceCode} - ${device.deviceName}`,
-                iconPath: getDeviceIconPath({icon: 'device', status: statusCode, onlineStatus: device.onlineStatus}),
+                iconPath: getDeviceIconPath({icon: device.icon, iconPath: device.iconPath, status: statusCode, onlineStatus: device.onlineStatus}),
                 status: String(statusCode),
                 sensorCount: device.sensors.length,
                 children: device.sensors.map((sensor) => ({
@@ -333,9 +339,16 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         }
     }
 
+    // 已完结或停测状态下，只能查看已绑定关系，禁止修改
+    const isBindReadonly = computed(() => {
+        const s = opts.currentRow.value?.status
+        return s === 'COMPLETED' || s === 'PAUSED'
+    })
+
     return {
         // state
         bindDeviceDialogVisible,
+        isBindReadonly,
         bindLoading,
         leftSearchText,
         rightSearchText,

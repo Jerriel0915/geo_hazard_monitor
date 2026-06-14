@@ -195,7 +195,7 @@ const getStatusClass = (status: string): string => {
   switch (status) {
     case '在线': return 'online'
     case '离线': return 'offline'
-    case '故障': return 'fault'
+    case '维修': return 'fault'
     default: return 'offline'
   }
 }

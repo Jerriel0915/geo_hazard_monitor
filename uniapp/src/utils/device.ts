@@ -133,7 +133,7 @@ const mockDevices: DeviceInfo[] = [
   },
   {
     id: 11, deviceName: 'WATER-001', deviceCode: 'WAT-BP004-01',
-    deviceType: '水位计', status: '故障',
+    deviceType: '水位计', status: '维修',
     lastReportTime: '2026-06-06 14:00:00',
     hazardId: 4, hazardName: 'K42+800 左侧边坡',
     installDate: '2025-03-08',

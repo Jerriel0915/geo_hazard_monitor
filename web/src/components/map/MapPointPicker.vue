@@ -72,7 +72,7 @@ function onCoordParsed(result: LatLng | LatLng[]) {
 
 defineExpose({
   invalidate: editor.invalidate,
-  focusToCoord: (lng: number, lat: number) => editor.setView({ lat, lng }, 15)
+  focusToCoord: (lng: number, lat: number, zoom?: number) => editor.setView({ lat, lng }, zoom ?? 15)
 })
 </script>
 

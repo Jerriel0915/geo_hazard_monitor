@@ -242,7 +242,7 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="24">
             <el-form-item label="分组" prop="groupId">
               <div style="display: flex; align-items: center; width: 100%; gap: 5px;">
                 <el-select v-model="formData.groupId" placeholder="未分组" style="width: 85%;">
@@ -264,11 +264,6 @@
                 </el-select>
                 <el-button type="primary" size="small" @click="handleAddGroupFromSelect" title="新增分组">+</el-button>
               </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="走向" prop="strike">
-              <el-input-number v-model="formData.strike" :min="0" :max="360" placeholder="走向角度(度)" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -437,6 +432,8 @@
       :close-on-click-modal="false"
       destroy-on-close
     >
+      <el-alert v-if="isBindReadonly" type="info" :closable="false" show-icon
+        title="当前隐患点已停测或完结，仅支持查看已绑定设备关系，不支持新增或解绑操作。" style="margin-bottom:12px" />
       <div class="transfer-container">
         <div class="transfer-panel">
           <div class="panel-header">
@@ -472,10 +469,9 @@
                         @click.stop
                     />
                   </span>
-                  <img v-if="data.icon" :src="data.icon" class="node-icon" />
+                  <img v-if="data.iconPath" :src="data.iconPath" class="node-icon" />
                   <span>{{ node.label }}</span>
                   <span v-if="data.children?.length" class="bind-count">({{ data.children.length }}传感器)</span>
-                  <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini" class="status-tag">{{ data.statusText }}</el-tag>
                 </span>
               </template>
             </el-tree>
@@ -487,7 +483,7 @@
             <el-button
                 type="primary"
                 size="small"
-                :disabled="bindLoading"
+                :disabled="bindLoading || isBindReadonly"
                 @click="transferToRight"
             >
               <el-icon>
@@ -501,7 +497,7 @@
                 type="primary"
                 size="small"
                 plain
-                :disabled="bindLoading"
+                :disabled="bindLoading || isBindReadonly"
                 @click="transferAllToRight"
             >
               <el-icon>
@@ -517,7 +513,7 @@
             <el-button
                 type="warning"
                 size="small"
-                :disabled="bindLoading"
+                :disabled="bindLoading || isBindReadonly"
                 @click="transferToLeft"
             >
               <span class="btn-label">选中</span>
@@ -531,7 +527,7 @@
                 type="warning"
                 size="small"
                 plain
-                :disabled="bindLoading"
+                :disabled="bindLoading || isBindReadonly"
                 @click="transferAllToLeft"
             >
               <span class="btn-label">全部</span>
@@ -571,10 +567,9 @@
                         @click.stop
                     />
                   </span>
-                  <img v-if="data.icon" :src="data.icon" class="node-icon" />
+                  <img v-if="data.iconPath" :src="data.iconPath" class="node-icon" />
                   <span>{{ node.label }}</span>
                   <span v-if="data.children?.length" class="bind-count">({{ data.children.length }}传感器)</span>
-                  <el-tag v-if="data.status" :type="getStatusTagType(data.status)" size="mini" class="status-tag">{{ data.statusText }}</el-tag>
                 </span>
               </template>
             </el-tree>
@@ -583,7 +578,7 @@
       </div>
       <template #footer>
         <el-button @click="bindDeviceDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleBindDeviceSubmit" :loading="bindLoading">确定</el-button>
+        <el-button type="primary" @click="handleBindDeviceSubmit" :loading="bindLoading" :disabled="isBindReadonly">确定</el-button>
       </template>
     </el-dialog>
 
@@ -941,6 +936,7 @@ const detailDialogVisible = ref(false)
 const {
   bindDeviceDialogVisible,
   bindLoading,
+  isBindReadonly,
   leftSearchText,
   rightSearchText,
   leftDeviceTree,

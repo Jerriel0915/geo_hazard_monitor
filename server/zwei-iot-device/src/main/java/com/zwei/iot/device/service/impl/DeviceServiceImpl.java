@@ -481,7 +481,7 @@ public class DeviceServiceImpl implements IDeviceService {
             case 1 -> "报修";
             case 2 -> "修复";
             case 3 -> "停用";
-            case 4 -> "恢复";
+            case 4 -> "启用";
             default -> throw new ServiceException("不支持的操作类型: " + operationType);
         };
 
@@ -506,12 +506,12 @@ public class DeviceServiceImpl implements IDeviceService {
      */
     private int resolveAndValidateStatusTransition(int operationType, int oldStatus) {
         int newStatus = switch (operationType) {
-            case 1 -> { // 报修：仅允许从 正常(1) 转入 故障(2)
+            case 1 -> { // 报修：仅允许从 正常(1) 转入 维修(2)
                 if (oldStatus != 1) throw new ServiceException("仅正常状态的设备可以报修");
                 yield 2;
             }
-            case 2 -> { // 修复：仅允许从 故障(2) 转入 正常(1)
-                if (oldStatus != 2) throw new ServiceException("仅故障状态的设备可以修复");
+            case 2 -> { // 修复：仅允许从 维修(2) 转入 正常(1)
+                if (oldStatus != 2) throw new ServiceException("仅维修状态的设备可以修复");
                 yield 1;
             }
             case 3 -> { // 停用：允许从 正常(1) 或 故障(2) 转入 停用(3)

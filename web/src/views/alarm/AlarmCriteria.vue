@@ -314,7 +314,8 @@ async function onDeviceCardClick(device: any) {
 async function loadMonitorTypes() {
   try {
     const res: any = await getMonitorTypeList()
-    monitorTypes.value = (res && res.rows) || (Array.isArray(res) ? res : res?.data) || []
+    const all = (res && res.rows) || (Array.isArray(res) ? res : res?.data) || []
+    monitorTypes.value = all.filter((t: any) => t.status !== 0)
   } catch {}
 }
 

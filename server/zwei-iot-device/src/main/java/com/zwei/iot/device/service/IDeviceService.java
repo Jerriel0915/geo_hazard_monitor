@@ -143,11 +143,11 @@ public interface IDeviceService {
     Device changeDeviceAuthStatus(Long deviceId, Integer authStatus, String operator, String reason, String clientIp);
 
     /**
-     * 设备维修状态操作（报修/修复/停用/恢复）。
+     * 设备维修状态操作（报修/修复/停用/启用）。
      * <p>在一个事务中完成状态变更 + 维修日志记录，保证原子性。</p>
      *
      * @param deviceId      设备ID
-     * @param operationType 操作类型：1=报修, 2=修复, 3=停用, 4=恢复
+     * @param operationType 操作类型：1=报修, 2=修复, 3=停用, 4=启用
      * @param operatorName  操作人姓名
      * @param operatorPhone 联系电话
      * @param operationDate 操作日期（yyyy-MM-dd HH:mm:ss）

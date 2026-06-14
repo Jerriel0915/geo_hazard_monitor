@@ -22,7 +22,6 @@
               <el-descriptions-item label="中心坐标" :span="2">
                 {{ currentRow?.longitude?.toFixed(6) }}, {{ currentRow?.latitude?.toFixed(6) }}
               </el-descriptions-item>
-              <el-descriptions-item label="走向">{{ currentRow?.strike }}°</el-descriptions-item>
               <el-descriptions-item label="描述" :span="2">{{ currentRow?.description || '-' }}</el-descriptions-item>
             </el-descriptions>
           </div>
@@ -65,8 +64,8 @@
               <el-table-column prop="bindTime" label="绑定时间" width="180" align="center" />
               <el-table-column prop="deviceStatus" label="设备状态" width="100" align="center">
                 <template #default="{ row }">
-                  <el-tag :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'warning'" size="small">
-                    {{ row.deviceStatus === 'NORMAL' ? '正常' : row.deviceStatus === 'FAULT' ? '故障' : '离线' }}
+                  <el-tag :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'info'" size="small">
+                    {{ row.deviceStatus === 'NORMAL' ? '正常' : row.deviceStatus === 'FAULT' ? '维修' : '停用' }}
                   </el-tag>
                 </template>
               </el-table-column>

@@ -42,17 +42,17 @@ const leaflet = useLeafletMap({
 
 /** 多边形顶点图标 (与 useMapEditor 中 vertexHtml 保持一致) */
 function vertexHtml(num: number): string {
-  return `<div style="background:#67C23A;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;border:2px solid white;">${num}</div>`
+  return `<div style="background:#67C23A;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;">${num}</div>`
 }
 
 const STRIKE_ENDPOINT_HTML = (idx: number) =>
-    `<div style="background:#f56c6c;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;">${idx + 1}</div>`
+    `<div style="background:#f56c6c;color:#fff;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:1.5px solid #fff;">${idx + 1}</div>`
 
 const AUX_POINT_HTML = () =>
-    '<div style="background:#fa8c16;width:16px;height:16px;border-radius:2px;border:2px solid #fff;"></div>'
+    '<div style="background:#fa8c16;width:12px;height:12px;border-radius:2px;border:1.5px solid #fff;"></div>'
 
 const CENTER_HTML = () =>
-    '<div style="background:#1890ff;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:bold;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4)">★</div>'
+    '<div style="background:#1890ff;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.3)">★</div>'
 
 /** 渲染所有边界要素 — 一次性绘制, 不需要 watch 增量更新 */
 function renderBoundary(map: L.Map) {
@@ -74,7 +74,7 @@ function renderBoundary(map: L.Map) {
     L.polygon(bc.polygon.map(p => [p.lat, p.lng] as L.LatLngTuple), {
       color: '#1890ff',
       fillColor: '#1890ff',
-      fillOpacity: 0.15,
+      fillOpacity: 0.10,
       weight: 2
     }).addTo(map).bindPopup(
         `<div style="font-size:12px"><b>监测范围</b><br>顶点数: ${bc.polygon.length}</div>`
@@ -86,8 +86,8 @@ function renderBoundary(map: L.Map) {
         icon: L.divIcon({
           className: 'preview-vertex-marker',
           html: vertexHtml(idx + 1),
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
         })
       }).addTo(map)
     })
@@ -108,8 +108,8 @@ function renderBoundary(map: L.Map) {
         icon: L.divIcon({
           className: 'preview-strike-marker',
           html: STRIKE_ENDPOINT_HTML(idx),
-          iconSize: [18, 18],
-          iconAnchor: [9, 9]
+          iconSize: [14, 14],
+          iconAnchor: [7, 7]
         })
       }).addTo(map)
     })
@@ -132,8 +132,8 @@ function renderBoundary(map: L.Map) {
         icon: L.divIcon({
           className: 'preview-aux-marker',
           html: AUX_POINT_HTML(),
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
         })
       }).addTo(map)
     })
@@ -143,8 +143,8 @@ function renderBoundary(map: L.Map) {
   const centerIcon = L.divIcon({
     className: 'preview-center-marker',
     html: CENTER_HTML(),
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
   })
   L.marker([center.lat, center.lng], {icon: centerIcon, zIndexOffset: 1000})
       .addTo(map)

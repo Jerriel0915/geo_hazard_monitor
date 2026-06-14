@@ -49,6 +49,12 @@ public class BoundDeviceVO implements Serializable {
      */
     private Integer onlineStatus;
 
+    /** 设备图标基础名（如 device, bc 等） */
+    private String icon;
+
+    /** 设备图标完整路径 */
+    private String iconPath;
+
     /** 传感器列表 */
     private List<SensorVO> sensors;
 

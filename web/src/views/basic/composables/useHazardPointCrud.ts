@@ -30,7 +30,6 @@ export interface HazardPointItem {
     statusColor?: string
     longitude?: number
     latitude?: number
-    strike?: number
     boundaryCoords?: string
     description?: string
     deviceCount: number
@@ -56,7 +55,6 @@ const normalizeHazardPoint = (item: any): HazardPointItem => ({
     statusName: item.statusName || '',
     longitude: item.longitude,
     latitude: item.latitude,
-    strike: item.strike,
     boundaryCoords: item.boundaryCoords,
     description: item.description,
     deviceCount: item.deviceCount || 0,
@@ -80,9 +78,8 @@ export const getStatusTagType = (status: string): string => {
     const types: Record<string, string> = {
         NORMAL: 'success',
         FAULT: 'danger',
-        OFFLINE: 'warning',
     }
-    return types[status] || 'default'
+    return types[status] || 'info'
 }
 
 export const getAlarmLevelType = (level: string): string => {
@@ -153,7 +150,6 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
         groupId: '',
         longitude: 104.06,
         latitude: 30.67,
-        strike: 0,
         description: '',
         boundaryCoords: deserialize(null) as BoundaryCoords,
     })
@@ -208,7 +204,6 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
         groupId: formData.groupId ? Number(formData.groupId) : null,
         longitude: formData.longitude,
         latitude: formData.latitude,
-        strike: formData.strike || 0,
         description: formData.description,
         boundaryCoords: serialize(formData.boundaryCoords),
     })
@@ -302,7 +297,6 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
             groupId: '',
             longitude: 104.06,
             latitude: 30.67,
-            strike: 0,
             description: '',
         })
         formData.boundaryCoords = deserialize(null)

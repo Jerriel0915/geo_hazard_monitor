@@ -89,7 +89,7 @@ export function useDeviceCrud() {
 
     // ── Helpers ──
     const getStatusType = (status: number) => ({1: 'success', 2: 'danger', 3: 'info'}[status] || 'default')
-    const getStatusLabel = (status: number) => ({1: '正常', 2: '故障', 3: '停用'}[status] || '未知')
+    const getStatusLabel = (status: number) => ({1: '正常', 2: '维修', 3: '停用'}[status] || '未知')
 
     const copyPwd = async (pwd: string) => {
         try {

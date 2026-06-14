@@ -145,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import VueApexCharts from 'vue3-apexcharts'
 import { useMonitorData } from '@/composables/useMonitorData'
@@ -218,12 +218,37 @@ const onSensorChange = (sensorId: string | number) => {
 const onImport = () => ElMessage.info('导入功能开发中')
 const onExport = () => ElMessage.info('导出功能开发中')
 
-watch(() => props.initialDeviceId, (id) => {
+// 自动查询标记
+const autoQueried = ref(false)
+
+const tryAutoQuery = () => {
+  if (autoQueried.value) return
+  autoQueried.value = true
+  if (sensors.value.length > 0) {
+    query()
+  }
+}
+
+watch(() => props.initialDeviceId, async (id) => {
   if (id != null) {
     filter.deviceId = id
-    selectDevice(id)
+    await selectDevice(id)
+    tryAutoQuery()
   }
 }, { immediate: true })
+
+// 无 initialDeviceId 时，设备列表加载后自动选择第一个有传感器的设备并查询
+watch(devices, async (list) => {
+  if (!autoQueried.value && list.length > 0 && !filter.deviceId) {
+    // 找第一个有传感器的设备
+    const firstWithSensors = list.find((d: any) => (d.sensors?.length || 0) > 0)
+    if (!firstWithSensors) return
+    autoQueried.value = true
+    filter.deviceId = firstWithSensors.deviceId
+    await selectDevice(firstWithSensors.deviceId)
+    query()
+  }
+})
 
 mode.value = props.initialMode
 

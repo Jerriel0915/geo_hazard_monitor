@@ -167,7 +167,7 @@ const dmsDisplay = computed(() => {
 })
 
 // ── HP 边界加载 ──
-const loadHpBoundary = async (hpId: string) => {
+const loadHpBoundary = async (hpId: string, zoomToFit = false) => {
   boundHpPolygon.value = null
   if (!hpId) return
   try {
@@ -176,11 +176,24 @@ const loadHpBoundary = async (hpId: string) => {
       const bc = deserialize(resp.data.boundaryCoords)
       if (bc.polygon.length >= 3) {
         boundHpPolygon.value = bc.polygon
-        // 自动把地图视图 pan 到该隐患点区域的几何中心
         const center = centroid(bc.polygon)
         if (center) {
+          // 根据多边形尺寸计算合适的缩放级别
+          const poly = bc.polygon
+          let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity
+          for (const p of poly) {
+            if (p.lat < minLat) minLat = p.lat
+            if (p.lat > maxLat) maxLat = p.lat
+            if (p.lng < minLng) minLng = p.lng
+            if (p.lng > maxLng) maxLng = p.lng
+          }
+          const latDiff = maxLat - minLat
+          const lngDiff = maxLng - minLng
+          const diagonal = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff)
+          // 粗略缩放: 对角线越大，zoom 越小；范围 10~17
+          const zoom = Math.max(10, Math.min(17, Math.round(17 - Math.log2(diagonal * 100 + 1))))
           nextTick(() => {
-            pickerRef.value?.focusToCoord(center.lng, center.lat)
+            pickerRef.value?.focusToCoord(center.lng, center.lat, zoom)
           })
         }
       }

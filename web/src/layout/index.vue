@@ -1,10 +1,13 @@
 <template>
   <div class="layout-container">
-    <!-- Edge 浏览器兼容性提示 -->
-    <div v-if="isEdge && !edgeTipDismissed" class="edge-warning-bar">
+    <!-- 非 Chrome 浏览器兼容性提示 -->
+    <div v-if="isNotChrome && !browserTipDismissed" class="edge-warning-bar">
       <span class="edge-warning-icon">⚠</span>
-      <span>检测到您正在使用 Edge 浏览器，可能存在兼容性问题，建议使用 <strong>Chrome</strong> 浏览器以获得最佳体验。</span>
-      <button class="edge-warning-close" @click="edgeTipDismissed = true">✕</button>
+      <span>检测到您正在使用非 Chrome 内核浏览器，可能存在兼容性问题，建议使用 <strong>Chrome</strong> 浏览器以获得最佳体验。</span>
+      <label class="edge-warning-never" @click.stop>
+        <input type="checkbox" v-model="neverShowAgain" /> 不再提醒
+      </label>
+      <button class="edge-warning-close" @click="dismissBrowserTip">✕</button>
     </div>
     <header class="header">
       <div class="header-left">
@@ -289,9 +292,22 @@ interface NoticeMessage {
   type: string
 }
 
-// Edge browser detection
-const isEdge = ref(typeof navigator !== 'undefined' && /Edg\//.test(navigator.userAgent))
-const edgeTipDismissed = ref(false)
+// 非 Chrome 浏览器检测 + localStorage 持久化"不再提醒"
+const BROWSER_TIP_KEY = 'browser_tip_dismissed'
+const isNotChrome = ref(
+  typeof navigator !== 'undefined'
+  && !/Chrome\//.test(navigator.userAgent)
+  && !localStorage.getItem(BROWSER_TIP_KEY)
+)
+const browserTipDismissed = ref(false)
+const neverShowAgain = ref(false)
+
+const dismissBrowserTip = () => {
+  browserTipDismissed.value = true
+  if (neverShowAgain.value) {
+    localStorage.setItem(BROWSER_TIP_KEY, '1')
+  }
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -768,6 +784,21 @@ const goToDashboard = () => {
 
 .edge-warning-bar strong {
   color: #d46b08;
+}
+
+.edge-warning-never {
+  margin-left: 12px;
+  font-size: 12px;
+  color: #bfbfbf;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edge-warning-never:hover {
+  color: #8c8c8c;
 }
 
 .edge-warning-close {

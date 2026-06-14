@@ -156,17 +156,32 @@ public class MonitorTypeController extends BaseController {
     }
 
     /**
-     * 删除监测类型（逻辑删除）
+     * 启停监测类型（以启停替代删除，已关联的传感器不受影响）。
      *
-     * @param id 监测类型ID
+     * @param id     监测类型ID
+     * @param status 0=停用, 1=启用
      * @return 操作结果
      */
-    @PreAuthorize("@ss.hasPermi('basic:monitorType:remove')")
-    @Log(title = "监测类型", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{id}")
-    public AjaxResult remove(@PathVariable Long id) {
-        int rows = monitorTypeService.deleteMonitorTypeById(id);
-        return rows > 0 ? AjaxResult.success("删除成功") : error("删除失败");
+    @PreAuthorize("@ss.hasPermi('basic:monitorType:edit')")
+    @Log(title = "监测类型状态", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/status")
+    public AjaxResult toggleStatus(@PathVariable Long id, @RequestParam Integer status) {
+        if (status == null || (status != 0 && status != 1)) {
+            return error("状态值非法");
+        }
+        MonitorType current = monitorTypeService.selectMonitorTypeById(id);
+        if (current == null) {
+            return error("监测类型不存在");
+        }
+        if (current.getStatus().equals(status)) {
+            return AjaxResult.success(status == 1 ? "已是启用状态" : "已是停用状态");
+        }
+        MonitorType update = new MonitorType();
+        update.setId(id);
+        update.setStatus(status);
+        int rows = monitorTypeService.updateMonitorType(update);
+        String action = status == 0 ? "停用" : "启用";
+        return rows > 0 ? AjaxResult.success(action + "成功") : error(action + "失败");
     }
 
     private MonitorType buildMonitorTypeForCreate(MonitorTypeCreateRequest request) {

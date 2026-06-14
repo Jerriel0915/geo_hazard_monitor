@@ -224,11 +224,21 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="设备状态" prop="status">
-              <el-select v-model="formData.status" placeholder="请选择设备状态" :disabled="isView">
-                <el-option label="正常" :value="1" />
-                <el-option label="维修" :value="2"/>
-                <el-option label="停用" :value="3" />
+            <el-form-item label="关联隐患点">
+              <el-select
+                v-model="formData.boundHazardPointId"
+                placeholder="选择隐患点"
+                clearable
+                filterable
+                :disabled="isView"
+                @change="onHpChange"
+              >
+                <el-option
+                  v-for="hp in hazardPointList"
+                  :key="hp.id"
+                  :label="hp.name"
+                  :value="Number(hp.id)"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -530,7 +540,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, reactive, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Cpu, User, Plus} from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -673,8 +683,11 @@ const mapInitialPoint = computed<LatLng | null>(() => {
   return lng != null && lat != null ? {lng, lat} : null
 })
 
-// 隐患点列表(供地图选点弹窗叠加预览用)
+// 隐患点列表(供地图选点弹窗叠加预览用 + 编辑表单选择)
 const hazardPointList = ref<{ id: string, name: string }[]>([])
+const onHpChange = () => {
+  // 切换隐患点后，同步更新地图弹窗的初始 HP
+}
 const loadHazardPointList = async () => {
   try {
     const resp: any = await getHazardPointPage({pageNum: 1, pageSize: 1000})
@@ -704,6 +717,11 @@ const syncFormToText = () => {
     locationText.value = ''
   }
 }
+
+// 编辑弹窗打开时回显安装位置
+watch(dialogVisible, (val) => {
+  if (val) syncFormToText()
+})
 
 const onLocationBlur = () => {
   const raw = locationText.value.trim()
@@ -784,7 +802,7 @@ const availableOperationTypes = computed(() => {
   } else if (status === 2) {
     options.push({label: '修复', value: 2}, {label: '停用', value: 3})
   } else if (status === 3) {
-    options.push({label: '恢复', value: 4})
+    options.push({label: '启用', value: 4})
   }
   return options
 })
@@ -806,6 +824,7 @@ const loadMonitorTypeList = async () => {
   try {
     const allTypes = await getMonitorTypeListWithContents()
     const details = (allTypes || [])
+        .filter((item: any) => item.status !== 0)
         .map((item: any) => ({
           id: Number(item.id),
           name: item.name,

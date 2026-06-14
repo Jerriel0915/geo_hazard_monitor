@@ -30,6 +30,15 @@ public class UnboundDeviceVO implements Serializable {
     /** 设备状态 */
     private Integer status;
 
+    /** 实时在线状态：1=在线, 0/null=离线 */
+    private Integer onlineStatus;
+
+    /** 设备图标基础名 */
+    private String icon;
+
+    /** 设备图标完整路径 */
+    private String iconPath;
+
     /** 子级传感器列表 */
     private List<SensorVO> children;
 

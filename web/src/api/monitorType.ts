@@ -102,6 +102,10 @@ export const createMonitorType = (payload: MonitorTypeCreatePayload) =>
 export const updateMonitorType = (id: number, payload: MonitorTypeUpdatePayload) =>
   unwrap<null>(request.put(`/monitor-types/${id}`, payload))
 
+/** 启停监测类型（以启停替代删除） */
+export const toggleMonitorTypeStatus = (id: number, status: number) =>
+  unwrap<null>(request.put(`/monitor-types/${id}/status`, null, { params: { status } }))
+
 export const removeMonitorType = (id: number) =>
   unwrap<null>(request.delete(`/monitor-types/${id}`))
 

@@ -105,74 +105,15 @@
         </el-table>
       </el-tab-pane>
 
-      <!-- 新增：监测数据 Tab -->
       <el-tab-pane label="监测数据" name="monitorData">
-        <div class="monitor-data-panel">
-          <div class="data-filters">
-            <!-- 去掉设备选择，直接显示传感器选择 -->
-            <el-select v-model="localDataFilter.sensorId" placeholder="选择传感器" clearable style="width: 180px"
-                       @change="onDataSensorChange">
-              <el-option v-for="s in monitorSensors" :key="s.id" :label="s.name" :value="s.id"/>
-            </el-select>
-            <el-select v-model="localDataFilter.attrCode" placeholder="选择指标" clearable style="width: 160px">
-              <el-option v-for="a in monitorAttrs" :key="a.code" :label="a.label" :value="a.code"/>
-            </el-select>
-            <el-select v-model="localDataFilter.valueType" placeholder="聚合粒度" style="width: 120px">
-              <el-option label="原始值" value="current" />
-              <el-option label="小时均值" value="hour" />
-              <el-option label="日均值" value="24h" />
-              <el-option label="3日均值" value="72h" />
-            </el-select>
-            <el-date-picker
-                v-model="localDataFilter.timeRange"
-                type="datetimerange"
-                range-separator="至"
-                start-placeholder="开始"
-                end-placeholder="结束"
-                format="YYYY-MM-DD HH:mm:ss"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                style="width: 360px"
-            />
-            <el-button type="primary" size="small" @click="handleQueryData">查询</el-button>
-            <el-button size="small" @click="handleResetData">重置</el-button>
-          </div>
-
-          <div class="data-toolbar">
-            <el-button-group>
-              <el-button :type="dataDisplayMode === 'chart' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'chart'">图表展示</el-button>
-              <el-button :type="dataDisplayMode === 'table' ? 'primary' : 'default'" size="small" @click="dataDisplayMode = 'table'">表格展示</el-button>
-            </el-button-group>
-            <div class="data-actions">
-              <el-button size="small" @click="handleImportData">导入数据</el-button>
-              <el-button size="small" @click="handleExportData">导出数据</el-button>
-            </div>
-          </div>
-
-          <div class="data-content">
-            <div v-if="dataDisplayMode === 'chart'" class="chart-container">
-              <VueApexCharts
-                  v-if="chartSeriesData.length > 0"
-                  type="area"
-                  height="100%"
-                  :options="chartOptions"
-                  :series="chartOptions.series"
-              />
-              <div v-if="chartSeriesData.length === 0" class="chart-empty-tip">暂无数据，请选择条件后查询</div>
-            </div>
-            <div v-else class="table-wrap">
-              <div class="table-wrap__scroll">
-                <el-table :data="monitorDataList" border size="small">
-                  <el-table-column prop="dataTime" label="时间" min-width="180" align="center" />
-                  <el-table-column prop="sensorName" label="传感器" width="150" align="center" />
-                  <el-table-column prop="attrName" label="指标" width="120" align="center"/>
-                  <el-table-column prop="value" label="数值" width="120" align="center" />
-                  <el-table-column prop="unit" label="单位" width="80" align="center" />
-                  <el-table-column prop="qualityText" label="质量" width="80" align="center" />
-                </el-table>
-              </div>
-            </div>
-          </div>
-        </div>
+        <MonitorDataExplorer
+          v-if="currentRow?.boundHazardPointId"
+          :hazard-point-id="currentRow.boundHazardPointId"
+          :hazard-point-name="currentRow.name"
+          :show-device="false"
+          :initial-device-id="currentRow.id"
+        />
+        <div v-else class="mde-empty">该设备未绑定隐患点，无法查询监测数据</div>
       </el-tab-pane>
     </el-tabs>
 
@@ -187,7 +128,7 @@ import { ref, watch } from 'vue'
 import request from '@/utils/request'
 import { getSensorIconPath } from '@/utils/deviceIcon'
 import { type DeviceItem } from '../composables/useDeviceCrud'
-import VueApexCharts from 'vue3-apexcharts'
+import MonitorDataExplorer from '@/components/MonitorDataExplorer.vue'
 
 interface Props {
   visible: boolean
@@ -212,25 +153,6 @@ const sensorLoading = ref(false)
 
 const currentRow = ref<DeviceItem | null>(null)
 
-// 监测数据相关
-const dataDisplayMode = ref('chart')
-const monitorDataList = ref<any[]>([])
-const chartSeriesData = ref<any[]>([])
-const chartOptions = ref<any>({
-  chart: { type: 'area', height: '100%', toolbar: { show: false } },
-  xaxis: { type: 'datetime' },
-  dataLabels: { enabled: false },
-  stroke: { curve: 'smooth' }
-})
-const monitorSensors = ref<any[]>([])
-const monitorAttrs = ref<any[]>([])
-const localDataFilter = ref({
-  sensorId: '',
-  attrCode: '',
-  valueType: 'current',
-  timeRange: [] as string[]
-})
-
 // 监听 visible 变化
 watch(() => props.visible, (val) => {
   dialogVisible.value = val
@@ -238,18 +160,8 @@ watch(() => props.visible, (val) => {
     currentRow.value = props.device
     loadSensorList(props.device.id!)
     loadOpsLogs(props.device.id!)
-    loadMonitorSensors(props.device.id!)
-    // 重置监测数据相关
     activeTab.value = 'info'
     pwdVisible.value = false
-    monitorDataList.value = []
-    chartSeriesData.value = []
-    localDataFilter.value = {
-      sensorId: '',
-      attrCode: '',
-      valueType: 'current',
-      timeRange: []
-    }
   }
 })
 
@@ -260,8 +172,6 @@ watch(() => dialogVisible.value, (val) => {
     sensorList.value = []
     onlineLogs.value = []
     maintenanceLogs.value = []
-    monitorDataList.value = []
-    chartSeriesData.value = []
   }
   emit('update:visible', val)
 })
@@ -292,88 +202,6 @@ const loadOpsLogs = async (deviceId: number) => {
     onlineLogs.value = []
     maintenanceLogs.value = []
   }
-}
-
-// 重置筛选条件
-const handleResetData = () => {
-  localDataFilter.value = {
-    sensorId: '',
-    attrCode: '',
-    valueType: 'current',
-    timeRange: []
-  }
-  // 清空指标列表
-  monitorAttrs.value = []
-  // 清空数据
-  monitorDataList.value = []
-  chartSeriesData.value = []
-  // 可选：重新加载传感器列表
-  if (currentRow.value?.id) {
-    loadMonitorSensors(currentRow.value.id)
-  }
-}
-
-// 加载监测传感器列表（获取该设备下的传感器）
-const loadMonitorSensors = async (deviceId: number) => {
-  try {
-    const res = await request.get(`/devices/${deviceId}/sensors`)
-    monitorSensors.value = res.data || []
-  } catch {
-    monitorSensors.value = []
-  }
-}
-
-// 传感器变化时加载指标
-const onDataSensorChange = async (sensorId: string) => {
-  if (!sensorId) {
-    monitorAttrs.value = []
-    localDataFilter.value.attrCode = ''
-    return
-  }
-  try {
-    const res = await request.get(`/sensors/${sensorId}/attributes`)
-    monitorAttrs.value = res.data || []
-  } catch {
-    monitorAttrs.value = []
-  }
-}
-
-// 查询监测数据
-const handleQueryData = async () => {
-  if (!localDataFilter.value.sensorId) {
-    // ElMessage.warning('请选择传感器')
-    return
-  }
-  try {
-    const params = {
-      sensorId: localDataFilter.value.sensorId,
-      attrCode: localDataFilter.value.attrCode,
-      valueType: localDataFilter.value.valueType,
-      startTime: localDataFilter.value.timeRange?.[0],
-      endTime: localDataFilter.value.timeRange?.[1]
-    }
-    const res = await request.post('/monitor/data/query', params)
-    monitorDataList.value = res.data?.list || []
-    // 处理图表数据
-    if (res.data?.chartData) {
-      chartSeriesData.value = res.data.chartData.series || []
-      chartOptions.value = {
-        ...chartOptions.value,
-        series: chartSeriesData.value,
-        xaxis: { ...chartOptions.value.xaxis, categories: res.data.chartData.categories || [] }
-      }
-    }
-  } catch (error) {
-    console.error('查询监测数据失败', error)
-  }
-}
-
-const handleImportData = () => {
-  // 导入数据逻辑
-}
-
-const handleExportData = () => {
-  // 导出数据逻辑
 }
 
 // 工具函数
@@ -420,73 +248,12 @@ const copyPwd = (pwd: string) => {
   padding: 2px 0;
 }
 
-/* 监测数据样式 */
-.monitor-data-panel {
-  padding: 8px 0;
-}
-
-.data-filters {
+.mde-empty {
+  height: 200px;
   display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 14px 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  flex-wrap: nowrap;
   align-items: center;
-}
-
-.data-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.data-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.data-content {
-  height: 400px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.chart-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.chart-empty-tip {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  justify-content: center;
   color: #94a3b8;
-  font-size: 13px;
-  pointer-events: none;
-}
-
-.table-wrap {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.table-wrap__scroll {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+  font-size: 14px;
 }
 </style>

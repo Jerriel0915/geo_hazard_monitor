@@ -317,7 +317,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
   function vertexHtml(num: number, selected: boolean, editable: boolean): string {
     const ring = selected ? 'box-shadow:0 0 0 4px #ef4444aa;' :
                   editable ? 'box-shadow:0 0 0 3px #f59e0b80;' : ''
-    return `<div style="background:#67C23A;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;border:2px solid white;${ring}">${num}</div>`
+    return `<div style="background:#67C23A;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;${ring}">${num}</div>`
   }
 
   function render() {
@@ -401,7 +401,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
           position: pt,
           existing: strikeEndpointMarkers.value[i],
           isDragging: i === draggingStrikeIndex.value,
-          iconHtml: `<div style="background:#f56c6c;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;${isSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}">${i + 1}</div>`,
+          iconHtml: `<div style="background:#f56c6c;color:#fff;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:1.5px solid #fff;${isSelected ? 'box-shadow:0 0 0 3px #ef4444aa;' : 'box-shadow:0 0 0 2px #f59e0b80;'}">${i + 1}</div>`,
           iconSize: [18, 18],
           iconAnchor: [9, 9],
           iconClass: 'strike-endpoint-marker',

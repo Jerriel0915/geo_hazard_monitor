@@ -68,7 +68,7 @@
                d.update_time,
                CASE d.status
                    WHEN 1 THEN '正常'
-                   WHEN 2 THEN '故障'
+                   WHEN 2 THEN '维修'
                    WHEN 3 THEN '停用'
                    ELSE '未知'
                    END AS statusName

@@ -70,7 +70,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
      */
     @Override
     public List<BoundDeviceVO> getBoundDevices(Long hazardPointId) {
-        ensureHazardPointExists(hazardPointId);
+        ensureHazardPointExistsForView(hazardPointId);
         // 1. 查询已绑定设备基础信息
         List<BoundDeviceVO> boundDevices = deviceHazardPointMapper.selectBoundDevicesByHazardPointId(hazardPointId);
 
@@ -119,7 +119,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
      */
     @Override
     public List<UnboundDeviceVO> getUnboundDevices(Long hazardPointId, String keyword) {
-        ensureHazardPointExists(hazardPointId);
+        ensureHazardPointExistsForView(hazardPointId);
         // 1. 查询未绑定设备基础信息
         List<UnboundDeviceVO> unboundDevices = deviceHazardPointMapper.selectUnboundDevices(hazardPointId, keyword);
 
@@ -173,7 +173,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     })
     @Transactional(rollbackFor = Exception.class)
     public int bindDevices(Long hazardPointId, BindDeviceRequest request, String username) {
-        ensureHazardPointExists(hazardPointId);
+        ensureHazardPointActive(hazardPointId);
         List<Long> deviceIds = normalizeDeviceIds(request.getDeviceIds());
         validateDevicesExist(deviceIds);
         Map<Long, InstallPosition> positionMap = buildPositionMap(deviceIds, request.getInstallPositions());
@@ -213,7 +213,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     })
     @Transactional(rollbackFor = Exception.class)
     public int unbindDevices(Long hazardPointId, List<Long> deviceIds) {
-        ensureHazardPointExists(hazardPointId);
+        ensureHazardPointActive(hazardPointId);
         List<Long> normalizedDeviceIds = normalizeDeviceIds(deviceIds);
         validateDevicesExist(normalizedDeviceIds);
 
@@ -235,7 +235,8 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
         return allSensors;
     }
 
-    private void ensureHazardPointExists(Long hazardPointId) {
+    /** 仅校验隐患点存在且未删除（查询操作使用，允许停测/完结状态查看） */
+    private void ensureHazardPointExistsForView(Long hazardPointId) {
         if (hazardPointId == null) {
             throw new ServiceException("隐患点ID不能为空", HttpStatus.BAD_REQUEST);
         }
@@ -244,10 +245,16 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
             throw new ServiceException("隐患点不存在", HttpStatus.NOT_FOUND);
         }
         if (!"0".equals(hazardPoint.getDelFlag())) {
-            throw new ServiceException("隐患点已删除，无法绑定设备", HttpStatus.BAD_REQUEST);
+            throw new ServiceException("隐患点已删除", HttpStatus.BAD_REQUEST);
         }
+    }
+
+    /** 校验隐患点存在且可操作（修改操作使用，额外要求 status=监测中） */
+    private void ensureHazardPointActive(Long hazardPointId) {
+        ensureHazardPointExistsForView(hazardPointId);
+        HazardPoint hazardPoint = hazardPointMapper.selectHazardPointById(hazardPointId);
         if (!Integer.valueOf(1).equals(hazardPoint.getStatus())) {
-            throw new ServiceException("隐患点已停用，无法绑定设备", HttpStatus.BAD_REQUEST);
+            throw new ServiceException("隐患点已停测或完结，无法修改设备绑定", HttpStatus.BAD_REQUEST);
         }
     }
 
