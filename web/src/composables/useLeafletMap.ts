@@ -23,6 +23,7 @@ export interface UseLeafletMapOptions {
   center?: LatLng
   zoom?: number
   tianditu?: boolean
+    doubleClickZoom?: boolean
 }
 
 export interface UseLeafletMapReturn {
@@ -41,7 +42,8 @@ export function useLeafletMap(opts: UseLeafletMapOptions): UseLeafletMapReturn {
     const instance = L.map(el, {
       center: (opts.center ? [opts.center.lat, opts.center.lng] : [30.65, 104.10]) as L.LatLngExpression,
       zoom: opts.zoom ?? 12,
-      zoomControl: true
+        zoomControl: true,
+        doubleClickZoom: opts.doubleClickZoom ?? true
     })
     if (opts.tianditu !== false) addTiandituLayers(instance)
     map.value = instance
