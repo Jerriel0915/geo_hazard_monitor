@@ -302,7 +302,6 @@
       width="900px"
       :close-on-click-modal="false"
       :before-close="beforeMapClose"
-      destroy-on-close
     >
       <MapBoundaryEditor
         ref="mapEditorRef"
