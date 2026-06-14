@@ -1,3 +1,5 @@
+<!--告警视图页面 -->
+
 <template>
   <div class="alarm-stats-view">
     <div class="stats-header">
@@ -58,6 +60,20 @@
           <span class="stat-label">关联设备</span>
         </div>
       </div>
+      <!-- 新增：刷新时间卡片 -->
+      <div class="stat-card refresh-card">
+        <div class="stat-icon refresh-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value refresh-time-value">{{ nextRefreshTime }}</span>
+          <span class="stat-label">下次数据刷新</span>
+        </div>
+      </div>
     </div>
 
     <div class="content-row">
@@ -108,7 +124,6 @@
         <div class="alarm-list-section">
           <div class="list-header">
             <span class="list-title">实时告警事件</span>
-            <span class="refresh-time">下次刷新时间：{{ nextRefreshTime }}</span>
           </div>
           <div class="alarm-list">
             <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
@@ -776,6 +791,7 @@ window.addEventListener('resize', handleResize)
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* 找到 .stats-header 样式，修改成这样 */
 .stats-header {
   display: flex;
   gap: 12px;
@@ -783,11 +799,13 @@ window.addEventListener('resize', handleResize)
   flex-shrink: 0;
 }
 
+/* 让所有卡片按比例分配宽度 */
 .stat-card {
-  flex: 1;
+  flex: 1;  /* 所有卡片默认占1份 */
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: center;
   padding: 10px 14px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -827,6 +845,22 @@ window.addEventListener('resize', handleResize)
   margin-top: 2px;
 }
 
+/* 刷新时间卡片样式 */
+.refresh-card {
+  min-width: 180px;
+}
+
+.refresh-icon {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.refresh-time-value {
+  font-size: 16px !important;
+  font-weight: 600;
+  color: #3b82f6;
+  letter-spacing: 1px;
+}
+
 /* 左右分栏 */
 .content-row {
   flex: 1;
@@ -850,6 +884,17 @@ window.addEventListener('resize', handleResize)
   min-height: 0;
 }
 
+/* 新增：第一行图表加高30px */
+.charts-row:first-child {
+  flex: 1.2;
+  min-height: 0;
+}
+
+.charts-row:last-child {
+  flex: 0.8;
+  min-height: 0;
+}
+
 .chart-panel {
   flex: 1;
   display: flex;
@@ -860,6 +905,15 @@ window.addEventListener('resize', handleResize)
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   min-height: 0;
+}
+
+/* 新增：左侧图表宽度减少60px */
+.chart-panel:first-child {
+  flex: 0 0 calc(50% - 30px);
+}
+
+.chart-panel:last-child {
+  flex: 0 0 calc(50% + 30px);
 }
 
 .panel-header {
@@ -910,7 +964,7 @@ window.addEventListener('resize', handleResize)
 
 /* 右侧告警列表 */
 .right-panel {
-  width: 320px;
+  width: 400px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
