@@ -298,7 +298,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="typeIconDialogVisible" title="选择监测类型图标" width="600px">
+    <el-dialog v-model="typeIconDialogVisible" title="选择监测类型图标" width="750px">
       <div class="icon-grid">
         <div
           v-for="item in typeIconList"
@@ -954,10 +954,13 @@ onMounted(() => {
 }
 
 .icon-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 15px;
-  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 5px;
+  max-height: 380px;
+  overflow-y: auto;
+  justify-content: flex-start;
 }
 
 .icon-item {
@@ -965,7 +968,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  width: 85px;
+  padding: 8px 2px;
   border: 1px solid #e8e8e8;
   border-radius: 4px;
   cursor: pointer;

@@ -58,6 +58,8 @@ function resolveIconBaseName(input: {
 
 /**
  * 根据设备当前状态动态构造图标 URL。
+ * <p>默认颜色档位为 green（正常状态），仅当设备明确为故障/停用/离线时才切换其他颜色。</p>
+ * <p>green 目录下无独立的 vidio_green.png，因此将前缀 vidio 纠正为 vidio1。</p>
  *
  * @param device 设备对象（至少包含 icon/iconPath/status/onlineStatus 之一）
  * @returns 完整图标 URL；非 jc-icon 路径直接原样返回
@@ -73,5 +75,22 @@ export function getDeviceIconPath(device: {
     if (!iconPath || !iconPath.startsWith('/jc-icon/')) return iconPath
     const color = getDeviceIconColor(device.status, device.onlineStatus)
     const baseName = resolveIconBaseName(device)
-    return `/jc-icon/${color}/${baseName}_${color}.png`
+    const corrected = baseName === 'vidio' ? 'vidio1' : baseName
+    return `/jc-icon/${color}/${corrected}_${color}.png`
+}
+
+/**
+ * 列表/选择器场景下优先展示绿色图标（正常状态）。
+ * 无论设备实际 status/onlineStatus 如何，始终返回 green 档位。
+ * green 目录下无独立的 vidio_green.png，因此将前缀 vidio 纠正为 vidio1。
+ */
+export function getDeviceIconPathGreen(device: {
+    icon?: string | null
+    iconPath?: string | null
+}): string {
+    const iconPath = device.iconPath || ''
+    if (!iconPath || !iconPath.startsWith('/jc-icon/')) return iconPath || `/jc-icon/green/device_green.png`
+    const baseName = resolveIconBaseName(device)
+    const corrected = baseName === 'vidio' ? 'vidio1' : baseName
+    return `/jc-icon/green/${corrected}_green.png`
 }
