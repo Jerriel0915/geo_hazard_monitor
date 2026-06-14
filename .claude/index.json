@@ -103,7 +103,7 @@
     {
       "name": "zwei-iot-timeseries",
       "path": "server/zwei-iot-timeseries",
-      "responsibility": "IoTDB 读写 + MQTT payload 解析 + 监测数据查询",
+      "responsibility": "IoTDB 读写 + MQTT payload 解析 + 监测数据查询 + 表达式驱动聚合 + 完整度/趋势",
       "dependsOn": [
         "zwei-common",
         "zwei-iot-device",

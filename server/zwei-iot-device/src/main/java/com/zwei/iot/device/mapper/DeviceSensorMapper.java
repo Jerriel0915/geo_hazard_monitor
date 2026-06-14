@@ -38,6 +38,15 @@ public interface DeviceSensorMapper {
     DeviceSensor selectSensorByCode(String sensorCode);
 
     /**
+     * 根据设备ID和传感器编码查询传感器。
+     *
+     * @param deviceId   设备ID
+     * @param sensorCode 传感器编码
+     * @return 传感器详情（null 表示不存在）
+     */
+    DeviceSensor selectSensorByDeviceIdAndCode(@Param("deviceId") Long deviceId, @Param("sensorCode") String sensorCode);
+
+    /**
      * 新增传感器
      *
      * @param sensor 传感器信息

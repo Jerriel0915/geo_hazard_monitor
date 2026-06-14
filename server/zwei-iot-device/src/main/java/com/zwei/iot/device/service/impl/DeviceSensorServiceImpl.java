@@ -80,6 +80,19 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     }
 
     /**
+     * 根据设备ID和传感器编码查询传感器（含 attrList）。
+     */
+    @Override
+    public DeviceSensor selectSensorByDeviceIdAndCode(Long deviceId, String sensorCode) {
+        DeviceSensor sensor = sensorMapper.selectSensorByDeviceIdAndCode(deviceId, sensorCode);
+        if (sensor != null) {
+            List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(sensor.getId());
+            sensor.setAttrList(attrs);
+        }
+        return sensor;
+    }
+
+    /**
      * 根据ID查询传感器详情
      */
     @Override
