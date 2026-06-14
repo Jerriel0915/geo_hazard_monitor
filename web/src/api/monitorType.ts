@@ -22,6 +22,9 @@ export interface MonitorTypeItem {
   sortOrder: number
   status: number
   createTime: string
+  updateTime?: string
+  createBy?: string
+  updateBy?: string
   contents?: MonitorContentItem[]
 }
 
@@ -78,6 +81,10 @@ const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
 
 export const getMonitorTypePage = (params: MonitorTypeQueryParams) =>
   unwrap<PageResult<MonitorTypeItem>>(request.get('/monitor-types/page', { params }))
+
+/** 按条件导出全部监测类型（不分页，支持 code/name/status 过滤） */
+export const getMonitorTypeListFiltered = (params?: Partial<MonitorTypeQueryParams>) =>
+  unwrap<MonitorTypeItem[]>(request.get('/monitor-types', { params }))
 
 export const getMonitorTypeDetail = (id: number) =>
   unwrap<MonitorTypeItem>(request.get(`/monitor-types/${id}`))

@@ -62,16 +62,15 @@ public class MonitorTypeController extends BaseController {
     }
 
     /**
-     * 获取所有监测类型列表（不分页）
-     * <p>
-     * 该接口按文档返回全部监测类型，不接收查询条件。
+     * 获取所有监测类型列表（不分页），支持按查询条件过滤。
      *
+     * @param monitorType 查询条件（code/name/status）
      * @return 监测类型列表
      */
     @PreAuthorize("@ss.hasPermi('basic:monitorType:list')")
     @GetMapping
-    public AjaxResult list() {
-        List<MonitorType> list = monitorTypeService.selectMonitorTypeAll();
+    public AjaxResult list(MonitorType monitorType) {
+        List<MonitorType> list = monitorTypeService.selectMonitorTypeList(monitorType);
         return AjaxResult.success("成功", list);
     }
 

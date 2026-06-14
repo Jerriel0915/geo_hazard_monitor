@@ -23,6 +23,14 @@ public interface IMonitorTypeService {
     List<MonitorType> selectMonitorTypePage(MonitorType monitorType, int pageNum, int pageSize);
 
     /**
+     * 查询监测类型列表（不分页），支持按查询条件过滤（code/name/status）
+     *
+     * @param monitorType 查询条件
+     * @return 监测类型列表
+     */
+    List<MonitorType> selectMonitorTypeList(MonitorType monitorType);
+
+    /**
      * 查询所有监测类型列表（不分页）
      *
      * @return 所有监测类型列表

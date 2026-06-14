@@ -7,7 +7,7 @@
       </div>
       <div class="header__right">
         <el-button type="primary" @click="handleAdd">+ 新增</el-button>
-        <el-button @click="handleExport" :disabled="tableData.length === 0">导出当前页</el-button>
+        <el-button @click="handleExport" :disabled="tableData.length === 0">导出当前查询结果</el-button>
       </div>
     </div>
 
@@ -34,33 +34,59 @@
     <div class="table-wrap">
       <div class="table-wrap__scroll">
         <el-table
-          :data="tableData"
+          :data="sort.sorted(tableData)"
           border
           stripe
           v-loading="loading"
         >
-          <el-table-column prop="code" label="编号" width="120" align="center" />
+          <el-table-column prop="code" label="编号" width="120" align="center">
+            <template #header>
+              <TableSortHeader label="编号" :order="sortInfo.order && sortInfo.field === 'code' ? sortInfo.order : ''" @toggle="sort.toggle('code')" />
+            </template>
+          </el-table-column>
           <el-table-column label="图标" width="80" align="center">
             <template #default="{ row }">
               <img v-if="row.icon" :src="row.icon" class="table-icon" alt="icon" />
               <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="名称" min-width="160" align="center" />
+          <el-table-column prop="name" label="名称" min-width="160" align="center">
+            <template #header>
+              <TableSortHeader label="名称" :order="sortInfo.order && sortInfo.field === 'name' ? sortInfo.order : ''" @toggle="sort.toggle('name')" />
+            </template>
+          </el-table-column>
           <el-table-column prop="description" label="描述" min-width="200" align="center">
             <template #default="{ row }">
               <span>{{ row.description || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="sortOrder" label="排序号" width="90" align="center" />
+          <el-table-column prop="sortOrder" label="排序号" width="90" align="center">
+            <template #header>
+              <TableSortHeader label="排序号" :order="sortInfo.order && sortInfo.field === 'sortOrder' ? sortInfo.order : ''" @toggle="sort.toggle('sortOrder')" />
+            </template>
+          </el-table-column>
           <el-table-column prop="status" label="状态" width="90" align="center">
+            <template #header>
+              <TableSortHeader label="状态" :order="sortInfo.order && sortInfo.field === 'status' ? sortInfo.order : ''" @toggle="sort.toggle('status')" />
+            </template>
             <template #default="{ row }">
               <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
                 {{ row.status === 1 ? '启用' : '禁用' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" min-width="170" align="center" />
+          <el-table-column prop="createBy" label="创建人" width="100" align="center" />
+          <el-table-column prop="createTime" label="创建时间" min-width="170" align="center">
+            <template #header>
+              <TableSortHeader label="创建时间" :order="sortInfo.order && sortInfo.field === 'createTime' ? sortInfo.order : ''" @toggle="sort.toggle('createTime')" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="updateBy" label="修改人" width="100" align="center" />
+          <el-table-column prop="updateTime" label="修改时间" min-width="170" align="center">
+            <template #header>
+              <TableSortHeader label="修改时间" :order="sortInfo.order && sortInfo.field === 'updateTime' ? sortInfo.order : ''" @toggle="sort.toggle('updateTime')" />
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="200" fixed="right" align="center">
             <template #default="{ row }">
               <div class="op-cell">
@@ -291,10 +317,13 @@
 <script setup lang="ts">
 import {nextTick, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox, type FormInstance, type FormRules} from 'element-plus'
+import TableSortHeader from '@/components/TableSortHeader.vue'
+import {useTableSort} from '@/composables/useTableSort'
 import {
   createMonitorContent,
   createMonitorType,
   getMonitorTypeDetail,
+  getMonitorTypeListFiltered,
   getMonitorTypePage,
   type MonitorContentItem,
   type MonitorTypeItem,
@@ -326,6 +355,9 @@ const IndicatorTypeEnum = {
 
 const indicatorTypeOptions = Object.values(IndicatorTypeEnum)
 const typeIconList: IconItem[] = getIconList()
+
+const sort = useTableSort()
+const sortInfo = sort.sortInfo
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -395,6 +427,9 @@ const normalizeMonitorType = (item: any): MonitorTypeItem => ({
   sortOrder: Number(item?.sortOrder ?? 0),
   status: Number(item?.status ?? 1),
   createTime: String(item?.createTime || ''),
+  updateTime: String(item?.updateTime || ''),
+  createBy: String(item?.createBy || ''),
+  updateBy: String(item?.updateBy || ''),
   contents: Array.isArray(item?.contents) ? item.contents.map(normalizeMonitorContent) : undefined
 })
 
@@ -713,20 +748,34 @@ const handleMoreCommand = (command: string, row: MonitorTypeItem) => {
   }
 }
 
-const handleExport = () => {
-  const rows = [
-    ['编号', '名称', '描述', '排序号', '状态', '创建时间'],
-    ...tableData.value.map((item) => [
-      item.code,
-      item.name,
-      item.description || '',
-      item.sortOrder,
-      item.status === 1 ? '启用' : '禁用',
-      item.createTime || ''
-    ])
-  ]
-  downloadCsv(`monitor-types-${Date.now()}.csv`, rows)
-  ElMessage.success('导出成功')
+const handleExport = async () => {
+  try {
+    const keyword = searchKeyword.value.trim()
+    const status = searchStatus.value === '' ? undefined : searchStatus.value
+    const params: Record<string, any> = {}
+    if (keyword) params[searchType.value] = keyword
+    if (status !== undefined) params.status = status
+    const data = await getMonitorTypeListFiltered(params)
+    const all = (Array.isArray(data) ? data : []).map(normalizeMonitorType)
+    const rows = [
+      ['编号', '名称', '描述', '排序号', '状态', '创建人', '创建时间', '修改人', '修改时间'],
+      ...all.map((item: MonitorTypeItem) => [
+        item.code,
+        item.name,
+        item.description || '',
+        item.sortOrder,
+        item.status === 1 ? '启用' : '禁用',
+        item.createBy || '',
+        item.createTime || '',
+        item.updateBy || '',
+        item.updateTime || ''
+      ])
+    ]
+    downloadCsv(`monitor-types-${Date.now()}.csv`, rows)
+    ElMessage.success(`导出成功，共 ${all.length} 条`)
+  } catch {
+    ElMessage.error('导出失败')
+  }
 }
 
 const handleSubmit = async () => {

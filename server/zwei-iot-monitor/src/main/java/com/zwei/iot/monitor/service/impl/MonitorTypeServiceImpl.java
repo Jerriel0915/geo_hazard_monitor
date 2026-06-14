@@ -45,6 +45,14 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
     }
 
     /**
+     * 查询监测类型列表（不分页），支持按查询条件过滤
+     */
+    @Override
+    public List<MonitorType> selectMonitorTypeList(MonitorType monitorType) {
+        return monitorTypeMapper.selectMonitorTypeList(monitorType);
+    }
+
+    /**
      * 查询所有监测类型列表（不分页）
      */
     @Override
