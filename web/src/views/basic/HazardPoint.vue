@@ -315,17 +315,11 @@
 
     <!-- 隐患点详情组件 -->
     <HazardPointDetail
-        ref="hazardPointDetailRef"
         v-model:visible="detailDialogVisible"
         :hazard-point="currentRow"
         :bound-devices="boundDevices"
         :alarm-criteria-list="alarmCriteriaList"
         :dispatch-rules="dispatchRules"
-        @query-data="handleDetailQueryData"
-        @import-data="handleDetailImportData"
-        @export-data="handleDetailExportData"
-        @device-change="handleDetailDeviceChange"
-        @sensor-change="handleDetailSensorChange"
     />
 
     <el-dialog
@@ -778,7 +772,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, type Ref, watch} from 'vue'
+import {computed, onMounted, ref, type Ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import TableSortHeader from '@/components/TableSortHeader.vue'
 import HazardPointDetail from './components/HazardPointDetail.vue'
@@ -796,7 +790,6 @@ import {
 import MapBoundaryEditor from '@/components/map/MapBoundaryEditor.vue'
 import MapBoundaryPreview from '@/components/map/MapBoundaryPreview.vue'
 import {type BoundaryCoords, deserialize, type LatLng} from '@/lib/boundaryCoords'
-import VueApexCharts from 'vue3-apexcharts'
 import {
   getAlarmLevelType,
   getChannelLabel,
@@ -808,35 +801,10 @@ import {
 import {type GroupItem, useHazardPointGroups} from './composables/useHazardPointGroups'
 import {type DispatchRule, useHazardPointAlarm} from './composables/useHazardPointAlarm'
 import {type BoundDevice, useHazardPointDeviceBind} from './composables/useHazardPointDeviceBind'
-import {useHazardPointMonitor} from './composables/useHazardPointMonitor'
 
 // ── Local refs shared between composables ──
 const boundDevices = ref<BoundDevice[]>([])
 
-// 添加ref
-const hazardPointDetailRef = ref<InstanceType<typeof HazardPointDetail> | null>(null)
-
-// 添加事件处理方法
-const handleDetailQueryData = (params: any) => {
-  // 调用监测数据查询
-  handleQueryData()
-}
-
-const handleDetailImportData = () => {
-  handleImportData()
-}
-
-const handleDetailExportData = () => {
-  handleExportData()
-}
-
-const handleDetailDeviceChange = (deviceId: string) => {
-  onDataDeviceChange(deviceId)
-}
-
-const handleDetailSensorChange = (sensorId: string) => {
-  onDataSensorChange(sensorId)
-}
 
 // ── CRUD composable ──
 const selectedGroupId = ref<string | null>(null)
@@ -960,27 +928,6 @@ const previewCenter = computed<LatLng | null>(() => {
   return {lat: r.latitude, lng: r.longitude}
 })
 
-// ── Monitor data composable ──
-const {
-  dataDisplayMode,
-  monitorDataList,
-  chartSeriesData,
-  chartOptions,
-  latestDataList,
-  monitorSensors,
-  monitorAttrs,
-  dataFilter,
-  initLatestData,
-  onDataDeviceChange,
-  onDataSensorChange,
-  handleQueryData,
-  handleImportData,
-  handleExportData,
-} = useHazardPointMonitor({
-  currentRow,
-  activeTab,
-})
-
 const mapDialogVisible = ref(false)
 const mapEditorRef = ref<InstanceType<typeof MapBoundaryEditor> | null>(null)
 const mapInitialCenter = computed<LatLng>(() => ({
@@ -1078,7 +1025,6 @@ const handleViewAndOpen = async (row: HazardPointItem) => {
   initBoundDevices(row.id)
   initAlarmCriteria(row.id)
   initDispatchRules(row.id)
-  initLatestData(row.id)
   detailDialogVisible.value = true
 }
 
@@ -1102,25 +1048,9 @@ const onMapDone = (value: BoundaryCoords, center: LatLng | null) => {
 
 // ── Old Leaflet map code replaced by <MapBoundaryEditor> component ──
 
-// 关闭详情弹窗时重置状态
-watch(detailDialogVisible, (visible) => {
-  if (!visible) {
-    monitorDataList.value = []
-    chartSeriesData.value = []
-    dataFilter.deviceId = ''
-    dataFilter.sensorId = ''
-    dataFilter.attrCode = ''
-    monitorSensors.value = []
-    monitorAttrs.value = []
-  }
-})
-
 onMounted(() => {
   loadTableData()
   loadGroupList()
-})
-
-onUnmounted(() => {
 })
 </script>
 

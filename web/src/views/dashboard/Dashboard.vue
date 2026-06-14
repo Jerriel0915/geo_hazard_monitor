@@ -34,6 +34,7 @@
       v-if="selectedDevice"
       :device="selectedDevice"
       :hazard-point-id="currentHazardPoint?.id"
+      :hazard-point-name="currentHazardPoint?.name"
       :left-offset="devicePanelLeftOffset"
       :right-offset="devicePanelRightOffset"
       @close="closeDevicePanel"

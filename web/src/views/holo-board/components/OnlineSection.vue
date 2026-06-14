@@ -82,3 +82,203 @@ const areaPath = computed(() => {
   return `${l} L ${p[p.length - 1]?.x || 280} 100 L ${p[0]?.x || 0} 100 Z`
 })
 </script>
+
+<style scoped>
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.online-overview {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(82, 196, 26, 0.08);
+  border-radius: 8px;
+}
+
+.online-rate-section {
+  text-align: center;
+}
+
+.online-rate {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.rate-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #52c41a;
+}
+
+.rate-unit {
+  font-size: 18px;
+  color: #9ca3af;
+}
+
+.online-text {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.online-count-section {
+  text-align: center;
+}
+
+.online-numbers {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.online-count {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.online-separator {
+  color: #9ca3af;
+}
+
+.total-count {
+  font-size: 18px;
+  color: #6b7280;
+}
+
+.online-label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.online-chart {
+  margin-bottom: 16px;
+}
+
+.chart-title {
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 12px;
+}
+
+.type-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.type-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-label {
+  width: 50px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.bar-container {
+  flex: 1;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #52c41a, #4facfe);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.bar-count {
+  width: 50px;
+  font-size: 14px;
+  color: #374151;
+  text-align: right;
+}
+
+.online-trend {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(79, 172, 254, 0.2);
+}
+
+.trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.trend-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.trend-subtitle {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.trend-chart {
+  display: flex;
+  gap: 8px;
+}
+
+.trend-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.trend-y-axis span {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.trend-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.trend-svg {
+  flex: 1;
+  width: 100%;
+  min-height: 80px;
+}
+
+.trend-x-axis {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+
+.trend-x-axis span {
+  font-size: 14px;
+  color: #9ca3af;
+}
+</style>

@@ -61,3 +61,162 @@ defineProps<{
   stats: { totalResources: number; hazardTotal: number; deviceTotal: number; deviceTypes: DeviceTypeStat[] }
 }>()
 </script>
+
+<style scoped>
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.resource-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resource-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.resource-total {
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.total-circle {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.total-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring-bg {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.08);
+  stroke-width: 10;
+}
+
+.ring-hazard {
+  fill: none;
+  stroke: #faad14;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.ring-device {
+  fill: none;
+  stroke: #52c41a;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.total-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.total-label {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.resource-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 6px;
+}
+
+.breakdown-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 6px;
+}
+
+.breakdown-info {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.breakdown-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.breakdown-label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.device-type-section {
+  border-top: 1px solid rgba(79, 172, 254, 0.2);
+  padding-top: 12px;
+}
+
+.type-title {
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.type-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.type-bar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.type-name {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.type-count {
+  font-size: 15px;
+  color: #3b82f6;
+  font-weight: 600;
+}
+</style>

@@ -85,3 +85,75 @@ export const getChartData = (params: {
     endTime: string
 }) =>
     unwrap<ChartData[]>(request.get('/monitor-data/chart', {params}))
+
+// ── 传感器维度接口（MonitorDataSensorController） ──
+
+export interface ExpressionSpec {
+  alias?: string
+  function?: string
+  left?: ExpressionSpec
+  op?: '+' | '-' | '*' | '/'
+  right?: ExpressionSpec
+  value?: number
+}
+
+export interface SensorAggregateVO {
+  intervals: { startTime: string; endTime: string }[]
+  columns: { alias: string; label: string; unit: string }[]
+  rows: Record<string, number | null>[]
+}
+
+export interface SensorCompletenessVO {
+  expected: number
+  actual: number
+  rate: number
+  gaps: { start: string; end: string }[]
+}
+
+export interface SensorTrendVO {
+  slope: number
+  intercept: number
+  direction: 'up' | 'down' | 'stable'
+  confidence: number
+}
+
+/** 传感器维度 — 最新值 */
+export const getSensorLatest = (deviceId: number, sensorCode: string, attrCode?: string) =>
+  unwrap<LatestDataItem[]>(request.get('/monitor-data/sensor/latest', {
+    params: { deviceId, sensorCode, attrCode }
+  }))
+
+/** 传感器维度 — 区间数据（支持数值范围过滤） */
+export const getSensorRange = (params: {
+  deviceId: number; sensorCode: string; attrCode?: string
+  startTime: string; endTime: string
+  minValue?: number; maxValue?: number; limit?: number; offset?: number
+}) =>
+  unwrap(request.get('/monitor-data/sensor/range', { params }))
+
+/** 传感器维度 — 多表达式聚合 */
+export const getSensorAggregate = (
+  params: {
+    deviceId: number; sensorCode: string
+    startTime: string; endTime: string; granularity?: string
+    minValue?: number; maxValue?: number
+  },
+  expressions: ExpressionSpec[]
+) =>
+  unwrap<SensorAggregateVO>(
+    request.post('/monitor-data/sensor/aggregate', expressions, { params })
+  )
+
+/** 传感器维度 — 数据完整度 */
+export const getSensorCompleteness = (params: {
+  deviceId: number; sensorCode: string; attrCode: string
+  startTime: string; endTime: string; expectedIntervalMs?: number
+}) =>
+  unwrap<SensorCompletenessVO>(request.get('/monitor-data/sensor/completeness', { params }))
+
+/** 传感器维度 — 趋势分析 */
+export const getSensorTrend = (params: {
+  deviceId: number; sensorCode: string; attrCode: string
+  startTime: string; endTime: string
+}) =>
+  unwrap<SensorTrendVO>(request.get('/monitor-data/sensor/trend', { params }))
