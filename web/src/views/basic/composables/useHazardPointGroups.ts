@@ -38,6 +38,7 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
     const groupPageSize = ref(10)
     const groupCurrentPage = ref(1)
     const groupPanelWidth = ref(200)
+    const groupFilterName = ref('')
 
     // ── Group form dialog ──
     const groupDialogVisible = ref(false)
@@ -78,9 +79,13 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
     // ── Data loading ──
     const loadGroupPage = (page: number) => {
         groupCurrentPage.value = page
+        const keyword = groupFilterName.value.trim().toLowerCase()
+        const filtered = keyword
+            ? groupList.value.filter(g => g.name.toLowerCase().includes(keyword))
+            : [...groupList.value]
         const start = (page - 1) * groupPageSize.value
         const end = start + groupPageSize.value
-        displayGroupList.value = [...groupList.value]
+        displayGroupList.value = filtered
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .slice(start, end)
     }
@@ -143,14 +148,24 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
 
     // ── Panel resize ──
     const startResize = (e: MouseEvent) => {
+        e.preventDefault()
         const startX = e.clientX
         const startWidth = groupPanelWidth.value
+        let rafId: number | null = null
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'col-resize'
         const onMouseMove = (ev: MouseEvent) => {
-            groupPanelWidth.value = Math.max(150, Math.min(400, startWidth + ev.clientX - startX))
+            if (rafId !== null) return
+            rafId = requestAnimationFrame(() => {
+                groupPanelWidth.value = Math.max(150, Math.min(400, startWidth + ev.clientX - startX))
+                rafId = null
+            })
         }
         const onMouseUp = () => {
             document.removeEventListener('mousemove', onMouseMove)
             document.removeEventListener('mouseup', onMouseUp)
+            document.body.style.userSelect = ''
+            document.body.style.cursor = ''
         }
         document.addEventListener('mousemove', onMouseMove)
         document.addEventListener('mouseup', onMouseUp)
@@ -303,6 +318,8 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
         // computed
         groupOptions,
         statsGroupCount,
+        // filter
+        groupFilterName,
         // actions
         loadGroupList,
         loadGroupPage,

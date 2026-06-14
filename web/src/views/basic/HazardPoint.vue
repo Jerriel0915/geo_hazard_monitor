@@ -25,6 +25,10 @@
           <span class="group-panel__title">分组列表</span>
           <el-button size="small" @click="handleAddGroup">+ 新增</el-button>
         </div>
+        <div class="group-panel__search">
+          <el-input v-model="groupFilterName" placeholder="搜索分组名称" clearable size="small"
+                    @input="loadGroupPage(1)" @clear="loadGroupPage(1)"/>
+        </div>
         <div class="group-panel__list" @scroll="handleGroupListScroll">
           <div
             v-for="group in displayGroupList"
@@ -1077,6 +1081,7 @@ const {
   groupFormRules,
   groupOptions,
   statsGroupCount: groupStatsGroupCount,
+  groupFilterName,
   loadGroupList,
   loadGroupPage,
   handleGroupListScroll,
@@ -1318,6 +1323,11 @@ onUnmounted(() => {
   color: #909399;
 }
 
+.group-panel__search {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
 .group-panel__list {
   flex: 1;
   overflow-y: auto;
@@ -1452,18 +1462,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-.resize-handle:hover {
-  background: #1890ff;
-}
-
-.resize-handle:hover::after {
+.resize-handle::after {
   content: '';
   width: 2px;
   height: 40px;
-  background: #1890ff;
+  background: #b0b0b0;
   border-radius: 1px;
+  transition: background 0.2s, height 0.2s;
+}
+
+.resize-handle:hover {
+  background: rgba(24, 144, 255, 0.08);
+}
+
+.resize-handle:hover::after {
+  background: #1890ff;
+  height: 56px;
 }
 
 /* ========== 右侧内容面板 ========== */
@@ -1471,7 +1488,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-left: 12px;
+  padding-left: 0;
   min-width: 0;
 }
 
