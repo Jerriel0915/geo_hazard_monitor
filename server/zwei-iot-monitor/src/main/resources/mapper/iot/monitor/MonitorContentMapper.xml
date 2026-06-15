@@ -12,6 +12,7 @@
         <result property="code" column="code"/>
         <result property="name" column="name"/>
         <result property="unit" column="unit"/>
+        <result property="sortOrder" column="sort_order"/>
         <result property="indicatorType" column="indicator_type"/>
         <result property="icon" column="icon"/>
         <result property="rangeMin" column="range_min"/>
@@ -29,6 +30,7 @@
                mc.code,
                mc.name,
                mc.unit,
+               mc.sort_order,
                mc.indicator_type,
                mc.icon,
                mc.range_min,
@@ -91,6 +93,26 @@
         WHERE mc.code = #{code} AND mc.del_flag = 0 AND mc.id != #{id} LIMIT 1
     </select>
 
+    <!-- 查询指定监测类型下最大的 sort_order -->
+    <select id="selectMaxSortOrderByMonitorTypeId" resultType="int">
+        SELECT COALESCE(MAX(sort_order), 0)
+        FROM monitor_content
+        WHERE monitor_type_id = #{monitorTypeId}
+          AND del_flag = 0
+    </select>
+
+    <!-- 检查 sort_order 是否已被其他行占用 -->
+    <select id="checkSortOrderExists" resultMap="MonitorContentResult">
+        <include refid="selectMonitorContentVo"/>
+        WHERE mc.monitor_type_id = #{monitorTypeId}
+          AND mc.sort_order = #{sortOrder}
+          AND mc.del_flag = 0
+          <if test="excludeId != null">
+              AND mc.id != #{excludeId}
+          </if>
+        LIMIT 1
+    </select>
+
     <!-- ==================== 新增操作 ==================== -->
 
     <!-- 新增监测内容 -->
@@ -101,6 +123,7 @@
         <if test="code != null and code != ''">code,</if>
         <if test="name != null and name != ''">name,</if>
         <if test="unit != null">unit,</if>
+        <if test="sortOrder != null">sort_order,</if>
         <if test="indicatorType != null">indicator_type,</if>
         <if test="icon != null">icon,</if>
         <if test="rangeMin != null">range_min,</if>
@@ -112,6 +135,7 @@
         <if test="code != null and code != ''">#{code},</if>
         <if test="name != null and name != ''">#{name},</if>
         <if test="unit != null">#{unit},</if>
+        <if test="sortOrder != null">#{sortOrder},</if>
         <if test="indicatorType != null">#{indicatorType},</if>
         <if test="icon != null">#{icon},</if>
         <if test="rangeMin != null">#{rangeMin},</if>
@@ -131,6 +155,7 @@
             <if test="code != null and code != ''">code = #{code},</if>
             <if test="name != null and name != ''">name = #{name},</if>
             <if test="unit != null">unit = #{unit},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
             <if test="indicatorType != null">indicator_type = #{indicatorType},</if>
             <if test="icon != null">icon = #{icon},</if>
             <if test="rangeMin != null">range_min = #{rangeMin},</if>

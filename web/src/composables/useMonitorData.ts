@@ -5,6 +5,7 @@ import {
   getChartData,
   getMonitorDataPage,
   getSensorLatest,
+  getSensorRange,
   getSensorAggregate,
   getSensorCompleteness,
   getSensorTrend,
@@ -33,8 +34,26 @@ const CHART_COLORS = [
   '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
 ]
 
+/**
+ * Format epoch millis (or any value) to a sortable, locale-friendly label.
+ * Used to align device-side charts with the hazard-point chart format.
+ */
+function formatChartLabel(input: unknown): string {
+  if (input == null) return ''
+  // If already a formatted string, keep as-is.
+  if (typeof input === 'string') return input
+  // Treat numeric (or numeric string) as epoch millis.
+  const n = typeof input === 'number' ? input : Number(input)
+  if (!Number.isFinite(n) || n <= 0) return String(input)
+  const d = new Date(n)
+  if (Number.isNaN(d.getTime())) return String(input)
+  const pad = (v: number) => String(v).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
 export interface UseMonitorDataOptions {
   hazardPointId: MaybeRef<number | null>
+  initialDeviceId?: MaybeRef<number | null>
 }
 
 export function useMonitorData(opts: UseMonitorDataOptions) {
@@ -65,6 +84,27 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   // ── 加载设备列表 ──
   const loadDevices = async () => {
     const hpId = toValue(opts.hazardPointId)
+    const initDeviceId = toValue(opts.initialDeviceId)
+
+    // 设备单独模式：无 hazardPointId，但有 initialDeviceId（设备未绑定隐患点）
+    if (!hpId && initDeviceId) {
+      // 先查设备信息，再查其传感器列表
+      try {
+        const sensors = await getDeviceSensors(initDeviceId)
+        devices.value = [{
+          deviceId: initDeviceId,
+          deviceName: '',
+          deviceCode: '',
+          sensors: sensors
+            .filter((s: SensorItem) => s.id != null)
+            .map((s: SensorItem) => ({ id: s.id!, name: s.sensorName })),
+        }]
+      } catch {
+        devices.value = []
+      }
+      return
+    }
+
     if (!hpId) {
       devices.value = []
       return
@@ -137,6 +177,111 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   // ── 查询 ──
   const query = async () => {
     const hpId = toValue(opts.hazardPointId)
+    const initDeviceId = toValue(opts.initialDeviceId)
+
+    // 设备单独模式：无 hazardPointId，直接用传感器级 API 按 deviceId 查询
+    if (!hpId && (filter.deviceId || initDeviceId)) {
+      const deviceId = filter.deviceId ? Number(filter.deviceId) : initDeviceId!
+      if (!deviceId) return
+
+      // 从 sensorMap 中查找 sensorCode
+      const sensorId = filter.sensorId ? Number(filter.sensorId) : 0
+      const sensor = sensorMap.get(sensorId)
+      if (!sensor) {
+        ElMessage.warning('请先选择传感器')
+        return
+      }
+
+      let startTime: string
+      let endTime: string
+      if (filter.timeRange && filter.timeRange[0] && filter.timeRange[1]) {
+        startTime = filter.timeRange[0]
+        endTime = filter.timeRange[1]
+      } else {
+        ;[startTime, endTime] = defaultTimeRange()
+      }
+
+      loading.value = true
+      try {
+        const dataMap: Record<string, any[]> = await getSensorRange({
+          deviceId,
+          sensorCode: sensor.sensorCode,
+          attrCode: filter.attrCode || undefined,
+          startTime,
+          endTime,
+        })
+
+        if (mode.value === 'chart') {
+          // dataMap 是 Map<attrCode, List<{time, value, quality}>>，需要按 attrCode 展开
+          const seriesList: ChartData[] = []
+          for (const [attrCode, rows] of Object.entries(dataMap)) {
+            const labels: string[] = []
+            const values: number[] = []
+            let max = Number.NEGATIVE_INFINITY
+            let min = Number.POSITIVE_INFINITY
+            let sum = 0
+            for (const r of rows) {
+              labels.push(formatChartLabel(r.dataTime ?? r.time))
+              values.push(r.value)
+              if (r.value != null) {
+                max = Math.max(max, r.value)
+                min = Math.min(min, r.value)
+                sum += r.value
+              }
+            }
+            const attrDef = sensor.attrList?.find((a: any) => a.attrCode === attrCode)
+            const attrDisplayName = attrDef?.attrName || attrCode
+            seriesList.push({
+              seriesName: attrDisplayName,
+              deviceName: '',
+              sensorName: sensor.sensorName || sensor.sensorCode,
+              labels,
+              values,
+              unit: attrDef?.unit || '',
+              attrName: attrDisplayName,
+              maxValue: values.length ? max : null,
+              minValue: values.length ? min : null,
+              avgValue: values.length ? sum / values.length : null,
+            })
+          }
+          chartSeries.value = seriesList
+          const totalPoints = seriesList.reduce((sum, s) => sum + s.labels.length, 0)
+          ElMessage.success(`加载 ${seriesList.length} 条曲线，共 ${totalPoints} 个数据点`)
+        } else {
+          // 表格模式：扁平化所有 attrCode 的数据行（保留 attrCode 归属）
+          const flatRows: Array<{ attrCode: string; row: any }> = []
+          for (const [code, rows] of Object.entries(dataMap)) {
+            for (const r of rows) flatRows.push({ attrCode: code, row: r })
+          }
+          tableData.value = flatRows.map(({ attrCode: code, row: r }) => {
+            const attrDef = sensor.attrList?.find((a: any) => a.attrCode === code)
+            const attrDisplayName = attrDef?.attrName || code
+            return {
+              hazardPointId: 0,
+              hazardPointName: '',
+              dataTime: formatChartLabel(r.dataTime ?? r.time),
+              deviceId,
+              deviceName: '',
+              sensorId: sensor.id ?? 0,
+              sensorName: sensor.sensorName,
+              attrCode: code,
+              attrName: attrDisplayName,
+              value: r.value,
+              unit: attrDef?.unit || '',
+              quality: r.quality,
+              qualityText: r.quality === 0 || r.quality == null ? '正常' : '异常',
+            }
+          })
+          ElMessage.success(`加载 ${tableData.value.length} 条数据`)
+        }
+      } catch (error) {
+        showRequestErrorMessage(error, '获取监测数据失败')
+      } finally {
+        loading.value = false
+      }
+      return
+    }
+
     if (!hpId) {
       ElMessage.warning('请先选择隐患点')
       return
@@ -233,6 +378,17 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         type: 'area' as const,
         height: '100%',
         fontFamily: 'inherit',
+        defaultLocale: 'zh-cn',
+        locales: [{
+          name: 'zh-cn',
+          options: {
+            months: ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'],
+            shortMonths: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+            days: ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'],
+            shortDays: ['周日','周一','周二','周三','周四','周五','周六'],
+            toolbar: { download: '下载 SVG', selection: '选择', selectionZoom: '区域缩放', zoomIn: '放大', zoomOut: '缩小', pan: '平移', reset: '重置' }
+          }
+        }],
         toolbar: {
           tools: {
             download: true, selection: true, zoom: true,

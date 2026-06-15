@@ -105,4 +105,24 @@ public interface MonitorContentMapper {
      * @return 监测内容信息（null表示唯一）
      */
     MonitorContent checkMonitorContentCodeUnique(@Param("code") String code, @Param("id") Long id);
+
+    /**
+     * 查询指定监测类型下最大的 sort_order
+     *
+     * @param monitorTypeId 监测类型ID
+     * @return 最大 sort_order（无数据时返回 0）
+     */
+    Integer selectMaxSortOrderByMonitorTypeId(@Param("monitorTypeId") Long monitorTypeId);
+
+    /**
+     * 检查指定监测类型下 sort_order 是否已被其他行占用
+     *
+     * @param monitorTypeId 监测类型ID
+     * @param sortOrder    sort_order 值
+     * @param excludeId    排除自身ID（更新时使用，插入时传 null）
+     * @return 冲突的监测内容（null 表示唯一）
+     */
+    MonitorContent checkSortOrderExists(@Param("monitorTypeId") Long monitorTypeId,
+                                         @Param("sortOrder") Integer sortOrder,
+                                         @Param("excludeId") Long excludeId);
 }

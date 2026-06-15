@@ -1,4 +1,4 @@
-package com.zwei.iot.timeseries.support;
+package com.zwei.iot.parser.support;
 
 import org.springframework.stereotype.Component;
 
@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * gb/v1/{deviceCode}/{sensorCode}/updata    → 国标字节流格式
  * </pre>
  *
- * <p>解析失败时返回 null，由上游 {@link MonitorIngestFacade} 统一处理。
+ * <p>解析失败时返回 null，由上游 {@link com.zwei.iot.timeseries.service.MonitorIngestFacade} 统一处理。
  */
 @Component
 public class MonitorTopicParser {

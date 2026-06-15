@@ -46,8 +46,9 @@
     <!-- 查询传感器属性列表 -->
     <select id="selectAttributeListBySensorId" parameterType="Long" resultMap="SensorAttributeResult">
         <include refid="selectAttributeVo"/>
+        LEFT JOIN monitor_content mc ON sa.monitor_content_id = mc.id
         WHERE sa.sensor_id = #{sensorId}
-        ORDER BY sa.id ASC
+        ORDER BY mc.sort_order ASC, sa.id ASC
     </select>
 
     <!-- 根据设备ID查询所有传感器属性（JOIN device_sensor，一次查询避免 N+1） -->
@@ -68,8 +69,9 @@
                sa.update_time
         FROM sensor_attribute sa
         INNER JOIN device_sensor ds ON sa.sensor_id = ds.id
+        LEFT JOIN monitor_content mc ON sa.monitor_content_id = mc.id
         WHERE ds.device_id = #{deviceId}
-        ORDER BY sa.id ASC
+        ORDER BY mc.sort_order ASC, sa.id ASC
     </select>
 
     <!-- 根据ID查询属性详情 -->

@@ -1,4 +1,4 @@
-package com.zwei.iot.timeseries.support;
+package com.zwei.iot.parser.support;
 
 
 /**

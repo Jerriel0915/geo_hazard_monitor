@@ -163,6 +163,7 @@ public class MonitorContentController extends BaseController {
         monitorContent.setCode(request.getCode());
         monitorContent.setName(request.getName());
         monitorContent.setUnit(request.getUnit());
+        monitorContent.setSortOrder(request.getSortOrder());
         monitorContent.setIndicatorType(request.getIndicatorType());
         monitorContent.setIcon(request.getIcon());
         monitorContent.setRangeMin(request.getRangeMin());
@@ -175,6 +176,9 @@ public class MonitorContentController extends BaseController {
         monitorContent.setId(id);
         monitorContent.setName(request.getName());
         monitorContent.setUnit(request.getUnit());
+        if (request.getSortOrder() != null) {
+            monitorContent.setSortOrder(request.getSortOrder());
+        }
         monitorContent.setIcon(request.getIcon());
         monitorContent.setRangeMin(request.getRangeMin());
         monitorContent.setRangeMax(request.getRangeMax());

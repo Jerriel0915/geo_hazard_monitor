@@ -1,6 +1,7 @@
 package com.zwei.iot.timeseries.service;
 
 import com.alibaba.fastjson2.JSON;
+import com.zwei.common.domain.ParsedMessage;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +67,34 @@ public class MonitorIngestStreamService {
     public void enqueueDeadLetter(StandardMeasurementPoint point, String reason) {
         Map<String, String> body = new HashMap<>();
         body.put("payload", JSON.toJSONString(point));
+        body.put("reason", reason);
+        redisTemplate.opsForStream().add(MapRecord.create(properties.getDeadLetterStreamKey(), body));
+    }
+
+    /**
+     * 将解析后的标准化报文写入主消费流。
+     *
+     * @param parsedMessage 解析后的标准化报文
+     */
+    public void enqueue(ParsedMessage parsedMessage) {
+        Map<String, String> body = new HashMap<>();
+        body.put("payload", JSON.toJSONString(parsedMessage));
+        body.put("payloadType", "PARSED_MESSAGE");
+        body.put("retryCount", "0");
+        redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), body));
+    }
+
+    /**
+     * 将解析失败的原始报文写入死信流。
+     *
+     * @param topic      MQTT 主题
+     * @param rawPayload 原始报文字符串
+     * @param reason     失败原因
+     */
+    public void enqueueDeadLetter(String topic, String rawPayload, String reason) {
+        Map<String, String> body = new HashMap<>();
+        body.put("topic", topic);
+        body.put("rawPayload", rawPayload);
         body.put("reason", reason);
         redisTemplate.opsForStream().add(MapRecord.create(properties.getDeadLetterStreamKey(), body));
     }

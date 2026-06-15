@@ -152,7 +152,7 @@ import { useMonitorData } from '@/composables/useMonitorData'
 import type { ChartData, MonitorDataPageItem } from '@/api/monitorData'
 
 const props = withDefaults(defineProps<{
-  hazardPointId: number
+  hazardPointId?: number | null
   hazardPointName?: string
   showDevice?: boolean
   showSensor?: boolean
@@ -195,7 +195,8 @@ const {
   reset,
   buildChartOptions,
 } = useMonitorData({
-  hazardPointId: computed(() => props.hazardPointId),
+  hazardPointId: computed(() => props.hazardPointId ?? null),
+  initialDeviceId: computed(() => props.initialDeviceId ?? null),
 })
 
 const chartOptions = computed(() => buildChartOptions(chartSeries.value))

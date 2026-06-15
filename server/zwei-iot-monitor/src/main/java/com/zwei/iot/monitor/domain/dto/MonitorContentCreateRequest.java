@@ -36,6 +36,8 @@ public class MonitorContentCreateRequest implements Serializable {
     @Size(max = 50, message = "单位长度不能超过50个字符")
     private String unit;
 
+    private Integer sortOrder;
+
     @Size(max = 50, message = "指标类型长度不能超过50个字符")
     private String indicatorType;
 

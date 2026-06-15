@@ -1,6 +1,7 @@
 package com.zwei.iot.timeseries.controller;
 
 import com.zwei.common.core.domain.AjaxResult;
+import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.timeseries.domain.*;
 import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import com.zwei.iot.timeseries.service.MonitorDataAggregationService;
@@ -26,12 +27,13 @@ class MonitorDataSensorControllerTest {
     @Mock private MonitorDataAggregationService aggregationService;
     @Mock private MonitorDataAnalysisService analysisService;
     @Mock private IotdbTimeSeriesService iotdbService;
+    @Mock private IDeviceSensorService deviceSensorService;
 
     private MonitorDataSensorController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new MonitorDataSensorController(iotdbService, aggregationService, analysisService);
+        controller = new MonitorDataSensorController(iotdbService, aggregationService, analysisService, deviceSensorService);
     }
 
     @Test
@@ -98,7 +100,9 @@ class MonitorDataSensorControllerTest {
     @Test
     @DisplayName("/range — 返回区间数据")
     void range_ok() {
-        when(iotdbService.queryRangeBySensor(eq(1L), eq("rain_01"), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        when(deviceSensorService.findAttrCodesByDeviceAndSensor(eq(1L), eq("rain_01")))
+                .thenReturn(List.of("rainfall"));
+        when(iotdbService.queryRangeBySensor(eq(1L), eq("rain_01"), eq(List.of("rainfall")), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(Map.of("rainfall", List.of(IotdbQueryRow.builder().time(1700000000000L).value(12.5).quality(0).build())));
 
         AjaxResult result = controller.range(1L, "rain_01", null,

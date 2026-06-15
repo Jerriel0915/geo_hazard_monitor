@@ -61,7 +61,6 @@
     <update id="deleteByDeviceId" parameterType="Long">
         UPDATE product SET
             product_key = CONCAT(product_key, '#DEL#', device_id),
-            device_id   = NULL,
             del_flag    = 1,
             update_time = SYSDATE()
         WHERE device_id = #{deviceId} AND del_flag = 0

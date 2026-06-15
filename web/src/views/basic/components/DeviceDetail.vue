@@ -107,13 +107,11 @@
 
       <el-tab-pane label="监测数据" name="monitorData">
         <MonitorDataExplorer
-          v-if="currentRow?.boundHazardPointId"
-          :hazard-point-id="currentRow.boundHazardPointId"
-          :hazard-point-name="currentRow.name"
+          :hazard-point-id="currentRow?.boundHazardPointId ?? null"
+          :hazard-point-name="currentRow?.name"
           :show-device="false"
-          :initial-device-id="currentRow.id"
+          :initial-device-id="currentRow?.id"
         />
-        <div v-else class="mde-empty">该设备未绑定隐患点，无法查询监测数据</div>
       </el-tab-pane>
     </el-tabs>
 
@@ -246,14 +244,5 @@ const copyPwd = (pwd: string) => {
   font-size: 13px;
   color: #606266;
   padding: 2px 0;
-}
-
-.mde-empty {
-  height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 14px;
 }
 </style>

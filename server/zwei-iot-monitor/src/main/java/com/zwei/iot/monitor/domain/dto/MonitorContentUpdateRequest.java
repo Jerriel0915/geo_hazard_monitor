@@ -27,6 +27,8 @@ public class MonitorContentUpdateRequest implements Serializable {
     @Size(max = 50, message = "单位长度不能超过50个字符")
     private String unit;
 
+    private Integer sortOrder;
+
     @Pattern(regexp = ".*\\S.*", message = "图标路径不能为空")
     @Size(max = 200, message = "图标路径长度不能超过200个字符")
     private String icon;
@@ -38,6 +40,6 @@ public class MonitorContentUpdateRequest implements Serializable {
     private BigDecimal rangeMax;
 
     public boolean hasUpdatableField() {
-        return name != null || unit != null || icon != null || rangeMin != null || rangeMax != null;
+        return name != null || unit != null || sortOrder != null || icon != null || rangeMin != null || rangeMax != null;
     }
 }

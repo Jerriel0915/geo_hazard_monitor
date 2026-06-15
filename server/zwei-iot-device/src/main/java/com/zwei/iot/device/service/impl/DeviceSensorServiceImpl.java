@@ -314,6 +314,12 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     }
 
     @Override
+    public java.util.Optional<DeviceSensor> findBySensorCode(String sensorCode) {
+        DeviceSensor sensor = sensorMapper.selectSensorByCode(sensorCode);
+        return java.util.Optional.ofNullable(sensor);
+    }
+
+    @Override
     @Transactional
     public void deleteSensorAttribute(Long sensorId, Long attrId) {
         SensorAttribute attr = attributeMapper.selectAttributeById(attrId);
@@ -325,5 +331,15 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
         if (sensor != null) {
             productTslService.regenerate(sensor.getDeviceId());
         }
+    }
+
+    @Override
+    public List<String> findAttrCodesByDeviceAndSensor(Long deviceId, String sensorCode) {
+        DeviceSensor sensor = sensorMapper.selectSensorByDeviceIdAndCode(deviceId, sensorCode);
+        if (sensor == null) {
+            return List.of();
+        }
+        List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(sensor.getId());
+        return attrs.stream().map(SensorAttribute::getAttrCode).toList();
     }
 }

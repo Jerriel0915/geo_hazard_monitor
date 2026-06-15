@@ -66,6 +66,7 @@
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-timeseries</artifactId></dependency>
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-broker</artifactId></dependency>
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-hazard</artifactId></dependency>
+        <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-parser</artifactId></dependency>
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-video</artifactId></dependency>
         <dependency>
             <groupId>com.zwei</groupId>

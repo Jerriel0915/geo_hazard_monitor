@@ -56,6 +56,11 @@ public class MonitorContent extends BaseEntity {
     private String unit;
 
     /**
+     * 排序号（每个监测类型内从1递增）
+     */
+    private Integer sortOrder;
+
+    /**
      * 指标类型
      */
     private String indicatorType;

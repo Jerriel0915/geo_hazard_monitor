@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.parser.mapper.DataParseLogMapper">
+    <resultMap id="BaseResultMap" type="com.zwei.iot.parser.domain.DataParseLog">
+        <id column="id" property="id"/>
+        <result column="strategy_id" property="strategyId"/>
+        <result column="log_level" property="logLevel"/>
+        <result column="message" property="message"/>
+        <result column="data" property="data"/>
+        <result column="topic" property="topic"/>
+        <result column="device_code" property="deviceCode"/>
+        <result column="parse_result" property="parseResult"/>
+        <result column="execution_time" property="executionTime"/>
+        <result column="error_stack" property="errorStack"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+    <insert id="insert">
+        INSERT INTO iot_data_parse_log (strategy_id, log_level, message, data, topic, device_code, parse_result, execution_time, error_stack)
+        VALUES (#{strategyId}, #{logLevel}, #{message}, #{data}, #{topic}, #{deviceCode}, #{parseResult}, #{executionTime}, #{errorStack})
+    </insert>
+    <select id="selectByCondition" resultMap="BaseResultMap">
+        SELECT * FROM iot_data_parse_log WHERE strategy_id = #{strategyId}
+        <if test="logLevel != null and logLevel != ''">AND log_level = #{logLevel}</if>
+        <if test="startTime != null">AND create_time >= #{startTime}</if>
+        <if test="endTime != null">AND create_time &lt;= #{endTime}</if>
+        ORDER BY create_time DESC LIMIT 500
+    </select>
+    <delete id="deleteByStrategyId">
+        DELETE FROM iot_data_parse_log WHERE strategy_id = #{strategyId}
+    </delete>
+</mapper>

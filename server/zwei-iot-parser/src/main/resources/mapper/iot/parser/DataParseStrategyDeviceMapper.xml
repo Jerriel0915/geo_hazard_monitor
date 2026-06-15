@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.parser.mapper.DataParseStrategyDeviceMapper">
+    <select id="selectDeviceIdsByStrategyId" resultType="long">
+        SELECT device_id FROM iot_data_parse_strategy_device WHERE strategy_id = #{strategyId}
+    </select>
+    <select id="selectStrategyIdByDeviceId" resultType="long">
+        SELECT strategy_id FROM iot_data_parse_strategy_device d
+        INNER JOIN iot_data_parse_strategy s ON d.strategy_id = s.id
+        WHERE d.device_id = #{deviceId} AND s.status = 1 AND s.deleted = 0
+        LIMIT 1
+    </select>
+    <insert id="insert">
+        INSERT INTO iot_data_parse_strategy_device (strategy_id, device_id) VALUES (#{strategyId}, #{deviceId})
+    </insert>
+    <delete id="deleteByStrategyId">
+        DELETE FROM iot_data_parse_strategy_device WHERE strategy_id = #{strategyId}
+    </delete>
+</mapper>

@@ -3,11 +3,13 @@ package com.zwei.iot.monitor.service.impl;
 import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.mapper.MonitorContentMapper;
 import com.zwei.iot.monitor.service.IMonitorContentService;
+import com.zwei.common.exception.ServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -64,12 +66,22 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      * 新增监测内容
      */
     @Override
+    @Transactional
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
             @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int insertMonitorContent(MonitorContent monitorContent) {
+        // Auto-assign sortOrder if not provided: set to MAX + 1 for this monitor_type
+        if (monitorContent.getSortOrder() == null) {
+            Integer maxOrder = monitorContentMapper.selectMaxSortOrderByMonitorTypeId(
+                    monitorContent.getMonitorTypeId());
+            monitorContent.setSortOrder(maxOrder + 1);
+        } else {
+            // If explicitly provided, validate uniqueness (UNIQUE constraint is the safety net)
+            validateSortOrderUniqueness(monitorContent, null);
+        }
         return monitorContentMapper.insertMonitorContent(monitorContent);
     }
 
@@ -77,13 +89,39 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      * 修改监测内容
      */
     @Override
+    @Transactional
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
             @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int updateMonitorContent(MonitorContent monitorContent) {
+        if (monitorContent.getSortOrder() != null) {
+            validateSortOrderUniqueness(monitorContent, monitorContent.getId());
+        }
         return monitorContentMapper.updateMonitorContent(monitorContent);
+    }
+
+    /**
+     * 检查 sort_order 在同 monitor_type 下是否与其他行冲突。
+     * 用于创建时或更新时预校验唯一性（UNIQUE 约束为最终兜底）。
+     *
+     * @param monitorContent 待校验的实体（需含 monitorTypeId 与 sortOrder）
+     * @param excludeId      排除自身 ID（更新时传入，新建时传 null）
+     */
+    private void validateSortOrderUniqueness(MonitorContent monitorContent, Long excludeId) {
+        if (monitorContent.getSortOrder() == null) {
+            return;
+        }
+        MonitorContent conflict = monitorContentMapper.checkSortOrderExists(
+                monitorContent.getMonitorTypeId(),
+                monitorContent.getSortOrder(),
+                excludeId);
+        if (conflict != null) {
+            throw new ServiceException(
+                    "sort_order=" + monitorContent.getSortOrder()
+                            + " 在监测类型下已存在（id=" + conflict.getId() + "）");
+        }
     }
 
     /**

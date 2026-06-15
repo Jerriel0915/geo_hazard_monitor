@@ -1,8 +1,8 @@
 package com.zwei.iot.timeseries.controller;
 
 import com.zwei.common.core.domain.AjaxResult;
-import com.zwei.common.utils.DateUtils;
 import com.zwei.common.utils.StringUtils;
+import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.timeseries.domain.*;
 import com.zwei.iot.timeseries.service.IotdbTimeSeriesService;
 import com.zwei.iot.timeseries.service.MonitorDataAggregationService;
@@ -11,6 +11,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -24,18 +29,25 @@ import java.util.List;
 @PreAuthorize("@ss.hasPermi('basic:device:query')")
 public class MonitorDataSensorController {
 
+    private static final DateTimeFormatter TS_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .withZone(ZoneId.of("Asia/Shanghai"));
+
     private final IotdbTimeSeriesService iotdbTimeSeriesService;
     private final MonitorDataAggregationService aggregationService;
     private final MonitorDataAnalysisService analysisService;
+    private final IDeviceSensorService deviceSensorService;
 
     @Autowired
     public MonitorDataSensorController(
             IotdbTimeSeriesService iotdbTimeSeriesService,
             MonitorDataAggregationService aggregationService,
-            MonitorDataAnalysisService analysisService) {
+            MonitorDataAnalysisService analysisService,
+            IDeviceSensorService deviceSensorService) {
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
         this.aggregationService = aggregationService;
         this.analysisService = analysisService;
+        this.deviceSensorService = deviceSensorService;
     }
 
     /** 1. 传感器下所有指标最新值(可指定 attrCode 过滤) */
@@ -60,7 +72,15 @@ public class MonitorDataSensorController {
                             @RequestParam(defaultValue = "0") int offset) {
         Long startMillis = toMillis(startTime);
         Long endMillis = toMillis(endTime);
-        List<String> attrCodes = StringUtils.isBlank(attrCode) ? List.of() : List.of(attrCode);
+        List<String> attrCodes;
+        if (StringUtils.isBlank(attrCode)) {
+            attrCodes = deviceSensorService.findAttrCodesByDeviceAndSensor(deviceId, sensorCode);
+            if (attrCodes.isEmpty()) {
+                return AjaxResult.success(Collections.emptyMap());
+            }
+        } else {
+            attrCodes = List.of(attrCode);
+        }
         return AjaxResult.success("成功",
                 iotdbTimeSeriesService.queryRangeBySensor(deviceId, sensorCode, attrCodes,
                         startMillis, endMillis, minValue, maxValue, limit, offset));
@@ -115,6 +135,15 @@ public class MonitorDataSensorController {
         if (StringUtils.isBlank(text)) {
             return null;
         }
-        return DateUtils.parseDate(text).getTime();
+        try {
+            // Try ISO-8601 with offset first
+            return OffsetDateTime.parse(text).toInstant().toEpochMilli();
+        } catch (Exception ignore) {
+            // Fallback: treat as Asia/Shanghai local time
+            return LocalDateTime.parse(text, TS_FMT)
+                    .atZone(ZoneId.of("Asia/Shanghai"))
+                    .toInstant()
+                    .toEpochMilli();
+        }
     }
 }

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.parser.mapper.DataParseStrategyMapper">
+    <resultMap id="BaseResultMap" type="com.zwei.iot.parser.domain.DataParseStrategy">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="app_scope" property="appScope"/>
+        <result column="script_code" property="scriptCode"/>
+        <result column="is_preset" property="isPreset"/>
+        <result column="last_run_time" property="lastRunTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM iot_data_parse_strategy WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectByCondition" resultMap="BaseResultMap">
+        SELECT * FROM iot_data_parse_strategy WHERE deleted = 0
+        <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+        <if test="sourceType != null and sourceType != ''">AND source_type = #{sourceType}</if>
+        <if test="status != null">AND status = #{status}</if>
+        <if test="appScope != null and appScope != ''">AND app_scope = #{appScope}</if>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectBySourceType" resultMap="BaseResultMap">
+        SELECT * FROM iot_data_parse_strategy WHERE source_type = #{sourceType} AND status = 1 AND deleted = 0
+        ORDER BY is_preset DESC, create_time ASC
+    </select>
+
+    <select id="selectEnabled" resultMap="BaseResultMap">
+        SELECT * FROM iot_data_parse_strategy WHERE status = 1 AND deleted = 0
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO iot_data_parse_strategy (name, source_type, description, status, app_scope, script_code, is_preset)
+        VALUES (#{name}, #{sourceType}, #{description}, #{status}, #{appScope}, #{scriptCode}, IFNULL(#{isPreset}, 0))
+    </insert>
+
+    <update id="updateById">
+        UPDATE iot_data_parse_strategy
+        SET name = #{name}, source_type = #{sourceType}, description = #{description},
+            status = #{status}, app_scope = #{appScope}, script_code = #{scriptCode}
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteById">
+        UPDATE iot_data_parse_strategy SET deleted = 1 WHERE id = #{id}
+    </update>
+
+    <update id="updateLastRunTime">
+        UPDATE iot_data_parse_strategy SET last_run_time = NOW() WHERE id = #{id}
+    </update>
+</mapper>

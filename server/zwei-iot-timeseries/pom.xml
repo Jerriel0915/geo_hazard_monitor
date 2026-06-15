@@ -7,6 +7,7 @@
     <dependencies>
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-common</artifactId></dependency>
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-device</artifactId></dependency>
+        <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-parser</artifactId></dependency>
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-monitor</artifactId></dependency>
         <dependency><groupId>com.zwei</groupId><artifactId>zwei-iot-hazard</artifactId></dependency>
         <dependency><groupId>org.apache.iotdb</groupId><artifactId>iotdb-jdbc</artifactId></dependency>

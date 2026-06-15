@@ -167,6 +167,13 @@ public class MonitorIngestConsumerService {
     private void processRecord(MapRecord<Object, Object, Object> record) {
         String payload = String.valueOf(record.getValue().get("payload"));
         int retryCount = Integer.parseInt(String.valueOf(record.getValue().getOrDefault("retryCount", "0")));
+        String payloadType = String.valueOf(record.getValue().getOrDefault("payloadType", "STANDARD_POINT"));
+
+        if ("PARSED_MESSAGE".equals(payloadType)) {
+            processParsedMessage(record, payload, retryCount);
+            return;
+        }
+
         StandardMeasurementPoint point = JSON.parseObject(payload, StandardMeasurementPoint.class);
         try {
             // ── 阶段1: 幂等去重 ──
@@ -213,6 +220,93 @@ public class MonitorIngestConsumerService {
             redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
             ack(record);
         }
+    }
+
+    /**
+     * Handle ParsedMessage-type records -- adapt to StandardMeasurementPoint then write to IoTDB.
+     */
+    private void processParsedMessage(MapRecord<Object, Object, Object> record, String payload, int retryCount) {
+        com.zwei.common.domain.ParsedMessage parsed =
+                JSON.parseObject(payload, com.zwei.common.domain.ParsedMessage.class);
+        try {
+            List<StandardMeasurementPoint> points = adapt(parsed);
+            if (points.isEmpty()) {
+                ack(record);
+                return;
+            }
+            // Idempotent dedup -- use first point's payloadHash
+            if (isDuplicate(points.get(0))) {
+                ack(record);
+                return;
+            }
+            iotdbTimeSeriesService.writePoints(points);
+            // Operational metrics callback
+            for (StandardMeasurementPoint pt : points) {
+                deviceOnlineStatusService.updateLastReportAt(pt.deviceId());
+                if (pt.sensorId() != null) {
+                    String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            .format(new java.util.Date(pt.dataTime()));
+                    deviceSensorService.updateLastReportTime(pt.sensorId(), now);
+                }
+                deviceMapper.updateDevice(Device.builder()
+                        .id(pt.deviceId())
+                        .lastReportTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                                .format(new java.util.Date(pt.dataTime())))
+                        .build());
+            }
+            log.info("ParsedMessage ingested: deviceCode={} sensorCode={} properties={}",
+                    parsed.deviceCode(), parsed.sensorCode(), points.size());
+            ack(record);
+        } catch (Exception e) {
+            if (retryCount >= properties.getRetryDelaysSeconds().size()) {
+                streamService.enqueueDeadLetter(parsed.deviceCode(), payload, e.getMessage());
+                ack(record);
+                return;
+            }
+            long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
+            sleep(delaySeconds);
+            record.getValue().put("retryCount", String.valueOf(retryCount + 1));
+            redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            ack(record);
+        }
+    }
+
+    /**
+     * Adapt ParsedMessage to List of StandardMeasurementPoint.
+     *
+     * deviceCode → deviceId lookup is done in the consumer, not the parser.
+     */
+    private List<StandardMeasurementPoint> adapt(com.zwei.common.domain.ParsedMessage msg) {
+        Long deviceId = resolveDeviceId(msg.deviceCode());
+        Long sensorId = resolveSensorId(msg.sensorCode());
+        return msg.properties().stream()
+                .filter(p -> p.value() != null)
+                .map(p -> StandardMeasurementPoint.builder()
+                        .deviceId(deviceId)
+                        .sensorCode(msg.sensorCode())
+                        .sensorId(sensorId)
+                        .attrCode(p.identifier())
+                        .attrName(p.name())
+                        .unit(p.unit())
+                        .dataTime(msg.dataTime())
+                        .value(p.value())
+                        .quality(p.quality() != null ? p.quality() : 0)
+                        .reportTime(msg.dataTime())
+                        .receiveTime(msg.receiveTime())
+                        .sourceType(msg.sourceType())
+                        .payloadHash(msg.payloadHash())
+                        .build())
+                .toList();
+    }
+
+    private Long resolveDeviceId(String deviceCode) {
+        Device dev = deviceMapper.selectDeviceByCode(deviceCode);
+        return dev != null ? dev.getId() : -1L;
+    }
+
+    private Long resolveSensorId(String sensorCode) {
+        return deviceSensorService.findBySensorCode(sensorCode)
+                .map(s -> s.getId()).orElse(-1L);
     }
 
     /**

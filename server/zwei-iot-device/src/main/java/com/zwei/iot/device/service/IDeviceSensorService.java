@@ -104,4 +104,21 @@ public interface IDeviceSensorService {
      * @param attrId   属性ID
      */
     void deleteSensorAttribute(Long sensorId, Long attrId);
+
+    /**
+     * 根据传感器编码查询传感器。
+     *
+     * @param sensorCode 传感器编码
+     * @return 传感器详情（空 Optional 表示不存在）
+     */
+    java.util.Optional<DeviceSensor> findBySensorCode(String sensorCode);
+
+    /**
+     * 根据设备ID和传感器编码查询该传感器下所有属性编码列表（按监测内容排序）。
+     *
+     * @param deviceId   设备ID
+     * @param sensorCode 传感器编码
+     * @return 属性编码列表（可能为空）
+     */
+    List<String> findAttrCodesByDeviceAndSensor(Long deviceId, String sensorCode);
 }
