@@ -196,7 +196,7 @@
           title="已保存的监测内容支持修改名称、量程和单位；如需变更编码或指标类型，请删除后重新新增。"
         />
 
-        <div class="param-table-container">
+        <div>
           <div class="param-toolbar" v-if="!isView">
             <el-button type="primary" size="small" @click="handleAddModelAttr">
               <span class="btn-icon">+</span> 添加监测内容
@@ -207,34 +207,38 @@
             border
             size="small"
             empty-text="暂无监测内容，可按需添加"
-            :header-cell-style="{ background: '#f5f7fa', color: '#303133' }"
           >
-            <el-table-column label="内容编码" width="150" align="center">
+            <el-table-column label="内容编码" min-width="120" align="center">
               <template #default="{ row }">
+                <template v-if="isView">{{ row.code || '-' }}</template>
                 <el-input
+                  v-else
                   v-model="row.code"
                   placeholder="如 rainfall_hour"
-                  :disabled="isView || Boolean(row.id)"
+                  :disabled="Boolean(row.id)"
                   maxlength="100"
                 />
               </template>
             </el-table-column>
-            <el-table-column label="内容名称" width="150" align="center">
+            <el-table-column label="内容名称" min-width="130" align="center">
               <template #default="{ row }">
+                <template v-if="isView">{{ row.name || '-' }}</template>
                 <el-input
+                  v-else
                   v-model="row.name"
                   placeholder="如 小时雨量"
-                  :disabled="isView"
                   maxlength="200"
                 />
               </template>
             </el-table-column>
-            <el-table-column label="指标类型" width="110" align="center">
+            <el-table-column label="指标类型" min-width="100" align="center">
               <template #default="{ row }">
+                <template v-if="isView">{{ indicatorTypeLabel(row.indicatorType) || '-' }}</template>
                 <el-select
+                  v-else
                   v-model="row.indicatorType"
                   placeholder="请选择"
-                  :disabled="isView || Boolean(row.id)"
+                  :disabled="Boolean(row.id)"
                   @change="handleIndicatorTypeChange(row)"
                 >
                   <el-option
@@ -246,34 +250,37 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="单位" width="80" align="center">
+            <el-table-column label="单位" min-width="64" align="center">
               <template #default="{ row }">
-                <el-input v-model="row.unit" placeholder="自动带出" :disabled="true" />
+                <template v-if="isView">{{ row.unit || '-' }}</template>
+                <el-input v-else v-model="row.unit" placeholder="自动带出" :disabled="true" />
               </template>
             </el-table-column>
-            <el-table-column label="最小值" width="110" align="center">
+            <el-table-column label="最小值" min-width="100" align="center">
               <template #default="{ row }">
+                <template v-if="isView">{{ row.rangeMin !== null && row.rangeMin !== undefined ? row.rangeMin : '-' }}</template>
                 <el-input-number
+                  v-else
                   v-model="row.rangeMin"
-                  :disabled="isView"
                   :controls="false"
                   placeholder="最小值"
                   style="width: 100%"
                 />
               </template>
             </el-table-column>
-            <el-table-column label="最大值" width="110" align="center">
+            <el-table-column label="最大值" min-width="100" align="center">
               <template #default="{ row }">
+                <template v-if="isView">{{ row.rangeMax !== null && row.rangeMax !== undefined ? row.rangeMax : '-' }}</template>
                 <el-input-number
+                  v-else
                   v-model="row.rangeMax"
-                  :disabled="isView"
                   :controls="false"
                   placeholder="最大值"
                   style="width: 100%"
                 />
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="90" align="center" v-if="!isView">
+            <el-table-column label="操作" width="80" align="center" v-if="!isView">
               <template #default="{ $index }">
                 <el-button type="text" size="small" class="danger-text" @click="handleRemoveModelAttr($index)">
                   删除
@@ -349,6 +356,11 @@ const IndicatorTypeEnum = {
 } as const
 
 const indicatorTypeOptions = Object.values(IndicatorTypeEnum)
+
+const indicatorTypeLabel = (code: string) => {
+  const item = indicatorTypeOptions.find((i) => i.code === code)
+  return item?.name || ''
+}
 const typeIconList: IconItem[] = getIconList()
 
 const sort = useTableSort()
@@ -898,13 +910,6 @@ onMounted(() => {
 
 .form-alert {
   margin-bottom: 16px;
-}
-
-.param-table-container {
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  padding: 15px;
-  background: #fafafa;
 }
 
 .param-toolbar {
