@@ -1,4 +1,4 @@
-<!-- 代办告警 -->
+<!--代办告警 -->
 <template>
   <div class="page">
     <div class="header">
@@ -30,12 +30,12 @@
       <el-input v-model="queryParams.hazardPointName" placeholder="隐患点名称" clearable class="search__input" />
       <el-input v-model="queryParams.personName" placeholder="人员名称" clearable class="search__input" />
       <el-date-picker
-        v-model="queryParams.alarmTimeRange"
-        type="daterange"
-        range-separator=""
-        start-placeholder="告警时间:开始"
-        end-placeholder="告警时间:结束"
-        value-format="YYYY-MM-DD"
+          v-model="queryParams.alarmTimeRange"
+          type="daterange"
+          range-separator=""
+          start-placeholder="告警时间:开始"
+          end-placeholder="告警时间:结束"
+          value-format="YYYY-MM-DD"
       />
       <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple class="search__select">
         <el-option label="一级" value="1" />
@@ -58,12 +58,12 @@
     <div class="table-wrap">
       <div class="table-wrap__scroll">
         <el-table
-          :data="tableData"
-          style="width: 100%"
-          @selection-change="handleSelectionChange"
-          @row-click="handleRowClick"
-          border
-          stripe
+            :data="tableData"
+            style="width: 100%"
+            @selection-change="handleSelectionChange"
+            @row-click="handleRowClick"
+            border
+            stripe
         >
           <el-table-column type="selection" width="55" />
           <el-table-column prop="hazardPointName" label="隐患点名称" min-width="180" />
@@ -108,13 +108,13 @@
 
       <div class="table-wrap__pagination">
         <el-pagination
-          v-model:current-page="pagination.currentPage"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+            v-model:current-page="pagination.currentPage"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </div>
@@ -124,11 +124,14 @@
 
     <!-- 反馈弹窗 -->
     <FeedbackDialog
-      v-model="feedbackDialogVisible"
-      :data="currentRow"
-      @submit="handleFeedbackSubmit"
-      @update:model-value="feedbackDialogVisible = $event"
+        v-model="feedbackDialogVisible"
+        :data="currentRow"
+        @submit="handleFeedbackSubmit"
+        @update:model-value="feedbackDialogVisible = $event"
     />
+
+    <!-- 批量反馈弹窗 - FeedBack组件 -->
+    <FeedBack v-model:visible="batchFeedbackVisible" @submit="handleBatchFeedbackSubmit" />
 
     <!-- 误报确认弹窗 -->
     <el-dialog v-model="falseAlarmDialogVisible" title="误报确认" width="500px">
@@ -156,6 +159,7 @@ import {ElMessage} from 'element-plus'
 import {ChatDotRound, CircleClose, Download, View, Warning} from '@element-plus/icons-vue'
 import FeedbackDialog from '@/components/FeedbackDialog.vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
+import FeedBack from '@/components/FeedBack.vue'
 
 // 查询参数
 const queryParams = reactive({
@@ -183,6 +187,7 @@ const selectedRows = ref<any[]>([])
 // 弹窗
 const detailDialogVisible = ref(false)
 const feedbackDialogVisible = ref(false)
+const batchFeedbackVisible = ref(false)
 const falseAlarmDialogVisible = ref(false)
 const closeAlarmDialogVisible = ref(false)
 
@@ -300,36 +305,21 @@ const mockData = [
 const filteredData = computed(() => {
   let result = [...mockData]
 
-  // 隐患点名称模糊查询
   if (queryParams.hazardPointName) {
-    result = result.filter(item =>
-      item.hazardPointName.includes(queryParams.hazardPointName)
-    )
+    result = result.filter(item => item.hazardPointName.includes(queryParams.hazardPointName))
   }
-
-  // 人员名称模糊查询
   if (queryParams.personName) {
-    result = result.filter(item =>
-      item.responderName && item.responderName.includes(queryParams.personName)
-    )
+    result = result.filter(item => item.responderName && item.responderName.includes(queryParams.personName))
   }
-
-  // 告警等级筛选
   if (queryParams.alarmLevel.length > 0) {
     result = result.filter(item => queryParams.alarmLevel.includes(item.alarmLevel))
   }
-
-  // 告警类型筛选
   if (queryParams.alarmType.length > 0) {
     result = result.filter(item => queryParams.alarmType.includes(item.alarmType))
   }
-
-  // 警情状态筛选
   if (queryParams.status.length > 0) {
     result = result.filter(item => queryParams.status.includes(item.status))
   }
-
-  // 告警次数范围筛选
   if (queryParams.alarmCountMin != null) {
     result = result.filter(item => item.alarmCount >= queryParams.alarmCountMin!)
   }
@@ -337,26 +327,21 @@ const filteredData = computed(() => {
     result = result.filter(item => item.alarmCount <= queryParams.alarmCountMax!)
   }
 
-  // 按最后告警时间倒序
   result.sort((a, b) => new Date(b.lastAlarmTime).getTime() - new Date(a.lastAlarmTime).getTime())
-
   return result
 })
 
-// 计算属性：分页数据
 const paginatedData = computed(() => {
   const start = (pagination.currentPage - 1) * pagination.pageSize
   const end = start + pagination.pageSize
   return filteredData.value.slice(start, end)
 })
 
-// 初始化
 onMounted(() => {
   pagination.total = mockData.length
   tableData.value = paginatedData.value
 })
 
-// 获取告警等级类型
 const getAlarmLevelType = (level: string) => {
   const map: Record<string, string> = {
     '1': 'danger',
@@ -367,7 +352,6 @@ const getAlarmLevelType = (level: string) => {
   return map[level] || 'info'
 }
 
-// 获取告警等级文本
 const getAlarmLevelText = (level: string) => {
   const map: Record<string, string> = {
     '1': '一级',
@@ -378,7 +362,6 @@ const getAlarmLevelText = (level: string) => {
   return map[level] || level
 }
 
-// 获取告警类型文本
 const getAlarmTypeText = (type: string) => {
   const map: Record<string, string> = {
     'threshold': '阈值预警',
@@ -387,7 +370,6 @@ const getAlarmTypeText = (type: string) => {
   return map[type] || type
 }
 
-// 获取状态类型
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
     'pending': 'danger',
@@ -396,7 +378,6 @@ const getStatusType = (status: string) => {
   return map[status] || 'info'
 }
 
-// 获取状态文本
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
     'pending': '待处理',
@@ -405,7 +386,6 @@ const getStatusText = (status: string) => {
   return map[status] || status
 }
 
-// 查询
 const handleQuery = () => {
   pagination.currentPage = 1
   pagination.total = filteredData.value.length
@@ -413,7 +393,6 @@ const handleQuery = () => {
   ElMessage.success('查询成功')
 }
 
-// 重置（静默，不弹窗）
 const handleReset = () => {
   queryParams.hazardPointName = ''
   queryParams.personName = ''
@@ -428,52 +407,66 @@ const handleReset = () => {
   tableData.value = paginatedData.value
 }
 
-// 表格选择变化
 const handleSelectionChange = (rows: any[]) => {
   selectedRows.value = rows
 }
 
-// 行点击 - 查看详情
 const handleRowClick = (row: any) => {
   currentRow.value = row
   detailDialogVisible.value = true
 }
 
-// 查看详情
 const handleView = (row: any) => {
   currentRow.value = row
   detailDialogVisible.value = true
 }
 
-// 反馈（处置）
+// 处置反馈 - 原封不动
 const handleFeedback = (row: any) => {
   currentRow.value = row
   feedbackDialogVisible.value = true
 }
 
-// 处置提交回调
 const handleFeedbackSubmit = () => {
   ElMessage.success('处置成功')
   feedbackDialogVisible.value = false
   tableData.value = paginatedData.value
 }
 
-// 批量反馈
+// 批量反馈 - 只改了这里
 const handleBatchFeedback = () => {
   if (selectedRows.value.length === 0) {
     ElMessage.warning('请先选择要反馈的记录')
     return
   }
-  currentRow.value = selectedRows.value
-  feedbackDialogVisible.value = true
+  batchFeedbackVisible.value = true
 }
 
-// 导出
+const handleBatchFeedbackSubmit = (data: { content: string; files: File[] }) => {
+  console.log('批量反馈内容:', data.content)
+  console.log('批量反馈文件:', data.files)
+
+  const now = new Date().toLocaleString()
+  const currentUser = '当前用户'
+
+  selectedRows.value.forEach(row => {
+    if (row.status !== 'closed' && row.status !== 'false_alarm') {
+      row.status = 'processing'
+      row.responderName = currentUser
+      row.responseTime = now
+    }
+  })
+
+  ElMessage.success(`已对 ${selectedRows.value.length} 条告警提交反馈`)
+  batchFeedbackVisible.value = false
+  selectedRows.value = []
+  tableData.value = paginatedData.value
+}
+
 const handleExport = () => {
   ElMessage.success('导出功能已触发（模拟）')
 }
 
-// 批量误报
 const handleBatchFalseAlarm = () => {
   if (selectedRows.value.length === 0) {
     ElMessage.warning('请先选择要标记为误报的记录')
@@ -483,7 +476,6 @@ const handleBatchFalseAlarm = () => {
   falseAlarmDialogVisible.value = true
 }
 
-// 确认误报
 const confirmFalseAlarm = () => {
   if (Array.isArray(currentRow.value)) {
     currentRow.value.forEach(row => {
@@ -503,7 +495,6 @@ const confirmFalseAlarm = () => {
   tableData.value = paginatedData.value
 }
 
-// 批量销警
 const handleBatchCloseAlarm = () => {
   if (selectedRows.value.length === 0) {
     ElMessage.warning('请先选择要销警的记录')
@@ -513,7 +504,6 @@ const handleBatchCloseAlarm = () => {
   closeAlarmDialogVisible.value = true
 }
 
-// 确认销警
 const confirmCloseAlarm = () => {
   if (Array.isArray(currentRow.value)) {
     currentRow.value.forEach(row => {
@@ -533,13 +523,11 @@ const confirmCloseAlarm = () => {
   tableData.value = paginatedData.value
 }
 
-// 分页大小变化
 const handleSizeChange = (size: number) => {
   pagination.pageSize = size
   tableData.value = paginatedData.value
 }
 
-// 分页页码变化
 const handleCurrentChange = (page: number) => {
   pagination.currentPage = page
   tableData.value = paginatedData.value
