@@ -1,5 +1,6 @@
 package com.zwei.iot.device.service.impl;
 
+import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
@@ -18,7 +19,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -195,5 +198,62 @@ class DeviceServiceImplTest {
         Device result = service.resetDeviceAuthPassword(1L, "admin", "现场更换设备", true, "127.0.0.1");
 
         assertEquals("NewPass1", result.getAuthPassword());
+    }
+
+    @Test
+    @DisplayName("报修后停用应成功 (status 1→3)")
+    void maintenanceDevice_normalToDisabled_shouldSucceed() {
+        Device current = new Device();
+        current.setId(1L);
+        current.setCode("dev-001");
+        current.setStatus(1);
+
+        when(deviceMapper.selectDeviceById(1L)).thenReturn(current);
+
+        String result = service.maintenanceDevice(1L, 3, "Test", "13800000000",
+                "2026-06-15 10:00:00", "现场停用", "admin");
+
+        assertEquals("停用", result);
+        verify(deviceMapper).updateDevice(any(Device.class));
+        verify(deviceStatusLogService).saveMaintenanceLog(
+                eq(1L), eq("dev-001"), eq(1), eq(3), eq("停用"),
+                eq("Test"), eq("13800000000"), any(), eq("现场停用"), eq("admin"));
+    }
+
+    @Test
+    @DisplayName("维修后停用应成功 (status 2→3)")
+    void maintenanceDevice_maintenanceToDisabled_shouldSucceed() {
+        Device current = new Device();
+        current.setId(2L);
+        current.setCode("dev-002");
+        current.setStatus(2);
+
+        when(deviceMapper.selectDeviceById(2L)).thenReturn(current);
+
+        String result = service.maintenanceDevice(2L, 3, "Test", "13800000000",
+                "2026-06-15 10:00:00", "维修失败停用", "admin");
+
+        assertEquals("停用", result);
+        verify(deviceMapper).updateDevice(any(Device.class));
+        verify(deviceStatusLogService).saveMaintenanceLog(
+                eq(2L), eq("dev-002"), eq(2), eq(3), eq("停用"),
+                eq("Test"), eq("13800000000"), any(), eq("维修失败停用"), eq("admin"));
+    }
+
+    @Test
+    @DisplayName("停用后停用应抛 ServiceException 提示「仅正常或维修状态的设备可以停用」")
+    void maintenanceDevice_disabledToDisabled_shouldThrow() {
+        Device current = new Device();
+        current.setId(3L);
+        current.setCode("dev-003");
+        current.setStatus(3);
+
+        when(deviceMapper.selectDeviceById(3L)).thenReturn(current);
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.maintenanceDevice(3L, 3, "Test", "13800000000",
+                        "2026-06-15 10:00:00", "重复停用", "admin"));
+
+        assertEquals("仅正常或维修状态的设备可以停用", ex.getMessage());
     }
 }

@@ -94,7 +94,7 @@ public class Device extends BaseEntity {
     private String iconPath;
 
     /**
-     * 业务状态（人工维护）: 1-正常, 2-故障, 3-停用
+     * 业务状态（人工维护）: 1-正常, 2-维修, 3-停用
      */
     private Integer status;
 

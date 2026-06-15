@@ -64,8 +64,8 @@
               <el-table-column prop="bindTime" label="绑定时间" width="180" align="center" />
               <el-table-column prop="deviceStatus" label="设备状态" width="100" align="center">
                 <template #default="{ row }">
-                  <el-tag :type="row.deviceStatus === 'NORMAL' ? 'success' : row.deviceStatus === 'FAULT' ? 'danger' : 'info'" size="small">
-                    {{ row.deviceStatus === 'NORMAL' ? '正常' : row.deviceStatus === 'FAULT' ? '维修' : '停用' }}
+                  <el-tag :type="row.deviceStatus === 1 ? 'success' : row.deviceStatus === 2 ? 'danger' : 'info'" size="small">
+                    {{ row.deviceStatus === 1 ? '正常' : row.deviceStatus === 2 ? '维修' : '停用' }}
                   </el-tag>
                 </template>
               </el-table-column>

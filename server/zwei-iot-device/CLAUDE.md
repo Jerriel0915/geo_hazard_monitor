@@ -121,9 +121,9 @@ IoT 设备域的核心枢纽:
 
 | operationType | 含义 | oldStatus → newStatus     |
 |---------------|----|---------------------------|
-| 1             | 报修 | 1 (正常) → 2 (故障)           |
-| 2             | 修复 | 2 (故障) → 1 (正常)           |
-| 3             | 停用 | 1 (正常) \| 2 (故障) → 3 (停用) |
+| 1             | 报修 | 1 (正常) → 2 (维修)           |
+| 2             | 修复 | 2 (维修) → 1 (正常)           |
+| 3             | 停用 | 1 (正常) \| 2 (维修) → 3 (停用) |
 | 4             | 恢复 | 3 (停用) → 1 (正常)           |
 
 非法转换抛 `ServiceException`。每次操作写 `device_status_log`。
@@ -251,7 +251,7 @@ IoT 设备域的核心枢纽:
 
 - `device` — 设备主表 (id / code UNIQUE / sn / name / deviceType / networkType / protocolType: MQTT|HTTP|COAP /
   registerSource: MANUAL|API|IMPORT / authUsername UNIQUE char(6) / authPassword varchar(32) 明文 / authStatus / icon /
-  iconPath / status: 1-正常 2-故障 3-离线 / lastReportTime / lastAuthTime / lastAuthIp / longitude / latitude)
+  iconPath / status: 1-正常 2-维修 3-停用 / lastReportTime / lastAuthTime / lastAuthIp / longitude / latitude)
 - `device_sensor` — 传感器 (id / deviceId / deviceCode / sensorCode UNIQUE / sensorNo UNIQUE(deviceId,sensorNo) /
   sensorName / monitorTypeId / monitorTypeCode / monitorTypeName / status / lastReportTime)
 - `sensor_attribute` — 传感器属性 (id / sensorId / monitorContentId / attrCode / attrName / initialValue / unit /

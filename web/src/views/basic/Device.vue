@@ -22,8 +22,8 @@
       />
       <el-select v-model="searchStatus" placeholder="设备状态" clearable>
         <el-option label="正常" :value="1" />
-        <el-option label="故障" :value="2" />
-        <el-option label="维修" :value="3" />
+        <el-option label="维修" :value="2" />
+        <el-option label="停用" :value="3" />
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>

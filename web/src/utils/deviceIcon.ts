@@ -5,8 +5,8 @@
  * <ul>
  *   <li><b>green</b> — 正常 + 在线（运行中）</li>
  *   <li><b>gray</b> — 正常 + 离线（设备正常但当前未连接）</li>
- *   <li><b>red</b> — 故障（status=2）</li>
- *   <li><b>repair</b> — 停用/维修中（status=3）</li>
+ *   <li><b>red</b> — 维修（status=2）</li>
+ *   <li><b>repair</b> — 停用（status=3）</li>
  * </ul>
  *
  * <p>命名规则：{@code /jc-icon/{color}/{baseName}_{color}.png}</p>
@@ -19,7 +19,7 @@ export type IconColor = 'green' | 'gray' | 'red' | 'repair'
 /**
  * 根据设备状态推导图标颜色档位。
  *
- * @param status       业务状态：1=正常, 2=故障, 3=停用
+ * @param status       业务状态：1=正常, 2=维修, 3=停用
  * @param onlineStatus 实时在线状态：1=在线, 0/null=离线
  * @returns 对应颜色档位
  */
@@ -69,7 +69,7 @@ function correctVideoBaseName(baseName: string): string {
 
 /**
  * 根据设备当前状态动态构造图标 URL。
- * <p>默认颜色档位为 green（正常状态），仅当设备明确为故障/停用/离线时才切换其他颜色。</p>
+ * <p>默认颜色档位为 green（正常状态），仅当设备明确为维修/停用时才切换其他颜色。</p>
  * <p>green 目录下无独立的 vidio_green.png，因此将前缀 vidio 纠正为 vidio1。</p>
  *
  * @param device 设备对象（至少包含 icon/iconPath/status/onlineStatus 之一）

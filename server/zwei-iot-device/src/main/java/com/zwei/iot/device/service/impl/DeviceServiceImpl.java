@@ -514,8 +514,8 @@ public class DeviceServiceImpl implements IDeviceService {
                 if (oldStatus != 2) throw new ServiceException("仅维修状态的设备可以修复");
                 yield 1;
             }
-            case 3 -> { // 停用：允许从 正常(1) 或 故障(2) 转入 停用(3)
-                if (oldStatus != 1 && oldStatus != 2) throw new ServiceException("仅正常或故障状态的设备可以停用");
+            case 3 -> { // 停用：允许从 正常(1) 或 维修(2) 转入 停用(3)
+                if (oldStatus != 1 && oldStatus != 2) throw new ServiceException("仅正常或维修状态的设备可以停用");
                 yield 3;
             }
             case 4 -> { // 恢复：仅允许从 停用(3) 转入 正常(1)

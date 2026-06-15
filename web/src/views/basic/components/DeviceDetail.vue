@@ -209,7 +209,7 @@ const getStatusType = (status: number) => {
 }
 
 const getStatusLabel = (status: number) => {
-  const map: Record<number, string> = { 1: '正常', 2: '故障', 3: '维修' }
+  const map: Record<number, string> = { 1: '正常', 2: '维修', 3: '停用' }
   return map[status] || '-'
 }
 
