@@ -12,70 +12,56 @@
 
     <div class="search">
       <el-select
-        v-model="selectedHazardPointId"
-        placeholder="隐患点"
-        clearable
-        @change="onHazardPointChange"
+          v-model="selectedHazardPointId"
+          placeholder="隐患点"
+          clearable
+          @change="onHazardPointChange"
       >
         <el-option
-          v-for="hp in hazardPointOptions"
-          :key="hp.id"
-          :label="hp.name"
-          :value="hp.id"
+            v-for="hp in hazardPointOptions"
+            :key="hp.id"
+            :label="hp.name"
+            :value="hp.id"
         />
       </el-select>
 
       <el-select
-        v-model="selectedDeviceType"
-        placeholder="设备类型"
-        clearable
-        @change="onDeviceTypeChange"
+          v-model="selectedDeviceId"
+          placeholder="设备"
+          clearable
+          @change="onDeviceChange"
       >
         <el-option
-          v-for="dt in deviceTypeOptions"
-          :key="dt.value"
-          :label="dt.label"
-          :value="dt.value"
+            v-for="dev in deviceOptions"
+            :key="dev.id"
+            :label="dev.name"
+            :value="dev.id"
         />
       </el-select>
 
       <el-select
-        v-model="selectedDeviceId"
-        placeholder="设备"
-        clearable
-        @change="onDeviceChange"
+          v-model="selectedAttrCodes"
+          placeholder="监测属性"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          clearable
       >
         <el-option
-          v-for="dev in deviceOptions"
-          :key="dev.id"
-          :label="dev.name"
-          :value="dev.id"
-        />
-      </el-select>
-
-      <el-select
-        v-model="selectedAttrCodes"
-        placeholder="监测属性"
-        multiple
-        collapse-tags
-        collapse-tags-tooltip
-        clearable
-      >
-        <el-option
-          v-for="attr in availableAttrs"
-          :key="attr.code"
-          :label="`${attr.name}(${attr.unit})`"
-          :value="attr.code"
+            v-for="attr in availableAttrs"
+            :key="attr.code"
+            :label="`${attr.name}(${attr.unit})`"
+            :value="attr.code"
         />
       </el-select>
 
       <el-date-picker
-        v-model="timeRange"
-        type="datetimerange"
-        range-separator=""
-        start-placeholder="开始时间"
-        end-placeholder="结束时间"
-        value-format="YYYY-MM-DD HH:mm:ss"
+          v-model="timeRange"
+          type="datetimerange"
+          range-separator=""
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          value-format="YYYY-MM-DD HH:mm:ss"
       />
 
       <el-button type="primary" @click="handleQuery">查询</el-button>
@@ -85,28 +71,18 @@
     <div class="table-wrap">
       <div class="table-wrap__scroll">
         <el-table
-          :data="tableData"
-          border
-          stripe
-          v-loading="loading"
+            :data="tableData"
+            border
+            stripe
+            v-loading="loading"
         >
-          <el-table-column prop="time" label="时间" min-width="180" align="center" />
-          <el-table-column prop="deviceName" label="设备名称" width="150" align="center" />
-          <el-table-column
-            v-for="col in dynamicColumns"
-            :key="col.code"
-            :prop="col.code"
-            :label="`${col.name}(${col.unit})`"
-            min-width="140"
-            align="center"
-          />
-          <el-table-column
-            v-if="dynamicColumns.length === 0"
-            label="监测数据"
-            align="center"
-          >
-            <template #default>
-              <span class="empty-text">请选择设备类型</span>
+          <el-table-column prop="dataTime" label="时间" width="180" align="center" />
+          <el-table-column prop="deviceName" label="设备名称" width="200" align="center" />
+          <el-table-column label="监测数据" min-width="300" align="center">
+            <template #default="{ row }">
+              <div v-for="item in row.dataList" :key="item.attrCode" class="monitor-data-item">
+                {{ item.attrName }}: {{ item.value }} {{ item.unit }}
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -114,13 +90,13 @@
 
       <div class="table-wrap__pagination">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleQuery"
-          @current-change="handleQuery"
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleQuery"
+            @current-change="handleQuery"
         />
       </div>
     </div>
@@ -128,121 +104,178 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue'
-import {ElMessage} from 'element-plus'
-import {showRequestErrorMessage} from '@/utils/errorHandler'
-import {
-  type DeviceOption,
-  type DeviceTypeOption,
-  getDeviceOptions,
-  getDeviceTypeOptions,
-  getHazardPointOptions,
-  getMonitorQueryData,
-  type HazardPointOption
-} from '@/api/report'
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { showRequestErrorMessage } from '@/utils/errorHandler'
+import { getHazardPointPage } from '@/api/hazardPoint'
+import { getDevicePage, type DeviceItem } from '@/api/device'
+import { getMonitorDataPage, type MonitorDataPageItem, type MonitorDataPageQuery } from '@/api/monitorData'
 
+// 类型定义
+interface HazardPointOption {
+  id: number
+  name: string
+}
+
+interface DeviceAttr {
+  code: string
+  name: string
+  unit: string
+}
+
+interface DeviceOption {
+  id: number
+  name: string
+}
+
+// 状态
 const loading = ref(false)
-const tableData = ref<Record<string, any>[]>([])
+const tableData = ref<any[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-// Filter options
+// 选项数据
 const hazardPointOptions = ref<HazardPointOption[]>([])
-const deviceTypeOptions = ref<DeviceTypeOption[]>([])
 const deviceOptions = ref<DeviceOption[]>([])
+const deviceAttrsMap = ref<Map<number, DeviceAttr[]>>(new Map())
 
-// Selected filters
+// 选中的筛选条件
 const selectedHazardPointId = ref<number | ''>('')
-const selectedDeviceType = ref<number | ''>('')
 const selectedDeviceId = ref<number | ''>('')
 const selectedAttrCodes = ref<string[]>([])
 const timeRange = ref<[string, string] | null>(null)
 
-// Dynamic columns computed from selected device type
-const dynamicColumns = computed(() => {
-  if (!selectedDeviceType.value) return []
-  const dt = deviceTypeOptions.value.find(d => d.value === selectedDeviceType.value)
-  return dt?.attrs || []
-})
-
-// Available attrs for the multi-select (filtered by selectedAttrCodes)
+// 可选的监测属性
 const availableAttrs = computed(() => {
-  if (!selectedDeviceType.value) return []
-  const dt = deviceTypeOptions.value.find(d => d.value === selectedDeviceType.value)
-  return dt?.attrs || []
+  if (!selectedDeviceId.value) return []
+  return deviceAttrsMap.value.get(selectedDeviceId.value) || []
 })
 
-// Cascading logic
-const onHazardPointChange = async () => {
-  selectedDeviceType.value = ''
-  selectedDeviceId.value = ''
-  selectedAttrCodes.value = []
-  deviceOptions.value = []
-  await loadDeviceOptions()
-}
-
-const onDeviceTypeChange = async () => {
-  selectedDeviceId.value = ''
-  selectedAttrCodes.value = []
-  // Auto-select all attrs for this device type
-  if (selectedDeviceType.value) {
-    const dt = deviceTypeOptions.value.find(d => d.value === selectedDeviceType.value)
-    selectedAttrCodes.value = dt?.attrs.map(a => a.code) || []
-  }
-  await loadDeviceOptions()
-}
-
-const onDeviceChange = () => {
-  // attrs stay based on device type, not individual device
-}
-
-// Load options
-const loadOptions = async () => {
+// 加载隐患点选项
+const loadHazardPointOptions = async () => {
   try {
-    const [hps, dts] = await Promise.all([
-      getHazardPointOptions(),
-      getDeviceTypeOptions()
-    ])
-    hazardPointOptions.value = hps
-    deviceTypeOptions.value = dts
+    const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 })
+    const rows = res.data?.rows || []
+    hazardPointOptions.value = rows.map((item: any) => ({
+      id: item.id,
+      name: item.name
+    }))
   } catch (error) {
-    showRequestErrorMessage(error, '加载选项失败')
+    showRequestErrorMessage(error, '加载隐患点列表失败')
   }
 }
 
+// 加载设备选项
 const loadDeviceOptions = async () => {
   try {
-    const devices = await getDeviceOptions({
-      hazardPointId: selectedHazardPointId.value || undefined,
-      deviceType: selectedDeviceType.value || undefined
-    })
-    deviceOptions.value = devices
+    const params: any = { pageNum: 1, pageSize: 1000 }
+    if (selectedHazardPointId.value) {
+      params.boundHazardPointId = selectedHazardPointId.value
+    }
+    const res = await getDevicePage(params)
+    const rows = res.rows || []
+
+    deviceOptions.value = rows.map((item: DeviceItem) => ({
+      id: item.id!,
+      name: item.name
+    }))
   } catch (error) {
     console.error('加载设备选项失败:', error)
     deviceOptions.value = []
   }
 }
 
+// 加载设备的监测属性（需要后端提供接口）
+const loadDeviceAttrs = async (deviceId: number): Promise<DeviceAttr[]> => {
+  // TODO: 替换为实际接口
+  // 模拟数据
+  const mockAttrs: Record<number, DeviceAttr[]> = {
+    1: [
+      { code: 'displacement', name: '位移', unit: 'mm' },
+      { code: 'velocity', name: '速率', unit: 'mm/h' }
+    ],
+    2: [
+      { code: 'rainfall', name: '降雨量', unit: 'mm' }
+    ],
+    3: [
+      { code: 'width', name: '裂缝宽度', unit: 'mm' }
+    ]
+  }
+  return mockAttrs[deviceId] || [
+    { code: 'value', name: '监测值', unit: '' }
+  ]
+}
+
+// 设备变化时加载其属性
+const onDeviceChange = async () => {
+  selectedAttrCodes.value = []
+  if (selectedDeviceId.value) {
+    const attrs = await loadDeviceAttrs(selectedDeviceId.value)
+    deviceAttrsMap.value.set(selectedDeviceId.value, attrs)
+    // 自动全选所有属性
+    selectedAttrCodes.value = attrs.map(a => a.code)
+  }
+  // 自动查询
+  await handleQuery()
+}
+
+// 转换监测数据为表格行（将同一时间点的多条属性聚合）
+const transformMonitorData = (rows: MonitorDataPageItem[]) => {
+  const grouped: Record<string, any> = {}
+
+  rows.forEach(item => {
+    const key = `${item.dataTime}_${item.deviceId}_${item.deviceName}`
+    if (!grouped[key]) {
+      grouped[key] = {
+        dataTime: item.dataTime,
+        deviceId: item.deviceId,
+        deviceName: item.deviceName,
+        dataList: []
+      }
+    }
+    grouped[key].dataList.push({
+      attrCode: item.attrCode,
+      attrName: item.attrName,
+      value: item.value,
+      unit: item.unit
+    })
+  })
+
+  return Object.values(grouped)
+}
+
+// 查询监测数据
 const handleQuery = async () => {
-  if (!selectedDeviceType.value) {
-    ElMessage.warning('请至少选择设备类型')
+  if (!selectedDeviceId.value) {
+    ElMessage.warning('请选择设备')
     return
   }
+  if (!selectedHazardPointId.value) {
+    ElMessage.warning('请选择隐患点')
+    return
+  }
+
   loading.value = true
   try {
-    const data = await getMonitorQueryData({
+    const params: MonitorDataPageQuery = {
       hazardPointId: selectedHazardPointId.value,
-      deviceType: selectedDeviceType.value,
       deviceId: selectedDeviceId.value,
-      attrCodes: selectedAttrCodes.value,
-      startTime: timeRange.value?.[0] || undefined,
-      endTime: timeRange.value?.[1] || undefined,
       pageNum: currentPage.value,
       pageSize: pageSize.value
-    })
-    tableData.value = data.rows || []
-    total.value = data.total || 0
+    }
+    if (selectedAttrCodes.value.length > 0) {
+      params.attrCode = selectedAttrCodes.value[0]
+    }
+    if (timeRange.value) {
+      params.startTime = timeRange.value[0]
+      params.endTime = timeRange.value[1]
+    }
+
+    const res = await getMonitorDataPage(params)
+    const transformedData = transformMonitorData(res.rows || [])
+    tableData.value = transformedData
+    total.value = res.total || 0
   } catch (error) {
     showRequestErrorMessage(error, '查询失败')
   } finally {
@@ -250,9 +283,19 @@ const handleQuery = async () => {
   }
 }
 
+// 事件处理
+const onHazardPointChange = async () => {
+  selectedDeviceId.value = ''
+  selectedAttrCodes.value = []
+  deviceOptions.value = []
+  deviceAttrsMap.value.clear()
+  tableData.value = []
+  total.value = 0
+  await loadDeviceOptions()
+}
+
 const handleReset = () => {
   selectedHazardPointId.value = ''
-  selectedDeviceType.value = ''
   selectedDeviceId.value = ''
   selectedAttrCodes.value = []
   timeRange.value = null
@@ -260,6 +303,7 @@ const handleReset = () => {
   tableData.value = []
   total.value = 0
   deviceOptions.value = []
+  deviceAttrsMap.value.clear()
 }
 
 const handleExportCsv = () => {
@@ -267,15 +311,16 @@ const handleExportCsv = () => {
     ElMessage.warning('没有数据可导出')
     return
   }
-  // Build header
-  const headers = ['时间', '设备名称', ...dynamicColumns.value.map(c => `${c.name}(${c.unit})`)]
-  // Build rows
-  const rows = tableData.value.map(row => [
-    row.time,
-    row.deviceName,
-    ...dynamicColumns.value.map(c => row[c.code] ?? '')
-  ])
-  // Join with comma, add BOM for Chinese
+
+  // 构建CSV数据
+  const headers = ['时间', '设备名称', '监测数据']
+  const rows = tableData.value.map(row => {
+    const monitorDataStr = row.dataList.map((item: any) =>
+        `${item.attrName}: ${item.value}${item.unit}`
+    ).join('; ')
+    return [row.dataTime, row.deviceName, monitorDataStr]
+  })
+
   const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -287,7 +332,52 @@ const handleExportCsv = () => {
 }
 
 onMounted(() => {
-  loadOptions()
+  loadHazardPointOptions()
+  loadDeviceOptions()
 })
 </script>
 
+<style scoped>
+.empty-text {
+  color: #909399;
+}
+
+.monitor-data-item {
+  line-height: 1.8;
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+:deep(.el-table) {
+  width: 100%;
+  table-layout: auto;
+}
+
+:deep(.el-table__header-wrapper) {
+  overflow: visible;
+}
+
+:deep(.el-table__body-wrapper) {
+  overflow-x: auto;
+}
+
+/* 监测数据属性分割线 */
+.monitor-data-item {
+  border-bottom: 1px dashed #e8e8e8;
+  padding: 6px 0;
+}
+
+.monitor-data-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.monitor-data-item:first-child {
+  padding-top: 0;
+}
+</style>
