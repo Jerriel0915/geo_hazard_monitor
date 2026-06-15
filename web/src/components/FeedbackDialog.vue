@@ -1,12 +1,12 @@
 <!-- 待办告警的处置页面 -->
 <template>
   <el-dialog
-    :model-value="modelValue"
-    @update:model-value="emit('update:modelValue', $event)"
-    :title="dialogTitle"
-    width="90%"
-    max-width="1000px"
-    :close-on-click-modal="false"
+      :model-value="modelValue"
+      @update:model-value="emit('update:modelValue', $event)"
+      :title="dialogTitle"
+      width="90%"
+      max-width="1000px"
+      :close-on-click-modal="false"
   >
     <div class="feedback-container" v-if="data">
       <div class="main-content">
@@ -72,146 +72,168 @@
 
           <div class="event-body">
             <!-- 数据区域 - 页签 -->
-          <div class="data-section">
-            <!-- 基本资料（无标题） -->
-            <div class="basic-info">
-              <div class="info-row">
-                <div class="info-item">
-                  <span class="info-label">初次告警</span>
-                  <span class="info-value">{{ data.firstAlarmTime || '-' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">最后告警</span>
-                  <span class="info-value">{{ data.lastAlarmTime || '-' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">告警等级</span>
-                  <span class="info-value">{{ alarmLevelRange }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">告警次数</span>
-                  <span class="info-value count-link" @click="switchToAlarmTab">{{ data.alarmCount || 0 }}</span>
+            <div class="data-section">
+              <!-- 基本资料（无标题） -->
+              <div class="basic-info">
+                <div class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">初次告警</span>
+                    <span class="info-value">{{ data.firstAlarmTime || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">最后告警</span>
+                    <span class="info-value">{{ data.lastAlarmTime || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">告警等级</span>
+                    <span class="info-value">{{ alarmLevelRange }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">告警次数</span>
+                    <span class="info-value count-link" @click="switchToAlarmTab">{{ data.alarmCount || 0 }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="basic-details">
-              <!-- 基本资料 -->
-              <div class="detail-grid">
-                <div class="detail-item">
-                  <span class="detail-label">所属分组</span>
-                  <span class="detail-value">{{ data.groupName || '-' }}</span>
+              <div class="basic-details">
+                <!-- 基本资料 -->
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">所属分组</span>
+                    <span class="detail-value">{{ data.groupName || '-' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">隐患点</span>
+                    <span class="detail-value">{{ data.hazardPointName }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">告警类型</span>
+                    <span class="detail-value">{{ getAlarmTypeText(data.alarmType) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">设备名称</span>
+                    <span class="detail-value">{{ data.deviceName || '-' }}</span>
+                  </div>
                 </div>
-                <div class="detail-item">
-                  <span class="detail-label">隐患点</span>
-                  <span class="detail-value">{{ data.hazardPointName }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">告警类型</span>
-                  <span class="detail-value">{{ getAlarmTypeText(data.alarmType) }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">设备名称</span>
-                  <span class="detail-value">{{ data.deviceName || '-' }}</span>
+                <div class="detail-desc">
+                  <span class="detail-label">告警描述</span>
+                  <p>{{ data.alarmContent || '-' }}</p>
                 </div>
               </div>
-              <div class="detail-desc">
-                <span class="detail-label">告警描述</span>
-                <p>{{ data.alarmContent || '-' }}</p>
-              </div>
-            </div>
 
-            <div class="data-tabs">
-              <div class="tab" :class="{ active: activeTab === 'monitor' }" @click="activeTab = 'monitor'; nextTick(updateChart)">监测数据</div>
-              <div class="tab" :class="{ active: activeTab === 'alarm' }" @click="activeTab = 'alarm'">告警次数</div>
-              <div class="tab" :class="{ active: activeTab === 'notify' }" @click="activeTab = 'notify'">通知记录</div>
-            </div>
-
-            <!-- 监测数据 -->
-            <div v-show="activeTab === 'monitor'" class="tab-content">
-              <div class="monitor-sub-tabs">
-                <span class="sub-tab" :class="{ active: activeDataTab === 'monitor' }" @click="activeDataTab = 'monitor'; updateChart()">监测曲线</span>
-                <span class="sub-tab" :class="{ active: activeDataTab === 'deduce' }" @click="activeDataTab = 'deduce'; updateChart()">推演曲线</span>
+              <div class="data-tabs">
+                <div class="tab" :class="{ active: activeTab === 'monitor' }" @click="activeTab = 'monitor'; nextTick(updateChart)">监测数据</div>
+                <div class="tab" :class="{ active: activeTab === 'alarm' }" @click="activeTab = 'alarm'">告警次数</div>
+                <div class="tab" :class="{ active: activeTab === 'notify' }" @click="activeTab = 'notify'">通知记录</div>
+                <div class="tab" :class="{ active: activeTab === 'feedback' }" @click="activeTab = 'feedback'">反馈历史</div>
               </div>
-              <div ref="chartRef" class="chart-container"></div>
-            </div>
 
-            <!-- 告警次数 -->
-            <div v-show="activeTab === 'alarm'" class="tab-content">
-              <div class="tab-search">
-                <el-input v-model="alarmFilter.desc" placeholder="描述模糊查询" size="small" clearable class="tab-sch-inp" />
-                <el-date-picker v-model="alarmFilter.timeRange" type="daterange" range-separator="至"
-                  start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" size="small" class="tab-sch-date" />
-                <el-button size="small" @click="alarmFilter.desc=''; alarmFilter.timeRange=[]">重置</el-button>
+              <!-- 监测数据 -->
+              <div v-show="activeTab === 'monitor'" class="tab-content">
+                <div class="monitor-sub-tabs">
+                  <span class="sub-tab" :class="{ active: activeDataTab === 'monitor' }" @click="activeDataTab = 'monitor'; updateChart()">监测曲线</span>
+                  <!--                <span class="sub-tab" :class="{ active: activeDataTab === 'deduce' }" @click="activeDataTab = 'deduce'; updateChart()">推演曲线</span>-->
+                </div>
+                <div ref="chartRef" class="chart-container"></div>
               </div>
-              <div class="table-wrap">
-                <div class="table-wrap__scroll">
-                  <div style="max-height: 280px;">
-                    <el-table :data="filteredAlarmList" border stripe size="small">
-                      <el-table-column prop="alarmTime" label="告警时间" width="160" />
-                      <el-table-column prop="alarmLevel" label="告警等级" width="90">
-                        <template #default="{ row }">
-                          <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="alarmContent" label="描述" min-width="220" show-overflow-tooltip />
-                    </el-table>
+
+              <!-- 告警次数 -->
+              <div v-show="activeTab === 'alarm'" class="tab-content">
+                <div class="tab-search">
+                  <el-input v-model="alarmFilter.desc" placeholder="描述模糊查询" size="small" clearable class="tab-sch-inp" />
+                  <el-date-picker v-model="alarmFilter.timeRange" type="daterange" range-separator="至"
+                                  start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" size="small" class="tab-sch-date" />
+                  <el-button size="small" @click="alarmFilter.desc=''; alarmFilter.timeRange=[]">重置</el-button>
+                </div>
+                <div class="table-wrap">
+                  <div class="table-wrap__scroll">
+                    <div style="max-height: 280px;">
+                      <el-table :data="filteredAlarmList" border stripe size="small">
+                        <el-table-column prop="alarmTime" label="告警时间" width="160" />
+                        <el-table-column prop="alarmLevel" label="告警等级" width="90">
+                          <template #default="{ row }">
+                            <el-tag :type="getAlarmLevelType(row.alarmLevel)" size="small">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+                          </template>
+                        </el-table-column>
+                        <el-table-column prop="alarmContent" label="描述" min-width="220" show-overflow-tooltip />
+                      </el-table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 通知记录 -->
+              <div v-show="activeTab === 'notify'" class="tab-content">
+                <div class="tab-search">
+                  <el-input v-model="notifyFilter.account" placeholder="账号模糊查询" size="small" clearable class="tab-sch-inp" />
+                  <el-date-picker v-model="notifyFilter.timeRange" type="daterange" range-separator="至"
+                                  start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" size="small" class="tab-sch-date" />
+                  <el-button size="small" @click="notifyFilter.account=''; notifyFilter.timeRange=[]">重置</el-button>
+                </div>
+                <div class="table-wrap">
+                  <div class="table-wrap__scroll">
+                    <div style="max-height: 280px;">
+                      <el-table :data="filteredNotifyList" border stripe size="small">
+                        <el-table-column prop="notifyTime" label="通知时间" width="160" />
+                        <el-table-column prop="channelType" label="渠道类型" width="100" />
+                        <el-table-column prop="target" label="账号/电话/邮箱" width="160" show-overflow-tooltip />
+                        <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
+                        <el-table-column prop="success" label="是否成功" width="90">
+                          <template #default="{ row }">
+                            <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag>
+                          </template>
+                        </el-table-column>
+                      </el-table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 反馈历史 -->
+              <div v-show="activeTab === 'feedback'" class="tab-content">
+                <div class="tab-search">
+                  <el-input v-model="feedbackFilter.person" placeholder="人员模糊查询" size="small" clearable class="tab-sch-inp" />
+                  <el-date-picker v-model="feedbackFilter.timeRange" type="daterange" range-separator="至"
+                                  start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" size="small" class="tab-sch-date" />
+                  <el-button size="small" @click="feedbackFilter.person=''; feedbackFilter.timeRange=[]">重置</el-button>
+                </div>
+                <div class="table-wrap">
+                  <div class="table-wrap__scroll">
+                    <div style="max-height: 280px;">
+                      <el-table :data="filteredFeedbackList" border stripe size="small">
+                        <el-table-column prop="feedbackTime" label="反馈时间" width="160" />
+                        <el-table-column prop="person" label="反馈人员" width="120" />
+                        <el-table-column prop="content" label="反馈内容" min-width="300" show-overflow-tooltip />
+                      </el-table>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- 通知记录 -->
-            <div v-show="activeTab === 'notify'" class="tab-content">
-              <div class="tab-search">
-                <el-input v-model="notifyFilter.account" placeholder="账号模糊查询" size="small" clearable class="tab-sch-inp" />
-                <el-date-picker v-model="notifyFilter.timeRange" type="daterange" range-separator="至"
-                  start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" size="small" class="tab-sch-date" />
-                <el-button size="small" @click="notifyFilter.account=''; notifyFilter.timeRange=[]">重置</el-button>
+            <!-- 处置时间线 -->
+            <div class="timeline-section">
+              <div class="section-header">
+                <span class="icon-wrapper"><List /></span>
+                <span class="section-title">时间线</span>
               </div>
-              <div class="table-wrap">
-                <div class="table-wrap__scroll">
-                  <div style="max-height: 280px;">
-                    <el-table :data="filteredNotifyList" border stripe size="small">
-                      <el-table-column prop="notifyTime" label="通知时间" width="160" />
-                      <el-table-column prop="channelType" label="渠道类型" width="100" />
-                      <el-table-column prop="target" label="账号/电话/邮箱" width="160" show-overflow-tooltip />
-                      <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
-                      <el-table-column prop="success" label="是否成功" width="90">
-                        <template #default="{ row }">
-                          <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag>
-                        </template>
-                      </el-table-column>
-                    </el-table>
+              <div class="timeline-container">
+                <div v-if="timelineData.length > 0" class="timeline">
+                  <div v-for="(item, index) in timelineData" :key="index" class="timeline-item">
+                    <div class="timeline-dot" :class="item.type"></div>
+                    <div v-if="index < timelineData.length - 1" class="timeline-line"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-time">{{ item.time }}</div>
+                      <div class="timeline-desc">{{ item.description }}</div>
+                    </div>
                   </div>
+                </div>
+                <div v-else class="timeline-empty">
+                  <el-icon class="empty-icon"><List /></el-icon>
+                  <p>暂无处置记录</p>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 处置时间线 -->
-          <div class="timeline-section">
-            <div class="section-header">
-              <span class="icon-wrapper"><List /></span>
-              <span class="section-title">时间线</span>
-            </div>
-            <div class="timeline-container">
-              <div v-if="timelineData.length > 0" class="timeline">
-                <div v-for="(item, index) in timelineData" :key="index" class="timeline-item">
-                  <div class="timeline-dot" :class="item.type"></div>
-                  <div v-if="index < timelineData.length - 1" class="timeline-line"></div>
-                  <div class="timeline-content">
-                    <div class="timeline-time">{{ item.time }}</div>
-                    <div class="timeline-desc">{{ item.description }}</div>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="timeline-empty">
-                <el-icon class="empty-icon"><List /></el-icon>
-                <p>暂无处置记录</p>
-              </div>
-            </div>
-          </div>
 
           </div>
           <!-- /event-body -->
@@ -368,6 +390,27 @@ const filteredNotifyList = computed(() => {
   return list
 })
 
+// 反馈历史 mock
+const feedbackList = ref<any[]>([
+  { feedbackTime: '2024-06-01 09:30:00', person: '张三', content: '已派人员前往现场核查' },
+  { feedbackTime: '2024-06-02 11:20:00', person: '李四', content: '现场情况稳定，持续监控中' },
+  { feedbackTime: '2024-06-03 15:45:00', person: '王五', content: '设备已检修，数据恢复正常' },
+])
+
+const feedbackFilter = reactive({ person: '', timeRange: [] as string[] })
+const filteredFeedbackList = computed(() => {
+  let list = feedbackList.value
+  if (feedbackFilter.person) {
+    const kw = feedbackFilter.person.toLowerCase()
+    list = list.filter(f => f.person.toLowerCase().includes(kw))
+  }
+  if (feedbackFilter.timeRange?.length === 2) {
+    const [s, e] = feedbackFilter.timeRange
+    list = list.filter(f => f.feedbackTime >= s && f.feedbackTime <= e + ' 23:59:59')
+  }
+  return list
+})
+
 const switchToAlarmTab = () => {
   activeTab.value = 'alarm'
 }
@@ -462,6 +505,7 @@ watch(() => props.modelValue, async (visible) => {
     activeDataTab.value = 'monitor'
     alarmFilter.desc = ''; alarmFilter.timeRange = []
     notifyFilter.account = ''; notifyFilter.timeRange = []
+    feedbackFilter.person = ''; feedbackFilter.timeRange = []
     await nextTick()
     initChart()
   }
@@ -480,6 +524,14 @@ const dialogTitle = computed(() => {
 const handleFeedbackSubmit = (data: { content: string; files: File[] }) => {
   console.log('反馈内容:', data.content)
   console.log('反馈文件:', data.files)
+
+  // 添加反馈历史记录
+  feedbackList.value.unshift({
+    feedbackTime: new Date().toLocaleString(),
+    person: '当前用户',
+    content: data.content
+  })
+
   ElMessage.success('反馈提交成功')
   emit('submit')
 }

@@ -1,4 +1,4 @@
-<!-- src/views/device/components/DeviceDetail.vue -->
+<!-- 设备管理下的查看页面  -->
 <template>
   <el-dialog
       v-model="dialogVisible"
@@ -105,7 +105,7 @@
         </el-table>
       </el-tab-pane>
 
-      <el-tab-pane label="监测数据" name="monitorData">
+      <el-tab-pane label="监测数据" name="monitorData" lazy>
         <MonitorDataExplorer
           :hazard-point-id="currentRow?.boundHazardPointId ?? null"
           :hazard-point-name="currentRow?.name"

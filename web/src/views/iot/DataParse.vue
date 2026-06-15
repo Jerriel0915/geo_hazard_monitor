@@ -29,235 +29,94 @@
 
     <div class="main-card">
       <div class="cards-container" v-loading="loading">
-      <el-empty v-if="filteredList.length === 0" description="暂无解析策略" />
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in filteredList" :key="item.id">
-          <div class="parse-card">
-            <div class="card-header">
-              <div class="card-title">
-                <span class="title-text">{{ item.name }}</span>
-                <el-tag :type="item.status === 1 ? 'success' : 'info'" size="small" class="status-tag">
-                  {{ item.status === 1 ? '启用' : '停用' }}
-                </el-tag>
-              </div>
-              <div class="card-actions">
-                <el-dropdown trigger="hover" @command="(cmd: string) => handleCardCommand(cmd, item)">
-                  <el-button type="primary" link size="small">
-                    <el-icon><MoreFilled/></el-icon>
-                  </el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="view">查看详情</el-dropdown-item>
-                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                      <el-dropdown-item command="log">运行日志</el-dropdown-item>
-                      <el-dropdown-item command="duplicate">复制</el-dropdown-item>
-                      <el-dropdown-item command="toggle" v-if="item.status === 1">
-                        <span style="color: #e6a23c">停用</span>
-                      </el-dropdown-item>
-                      <el-dropdown-item command="toggle" v-else>
-                        <span style="color: #67c23a">启用</span>
-                      </el-dropdown-item>
-                      <el-dropdown-item command="delete" divided>
-                        <span style="color: #f56c6c">删除</span>
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
-            </div>
-            
-            <div class="card-body">
-              <div class="info-row">
-                <span class="info-label">服务地址:</span>
-                <span class="info-value">{{ item.serverUrl || '-' }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">主题:</span>
-                <span class="info-value topic">{{ item.topic || '-' }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">描述:</span>
-                <span class="info-value desc">{{ item.description || '-' }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">应用范围:</span>
-                <span class="info-value">{{ getAppScopeText(item) }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">最近运行:</span>
-                <span class="info-value">{{ item.lastRunTime || '-' }}</span>
-              </div>
-            </div>
-            
-            <div class="card-footer">
-              <el-button type="primary" link size="small" @click="handleView(item)">查看</el-button>
-              <el-button type="primary" link size="small" @click="handleEdit(item)">编辑</el-button>
-              <el-button type="primary" link size="small" @click="handleLog(item)">日志</el-button>
-              <el-button type="primary" link size="small" @click="handleTest(item)">测试</el-button>
-            </div>
-          </div>
-        </el-col>
-      </el-row>
-    </div>
-
-    <div class="pagination-bar">
-      <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :total="total"
-          :page-sizes="[12, 24, 48, 96]"
-          layout="total, sizes, prev, pager, next, jumper"
-          prev-text="上一页"
-          next-text="下一页"
-          :disabled="total === 0"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-      />
-    </div>
-    </div>
-
-    <el-dialog
-        v-model="dialogVisible"
-        :title="dialogTitle"
-        width="1000px"
-        :close-on-click-modal="false"
-        destroy-on-close
-        class="parse-dialog"
-    >
-      <el-tabs v-model="activeTab" type="border-card">
-        <el-tab-pane label="基本信息" name="basic">
-          <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
-            <el-form-item label="策略名称" prop="name">
-              <el-input v-model="formData.name" placeholder="请输入策略名称" :disabled="isView" />
-            </el-form-item>
-            <el-form-item label="服务地址" prop="serverUrl">
-              <el-input v-model="formData.serverUrl" placeholder="请输入MQTT服务地址" :disabled="isView" />
-            </el-form-item>
-            <el-form-item label="主题" prop="topic">
-              <el-input v-model="formData.topic" placeholder="请输入订阅主题，如：$dp" :disabled="isView" />
-            </el-form-item>
-            <el-form-item label="描述" prop="description">
-              <el-input 
-                v-model="formData.description" 
-                type="textarea" 
-                :rows="3" 
-                placeholder="请输入策略描述" 
-                :disabled="isView" 
-              />
-            </el-form-item>
-            <el-form-item label="启用状态" prop="status">
-              <el-radio-group v-model="formData.status" :disabled="isView">
-                <el-radio :label="1">启用</el-radio>
-                <el-radio :label="0">停用</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="应用范围" prop="appScope">
-              <el-radio-group v-model="formData.appScope" :disabled="isView" @change="handleAppScopeChange">
-                <el-radio label="global">全局</el-radio>
-                <el-radio label="vendor">指定厂商</el-radio>
-                <el-radio label="device">指定设备</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="厂商选择" prop="vendorIds" v-if="formData.appScope === 'vendor'">
-              <el-select v-model="formData.vendorIds" multiple placeholder="请选择厂商" :disabled="isView" style="width: 100%">
-                <el-option v-for="vendor in vendorList" :key="vendor.id" :label="vendor.name" :value="vendor.id" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="设备选择" prop="deviceIds" v-if="formData.appScope === 'device'">
-              <el-select v-model="formData.deviceIds" multiple placeholder="请选择设备" :disabled="isView" style="width: 100%">
-                <el-option v-for="device in deviceList" :key="device.id" :label="device.name" :value="device.id" />
-              </el-select>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="脚本编辑" name="script">
-          <div class="script-editor-container">
-            <div class="editor-tabs">
-              <el-radio-group v-model="scriptMode" size="small" :disabled="isView">
-                <el-radio-button label="visual">可视化编程</el-radio-button>
-                <el-radio-button label="code">代码编辑</el-radio-button>
-              </el-radio-group>
-            </div>
-            
-            <div v-if="scriptMode === 'visual'" class="blockly-container">
-              <div id="blocklyDiv" class="blockly-workspace"></div>
-              <div class="toolbox-container">
-                <div class="toolbox-title">工具模块</div>
-                <div class="toolbox-items">
-                  <div class="toolbox-category">
-                    <div class="category-title">数据监听</div>
-                    <div class="tool-item">监听MQTT消息</div>
-                    <div class="tool-item">监听策略解析结果</div>
-                  </div>
-                  <div class="toolbox-category">
-                    <div class="category-title">数据查询</div>
-                    <div class="tool-item">查询设备信息</div>
-                    <div class="tool-item">查询厂商信息</div>
-                    <div class="tool-item">查询隐患点信息</div>
-                  </div>
-                  <div class="toolbox-category">
-                    <div class="category-title">算法调用</div>
-                    <div class="tool-item">数据清洗算法</div>
-                    <div class="tool-item">数据格式转换</div>
-                    <div class="tool-item">数据异常检测</div>
-                    <div class="tool-item">数据聚合计算</div>
-                    <div class="tool-item">数据趋势分析</div>
-                  </div>
-                  <div class="toolbox-category">
-                    <div class="category-title">数据存储</div>
-                    <div class="tool-item">存储监测数据</div>
-                    <div class="tool-item">存储设备状态</div>
-                    <div class="tool-item">存储告警事件</div>
-                  </div>
-                  <div class="toolbox-category">
-                    <div class="category-title">数据输出</div>
-                    <div class="tool-item">输出到其他策略</div>
-                    <div class="tool-item">输出到HTTP接口</div>
-                    <div class="tool-item">输出到消息队列</div>
-                  </div>
-                  <div class="toolbox-category">
-                    <div class="category-title">控制逻辑</div>
-                    <div class="tool-item">条件判断</div>
-                    <div class="tool-item">循环执行</div>
-                    <div class="tool-item">日志输出</div>
-                  </div>
+        <el-empty v-if="filteredList.length === 0" description="暂无解析策略" />
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in filteredList" :key="item.id">
+            <div class="parse-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <span class="title-text">{{ item.name }}</span>
+                  <el-tag :type="item.status === 1 ? 'success' : 'info'" size="small" class="status-tag">
+                    {{ item.status === 1 ? '启用' : '停用' }}
+                  </el-tag>
+                </div>
+                <div class="card-actions">
+                  <el-dropdown trigger="hover" @command="(cmd: string) => handleCardCommand(cmd, item)">
+                    <el-button type="primary" link size="small">
+                      <el-icon><MoreFilled /></el-icon>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="view">查看详情</el-dropdown-item>
+                        <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                        <el-dropdown-item command="log">运行日志</el-dropdown-item>
+                        <el-dropdown-item command="duplicate">复制</el-dropdown-item>
+                        <el-dropdown-item command="toggle" v-if="item.status === 1">
+                          <span style="color: #e6a23c">停用</span>
+                        </el-dropdown-item>
+                        <el-dropdown-item command="toggle" v-else>
+                          <span style="color: #67c23a">启用</span>
+                        </el-dropdown-item>
+                        <el-dropdown-item command="delete" divided>
+                          <span style="color: #f56c6c">删除</span>
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </div>
               </div>
-            </div>
-            
-            <div v-else class="code-editor-container">
-              <el-input
-                v-model="formData.scriptCode"
-                type="textarea"
-                :rows="20"
-                placeholder="// 请输入解析脚本代码
-// 示例：解析国标协议数据
-function parse(data) {
-  const result = {};
-  result.timestamp = Date.now();
-  result.deviceId = data.deviceId;
-  result.data = data.payload;
-  return result;
-}"
-                :disabled="isView"
-                class="code-textarea"
-              />
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
 
-      <template #footer v-if="!isView">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleTest" :disabled="!formData.scriptCode">测试脚本</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">保存</el-button>
-      </template>
-      <template #footer v-else>
-        <el-button @click="dialogVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
+              <div class="card-body">
+                <div class="info-row">
+                  <span class="info-label">服务地址:</span>
+                  <span class="info-value">{{ item.serverUrl || '-' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">主题:</span>
+                  <span class="info-value topic">{{ item.topic || '-' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">描述:</span>
+                  <span class="info-value desc">{{ item.description || '-' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">应用范围:</span>
+                  <span class="info-value">{{ getAppScopeText(item) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">最近运行:</span>
+                  <span class="info-value">{{ item.lastRunTime || '-' }}</span>
+                </div>
+              </div>
 
+              <div class="card-footer">
+                <el-button type="primary" link size="small" @click="handleView(item)">查看</el-button>
+                <el-button type="primary" link size="small" @click="handleEdit(item)">编辑</el-button>
+                <el-button type="primary" link size="small" @click="handleLog(item)">日志</el-button>
+                <el-button type="primary" link size="small" @click="handleTest(item)">测试</el-button>
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+      </div>
+
+      <div class="pagination-bar">
+        <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            :page-sizes="[12, 24, 48, 96]"
+            layout="total, sizes, prev, pager, next, jumper"
+            prev-text="上一页"
+            next-text="下一页"
+            :disabled="total === 0"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+        />
+      </div>
+    </div>
+
+    <!-- 日志弹窗 -->
     <el-dialog
         v-model="logDialogVisible"
         title="运行日志"
@@ -268,13 +127,13 @@ function parse(data) {
     >
       <div class="log-filter">
         <el-date-picker
-          v-model="logDateRange"
-          type="datetimerange"
-          range-separator="至"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
-          :disabled-date="disabledDate"
-          value-format="YYYY-MM-DD HH:mm:ss"
+            v-model="logDateRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            :disabled-date="disabledDate"
+            value-format="YYYY-MM-DD HH:mm:ss"
         />
         <el-select v-model="logLevel" placeholder="日志级别" clearable>
           <el-option label="全部" value="" />
@@ -285,7 +144,7 @@ function parse(data) {
         <el-button type="primary" @click="handleLogSearch">查询</el-button>
         <el-button @click="handleLogExport">导出</el-button>
       </div>
-      
+
       <div class="log-table-container">
         <el-table :data="logList" border stripe height="400">
           <el-table-column prop="timestamp" label="时间" width="180" />
@@ -302,7 +161,7 @@ function parse(data) {
           </el-table-column>
         </el-table>
       </div>
-      
+
       <div class="log-pagination">
         <el-pagination
             v-model:current-page="logCurrentPage"
@@ -321,6 +180,7 @@ function parse(data) {
       </template>
     </el-dialog>
 
+    <!-- 测试弹窗 -->
     <el-dialog
         v-model="testDialogVisible"
         title="脚本测试"
@@ -331,10 +191,10 @@ function parse(data) {
       <el-form label-width="100px">
         <el-form-item label="测试数据">
           <el-input
-            v-model="testData"
-            type="textarea"
-            :rows="8"
-            placeholder='请输入测试数据，JSON格式：
+              v-model="testData"
+              type="textarea"
+              :rows="8"
+              placeholder='请输入测试数据，JSON格式：
 {
   "topic": "$dp",
   "payload": {
@@ -346,11 +206,11 @@ function parse(data) {
         </el-form-item>
         <el-form-item label="测试结果">
           <el-input
-            v-model="testResult"
-            type="textarea"
-            :rows="8"
-            readonly
-            placeholder="测试结果将显示在这里"
+              v-model="testResult"
+              type="textarea"
+              :rows="8"
+              readonly
+              placeholder="测试结果将显示在这里"
           />
         </el-form-item>
       </el-form>
@@ -359,17 +219,42 @@ function parse(data) {
         <el-button type="primary" @click="handleRunTest" :loading="testRunning">运行测试</el-button>
       </template>
     </el-dialog>
+
+    <!-- 查看详情组件 -->
+    <DataParseDetail
+        v-model:visible="detailDialogVisible"
+        :data="currentDetailData"
+        @test="handleTestFromDetail"
+    />
+
+    <!-- 新增/编辑表单组件 -->
+    <DataParseForm
+        v-model:visible="formDialogVisible"
+        :data="currentFormData"
+        :mode="formMode"
+        @submit="handleFormSubmit"
+        @test="handleTestFromForm"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, MoreFilled } from '@element-plus/icons-vue'
+import { MoreFilled } from '@element-plus/icons-vue'
+import DataParseDetail from './components/DataPasrseDetail.vue'
+import DataParseForm from './components/DataParseForm.vue'
 
+// ============ 弹窗状态 ============
+const detailDialogVisible = ref(false)
+const currentDetailData = ref<any>(null)
+const formDialogVisible = ref(false)
+const formMode = ref<'add' | 'edit' | 'view'>('add')
+const currentFormData = ref<any>(null)
+
+// ============ 列表状态 ============
 const loading = ref(false)
 const refreshing = ref(false)
-const submitLoading = ref(false)
 const testRunning = ref(false)
 
 const searchKeyword = ref('')
@@ -378,34 +263,21 @@ const currentPage = ref(1)
 const pageSize = ref(12)
 const total = ref(0)
 
-const dialogVisible = ref(false)
-const dialogTitle = ref('新增解析策略')
-const isEdit = ref(false)
-const isView = ref(false)
-const activeTab = ref('basic')
-const scriptMode = ref('visual')
+// ============ 日志弹窗状态 ============
+const logDialogVisible = ref(false)
+const logDateRange = ref([] as string[])
+const logLevel = ref('')
+const logCurrentPage = ref(1)
+const logPageSize = ref(20)
+const logTotal = ref(0)
+const currentLogStrategy = ref<any>(null)
 
-const formRef = ref()
-const formData = reactive({
-  id: null as number | null,
-  name: '',
-  serverUrl: '',
-  topic: '',
-  description: '',
-  status: 1,
-  appScope: 'global' as 'global' | 'vendor' | 'device',
-  vendorIds: [] as number[],
-  deviceIds: [] as number[],
-  scriptCode: ''
-})
+// ============ 测试弹窗状态 ============
+const testDialogVisible = ref(false)
+const testData = ref('')
+const testResult = ref('')
 
-const formRules = {
-  name: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
-  serverUrl: [{ required: true, message: '请输入服务地址', trigger: 'blur' }],
-  topic: [{ required: true, message: '请输入主题', trigger: 'blur' }],
-  status: [{ required: true, message: '请选择启用状态', trigger: 'change' }]
-}
-
+// ============ Mock 数据 ============
 const vendorList = ref([
   { id: 1, name: '北京国信华源科技有限公司' },
   { id: 2, name: '深圳北斗智联科技有限公司' },
@@ -426,8 +298,8 @@ const tableData = ref([
     topic: '$dp',
     description: '国标协议数据解析策略，支持多厂商设备',
     status: 1,
-    appScope: 'global' as string,
-    vendorIds: [] as number[],
+    appScope: 'global',
+    vendorIds: [],
     deviceIds: [],
     lastRunTime: '2026-06-08 14:30:25',
     scriptCode: `// 国标协议解析脚本
@@ -436,13 +308,13 @@ function parse(message) {
   result.timestamp = Date.now();
   result.sourceTopic = message.topic;
   result.payload = message.payload;
-  
+
   if (message.topic === '$dp') {
     result.type = 'dataPoint';
     result.deviceId = message.payload.deviceId;
     result.data = parseDataPoint(message.payload);
   }
-  
+
   return result;
 }
 
@@ -460,9 +332,9 @@ function parseDataPoint(payload) {
     topic: '/beidou/+/data',
     description: '北斗智联设备数据解析',
     status: 1,
-    appScope: 'vendor' as string,
+    appScope: 'vendor',
     vendorIds: [2],
-    deviceIds: [] as number[],
+    deviceIds: [],
     lastRunTime: '2026-06-08 14:25:10',
     scriptCode: '// 北斗智联协议解析\nfunction parse(message) {\n  return { deviceId: message.deviceId, data: message.data };\n}'
   },
@@ -473,38 +345,13 @@ function parseDataPoint(payload) {
     topic: '/rainfall/+/data',
     description: '雨量计设备专用解析策略',
     status: 0,
-    appScope: 'device' as string,
-    vendorIds: [] as number[],
+    appScope: 'device',
+    vendorIds: [],
     deviceIds: [2],
     lastRunTime: '2026-06-08 12:15:30',
     scriptCode: '// 雨量计解析\nfunction parse(message) {\n  return { deviceId: message.deviceId, rainfall: message.value };\n}'
   }
 ])
-
-const filteredList = computed(() => {
-  let list = [...tableData.value]
-  
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    list = list.filter(item => 
-      item.name.toLowerCase().includes(keyword) || 
-      item.topic.toLowerCase().includes(keyword)
-    )
-  }
-  
-  if (searchStatus.value !== null) {
-    list = list.filter(item => item.status === searchStatus.value)
-  }
-  
-  return list
-})
-
-const logDialogVisible = ref(false)
-const logDateRange = ref([] as string[])
-const logLevel = ref('')
-const logCurrentPage = ref(1)
-const logPageSize = ref(20)
-const logTotal = ref(0)
 
 const logList = ref([
   { timestamp: '2026-06-08 14:30:25', level: 'INFO', message: '接收到MQTT消息，主题: $dp', data: '{"topic":"$dp","payload":"..."}' },
@@ -514,28 +361,55 @@ const logList = ref([
   { timestamp: '2026-06-08 12:15:30', level: 'ERROR', message: '解析脚本执行失败', data: '{"error":"script error"}' }
 ])
 
-const testDialogVisible = ref(false)
-const testData = ref('')
-const testResult = ref('')
+// ============ 计算属性 ============
+const filteredList = computed(() => {
+  let list = [...tableData.value]
 
-const currentLogStrategy = ref<any>(null)
+  if (searchKeyword.value) {
+    const keyword = searchKeyword.value.toLowerCase()
+    list = list.filter(item =>
+        item.name.toLowerCase().includes(keyword) ||
+        item.topic.toLowerCase().includes(keyword)
+    )
+  }
 
+  if (searchStatus.value !== null) {
+    list = list.filter(item => item.status === searchStatus.value)
+  }
+
+  return list
+})
+
+// ============ 工具函数 ============
 const getAppScopeText = (item: any) => {
-  const scopeMap = {
+  const scopeMap: Record<string, string> = {
     global: '全局',
     vendor: `指定厂商 (${item.vendorIds?.length || 0}个)`,
     device: `指定设备 (${item.deviceIds?.length || 0}个)`
   }
-  return scopeMap[item.appScope as keyof typeof scopeMap] || '全局'
+  return scopeMap[item.appScope] || '全局'
 }
 
 const getLogLevelType = (level: string) => {
-  const typeMap = {
+  const typeMap: Record<string, string> = {
     INFO: 'info',
     WARN: 'warning',
     ERROR: 'danger'
   }
-  return typeMap[level as keyof typeof typeMap] || 'info'
+  return typeMap[level] || 'info'
+}
+
+const disabledDate = (time: Date) => {
+  return time.getTime() > Date.now()
+}
+
+// ============ 列表操作方法 ============
+const loadData = () => {
+  loading.value = true
+  setTimeout(() => {
+    total.value = filteredList.value.length
+    loading.value = false
+  }, 300)
 }
 
 const handleSearch = () => {
@@ -558,86 +432,46 @@ const handleRefresh = () => {
   }, 500)
 }
 
-const loadData = () => {
-  loading.value = true
-  setTimeout(() => {
-    total.value = filteredList.value.length
-    loading.value = false
-  }, 300)
+const handleSizeChange = () => {
+  loadData()
 }
 
+const handlePageChange = () => {
+  loadData()
+}
+
+// ============ CRUD 操作 ============
 const handleAdd = () => {
-  resetForm()
-  isEdit.value = false
-  isView.value = false
-  dialogTitle.value = '新增解析策略'
-  activeTab.value = 'basic'
-  dialogVisible.value = true
+  formMode.value = 'add'
+  currentFormData.value = null
+  formDialogVisible.value = true
 }
 
 const handleView = (row: any) => {
-  fillForm(row)
-  isEdit.value = false
-  isView.value = true
-  dialogTitle.value = '查看解析策略'
-  activeTab.value = 'basic'
-  dialogVisible.value = true
+  currentDetailData.value = row
+  detailDialogVisible.value = true
 }
 
 const handleEdit = (row: any) => {
-  fillForm(row)
-  isEdit.value = true
-  isView.value = false
-  dialogTitle.value = '编辑解析策略'
-  activeTab.value = 'basic'
-  dialogVisible.value = true
+  formMode.value = 'edit'
+  currentFormData.value = row
+  formDialogVisible.value = true
 }
 
-const handleCardCommand = (cmd: string, row: any) => {
-  switch (cmd) {
-    case 'view':
-      handleView(row)
-      break
-    case 'edit':
-      handleEdit(row)
-      break
-    case 'log':
-      handleLog(row)
-      break
-    case 'duplicate':
-      handleDuplicate(row)
-      break
-    case 'toggle':
-      handleToggle(row)
-      break
-    case 'delete':
-      handleDelete(row)
-      break
-  }
-}
-
-const handleLog = (row: any) => {
-  currentLogStrategy.value = row
-  logDialogVisible.value = true
-}
-
-const handleTest = (row?: any) => {
-  if (row) {
-    formData.scriptCode = row.scriptCode
-  }
-  testData.value = JSON.stringify({
-    topic: '$dp',
-    payload: {
-      deviceId: 'test001',
-      timestamp: Date.now(),
-      data: {
-        temperature: 25.5,
-        humidity: 60
-      }
+const handleFormSubmit = (data: any) => {
+  if (formMode.value === 'add') {
+    tableData.value.unshift({
+      ...data,
+      id: Date.now(),
+      lastRunTime: ''
+    })
+  } else if (formMode.value === 'edit') {
+    const index = tableData.value.findIndex(item => item.id === data.id)
+    if (index !== -1) {
+      tableData.value[index] = { ...data, lastRunTime: tableData.value[index].lastRunTime }
     }
-  }, null, 2)
-  testResult.value = ''
-  testDialogVisible.value = true
+  }
+  ElMessage.success(formMode.value === 'add' ? '新增成功' : '编辑成功')
 }
 
 const handleDuplicate = (row: any) => {
@@ -679,66 +513,33 @@ const handleDelete = (row: any) => {
   }).catch(() => {})
 }
 
-const handleAppScopeChange = () => {
-  formData.vendorIds = []
-  formData.deviceIds = []
-}
-
-const handleSubmit = () => {
-  formRef.value.validate((valid: boolean) => {
-    if (!valid) return
-    
-    submitLoading.value = true
-    setTimeout(() => {
-      if (isEdit.value && formData.id) {
-        const index = tableData.value.findIndex(item => item.id === formData.id)
-        if (index !== -1) {
-          tableData.value[index] = { ...formData, id: formData.id!, lastRunTime: tableData.value[index].lastRunTime }
-        }
-      } else {
-        tableData.value.push({
-          ...formData,
-          id: Date.now(),
-          lastRunTime: ''
-        })
-      }
-      dialogVisible.value = false
-      submitLoading.value = false
-      ElMessage.success('保存成功')
-    }, 500)
-  })
-}
-
-const handleRunTest = () => {
-  if (!testData.value) {
-    ElMessage.warning('请输入测试数据')
-    return
+const handleCardCommand = (cmd: string, row: any) => {
+  switch (cmd) {
+    case 'view':
+      handleView(row)
+      break
+    case 'edit':
+      handleEdit(row)
+      break
+    case 'log':
+      handleLog(row)
+      break
+    case 'duplicate':
+      handleDuplicate(row)
+      break
+    case 'toggle':
+      handleToggle(row)
+      break
+    case 'delete':
+      handleDelete(row)
+      break
   }
-  
-  testRunning.value = true
-  setTimeout(() => {
-    try {
-      const data = JSON.parse(testData.value)
-      testResult.value = JSON.stringify({
-        success: true,
-        timestamp: new Date().toISOString(),
-        input: data,
-        output: {
-          deviceId: data.payload?.deviceId || 'unknown',
-          parsedData: data.payload?.data || {},
-          status: 'parsed'
-        }
-      }, null, 2)
-      ElMessage.success('测试运行成功')
-    } catch (e) {
-      testResult.value = JSON.stringify({
-        success: false,
-        error: '测试数据格式错误，请输入有效的JSON'
-      }, null, 2)
-      ElMessage.error('测试失败')
-    }
-    testRunning.value = false
-  }, 1000)
+}
+
+// ============ 日志相关 ============
+const handleLog = (row: any) => {
+  currentLogStrategy.value = row
+  logDialogVisible.value = true
 }
 
 const handleLogSearch = () => {
@@ -769,47 +570,72 @@ const showLogData = (row: any) => {
 const handleLogSizeChange = () => {}
 const handleLogPageChange = () => {}
 
-const handleSizeChange = () => {}
-const handlePageChange = () => {}
-
-const resetForm = () => {
-  formData.id = null
-  formData.name = ''
-  formData.serverUrl = ''
-  formData.topic = ''
-  formData.description = ''
-  formData.status = 1
-  formData.appScope = 'global'
-  formData.vendorIds = []
-  formData.deviceIds = []
-  formData.scriptCode = ''
+// ============ 测试相关 ============
+const handleTest = (row?: any) => {
+  if (row) {
+    testData.value = JSON.stringify({
+      topic: row.topic || '$dp',
+      payload: {
+        deviceId: 'test001',
+        timestamp: Date.now(),
+        data: {
+          temperature: 25.5,
+          humidity: 60
+        }
+      }
+    }, null, 2)
+  }
+  testResult.value = ''
+  testDialogVisible.value = true
 }
 
-const fillForm = (row: any) => {
-  formData.id = row.id
-  formData.name = row.name
-  formData.serverUrl = row.serverUrl
-  formData.topic = row.topic
-  formData.description = row.description
-  formData.status = row.status
-  formData.appScope = row.appScope
-  formData.vendorIds = [...(row.vendorIds || [])]
-  formData.deviceIds = [...(row.deviceIds || [])]
-  formData.scriptCode = row.scriptCode || ''
+const handleTestFromDetail = (data: any) => {
+  handleTest(data)
 }
 
-const disabledDate = (time: Date) => {
-  return time.getTime() > Date.now()
+const handleTestFromForm = (data: any) => {
+  handleTest(data)
 }
 
+const handleRunTest = () => {
+  if (!testData.value) {
+    ElMessage.warning('请输入测试数据')
+    return
+  }
+
+  testRunning.value = true
+  setTimeout(() => {
+    try {
+      const data = JSON.parse(testData.value)
+      testResult.value = JSON.stringify({
+        success: true,
+        timestamp: new Date().toISOString(),
+        input: data,
+        output: {
+          deviceId: data.payload?.deviceId || 'unknown',
+          parsedData: data.payload?.data || {},
+          status: 'parsed'
+        }
+      }, null, 2)
+      ElMessage.success('测试运行成功')
+    } catch (e) {
+      testResult.value = JSON.stringify({
+        success: false,
+        error: '测试数据格式错误，请输入有效的JSON'
+      }, null, 2)
+      ElMessage.error('测试失败')
+    }
+    testRunning.value = false
+  }, 1000)
+}
+
+// ============ 生命周期 ============
 onMounted(() => {
   loadData()
 })
 </script>
 
 <style scoped>
-
-
 .status-select {
   width: 150px;
 }
@@ -926,109 +752,6 @@ onMounted(() => {
 
 .card-footer .el-button {
   flex: 1;
-}
-
-
-.parse-dialog .el-tabs {
-  min-height: 500px;
-}
-
-.script-editor-container {
-  min-height: 450px;
-}
-
-.editor-tabs {
-  margin-bottom: 15px;
-  text-align: right;
-}
-
-.blockly-container {
-  display: flex;
-  gap: 15px;
-  height: 400px;
-}
-
-.blockly-workspace {
-  flex: 1;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 16px;
-  position: relative;
-}
-
-.blockly-workspace::before {
-  content: 'Blockly 可视化编程区域';
-  position: absolute;
-  text-align: center;
-}
-
-.toolbox-container {
-  width: 280px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 15px;
-  overflow-y: auto;
-}
-
-.toolbox-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #409eff;
-}
-
-.toolbox-items {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.toolbox-category {
-  background: #fff;
-  border-radius: 6px;
-  padding: 10px;
-}
-
-.category-title {
-  font-size: 13px;
-  font-weight: bold;
-  color: #409eff;
-  margin-bottom: 8px;
-}
-
-.tool-item {
-  font-size: 12px;
-  color: #606266;
-  padding: 6px 10px;
-  margin: 4px 0;
-  background: #f5f7fa;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tool-item:hover {
-  background: #ecf5ff;
-  color: #409eff;
-}
-
-.code-editor-container {
-  height: 400px;
-}
-
-.code-textarea :deep(textarea) {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.log-dialog {
 }
 
 .log-filter {

@@ -1,3 +1,4 @@
+<!--设备管理-->
 <template>
   <div class="page">
     <div class="header">
