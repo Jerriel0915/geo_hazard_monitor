@@ -1,3 +1,4 @@
+<!-- 代办告警 -->
 <template>
   <div class="page">
     <div class="header">
@@ -301,14 +302,14 @@ const filteredData = computed(() => {
 
   // 隐患点名称模糊查询
   if (queryParams.hazardPointName) {
-    result = result.filter(item => 
+    result = result.filter(item =>
       item.hazardPointName.includes(queryParams.hazardPointName)
     )
   }
 
   // 人员名称模糊查询
   if (queryParams.personName) {
-    result = result.filter(item => 
+    result = result.filter(item =>
       item.responderName && item.responderName.includes(queryParams.personName)
     )
   }
