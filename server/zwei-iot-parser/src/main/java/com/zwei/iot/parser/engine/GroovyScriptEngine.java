@@ -73,7 +73,7 @@ public class GroovyScriptEngine {
 
                 ParsedMessage parsed = new ParsedMessage(
                     resolveDeviceCode(result, topic),
-                    resolveSensorCode(result),
+                        resolveSensorCode(result, topic),
                     strategy.getSourceType(),
                     resolveDataTime(result),
                     System.currentTimeMillis(),
@@ -212,9 +212,24 @@ public class GroovyScriptEngine {
         return "";
     }
 
-    private String resolveSensorCode(Map<String, Object> result) {
-        Object sc = result.getOrDefault("sensorCode", "1");
-        return sc != null ? sc.toString() : "1";
+    /**
+     * Resolve sensorCode: script return value first, fall back to topic extraction.
+     * Topic format: sys|gb/v1/{deviceCode}/{sensorCode}/updata
+     */
+    private String resolveSensorCode(Map<String, Object> result, String topic) {
+        Object sc = result.get("sensorCode");
+        if (sc != null) {
+            String code = sc.toString().trim();
+            if (!code.isEmpty()) return code;
+        }
+        // Fallback: extract from topic
+        if (topic != null) {
+            String[] parts = topic.split("/");
+            if (parts.length >= 4 && !parts[3].isEmpty()) {
+                return parts[3];
+            }
+        }
+        return "";
     }
 
     private long resolveDataTime(Map<String, Object> result) {
@@ -265,7 +280,7 @@ public class GroovyScriptEngine {
     private Map<String, Object> buildTestMessage(Map<String, Object> result) {
         return Map.of(
             "deviceCode", str(result, "deviceCode", ""),
-            "sensorCode", resolveSensorCode(result),
+                "sensorCode", resolveSensorCode(result, null),
             "dataTime", resolveDataTime(result),
             "properties", resolveProperties(result)
         );

@@ -1,21 +1,21 @@
 // web/src/composables/useMonitorData.ts
-import { ref, reactive, watch, type MaybeRef, toValue } from 'vue'
-import { ElMessage } from 'element-plus'
+import {type MaybeRef, reactive, ref, toValue, watch} from 'vue'
+import {ElMessage} from 'element-plus'
 import {
+  type ChartData,
+  type ExpressionSpec,
   getChartData,
   getMonitorDataPage,
-  getSensorLatest,
-  getSensorRange,
   getSensorAggregate,
   getSensorCompleteness,
+  getSensorLatest,
+  getSensorRange,
   getSensorTrend,
-  type ChartData,
   type MonitorDataPageItem,
-  type ExpressionSpec,
 } from '@/api/monitorData'
-import { getDeviceSensors, type SensorItem, type SensorAttrItem } from '@/api/sensor'
-import { getBoundDevices } from '@/api/hazardPoint'
-import { showRequestErrorMessage } from '@/utils/errorHandler'
+import {getDeviceSensors, type SensorAttrItem, type SensorItem} from '@/api/sensor'
+import {getBoundDevices} from '@/api/hazardPoint'
+import {showRequestErrorMessage} from '@/utils/errorHandler'
 
 export interface BoundDeviceItem {
   deviceId: number
@@ -203,24 +203,26 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
 
       loading.value = true
       try {
-        const dataMap: Record<string, any[]> = await getSensorRange({
+          const dataMap: Record<string, any[]> = await (getSensorRange({
           deviceId,
           sensorCode: sensor.sensorCode,
           attrCode: filter.attrCode || undefined,
           startTime,
           endTime,
-        })
+          }) as any)
 
         if (mode.value === 'chart') {
           // dataMap 是 Map<attrCode, List<{time, value, quality}>>，需要按 attrCode 展开
+            // 后端 ORDER BY TIME DESC（倒序），图表需正序（时间从左到右递增），所以反转
           const seriesList: ChartData[] = []
           for (const [attrCode, rows] of Object.entries(dataMap)) {
+              const sortedRows = [...rows].reverse()
             const labels: string[] = []
             const values: number[] = []
             let max = Number.NEGATIVE_INFINITY
             let min = Number.POSITIVE_INFINITY
             let sum = 0
-            for (const r of rows) {
+              for (const r of sortedRows) {
               labels.push(formatChartLabel(r.dataTime ?? r.time))
               values.push(r.value)
               if (r.value != null) {
@@ -249,9 +251,10 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
           ElMessage.success(`加载 ${seriesList.length} 条曲线，共 ${totalPoints} 个数据点`)
         } else {
           // 表格模式：扁平化所有 attrCode 的数据行（保留 attrCode 归属）
+            // 后端 ORDER BY TIME DESC，表格也按正序排列（时间由旧到新）
           const flatRows: Array<{ attrCode: string; row: any }> = []
           for (const [code, rows] of Object.entries(dataMap)) {
-            for (const r of rows) flatRows.push({ attrCode: code, row: r })
+              for (const r of [...rows].reverse()) flatRows.push({attrCode: code, row: r})
           }
           tableData.value = flatRows.map(({ attrCode: code, row: r }) => {
             const attrDef = sensor.attrList?.find((a: any) => a.attrCode === code)
