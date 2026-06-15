@@ -35,6 +35,7 @@ COPY zwei-iot-broker/pom.xml     zwei-iot-broker/
 COPY zwei-iot-hazard/pom.xml     zwei-iot-hazard/
 COPY zwei-iot-video/pom.xml      zwei-iot-video/
 COPY zwei-iot-alarm/pom.xml      zwei-iot-alarm/
+COPY zwei-iot-parser/pom.xml    zwei-iot-parser/
 COPY zwei-admin/pom.xml    zwei-admin/
 
 # BuildKit 缓存 ~/.m2 — 跨次构建复用依赖，二次构建几乎 0 秒
