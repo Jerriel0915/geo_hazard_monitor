@@ -87,6 +87,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import miniappApi from '@/utils/miniapp'
+import authApi from '@/utils/auth'
 import { useSafeArea } from '@/composables/useSafeArea'
 import { checkUpdate, getCurrentVersionName, downloadAndInstallApk } from '@/utils/appVersion'
 import type { AppVersionInfo } from '@/utils/appVersion'
@@ -282,20 +283,26 @@ const startDownload = async (versionInfo: AppVersionInfo) => {
   }
 }
 
-const handleLogout = () => {
-  uni.showModal({
-    title: '提示',
-    content: '确定要退出登录吗？',
-    success: (res) => {
-      if (res.confirm) {
-        uni.removeStorageSync('accessToken')
-        uni.removeStorageSync('refreshToken')
-        uni.removeStorageSync('user')
-        uni.removeStorageSync('alarmSubscribed')
-        uni.redirectTo({ url: '/pages/login' })
-      }
-    }
+const handleLogout = async () => {
+  const res = await new Promise<UniApp.ShowModalRes>((resolve) => {
+    uni.showModal({
+      title: '提示',
+      content: '确定要退出登录吗？',
+      success: resolve as any
+    })
   })
+  if (!res.confirm) return
+
+  try {
+    await authApi.logout()
+  } catch (error) {
+    console.error('登出接口失败（忽略，继续清理本地）:', error)
+  }
+
+  uni.removeStorageSync('accessToken')
+  uni.removeStorageSync('user')
+  uni.removeStorageSync('alarmSubscribed')
+  uni.reLaunch({ url: '/pages/login' })
 }
 </script>
 
