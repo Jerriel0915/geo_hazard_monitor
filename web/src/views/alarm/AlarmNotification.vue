@@ -31,12 +31,12 @@
         <el-option label="四级" value="4" />
       </el-select>
       <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple>
-        <el-option label="阈值预警" value="threshold" />
-        <el-option label="综合预警" value="comprehensive" />
+        <el-option label="阈值预警" value="THRESHOLD" />
+        <el-option label="综合预警" value="COMPREHENSIVE" />
       </el-select>
       <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple>
-        <el-option label="误报" value="false_alarm" />
-        <el-option label="已销警" value="closed" />
+        <el-option label="误报" value="4" />
+        <el-option label="已销警" value="3" />
       </el-select>
       <el-button type="primary" @click="handleQuery">查询</el-button>
       <el-button @click="handleReset">重置</el-button>
@@ -57,11 +57,11 @@
               <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="firstAlarmTime" label="首次告警时间" min-width="160" />
-          <el-table-column prop="lastAlarmTime" label="最后告警时间" min-width="160" />
-          <el-table-column prop="alarmCount" label="告警次数" width="90">
+          <el-table-column prop="firstTriggerTime" label="首次告警时间" min-width="160" />
+          <el-table-column prop="lastTriggerTime" label="最后告警时间" min-width="160" />
+          <el-table-column prop="triggerCount" label="告警次数" width="90">
             <template #default="{ row }">
-              <span class="alarm-count" @click.stop="handleView(row)">{{ row.alarmCount }}</span>
+              <span class="alarm-count" @click.stop="handleView(row)">{{ row.triggerCount }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="alarmType" label="告警类型" width="100">
@@ -74,8 +74,8 @@
               <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="responderName" label="响应人员" width="100" />
-          <el-table-column prop="responseTime" label="响应时间" min-width="160" />
+          <el-table-column prop="resolvedBy" label="响应人员" width="100" />
+          <el-table-column prop="resolvedAt" label="响应时间" min-width="160" />
           <el-table-column label="操作" width="100" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" text size="small" @click.stop="handleView(row)">
@@ -106,10 +106,11 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref} from 'vue'
+import {onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {Download, View} from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
+import {getHistoryAlarms} from '@/api/alarm'
 
 // 查询参数
 const queryParams = reactive({
@@ -139,230 +140,95 @@ const detailDialogVisible = ref(false)
 // 当前行
 const currentRow = ref<any>(null)
 
-// Mock 数据 - 历史告警（已处理、误报、已销警）
-const mockData = [
-  {
-    id: 1,
-    hazardPointName: '桥梁监测点D-03',
-    alarmLevel: '4',
-    firstAlarmTime: '2024-06-01 00:00:00',
-    lastAlarmTime: '2024-06-02 00:00:00',
-    alarmCount: 3,
-    alarmType: 'threshold',
-    status: 'false_alarm',
-    responderName: '王五',
-    responseTime: '2024-06-01 08:00:00',
-    alarmContent: '桥墩沉降超过阈值2mm，经核查为传感器故障',
-    alarmList: [
-      { alarmTime: '2024-06-01 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.1mm' },
-      { alarmTime: '2024-06-02 00:00:00', alarmLevel: '4', alarmContent: '桥墩沉降2.3mm' }
-    ]
-  },
-  {
-    id: 2,
-    hazardPointName: '水库监测点F-02',
-    alarmLevel: '2',
-    firstAlarmTime: '2024-05-25 06:00:00',
-    lastAlarmTime: '2024-06-01 18:00:00',
-    alarmCount: 12,
-    alarmType: 'threshold',
-    status: 'closed',
-    responderName: '赵六',
-    responseTime: '2024-06-01 20:00:00',
-    alarmContent: '水库水位超过警戒水位50cm，当前已降至安全范围',
-    alarmList: [
-      { alarmTime: '2024-05-25 06:00:00', alarmLevel: '2', alarmContent: '水库水位超限30cm' },
-      { alarmTime: '2024-06-01 18:00:00', alarmLevel: '2', alarmContent: '水库水位超限50cm' }
-    ]
-  },
-  {
-    id: 3,
-    hazardPointName: '地质灾害点H-09',
-    alarmLevel: '2',
-    firstAlarmTime: '2024-05-15 14:00:00',
-    lastAlarmTime: '2024-05-16 14:00:00',
-    alarmCount: 8,
-    alarmType: 'threshold',
-    status: 'closed',
-    responderName: '周八',
-    responseTime: '2024-05-16 15:00:00',
-    alarmContent: '裂缝宽度超过阈值，经处理已稳定',
-    alarmList: [
-      { alarmTime: '2024-05-15 14:00:00', alarmLevel: '2', alarmContent: '裂缝宽度5mm' },
-      { alarmTime: '2024-05-16 14:00:00', alarmLevel: '2', alarmContent: '裂缝宽度8mm' }
-    ]
-  },
-  {
-    id: 4,
-    hazardPointName: '边坡监测点I-11',
-    alarmLevel: '4',
-    firstAlarmTime: '2024-05-10 08:00:00',
-    lastAlarmTime: '2024-05-10 12:00:00',
-    alarmCount: 4,
-    alarmType: 'threshold',
-    status: 'false_alarm',
-    responderName: '吴九',
-    responseTime: '2024-05-10 14:00:00',
-    alarmContent: '温度传感器误报，实际温度正常',
-    alarmList: [
-      { alarmTime: '2024-05-10 08:00:00', alarmLevel: '4', alarmContent: '温度异常预警' },
-      { alarmTime: '2024-05-10 12:00:00', alarmLevel: '4', alarmContent: '温度持续异常' }
-    ]
-  },
-  {
-    id: 5,
-    hazardPointName: '山体滑坡点J-15',
-    alarmLevel: '3',
-    firstAlarmTime: '2024-05-08 10:00:00',
-    lastAlarmTime: '2024-05-09 10:00:00',
-    alarmCount: 15,
-    alarmType: 'threshold',
-    status: 'closed',
-    responderName: '郑十',
-    responseTime: '2024-05-09 11:00:00',
-    alarmContent: '山体滑坡风险已排除，现场监测数据恢复正常',
-    alarmList: [
-      { alarmTime: '2024-05-08 10:00:00', alarmLevel: '3', alarmContent: '位移监测异常' },
-      { alarmTime: '2024-05-09 10:00:00', alarmLevel: '3', alarmContent: '已恢复正常' }
-    ]
-  },
-  {
-    id: 6,
-    hazardPointName: '隧道监测点K-02',
-    alarmLevel: '1',
-    firstAlarmTime: '2024-05-05 06:00:00',
-    lastAlarmTime: '2024-05-05 08:00:00',
-    alarmCount: 2,
-    alarmType: 'comprehensive',
-    status: 'false_alarm',
-    responderName: '钱十一',
-    responseTime: '2024-05-05 09:00:00',
-    alarmContent: '综合预警误报，经核实为设备校准误差',
-    alarmList: [
-      { alarmTime: '2024-05-05 06:00:00', alarmLevel: '1', alarmContent: '综合预警触发' },
-      { alarmTime: '2024-05-05 08:00:00', alarmLevel: '1', alarmContent: '数据异常确认' }
-    ]
+const loading = ref(false)
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const params: Record<string, unknown> = {
+      pageNum: pagination.currentPage,
+      pageSize: pagination.pageSize
+    }
+    if (queryParams.hazardPointName) params.hazardPointName = queryParams.hazardPointName
+    if (queryParams.personName) params.personName = queryParams.personName
+    if (queryParams.alarmLevel.length > 0) params.alarmLevels = queryParams.alarmLevel.join(',')
+    if (queryParams.alarmType.length > 0) params.alarmTypes = queryParams.alarmType.join(',')
+    if (queryParams.status.length > 0) params.statusList = queryParams.status.join(',')
+    if (queryParams.alarmTimeRange.length === 2) {
+      params.startTime = queryParams.alarmTimeRange[0]
+      params.endTime = queryParams.alarmTimeRange[1]
+    }
+    const res = await getHistoryAlarms(params as any)
+    tableData.value = res.rows || []
+    pagination.total = res.total || 0
+  } finally {
+    loading.value = false
   }
-]
+}
 
-// 计算属性：过滤后的数据
-const filteredData = computed(() => {
-  let result = [...mockData]
-
-  // 隐患点名称模糊查询
-  if (queryParams.hazardPointName) {
-    result = result.filter(item => 
-      item.hazardPointName.includes(queryParams.hazardPointName)
-    )
-  }
-
-  // 人员名称模糊查询
-  if (queryParams.personName) {
-    result = result.filter(item => 
-      item.responderName && item.responderName.includes(queryParams.personName)
-    )
-  }
-
-  // 告警等级筛选
-  if (queryParams.alarmLevel.length > 0) {
-    result = result.filter(item => queryParams.alarmLevel.includes(item.alarmLevel))
-  }
-
-  // 告警类型筛选
-  if (queryParams.alarmType.length > 0) {
-    result = result.filter(item => queryParams.alarmType.includes(item.alarmType))
-  }
-
-  // 警情状态筛选
-  if (queryParams.status.length > 0) {
-    result = result.filter(item => queryParams.status.includes(item.status))
-  }
-
-  // 告警次数范围筛选
-  if (queryParams.alarmCountMin != null) {
-    result = result.filter(item => item.alarmCount >= queryParams.alarmCountMin!)
-  }
-  if (queryParams.alarmCountMax != null) {
-    result = result.filter(item => item.alarmCount <= queryParams.alarmCountMax!)
-  }
-
-  // 按最后告警时间倒序
-  result.sort((a, b) => new Date(b.lastAlarmTime).getTime() - new Date(a.lastAlarmTime).getTime())
-
-  return result
-})
-
-// 计算属性：分页数据
-const paginatedData = computed(() => {
-  const start = (pagination.currentPage - 1) * pagination.pageSize
-  const end = start + pagination.pageSize
-  return filteredData.value.slice(start, end)
-})
+// 原始 mock 数据 — 已替换为 API
 
 // 初始化
 onMounted(() => {
-  pagination.total = mockData.length
-  tableData.value = paginatedData.value
+  fetchData()
 })
 
 // 获取告警等级类型
-const getAlarmLevelType = (level: string) => {
+const getAlarmLevelType = (level: number | string) => {
   const map: Record<string, string> = {
     '1': 'danger',
     '2': 'warning',
     '3': 'success',
     '4': 'info'
   }
-  return map[level] || 'info'
+  return map[String(level)] || 'info'
 }
 
 // 获取告警等级文本
-const getAlarmLevelText = (level: string) => {
+const getAlarmLevelText = (level: number | string) => {
   const map: Record<string, string> = {
     '1': '一级',
     '2': '二级',
     '3': '三级',
     '4': '四级'
   }
-  return map[level] || level
+  return map[String(level)] || String(level)
 }
 
 // 获取告警类型文本
 const getAlarmTypeText = (type: string) => {
   const map: Record<string, string> = {
-    'threshold': '阈值预警',
-    'comprehensive': '综合预警'
+    'THRESHOLD': '阈值预警',
+    'COMPREHENSIVE': '综合预警'
   }
   return map[type] || type
 }
 
 // 获取状态类型
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    'false_alarm': 'info',
-    'closed': 'info'
+const getStatusType = (status: number) => {
+  const map: Record<number, string> = {
+    3: 'info',
+    4: 'info'
   }
   return map[status] || 'info'
 }
 
 // 获取状态文本
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    'false_alarm': '误报',
-    'closed': '已销警'
+const getStatusText = (status: number) => {
+  const map: Record<number, string> = {
+    3: '已销警',
+    4: '误报'
   }
-  return map[status] || status
+  return map[status] || String(status)
 }
 
 // 查询
 const handleQuery = () => {
   pagination.currentPage = 1
-  pagination.total = filteredData.value.length
-  tableData.value = paginatedData.value
-  ElMessage.success('查询成功')
+  fetchData()
 }
 
-// 重置（静默，不弹窗）
+// 重置
 const handleReset = () => {
   queryParams.hazardPointName = ''
   queryParams.personName = ''
@@ -373,8 +239,7 @@ const handleReset = () => {
   queryParams.alarmType = []
   queryParams.status = []
   pagination.currentPage = 1
-  pagination.total = filteredData.value.length
-  tableData.value = paginatedData.value
+  fetchData()
 }
 
 // 行点击 - 查看详情
@@ -397,13 +262,14 @@ const handleExport = () => {
 // 分页大小变化
 const handleSizeChange = (size: number) => {
   pagination.pageSize = size
-  tableData.value = paginatedData.value
+  pagination.currentPage = 1
+  fetchData()
 }
 
 // 分页页码变化
 const handleCurrentChange = (page: number) => {
   pagination.currentPage = page
-  tableData.value = paginatedData.value
+  fetchData()
 }
 </script>
 

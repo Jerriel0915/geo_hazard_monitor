@@ -82,9 +82,27 @@
         WHERE status IN (1, 2)
         <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
         <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
+        <if test="alarmLevels != null and alarmLevels != ''">
+            AND FIND_IN_SET(alarm_level, #{alarmLevels})
+        </if>
         <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
+        <if test="alarmTypes != null and alarmTypes != ''">
+            AND FIND_IN_SET(alarm_type, #{alarmTypes})
+        </if>
+        <if test="statusList != null and statusList != ''">
+            AND FIND_IN_SET(status, #{statusList})
+        </if>
         <if test="hazardPointName != null and hazardPointName != ''">
             AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND first_trigger_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND first_trigger_time &lt;= #{endTime}
+        </if>
+        <if test="personName != null and personName != ''">
+            AND resolved_by LIKE CONCAT('%', #{personName}, '%')
         </if>
         ORDER BY alarm_level DESC, last_trigger_time DESC
     </select>
@@ -94,9 +112,27 @@
         WHERE status IN (3, 4)
         <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
         <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
+        <if test="alarmLevels != null and alarmLevels != ''">
+            AND FIND_IN_SET(alarm_level, #{alarmLevels})
+        </if>
         <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
+        <if test="alarmTypes != null and alarmTypes != ''">
+            AND FIND_IN_SET(alarm_type, #{alarmTypes})
+        </if>
+        <if test="statusList != null and statusList != ''">
+            AND FIND_IN_SET(status, #{statusList})
+        </if>
         <if test="hazardPointName != null and hazardPointName != ''">
             AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND first_trigger_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND first_trigger_time &lt;= #{endTime}
+        </if>
+        <if test="personName != null and personName != ''">
+            AND resolved_by LIKE CONCAT('%', #{personName}, '%')
         </if>
         ORDER BY resolved_at DESC
     </select>
