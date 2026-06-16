@@ -213,9 +213,10 @@ watch(() => props.modelValue, async (val) => {
       getTriggerDetails(id),
       getActionLogs(id),
     ])
-    detail.value = (d as any).data ?? d
-    triggerDetails.value = (t as any).data ?? t || []
-    const logs = (l as any).data ?? l || []
+    const detailData = (d as any).data ?? d
+    detail.value = detailData ?? null
+    triggerDetails.value = (t as any).data ?? t ?? []
+    const logs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
     disposalRecords.value = logs.filter((x: AlarmRecordActionLog) =>
       ['FEEDBACK', 'DISPOSE_CLOSE', 'DISPOSE_FALSE_ALARM'].includes(x.actionType))
     timelineData.value = buildTimeline(logs)
@@ -229,7 +230,7 @@ watch(() => props.modelValue, async (val) => {
 
 // 由动作日志构造时间线
 function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
-  return [...logs].sort((a, b) => a.createTime.localeCompare(b.createTime)).map(log => {
+  return [...logs].sort((a, b) => (a.createTime || '').localeCompare(b.createTime || '')).map(log => {
     const typeMap: Record<string, string> = {
       CREATE: 'trigger', RE_TRIGGER: 'trigger', LEVEL_CHANGE: 'trigger',
       NOTIFY: 'notify',
