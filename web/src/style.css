@@ -599,3 +599,10 @@ html, body, #app {
 .empty-text {
   color: #94a3b8;
 }
+
+/* ---------- 输入框包装器 ---------- */
+/* 去掉 Element Plus 默认的 flex-grow:1，避免在窄容器（如 DeviceDataPanel 筛选栏）内输入框被强行拉伸溢出。
+   因 style.css 导入顺序早于 element-plus 主题，需 !important 才能覆盖同优先级默认值。 */
+.el-input__wrapper {
+  flex-grow: 0 !important;
+}

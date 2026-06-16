@@ -1,7 +1,7 @@
 <!-- web/src/components/MonitorDataExplorer.vue -->
 <template>
-  <div class="monitor-data-explorer">
-    <!-- 筛选栏 -->
+  <div class="monitor-data-explorer" :class="{ 'mde-fill': fillContainer }">
+    <!-- 筛选栏（含视图切换，切换靠右） -->
     <div class="mde-filters">
       <el-select
         v-if="showDevice"
@@ -80,22 +80,24 @@
         <el-button @click="onImport">导入数据</el-button>
         <el-button @click="onExport">导出数据</el-button>
       </template>
-    </div>
 
-    <!-- 图表/表格切换 -->
-    <div class="mde-toolbar">
-      <el-button-group>
-        <el-button
-          :type="mode === 'chart' ? 'primary' : 'default'"
-          size="small"
-          @click="mode = 'chart'"
-        >图表展示</el-button>
-        <el-button
-          :type="mode === 'table' ? 'primary' : 'default'"
-          size="small"
-          @click="mode = 'table'"
-        >表格展示</el-button>
-      </el-button-group>
+      <!-- 图表/表格切换 -->
+      <div class="mde-toolbar">
+        <el-button-group>
+          <el-button
+            :type="mode === 'chart' ? 'primary' : 'default'"
+            size="small"
+            title="图表展示"
+            @click="mode = 'chart'"
+          ><el-icon><TrendCharts/></el-icon></el-button>
+          <el-button
+            :type="mode === 'table' ? 'primary' : 'default'"
+            size="small"
+            title="表格展示"
+            @click="mode = 'table'"
+          ><el-icon><Grid/></el-icon></el-button>
+        </el-button-group>
+      </div>
     </div>
 
     <!-- 数据点过多提示 -->
@@ -109,7 +111,7 @@
       <VueApexCharts
         v-else-if="chartSeries.length > 0"
         type="area"
-        height="400"
+        :height="fillContainer ? '100%' : '400'"
         :options="chartOptions"
         :series="chartOptions.series"
       />
@@ -126,7 +128,7 @@
         border
         stripe
         size="small"
-        max-height="400"
+        :max-height="fillContainer ? undefined : 400"
       >
         <el-table-column prop="dataTime" label="时间" min-width="180" align="center" />
         <el-table-column prop="deviceName" label="设备" width="150" align="center" />
@@ -148,6 +150,7 @@
 import type { ChartData, MonitorDataPageItem } from '@/api/monitorData'
 import { useMonitorData } from '@/composables/useMonitorData'
 import { ElMessage } from 'element-plus'
+import { Grid, TrendCharts } from '@element-plus/icons-vue'
 import { computed, ref, watch } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
 
@@ -163,6 +166,12 @@ const props = withDefaults(defineProps<{
   enableTrend?: boolean
   initialDeviceId?: number
   initialMode?: 'chart' | 'table'
+  /**
+   * 弹性填充容器高度 — 适用于父级有确定高度的浮层/面板 (如 DeviceDataPanel)。
+   * 开启后根元素 flex 撑满父级，图表/表格区随可用高度伸缩，避免固定 400px 导致溢出滚动。
+   * 默认 false：保留 400px 固定高度，兼容 el-dialog/标签页 等无确定高度的滚动容器。
+   */
+  fillContainer?: boolean
 }>(), {
   showDevice: true,
   showSensor: true,
@@ -172,6 +181,7 @@ const props = withDefaults(defineProps<{
   enableCompleteness: false,
   enableTrend: false,
   initialMode: 'chart',
+  fillContainer: false,
 })
 
 const emit = defineEmits<{
@@ -280,8 +290,9 @@ watch([chartSeries, tableData], () => {
 }
 
 .mde-toolbar {
+  margin-left: auto;
+  flex-shrink: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
@@ -321,5 +332,28 @@ watch([chartSeries, tableData], () => {
   justify-content: center;
   color: #94a3b8;
   font-size: 14px;
+}
+
+/* ===== 弹性填充模式 (fillContainer) ===== */
+/* 父级需为确定高度的 flex 列容器；根节点撑满，图表/表格区伸缩，skeleton/empty 跟随。 */
+.monitor-data-explorer.mde-fill {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.monitor-data-explorer.mde-fill .mde-chart-area {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.monitor-data-explorer.mde-fill .mde-table-area {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.monitor-data-explorer.mde-fill .mde-skeleton,
+.monitor-data-explorer.mde-fill .mde-empty {
+  height: 100%;
 }
 </style>
