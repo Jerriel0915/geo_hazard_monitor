@@ -6,7 +6,7 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     druid:
       master:
-        url: jdbc:mysql://${MYSQL_HOST:mysql}:3306/${MYSQL_DATABASE:geo_hazard_monitor}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+        url: "jdbc:mysql://${MYSQL_HOST:mysql}:3306/${MYSQL_DATABASE:geo_hazard_monitor}?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true"
         username: ${MYSQL_USER:root}
         password: ${MYSQL_PASSWORD}
       slave:
@@ -123,7 +123,10 @@ iot:
     dedupe-ttl-seconds: ${IOT_MONITOR_DEDUPE_TTL:86400}
     poll-batch-size: ${IOT_MONITOR_POLL_BATCH_SIZE:20}
     poll-block-ms: ${IOT_MONITOR_POLL_BLOCK_MS:2000}
-    retry-delays-seconds: ${IOT_MONITOR_RETRY_DELAYS:5,30,120}
+    retry-delays-seconds:
+      - 5
+      - 30
+      - 120
   # 生产环境 IoTDB 连接参数
   iotdb:
     enabled: ${IOTDB_ENABLED:true}

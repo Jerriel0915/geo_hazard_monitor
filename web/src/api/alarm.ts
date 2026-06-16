@@ -46,7 +46,13 @@ export interface AlarmRecordPageParams {
     hazardPointId?: number
     hazardPointName?: string
     alarmLevel?: number
+    alarmLevels?: string
     alarmType?: string
+    alarmTypes?: string
+    statusList?: string
+    startTime?: string
+    endTime?: string
+    personName?: string
 }
 
 export interface AlarmDisposePayload {
@@ -241,6 +247,25 @@ export const batchDisposeAlarms = (payload: AlarmBatchDisposePayload) =>
 /** 告警状态变更日志 */
 export const getAlarmRecordLogs = (id: number) =>
     request.get<AlarmRecordLog[]>(`/alarm/records/${id}/logs`)
+
+// ── 告警反馈 ──
+
+export interface AlarmFeedbackItem {
+    id: number
+    alarmId: number
+    content: string
+    files?: { name: string; url: string; size: number }[]
+    operator: string
+    createTime: string
+}
+
+/** 查询告警反馈列表 */
+export const getAlarmFeedbacks = (id: number) =>
+    request.get<AlarmFeedbackItem[]>(`/alarm/records/${id}/feedbacks`)
+
+/** 添加告警反馈 */
+export const addAlarmFeedback = (id: number, data: { content: string; files?: any[] }) =>
+    request.post(`/alarm/records/${id}/feedback`, data)
 
 // ==================== 告警判据 API ====================
 

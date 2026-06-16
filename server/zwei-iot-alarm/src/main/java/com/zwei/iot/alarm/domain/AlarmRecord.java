@@ -117,4 +117,31 @@ public class AlarmRecord extends BaseEntity {
      * 处置备注
      */
     private String resolutionNote;
+
+    // ── 以下为查询辅助字段（非数据库列）──
+
+    /**
+     * 告警时间起始（查询用）
+     */
+    private String startTime;
+    /**
+     * 告警时间截止（查询用）
+     */
+    private String endTime;
+    /**
+     * 处置人模糊匹配（查询用）
+     */
+    private String personName;
+    /**
+     * 告警等级多选，逗号分隔（查询用）
+     */
+    private String alarmLevels;
+    /**
+     * 告警类型多选，逗号分隔（查询用）
+     */
+    private String alarmTypes;
+    /**
+     * 警情状态多选，逗号分隔（查询用，覆盖 status 单值）
+     */
+    private String statusList;
 }
