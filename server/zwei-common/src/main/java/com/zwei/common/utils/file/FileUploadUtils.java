@@ -154,6 +154,19 @@ public class FileUploadUtils
         return StringUtils.format("{}/{}.{}", DateUtils.datePath(), IdUtils.fastSimpleUUID(), getExtension(file));
     }
 
+    /**
+     * 算法库专用路径生成（algo-lib/yyyy/MM/dd/uuid.ext）
+     * 不复用 extractFilename，避免与 /upload 目录混淆。
+     */
+    public static final String extractAlgoLibFilename(MultipartFile file)
+    {
+        String extension = getExtension(file);
+        return StringUtils.format("algo-lib/{}/{}.{}",
+                DateUtils.datePath(),
+                java.util.UUID.randomUUID().toString().replace("-", ""),
+                extension);
+    }
+
     public static final File getAbsoluteFile(String uploadDir, String fileName) throws IOException
     {
         File desc = new File(uploadDir + File.separator + fileName);
