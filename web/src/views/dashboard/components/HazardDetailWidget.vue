@@ -128,7 +128,7 @@ const fetchDevices = async () => {
         id: item.deviceId,
         name: item.deviceName || '未知设备',
         code: item.deviceCode || '',
-        onlineStatus: item.deviceStatus === 0 ? 'online' : 'offline',
+        onlineStatus: item.onlineStatus === 1 ? 'online' : 'offline',
         deviceState: item.deviceState || item.state || '',
         bindTime: item.bindTime || item.createTime || '',
         sensors: (item.sensors || []).map((s: any) => ({
