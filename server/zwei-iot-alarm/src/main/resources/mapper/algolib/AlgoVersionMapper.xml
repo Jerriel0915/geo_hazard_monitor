@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.algolib.mapper.AlgoVersionMapper">
+
+    <resultMap type="com.zwei.iot.alarm.algolib.domain.AlgoVersion" id="AlgoVersionResult">
+        <id property="id" column="id"/>
+        <result property="algoId" column="algo_id"/>
+        <result property="versionNo" column="version_no"/>
+        <result property="fileName" column="file_name"/>
+        <result property="originalName" column="original_name"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="sha256" column="sha256"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, algo_id, version_no, file_name, original_name, file_size, sha256,
+        del_flag, create_by, create_time, update_by, update_time, remark
+    </sql>
+
+    <select id="selectByAlgoId" parameterType="Long" resultMap="AlgoVersionResult">
+        SELECT <include refid="columns"/>
+        FROM algo_version
+        WHERE algo_id = #{algoId} AND del_flag = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="AlgoVersionResult">
+        SELECT <include refid="columns"/>
+        FROM algo_version
+        WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <select id="checkVersionUnique" resultMap="AlgoVersionResult">
+        SELECT <include refid="columns"/>
+        FROM algo_version
+        WHERE algo_id = #{algoId}
+        AND version_no = #{versionNo}
+        AND del_flag = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.iot.alarm.algolib.domain.AlgoVersion"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO algo_version (algo_id, version_no, file_name, original_name,
+                                  file_size, sha256, del_flag,
+                                  create_by, create_time, update_by, update_time, remark)
+        VALUES (#{algoId}, #{versionNo}, #{fileName}, #{originalName},
+                #{fileSize}, #{sha256}, 0,
+                #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, #{remark})
+    </insert>
+
+    <update id="softDeleteByAlgoId" parameterType="Long">
+        UPDATE algo_version SET del_flag = 1 WHERE algo_id = #{algoId} AND del_flag = 0
+    </update>
+
+    <update id="softDeleteById" parameterType="Long">
+        UPDATE algo_version SET del_flag = 1 WHERE id = #{id} AND del_flag = 0
+    </update>
+
+</mapper>
