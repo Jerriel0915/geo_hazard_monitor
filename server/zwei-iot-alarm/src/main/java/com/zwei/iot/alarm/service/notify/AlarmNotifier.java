@@ -4,8 +4,11 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.zwei.common.event.AlarmTriggeredEvent;
+import com.zwei.iot.alarm.domain.ActionType;
 import com.zwei.iot.alarm.domain.AlarmDispatchRule;
 import com.zwei.iot.alarm.domain.AlarmNotification;
+import com.zwei.iot.alarm.domain.AlarmRecordActionLog;
+import com.zwei.iot.alarm.mapper.AlarmRecordActionLogMapper;
 import com.zwei.iot.alarm.service.IAlarmDispatchService;
 import com.zwei.iot.alarm.service.IAlarmNotificationService;
 import org.slf4j.Logger;
@@ -33,11 +36,14 @@ public class AlarmNotifier {
 
     private final IAlarmDispatchService dispatchService;
     private final IAlarmNotificationService notificationService;
+    private final AlarmRecordActionLogMapper actionLogMapper;
 
     public AlarmNotifier(IAlarmDispatchService dispatchService,
-                         IAlarmNotificationService notificationService) {
+                         IAlarmNotificationService notificationService,
+                         AlarmRecordActionLogMapper actionLogMapper) {
         this.dispatchService = dispatchService;
         this.notificationService = notificationService;
+        this.actionLogMapper = actionLogMapper;
     }
 
     /**
@@ -72,6 +78,18 @@ public class AlarmNotifier {
 
         if (!notifications.isEmpty()) {
             notificationService.batchCreate(notifications);
+            // 写 NOTIFY 动作日志：聚合渠道/接收人摘要
+            String channelSummary = notifications.stream()
+                    .map(n -> n.getChannel() + ":" + (n.getRecipientName() != null ? n.getRecipientName() : "系统"))
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("SYSTEM");
+            actionLogMapper.insertLog(AlarmRecordActionLog.builder()
+                    .alarmRecordId(event.getAlarmId())
+                    .actionType(ActionType.NOTIFY.name())
+                    .remarks(channelSummary)
+                    .operator("SYSTEM")
+                    .createTime(new Date())
+                    .build());
             log.info("告警通知已创建: alarmId={}, 通知数={}", event.getAlarmId(), notifications.size());
         }
     }
