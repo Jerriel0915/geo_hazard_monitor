@@ -1,12 +1,51 @@
 <!-- src/pages/hazard.vue -->
+<script setup lang="ts">
+import type { Hazard } from '@/utils/hazard'
+import { onMounted, ref } from 'vue'
+import { useSafeArea } from '@/composables/useSafeArea'
+import { hazardApi } from '@/utils/hazard'
+
+const { statusBarHeight } = useSafeArea()
+
+const loading = ref(true)
+const isRefreshing = ref(false)
+const hazards = ref<Hazard[]>([])
+
+async function loadData() {
+  try {
+    hazards.value = await hazardApi.getAll()
+  }
+  catch (error) {
+    console.error('加载隐患点数据失败:', error)
+  }
+  finally {
+    loading.value = false
+    isRefreshing.value = false
+  }
+}
+
+function onRefresh() {
+  isRefreshing.value = true
+  loadData()
+}
+
+function goToDetail(hazard: Hazard) {
+  uni.navigateTo({ url: `/pages/hazard-detail?id=${hazard.id}` })
+}
+
+onMounted(() => {
+  loadData()
+})
+</script>
+
 <template>
   <view class="page-container">
     <!-- 渐变头部 -->
     <view class="header">
       <view class="header-bg">
-        <view class="status-bar" :style="{ height: `${statusBarHeight + 65}px` }"></view>
-        <view class="bg-circle bg-circle-1"></view>
-        <view class="bg-circle bg-circle-2"></view>
+        <view class="status-bar" :style="{ height: `${statusBarHeight + 65}px` }" />
+        <view class="bg-circle bg-circle-1" />
+        <view class="bg-circle bg-circle-2" />
       </view>
       <view class="header-content" :style="{ paddingTop: `${statusBarHeight}px` }">
         <view class="header-top">
@@ -56,14 +95,14 @@
               </view>
             </view>
             <view class="card-footer">
-              <text class="card-desc" v-if="item.description">{{ item.description }}</text>
+              <text v-if="item.description" class="card-desc">{{ item.description }}</text>
               <text class="card-time">{{ item.createTime }}</text>
             </view>
           </view>
 
           <EmptyState
             v-if="hazards.length === 0"
-            :useImage="true"
+            :use-image="true"
             title="暂无隐患点"
             description="当前没有任何隐患点数据"
           />
@@ -72,43 +111,6 @@
     </scroll-view>
   </view>
 </template>
-
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useSafeArea } from '@/composables/useSafeArea'
-import { hazardApi } from '@/utils/hazard'
-import type { Hazard } from '@/utils/hazard'
-
-const { statusBarHeight } = useSafeArea()
-
-const loading = ref(true)
-const isRefreshing = ref(false)
-const hazards = ref<Hazard[]>([])
-
-const loadData = () => {
-  try {
-    hazards.value = hazardApi.getAll()
-  } catch (error) {
-    console.error('加载隐患点数据失败:', error)
-  } finally {
-    loading.value = false
-    isRefreshing.value = false
-  }
-}
-
-const onRefresh = () => {
-  isRefreshing.value = true
-  loadData()
-}
-
-const goToDetail = (hazard: Hazard) => {
-  uni.navigateTo({ url: `/pages/hazard-detail?id=${hazard.id}` })
-}
-
-onMounted(() => {
-  loadData()
-})
-</script>
 
 <style lang="scss" scoped>
 .page-container {
