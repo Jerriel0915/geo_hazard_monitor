@@ -163,10 +163,12 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
 
         int rows = alarmRecordMapper.updateStatus(id, newStatus, statusName, operator, now, effectiveRemarks);
         if (rows > 0) {
+            Integer oldStatus = record.getStatus();
             ActionType actionType = resolveDisposeActionType(newStatus);
             actionLogMapper.insertLog(AlarmRecordActionLog.builder()
                     .alarmRecordId(id)
                     .actionType(actionType.name())
+                    .fromValue(oldStatus != null ? String.valueOf(oldStatus) : null)
                     .toValue(String.valueOf(newStatus))
                     .remarks(effectiveRemarks)
                     .description(description)
