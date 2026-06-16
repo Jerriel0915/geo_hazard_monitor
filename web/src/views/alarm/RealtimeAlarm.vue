@@ -38,17 +38,17 @@
           end-placeholder="告警时间:结束"
           value-format="YYYY-MM-DD"
       />
-      <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple class="search__select">
+      <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
         <el-option label="一级" :value="1" />
         <el-option label="二级" :value="2" />
         <el-option label="三级" :value="3" />
         <el-option label="四级" :value="4" />
       </el-select>
-      <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple class="search__select">
+      <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
         <el-option label="阈值预警" value="THRESHOLD" />
         <el-option label="综合预警" value="COMPREHENSIVE" />
       </el-select>
-      <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple class="search__select">
+      <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
         <el-option label="待处理" :value="1" />
         <el-option label="处理中" :value="2" />
         <el-option label="已销警" :value="3" />
@@ -72,7 +72,7 @@
           <el-table-column prop="hazardPointName" label="隐患点名称" min-width="180" />
           <el-table-column prop="alarmLevel" label="告警等级" width="100">
             <template #default="{ row }">
-              <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ row.alarmLevelText || getAlarmLevelText(row.alarmLevel) }}</el-tag>
+              <el-tag :style="getAlarmLevelStyle(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="firstTriggerTime" label="首次告警时间" width="180" />
@@ -92,12 +92,8 @@
           </el-table-column>
           <el-table-column prop="resolvedBy" label="响应人员" width="120" />
           <el-table-column prop="resolvedAt" label="响应时间" min-width="180" />
-          <el-table-column label="操作" width="160" fixed="right">
+          <el-table-column label="操作" width="120" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" text size="small" @click.stop="handleView(row)">
-                <el-icon><View /></el-icon>
-                查看
-              </el-button>
               <el-button type="success" text size="small" @click.stop="handleFeedback(row)">
                 <el-icon><ChatDotRound /></el-icon>
                 处置
@@ -120,15 +116,13 @@
       </div>
     </div>
 
-    <!-- 告警详情弹窗 -->
-    <AlarmDetailDialog v-model="detailDialogVisible" :data="currentRow" />
-
-    <!-- 反馈弹窗 -->
-    <FeedbackDialog
-        v-model="feedbackDialogVisible"
+    <!-- 告警详情/处置弹窗 - 查看 + 处置共用 -->
+    <AlarmDetailDialog
+        v-model="detailDialogVisible"
         :data="currentRow"
         @submit="handleFeedbackSubmit"
-        @update:model-value="feedbackDialogVisible = $event"
+        @false-alarm="handleDetailFalseAlarm"
+        @close-alarm="handleDetailCloseAlarm"
     />
 
     <!-- 批量反馈弹窗 - FeedBack组件 -->
@@ -139,14 +133,14 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ChatDotRound, CircleClose, Download, View, Warning } from '@element-plus/icons-vue'
-import FeedbackDialog from '@/components/FeedbackDialog.vue'
+import { ChatDotRound, CircleClose, Download, Warning } from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
 import FeedBack from '@/components/FeedBack.vue'
 import {
   getPendingAlarms,
   disposeAlarm,
   batchDisposeAlarms,
+  getAlarmLevelStyle,
   type AlarmRecordItem,
   type AlarmRecordPageParams,
 } from '@/api/alarm'
@@ -166,7 +160,6 @@ const tableData = ref<AlarmRecordItem[]>([])
 const selectedRows = ref<AlarmRecordItem[]>([])
 
 const detailDialogVisible = ref(false)
-const feedbackDialogVisible = ref(false)
 const batchFeedbackVisible = ref(false)
 const currentRow = ref<AlarmRecordItem | null>(null)
 
@@ -192,10 +185,6 @@ async function loadList() {
 onMounted(() => { loadList() })
 
 // ── 枚举映射（数字/大写）──
-const getAlarmLevelType = (level: number | string) => {
-  const n = Number(level)
-  return ({ 1: 'info', 2: 'warning', 3: 'warning', 4: 'danger' } as Record<number, string>)[n] || 'info'
-}
 const getAlarmLevelText = (level: number | string) => {
   const n = Number(level)
   return ({ 1: '一级', 2: '二级', 3: '三级', 4: '四级' } as Record<number, string>)[n] || String(level)
@@ -232,7 +221,7 @@ const handleView = (row: AlarmRecordItem) => { currentRow.value = row; detailDia
 const handleRowClick = (row: AlarmRecordItem) => { currentRow.value = row; detailDialogVisible.value = true }
 
 // ── 处置反馈 ──
-const handleFeedback = (row: AlarmRecordItem) => { currentRow.value = row; feedbackDialogVisible.value = true }
+const handleFeedback = (row: AlarmRecordItem) => { currentRow.value = row; detailDialogVisible.value = true }
 
 const handleFeedbackSubmit = async (payload: { description?: string; attachments?: string; remarks?: string }) => {
   if (!currentRow.value) return
@@ -244,10 +233,42 @@ const handleFeedbackSubmit = async (payload: { description?: string; attachments
       remarks: payload.remarks,
     })
     ElMessage.success('处置成功')
-    feedbackDialogVisible.value = false
+    detailDialogVisible.value = false
     loadList()
   } catch (e) {
     ElMessage.error('处置失败')
+  }
+}
+
+// ── 详情内单条误报 ──
+const handleDetailFalseAlarm = async (row: AlarmRecordItem | null) => {
+  if (!row) return
+  try {
+    await ElMessageBox.confirm(`确定将此告警标记为误报吗？`, '误报确认', { type: 'warning' })
+    await disposeAlarm(row.id, { status: 4 })
+    ElMessage.success('已标记为误报')
+    detailDialogVisible.value = false
+    loadList()
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error('标记误报失败')
+    }
+  }
+}
+
+// ── 详情内单条销警 ──
+const handleDetailCloseAlarm = async (row: AlarmRecordItem | null) => {
+  if (!row) return
+  try {
+    await ElMessageBox.confirm(`确定要销警此告警吗？`, '销警确认', { type: 'warning' })
+    await disposeAlarm(row.id, { status: 3 })
+    ElMessage.success('销警成功')
+    detailDialogVisible.value = false
+    loadList()
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error('销警失败')
+    }
   }
 }
 

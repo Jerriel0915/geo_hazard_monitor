@@ -1,255 +1,336 @@
+<!-- 告警详情/处置 弹窗 - 查看 + 处置共用 -->
 <template>
   <el-dialog
-    :model-value="modelValue"
-    @update:model-value="$emit('update:modelValue', $event)"
-    title="告警详情"
-    width="1200px"
-    :close-on-click-modal="false"
-    destroy-on-close
+      :model-value="modelValue"
+      @update:model-value="emit('update:modelValue', $event)"
+      @opened="handleDialogOpened"
+      :title="dialogTitle"
+      width="80%"
+      :close-on-click-modal="false"
+      destroy-on-close
   >
-    <div v-if="data" class="alarm-detail-container">
-      <!-- 左侧：页签内容 -->
-      <div class="detail-main">
-        <el-tabs v-model="activeTab" class="detail-tabs">
-          <!-- 基础信息 -->
-          <el-tab-pane label="基础信息" name="basic">
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="隐患点名称">{{ data.hazardPointName }}</el-descriptions-item>
-              <el-descriptions-item label="告警等级">
-                <el-tag :type="getAlarmLevelType(data.alarmLevel)">{{ getAlarmLevelText(data.alarmLevel) }}</el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="告警类型">{{ getAlarmTypeText(data.alarmType) }}</el-descriptions-item>
-              <el-descriptions-item label="警情状态">
-                <el-tag :type="getStatusType(data.status)">{{ getStatusText(data.status) }}</el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="首次告警时间">{{ data.firstTriggerTime }}</el-descriptions-item>
-              <el-descriptions-item label="最后告警时间">{{ data.lastTriggerTime }}</el-descriptions-item>
-              <el-descriptions-item label="告警次数">{{ data.triggerCount }}</el-descriptions-item>
-              <el-descriptions-item label="响应人员">{{ data.resolvedBy || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="响应时间">{{ data.resolvedAt || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="告警内容" :span="2">{{ data.alarmMessage }}</el-descriptions-item>
-            </el-descriptions>
-          </el-tab-pane>
-
-          <!-- 告警记录 -->
-          <el-tab-pane label="告警记录" name="alarmRecords">
-            <div class="tab-search-bar">
-              <el-input
-                v-model="alarmRecordSearch.description"
-                placeholder="描述模糊搜索"
-                clearable
-                class="tab-search-input"
-              />
-              <el-date-picker
-                v-model="alarmRecordSearch.timeRange"
-                type="daterange"
-                range-separator="至"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                class="tab-search-date"
-              />
-              <el-button type="primary" size="small" @click="queryAlarmRecords">查询</el-button>
-              <el-button size="small" @click="resetAlarmRecords">重置</el-button>
-            </div>
-            <div class="table-wrap">
-              <div class="table-wrap__scroll">
-                <div style="max-height: 300px;">
-                  <el-table :data="filteredAlarmRecords" border stripe style="width: 100%">
-                    <el-table-column prop="triggerTime" label="告警时间" width="180" />
-                    <el-table-column prop="alarmLevel" label="告警等级" width="100">
-                      <template #default="{ row }">
-                        <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="alarmMessage" label="描述" min-width="200" show-overflow-tooltip />
-                  </el-table>
-                </div>
-              </div>
-            </div>
-            <div v-if="filteredAlarmRecords.length === 0" class="empty-hint">暂无告警记录</div>
-          </el-tab-pane>
-
-          <!-- 通知记录 -->
-          <el-tab-pane label="通知记录" name="notifyRecords">
-            <div class="tab-search-bar">
-              <el-input
-                v-model="notifyRecordSearch.account"
-                placeholder="账号模糊搜索"
-                clearable
-                class="tab-search-input"
-              />
-              <el-date-picker
-                v-model="notifyRecordSearch.timeRange"
-                type="daterange"
-                range-separator="至"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                class="tab-search-date"
-              />
-              <el-button type="primary" size="small" @click="queryNotifyRecords">查询</el-button>
-              <el-button size="small" @click="resetNotifyRecords">重置</el-button>
-            </div>
-            <div class="table-wrap">
-              <div class="table-wrap__scroll">
-                <div style="max-height: 300px;">
-                  <el-table :data="filteredNotifyRecords" border stripe style="width: 100%">
-                    <el-table-column prop="notifyTime" label="通知时间" width="180" />
-                    <el-table-column prop="channelType" label="渠道类型" width="100" />
-                    <el-table-column prop="account" label="账号/电话/邮箱" min-width="160" show-overflow-tooltip />
-                    <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
-                    <el-table-column prop="success" label="是否成功" width="90">
-                      <template #default="{ row }">
-                        <el-tag :type="row.success ? 'success' : 'danger'" size="small">
-                          {{ row.success ? '成功' : '失败' }}
-                        </el-tag>
-                      </template>
-                    </el-table-column>
-                  </el-table>
-                </div>
-              </div>
-            </div>
-            <div v-if="filteredNotifyRecords.length === 0" class="empty-hint">暂无通知记录</div>
-          </el-tab-pane>
-
-          <!-- 处置记录 -->
-          <el-tab-pane label="处置记录" name="disposalRecords">
-            <div class="table-wrap">
-              <div class="table-wrap__scroll">
-                <div style="max-height: 350px;">
-                  <el-table :data="disposalRecords" border stripe style="width: 100%">
-                    <el-table-column prop="createTime" label="处置时间" width="180" />
-                    <el-table-column prop="actionType" label="动作类型" width="140">
-                      <template #default="{ row }">{{ getActionTypeText(row.actionType) }}</template>
-                    </el-table-column>
-                    <el-table-column prop="operator" label="处置人员" width="120" />
-                    <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
-                    <el-table-column prop="remarks" label="备注" min-width="180" show-overflow-tooltip />
-                  </el-table>
-                </div>
-              </div>
-            </div>
-            <div v-if="disposalRecords.length === 0" class="empty-hint">暂无处置记录</div>
-          </el-tab-pane>
-        </el-tabs>
-      </div>
-
-      <!-- 右侧：时间线 -->
-      <div class="timeline-panel">
-        <div class="timeline-header">
-          <span class="timeline-title">时间线</span>
+    <div class="feedback-container" v-if="data">
+      <div class="main-content">
+        <!-- 左侧生命周期 - 按告警等级加载对应流程图 -->
+        <div class="left-section">
+          <div class="section-header">
+            <span class="icon-wrapper"><Clock /></span>
+            <span class="section-title">生命周期</span>
+          </div>
+          <div class="lifecycle-img-wrap">
+            <img v-if="lifecycleImage" :src="lifecycleImage" :alt="`告警等级${alarmLevelText}流程图`" class="lifecycle-img" />
+            <div v-else class="lifecycle-empty">暂无流程图</div>
+          </div>
         </div>
-        <div class="timeline-container">
-          <div v-if="timelineData.length > 0" class="timeline">
-            <div v-for="(item, index) in timelineData" :key="index" class="timeline-item">
-              <div class="timeline-dot" :class="item.type"></div>
-              <div v-if="index < timelineData.length - 1" class="timeline-line"></div>
-              <div class="timeline-content">
-                <div class="timeline-time">{{ item.time }}</div>
-                <div class="timeline-desc">{{ item.description }}</div>
+
+        <!-- 右侧内容区 -->
+        <div class="right-section">
+          <!-- 头部卡片：左右结构一行 -->
+          <div class="event-header">
+            <div class="hd-item">
+              <div class="hd-icon hazard"><MapLocation /></div>
+              <div class="hd-text">
+                <span class="hd-label">隐患点</span>
+                <span class="hd-val">{{ data.hazardPointName }}</span>
+              </div>
+            </div>
+            <div class="hd-item">
+              <div class="hd-icon device"><Monitor /></div>
+              <div class="hd-text">
+                <span class="hd-label">设备名</span>
+                <span class="hd-val">{{ data.deviceName || '未知设备' }}</span>
+              </div>
+            </div>
+            <div class="hd-item">
+              <div class="hd-icon level" :style="levelIconStyle"><WarnTriangleFilled /></div>
+              <div class="hd-text">
+                <span class="hd-label">告警等级</span>
+                <span class="hd-val lv" :style="levelBadgeStyle">{{ alarmLevelRange }}</span>
+              </div>
+            </div>
+            <div class="hd-item">
+              <div class="hd-icon time"><Clock /></div>
+              <div class="hd-text">
+                <span class="hd-label">发生时间</span>
+                <span class="hd-val">{{ formatDuration(data.firstTriggerTime) }}</span>
+              </div>
+            </div>
+            <div class="hd-item alarm-count-item" @click="switchToAlarmTab">
+              <div class="hd-icon count"><Bell /></div>
+              <div class="hd-text">
+                <span class="hd-label">告警次数</span>
+                <span class="hd-count">{{ data.triggerCount || 0 }}</span>
               </div>
             </div>
           </div>
-          <div v-else class="timeline-empty">
-            <span>暂无事件记录</span>
+
+          <div class="event-body">
+            <!-- 数据区域 - 页签 -->
+            <div class="data-section">
+              <!-- 基本资料行 -->
+              <div class="basic-info">
+                <div class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">初次告警</span>
+                    <span class="info-value">{{ data.firstTriggerTime || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">最后告警</span>
+                    <span class="info-value">{{ data.lastTriggerTime || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">告警类型</span>
+                    <span class="info-value">{{ getAlarmTypeText(data.alarmType) }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">告警次数</span>
+                    <span class="info-value count-link" @click="switchToAlarmTab">{{ data.triggerCount || 0 }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 告警描述 -->
+              <div class="detail-desc">
+                <span class="detail-label">告警描述</span>
+                <p>{{ data.alarmMessage || '-' }}</p>
+              </div>
+
+              <div class="data-tabs">
+                <div class="tab" :class="{ active: activeTab === 'monitor' }" @click="switchToMonitorTab">监测数据</div>
+                <div class="tab" :class="{ active: activeTab === 'alarm' }" @click="activeTab = 'alarm'">告警记录</div>
+                <div class="tab" :class="{ active: activeTab === 'notify' }" @click="activeTab = 'notify'">通知记录</div>
+                <div class="tab" :class="{ active: activeTab === 'disposal' }" @click="activeTab = 'disposal'">处置记录</div>
+              </div>
+
+              <!-- 监测数据 -->
+              <div v-show="activeTab === 'monitor'" class="tab-content">
+                <div ref="chartRef" class="chart-container"></div>
+              </div>
+
+              <!-- 告警记录 (API: getTriggerDetails) -->
+              <div v-show="activeTab === 'alarm'" class="tab-content">
+                <div class="tab-search">
+                  <el-input v-model="alarmRecordSearch.description" placeholder="描述模糊查询" size="small" clearable class="tab-sch-inp" />
+                  <el-date-picker v-model="alarmRecordSearch.timeRange" type="daterange" range-separator="至"
+                                  start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
+                  <el-button size="small" @click="resetAlarmRecords">重置</el-button>
+                </div>
+                <el-table :data="filteredAlarmRecords" border stripe size="small" :height="308" empty-text="暂无告警记录">
+                  <el-table-column prop="triggerTime" label="告警时间" width="180" />
+                  <el-table-column prop="alarmLevel" label="告警等级" width="100">
+                    <template #default="{ row }">
+                      <el-tag size="small" :style="getAlarmLevelStyle(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="alarmMessage" label="描述" min-width="220" show-overflow-tooltip />
+                </el-table>
+              </div>
+
+              <!-- 通知记录 (暂未对接后端，保留结构与搜索) -->
+              <div v-show="activeTab === 'notify'" class="tab-content">
+                <div class="tab-search">
+                  <el-input v-model="notifyRecordSearch.account" placeholder="账号模糊查询" size="small" clearable class="tab-sch-inp" />
+                  <el-date-picker v-model="notifyRecordSearch.timeRange" type="daterange" range-separator="至"
+                                  start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
+                  <el-button size="small" @click="resetNotifyRecords">重置</el-button>
+                </div>
+                <el-table :data="filteredNotifyRecords" border stripe size="small" :height="308" empty-text="暂无通知记录">
+                  <el-table-column prop="notifyTime" label="通知时间" width="180" />
+                  <el-table-column prop="channelType" label="渠道类型" width="100" />
+                  <el-table-column prop="account" label="账号/电话/邮箱" min-width="160" show-overflow-tooltip />
+                  <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
+                  <el-table-column prop="success" label="是否成功" width="90">
+                    <template #default="{ row }">
+                      <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+
+              <!-- 处置记录 (API: getActionLogs 过滤 FEEDBACK/DISPOSE_*) -->
+              <div v-show="activeTab === 'disposal'" class="tab-content">
+                <el-table :data="disposalRecords" border stripe size="small" :height="350" empty-text="暂无处置记录">
+                  <el-table-column prop="createTime" label="处置时间" width="180" />
+                  <el-table-column prop="operator" label="处置人员" width="120" />
+                  <el-table-column prop="description" label="描述" min-width="220" show-overflow-tooltip />
+                </el-table>
+              </div>
+            </div>
+
+            <!-- 处置时间线 (API: getActionLogs 全量) -->
+            <div class="timeline-panel">
+              <div class="timeline-header">
+                <span class="timeline-title">时间线</span>
+              </div>
+              <div class="timeline-container">
+                <div v-if="timelineData.length > 0" class="timeline">
+                  <div
+                    v-for="(item, index) in timelineData"
+                    :key="index"
+                    class="timeline-item"
+                  >
+                    <div class="timeline-dot" :class="item.type"></div>
+                    <div v-if="index < timelineData.length - 1" class="timeline-line"></div>
+                    <div class="timeline-content">
+                      <div v-if="item.time" class="timeline-time">{{ item.time }}</div>
+                      <div class="timeline-label">
+                        {{ item.label }}
+                        <span v-if="item.operator" class="timeline-operator">/ {{ item.operator }}</span>
+                      </div>
+                      <el-tooltip
+                        v-if="item.description"
+                        :content="item.description"
+                        placement="top"
+                        :show-after="300"
+                        effect="dark"
+                      >
+                        <div class="timeline-desc">{{ item.description }}</div>
+                      </el-tooltip>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="timeline-empty">
+                  <span>暂无事件记录</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <!-- /event-body -->
+
+          <!-- 底部操作栏 - 固定在 right-section 底部，仅在待处理/处理中状态显示 -->
+          <div v-if="showActions" class="action-right">
+            <el-button type="primary" @click="feedbackVisible = true">
+              <el-icon><ChatDotRound /></el-icon> 反馈
+            </el-button>
+            <el-button type="warning" @click="handleFalseAlarm">
+              <el-icon><Warning /></el-icon> 误报
+            </el-button>
+            <el-button type="danger" @click="handleCloseAlarm">
+              <el-icon><CircleClose /></el-icon> 消警
+            </el-button>
+            <el-button type="info" @click="notifyVisible = true">
+              <el-icon><Bell /></el-icon> 通知
+            </el-button>
+            <el-button @click="handleClose">
+              <el-icon><Close /></el-icon> 关闭
+            </el-button>
           </div>
         </div>
       </div>
     </div>
 
-    <template #footer>
-      <el-button @click="$emit('update:modelValue', false)">关闭</el-button>
-    </template>
+    <FeedBack v-model:visible="feedbackVisible" @submit="handleFeedbackSubmit" />
+    <Notify v-model:visible="notifyVisible" @submit="handleNotifySubmit" />
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import FeedBack from '@/components/FeedBack.vue'
+import Notify from '@/components/Notify.vue'
+import echarts from '@/utils/echarts'
+import request from '@/utils/request'
 import {
+  Bell, ChatDotRound, CircleClose, Clock, Close,
+  MapLocation, Monitor, Warning, WarnTriangleFilled,
+} from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+// 生命周期流程图：按告警等级 1-4 分别对应 flowChart1-4.png
+import {
+  ALARM_LEVEL_COLORS,
+  getActionLogs,
+  getAlarmLevelStyle,
   getAlarmRecordDetail,
   getTriggerDetails,
-  getActionLogs,
+  type AlarmRecordActionLog,
   type AlarmRecordItem,
   type AlarmRecordTriggerDetail,
-  type AlarmRecordActionLog,
 } from '@/api/alarm'
+import flowChart1 from '@/assets/images/alarm/flowChart1.png'
+import flowChart2 from '@/assets/images/alarm/flowChart2.png'
+import flowChart3 from '@/assets/images/alarm/flowChart3.png'
+import flowChart4 from '@/assets/images/alarm/flowChart4.png'
+
+// 等级 → 流程图映射
+const FLOW_CHART_BY_LEVEL: Record<number, string> = {
+  1: flowChart1,
+  2: flowChart2,
+  3: flowChart3,
+  4: flowChart4,
+}
 
 const props = defineProps<{
   modelValue: boolean
   data: Record<string, any> | null
 }>()
 
-defineEmits<{ 'update:modelValue': [value: boolean] }>()
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'submit', payload: { description?: string; attachments?: string; remarks?: string }): void
+  (e: 'false-alarm', data: any): void
+  (e: 'close-alarm', data: any): void
+  (e: 'notify', data: any): void
+}>()
 
-const activeTab = ref('basic')
+const activeTab = ref('monitor')
+const chartRef = ref<HTMLDivElement | null>(null)
+const feedbackVisible = ref(false)
+const notifyVisible = ref(false)
+let chartInstance: echarts.ECharts | null = null
+
 const detail = ref<AlarmRecordItem | null>(null)
-
-const alarmRecordSearch = ref({ description: '', timeRange: [] as string[] })
 const triggerDetails = ref<AlarmRecordTriggerDetail[]>([])
-
 const disposalRecords = ref<AlarmRecordActionLog[]>([])
 
-interface TimelineNode { time: string; description: string; type: string }
+interface TimelineNode { time: string; label: string; description: string; operator: string; type: string }
 const timelineData = ref<TimelineNode[]>([])
 
-// 通知记录 tab：暂不对接，保留搜索结构 + 空数据
+const alarmRecordSearch = ref({ description: '', timeRange: [] as string[] })
 const notifyRecordSearch = ref({ account: '', timeRange: [] as string[] })
+
+// 通知记录暂未对接后端，保留搜索结构 + 空数据
 const filteredNotifyRecords = computed(() => [])
-const queryNotifyRecords = () => {}
 const resetNotifyRecords = () => { notifyRecordSearch.value = { account: '', timeRange: [] } }
 
-// 弹窗打开时并发拉取
-watch(() => props.modelValue, async (val) => {
-  if (!val || !props.data?.id) return
-  activeTab.value = 'basic'
-  alarmRecordSearch.value = { description: '', timeRange: [] }
-  notifyRecordSearch.value = { account: '', timeRange: [] }
-  const id = Number(props.data.id)
+// 生命周期流程图：按告警等级加载对应图片 (1-4)
+const lifecycleImage = computed(() => {
+  const lv = Number(props.data?.alarmLevel)
+  return FLOW_CHART_BY_LEVEL[lv] || ''
+})
+// 等级文本（用于 img alt）
+const alarmLevelText = computed(() => getAlarmLevelText(props.data?.alarmLevel))
 
-  try {
-    const [d, t, l] = await Promise.all([
-      getAlarmRecordDetail(id),
-      getTriggerDetails(id),
-      getActionLogs(id),
-    ])
-    const detailData = (d as any).data ?? d
-    detail.value = detailData ?? null
-    triggerDetails.value = (t as any).data ?? t ?? []
-    const logs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
-    disposalRecords.value = logs.filter((x: AlarmRecordActionLog) =>
-      ['FEEDBACK', 'DISPOSE_CLOSE', 'DISPOSE_FALSE_ALARM'].includes(x.actionType))
-    timelineData.value = buildTimeline(logs)
-  } catch (e) {
-    detail.value = null
-    triggerDetails.value = []
-    disposalRecords.value = []
-    timelineData.value = []
-  }
+// 底部操作栏仅在 待处理(1)/处理中(2) 时显示
+const showActions = computed(() => {
+  const s = Number(props.data?.status)
+  return s === 1 || s === 2
 })
 
-// 由动作日志构造时间线
-function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
-  return [...logs].sort((a, b) => (a.createTime || '').localeCompare(b.createTime || '')).map(log => {
-    const typeMap: Record<string, string> = {
-      CREATE: 'trigger', RE_TRIGGER: 'trigger', LEVEL_CHANGE: 'trigger',
-      NOTIFY: 'notify',
-      FEEDBACK: 'dispose', DISPOSE_CLOSE: 'dispose', DISPOSE_FALSE_ALARM: 'dispose',
-    }
-    const descMap: Record<string, string> = {
-      CREATE: '告警创建', RE_TRIGGER: '告警再次触发',
-      LEVEL_CHANGE: `等级变化 ${log.fromValue}→${log.toValue}`,
-      FEEDBACK: '处置反馈', DISPOSE_CLOSE: '告警销警',
-      DISPOSE_FALSE_ALARM: '标记误报', NOTIFY: `通知发送：${log.remarks || ''}`,
-    }
-    return {
-      time: log.createTime,
-      description: descMap[log.actionType] || log.actionType,
-      type: typeMap[log.actionType] || 'system',
-    }
-  })
-}
+const dialogTitle = computed(() => {
+  if (!props.data) return '告警详情'
+  return `${props.data.hazardPointName || '-'}[${props.data.firstTriggerTime || ''}]`
+})
 
+// 告警等级 — 起止相同时只显示一个
+const alarmLevelRange = computed(() => {
+  const d = props.data
+  if (!d) return '-'
+  const minLevel = (d as any).minAlarmLevel ?? d.alarmLevel
+  const maxLevel = (d as any).maxAlarmLevel ?? d.alarmLevel
+  const minText = getAlarmLevelText(minLevel)
+  const maxText = getAlarmLevelText(maxLevel)
+  return minText === maxText ? minText : `${minText}-${maxText}`
+})
+
+// 告警等级颜色（严格遵循 一级红/二级橙/三级黄/四级蓝）
+const levelColors = computed(() => ALARM_LEVEL_COLORS[Number(props.data?.alarmLevel)] || { solid: '#909399', light: '#f4f4f5', dark: '#909399', fg: '#fff' })
+// 头部图标：light 背景 + dark 字色
+const levelIconStyle = computed(() => ({ backgroundColor: levelColors.value.light, color: levelColors.value.dark }))
+// 头部等级 tag：solid 背景 + fg 字色
+const levelBadgeStyle = computed(() => ({ backgroundColor: levelColors.value.solid, color: levelColors.value.fg }))
+
+// 告警记录过滤
 const filteredAlarmRecords = computed(() => {
   let list = triggerDetails.value
   if (alarmRecordSearch.value.description) {
@@ -263,78 +344,427 @@ const filteredAlarmRecords = computed(() => {
   return list
 })
 
-const queryAlarmRecords = () => {}
 const resetAlarmRecords = () => { alarmRecordSearch.value = { description: '', timeRange: [] } }
 
-// 枚举映射（数字/大写）
-const getAlarmLevelType = (level: number | string) => {
-  const n = Number(level)
-  return ({ 1: 'info', 2: 'warning', 3: 'warning', 4: 'danger' } as Record<number, string>)[n] || 'info'
+const switchToAlarmTab = () => { activeTab.value = 'alarm' }
+
+// 切换到监测数据 tab：确保图表已初始化，并 resize 以适应可见尺寸
+const switchToMonitorTab = () => {
+  activeTab.value = 'monitor'
+  nextTick(() => {
+    if (!chartInstance) {
+      tryInitChart()
+    } else {
+      updateChart()
+      chartInstance?.resize()
+    }
+  })
 }
-const getAlarmLevelText = (level: number | string) => {
+
+// 弹窗打开时并发拉取；图表初始化推迟到 @opened 后再尝试，避免容器尺寸为 0
+const dialogOpened = ref(false)
+const dataReady = ref(false)
+
+const tryInitChart = () => {
+  if (!dialogOpened.value || !dataReady.value) return
+  nextTick(() => {
+    initChart()
+    // 第一次初始化后立即 resize 一次，确保宽度正确
+    chartInstance?.resize()
+  })
+}
+
+const handleDialogOpened = () => {
+  dialogOpened.value = true
+  tryInitChart()
+}
+
+// 弹窗打开时并发拉取
+watch(() => props.modelValue, async (val) => {
+  if (!val) {
+    dialogOpened.value = false
+    dataReady.value = false
+    return
+  }
+  if (!props.data?.id) return
+  activeTab.value = 'monitor'
+  alarmRecordSearch.value = { description: '', timeRange: [] }
+  notifyRecordSearch.value = { account: '', timeRange: [] }
+  const id = Number(props.data.id)
+
+  try {
+    const [d, t, l] = await Promise.all([
+      getAlarmRecordDetail(id),
+      getTriggerDetails(id),
+      getActionLogs(id),
+    ])
+    const detailData = (d as any).data ?? d
+    detail.value = detailData ?? null
+    triggerDetails.value = (t as any).data ?? t ?? []
+    const rawLogs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
+    // 在 action_log 头部插入"当前状态"元素，作为时间线的当前节点（无时间/描述，仅动作类型）
+    const currentLog = {
+      id: 0,
+      alarmRecordId: id,
+      actionType: 'CURRENT',
+      createTime: '',
+      description: '',
+      remarks: '',
+      operator: '',
+    } as AlarmRecordActionLog
+    const logs: AlarmRecordActionLog[] = [currentLog, ...rawLogs]
+    disposalRecords.value = logs.filter((x: AlarmRecordActionLog) =>
+      ['FEEDBACK', 'DISPOSE_CLOSE', 'DISPOSE_FALSE_ALARM'].includes(x.actionType))
+    timelineData.value = buildTimeline(logs)
+    dataReady.value = true
+    tryInitChart()
+  } catch (e) {
+    detail.value = null
+    triggerDetails.value = []
+    disposalRecords.value = []
+    timelineData.value = []
+    dataReady.value = false
+  }
+})
+
+// 由动作日志构造时间线（按时间倒序；CURRENT 当前状态节点始终置顶）
+function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
+  return [...logs].sort((a, b) => {
+    // CURRENT 元素始终排在最前
+    if (a.actionType === 'CURRENT') return -1
+    if (b.actionType === 'CURRENT') return 1
+    return (b.createTime || '').localeCompare(a.createTime || '')
+  }).map(log => {
+    const typeMap: Record<string, string> = {
+      CURRENT: 'current',
+      CREATE: 'trigger', RE_TRIGGER: 'trigger', LEVEL_CHANGE: 'trigger',
+      NOTIFY: 'notify',
+      FEEDBACK: 'dispose', DISPOSE_CLOSE: 'dispose', DISPOSE_FALSE_ALARM: 'dispose',
+    }
+    const labelMap: Record<string, string> = {
+      CURRENT: '当前',
+      CREATE: '告警创建', RE_TRIGGER: '告警再次触发',
+      LEVEL_CHANGE: `等级变化 ${log.fromValue || ''}→${log.toValue || ''}`,
+      FEEDBACK: '处置反馈', DISPOSE_CLOSE: '告警销警',
+      DISPOSE_FALSE_ALARM: '标记误报', NOTIFY: '通知发送',
+    }
+    // 动作类型标签：使用静态映射，无映射时回退到原始 actionType
+    const label = labelMap[log.actionType] || log.actionType
+    // 动作描述：后端返回的 description + remarks 拼接（用 ｜ 分隔），无则为空
+    const description = [log.description, log.remarks].filter(Boolean).join('｜')
+    return {
+      time: log.createTime || '',
+      label,
+      description,
+      operator: log.operator || '',
+      type: typeMap[log.actionType] || 'system',
+    }
+  })
+}
+
+// ---------- 图表（mock，后续可对接时序数据 API） ----------
+const generateChartData = () => {
+  const alarmTime = props.data?.firstTriggerTime || new Date().toISOString()
+  const alarmDate = new Date(alarmTime)
+  const monitorData: { time: string; value: number; isAlarm: boolean }[] = []
+
+  for (let i = -3; i <= 3; i++) {
+    const date = new Date(alarmDate)
+    date.setDate(date.getDate() + i)
+    for (let hour = 0; hour < 24; hour += 4) {
+      date.setHours(hour, 0, 0, 0)
+      const timeStr = date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      const baseValue = 50 + Math.random() * 30
+      const isAlarm = i === 0 && hour >= 8 && hour <= 16 && Math.random() > 0.7
+      const value = isAlarm ? baseValue + 20 + Math.random() * 20 : baseValue
+      monitorData.push({ time: timeStr, value: Math.round(value * 10) / 10, isAlarm })
+    }
+  }
+  return { monitorData }
+}
+
+const initChart = () => {
+  if (!chartRef.value) return
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+  updateChart()
+}
+
+const updateChart = () => {
+  if (!chartInstance) return
+  const { monitorData } = generateChartData()
+  const chartData = monitorData
+  const alarmPoints = chartData.filter(item => item.isAlarm)
+  const alarmIndices = alarmPoints.map(p => chartData.indexOf(p))
+
+  chartInstance.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const data = params[0]
+        const isAlarm = alarmIndices.includes(data.dataIndex)
+        return `<div style="padding:8px"><div style="font-weight:bold;margin-bottom:4px">${data.name}</div><div>数值: <span style="color:${isAlarm ? '#f56c6c' : '#409eff'}">${data.value}</span></div>${isAlarm ? '<div style="color:#f56c6c;margin-top:4px">⚠️ 告警数据点</div>' : ''}</div>`
+      }
+    },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+    xAxis: {
+      type: 'category', data: chartData.map(item => item.time),
+      axisLabel: { rotate: 45, fontSize: 12, color: '#666' },
+      axisLine: { lineStyle: { color: '#ddd' } }
+    },
+    yAxis: {
+      type: 'value', name: '监测值',
+      axisLabel: { fontSize: 12, color: '#666' },
+      axisLine: { lineStyle: { color: '#ddd' } },
+      splitLine: { lineStyle: { color: '#f0f0f0' } }
+    },
+    series: [{
+      name: '监测数据',
+      type: 'line',
+      data: chartData.map(item => item.value),
+      smooth: true, symbol: 'circle',
+      symbolSize: (_v: number, params: any) => alarmIndices.includes(params.dataIndex) ? 10 : 6,
+      itemStyle: { color: (params: any) => alarmIndices.includes(params.dataIndex) ? '#f56c6c' : '#409eff' },
+      lineStyle: { width: 2, color: '#409eff' },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(64,158,255,.3)' }, { offset: 1, color: 'rgba(64,158,255,.05)' }]) },
+      markPoint: {
+        data: alarmPoints.map((point, i) => ({
+          name: `告警点${i + 1}`, coord: [chartData.indexOf(point), point.value],
+          value: point.value, itemStyle: { color: '#f56c6c' }, symbol: 'pin', symbolSize: 40,
+          label: { show: true, formatter: '⚠️', fontSize: 14 }
+        }))
+      }
+    }],
+    dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', show: true, start: 0, end: 100, height: 20, bottom: 0 }]
+  }, true)
+}
+
+const handleResize = () => { chartInstance?.resize() }
+
+onMounted(() => { window.addEventListener('resize', handleResize) })
+onUnmounted(() => { window.removeEventListener('resize', handleResize); chartInstance?.dispose() })
+
+// ---------- 工具函数 ----------
+const formatDuration = (startTime: string) => {
+  if (!startTime) return '0小时0分0秒'
+  const diff = Date.now() - new Date(startTime).getTime()
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  const s = Math.floor((diff % 60000) / 1000)
+  return `${h}小时${m}分${s}秒前`
+}
+
+const getAlarmLevelText = (level: number | string | undefined) => {
   const n = Number(level)
   return ({ 1: '一级', 2: '二级', 3: '三级', 4: '四级' } as Record<number, string>)[n] || String(level)
 }
 const getAlarmTypeText = (type: string) =>
   ({ THRESHOLD: '阈值预警', COMPREHENSIVE: '综合预警' } as Record<string, string>)[type] || type
-const getStatusType = (status: number | string) => {
-  const n = Number(status)
-  return ({ 1: 'danger', 2: 'warning', 3: 'success', 4: 'info' } as Record<number, string>)[n] || 'info'
+
+// ---------- 附件上传 + 底部按钮事件 ----------
+async function uploadAttachments(files: File[]): Promise<string | undefined> {
+  if (!files || files.length === 0) return undefined
+  const fileNames: string[] = []
+  for (const f of files) {
+    const fd = new FormData()
+    fd.append('file', f)
+    try {
+      const res = await request.post('/common/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const resData = (res as any).data
+      if (resData?.fileName) fileNames.push(resData.fileName)
+    } catch (e) {
+      console.error('附件上传失败:', e)
+    }
+  }
+  return fileNames.length > 0 ? fileNames.join(',') : undefined
 }
-const getStatusText = (status: number | string) => {
-  const n = Number(status)
-  return ({ 1: '待处理', 2: '处理中', 3: '已销警', 4: '误报' } as Record<number, string>)[n] || String(status)
+
+const handleFeedbackSubmit = async (data: { content: string; files: File[] }) => {
+  const hasFiles = data.files && data.files.length > 0
+  const attachments = await uploadAttachments(data.files || [])
+  if (hasFiles && !attachments) {
+    ElMessage.warning('附件上传失败，已提交纯文本反馈')
+  }
+  emit('submit', {
+    description: data.content,
+    attachments,
+    remarks: data.content,
+  })
+  if (!hasFiles || attachments) {
+    ElMessage.success('反馈提交成功')
+  }
 }
-const getActionTypeText = (t: string) =>
-  ({ CREATE: '创建', RE_TRIGGER: '再次触发', LEVEL_CHANGE: '等级变化',
-     FEEDBACK: '处置反馈', DISPOSE_CLOSE: '销警', DISPOSE_FALSE_ALARM: '误报',
-     NOTIFY: '通知发送' } as Record<string, string>)[t] || t
+
+const handleNotifySubmit = (data: any) => {
+  emit('notify', data)
+}
+
+const handleFalseAlarm = () => { emit('false-alarm', props.data) }
+const handleCloseAlarm = () => { emit('close-alarm', props.data) }
+const handleClose = () => { emit('update:modelValue', false) }
 </script>
 
 <style scoped>
-.alarm-detail-container {
+.feedback-container { min-height: 500px; display: flex; flex-direction: column; }
+.main-content { display: flex; gap: 12px; flex: 1; min-height: 0; }
+
+/* ====== 左侧生命周期（按等级加载流程图）====== */
+.left-section {
+  width: 340px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 10px 8px;
+  border: 1px solid #e9ecef;
+  flex-shrink: 0;
   display: flex;
-  gap: 16px;
-  min-height: 420px;
+  flex-direction: column;
+}
+.section-header {
+  display: flex; align-items: center; gap: 4px;
+  margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1px solid #e9ecef;
+}
+.icon-wrapper {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: #e8f4fd; border-radius: 4px; color: #409eff;
+}
+.section-title { font-size: var(--el-font-size-base); font-weight: 600; color: #333; }
+.lifecycle-img-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+.lifecycle-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+.lifecycle-empty {
+  color: #909399;
+  font-size: var(--el-font-size-base);
+  padding: 20px 0;
+  text-align: center;
 }
 
-/* 左侧主区域 */
-.detail-main {
+/* ====== 右侧 ====== */
+.right-section { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+
+/* ====== 头部卡片 - 一行显示 ====== */
+.event-header {
+  display: flex; align-items: center; gap: 0;
+  background: #fff; border-radius: 8px; border: 1px solid #e9ecef;
+  padding: 10px 14px;
+}
+.hd-item {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 0;
+  padding: 0 10px;
+}
+.hd-item + .hd-item { border-left: 1px solid #f0f0f0; }
+.hd-icon {
+  width: 34px; height: 34px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--el-font-size-large); flex-shrink: 0;
+}
+.hd-icon.hazard { background: #e8f5e9; color: #28a745; }
+.hd-icon.device { background: #e3f2fd; color: #1976d2; }
+.hd-icon.level { background: #fff3e0; color: #ff9800; }
+.hd-icon.time { background: #f3e8ff; color: #6f42c1; }
+.hd-icon.count { background: #fef0f0; color: #dc3545; }
+.hd-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hd-label { font-size: var(--el-font-size-extra-small); color: #909399; }
+.hd-val { font-size: 15px; font-weight: 600; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hd-val.lv { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: var(--el-font-size-small); width: fit-content; }
+
+.hd-count {
+  font-size: var(--el-font-size-extra-large); font-weight: 700; color: #f56c6c;
+  cursor: pointer; transition: transform .15s;
+}
+.hd-count:hover { transform: scale(1.15); }
+.alarm-count-item { cursor: pointer; }
+
+/* ====== 中部：数据区 + 时间线（左右） ====== */
+.event-body {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ====== 数据区域 ====== */
+.data-section {
   flex: 1;
   min-width: 0;
-}
-
-.detail-tabs {
-  --el-tabs-header-height: 36px;
-}
-
-/* 页签内搜索栏 */
-.tab-search-bar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
+  background: #fff; border-radius: 8px; border: 1px solid #e9ecef;
   padding: 10px 12px;
-  background: #f5f7fa;
-  border-radius: 6px;
+  display: flex; flex-direction: column;
 }
 
-.tab-search-input {
-  width: 180px;
+/* 基本资料行 */
+.basic-info { margin-bottom: 8px; }
+.info-row { display: flex; gap: 10px; }
+.info-item {
+  flex: 1;
+  background: #f8f9fa; border-radius: 6px; padding: 6px 10px;
+}
+.info-label { font-size: var(--el-font-size-extra-small); color: #909399; display: block; margin-bottom: 2px; }
+.info-value { font-size: var(--el-font-size-base); font-weight: 500; color: #303133; }
+.count-link { color: #409eff; cursor: pointer; text-decoration: underline; }
+.count-link:hover { color: #66b1ff; }
+
+/* 告警描述 */
+.detail-desc {
+  background: #f8f9fa; border-radius: 6px; padding: 6px 10px;
+  margin-bottom: 8px;
+}
+.detail-desc .detail-label { display: block; margin-bottom: 2px; font-size: var(--el-font-size-extra-small); color: #909399; }
+.detail-desc p { font-size: var(--el-font-size-base); color: #606266; line-height: 1.5; margin: 0; }
+
+.data-tabs {
+  display: flex; gap: 16px; margin-bottom: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid #f0f0f0;
+}
+.data-tabs .tab {
+  font-size: var(--el-font-size-base); color: #606266; padding: 3px 0;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all .2s;
+}
+.data-tabs .tab.active { color: #409eff; border-bottom-color: #409eff; font-weight: 600; }
+.tab-content {
+  height: 380px;
+  display: flex;
+  flex-direction: column;
 }
 
-.tab-search-date {
-  width: 260px;
+/* 图表容器 */
+.chart-container { width: 100%; flex: 1; min-height: 0; }
+
+/* 页签内搜索 */
+.tab-search { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
+.tab-sch-inp { width: 180px; }
+.tab-sch-date { width: 240px; }
+
+/* 表头恢复正常样式（不加粗、字号 12px），覆盖全局 .table-wrap 内的偏粗表头 */
+:deep(.el-table th.el-table__cell) {
+  background: #fafafa !important;
+  color: #606266;
+  font-size: var(--el-font-size-base);
+  font-weight: 500;
+  border-bottom: 1px solid #ebeef5;
+}
+:deep(.el-table .cell) {
+  font-size: var(--el-font-size-base);
+  color: #303133;
 }
 
-.empty-hint {
-  text-align: center;
-  padding: 32px 0;
-  color: #909399;
-  font-size: 13px;
-}
-
-/* 右侧时间线面板 */
+/* ====== 右侧时间线（参考原查看弹窗样式）====== */
 .timeline-panel {
   width: 200px;
   flex-shrink: 0;
@@ -351,7 +781,7 @@ const getActionTypeText = (t: string) =>
 }
 
 .timeline-title {
-  font-size: 14px;
+  font-size: var(--el-font-size-medium);
   font-weight: 600;
   color: #303133;
 }
@@ -363,80 +793,74 @@ const getActionTypeText = (t: string) =>
   min-height: 80px;
 }
 
-.timeline {
-  position: relative;
-  padding-left: 16px;
-}
-
-.timeline-item {
-  position: relative;
-  padding-bottom: 18px;
-}
-
-.timeline-item:last-child {
-  padding-bottom: 0;
-}
+.timeline { position: relative; padding-left: 16px; }
+.timeline-item { position: relative; padding-bottom: 18px; }
+.timeline-item:last-child { padding-bottom: 0; }
 
 .timeline-dot {
-  position: absolute;
-  left: -16px;
-  top: 3px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #d9d9d9;
+  position: absolute; left: -16px; top: 3px;
+  width: 10px; height: 10px; border-radius: 50%; background: #d9d9d9;
   z-index: 1;
 }
+.timeline-dot.trigger { background: #f56c6c; }
+.timeline-dot.notify { background: #409eff; }
+.timeline-dot.dispose { background: #67c23a; }
+.timeline-dot.system { background: #909399; }
 
-.timeline-dot.trigger {
-  background: #f56c6c;
-}
-
-.timeline-dot.notify {
+/* 当前状态节点：蓝色，保留呼吸光晕动画 */
+.timeline-dot.current {
   background: #409eff;
+  box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.18);
+  animation: timeline-pulse 1.8s ease-in-out infinite;
 }
-
-.timeline-dot.dispose {
-  background: #67c23a;
-}
-
-.timeline-dot.system {
-  background: #909399;
+@keyframes timeline-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.18); }
+  50%      { box-shadow: 0 0 0 7px rgba(64, 158, 255, 0.08); }
 }
 
 .timeline-line {
-  position: absolute;
-  left: -12px;
-  top: 14px;
-  width: 2px;
-  height: calc(100% - 4px);
-  background: #e8e8e8;
+  position: absolute; left: -12px; top: 14px;
+  width: 2px; height: calc(100% - 4px); background: #e8e8e8;
 }
-
-.timeline-content {
-  padding-left: 8px;
-}
-
+.timeline-content { padding-left: 8px; }
 .timeline-time {
-  font-size: 11px;
-  color: #909399;
-  margin-bottom: 2px;
-  line-height: 1.4;
+  font-size: var(--el-font-size-small); color: #909399;
+  margin-bottom: 2px; line-height: 1.4;
 }
-
+.timeline-label {
+  font-size: var(--el-font-size-base); font-weight: 600;
+  color: #303133; line-height: 1.5;
+}
+.timeline-operator {
+  font-weight: 400;
+  color: #909399;
+}
 .timeline-desc {
-  font-size: 12px;
-  color: #303133;
-  line-height: 1.5;
+  font-size: var(--el-font-size-small); color: #909399; line-height: 1.5;
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
+  cursor: default;
+}
+.timeline-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 80px; color: #909399; font-size: var(--el-font-size-base);
 }
 
-.timeline-empty {
+/* ====== 底部操作栏 - 固定在 right-section 底部 ====== */
+.action-right {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: center;
-  height: 80px;
-  color: #909399;
-  font-size: 12px;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
 }
 </style>

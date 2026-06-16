@@ -24,17 +24,17 @@
         end-placeholder="告警时间:结束"
         value-format="YYYY-MM-DD"
       />
-      <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple>
+      <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple collapse-tags collapse-tags-tooltip>
         <el-option label="一级" value="1" />
         <el-option label="二级" value="2" />
         <el-option label="三级" value="3" />
         <el-option label="四级" value="4" />
       </el-select>
-      <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple>
+      <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple collapse-tags collapse-tags-tooltip>
         <el-option label="阈值预警" value="THRESHOLD" />
         <el-option label="综合预警" value="COMPREHENSIVE" />
       </el-select>
-      <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple>
+      <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple collapse-tags collapse-tags-tooltip>
         <el-option label="误报" value="4" />
         <el-option label="已销警" value="3" />
       </el-select>
@@ -54,7 +54,7 @@
           <el-table-column prop="hazardPointName" label="隐患点名称" min-width="160" />
           <el-table-column prop="alarmLevel" label="告警等级" width="90">
             <template #default="{ row }">
-              <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+              <el-tag :style="getAlarmLevelStyle(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="firstTriggerTime" label="首次告警时间" min-width="160" />
@@ -110,7 +110,7 @@ import {onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {Download, View} from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
-import {getHistoryAlarms} from '@/api/alarm'
+import {getHistoryAlarms, getAlarmLevelStyle} from '@/api/alarm'
 
 // 查询参数
 const queryParams = reactive({
@@ -172,17 +172,6 @@ const fetchData = async () => {
 onMounted(() => {
   fetchData()
 })
-
-// 获取告警等级类型
-const getAlarmLevelType = (level: number | string) => {
-  const map: Record<string, string> = {
-    '1': 'danger',
-    '2': 'warning',
-    '3': 'success',
-    '4': 'info'
-  }
-  return map[String(level)] || 'info'
-}
 
 // 获取告警等级文本
 const getAlarmLevelText = (level: number | string) => {

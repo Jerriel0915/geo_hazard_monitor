@@ -3,8 +3,33 @@ import type {PageResult} from './system'
 
 // ==================== 类型定义 ====================
 
-/** 告警等级: 1=蓝色 2=黄色 3=橙色 4=红色 */
+/** 告警等级: 1=红色 2=橙色 3=黄色 4=蓝色 (1=最严重) */
 export type AlarmLevel = 1 | 2 | 3 | 4
+
+/**
+ * 告警等级颜色配置 — 严格遵循 一级红/二级橙/三级黄/四级蓝
+ * 不使用 UI 主题色，每个等级独立颜色
+ *  - solid: 主色（tag 背景）
+ *  - light: 浅色（icon 背景）
+ *  - dark: 深色（icon 字色）
+ *  - fg: tag 文字色（黄底用深字保证对比度）
+ */
+export const ALARM_LEVEL_COLORS: Record<number, { solid: string; light: string; dark: string; fg: string }> = {
+    1: { solid: '#F53F3F', light: '#fee2e2', dark: '#dc3545', fg: '#ffffff' }, // 红
+    2: { solid: '#FF7D00', light: '#fff3e0', dark: '#e67e22', fg: '#ffffff' }, // 橙
+    3: { solid: '#FACC22', light: '#fff9e6', dark: '#b08200', fg: '#1d2129' }, // 黄 (深字保对比度)
+    4: { solid: '#1890FF', light: '#e6f4ff', dark: '#0958d9', fg: '#ffffff' }, // 蓝
+}
+
+/** 告警等级 tag 的 inline style (背景 + 边框 + 文字色) */
+export const getAlarmLevelStyle = (level: number | string | undefined): Record<string, string> => {
+    const c = ALARM_LEVEL_COLORS[Number(level)] || { solid: '#909399', fg: '#ffffff' }
+    return {
+        backgroundColor: c.solid,
+        borderColor: c.solid,
+        color: c.fg,
+    }
+}
 /** 告警类型: THRESHOLD=阈值 COMPREHENSIVE=综合 */
 export type AlarmType = 'THRESHOLD' | 'COMPREHENSIVE'
 /** 警情状态: 1=待处理 2=处理中 3=已销警 4=误报 */
