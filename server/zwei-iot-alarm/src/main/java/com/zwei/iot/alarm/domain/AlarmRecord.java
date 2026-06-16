@@ -10,6 +10,7 @@ import lombok.experimental.SuperBuilder;
 import java.io.Serial;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 告警记录表 alarm_record
@@ -117,4 +118,17 @@ public class AlarmRecord extends BaseEntity {
      * 处置备注
      */
     private String resolutionNote;
+
+    // ── 非持久化字段：仅用于 selectPendingRecords / selectHistoryRecords 筛选 ──
+
+    /** 告警等级多选筛选 (不入库) */
+    private List<Integer> alarmLevels;
+    /** 告警类型多选筛选 (不入库) */
+    private List<String> alarmTypes;
+    /** 状态多选筛选 (不入库) */
+    private List<Integer> statusList;
+    /** 触发时间范围 - 开始 (不入库) */
+    private String triggerTimeBegin;
+    /** 触发时间范围 - 结束 (不入库) */
+    private String triggerTimeEnd;
 }
