@@ -29,6 +29,9 @@ services:
       - --default-authentication-plugin=mysql_native_password
       - --lower_case_table_names=1
       - --skip-name-resolve
+    ports:
+      # 暴露到宿主机，便于外部客户端（如 DBeaver / Navicat / 本地服务）直连
+      - "${MYSQL_PORT:-3306}:3306"
     expose:
       - "3306"
     volumes:
