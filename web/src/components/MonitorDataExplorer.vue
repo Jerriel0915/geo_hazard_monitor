@@ -50,7 +50,7 @@
         />
       </el-select>
 
-      <el-select
+      <!-- <el-select
         v-if="showValueType"
         v-model="filter.valueType"
         placeholder="聚合粒度"
@@ -60,7 +60,7 @@
         <el-option label="小时均值" value="hour" />
         <el-option label="日均值" value="24h" />
         <el-option label="3日均值" value="72h" />
-      </el-select>
+      </el-select> -->
 
       <el-date-picker
         v-model="filter.timeRange"
@@ -145,11 +145,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import VueApexCharts from 'vue3-apexcharts'
-import { useMonitorData } from '@/composables/useMonitorData'
 import type { ChartData, MonitorDataPageItem } from '@/api/monitorData'
+import { useMonitorData } from '@/composables/useMonitorData'
+import { ElMessage } from 'element-plus'
+import { computed, ref, watch } from 'vue'
+import VueApexCharts from 'vue3-apexcharts'
 
 const props = withDefaults(defineProps<{
   hazardPointId?: number | null
