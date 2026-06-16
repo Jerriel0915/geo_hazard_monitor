@@ -546,24 +546,24 @@ export async function getReportPage(params: ReportPageParams): Promise<PageResul
 
   //  return request.get<PageResult<ReportItem>>('/out/report/list', {params})
 
-  // const all = generateMockReports()
-  // let filtered = all
-  // if (params.keyword) {
-  //   const kw = params.keyword.toLowerCase()
-  //   filtered = filtered.filter((r) => r.title.toLowerCase().includes(kw))
-  // }
-  // if (params.type) {
-  //   filtered = filtered.filter((r) => r.type === params.type)
-  // }
-  // if (params.startDate) {
-  //   filtered = filtered.filter((r) => r.periodStart >= params.startDate!)
-  // }
-  // if (params.endDate) {
-  //   filtered = filtered.filter((r) => r.periodEnd <= params.endDate!)
-  // }
-  // const start = (params.pageNum - 1) * params.pageSize
-  // const rows = filtered.slice(start, start + params.pageSize)
-  // return { rows, total: filtered.length, pageNum: params.pageNum, pageSize: params.pageSize }
+  const all = generateMockReports()
+  let filtered = all
+  if (params.keyword) {
+    const kw = params.keyword.toLowerCase()
+    filtered = filtered.filter((r) => r.title.toLowerCase().includes(kw))
+  }
+  if (params.type) {
+    filtered = filtered.filter((r) => r.type === params.type)
+  }
+  if (params.startDate) {
+    filtered = filtered.filter((r) => r.periodStart >= params.startDate!)
+  }
+  if (params.endDate) {
+    filtered = filtered.filter((r) => r.periodEnd <= params.endDate!)
+  }
+  const start = (params.pageNum - 1) * params.pageSize
+  const rows = filtered.slice(start, start + params.pageSize)
+  return { rows, total: filtered.length, pageNum: params.pageNum, pageSize: params.pageSize }
 }
 
 /** Fetch a single report detail (mock) */
