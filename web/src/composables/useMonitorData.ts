@@ -257,8 +257,6 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
             })
           }
           chartSeries.value = seriesList
-          const totalPoints = seriesList.reduce((sum, s) => sum + s.labels.length, 0)
-          ElMessage.success(`加载 ${seriesList.length} 条曲线，共 ${totalPoints} 个数据点`)
         } else {
           // 表格模式：扁平化所有 attrCode 的数据行（保留 attrCode 归属）
             // 后端 ORDER BY TIME DESC，表格也按正序排列（时间由旧到新）
@@ -324,9 +322,6 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       if (mode.value === 'chart') {
         const series = await getChartData(baseParams as any)
         chartSeries.value = series || []
-        ElMessage.success(
-          `加载 ${series.length} 条曲线，共 ${series[0]?.labels.length || 0} 个数据点`
-        )
       } else {
         const res = await getMonitorDataPage({ ...baseParams, pageNum: 1, pageSize: 100 })
         tableData.value = (res as any).rows || []

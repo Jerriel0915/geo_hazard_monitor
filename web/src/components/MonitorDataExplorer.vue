@@ -128,6 +128,7 @@
         border
         stripe
         size="small"
+        :height="fillContainer ? '100%' : undefined"
         :max-height="fillContainer ? undefined : 400"
       >
         <el-table-column prop="dataTime" label="时间" min-width="180" align="center" />
@@ -139,9 +140,6 @@
         <el-table-column prop="qualityText" label="质量" width="80" align="center" />
       </el-table>
       <div v-if="loading" class="mde-skeleton" />
-      <div v-if="!loading && tableData.length === 0" class="mde-empty">
-        <span>暂无数据，请选择条件后点击查询</span>
-      </div>
     </div>
   </div>
 </template>
@@ -349,7 +347,7 @@ watch([chartSeries, tableData], () => {
 .monitor-data-explorer.mde-fill .mde-table-area {
   flex: 1 1 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .monitor-data-explorer.mde-fill .mde-skeleton,
