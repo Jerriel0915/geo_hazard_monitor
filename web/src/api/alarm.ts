@@ -45,32 +45,62 @@ export interface AlarmRecordPageParams {
     pageSize?: number
     hazardPointId?: number
     hazardPointName?: string
+    /** 原有单选 */
     alarmLevel?: number
     alarmType?: string
+    /** 新增多选筛选 */
+    alarmLevels?: number[]
+    alarmTypes?: string[]
+    statusList?: number[]
+    /** 触发时间范围 */
+    triggerTimeBegin?: string
+    triggerTimeEnd?: string
 }
 
 export interface AlarmDisposePayload {
     status: number
+    /** @deprecated 旧字段，保留向后兼容 */
     note?: string
+    /** 描述 (FEEDBACK 时附带) */
+    description?: string
+    /** 附件 fileName (逗号分隔) */
+    attachments?: string
+    /** 备注/反馈内容 */
+    remarks?: string
 }
 
 export interface AlarmBatchDisposePayload {
     ids: number[]
     status: number
     note?: string
+    description?: string
+    attachments?: string
+    remarks?: string
 }
 
-export interface AlarmRecordLog {
+/** 告警动作日志（处置记录 tab + 时间线） */
+export interface AlarmRecordActionLog {
     id: number
-    alarmId: number
-    fromStatus?: number
-    toStatus: number
-    /** 处置类型: 告警引擎自动创建/开始处置/已销警/标记误报/批量销警/批量标记误报 */
-    disposalType?: string
-    operator: string
-    /** 处置结果描述 */
-    disposalResult?: string
-    note?: string
+    alarmRecordId: number
+    /** 动作类型: CREATE/RE_TRIGGER/LEVEL_CHANGE/FEEDBACK/DISPOSE_CLOSE/DISPOSE_FALSE_ALARM/NOTIFY */
+    actionType: string
+    fromValue?: string
+    toValue?: string
+    remarks?: string
+    description?: string
+    attachments?: string
+    operator?: string
+    createTime: string
+}
+
+/** 告警触发明细（告警记录 tab） */
+export interface AlarmRecordTriggerDetail {
+    id: number
+    alarmRecordId: number
+    triggerTime: string
+    alarmLevel?: number
+    alarmType?: string
+    alarmMessage?: string
     createTime: string
 }
 
@@ -238,9 +268,13 @@ export const disposeAlarm = (id: number, payload: AlarmDisposePayload) =>
 export const batchDisposeAlarms = (payload: AlarmBatchDisposePayload) =>
     request.post('/alarm/records/batch', payload)
 
-/** 告警状态变更日志 */
-export const getAlarmRecordLogs = (id: number) =>
-    request.get<AlarmRecordLog[]>(`/alarm/records/${id}/logs`)
+/** 告警触发明细列表 */
+export const getTriggerDetails = (id: number) =>
+    request.get<AlarmRecordTriggerDetail[]>(`/alarm/records/${id}/trigger-details`)
+
+/** 告警动作日志列表（处置记录 + 时间线） */
+export const getActionLogs = (id: number) =>
+    request.get<AlarmRecordActionLog[]>(`/alarm/records/${id}/action-logs`)
 
 // ==================== 告警判据 API ====================
 
