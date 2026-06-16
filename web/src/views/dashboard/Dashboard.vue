@@ -113,7 +113,8 @@
 </template>
 
 <script setup lang="ts">
-import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {getBoundDevices, getHazardPointDetail, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {deserialize, type BoundaryCoords} from '@/lib/boundaryCoords'
 import {getDeviceMapIconPath} from '@/utils/deviceIcon'
 import {getDashboardFull} from '@/api/monitor'
 import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
@@ -624,108 +625,11 @@ const onHazardMarkerClick = async (point: typeof hazardPoints.value[0]) => {
 
   currentHazardPoint.value = point
 
-  // 地图缩放到隐患点
-  if (mapInstance) {
-    focusOnHazardPoint(point)
-  }
-
-  // 地图上：隐藏所有隐患点，绘制区域+设备
-  await showHazardOnMap(point)
+  // 统一呈现：聚焦 + 详情接口绘制边界（polygon/走向/辅助线）+ 设备标记
+  await presentHazardDetail(point)
 
   // 侧边栏：加载绑定设备
   await loadWidgetDevices(point.id)
-}
-
-const showHazardOnMap = async (point: typeof hazardPoints.value[0]) => {
-  if (!mapInstance) return
-
-  // 清除现有地图标记
-  if (hazardMarkerLayer) {
-    mapInstance.removeLayer(hazardMarkerLayer)
-  }
-  hazardMarkerLayer = L.layerGroup().addTo(mapInstance)
-
-  // 绘制隐患点边界范围
-  const bc: any = (point as any).boundaryCoords
-  let hasBoundary = false
-  if (bc) {
-    try {
-      const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
-      if (obj.polygon && obj.polygon.length > 0) {
-        L.polygon(obj.polygon as any, {
-          color: '#1890ff',
-          fillColor: '#1890ff',
-          fillOpacity: 0.15,
-          weight: 2
-        }).addTo(hazardMarkerLayer)
-        hasBoundary = true
-      }
-      if (obj.strikeCoords && obj.strikeCoords.length >= 2) {
-        L.polyline(obj.strikeCoords as any, {color: '#f56c6c', weight: 3, dashArray: '6 6'}).addTo(hazardMarkerLayer)
-      }
-    } catch {
-    }
-  }
-  // 无边界数据时用默认圆圈兜底
-  if (!hasBoundary) {
-    L.circle([point.latitude, point.longitude], {
-      radius: 500,
-      color: '#f5222d',
-      fillColor: '#f5222d',
-      fillOpacity: 0.1,
-      weight: 2,
-      dashArray: '8,4'
-    }).addTo(hazardMarkerLayer)
-  }
-
-  // 加载并绘制设备标记
-  try {
-    const response = await getBoundDevices(String(point.id))
-    if (response.code === 200 && response.data) {
-      const devices = (response.data as any[]).map((item: any) => ({
-        id: item.deviceId,
-        name: item.deviceName || '未知设备',
-        type: (item.sensors?.[0]?.name || 'DEVICE').toUpperCase(),
-        typeName: item.sensors?.[0]?.name || '设备',
-        icon: item.icon,
-        iconPath: item.iconPath,
-        status: item.deviceStatus ?? null,
-        onlineStatus: item.onlineStatus ?? 0,
-        sensorCount: item.sensors?.length || 0,
-        longitude: item.installLongitude ?? point.longitude,
-        latitude: item.installLatitude ?? point.latitude
-      }))
-
-      devices.forEach(device => {
-        const icon = L.icon({
-          iconUrl: getDeviceMapIconPath(device),
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
-        })
-        L.marker([device.latitude, device.longitude], {icon})
-            .addTo(hazardMarkerLayer!)
-            .bindPopup(`<div class="hpv2-card">
-            <div class="hpv2-header"><span class="hpv2-title">${device.name}</span></div>
-            <div class="hpv2-dash"></div>
-            <div class="hpv2-body">
-              <div class="hpv2-row single">
-                <div class="hpv2-cell full"><span class="hpv2-label">类型</span><span class="hpv2-val">${device.typeName}</span></div>
-              </div>
-              <div class="hpv2-dash"></div>
-              <div class="hpv2-row single">
-                <div class="hpv2-cell full"><span class="hpv2-label">传感器</span><span class="hpv2-val">${device.sensorCount} 个</span></div>
-              </div>
-              <div class="hpv2-dash"></div>
-              <div class="hpv2-row single">
-                <div class="hpv2-cell full"><span class="hpv2-label">状态</span><span class="hpv2-val">${getStatusText(device.status)}</span></div>
-              </div>
-            </div>
-          </div>`)
-      })
-    }
-  } catch (error) {
-    console.error('加载设备标记失败:', error)
-  }
 }
 
 const restoreHazardMarkers = () => {
@@ -768,6 +672,10 @@ const clearHazardSelection = () => {
   currentHazardPoint.value = null
   widgetBoundDevices.value = []
   widgetDevicesLoading.value = false
+  // 清除隐患点边界图层（polygon/走向/辅助线）
+  if (hazardBoundaryLayer) {
+    hazardBoundaryLayer.clearLayers()
+  }
   // Restore all markers
   refreshHazardMarkers()
   // Restore map view
@@ -881,7 +789,89 @@ const refreshHazardMarkers = () => {
 }
 
 // 隐患点视图相关函数
-const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
+
+/**
+ * 调用详情接口获取完整 boundaryCoords，并用标准库 deserialize 解析
+ * （兼容 strikeLine/strikeCoords 新旧 key，含 auxiliaryLines 辅助线）
+ */
+const fetchBoundary = async (point: typeof hazardPoints.value[0]): Promise<BoundaryCoords> => {
+  try {
+    const res = await getHazardPointDetail(String(point.id))
+    const raw = res?.code === 200 ? (res.data as any)?.boundaryCoords : null
+    const json = typeof raw === 'string' ? raw : raw ? JSON.stringify(raw) : null
+    return deserialize(json)
+  } catch (error) {
+    console.error('加载隐患点边界详情失败:', error)
+    return {polygon: [], strikeLine: null, auxiliaryLines: []}
+  }
+}
+
+/**
+ * 把边界三要素（polygon / strikeLine / auxiliaryLines）绘制到指定图层。
+ * 先 clearLayers 再绘制；当完全无边界数据时用默认圆圈兜底。
+ */
+const drawBoundaryInto = (
+    point: typeof hazardPoints.value[0],
+    layer: L.LayerGroup,
+    bc: BoundaryCoords
+) => {
+  layer.clearLayers()
+  const hasPolygon = bc.polygon.length >= 3
+  if (hasPolygon) {
+    L.polygon(bc.polygon.map(p => [p.lat, p.lng] as [number, number]), {
+      color: '#1890ff',
+      fillColor: '#1890ff',
+      fillOpacity: 0.15,
+      weight: 2
+    }).addTo(layer)
+  }
+  if (bc.strikeLine) {
+    const [a, b] = bc.strikeLine
+    L.polyline([[a.lat, a.lng], [b.lat, b.lng]], {
+      color: '#f56c6c',
+      weight: 3,
+      dashArray: '6 6'
+    }).addTo(layer)
+  }
+  bc.auxiliaryLines.forEach(line => {
+    if (line.length < 2) return
+    L.polyline(line.map(p => [p.lat, p.lng] as [number, number]), {
+      color: '#fa8c16',
+      weight: 2,
+      dashArray: '5 4'
+    }).addTo(layer)
+  })
+  // 无任何边界数据时用默认圆圈兜底
+  if (!hasPolygon && !bc.strikeLine && bc.auxiliaryLines.length === 0) {
+    L.circle([point.latitude, point.longitude], {
+      radius: 500,
+      color: '#f5222d',
+      fillColor: '#f5222d',
+      fillOpacity: 0.1,
+      weight: 2,
+      dashArray: '8,4'
+    }).addTo(layer)
+  }
+}
+
+/**
+ * 统一的隐患点详情呈现逻辑：聚焦 → 拉取详情绘制边界 → 绘制设备标记。
+ * 三个入口（地图点击 / 双击进入 / 顶部下拉切换）共用，保证行为一致。
+ */
+const presentHazardDetail = async (point: typeof hazardPoints.value[0]) => {
+  if (!mapInstance) return
+  focusOnHazardPoint(point)
+  // 边界图层
+  if (!hazardBoundaryLayer) {
+    hazardBoundaryLayer = L.layerGroup().addTo(mapInstance)
+  }
+  const bc = await fetchBoundary(point)
+  drawBoundaryInto(point, hazardBoundaryLayer, bc)
+  // 设备标记
+  await addDeviceMarkers(point.id)
+}
+
+const enterHazardView = async (hazardPoint: typeof hazardPoints.value[0]) => {
   currentView.value = 'hazard'
   currentHazardPoint.value = hazardPoint
   showHazardList.value = false
@@ -898,41 +888,8 @@ const enterHazardView = (hazardPoint: typeof hazardPoints.value[0]) => {
   // 更新告警统计（限定到当前隐患点）
   updateHazardAlarms(hazardPoint.id)
 
-  // 地图聚焦到隐患点
-  if (mapInstance) {
-    focusOnHazardPoint(hazardPoint)
-    // 渲染边界范围
-    if (hazardBoundaryLayer) {
-      hazardBoundaryLayer.clearLayers()
-    } else {
-      hazardBoundaryLayer = L.layerGroup().addTo(mapInstance)
-    }
-    const bc: any = (hazardPoint as any).boundaryCoords
-    if (bc) {
-      try {
-        const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
-        if (obj.polygon && obj.polygon.length > 0) {
-          L.polygon(obj.polygon as any, {
-            color: '#1890ff',
-            fillColor: '#1890ff',
-            fillOpacity: 0.15,
-            weight: 2
-          }).addTo(hazardBoundaryLayer!)
-        }
-        if (obj.strikeCoords && obj.strikeCoords.length >= 2) {
-          L.polyline(obj.strikeCoords as any, {
-            color: '#f56c6c',
-            weight: 3,
-            dashArray: '6 6'
-          }).addTo(hazardBoundaryLayer!)
-        }
-      } catch {
-      }
-    }
-  }
-
-  // 添加设备标记
-  addDeviceMarkers(hazardPoint.id)
+  // 统一呈现：聚焦 + 详情接口绘制边界（polygon/走向/辅助线）+ 设备标记
+  await presentHazardDetail(hazardPoint)
 }
 
 const exitHazardView = () => {
@@ -973,18 +930,15 @@ const resetAlarmStats = () => {
   loadDashboardData()
 }
 
-const selectHazardPoint = (hazardPoint: typeof hazardPoints.value[0]) => {
+const selectHazardPoint = async (hazardPoint: typeof hazardPoints.value[0]) => {
   showHazardList.value = false
 
   if (currentView.value === 'hazard') {
     currentHazardPoint.value = hazardPoint
     updateHazardAlarms(hazardPoint.id)
 
-    if (mapInstance) {
-      focusOnHazardPoint(hazardPoint)
-    }
-
-    addDeviceMarkers(hazardPoint.id)
+    // 统一呈现：聚焦 + 详情接口绘制边界（polygon/走向/辅助线）+ 设备标记
+    await presentHazardDetail(hazardPoint)
   } else {
     // System view: treat as soft selection via top-center dropdown
     onHazardMarkerClick(hazardPoint)
@@ -1001,16 +955,7 @@ const addDeviceMarkers = async (hazardId: number) => {
 
   hazardMarkerLayer = L.layerGroup().addTo(mapInstance)
 
-  // 绘制隐患点范围
-  const hazardArea = L.circle([currentHazardPoint.value!.latitude, currentHazardPoint.value!.longitude], {
-    radius: 500,
-    color: '#f5222d',
-    fillColor: '#f5222d',
-    fillOpacity: 0.1,
-    weight: 2,
-    dashArray: '8,4'
-  }).addTo(hazardMarkerLayer)
-
+  // 边界范围（polygon/走向/辅助线）由 drawBoundaryInto 绘制到 hazardBoundaryLayer，本函数仅负责设备标记
   // 从API获取绑定设备列表
   try {
     const request = await import('@/utils/request')
@@ -1036,8 +981,8 @@ const addDeviceMarkers = async (hazardId: number) => {
       deviceList.value.forEach(device => {
         const icon = L.icon({
           iconUrl: getDeviceMapIconPath(device),
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
+          iconSize: [28, 32],
+          iconAnchor: [14, 16]
         })
         const marker = L.marker([device.latitude, device.longitude], {icon})
             .addTo(hazardMarkerLayer!)

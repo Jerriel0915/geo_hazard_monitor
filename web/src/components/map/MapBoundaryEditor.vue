@@ -118,8 +118,8 @@ function renderDeviceLayer(devices: BoundDevice[]) {
     if (d.installLongitude == null || d.installLatitude == null) return
     const icon = L.icon({
       iconUrl: getDeviceMapIconPath(d),
-      iconSize: [28, 28],
-      iconAnchor: [14, 14]
+      iconSize: [28, 32],
+      iconAnchor: [14, 16]
     })
     const marker = L.marker([d.installLatitude, d.installLongitude], {icon, interactive: true})
     marker.bindPopup(

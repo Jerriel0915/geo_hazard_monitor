@@ -1,9 +1,12 @@
 // src/utils/hazard.ts
+import http from '@/utils/api'
 
 export interface Hazard {
   id: number
   name: string
-  level: string
+  code?: string
+  longitude?: number
+  latitude?: number
   location: string
   status: string
   deviceCount: number
@@ -11,37 +14,97 @@ export interface Hazard {
   createTime: string
 }
 
-export interface HazardWithDevices extends Hazard {
+export interface HazardDetail extends Hazard {
+  groupName?: string
+  strike?: number
+  updateBy?: string
+  updateTime?: string
+}
+
+export interface HazardWithDevices extends HazardDetail {
   devices: any[]
 }
 
-const mockHazards: Hazard[] = [
-  { id: 1, name: 'K15+200 右侧边坡', level: '高风险', location: 'G65包茂高速K15+200右侧', status: '监测中', deviceCount: 3, description: '该边坡高度大于30m，岩体破碎，存在滑坡风险', createTime: '2025-03-15' },
-  { id: 2, name: 'K23+500 左侧边坡', level: '中风险', location: 'G65包茂高速K23+500左侧', status: '监测中', deviceCount: 4, description: '该边坡坡度较陡，雨季存在溜坍风险', createTime: '2025-04-20' },
-  { id: 3, name: 'K31+100 右侧边坡', level: '低风险', location: 'G65包茂高速K31+100右侧', status: '监测中', deviceCount: 2, description: '该边坡表层风化，需要持续关注', createTime: '2025-05-10' },
-  { id: 4, name: 'K42+800 左侧边坡', level: '高风险', location: 'G65包茂高速K42+800左侧', status: '监测中', deviceCount: 3, description: '该边坡曾发生小型塌方，加固后持续监测', createTime: '2025-02-28' },
-  { id: 5, name: 'K56+300 右侧边坡', level: '中风险', location: 'G65包茂高速K56+300右侧', status: '已处置', deviceCount: 2, description: '已完成锚固施工，持续监测稳定性', createTime: '2025-01-15' },
-]
+interface HazardRawItem {
+  id: number
+  code?: string
+  name: string
+  groupName?: string
+  longitude?: number
+  latitude?: number
+  strike?: number
+  description?: string
+  status?: number
+  statusName?: string
+  deviceCount?: number
+  createTime?: string
+  updateBy?: string
+  updateTime?: string
+}
+
+function formatLocation(item: HazardRawItem): string {
+  if (item.longitude != null && item.latitude != null) {
+    return `${Number(item.longitude).toFixed(6)}, ${Number(item.latitude).toFixed(6)}`
+  }
+  return '-'
+}
+
+function mapHazard(item: HazardRawItem): Hazard {
+  return {
+    id: item.id,
+    name: item.name,
+    code: item.code,
+    longitude: item.longitude,
+    latitude: item.latitude,
+    location: formatLocation(item),
+    status: item.statusName || (item.status === 1 ? '监测中' : '已停测'),
+    deviceCount: item.deviceCount || 0,
+    description: item.description || '',
+    createTime: item.createTime || '',
+  }
+}
 
 export const hazardApi = {
-  getAll(): Hazard[] {
-    return mockHazards
+  async getAll(): Promise<Hazard[]> {
+    const res = await http.get('/hazard-points/page', {
+      pageNum: 1,
+      pageSize: 200,
+    })
+    const list = (res as any)?.rows || (res as any[]) || []
+    return list.map(mapHazard)
   },
 
-  getById(id: number): HazardWithDevices | undefined {
-    const hazard = mockHazards.find(h => h.id === id)
-    if (!hazard) return undefined
-    return { ...hazard, devices: [] }
-  },
-
-  getStats(): { total: number; high: number; medium: number; low: number } {
-    return {
-      total: mockHazards.length,
-      high: mockHazards.filter(h => h.level === '高风险').length,
-      medium: mockHazards.filter(h => h.level === '中风险').length,
-      low: mockHazards.filter(h => h.level === '低风险').length,
+  async getById(id: number): Promise<HazardWithDevices | undefined> {
+    try {
+      const res = await http.get(`/hazard-points/${id}`)
+      const item = res as HazardRawItem
+      const base = mapHazard(item)
+      return {
+        ...base,
+        groupName: item.groupName,
+        strike: item.strike,
+        updateBy: item.updateBy,
+        updateTime: item.updateTime,
+        devices: [],
+      }
     }
-  }
+    catch (error) {
+      console.error('获取隐患点详情失败:', error)
+      return undefined
+    }
+  },
+
+  async getBoundDevices(hazardPointId: number): Promise<any[]> {
+    try {
+      const res = await http.get(`/hazard-points/${hazardPointId}/bound-devices`)
+      const list = (res as any)?.rows || (res as any[]) || []
+      return list
+    }
+    catch (error) {
+      console.error('获取绑定设备失败:', error)
+      return []
+    }
+  },
 }
 
 export default hazardApi

@@ -1,48 +1,70 @@
 /**
- * 认证相关 - 模拟数据
+ * 认证相关 API
  * @author linx
  */
+import http from '@/utils/api'
 
-const mockUser = {
-  id: 1,
-  username: 'admin',
-  nickname: '管理员',
-  phone: '13800138000',
-  avatar: ''
+export interface CaptchaInfo {
+  captchaEnabled: boolean
+  captchaKey: string
+  captchaImage: string
 }
 
-const mockAuth = {
-  login(phone: string, password: string) {
-    return Promise.resolve({
-      accessToken: 'mock-access-token-' + Date.now(),
-      refreshToken: 'mock-refresh-token-' + Date.now(),
-      user: { ...mockUser, phone }
-    })
-  },
-
-  wechatLogin(code: string, phoneCode: string) {
-    return Promise.resolve({
-      accessToken: 'mock-access-token-' + Date.now(),
-      refreshToken: 'mock-refresh-token-' + Date.now(),
-      user: mockUser
-    })
-  },
-
-  refreshToken(refreshToken: string) {
-    return Promise.resolve({
-      accessToken: 'mock-access-token-' + Date.now(),
-      refreshToken: 'mock-refresh-token-' + Date.now(),
-      user: mockUser
-    })
-  },
-
-  logout() {
-    return Promise.resolve({ success: true })
-  },
-
-  checkToken() {
-    return Promise.resolve({ valid: true })
-  }
+export interface LoginResult {
+  token: string
+  expiresIn?: number
 }
 
-export default mockAuth
+export interface UserInfo {
+  userId: number
+  userName: string
+  nickName: string
+  phonenumber: string
+  avatar: string
+  deptId?: number
+  email?: string
+}
+
+export interface GetInfoResult {
+  user: UserInfo
+  roles: string[]
+  permissions: string[]
+}
+
+const authApi = {
+  /**
+   * 获取图形验证码
+   */
+  getCaptcha(): Promise<CaptchaInfo> {
+    return http.get('/auth/captcha', {}, { silent: true }) as Promise<CaptchaInfo>
+  },
+
+  /**
+   * 账号密码登录
+   */
+  login(username: string, password: string, code: string, uuid: string): Promise<LoginResult> {
+    return http.post('/auth/login', {
+      username,
+      password,
+      code,
+      uuid,
+      rememberMe: false,
+    }) as Promise<LoginResult>
+  },
+
+  /**
+   * 获取当前登录用户信息
+   */
+  getUserInfo(): Promise<GetInfoResult> {
+    return http.get('/auth/getInfo') as Promise<GetInfoResult>
+  },
+
+  /**
+   * 登出
+   */
+  logout(): Promise<void> {
+    return http.post('/system/auth/logout', {}) as Promise<void>
+  },
+}
+
+export default authApi

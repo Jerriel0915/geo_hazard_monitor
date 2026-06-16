@@ -1,12 +1,65 @@
 <!-- src/pages/hazard-detail.vue -->
+<script setup lang="ts">
+import type { Hazard } from '@/utils/hazard'
+import { onLoad } from '@dcloudio/uni-app'
+import { ref } from 'vue'
+import { useSafeArea } from '@/composables/useSafeArea'
+import { hazardApi } from '@/utils/hazard'
+
+const { statusBarHeight } = useSafeArea()
+
+const hazardId = ref<number>(0)
+const hazard = ref<Partial<Hazard>>({})
+const devices = ref<any[]>([])
+const loading = ref(true)
+
+onLoad(async (options) => {
+  if (options?.id) {
+    hazardId.value = Number(options.id)
+    await loadData()
+  }
+})
+
+async function loadData() {
+  loading.value = true
+  try {
+    const detail = await hazardApi.getById(hazardId.value)
+    if (detail) {
+      hazard.value = detail
+      devices.value = await hazardApi.getBoundDevices(hazardId.value)
+    }
+    else {
+      uni.showToast({ title: '隐患点不存在', icon: 'none' })
+      setTimeout(() => uni.navigateBack(), 1500)
+    }
+  }
+  catch (error) {
+    console.error('加载隐患点详情失败:', error)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+function goToDeviceDetail(item: any) {
+  uni.navigateTo({ url: `/pages/device-detail?id=${item.deviceId}` })
+}
+
+function goBack() {
+  uni.navigateBack()
+}
+</script>
+
 <template>
   <view class="page-container">
     <!-- 头部 -->
     <view class="header">
-      <view class="header-bg" :style="{ height: `calc(${statusBarHeight}px + 155rpx)` }"></view>
+      <view class="header-bg" :style="{ height: `calc(${statusBarHeight}px + 155rpx)` }" />
       <view class="header-content" :style="{ marginTop: `${statusBarHeight}px` }">
         <view class="header-nav">
-          <view class="back-btn" @click="goBack">←</view>
+          <view class="back-btn" @click="goBack">
+            ←
+          </view>
           <text class="header-title">{{ hazard.name }}</text>
         </view>
       </view>
@@ -20,12 +73,6 @@
           <view class="info-row">
             <text class="info-label">位置</text>
             <text class="info-value">{{ hazard.location || '-' }}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">风险等级</text>
-            <view class="level-tag" :style="{ background: getLevelColor(hazard.level) }">
-              {{ hazard.level || '-' }}
-            </view>
           </view>
           <view class="info-row">
             <text class="info-label">状态</text>
@@ -54,23 +101,25 @@
         <view class="device-list">
           <view
             v-for="device in devices"
-            :key="device.id"
+            :key="device.deviceId || device.id"
             class="device-item"
-            @click="goToDeviceDetail(device.id)"
+            @click="goToDeviceDetail(device)"
           >
             <view class="device-left">
               <view class="device-main">
                 <text class="device-name">{{ device.deviceName }}</text>
-                <view class="device-type-tag">{{ device.deviceType }}</view>
+                <view class="device-type-tag">
+                  {{ device.deviceCode || '-' }}
+                </view>
               </view>
-              <text class="device-time">最近上报：{{ device.lastReportTime }}</text>
+              <text class="device-time">绑定时间：{{ device.bindTime || '-' }}</text>
             </view>
             <view class="device-status">
               <view
                 class="status-dot"
-                :class="device.status === '在线' ? 'online' : device.status === '故障' ? 'fault' : 'offline'"
-              ></view>
-              <text class="status-text">{{ device.status }}</text>
+                :class="device.onlineStatus === 1 ? 'online' : 'offline'"
+              />
+              <text class="status-text">{{ device.onlineStatus === 1 ? '在线' : '离线' }}</text>
             </view>
           </view>
 
@@ -80,61 +129,10 @@
         </view>
       </view>
 
-      <view class="bottom-spacer"></view>
+      <view class="bottom-spacer" />
     </scroll-view>
   </view>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { useSafeArea } from '@/composables/useSafeArea'
-import { hazardApi } from '@/utils/hazard'
-import { deviceApi } from '@/utils/device'
-import type { Hazard } from '@/utils/hazard'
-import type { DeviceInfo } from '@/utils/device'
-
-const { statusBarHeight } = useSafeArea()
-
-const hazardId = ref<number>(0)
-const hazard = ref<Partial<Hazard>>({})
-const devices = ref<DeviceInfo[]>([])
-
-onLoad((options) => {
-  if (options?.id) {
-    hazardId.value = Number(options.id)
-    loadData()
-  }
-})
-
-const loadData = () => {
-  const detail = hazardApi.getById(hazardId.value)
-  if (detail) {
-    hazard.value = detail
-    devices.value = deviceApi.getByHazardId(hazardId.value)
-  } else {
-    uni.showToast({ title: '隐患点不存在', icon: 'none' })
-    setTimeout(() => uni.navigateBack(), 1500)
-  }
-}
-
-const getLevelColor = (level: string | undefined) => {
-  const map: Record<string, string> = {
-    '高风险': '#f5222d',
-    '中风险': '#faad14',
-    '低风险': '#52c41a'
-  }
-  return map[level || ''] || '#1890ff'
-}
-
-const goToDeviceDetail = (id: number) => {
-  uni.navigateTo({ url: `/pages/device-detail?id=${id}` })
-}
-
-const goBack = () => {
-  uni.navigateBack()
-}
-</script>
 
 <style lang="scss" scoped>
 .page-container {
@@ -244,14 +242,6 @@ const goBack = () => {
     line-height: 1.5;
     font-weight: 400;
   }
-}
-
-.level-tag {
-  padding: 6rpx 20rpx;
-  border-radius: 8rpx;
-  font-size: 22rpx;
-  color: #ffffff;
-  font-weight: 500;
 }
 
 .status-badge {

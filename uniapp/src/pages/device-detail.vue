@@ -1,16 +1,90 @@
 <!-- src/pages/device-detail.vue -->
+<script setup lang="ts">
+import type { DeviceInfo, SensorAttr } from '@/utils/device'
+import { onLoad } from '@dcloudio/uni-app'
+import { ref } from 'vue'
+import { useSafeArea } from '@/composables/useSafeArea'
+import { deviceApi } from '@/utils/device'
+
+const { statusBarHeight } = useSafeArea()
+
+const deviceId = ref(0)
+const device = ref<DeviceInfo | undefined>(undefined)
+const sensorAttrs = ref<SensorAttr[]>([])
+const sensorsLoading = ref(true)
+
+onLoad(async (options) => {
+  if (options?.id) {
+    deviceId.value = Number(options.id)
+    await loadDevice()
+  }
+})
+
+async function loadDevice() {
+  try {
+    device.value = await deviceApi.getById(deviceId.value)
+    if (!device.value) {
+      uni.showToast({ title: '设备不存在', icon: 'none' })
+      setTimeout(() => uni.navigateBack(), 1500)
+      return
+    }
+    // 拉取传感器及其属性
+    const sensors = await deviceApi.getSensors(deviceId.value)
+    const attrs: SensorAttr[] = []
+    sensors.forEach((s) => {
+      s.attrs.forEach(a => attrs.push(a))
+    })
+    sensorAttrs.value = attrs
+  }
+  catch (error) {
+    console.error('加载设备详情失败:', error)
+  }
+  finally {
+    sensorsLoading.value = false
+  }
+}
+
+function goBack() {
+  uni.navigateBack()
+}
+
+function goToChart() {
+  uni.navigateTo({ url: `/pages/chart?deviceId=${deviceId.value}` })
+}
+
+function getTypeColor(type: string): string {
+  const colorMap: Record<string, string> = {
+    GNSS: '#3068e4',
+    雨量计: '#1890ff',
+    测斜仪: '#722ed1',
+    裂缝计: '#fa8c16',
+    水位计: '#13c2c2',
+  }
+  return colorMap[type] || '#3068e4'
+}
+
+function getStatusClass(status: string): string {
+  switch (status) {
+    case '在线': return 'online'
+    case '离线': return 'offline'
+    case '故障': return 'fault'
+    default: return 'offline'
+  }
+}
+</script>
+
 <template>
   <view class="page-container">
     <!-- 头部 -->
     <view class="header">
-      <view class="header-bg" :style="{ height: `calc(${statusBarHeight}px + 155rpx)` }"></view>
+      <view class="header-bg" :style="{ height: `calc(${statusBarHeight}px + 155rpx)` }" />
       <view class="header-content" :style="{ marginTop: `${statusBarHeight}px` }">
         <view class="header-nav">
           <view class="back-btn" @click="goBack">
             <text class="back-arrow">←</text>
           </view>
           <text class="header-device-name">{{ device?.deviceName || '设备详情' }}</text>
-          <view class="nav-placeholder"></view>
+          <view class="nav-placeholder" />
         </view>
       </view>
     </view>
@@ -22,7 +96,7 @@
         <view class="status-card">
           <view class="status-main">
             <view class="status-big-badge" :class="getStatusClass(device?.status || '')">
-              <view class="status-big-dot" :class="getStatusClass(device?.status || '')"></view>
+              <view class="status-big-dot" :class="getStatusClass(device?.status || '')" />
               <text class="status-big-text">{{ device?.status || '-' }}</text>
             </view>
             <view class="status-info">
@@ -47,36 +121,27 @@
               <text class="type-tag-text">{{ device?.deviceType || '-' }}</text>
             </view>
           </view>
-          <view class="info-row">
-            <text class="info-label">所属隐患点</text>
-            <text class="info-value hazard-name">{{ device?.hazardName || '-' }}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">安装日期</text>
-            <text class="info-value">{{ device?.installDate || '-' }}</text>
-          </view>
         </view>
       </view>
 
       <!-- 监测参数 -->
       <view class="section">
         <text class="section-title">监测参数</text>
-        <view v-if="device?.attributes && device.attributes.length > 0" class="attr-list">
+        <view v-if="sensorAttrs.length > 0" class="attr-list">
           <view
-            v-for="attr in device.attributes"
-            :key="attr.property"
+            v-for="attr in sensorAttrs"
+            :key="attr.attrCode"
             class="attr-card"
           >
             <view class="attr-left">
-              <text class="attr-name">{{ attr.displayName }}</text>
+              <text class="attr-name">{{ attr.attrName }}</text>
             </view>
             <view class="attr-right">
-              <text class="attr-value">{{ attr.currentValue != null ? attr.currentValue : '--' }}</text>
-              <text class="attr-unit">{{ attr.unit }}</text>
+              <text class="attr-unit">{{ attr.unit || '-' }}</text>
             </view>
           </view>
         </view>
-        <view v-else class="empty-attrs">
+        <view v-else-if="!sensorsLoading" class="empty-attrs">
           <text class="empty-attrs-text">暂无监测参数</text>
         </view>
       </view>
@@ -89,66 +154,10 @@
       </view>
 
       <!-- 底部留白 -->
-      <view class="bottom-spacer"></view>
+      <view class="bottom-spacer" />
     </scroll-view>
   </view>
 </template>
-
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { deviceApi } from '@/utils/device'
-import type { DeviceInfo } from '@/utils/device'
-import { useSafeArea } from '@/composables/useSafeArea'
-
-const { statusBarHeight } = useSafeArea()
-
-const deviceId = ref(0)
-const device = ref<DeviceInfo | undefined>(undefined)
-
-onLoad((options) => {
-  if (options?.id) {
-    deviceId.value = Number(options.id)
-    loadDevice()
-  }
-})
-
-const loadDevice = () => {
-  device.value = deviceApi.getById(deviceId.value)
-  if (!device.value) {
-    uni.showToast({ title: '设备不存在', icon: 'none' })
-    setTimeout(() => uni.navigateBack(), 1500)
-  }
-}
-
-const goBack = () => {
-  uni.navigateBack()
-}
-
-const goToChart = () => {
-  uni.navigateTo({ url: `/pages/chart?deviceId=${deviceId.value}` })
-}
-
-const getTypeColor = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    'GNSS': '#3068e4',
-    '雨量计': '#1890ff',
-    '测斜仪': '#722ed1',
-    '裂缝计': '#fa8c16',
-    '水位计': '#13c2c2',
-  }
-  return colorMap[type] || '#3068e4'
-}
-
-const getStatusClass = (status: string): string => {
-  switch (status) {
-    case '在线': return 'online'
-    case '离线': return 'offline'
-    case '故障': return 'fault'
-    default: return 'offline'
-  }
-}
-</script>
 
 <style lang="scss" scoped>
 .page-container {
@@ -353,10 +362,6 @@ const getStatusClass = (status: string): string => {
   font-size: 26rpx;
   color: #1a1a2e;
   font-weight: 500;
-
-  &.hazard-name {
-    color: #3068e4;
-  }
 }
 
 .type-tag {
@@ -402,12 +407,6 @@ const getStatusClass = (status: string): string => {
   display: flex;
   align-items: baseline;
   gap: 6rpx;
-}
-
-.attr-value {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1a1a2e;
 }
 
 .attr-unit {

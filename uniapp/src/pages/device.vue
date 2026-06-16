@@ -1,12 +1,118 @@
 <!-- src/pages/device.vue -->
+<script setup lang="ts">
+import type { DeviceInfo } from '@/utils/device'
+import { computed, onMounted, ref } from 'vue'
+import { useSafeArea } from '@/composables/useSafeArea'
+import { deviceApi } from '@/utils/device'
+
+const { statusBarHeight } = useSafeArea()
+
+const TIME_SUFFIX_RE = /:\d{2}$/
+
+const keyword = ref('')
+const activeType = ref('')
+const showTypeFilter = ref(false)
+const isRefreshing = ref(false)
+const devices = ref<DeviceInfo[]>([])
+
+const deviceTypes = computed(() => {
+  const types = new Set(devices.value.map(d => d.deviceType))
+  return [...types]
+})
+
+const activeTypeLabel = computed(() => activeType.value || '类型')
+
+const filteredDevices = computed(() => {
+  let list = devices.value
+  if (activeType.value) {
+    list = list.filter(d => d.deviceType === activeType.value)
+  }
+  if (keyword.value.trim()) {
+    const kw = keyword.value.trim().toLowerCase()
+    list = list.filter(d =>
+      d.deviceName.toLowerCase().includes(kw)
+      || d.deviceCode.toLowerCase().includes(kw),
+    )
+  }
+  return list
+})
+
+onMounted(() => {
+  loadDevices()
+})
+
+async function loadDevices() {
+  try {
+    devices.value = await deviceApi.getAll()
+  }
+  catch (error) {
+    console.error('加载设备列表失败:', error)
+  }
+  finally {
+    setTimeout(() => {
+      isRefreshing.value = false
+    }, 400)
+  }
+}
+
+function onRefresh() {
+  isRefreshing.value = true
+  loadDevices()
+}
+
+function onSearch(e: any) {
+  keyword.value = e.detail.value || ''
+}
+
+function clearSearch() {
+  keyword.value = ''
+}
+
+function selectType(type: string) {
+  activeType.value = type
+  showTypeFilter.value = false
+}
+
+function goToDetail(device: DeviceInfo) {
+  uni.navigateTo({ url: `/pages/device-detail?id=${device.id}` })
+}
+
+function getTypeColor(type: string): string {
+  const colorMap: Record<string, string> = {
+    GNSS: '#3068e4',
+    雨量计: '#1890ff',
+    测斜仪: '#722ed1',
+    裂缝计: '#fa8c16',
+    水位计: '#13c2c2',
+    视频设备: '#eb2f96',
+  }
+  return colorMap[type] || '#3068e4'
+}
+
+function getStatusClass(status: string): string {
+  switch (status) {
+    case '在线': return 'online'
+    case '离线': return 'offline'
+    case '维修': return 'fault'
+    default: return 'offline'
+  }
+}
+
+function formatTime(time: string): string {
+  if (!time)
+    return '-'
+  return time.replace(TIME_SUFFIX_RE, '')
+}
+</script>
+
 <template>
   <view class="page-container">
     <!-- 渐变头部 -->
     <view class="header">
       <view class="header-bg">
-        <view class="status-bar" :style="{ height: `${statusBarHeight + 65}px` }"></view>
-        <view class="bg-circle bg-circle-1"></view>
-        <view class="bg-circle bg-circle-2"></view>
+        <view class="status-bar" :style="{ height: `${statusBarHeight + 65}px` }" />
+        <view class="bg-circle bg-circle-1" />
+        <view class="bg-circle bg-circle-2" />
       </view>
       <view class="header-content" :style="{ paddingTop: `${statusBarHeight}px` }">
         <view class="header-top">
@@ -33,9 +139,9 @@
             placeholder="搜索设备名称 / 编号"
             placeholder-class="search-placeholder"
             :value="keyword"
-            @input="onSearch"
             confirm-type="search"
-          />
+            @input="onSearch"
+          >
           <view v-if="keyword" class="search-clear" @click="clearSearch">
             <text class="clear-icon">x</text>
           </view>
@@ -47,14 +153,18 @@
           class="type-option"
           :class="{ active: activeType === '' }"
           @click="selectType('')"
-        >全部类型</view>
+        >
+          全部类型
+        </view>
         <view
           v-for="t in deviceTypes"
           :key="t"
           class="type-option"
           :class="{ active: activeType === t }"
           @click="selectType(t)"
-        >{{ t }}</view>
+        >
+          {{ t }}
+        </view>
       </view>
     </view>
 
@@ -83,7 +193,7 @@
                 <text class="type-tag-text">{{ item.deviceType }}</text>
               </view>
               <view class="status-badge" :class="getStatusClass(item.status)">
-                <view class="status-dot" :class="getStatusClass(item.status)"></view>
+                <view class="status-dot" :class="getStatusClass(item.status)" />
                 <text class="status-text">{{ item.status }}</text>
               </view>
             </view>
@@ -92,10 +202,6 @@
             <view class="card-info-item">
               <text class="info-label">最近上报</text>
               <text class="info-value">{{ formatTime(item.lastReportTime) }}</text>
-            </view>
-            <view class="card-info-item">
-              <text class="info-label">所属隐患点</text>
-              <text class="info-value hazard-name">{{ item.hazardName }}</text>
             </view>
           </view>
         </view>
@@ -106,105 +212,11 @@
           <text class="empty-desc">{{ keyword || activeType ? '未找到匹配的设备' : '暂无设备数据' }}</text>
         </view>
 
-        <view class="bottom-spacer"></view>
+        <view class="bottom-spacer" />
       </view>
     </scroll-view>
   </view>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { deviceApi } from '@/utils/device'
-import type { DeviceInfo } from '@/utils/device'
-import { useSafeArea } from '@/composables/useSafeArea'
-
-const { statusBarHeight } = useSafeArea()
-
-const keyword = ref('')
-const activeType = ref('')
-const showTypeFilter = ref(false)
-const isRefreshing = ref(false)
-const devices = ref<DeviceInfo[]>([])
-
-const deviceTypes = computed(() => {
-  const types = new Set(devices.value.map(d => d.deviceType))
-  return Array.from(types)
-})
-
-const activeTypeLabel = computed(() => activeType.value || '类型')
-
-const filteredDevices = computed(() => {
-  let list = devices.value
-  if (activeType.value) {
-    list = list.filter(d => d.deviceType === activeType.value)
-  }
-  if (keyword.value.trim()) {
-    const kw = keyword.value.trim().toLowerCase()
-    list = list.filter(d =>
-      d.deviceName.toLowerCase().includes(kw) ||
-      d.deviceCode.toLowerCase().includes(kw)
-    )
-  }
-  return list
-})
-
-onMounted(() => {
-  loadDevices()
-})
-
-const loadDevices = () => {
-  devices.value = deviceApi.getAll()
-}
-
-const onRefresh = () => {
-  isRefreshing.value = true
-  loadDevices()
-  setTimeout(() => { isRefreshing.value = false }, 600)
-}
-
-const onSearch = (e: any) => {
-  keyword.value = e.detail.value || ''
-}
-
-const clearSearch = () => {
-  keyword.value = ''
-}
-
-const selectType = (type: string) => {
-  activeType.value = type
-  showTypeFilter.value = false
-}
-
-const goToDetail = (device: DeviceInfo) => {
-  uni.navigateTo({ url: `/pages/device-detail?id=${device.id}` })
-}
-
-const getTypeColor = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    'GNSS': '#3068e4',
-    '雨量计': '#1890ff',
-    '测斜仪': '#722ed1',
-    '裂缝计': '#fa8c16',
-    '水位计': '#13c2c2',
-    '视频设备': '#eb2f96',
-  }
-  return colorMap[type] || '#3068e4'
-}
-
-const getStatusClass = (status: string): string => {
-  switch (status) {
-    case '在线': return 'online'
-    case '离线': return 'offline'
-    case '维修': return 'fault'
-    default: return 'offline'
-  }
-}
-
-const formatTime = (time: string): string => {
-  if (!time) return '-'
-  return time.replace(/:\d{2}$/, '')
-}
-</script>
 
 <style lang="scss" scoped>
 .page-container {
@@ -492,15 +504,6 @@ const formatTime = (time: string): string => {
 .info-value {
   font-size: 24rpx;
   color: #4b5563;
-
-  &.hazard-name {
-    color: #3068e4;
-    font-weight: 500;
-    max-width: 280rpx;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 /* 空状态 */

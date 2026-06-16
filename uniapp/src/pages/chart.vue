@@ -71,8 +71,9 @@
               <view class="chart-container">
                 <EchartsComponent
                   v-if="group.option"
+                  :key="`${group.deviceId}-${chartVersion}`"
                   :onInit="(canvas, width, height) => initChart(canvas, width, height, group.deviceId)"
-                  :canvasId="`chart-${group.deviceId}`"
+                  :canvasId="`chart-${group.deviceId}-${chartVersion}`"
                   width="100%"
                   height="500rpx"
                 />
@@ -107,7 +108,27 @@
           <text class="picker-title">选择设备</text>
           <text class="picker-close" @click="showDevicePicker = false">×</text>
         </view>
+
+        <!-- 隐患点选择 -->
+        <view class="hazard-filter">
+          <text class="filter-label">隐患点：</text>
+          <picker
+            mode="selector"
+            :range="hazardNames"
+            :value="selectedHazardIndex"
+            @change="onHazardChange"
+          >
+            <view class="filter-picker">
+              <text class="filter-text">{{ hazardNames[selectedHazardIndex] || '请选择' }}</text>
+              <text class="filter-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+
         <scroll-view class="picker-list" scroll-y>
+          <view v-if="availableDevices.length === 0" class="picker-empty">
+            <text class="picker-empty-text">{{ selectedHazardId ? '该隐患点暂无设备' : '请先选择隐患点' }}</text>
+          </view>
           <view
             v-for="device in availableDevices"
             :key="device.id"
@@ -116,8 +137,8 @@
             @click="toggleDevice(device)"
           >
             <view class="picker-device-info">
-              <text class="picker-device-name">{{ device.deviceName }}</text>
-              <text class="picker-device-type">{{ device.deviceType }} · {{ device.hazardName }}</text>
+              <text class="picker-device-name">{{ device.name || device.deviceName }}</text>
+              <text class="picker-device-type">{{ device.deviceTypeName || device.deviceType || '-' }}</text>
             </view>
             <view class="picker-check" v-if="isSelected(device.id)">✓</view>
           </view>
@@ -133,7 +154,11 @@ import { useSafeArea } from '@/composables/useSafeArea'
 import * as echartsLib from '@/components/echarts.esm.min.js'
 import EchartsComponent from '@/components/echarts.vue'
 import { deviceApi } from '@/utils/device'
-import type { DeviceInfo } from '@/utils/device'
+import type { DeviceInfo, DeviceSensor } from '@/utils/device'
+import { hazardApi } from '@/utils/hazard'
+import type { Hazard } from '@/utils/hazard'
+import { monitorApi } from '@/utils/monitor'
+import type { ChartSeries } from '@/utils/monitor'
 
 const { statusBarHeight } = useSafeArea()
 
@@ -144,10 +169,12 @@ const timeTabs = [
 ]
 
 const loading = ref(false)
+const allHazards = ref<Hazard[]>([])
 const allDevices = ref<DeviceInfo[]>([])
 const selectedDevices = ref<DeviceInfo[]>([])
 const activeTimeTab = ref('24h')
 const showDevicePicker = ref(false)
+const selectedHazardIndex = ref(0)
 
 interface ChartGroup {
   deviceId: number
@@ -157,25 +184,72 @@ interface ChartGroup {
 }
 
 const chartGroups = ref<ChartGroup[]>([])
+// 递增版本号，强制 EchartsComponent 重新挂载以刷新图表
+const chartVersion = ref(0)
 
-const availableDevices = computed(() => allDevices.value)
+const hazardNames = computed(() => allHazards.value.map(h => h.name))
+
+const selectedHazardId = computed(() => {
+  const h = allHazards.value[selectedHazardIndex.value]
+  return h?.id || 0
+})
+
+const availableDevices = computed(() => {
+  if (!selectedHazardId.value) return []
+  return allDevices.value
+})
 
 const isSelected = (id: number) => selectedDevices.value.some(d => d.id === id)
 
-onMounted(() => {
-  allDevices.value = deviceApi.getAll()
-  // 检查URL参数，预选设备
+onMounted(async () => {
+  try {
+    allHazards.value = await hazardApi.getAll()
+  } catch (error) {
+    console.error('加载隐患点失败:', error)
+  }
+
   const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  const options = (currentPage as any).options || (currentPage as any).$page?.options
+  const currentPage = pages[pages.length - 1] as any
+  const options = currentPage?.options || currentPage?.$page?.options || {}
   if (options?.deviceId) {
-    const device = deviceApi.getById(Number(options.deviceId))
-    if (device) {
-      selectedDevices.value = [device]
-      loadAllCharts()
+    try {
+      const device = await deviceApi.getById(Number(options.deviceId))
+      if (device) {
+        selectedDevices.value = [device]
+        await loadAllCharts()
+      }
+    } catch (error) {
+      console.error('预加载设备失败:', error)
     }
   }
 })
+
+const onHazardChange = async (e: any) => {
+  selectedHazardIndex.value = e.detail.value
+  if (selectedHazardId.value) {
+    try {
+      const list = await hazardApi.getBoundDevices(selectedHazardId.value)
+      allDevices.value = list.map((d: any) => ({
+        // CORRECTION: use d.deviceId (actual device id), NOT d.id (association record id)
+        id: d.deviceId ?? d.id,
+        name: d.deviceName || d.name || '',
+        code: d.deviceCode || d.code || '',
+        deviceTypeName: d.deviceTypeName || d.deviceType || '',
+        status: d.onlineStatus === 1 ? '在线' : '离线',
+        onlineStatus: d.onlineStatus ?? 0,
+        lastReportTime: d.lastReportTime || '',
+        deviceName: d.deviceName || d.name || '',
+        deviceCode: d.deviceCode || d.code || '',
+        deviceType: d.deviceTypeName || d.deviceType || ''
+      })) as DeviceInfo[]
+    } catch (error) {
+      console.error('加载设备列表失败:', error)
+      allDevices.value = []
+    }
+  } else {
+    allDevices.value = []
+  }
+}
 
 const toggleDevice = (device: DeviceInfo) => {
   const idx = selectedDevices.value.findIndex(d => d.id === device.id)
@@ -197,8 +271,23 @@ const changeTimeTab = (value: string) => {
   loadAllCharts()
 }
 
+const getTimeRange = () => {
+  let hours = 24
+  switch (activeTimeTab.value) {
+    case '7d': hours = 168; break
+    case '30d': hours = 720; break
+  }
+  const endTime = new Date()
+  const startTime = new Date(endTime.getTime() - hours * 3600000)
+  const fmt = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  }
+  return { startTime: fmt(startTime), endTime: fmt(endTime) }
+}
+
 const loadAllCharts = async () => {
-  if (selectedDevices.value.length === 0) {
+  if (selectedDevices.value.length === 0 || !selectedHazardId.value) {
     chartGroups.value = []
     return
   }
@@ -206,168 +295,159 @@ const loadAllCharts = async () => {
   loading.value = true
   try {
     const groups: ChartGroup[] = []
+    const { startTime, endTime } = getTimeRange()
+    const hazardPointId = selectedHazardId.value
 
     for (const device of selectedDevices.value) {
-      let hours = 24
-      switch (activeTimeTab.value) {
-        case '7d': hours = 168; break
-        case '30d': hours = 720; break
+      let sensors: DeviceSensor[] = []
+      try {
+        sensors = await deviceApi.getSensors(device.id)
+      } catch (error) {
+        console.error(`获取设备 ${device.id} 传感器失败:`, error)
       }
 
-      const endTime = new Date().toISOString()
-      const startTime = new Date(Date.now() - hours * 3600000).toISOString()
-
-      const seriesList: any[] = []
-      const allCategories: Set<string> = new Set()
-      const attrDataMap: { attr: any; data: any[]; isRain: boolean }[] = []
-
-      for (const attr of device.attributes) {
-        const historyData = deviceApi.getHistoryData(device.id, startTime, endTime, attr.property)
-        if (historyData && historyData.length > 0) {
-          const isRain = attr.property.includes('rain')
-          attrDataMap.push({ attr, data: historyData, isRain })
-          historyData.forEach((item: any) => {
-            const date = new Date(item.time.replace(' ', 'T'))
-            const label = activeTimeTab.value === '24h'
-              ? `${date.getHours()}:00`
-              : `${date.getMonth() + 1}/${date.getDate()}`
-            allCategories.add(label)
-          })
-        }
-      }
-
-      if (attrDataMap.length === 0) {
-        groups.push({
-          deviceId: device.id,
-          deviceName: device.deviceName,
-          deviceType: device.deviceType,
-          option: null
-        })
-        continue
-      }
-
-      const categories = Array.from(allCategories)
-      const seriesColors = ['#3068e4', '#52c41a', '#fa8c16', '#722ed1', '#13c2c2', '#eb2f96']
-
-      for (let i = 0; i < attrDataMap.length; i++) {
-        const { attr, data, isRain } = attrDataMap[i]
-        const color = seriesColors[i % seriesColors.length]
-        const valueMap = new Map<string, number>()
-        data.forEach((item: any) => {
-          const date = new Date(item.time.replace(' ', 'T'))
-          const label = activeTimeTab.value === '24h'
-            ? `${date.getHours()}:00`
-            : `${date.getMonth() + 1}/${date.getDate()}`
-          valueMap.set(label, parseFloat(item.value) || 0)
-        })
-
-        const values = categories.map(c => valueMap.get(c) ?? null)
-
-        if (isRain) {
-          seriesList.push({
-            name: attr.displayName,
-            type: 'bar',
-            data: values,
-            yAxisIndex: attrDataMap.some((d, j) => j < i && !d.isRain) ? 1 : 0,
-            itemStyle: {
-              color: {
-                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                colorStops: [
-                  { offset: 0, color: color },
-                  { offset: 1, color: hexToRgba(color, 0.4) }
-                ]
-              },
-              borderRadius: [4, 4, 0, 0]
-            },
-            barWidth: '30%'
-          })
-        } else {
-          seriesList.push({
-            name: attr.displayName,
-            type: 'line',
-            data: values,
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 4,
-            showSymbol: categories.length <= 24,
-            lineStyle: { color, width: 2.5 },
-            itemStyle: { color: '#fff', borderColor: color, borderWidth: 2 },
-            areaStyle: {
-              color: {
-                type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                colorStops: [
-                  { offset: 0, color: hexToRgba(color, 0.2) },
-                  { offset: 1, color: hexToRgba(color, 0.02) }
-                ]
-              }
-            }
-          })
-        }
-      }
-
-      const hasBarAndLine = attrDataMap.some(d => d.isRain) && attrDataMap.some(d => !d.isRain)
-
-      const option = {
-        animation: true,
-        legend: {
-          data: attrDataMap.map(d => d.attr.displayName),
-          bottom: 0,
-          textStyle: { color: '#6b7280', fontSize: 10 },
-          itemWidth: 16,
-          itemHeight: 10
-        },
-        grid: { left: '5%', right: hasBarAndLine ? '8%' : '5%', bottom: '15%', top: '10%', containLabel: true },
-        xAxis: {
-          type: 'category',
-          data: categories,
-          boundaryGap: attrDataMap.some(d => d.isRain),
-          axisLabel: { color: '#9ca3af', fontSize: 9, margin: 8 },
-          axisLine: { lineStyle: { color: '#e5e7eb' } },
-          axisTick: { show: false },
-          splitLine: { show: false }
-        },
-        yAxis: hasBarAndLine ? [
-          {
-            type: 'value',
-            axisLabel: { color: '#9ca3af', fontSize: 9 },
-            axisLine: { show: false },
-            axisTick: { show: false },
-            splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
-          },
-          {
-            type: 'value',
-            axisLabel: { color: '#9ca3af', fontSize: 9 },
-            axisLine: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false }
+      const allSeries: ChartSeries[] = []
+      for (const sensor of sensors) {
+        for (const attr of sensor.attrs) {
+          try {
+            const seriesList = await monitorApi.getChart({
+              hazardPointId,
+              deviceId: device.id,
+              sensorId: sensor.id,
+              attrCode: attr.attrCode,
+              valueType: 'current',
+              startTime,
+              endTime
+            })
+            allSeries.push(...seriesList)
+          } catch (error) {
+            console.error(`获取图表数据失败 device=${device.id} attr=${attr.attrCode}:`, error)
           }
-        ] : {
-          type: 'value',
-          axisLabel: { color: '#9ca3af', fontSize: 9 },
-          axisLine: { show: false },
-          axisTick: { show: false },
-          splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
-        },
-        series: seriesList,
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          borderColor: 'rgba(0,0,0,0.8)',
-          textStyle: { color: '#fff', fontSize: 11 }
         }
       }
 
+      const option = buildOption(allSeries)
       groups.push({
         deviceId: device.id,
-        deviceName: device.deviceName,
-        deviceType: device.deviceType,
+        deviceName: device.name || device.deviceName,
+        deviceType: device.deviceTypeName || device.deviceType,
         option
       })
     }
 
     chartGroups.value = groups
+    chartVersion.value++
   } finally {
     loading.value = false
+  }
+}
+
+const buildOption = (series: ChartSeries[]): any => {
+  if (series.length === 0) return null
+
+  const allLabels = new Set<string>()
+  series.forEach(s => s.labels.forEach(l => allLabels.add(l)))
+  const categories = Array.from(allLabels)
+
+  const seriesColors = ['#3068e4', '#52c41a', '#fa8c16', '#722ed1', '#13c2c2', '#eb2f96']
+  const seriesList: any[] = series.map((s, i) => {
+    const color = seriesColors[i % seriesColors.length]
+    const valueMap = new Map<string, number>()
+    s.labels.forEach((l, idx) => valueMap.set(l, s.values[idx]))
+    const data = categories.map(c => valueMap.get(c) ?? null)
+    const isRain = /rain/i.test(s.seriesName || '') || /rain/i.test(s.attrName || '') || /雨量/.test(s.attrName || '')
+
+    if (isRain) {
+      return {
+        name: s.seriesName || s.attrName,
+        type: 'bar',
+        data,
+        yAxisIndex: 0,
+        itemStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color },
+              { offset: 1, color: hexToRgba(color, 0.4) }
+            ]
+          },
+          borderRadius: [4, 4, 0, 0]
+        },
+        barWidth: '30%'
+      }
+    }
+    return {
+      name: s.seriesName || s.attrName,
+      type: 'line',
+      data,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 4,
+      showSymbol: categories.length <= 24,
+      lineStyle: { color, width: 2.5 },
+      itemStyle: { color: '#fff', borderColor: color, borderWidth: 2 },
+      areaStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: hexToRgba(color, 0.2) },
+            { offset: 1, color: hexToRgba(color, 0.02) }
+          ]
+        }
+      }
+    }
+  })
+
+  const hasBarAndLine = seriesList.some((s: any) => s.type === 'bar') && seriesList.some((s: any) => s.type === 'line')
+
+  return {
+    animation: true,
+    legend: {
+      data: seriesList.map((s: any) => s.name),
+      bottom: 0,
+      textStyle: { color: '#6b7280', fontSize: 10 },
+      itemWidth: 16,
+      itemHeight: 10
+    },
+    grid: { left: '5%', right: hasBarAndLine ? '8%' : '5%', bottom: '15%', top: '10%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      boundaryGap: hasBarAndLine,
+      axisLabel: { color: '#9ca3af', fontSize: 9, margin: 8 },
+      axisLine: { lineStyle: { color: '#e5e7eb' } },
+      axisTick: { show: false },
+      splitLine: { show: false }
+    },
+    yAxis: hasBarAndLine ? [
+      {
+        type: 'value',
+        axisLabel: { color: '#9ca3af', fontSize: 9 },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
+      },
+      {
+        type: 'value',
+        axisLabel: { color: '#9ca3af', fontSize: 9 },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { show: false }
+      }
+    ] : {
+      type: 'value',
+      axisLabel: { color: '#9ca3af', fontSize: 9 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
+    },
+    series: seriesList,
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      borderColor: 'rgba(0,0,0,0.8)',
+      textStyle: { color: '#fff', fontSize: 11 }
+    }
   }
 }
 
@@ -706,5 +786,50 @@ const hexToRgba = (hex: string, alpha: number) => {
   font-size: 32rpx;
   color: #3068e4;
   font-weight: bold;
+}
+
+/* 隐患点筛选 */
+.hazard-filter {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 32rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  gap: 16rpx;
+}
+
+.filter-label {
+  font-size: 26rpx;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.filter-picker {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 20rpx;
+  background: #f7f8fc;
+  border-radius: 8rpx;
+}
+
+.filter-text {
+  font-size: 26rpx;
+  color: #1a1a2e;
+}
+
+.filter-arrow {
+  font-size: 18rpx;
+  color: #9ca3af;
+}
+
+.picker-empty {
+  padding: 80rpx 0;
+  text-align: center;
+}
+
+.picker-empty-text {
+  font-size: 26rpx;
+  color: #9ca3af;
 }
 </style>
