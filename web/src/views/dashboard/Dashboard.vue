@@ -981,8 +981,8 @@ const addDeviceMarkers = async (hazardId: number) => {
       deviceList.value.forEach(device => {
         const icon = L.icon({
           iconUrl: getDeviceMapIconPath(device),
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
+          iconSize: [28, 32],
+          iconAnchor: [14, 16]
         })
         const marker = L.marker([device.latitude, device.longitude], {icon})
             .addTo(hazardMarkerLayer!)

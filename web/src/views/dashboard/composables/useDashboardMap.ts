@@ -84,8 +84,8 @@ function createDeviceIcon(device: {
 }) {
     return L.icon({
         iconUrl: getDeviceMapIconPath(device),
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        iconSize: [28, 32],
+        iconAnchor: [14, 16]
     })
 }
 

@@ -171,8 +171,8 @@ function renderBoundary(map: L.Map) {
     allPoints.push([d.installLatitude, d.installLongitude])
     const icon = L.icon({
       iconUrl: getDeviceMapIconPath(d),
-      iconSize: [28, 28],
-      iconAnchor: [14, 14]
+      iconSize: [28, 32],
+      iconAnchor: [14, 16]
     })
     L.marker([d.installLatitude, d.installLongitude], {icon, zIndexOffset: 500})
         .addTo(lg)
