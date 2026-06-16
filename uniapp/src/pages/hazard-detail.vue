@@ -42,7 +42,7 @@ async function loadData() {
 }
 
 function goToDeviceDetail(item: any) {
-  uni.navigateTo({ url: `/pages/device-detail?id=${item.id}` })
+  uni.navigateTo({ url: `/pages/device-detail?id=${item.deviceId}` })
 }
 
 function goBack() {
@@ -101,25 +101,25 @@ function goBack() {
         <view class="device-list">
           <view
             v-for="device in devices"
-            :key="device.id"
+            :key="device.deviceId || device.id"
             class="device-item"
             @click="goToDeviceDetail(device)"
           >
             <view class="device-left">
               <view class="device-main">
-                <text class="device-name">{{ device.name || device.deviceName }}</text>
+                <text class="device-name">{{ device.deviceName }}</text>
                 <view class="device-type-tag">
-                  {{ device.deviceTypeName || device.deviceType || '-' }}
+                  {{ device.deviceCode || '-' }}
                 </view>
               </view>
-              <text class="device-time">最近上报：{{ device.lastReportTime || '-' }}</text>
+              <text class="device-time">绑定时间：{{ device.bindTime || '-' }}</text>
             </view>
             <view class="device-status">
               <view
                 class="status-dot"
-                :class="(device.onlineStatusName || device.status) === '在线' ? 'online' : (device.onlineStatusName || device.status) === '故障' ? 'fault' : 'offline'"
+                :class="device.onlineStatus === 1 ? 'online' : 'offline'"
               />
-              <text class="status-text">{{ device.onlineStatusName || device.status || '-' }}</text>
+              <text class="status-text">{{ device.onlineStatus === 1 ? '在线' : '离线' }}</text>
             </view>
           </view>
 
@@ -242,14 +242,6 @@ function goBack() {
     line-height: 1.5;
     font-weight: 400;
   }
-}
-
-.level-tag {
-  padding: 6rpx 20rpx;
-  border-radius: 8rpx;
-  font-size: 22rpx;
-  color: #ffffff;
-  font-weight: 500;
 }
 
 .status-badge {
