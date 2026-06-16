@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `alarm_record_trigger_detail` (
     `create_time`     datetime      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_trigger_aid` (`alarm_record_id`, `trigger_time`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT ='告警触发明细';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT ='告警触发明细';
 
 -- ---------- 2. 重命名 log → action_log ----------
 SET @t_exists := (SELECT COUNT(*) FROM information_schema.tables
@@ -29,6 +29,7 @@ SET @t_exists := (SELECT COUNT(*) FROM information_schema.tables
 SET @a_exists := (SELECT COUNT(*) FROM information_schema.tables
     WHERE table_schema = DATABASE() AND table_name = 'alarm_record_action_log');
 
+-- 仅当旧表存在且新表不存在时才 rename (避免覆盖已有 action_log)
 SET @sql := IF(@t_exists = 1 AND @a_exists = 0,
     'RENAME TABLE alarm_record_log TO alarm_record_action_log',
     'SELECT "alarm_record_log rename skipped" AS msg');
@@ -87,6 +88,7 @@ SET @sql := IF(@col = 0,
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ---------- 4. 数据迁移 (旧字段 → 新字段) ----------
+-- 仅当 action_type 全为 NULL 时执行 (即首次迁移)
 SET @pending := (SELECT COUNT(*) FROM alarm_record_action_log WHERE action_type IS NULL);
 
 -- 4.1 from_status → from_value
