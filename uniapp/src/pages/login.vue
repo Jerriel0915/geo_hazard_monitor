@@ -1,10 +1,109 @@
 <!-- src/pages/login.vue -->
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useSafeArea } from '@/composables/useSafeArea'
+import authApi from '@/utils/auth'
+
+const { statusBarHeight } = useSafeArea()
+
+const username = ref('')
+const password = ref('')
+const captchaCode = ref('')
+const captchaKey = ref('')
+const captchaImage = ref('')
+const loading = ref(false)
+const showPassword = ref(false)
+const systemTitle = ref('边坡监测预警系统')
+const copyright = ref('© 2025 交通边坡监测预警系统 版权所有')
+const versionName = ref('1.0.0')
+
+onMounted(async () => {
+  const accessToken = uni.getStorageSync('accessToken')
+  if (accessToken) {
+    uni.switchTab({ url: '/pages/index' })
+    return
+  }
+  await refreshCaptcha()
+})
+
+async function refreshCaptcha() {
+  try {
+    const data = await authApi.getCaptcha()
+    if (data.captchaEnabled) {
+      captchaKey.value = data.captchaKey
+      // 后端返回的是纯 base64 或带 data:image 前缀，统一处理
+      captchaImage.value = data.captchaImage.startsWith('data:')
+        ? data.captchaImage
+        : `data:image/png;base64,${data.captchaImage}`
+    }
+    else {
+      captchaImage.value = ''
+    }
+  }
+  catch (error) {
+    console.error('获取验证码失败:', error)
+  }
+}
+
+async function handleLogin() {
+  if (!username.value) {
+    uni.showToast({ title: '请输入账号', icon: 'none' })
+    return
+  }
+  if (!password.value) {
+    uni.showToast({ title: '请输入密码', icon: 'none' })
+    return
+  }
+  if (!captchaCode.value) {
+    uni.showToast({ title: '请输入验证码', icon: 'none' })
+    return
+  }
+
+  loading.value = true
+  try {
+    const loginResult = await authApi.login(
+      username.value,
+      password.value,
+      captchaCode.value,
+      captchaKey.value,
+    )
+
+    uni.setStorageSync('accessToken', loginResult.token)
+
+    const info = await authApi.getUserInfo()
+    const user = {
+      id: info.user.userId,
+      username: info.user.userName,
+      nickname: info.user.nickName,
+      phone: info.user.phonenumber,
+      avatar: info.user.avatar || '',
+    }
+    uni.setStorageSync('user', JSON.stringify(user))
+
+    uni.showToast({ title: '登录成功', icon: 'success' })
+
+    setTimeout(() => {
+      uni.switchTab({ url: '/pages/index' })
+    }, 800)
+  }
+  catch (error: any) {
+    console.error('登录失败:', error)
+    uni.showToast({ title: error.message || '登录失败', icon: 'none' })
+    captchaCode.value = ''
+    await refreshCaptcha()
+  }
+  finally {
+    loading.value = false
+  }
+}
+</script>
+
 <template>
   <view class="login-container">
     <view class="login-bg">
-      <view class="status-bar-placeholder" :style="{ height: `${statusBarHeight}px` }"></view>
-      <view class="bg-circle bg-circle-1"></view>
-      <view class="bg-circle bg-circle-2"></view>
+      <view class="status-bar-placeholder" :style="{ height: `${statusBarHeight}px` }" />
+      <view class="bg-circle bg-circle-1" />
+      <view class="bg-circle bg-circle-2" />
     </view>
 
     <view class="login-content" :style="{ paddingTop: `${statusBarHeight + 80}px` }">
@@ -19,12 +118,12 @@
             <zui-svg-icon icon="phone" width="36rpx" />
           </view>
           <input
-            v-model="phone"
-            type="number"
-            placeholder="请输入手机号"
+            v-model="username"
+            type="text"
+            placeholder="请输入账号"
             class="input"
-            maxlength="11"
-          />
+            maxlength="32"
+          >
         </view>
 
         <view class="form-item">
@@ -36,77 +135,49 @@
             :password="!showPassword"
             placeholder="请输入密码"
             class="input"
-          />
+          >
           <view class="input-suffix" @click="showPassword = !showPassword">
             <zui-svg-icon :icon="showPassword ? 'eye-off' : 'eye'" width="32rpx" />
           </view>
         </view>
 
-        <button class="login-btn" @click="handleLogin" :loading="loading">
+        <view class="form-item">
+          <view class="input-icon-wrap">
+            <zui-svg-icon icon="lock" width="36rpx" />
+          </view>
+          <input
+            v-model="captchaCode"
+            type="text"
+            placeholder="请输入验证码"
+            class="input"
+            maxlength="6"
+          >
+          <view class="captcha-image" @click="refreshCaptcha">
+            <image
+              v-if="captchaImage"
+              :src="captchaImage"
+              mode="scaleToFill"
+              class="captcha-img"
+            />
+            <text v-else class="captcha-loading">加载中</text>
+          </view>
+        </view>
+
+        <button class="login-btn" :loading="loading" @click="handleLogin">
           <text v-if="!loading">登 录</text>
         </button>
       </view>
     </view>
     <view class="footer">
-      <view class="version">v{{ versionName }}</view>
-      <view class="copyright" :style="{ paddingBottom: `${statusBarHeight + 20}px` }">{{ copyright }}</view>
+      <view class="version">
+        v{{ versionName }}
+      </view>
+      <view class="copyright" :style="{ paddingBottom: `${statusBarHeight + 20}px` }">
+        {{ copyright }}
+      </view>
     </view>
   </view>
 </template>
-
-<script setup lang="ts">
-import { useSafeArea } from '@/composables/useSafeArea'
-import authApi from '@/utils/auth'
-import { onMounted, ref } from 'vue'
-
-const { statusBarHeight } = useSafeArea()
-
-const phone = ref('')
-const password = ref('')
-const loading = ref(false)
-const showPassword = ref(false)
-const systemTitle = ref('边坡监测预警系统')
-const copyright = ref('© 2025 交通边坡监测预警系统 版权所有')
-const versionName = ref('1.0.0')
-
-onMounted(async () => {
-  const accessToken = uni.getStorageSync('accessToken')
-  if (accessToken) {
-    uni.switchTab({ url: '/pages/index' })
-  }
-})
-
-const handleLogin = async () => {
-  if (!phone.value) {
-    uni.showToast({ title: '请输入手机号', icon: 'none' })
-    return
-  }
-  if (!password.value) {
-    uni.showToast({ title: '请输入密码', icon: 'none' })
-    return
-  }
-
-  loading.value = true
-  try {
-    const data = await authApi.login(phone.value, password.value)
-
-    uni.setStorageSync('accessToken', data.accessToken)
-    uni.setStorageSync('refreshToken', data.refreshToken)
-    uni.setStorageSync('user', JSON.stringify(data.user))
-
-    uni.showToast({ title: '登录成功', icon: 'success' })
-
-    setTimeout(() => {
-      uni.switchTab({ url: '/pages/index' })
-    }, 1000)
-  } catch (error: any) {
-    console.error('登录失败:', error)
-    uni.showToast({ title: error.message || '登录失败', icon: 'none' })
-  } finally {
-    loading.value = false
-  }
-}
-</script>
 
 <style lang="scss" scoped>
 .login-container {
@@ -217,6 +288,28 @@ const handleLogin = async () => {
 .input-suffix {
   padding: 16rpx;
   font-size: 32rpx;
+}
+
+.captcha-image {
+  width: 160rpx;
+  height: 60rpx;
+  margin-left: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.captcha-img {
+  width: 160rpx;
+  height: 60rpx;
+}
+
+.captcha-loading {
+  font-size: 22rpx;
+  color: #9ca3af;
 }
 
 .login-btn {
