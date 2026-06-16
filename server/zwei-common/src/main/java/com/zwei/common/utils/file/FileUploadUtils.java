@@ -163,7 +163,7 @@ public class FileUploadUtils
         String extension = getExtension(file);
         return StringUtils.format("algo-lib/{}/{}.{}",
                 DateUtils.datePath(),
-                java.util.UUID.randomUUID().toString().replace("-", ""),
+                IdUtils.fastSimpleUUID(),
                 extension);
     }
 

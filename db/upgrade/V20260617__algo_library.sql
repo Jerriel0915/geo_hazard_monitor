@@ -6,8 +6,7 @@
 -- ----------------------------
 -- 1. 算法信息表
 -- ----------------------------
-DROP TABLE IF EXISTS `algo_info`;
-CREATE TABLE `algo_info` (
+CREATE TABLE IF NOT EXISTS `algo_info` (
     `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `code`        varchar(64)  NOT NULL COMMENT '算法编码（全局唯一，用于程序引用）',
     `name`        varchar(128) NOT NULL COMMENT '算法名称',
@@ -22,13 +21,12 @@ CREATE TABLE `algo_info` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_code` (`code`, `del_flag`),
     KEY `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='算法信息表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='算法信息表';
 
 -- ----------------------------
 -- 2. 算法版本表
 -- ----------------------------
-DROP TABLE IF EXISTS `algo_version`;
-CREATE TABLE `algo_version` (
+CREATE TABLE IF NOT EXISTS `algo_version` (
     `id`             bigint       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `algo_id`        bigint       NOT NULL COMMENT '算法ID（关联 algo_info.id）',
     `version_no`     varchar(64)  NOT NULL COMMENT '版本号（用户输入，同一算法下唯一）',
@@ -45,4 +43,4 @@ CREATE TABLE `algo_version` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_algo_version` (`algo_id`, `version_no`, `del_flag`),
     KEY `idx_algo_id` (`algo_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='算法版本表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='算法版本表';
