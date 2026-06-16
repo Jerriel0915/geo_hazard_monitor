@@ -532,8 +532,8 @@ async function uploadAttachments(files: File[]): Promise<string | undefined> {
       const res = await request.post('/common/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      const data = (res as any).data ?? res
-      if (data.fileName) fileNames.push(data.fileName)
+      const resData = (res as any).data
+      if (resData?.fileName) fileNames.push(resData.fileName)
     } catch (e) {
       console.error('附件上传失败:', e)
     }
@@ -543,8 +543,11 @@ async function uploadAttachments(files: File[]): Promise<string | undefined> {
 
 // 添加反馈提交处理
 const handleFeedbackSubmit = async (data: { content: string; files: File[] }) => {
-  // 上传附件
+  const hasFiles = data.files && data.files.length > 0
   const attachments = await uploadAttachments(data.files || [])
+  if (hasFiles && !attachments) {
+    ElMessage.warning('附件上传失败，已提交纯文本反馈')
+  }
 
   // 添加反馈历史记录
   feedbackList.value.unshift({
@@ -560,7 +563,9 @@ const handleFeedbackSubmit = async (data: { content: string; files: File[] }) =>
     remarks: data.content,
   })
 
-  ElMessage.success('反馈提交成功')
+  if (!hasFiles || attachments) {
+    ElMessage.success('反馈提交成功')
+  }
 }
 
 // 添加通知提交处理
