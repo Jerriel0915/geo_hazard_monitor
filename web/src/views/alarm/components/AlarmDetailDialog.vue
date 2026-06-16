@@ -403,10 +403,12 @@ watch(() => props.modelValue, async (val) => {
     triggerDetails.value = (t as any).data ?? t ?? []
     const rawLogs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
     // 在 action_log 头部插入"当前状态"元素，作为时间线的当前节点（无时间/描述，仅动作类型）
+    // 已销警(3)/误报(4) → ENDED 灰色"结束"；待处理(1)/处理中(2) → CURRENT 蓝色"当前"
+    const isEnded = [3, 4].includes(Number(props.data?.status))
     const currentLog = {
       id: 0,
       alarmRecordId: id,
-      actionType: 'CURRENT',
+      actionType: isEnded ? 'ENDED' : 'CURRENT',
       createTime: '',
       description: '',
       remarks: '',
@@ -427,22 +429,22 @@ watch(() => props.modelValue, async (val) => {
   }
 })
 
-// 由动作日志构造时间线（按时间倒序；CURRENT 当前状态节点始终置顶）
+// 由动作日志构造时间线（按时间倒序；CURRENT/ENDED 当前状态节点始终置顶）
 function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
   return [...logs].sort((a, b) => {
-    // CURRENT 元素始终排在最前
-    if (a.actionType === 'CURRENT') return -1
-    if (b.actionType === 'CURRENT') return 1
+    // CURRENT(当前) / ENDED(结束) 元素始终排在最前
+    if (a.actionType === 'CURRENT' || a.actionType === 'ENDED') return -1
+    if (b.actionType === 'CURRENT' || b.actionType === 'ENDED') return 1
     return (b.createTime || '').localeCompare(a.createTime || '')
   }).map(log => {
     const typeMap: Record<string, string> = {
-      CURRENT: 'current',
+      CURRENT: 'current', ENDED: 'ended',
       CREATE: 'trigger', RE_TRIGGER: 'trigger', LEVEL_CHANGE: 'trigger',
       NOTIFY: 'notify',
       FEEDBACK: 'dispose', DISPOSE_CLOSE: 'dispose', DISPOSE_FALSE_ALARM: 'dispose',
     }
     const labelMap: Record<string, string> = {
-      CURRENT: '当前',
+      CURRENT: '当前', ENDED: '结束',
       CREATE: '告警创建', RE_TRIGGER: '告警再次触发',
       LEVEL_CHANGE: `等级变化 ${log.fromValue || ''}→${log.toValue || ''}`,
       FEEDBACK: '处置反馈', DISPOSE_CLOSE: '告警销警',
@@ -812,6 +814,10 @@ const handleClose = () => { emit('update:modelValue', false) }
   background: #409eff;
   box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.18);
   animation: timeline-pulse 1.8s ease-in-out infinite;
+}
+/* 历史警情终态节点：灰色（无动画，表达已结束） */
+.timeline-dot.ended {
+  background: #909399;
 }
 @keyframes timeline-pulse {
   0%, 100% { box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.18); }
