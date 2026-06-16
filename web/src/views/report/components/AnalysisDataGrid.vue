@@ -120,7 +120,7 @@ const gridDialogDevices = ref<DeviceOption[]>([])
 
 const gridFilteredDevices = computed(() => {
   return gridDialogDevices.value.filter(
-      (d) => !gridConfigForm.hazardPointId || d.hazardPointId === gridConfigForm.hazardPointId
+      (d) => !gridConfigForm.hazardPointId || d.boundHazardPointId === gridConfigForm.hazardPointId
   )
 })
 
@@ -172,7 +172,7 @@ const confirmGridConfig = async () => {
     index: idx,
     sensorSeriesId: `${device.id}_${gridConfigForm.attrCode}_${Date.now()}`,
     title: `${device.name}-${attr.name}`,
-    hazardPointId: device.hazardPointId,
+    hazardPointId: device.boundHazardPointId,
     deviceId: device.id,
     attrCode: gridConfigForm.attrCode,
     attrName: attr.name,
