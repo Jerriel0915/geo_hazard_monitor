@@ -16,16 +16,19 @@ const isRefreshing = ref(false)
 const devices = ref<DeviceInfo[]>([])
 
 const deviceTypes = computed(() => {
-  const types = new Set(devices.value.map(d => d.deviceType))
+  const types = new Set<string>()
+  devices.value.forEach((d) => {
+    d.monitorTypes?.forEach(t => types.add(t))
+  })
   return [...types]
 })
 
-const activeTypeLabel = computed(() => activeType.value || '类型')
+const activeTypeLabel = computed(() => activeType.value || '监测类型')
 
 const filteredDevices = computed(() => {
   let list = devices.value
   if (activeType.value) {
-    list = list.filter(d => d.deviceType === activeType.value)
+    list = list.filter(d => d.monitorTypes?.includes(activeType.value))
   }
   if (keyword.value.trim()) {
     const kw = keyword.value.trim().toLowerCase()
@@ -189,8 +192,8 @@ function formatTime(time: string): string {
               <text class="device-code">{{ item.deviceCode }}</text>
             </view>
             <view class="card-right">
-              <view class="type-tag" :style="{ background: getTypeColor(item.deviceType) }">
-                <text class="type-tag-text">{{ item.deviceType }}</text>
+              <view class="type-tag" :style="{ background: getTypeColor(item.monitorTypes?.[0] || '') }">
+                <text class="type-tag-text">{{ item.monitorTypes?.[0] || '未分类' }}</text>
               </view>
               <view class="status-badge" :class="getStatusClass(item.status)">
                 <view class="status-dot" :class="getStatusClass(item.status)" />

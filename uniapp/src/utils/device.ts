@@ -10,6 +10,8 @@ export interface DeviceInfo {
   onlineStatus: number
   lastReportTime: string
   createTime?: string
+  /** 监测类型列表（从传感器提取，如 GNSS/雨量计/测斜仪） */
+  monitorTypes?: string[]
   // 兼容字段（保留供现有 .vue 使用）
   deviceName: string
   deviceCode: string
@@ -75,17 +77,46 @@ function mapDevice(item: DeviceRawItem): DeviceInfo {
 
 export const deviceApi = {
   async getAll(): Promise<DeviceInfo[]> {
+    let rawList: any[]
     try {
       // 优先尝试不分页接口
       const res = await http.get('/devices')
-      const list = (res as any)?.rows || (res as any[]) || []
-      return list.map(mapDevice)
+      rawList = (res as any)?.rows || (res as any[]) || []
     }
     catch (error) {
       console.error('获取设备列表失败，回退分页:', error)
       const res = await http.get('/devices/page', { pageNum: 1, pageSize: 200 })
-      const list = (res as any)?.rows || []
-      return list.map(mapDevice)
+      rawList = (res as any)?.rows || []
+    }
+    const devices = rawList.map(mapDevice)
+    // 并发获取每台设备的传感器，提取监测类型
+    await Promise.all(devices.map(async (d) => {
+      try {
+        const sensors = await this.getSensors(d.id)
+        const types = new Set<string>()
+        sensors.forEach((s) => {
+          if (s.monitorTypeName)
+            types.add(s.monitorTypeName)
+        })
+        d.monitorTypes = [...types]
+      }
+      catch {
+        d.monitorTypes = []
+      }
+    }))
+    return devices
+  },
+
+  /** 获取所有监测类型（用于筛选项） */
+  async getMonitorTypes(): Promise<{ id: number, name: string, code: string }[]> {
+    try {
+      const res = await http.get('/monitor-types')
+      const list = (res as any)?.rows || (res as any[]) || []
+      return list
+    }
+    catch (error) {
+      console.error('获取监测类型失败:', error)
+      return []
     }
   },
 
