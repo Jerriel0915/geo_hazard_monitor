@@ -23,58 +23,62 @@
         <result property="updateBy" column="update_by"/>
         <result property="updateTime" column="update_time"/>
         <result property="delFlag" column="del_flag"/>
+        <result property="hazardPointIds" column="hazard_point_ids"/>
     </resultMap>
 
     <sql id="selectVideoDeviceVo">
-        SELECT id,
-               code,
-               name,
-               icon,
-               icon_path,
-               protocol_code,
-               protocol_name,
-               stream_url,
-               status,
-               last_online_time,
-               install_time,
-               longitude,
-               latitude,
-               create_by,
-               create_time,
-               update_by,
-               update_time,
-               del_flag
-        FROM video_device
+        SELECT vd.id,
+               vd.code,
+               vd.name,
+               vd.icon,
+               vd.icon_path,
+               vd.protocol_code,
+               vd.protocol_name,
+               vd.stream_url,
+               vd.status,
+               vd.last_online_time,
+               vd.install_time,
+               vd.longitude,
+               vd.latitude,
+               vd.create_by,
+               vd.create_time,
+               vd.update_by,
+               vd.update_time,
+               vd.del_flag,
+               (SELECT GROUP_CONCAT(DISTINCT vdhp.hazard_point_id ORDER BY vdhp.hazard_point_id)
+                FROM video_device_hazard_point vdhp
+                WHERE vdhp.video_device_id = vd.id) AS hazard_point_ids
+        FROM video_device vd
     </sql>
 
     <select id="selectVideoDeviceList" parameterType="com.zwei.iot.video.domain.VideoDevice"
             resultMap="VideoDeviceResult">
         <include refid="selectVideoDeviceVo"/>
-        WHERE del_flag = 0
+        WHERE vd.del_flag = 0
         <if test="code != null and code != ''">
-            AND code LIKE CONCAT('%', #{code}, '%')
+            AND vd.code LIKE CONCAT('%', #{code}, '%')
         </if>
         <if test="name != null and name != ''">
-            AND name LIKE CONCAT('%', #{name}, '%')
+            AND vd.name LIKE CONCAT('%', #{name}, '%')
         </if>
         <if test="protocolCode != null and protocolCode != ''">
-            AND protocol_code = #{protocolCode}
+            AND vd.protocol_code = #{protocolCode}
         </if>
         <if test="status != null">
-            AND status = #{status}
+            AND vd.status = #{status}
         </if>
-        ORDER BY create_time DESC
+        ORDER BY vd.create_time DESC
     </select>
 
     <select id="selectVideoDeviceAll" resultMap="VideoDeviceResult">
         <include refid="selectVideoDeviceVo"/>
-        WHERE del_flag = 0
-        ORDER BY create_time DESC
+        WHERE vd.del_flag = 0
+        ORDER BY vd.create_time DESC
     </select>
 
     <select id="selectVideoDeviceById" parameterType="Long" resultMap="VideoDeviceResult">
         <include refid="selectVideoDeviceVo"/>
-        WHERE id = #{id} AND del_flag = 0
+        WHERE vd.id = #{id} AND vd.del_flag = 0
     </select>
 
     <insert id="insertVideoDevice" parameterType="com.zwei.iot.video.domain.VideoDevice" useGeneratedKeys="true"

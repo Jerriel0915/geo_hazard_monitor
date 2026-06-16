@@ -114,11 +114,12 @@
 
 <script setup lang="ts">
 import {getBoundDevices, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
+import {getDeviceMapIconPath} from '@/utils/deviceIcon'
 import {getDashboardFull} from '@/api/monitor'
 import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
 import {type AlarmRecordItem, getRealtimeAlarmPage} from '@/api/realtimeAlarm'
 import {getFocusArea} from '@/api/system'
-import {ArrowLeft, ArrowRight, Close, Drizzling, Monitor, Odometer, Sunny} from '@element-plus/icons-vue'
+import {ArrowLeft, ArrowRight, Close} from '@element-plus/icons-vue'
 import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -135,19 +136,6 @@ import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import ResourceWidget from './components/ResourceWidget.vue'
 import {LAYER_OPTIONS as layerOptions} from './composables/useDashboardMap'
 import {buildTiandituUrl} from '@/composables/useLeafletMap'
-
-const getDeviceTypeIcon = (type: string) => {
-  switch (type) {
-    case 'GNSS':
-      return Monitor
-    case 'RAIN':
-      return Sunny
-    case 'PRESSURE':
-      return Drizzling
-    default:
-      return Odometer
-  }
-}
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -278,6 +266,7 @@ let hazardBoundaryLayer: L.LayerGroup | null = null
 let focusAreaLayer: L.GeoJSON | null = null
 let hazardMarkerMap: Map<number, L.Marker> = new Map()
 let ripples: Map<number, L.Circle[]> = new Map()
+const rippleTimers = new Set<ReturnType<typeof setTimeout>>()
 
 const alarmColors: Record<string, string> = {
   critical: '#f5222d',
@@ -575,7 +564,8 @@ const startRipple = (point: typeof hazardPoints.value[0]) => {
   for (let i = 0; i < rippleCount; i++) {
     const delay = i * rippleDelay
 
-    setTimeout(() => {
+    const t1 = setTimeout(() => {
+      rippleTimers.delete(t1)
       const ripple = L.circle(center, {
         radius: 10,
         fillColor: color,
@@ -592,35 +582,33 @@ const startRipple = (point: typeof hazardPoints.value[0]) => {
         rippleElement.style.setProperty('transition', 'all 2s ease-out')
       }
 
-      setTimeout(() => {
+      const t2 = setTimeout(() => {
+        rippleTimers.delete(t2)
         ripple.setRadius(60)
-        ripple.setStyle({
-          opacity: 0,
-          fillOpacity: 0
-        })
+        ripple.setStyle({ opacity: 0, fillOpacity: 0 })
       }, 50)
+      rippleTimers.add(t2)
 
-      setTimeout(() => {
+      const t3 = setTimeout(() => {
+        rippleTimers.delete(t3)
         if (mapInstance && ripple) {
           mapInstance.removeLayer(ripple)
           const idx = circles.indexOf(ripple)
           if (idx > -1) circles.splice(idx, 1)
         }
       }, 2500)
+      rippleTimers.add(t3)
     }, delay)
+    rippleTimers.add(t1)
   }
 
   ripples.set(point.id, circles)
 
-  const repeatRipple = () => {
-    if (!ripples.has(point.id)) return
-
-    setTimeout(() => {
-      startRipple(point)
-    }, rippleCount * rippleDelay)
-  }
-
-  repeatRipple()
+  const t4 = setTimeout(() => {
+    rippleTimers.delete(t4)
+    startRipple(point)
+  }, rippleCount * rippleDelay)
+  rippleTimers.add(t4)
 }
 
 // ========== 隐患点详情部件 - 软选择逻辑 ==========
@@ -699,14 +687,21 @@ const showHazardOnMap = async (point: typeof hazardPoints.value[0]) => {
         name: item.deviceName || '未知设备',
         type: (item.sensors?.[0]?.name || 'DEVICE').toUpperCase(),
         typeName: item.sensors?.[0]?.name || '设备',
-        status: item.deviceStatus === 0 ? 'online' : item.deviceStatus === 1 ? 'warning' : 'offline',
+        icon: item.icon,
+        iconPath: item.iconPath,
+        status: item.deviceStatus ?? null,
+        onlineStatus: item.onlineStatus ?? 0,
         sensorCount: item.sensors?.length || 0,
         longitude: item.installLongitude ?? point.longitude,
         latitude: item.installLatitude ?? point.latitude
       }))
 
       devices.forEach(device => {
-        const icon = createDeviceIcon(device.status)
+        const icon = L.icon({
+          iconUrl: getDeviceMapIconPath(device),
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        })
         L.marker([device.latitude, device.longitude], {icon})
             .addTo(hazardMarkerLayer!)
             .bindPopup(`<div class="hpv2-card">
@@ -1028,15 +1023,22 @@ const addDeviceMarkers = async (hazardId: number) => {
         name: item.deviceName || '未知设备',
         type: (item.sensors?.[0]?.name || 'DEVICE').toUpperCase(),
         typeName: item.sensors?.[0]?.name || '设备',
-        status: item.deviceStatus === 0 ? 'online' : item.deviceStatus === 1 ? 'warning' : 'offline',
+        icon: item.icon,
+        iconPath: item.iconPath,
+        status: item.deviceStatus ?? null,
+        onlineStatus: item.onlineStatus ?? 0,
         sensorCount: item.sensors?.length || 0,
         longitude: item.installLongitude || currentHazardPoint.value!.longitude,
         latitude: item.installLatitude || currentHazardPoint.value!.latitude
       }))
-      
+
       // 添加设备标记
       deviceList.value.forEach(device => {
-        const icon = createDeviceIcon(device.status)
+        const icon = L.icon({
+          iconUrl: getDeviceMapIconPath(device),
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        })
         const marker = L.marker([device.latitude, device.longitude], {icon})
             .addTo(hazardMarkerLayer!)
             .bindPopup(`<div class="hpv2-card">
@@ -1063,30 +1065,10 @@ const addDeviceMarkers = async (hazardId: number) => {
   }
 }
 
-const createDeviceIcon = (status: string) => {
-  const color = status === 'online' ? '#52c41a' : status === 'warning' ? '#faad14' : '#f5222d'
-  return L.divIcon({
-    className: 'device-marker',
-    html: `<div style="
-      width: 24px;
-      height: 24px;
-      background: ${color};
-      border: 2px solid white;
-      border-radius: 50%;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 12px;
-    ">📡</div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  })
-}
-
-const getStatusText = (status: string) => {
-  return status === 'online' ? '在线' : status === 'warning' ? '预警' : '离线'
+const getStatusText = (status?: number | null) => {
+  if (status === 2) return '维修'
+  if (status === 3) return '停用'
+  return '正常'
 }
 
 const selectDevice = (device: typeof deviceList.value[0]) => {
@@ -1115,14 +1097,6 @@ const selectSensor = (sensor: any) => {
     showSensorChart.value = true
     sensorChartData.value = generateSensorData()
   }
-}
-
-const getChartPoints = () => {
-  return sensorChartData.value.map((point, index) => {
-    const x = 40 + index * 40
-    const y = 100 - point * 1.8
-    return `${x},${y}`
-  }).join(' ')
 }
 
 // 打开设备数据面板
@@ -1410,6 +1384,9 @@ onUnmounted(() => {
     labelLayer.remove()
     labelLayer = null
   }
+  rippleTimers.forEach(t => clearTimeout(t))
+  rippleTimers.clear()
+  ripples.clear()
 })
 </script>
 

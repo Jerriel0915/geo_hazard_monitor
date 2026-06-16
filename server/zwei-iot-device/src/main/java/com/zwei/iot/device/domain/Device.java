@@ -153,6 +153,16 @@ public class Device extends BaseEntity {
      */
     private Object sensors;
 
+    /**
+     * 关联的隐患点ID（业务规则：1设备≤1隐患点，Service层富化）
+     */
+    private Long boundHazardPointId;
+
+    /**
+     * 关联的隐患点名称（Service层富化）
+     */
+    private String boundHazardPointName;
+
     @Override
     public String toString() {
         return "Device{" +

@@ -5,6 +5,7 @@ import {
     copyDevice as copyDeviceApi,
     createDevice as createDeviceApi,
     deleteDevice as deleteDeviceApi,
+    exportDevices,
     type DeviceItem,
     type DevicePageParams,
     getDeviceDetail,
@@ -184,6 +185,7 @@ export function useDeviceCrud() {
             longitude: null,
             latitude: null,
             status: 1,
+            boundHazardPointId: null,
             sensorList: []
         })
         dialogVisible.value = true
@@ -243,7 +245,8 @@ export function useDeviceCrud() {
                 iconPath: formData.iconPath,
                 longitude: formData.longitude,
                 latitude: formData.latitude,
-                status: formData.status
+                status: formData.status,
+                boundHazardPointId: formData.boundHazardPointId ?? undefined,
             })
             ElMessage.success('新增成功');
             dialogVisible.value = false;
@@ -271,7 +274,8 @@ export function useDeviceCrud() {
                 iconPath: formData.iconPath,
                 longitude: formData.longitude,
                 latitude: formData.latitude,
-                status: formData.status
+                status: formData.status,
+                boundHazardPointId: formData.boundHazardPointId ?? undefined,
             })
             ElMessage.success('修改成功');
             dialogVisible.value = false;
@@ -315,24 +319,63 @@ export function useDeviceCrud() {
             })
     }
 
-    const handleCopy = (row: DeviceItem) => {
-        ElMessageBox.confirm(`确定要复制设备"${row.name}"吗?`, '复制确认', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'info'
-        })
-            .then(async () => {
-                await copyDeviceApi(Number(row.id));
-                ElMessage.success('复制成功');
-                await loadTableData()
-            })
-            .catch(() => {
-            })
+    // ── Copy dialog ──
+    const copyDialogVisible = ref(false)
+    const copyFormRef = ref()
+    const copySubmitLoading = ref(false)
+    const copySourceRow = ref<DeviceItem | null>(null)
+    const copyFormData = reactive({code: '', name: ''})
+    const copyFormRules = {
+        code: [{required: true, message: '请输入设备编号', trigger: 'blur'}],
+        name: [{required: true, message: '请输入设备名称', trigger: 'blur'}],
     }
 
-    const handleExport = () => {
-        ElMessage.info('正在导出...');
-        setTimeout(() => ElMessage.success('导出成功'), 1000)
+    const handleCopyOpen = (row: DeviceItem) => {
+        copySourceRow.value = row
+        // 默认值：原编号/名称 + 后缀
+        copyFormData.code = (row.code || '') + '_copy'
+        copyFormData.name = (row.name || '') + '_副本'
+        copyDialogVisible.value = true
+    }
+
+    const handleCopyConfirm = () => {
+        copyFormRef.value?.validate(async (valid: boolean) => {
+            if (!valid) return
+            copySubmitLoading.value = true
+            try {
+                await copyDeviceApi(Number(copySourceRow.value!.id), {
+                    code: copyFormData.code,
+                    name: copyFormData.name,
+                })
+                ElMessage.success('复制成功')
+                copyDialogVisible.value = false
+                await loadTableData()
+            } catch (error: any) {
+                showRequestErrorMessage(error, '复制设备失败')
+            } finally {
+                copySubmitLoading.value = false
+            }
+        })
+    }
+
+    const handleExport = async () => {
+        try {
+            const response = await exportDevices()
+            const disposition = String(response.headers['content-disposition'] || '')
+            const fileName = disposition
+                ? decodeURIComponent(disposition.split("filename*=UTF-8''")[1] || disposition.split('filename=')[1]?.replace(/"/g, '') || '设备数据.xlsx')
+                : '设备数据.xlsx'
+            const blob = response.data instanceof Blob ? response.data : new Blob([response.data])
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = fileName
+            a.click()
+            URL.revokeObjectURL(url)
+            ElMessage.success('导出成功')
+        } catch (error: any) {
+            showRequestErrorMessage(error, '导出失败')
+        }
     }
 
     const handleMoreCommand = (command: string, row: DeviceItem) => {
@@ -348,7 +391,8 @@ export function useDeviceCrud() {
         getStatusType, getStatusLabel, copyPwd, formatCoord, nowString,
         loadTableData, fetchDetail,
         handleSearch, handleReset, handleRefresh, handleSizeChange, handlePageChange,
-        handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopy, handleExport,
+        handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopyOpen, handleCopyConfirm, handleExport,
         handleMoreCommand, createDevice,
+        copyDialogVisible, copyFormRef, copyFormData, copyFormRules, copySubmitLoading,
     }
 }

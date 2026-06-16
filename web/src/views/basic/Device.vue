@@ -537,6 +537,28 @@
         :title="mapViewOnly ? '查看安装位置' : '在地图上选择安装位置'"
         @confirm="onMapConfirm"
     />
+
+    <!-- 复制设备弹窗 -->
+    <el-dialog
+        v-model="copyDialogVisible"
+        title="复制设备"
+        width="480px"
+        :close-on-click-modal="false"
+        destroy-on-close
+    >
+      <el-form ref="copyFormRef" :model="copyFormData" :rules="copyFormRules" label-width="80px">
+        <el-form-item label="设备编号" prop="code">
+          <el-input v-model="copyFormData.code" placeholder="请输入新设备编号" />
+        </el-form-item>
+        <el-form-item label="设备名称" prop="name">
+          <el-input v-model="copyFormData.name" placeholder="请输入新设备名称" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="copyDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleCopyConfirm" :loading="copySubmitLoading">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -574,7 +596,8 @@ const {
   getStatusType, nowString,
   loadTableData,
   handleSearch, handleReset, handleSizeChange, handlePageChange,
-  handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopy, handleExport,
+  handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopyOpen, handleCopyConfirm, handleExport,
+  copyDialogVisible, copyFormRef, copyFormData, copyFormRules, copySubmitLoading,
 } = useDeviceCrud()
 
 const deviceIconList = getIconList()
@@ -701,10 +724,8 @@ const loadHazardPointList = async () => {
   }
 }
 
-// 地图选点弹窗的初始叠加 HP:编辑时取 formData.boundHazardPointId
-const mapInitialHpId = computed(() => {
-  return formData.boundHazardPointId != null ? String(formData.boundHazardPointId) : ''
-})
+// 地图选点弹窗的初始叠加 HP：由 openMapPicker / openViewMap 在打开前显式设置
+const mapInitialHpId = ref('')
 const pickerLng = ref<number | null>(null)
 const pickerLat = ref<number | null>(null)
 
@@ -753,6 +774,7 @@ const openMapPicker = () => {
   onLocationBlur()
   mapViewOnly.value = false
   viewPoint.value = null
+  mapInitialHpId.value = formData.boundHazardPointId != null ? String(formData.boundHazardPointId) : ''
   mapDialogVisible.value = true
 }
 
@@ -761,6 +783,7 @@ const openViewMap = (row: DeviceItem) => {
   viewPoint.value = row.longitude != null && row.latitude != null
       ? {lng: row.longitude, lat: row.latitude}
     : null
+  mapInitialHpId.value = row.boundHazardPointId != null ? String(row.boundHazardPointId) : ''
   mapDialogVisible.value = true
 }
 
@@ -866,7 +889,7 @@ const handleMoreCommand = (command: string, row: DeviceItem) => {
     account: () => handleViewAuth(row),
     maintenance: () => handleMaintenance(row),
     sensors: () => handleConfigSensors(row),
-    copy: () => handleCopy(row),
+    copy: () => handleCopyOpen(row),
     delete: () => handleDelete(row),
   }
   map[command]?.()

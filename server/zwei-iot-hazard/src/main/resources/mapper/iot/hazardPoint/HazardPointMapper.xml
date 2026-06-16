@@ -118,7 +118,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <delete id="deleteHazardPointById" parameterType="Long">
         UPDATE hazard_point
         SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
-            del_flag = '2',
+            del_flag = 1,
             update_time = NOW()
         WHERE id = #{id}
           AND del_flag = '0'
@@ -127,7 +127,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <delete id="deleteHazardPointByIds" parameterType="Long">
         UPDATE hazard_point
         SET code = CONCAT(LEFT(code, 75), '#DEL#', id),
-            del_flag = '2',
+            del_flag = 1,
             update_time = NOW()
         WHERE del_flag = '0'
           AND id IN

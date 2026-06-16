@@ -52,14 +52,6 @@ export function updateHazardPoint(id: string, data: HazardPointPayload) {
   return request.put(`/hazard-points/${id}`, data)
 }
 
-export function deleteHazardPoint(id: string) {
-  return request.delete(`/hazard-points/${id}`)
-}
-
-export function deleteHazardPoints(ids: number[]) {
-  return request.delete('/hazard-points/batch', { data: { ids } })
-}
-
 export function pauseHazardPoint(id: string, pause: boolean) {
   return request.put(`/hazard-points/${id}/pause`, { pause })
 }

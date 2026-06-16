@@ -25,6 +25,16 @@ public interface IDeviceHazardRelationService {
      */
     HazardPointRef getHazardPointByDeviceId(Long deviceId);
 
+    /**
+     * 绑定设备到隐患点（用于设备编辑页直接修改关联隐患点）。
+     * @param deviceId 设备ID
+     * @param hazardPointId 隐患点ID
+     * @param installLongitude 安装经度（可使用设备经度）
+     * @param installLatitude 安装纬度（可使用设备纬度）
+     * @param operator 操作人
+     */
+    void bindDevice(Long deviceId, Long hazardPointId, Double installLongitude, Double installLatitude, String operator);
+
     int countAllHazardPoints();
     List<Map<String, Object>> countHazardPointsByStatus();
     List<Map<String, Object>> countHazardPointsByMonth(int months);

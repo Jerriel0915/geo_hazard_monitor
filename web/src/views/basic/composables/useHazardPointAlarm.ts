@@ -213,6 +213,8 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
             name: '',
             deviceId: '',
             deviceName: '',
+            monitorTypeId: '',
+            monitorTypeName: '',
             monitorContentCode: '',
             monitorContentName: '',
             blueExpression: '',

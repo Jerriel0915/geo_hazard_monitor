@@ -58,4 +58,13 @@
             #{videoDeviceId}
         </foreach>
     </delete>
+
+    <select id="selectHazardPointIdsByVideoDeviceIds" resultType="long">
+        SELECT DISTINCT hazard_point_id
+        FROM video_device_hazard_point
+        WHERE video_device_id IN
+        <foreach collection="videoDeviceIds" item="videoDeviceId" open="(" separator="," close=")">
+            #{videoDeviceId}
+        </foreach>
+    </select>
 </mapper>

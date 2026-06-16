@@ -33,4 +33,6 @@ public class DeviceUpdateRequest {
 
     @NotNull(message = "设备状态不能为空")
     private Integer status;
+
+    private Long boundHazardPointId;
 }

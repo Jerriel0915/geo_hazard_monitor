@@ -314,10 +314,10 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     })
   }
 
-  function vertexHtml(num: number, selected: boolean, editable: boolean): string {
-    const ring = selected ? 'box-shadow:0 0 0 4px #ef4444aa;' :
-                  editable ? 'box-shadow:0 0 0 3px #f59e0b80;' : ''
-    return `<div style="background:#67C23A;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;${ring}">${num}</div>`
+  function vertexHtml(selected: boolean, editable: boolean): string {
+    const ring = selected ? 'box-shadow:0 0 0 3px #ef4444aa;' :
+                  editable ? 'box-shadow:0 0 0 2px #f59e0b80;' : ''
+    return `<div style="background:#67C23A;width:10px;height:10px;border-radius:50%;border:1.5px solid #fff;${ring}"></div>`
   }
 
   function render() {
@@ -353,9 +353,9 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
         position: p,
         existing: vertexMarkers.value[i],
         isDragging: i === draggingVertexIndex.value,
-        iconHtml: vertexHtml(i + 1, isSelected, mode.value === 'edit'),
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        iconHtml: vertexHtml(isSelected, mode.value === 'edit'),
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
         iconClass: 'vertex-marker',
         onDragStart: () => {
           draggingVertexIndex.value = i
@@ -462,9 +462,9 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
           isDragging: !!(draggingAuxKey.value &&
             draggingAuxKey.value.line === lineIdx &&
               draggingAuxKey.value.point === ptIdx),
-          iconHtml: `<div style="background:#fa8c16;color:#fff;width:16px;height:16px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:2px solid #fff;${isLineSelected ? 'box-shadow:0 0 0 4px #ef4444aa;' : 'box-shadow:0 0 0 3px #f59e0b80;'}"></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          iconHtml: `<div style="background:#fa8c16;width:8px;height:8px;border-radius:2px;border:1.5px solid #fff;${isLineSelected ? 'box-shadow:0 0 0 3px #ef4444aa;' : 'box-shadow:0 0 0 2px #f59e0b80;'}"></div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
           iconClass: 'aux-point-marker',
           onDragStart: () => {
             draggingAuxKey.value = {line: lineIdx, point: ptIdx}
@@ -491,8 +491,8 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
         centerMarker.value = L.marker([center.value.lat, center.value.lng], {
           icon: L.divIcon({
             className: '',
-            html: '<div style="background:#1890ff;color:#fff;padding:4px 8px;border-radius:50%;font-size:12px;width:30px;height:30px;display:flex;align-items:center;justify-content:center">★</div>',
-            iconSize: [30, 30], iconAnchor: [15, 15]
+            html: '<div style="background:#1890ff;color:#fff;width:14px;height:14px;border-radius:50%;border:1.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px">★</div>',
+            iconSize: [18, 18], iconAnchor: [9, 9]
           }),
           draggable: true
         }).addTo(map)
@@ -572,19 +572,12 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     }))
 
     if (t === 'strike' && strikeLine.value) {
-      // 1 point placed: dashed line from start to cursor
+      // 1 point placed: dashed line from start to cursor.
+      // 起点本身已由 strikeEndpointMarkers 渲染为红点, 无需额外叠加徽章;
+      // 用户可以通过拖动该红点调整起点位置。
       const start = strikeLine.value[0]
       layers.push(L.polyline([[start.lat, start.lng], [ml.lat, ml.lng]], {
         color: '#f56c6c', weight: 2, dashArray: '3 3', opacity: 0.6
-      }))
-      // Pulse marker at start with "起点 ✓" label
-      layers.push(L.marker([start.lat, start.lng], {
-        icon: L.divIcon({
-          className: 'strike-start-pulse',
-          html: '<div style="position:relative"><div style="position:absolute;inset:-10px;background:#f56c6c33;border-radius:50%;animation:ghost-pulse 1.4s infinite"></div><div style="background:#f56c6c;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.5)"></div></div><div style="position:absolute;top:50%;left:130%;transform:translate(0,-50%);background:#1f2937;color:#fbbf24;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;white-space:nowrap;border:1px solid #f59e0b">起点 ✓</div>',
-          iconSize: [80, 20],
-          iconAnchor: [9, 10]
-        })
       }))
     } else if (t === 'aux' && auxiliaryLines.value.length > 0) {
       // Dashed polyline through all placed vertices → cursor

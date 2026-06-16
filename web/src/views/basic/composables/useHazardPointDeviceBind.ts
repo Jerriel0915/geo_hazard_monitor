@@ -1,4 +1,4 @@
-import {computed, ref, type Ref} from 'vue'
+import {computed, ref, watch, type Ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {
     bindDevicesToHazardPoint,
@@ -23,6 +23,18 @@ export interface BoundDevice {
     onlineStatus?: number
     icon?: string
     iconPath?: string
+    /**
+     * 设备在隐患点内的安装坐标 (用于地图上叠加 marker)
+     * - 由 getBoundDevices API 返回的 installLongitude / installLatitude 填充
+     * - 缺失时地图回退到隐患点中心点
+     */
+    installLongitude?: number | null
+    installLatitude?: number | null
+    /**
+     * 设备业务状态数值 (用于 deviceIcon.getDeviceIconColor 推导颜色档位)
+     * - 1=正常, 2=维修, 3=停用
+     */
+    status?: number | null
     sensors: { id: string; name: string; iconPath: string }[]
 }
 
@@ -174,6 +186,9 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                     onlineStatus: item.onlineStatus ?? 0,
                     icon: item.icon || 'device',
                     iconPath: item.iconPath,
+                    installLongitude: item.installLongitude ?? null,
+                    installLatitude: item.installLatitude ?? null,
+                    status: item.deviceStatus ?? null,
                     sensors: item.sensors || [],
                 }))
             } else {
@@ -344,6 +359,10 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         const s = opts.currentRow.value?.status
         return s === 'COMPLETED' || s === 'PAUSED'
     })
+
+    // 搜索过滤：监听输入文本触发 el-tree 过滤
+    watch(leftSearchText, (v) => leftTreeRef.value?.filter(v))
+    watch(rightSearchText, (v) => rightTreeRef.value?.filter(v))
 
     return {
         // state

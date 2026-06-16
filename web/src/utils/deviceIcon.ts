@@ -9,7 +9,8 @@
  *   <li><b>repair</b> — 停用（status=3）</li>
  * </ul>
  *
- * <p>命名规则：{@code /jc-icon/{color}/{baseName}_{color}.png}</p>
+ * <p>命名规则：{@code /jc-icon/{color}/{baseName}_{color}.png}
+ * （地图专用版附加 {@code _map} 段：{@code /jc-icon/{color}/{baseName}_{color}_map.png}）</p>
  */
 
 import {MonitorContentIconEnum} from '@/constants/monitorIcons'
@@ -64,6 +65,15 @@ function resolveIconBaseName(input: {
  */
 function correctVideoBaseName(baseName: string): string {
     if (baseName === 'vidio' || baseName === 'vidio_green') return 'vidio1'
+    return baseName
+}
+
+/**
+ * _map 目录下视频设备只有一张通用图标 vidio_green_map.png，
+ * 把 vidio1~vidio10 都收敛到 vidio。
+ */
+function correctVideoBaseNameForMap(baseName: string): string {
+    if (baseName === 'vidio' || baseName === 'vidio_green' || /^vidio\d+$/.test(baseName)) return 'vidio'
     return baseName
 }
 
@@ -140,4 +150,27 @@ export function getSensorIconPath(sensor: {
         }
     }
     return ''
+}
+
+/**
+ * 地图专用图标：返回 _map 后缀的 jc-icon 路径。
+ * <p>与 {@link getDeviceIconPath} 行为一致, 但文件名附加 _map 段, 适配 Leaflet 标记尺寸。
+ * 视频设备收敛到 vidio（_map 目录下只有一张通用图）。</p>
+ *
+ * @param device 设备对象 (至少包含 icon/iconPath/status/onlineStatus 之一)
+ * @returns 完整 _map 图标 URL；非 jc-icon 路径原样返回
+ */
+export function getDeviceMapIconPath(device: {
+    icon?: string | null
+    iconPath?: string | null
+    status?: number | null
+    onlineStatus?: number | null
+}): string {
+    const rawPath = device.iconPath || ''
+    // 外部 URL（非 jc-icon 路径）直接返回, 由调用方自行处理
+    if (rawPath && !rawPath.startsWith('/jc-icon/')) return rawPath
+    const color = getDeviceIconColor(device.status, device.onlineStatus)
+    const baseName = resolveIconBaseName(device)
+    const corrected = correctVideoBaseNameForMap(baseName)
+    return `/jc-icon/${color}/${corrected}_${color}_map.png`
 }

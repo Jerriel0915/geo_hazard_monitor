@@ -162,31 +162,6 @@ public class HazardPointController extends BaseController
     }
 
     /**
-     * 删除隐患点
-     */
-    @PreAuthorize("@ss.hasPermi('iot:hazard-point:remove')")
-    @Log(title = "隐患点管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{id:\\d+}")
-    public AjaxResult remove(@PathVariable Long id)
-    {
-        int rows = hazardPointService.deleteHazardPointById(id);
-        return rows > 0 ? AjaxResult.success("删除成功") : AjaxResult.error("隐患点不存在或已删除");
-    }
-
-    /**
-     * 批量删除隐患点
-     */
-    @PreAuthorize("@ss.hasPermi('iot:hazard-point:remove')")
-    @Log(title = "隐患点管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/batch")
-    public AjaxResult removeBatch(@Validated @RequestBody BatchIdsRequest request)
-    {
-        Long[] ids = request.getIds().toArray(Long[]::new);
-        int rows = hazardPointService.deleteHazardPointByIds(ids);
-        return rows > 0 ? AjaxResult.success("批量删除成功") : AjaxResult.error("批量删除失败");
-    }
-
-    /**
      * 停测/恢复隐患点
      */
     @PreAuthorize("@ss.hasPermi('iot:hazard-point:edit')")

@@ -50,6 +50,7 @@ export interface DeviceCreatePayload {
   longitude?: number | null
   latitude?: number | null
   status: number
+  boundHazardPointId?: number | null
 }
 
 export interface DeviceUpdatePayload {
@@ -64,6 +65,7 @@ export interface DeviceUpdatePayload {
   longitude?: number | null
   latitude?: number | null
   status: number
+  boundHazardPointId?: number | null
 }
 
 export interface DeviceAuthAccount {
@@ -114,8 +116,16 @@ export const updateDevice = (id: number, payload: DeviceUpdatePayload) =>
 export const deleteDevice = (id: number) =>
   unwrap<null>(request.delete(`/devices/${id}`))
 
-export const copyDevice = (id: number) =>
-  unwrap<number>(request.post(`/devices/${id}/copy`, {}))
+export interface DeviceCopyPayload {
+  code: string
+  name: string
+}
+
+export const copyDevice = (id: number, payload: DeviceCopyPayload) =>
+  unwrap<number>(request.post(`/devices/${id}/copy`, payload))
+
+export const exportDevices = (params?: Record<string, any>) =>
+  request.raw.post('/devices/export', params || {}, { responseType: 'blob' })
 
 export const getDeviceAuthAccount = (id: number) =>
   unwrap<DeviceAuthAccount>(request.get(`/devices/${id}/auth-account`))

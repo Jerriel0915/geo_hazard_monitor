@@ -5,6 +5,7 @@ import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.ip.IpUtils;
+import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceOnlineEventLog;
 import com.zwei.iot.device.domain.DeviceSensor;
@@ -13,11 +14,13 @@ import com.zwei.iot.device.domain.dto.*;
 import com.zwei.iot.device.mapper.DeviceOnlineEventLogMapper;
 import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.device.service.IDeviceStatusLogService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +63,42 @@ public class DeviceController extends BaseController {
         startPage();
         List<Device> list = deviceService.selectDevicePage(device, 0, 0);
         return pageResult(list);
+    }
+
+    /**
+     * 导出设备列表
+     */
+    @PreAuthorize("@ss.hasPermi('basic:device:list')")
+    @Log(title = "设备管理", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response, Device device) {
+        List<Device> list = deviceService.selectDevicePage(device, 0, 0);
+        List<DeviceExportVO> exportList = new ArrayList<>(list.size());
+        for (Device item : list) {
+            DeviceExportVO vo = new DeviceExportVO();
+            vo.setCode(item.getCode());
+            vo.setName(item.getName());
+            vo.setSn(item.getSn());
+            vo.setDeviceTypeName(item.getDeviceType() == null ? null
+                    : item.getDeviceType() == 0 ? "单参数" : item.getDeviceType() == 1 ? "多参数" : "本地组网");
+            vo.setNetworkTypeName(item.getNetworkType() == null ? null
+                    : item.getNetworkType() == 0 ? "蜂窝" : "NB-Iot");
+            vo.setProtocolType(item.getProtocolType());
+            vo.setVendorName(item.getVendorName());
+            vo.setLongitude(item.getLongitude());
+            vo.setLatitude(item.getLatitude());
+            vo.setStatusName(item.getStatusName());
+            vo.setOnlineStatusName(item.getOnlineStatus() != null && item.getOnlineStatus() == 1 ? "在线" : "离线");
+            vo.setSensorCount(item.getSensorCount());
+            vo.setLastReportTime(item.getLastReportTime());
+            vo.setCreateBy(item.getCreateBy());
+            vo.setCreateTime(item.getCreateTime());
+            vo.setUpdateBy(item.getUpdateBy());
+            vo.setUpdateTime(item.getUpdateTime());
+            exportList.add(vo);
+        }
+        ExcelUtil<DeviceExportVO> util = new ExcelUtil<>(DeviceExportVO.class);
+        util.exportExcel(response, exportList, "设备数据");
     }
 
     /**
@@ -142,13 +181,15 @@ public class DeviceController extends BaseController {
      * 复制设备
      *
      * @param id 设备ID
+     * @param request 复制请求（含新编号、名称）
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('basic:device:add')")
     @Log(title = "设备", businessType = BusinessType.INSERT)
     @PostMapping("/{id}/copy")
-    public AjaxResult copy(@PathVariable Long id) {
-        Long newId = deviceService.copyDevice(id);
+    public AjaxResult copy(@PathVariable Long id,
+                           @Validated @RequestBody DeviceCopyRequest request) {
+        Long newId = deviceService.copyDevice(id, request);
         if (newId == null) {
             return error("复制失败，设备不存在");
         }

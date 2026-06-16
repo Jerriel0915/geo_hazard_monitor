@@ -68,7 +68,9 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     }
 
     @Override
+    @Transactional
     public int delete(Long id) {
+        bindingMapper.deleteByStrategyId(id);
         return strategyMapper.deleteStrategyById(id);
     }
 

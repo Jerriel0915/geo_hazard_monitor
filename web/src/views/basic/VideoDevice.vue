@@ -634,11 +634,28 @@ const handleDelete = (row: VideoDeviceItem) => {
   }).catch(() => {})
 }
 
-const handleExport = () => {
-  ElMessage.info('正在导出...')
-  setTimeout(() => {
+const handleExport = async () => {
+  try {
+    const token = getToken()
+    const response = await axios.post('/api/v1/video-devices/export', {}, {
+      responseType: 'blob',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const disposition = String(response.headers['content-disposition'] || '')
+    const fileName = disposition
+        ? decodeURIComponent(disposition.split("filename*=UTF-8''")[1] || disposition.split('filename=')[1]?.replace(/"/g, '') || '视频设备数据.xlsx')
+        : '视频设备数据.xlsx'
+    const blob = response.data instanceof Blob ? response.data : new Blob([response.data])
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
-  }, 1000)
+  } catch (error: any) {
+    ElMessage.error('导出失败: ' + (error?.message || '未知错误'))
+  }
 }
 
 // ==================== 提交(设备保存 + 隐患点绑定 一体化) ====================

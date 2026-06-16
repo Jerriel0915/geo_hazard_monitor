@@ -2,6 +2,7 @@ package com.zwei.iot.device.service;
 
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
+import com.zwei.iot.device.domain.dto.DeviceCopyRequest;
 import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
 import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 
@@ -93,9 +94,10 @@ public interface IDeviceService {
      * 复制设备
      *
      * @param id 设备ID
+     * @param request 复制请求（含新设备编号、名称）
      * @return 新设备ID
      */
-    Long copyDevice(Long id);
+    Long copyDevice(Long id, DeviceCopyRequest request);
 
     /**
      * 校验设备编码是否唯一

@@ -2,12 +2,14 @@ package com.zwei.iot.hazardpoint.service.impl;
 
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceHazardRelationService.HazardPointRef;
+import com.zwei.iot.hazardpoint.domain.DeviceHazardPoint;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,19 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
             }
         }
         return null;
+    }
+
+    @Override
+    public void bindDevice(Long deviceId, Long hazardPointId, Double installLongitude, Double installLatitude, String operator) {
+        DeviceHazardPoint bind = DeviceHazardPoint.builder()
+                .deviceId(deviceId)
+                .hazardPointId(hazardPointId)
+                .installLongitude(installLongitude != null ? BigDecimal.valueOf(installLongitude) : null)
+                .installLatitude(installLatitude != null ? BigDecimal.valueOf(installLatitude) : null)
+                .createBy(operator)
+                .build();
+        deviceHazardPointMapper.insertOrUpdate(Collections.singletonList(bind));
+        hazardPointMapper.refreshDeviceCountById(hazardPointId);
     }
 
     @Override public int countAllHazardPoints() { return hazardPointMapper.countAll(); }

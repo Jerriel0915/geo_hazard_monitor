@@ -58,6 +58,9 @@ public class DataParseStrategyService {
 
     @Transactional(rollbackFor = Exception.class)
     public Long create(DataParseStrategyDTO dto) {
+        if (strategyMapper.checkNameUnique(dto.getName(), null) != null) {
+            throw new ServiceException("创建失败，策略名称已存在");
+        }
         String err = GroovyScriptValidator.validate(dto.getScriptCode());
         if (err != null) {
             throw new ServiceException(err);
@@ -74,6 +77,9 @@ public class DataParseStrategyService {
         DataParseStrategy existing = strategyMapper.selectById(dto.getId());
         if (existing == null) {
             throw new ServiceException("策略不存在: id=" + dto.getId());
+        }
+        if (strategyMapper.checkNameUnique(dto.getName(), dto.getId()) != null) {
+            throw new ServiceException("修改失败，策略名称已存在");
         }
         String err = GroovyScriptValidator.validate(dto.getScriptCode());
         if (err != null) {

@@ -84,3 +84,8 @@ export function updateVideoDevice(id: string, data: Partial<VideoDeviceFormData>
 export function deleteVideoDevice(id: string): Promise<AjaxResult<null>> {
     return request.delete(`/video-devices/${id}`)
 }
+
+/** 导出视频设备 */
+export function exportVideoDevices() {
+    return request.raw.post('/video-devices/export', {}, { responseType: 'blob' })
+}

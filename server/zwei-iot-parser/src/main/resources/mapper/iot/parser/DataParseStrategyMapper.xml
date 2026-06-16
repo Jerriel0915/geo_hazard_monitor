@@ -14,11 +14,11 @@
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT * FROM iot_data_parse_strategy WHERE id = #{id} AND deleted = 0
+        SELECT * FROM iot_data_parse_strategy WHERE id = #{id} AND del_flag = 0
     </select>
 
     <select id="selectByCondition" resultMap="BaseResultMap">
-        SELECT * FROM iot_data_parse_strategy WHERE deleted = 0
+        SELECT * FROM iot_data_parse_strategy WHERE del_flag = 0
         <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
         <if test="sourceType != null and sourceType != ''">AND source_type = #{sourceType}</if>
         <if test="status != null">AND status = #{status}</if>
@@ -27,12 +27,12 @@
     </select>
 
     <select id="selectBySourceType" resultMap="BaseResultMap">
-        SELECT * FROM iot_data_parse_strategy WHERE source_type = #{sourceType} AND status = 1 AND deleted = 0
+        SELECT * FROM iot_data_parse_strategy WHERE source_type = #{sourceType} AND status = 1 AND del_flag = 0
         ORDER BY is_preset DESC, create_time ASC
     </select>
 
     <select id="selectEnabled" resultMap="BaseResultMap">
-        SELECT * FROM iot_data_parse_strategy WHERE status = 1 AND deleted = 0
+        SELECT * FROM iot_data_parse_strategy WHERE status = 1 AND del_flag = 0
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
@@ -48,10 +48,16 @@
     </update>
 
     <update id="deleteById">
-        UPDATE iot_data_parse_strategy SET deleted = 1 WHERE id = #{id}
+        UPDATE iot_data_parse_strategy SET del_flag = 1 WHERE id = #{id}
     </update>
 
     <update id="updateLastRunTime">
         UPDATE iot_data_parse_strategy SET last_run_time = NOW() WHERE id = #{id}
     </update>
+
+    <select id="checkNameUnique" resultMap="BaseResultMap">
+        SELECT * FROM iot_data_parse_strategy WHERE name = #{name} AND del_flag = 0
+        <if test="id != null">AND id != #{id}</if>
+        LIMIT 1
+    </select>
 </mapper>

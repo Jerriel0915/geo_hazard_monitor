@@ -50,10 +50,13 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue'
+import {computed, ref, shallowRef, watch} from 'vue'
+import L from 'leaflet'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useMapEditor} from '@/composables/useMapEditor'
 import type {BoundaryCoords, LatLng} from '@/lib/boundaryCoords'
+import {getDeviceMapIconPath} from '@/utils/deviceIcon'
+import type {BoundDevice} from '@/views/basic/composables/useHazardPointDeviceBind'
 import MapCoordInput from './MapCoordInput.vue'
 
 const props = withDefaults(defineProps<{
@@ -63,10 +66,17 @@ const props = withDefaults(defineProps<{
   defaultCenter?: LatLng
   defaultZoom?: number
   height?: string | number
+  /**
+   * 已绑定设备列表 — 在地图上叠加只读 marker, 用于空间关系参考
+   * - 缺失坐标的设备会被自动过滤
+   * - 颜色档位由 getDeviceMapIconPath 根据设备 status/onlineStatus 推导
+   */
+  boundDevices?: BoundDevice[]
 }>(), {
   readonly: false,
   defaultZoom: 14,
-  height: 500
+  height: 500,
+  boundDevices: () => []
 })
 
 const emit = defineEmits<{
@@ -91,6 +101,49 @@ const editor = useMapEditor({
   defaultCenter: props.defaultCenter,
   defaultZoom: props.defaultZoom,
   readonly: props.readonly
+})
+
+// ── 设备只读图层 ──
+// 渲染已绑定设备的安装坐标 marker, 与边界编辑互不干扰
+const deviceLayer = shallowRef<L.LayerGroup | null>(null)
+
+function renderDeviceLayer(devices: BoundDevice[]) {
+  const map = editor.mapRef.value
+  if (!map) return
+  if (!deviceLayer.value) {
+    deviceLayer.value = L.layerGroup().addTo(map)
+  }
+  deviceLayer.value.clearLayers()
+  devices.forEach(d => {
+    if (d.installLongitude == null || d.installLatitude == null) return
+    const icon = L.icon({
+      iconUrl: getDeviceMapIconPath(d),
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    })
+    const marker = L.marker([d.installLatitude, d.installLongitude], {icon, interactive: true})
+    marker.bindPopup(
+        `<div style="font-size:12px;line-height:1.6"><b>${d.deviceName}</b><br>编号: ${d.deviceCode}<br>坐标: ${d.installLongitude!.toFixed(6)}, ${d.installLatitude!.toFixed(6)}</div>`
+    )
+    deviceLayer.value!.addLayer(marker)
+  })
+}
+
+// 设备列表或地图就绪时增量重渲
+watch(
+    [() => props.boundDevices, editor.isReady],
+    ([devices, ready]) => {
+      if (!ready) return
+      renderDeviceLayer(devices ?? [])
+    },
+    {immediate: true, deep: true}
+)
+
+// 取消/重置时同步清理设备图层 (避免脏数据)
+watch(() => props.initialValue, () => {
+  if (props.boundDevices.length > 0) {
+    renderDeviceLayer(props.boundDevices)
+  }
 })
 
 // 重新打开 dialog 时, 父组件会传新的 initialValue, 这里重新同步到内部 state
@@ -122,8 +175,10 @@ const hintText = computed(() => {
   if (props.readonly) return ''
   if (editor.tool.value === 'polygon') return '点击地图添加顶点 · 双击或回车闭合 · Esc 取消'
   if (editor.tool.value === 'strike') {
-    // After 1st click, strikeLine exists (degenerate or not) — prompt for endpoint
-    return '点击设置走向终点 (起点已固定)'
+    // 第 1 次点击前: 让用户放置起点; 第 1 次点击后: 引导设置终点,
+    // 同时明确告诉用户起点是可拖动调整的, 避免"起点已固定"的心理压力。
+    if (!editor.strikeLine.value) return '点击地图设置走向起点'
+    return '点击设置走向终点 · 可拖动起点调整 · Esc 取消'
   }
   if (editor.tool.value === 'aux') {
     const last = editor.auxiliaryLines.value[editor.auxiliaryLines.value.length - 1]
@@ -204,10 +259,4 @@ defineExpose({ invalidate: editor.invalidate })
 .editor-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .editor-hint { font-size: 12px; color: #909399; height: 20px; line-height: 20px; }
 .editor-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid #ebeef5; }
-
-/* P3: pulse animation for strike start marker during DRAW */
-@keyframes ghost-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50%      { transform: scale(1.4); opacity: 0.2; }
-}
 </style>

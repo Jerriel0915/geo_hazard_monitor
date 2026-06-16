@@ -5,6 +5,7 @@ import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceAuthLog;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
+import com.zwei.iot.device.domain.dto.DeviceCopyRequest;
 import com.zwei.iot.device.domain.dto.DeviceCreateRequest;
 import com.zwei.iot.device.domain.dto.DeviceUpdateRequest;
 import com.zwei.iot.device.mapper.DeviceMapper;
@@ -12,6 +13,7 @@ import com.zwei.iot.device.mapper.DeviceSensorMapper;
 import com.zwei.iot.device.mapper.ProductMapper;
 import com.zwei.iot.device.mapper.SensorAttributeMapper;
 import com.zwei.iot.device.service.*;
+import com.zwei.iot.device.service.IDeviceHazardRelationService.HazardPointRef;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -24,6 +26,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 设备全生命周期管理服务。
@@ -88,7 +92,9 @@ public class DeviceServiceImpl implements IDeviceService {
      */
     @Override
     public List<Device> selectDevicePage(Device device, int pageNum, int pageSize) {
-        return deviceMapper.selectDeviceList(device);
+        List<Device> devices = deviceMapper.selectDeviceList(device);
+        enrichHazardPoint(devices);
+        return devices;
     }
 
     /**
@@ -96,7 +102,9 @@ public class DeviceServiceImpl implements IDeviceService {
      */
     @Override
     public List<Device> selectDeviceAll() {
-        return deviceMapper.selectDeviceAll();
+        List<Device> devices = deviceMapper.selectDeviceAll();
+        enrichHazardPoint(devices);
+        return devices;
     }
 
     /**
@@ -107,6 +115,7 @@ public class DeviceServiceImpl implements IDeviceService {
         Device device = deviceMapper.selectDeviceById(id);
         if (device != null) {
             device.setSensors(loadDeviceSensors(id));
+            enrichHazardPoint(device);
         }
         return device;
     }
@@ -139,6 +148,12 @@ public class DeviceServiceImpl implements IDeviceService {
         }
         validateSnUnique(device.getSn(), null);
         insertDevice(device);
+
+        if (request.getBoundHazardPointId() != null) {
+            hazardRelationService.bindDevice(device.getId(), request.getBoundHazardPointId(),
+                    request.getLongitude(), request.getLatitude(), operator);
+        }
+
         return deviceMapper.selectDeviceById(device.getId());
     }
 
@@ -163,6 +178,19 @@ public class DeviceServiceImpl implements IDeviceService {
 
         validateSnUnique(device.getSn(), id);
         deviceMapper.updateDevice(device);
+
+        // 处理隐患点绑定变更
+        HazardPointRef oldBinding = hazardRelationService.getHazardPointByDeviceId(id);
+        Long newHpId = request.getBoundHazardPointId();
+        if (!Objects.equals(oldBinding != null ? oldBinding.id() : null, newHpId)) {
+            if (oldBinding != null) {
+                hazardRelationService.deleteBindingsByDeviceIds(List.of(id));
+                hazardRelationService.refreshDeviceCount(oldBinding.id());
+            }
+            if (newHpId != null) {
+                hazardRelationService.bindDevice(id, newHpId, request.getLongitude(), request.getLatitude(), operator);
+            }
+        }
 
         Device latest = deviceMapper.selectDeviceById(id);
         if (latest != null) {
@@ -226,11 +254,19 @@ public class DeviceServiceImpl implements IDeviceService {
      */
     @Override
     @Transactional
-    public Long copyDevice(Long id) {
+    public Long copyDevice(Long id, DeviceCopyRequest request) {
         Device original = requireDevice(id);
+
+        // 校验新编号唯一性
+        Device codeCheck = new Device();
+        codeCheck.setCode(request.getCode());
+        if (!checkDeviceCodeUnique(codeCheck)) {
+            throw new ServiceException("复制失败，设备编号已存在");
+        }
+
         Device copy = Device.builder()
-                .code(original.getCode() + "_copy")
-                .name(original.getName() + "_副本")
+                .code(request.getCode())
+                .name(request.getName())
                 .sn(null)
                 .deviceType(original.getDeviceType())
                 .networkType(original.getNetworkType())
@@ -242,6 +278,8 @@ public class DeviceServiceImpl implements IDeviceService {
                 .authStatus(AUTH_STATUS_ENABLED)
                 .icon(original.getIcon())
                 .iconPath(original.getIconPath())
+                .longitude(original.getLongitude())
+                .latitude(original.getLatitude())
                 .status(original.getStatus())
                 .registeredAt(nowString())
                 .createBy(original.getCreateBy())
@@ -249,12 +287,14 @@ public class DeviceServiceImpl implements IDeviceService {
 
         deviceMapper.insertDevice(copy);
 
+        // 复制传感器（含属性）
         List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(id);
         for (DeviceSensor originalSensor : sensors) {
+            String newSensorCode = resolveCopySensorCode(originalSensor.getSensorCode());
             DeviceSensor newSensor = DeviceSensor.builder()
                     .deviceId(copy.getId())
                     .deviceCode(copy.getCode())
-                    .sensorCode(originalSensor.getSensorCode() + "_copy")
+                    .sensorCode(newSensorCode)
                     .sensorName(originalSensor.getSensorName())
                     .monitorTypeId(originalSensor.getMonitorTypeId())
                     .monitorTypeCode(originalSensor.getMonitorTypeCode())
@@ -274,7 +314,16 @@ public class DeviceServiceImpl implements IDeviceService {
                 attributeMapper.batchInsertAttribute(attrs);
             }
         }
+
         productTslService.regenerate(copy.getId());
+
+        // 复制隐患点绑定
+        HazardPointRef oldBinding = hazardRelationService.getHazardPointByDeviceId(id);
+        if (oldBinding != null) {
+            hazardRelationService.bindDevice(copy.getId(), oldBinding.id(),
+                    original.getLongitude(), original.getLatitude(), original.getCreateBy());
+        }
+
         return copy.getId();
     }
 
@@ -362,6 +411,79 @@ public class DeviceServiceImpl implements IDeviceService {
         }
         for (Long hazardPointId : hazardPointIds) {
             hazardRelationService.refreshDeviceCount(hazardPointId);
+        }
+    }
+
+    private static final int SENSOR_CODE_MAX_LEN = 100;
+    private static final int MAX_SUFFIX_RETRY = 20;
+    /** 匹配 _XX 后缀（2位数字），用于复制时自动递增 */
+    private static final Pattern NUMERIC_SUFFIX = Pattern.compile("^(.*)_(\\d{2})$");
+
+    /**
+     * 为复制的传感器生成唯一编码。
+     *
+     * <h3>规则</h3>
+     * <ol>
+     *   <li>原编码末尾有 _XX（2位数字）→ 递增：sensor_03 → sensor_04</li>
+     *   <li>原编码无此后缀 → 追加重置：sensor → sensor_01</li>
+     *   <li>递增后冲突 → 从原编码重新追加重置：sensor → sensor_01_01</li>
+     *   <li>仍冲突 → 逐步追加 _02、_03 直至唯一（上限 20 次）</li>
+     *   <li>超过 varchar(100) 时截断原编码为后缀留空间</li>
+     * </ol>
+     */
+    private String resolveCopySensorCode(String originalCode) {
+        // Step 1: 尝试递增已有数字后缀
+        String primary = incrementOrAppend(originalCode);
+        String candidate = truncateToFit(primary, SENSOR_CODE_MAX_LEN);
+        if (sensorMapper.checkSensorCodeUnique(candidate, null) == null) {
+            return candidate;
+        }
+
+        // Step 2: 冲突 — 从原编码重新追加 _01
+        candidate = truncateToFit(originalCode + "_01", SENSOR_CODE_MAX_LEN);
+        if (sensorMapper.checkSensorCodeUnique(candidate, null) == null) {
+            return candidate;
+        }
+
+        // Step 3: 逐步递增
+        for (int i = 2; i <= MAX_SUFFIX_RETRY; i++) {
+            String suffix = String.format("_%02d", i);
+            candidate = truncateToFit(originalCode + suffix, SENSOR_CODE_MAX_LEN);
+            if (sensorMapper.checkSensorCodeUnique(candidate, null) == null) {
+                return candidate;
+            }
+        }
+
+        throw new ServiceException("复制传感器失败，无法生成唯一传感器编码");
+    }
+
+    /** 若末尾已有 _XX 则递增，否则追加 _01 */
+    private static String incrementOrAppend(String code) {
+        Matcher m = NUMERIC_SUFFIX.matcher(code);
+        if (m.matches()) {
+            int n = Integer.parseInt(m.group(2)) + 1;
+            return m.group(1) + String.format("_%02d", n);
+        }
+        return code + "_01";
+    }
+
+    /** 截断使总长 ≤ maxLen，优先保留右侧后缀 */
+    private static String truncateToFit(String code, int maxLen) {
+        return code.length() <= maxLen ? code : code.substring(code.length() - maxLen);
+    }
+
+    private void enrichHazardPoint(List<Device> devices) {
+        if (devices == null || devices.isEmpty()) return;
+        for (Device device : devices) {
+            enrichHazardPoint(device);
+        }
+    }
+
+    private void enrichHazardPoint(Device device) {
+        HazardPointRef ref = hazardRelationService.getHazardPointByDeviceId(device.getId());
+        if (ref != null) {
+            device.setBoundHazardPointId(ref.id());
+            device.setBoundHazardPointName(ref.name());
         }
     }
 

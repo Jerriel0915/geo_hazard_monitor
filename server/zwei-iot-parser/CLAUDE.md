@@ -32,7 +32,7 @@
 | `service` | `DataParseStrategyService` / `DataParseLogService` / `MonitorMetadataService` |
 | `engine` | `GroovyScriptEngine` (沙箱执行) / `BuiltInFunctions` (二进制原语注入) |
 | `domain` | `DataParseStrategy` / `DataParseStrategyVendor` / `DataParseStrategyDevice` / `DataParseLog` |
-| `dto` | `DataParseStrategyDTO` / `DataParseStrategyQueryDTO` / `DataParseTestRequest` / `DataParseTestResponse` |
+| `dto` | `DataParseStrategyDTO` / `DataParseStrategyQueryDTO` / `DataParseTestRequest` |
 | `mapper` | MyBatis Mapper 接口 + XML (4 个 Mapper) |
 | `support` | `GroovyScriptValidator` (预编译校验) / `MonitorTopic` (record) / `MonitorTopicParser` (正则) |
 

@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import {ref, type Ref, shallowRef} from 'vue'
 import {getBoundDevices} from '@/api/hazardPoint'
 import {buildTiandituUrl} from '@/composables/useLeafletMap'
+import {getDeviceMapIconPath} from '@/utils/deviceIcon'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,13 +73,19 @@ const ALARM_COLORS: Record<string, string> = {
     critical: '#f5222d', major: '#faad14', minor: '#722ed1', info: '#1890ff',
 }
 
-/** Create a Leaflet divIcon for a device marker */
-function createDeviceIcon(status: string) {
-    const color = status === 'online' ? '#52c41a' : status === 'warning' ? '#faad14' : '#f5222d'
-    return L.divIcon({
-        className: 'device-marker',
-        html: `<div style="width:24px;height:24px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:12px">📡</div>`,
-        iconSize: [24, 24], iconAnchor: [12, 12],
+/** Create a Leaflet icon for a device marker — 使用 jc-icon _map 图标库
+ *  颜色档位由 device.status (1/2/3) + device.onlineStatus (0/1) 联动
+ */
+function createDeviceIcon(device: {
+    icon?: string | null
+    iconPath?: string | null
+    status?: number | null
+    onlineStatus?: number | null
+}) {
+    return L.icon({
+        iconUrl: getDeviceMapIconPath(device),
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
     })
 }
 
@@ -445,7 +452,7 @@ export function useDashboardMap(opts: UseDashboardMapOptions) {
                         longitude: item.installLongitude ?? point.longitude,
                         latitude: item.installLatitude ?? point.latitude
                     }
-                    L.marker([device.latitude, device.longitude], {icon: createDeviceIcon(device.status)}).addTo(hazardMarkerLayer!).bindPopup(buildDevicePopup(device))
+                    L.marker([device.latitude, device.longitude], {icon: createDeviceIcon(item)}).addTo(hazardMarkerLayer!).bindPopup(buildDevicePopup(device))
                 })
             }
         } catch { /* ignore */

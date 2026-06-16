@@ -2,6 +2,7 @@ package com.zwei.iot.parser.mapper;
 
 import com.zwei.iot.parser.domain.DataParseStrategy;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 @Mapper
@@ -14,4 +15,5 @@ public interface DataParseStrategyMapper {
     int updateById(DataParseStrategy strategy);
     int deleteById(Long id);
     int updateLastRunTime(Long id);
+    DataParseStrategy checkNameUnique(@Param("name") String name, @Param("id") Long id);
 }

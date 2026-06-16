@@ -8,7 +8,6 @@
       </div>
       <div class="header__right">
         <el-button type="primary" @click="handleAdd">+ 新增</el-button>
-        <el-button type="danger" @click="handleBatchDelete" :disabled="selectedRows.length === 0" plain>批量删除</el-button>
         <el-button @click="handleBatchPause" :disabled="selectedRows.length === 0" plain>停测</el-button>
         <el-button @click="handleBatchResume" :disabled="selectedRows.length === 0" plain>恢复</el-button>
         <el-button @click="handleBatchComplete" :disabled="selectedRows.length === 0" type="warning" plain>完结</el-button>
@@ -157,9 +156,6 @@
                           </el-dropdown-item>
                           <el-dropdown-item v-if="row.status !== 'COMPLETED'" command="complete">完结</el-dropdown-item>
                           <el-dropdown-item command="bindDevice">绑定设备</el-dropdown-item>
-                          <el-dropdown-item command="delete" divided>
-                            <span style="color: #f56c6c">删除</span>
-                          </el-dropdown-item>
                         </el-dropdown-menu>
                       </template>
                     </el-dropdown>
@@ -302,6 +298,7 @@
         ref="mapEditorRef"
         :initial-value="formData.boundaryCoords"
         :initial-center="mapInitialCenter"
+        :bound-devices="boundDevices"
         height="500px"
         @done="onMapDone"
         @cancel="mapDialogVisible = false"
@@ -627,28 +624,28 @@
           <div class="expression-section">
             <span class="section-title">蓝色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.blueExpression" placeholder="请输入判断表达式" class="expr-input" />
+              <el-input v-model="alarmFormData.blueExpression" placeholder="请输入判断表达式" class="expr-input" @focus="currentEditingAlarmLevel = 'blue'" />
               <el-input v-model="alarmFormData.blueDescription" placeholder="描述" class="desc-input" />
             </div>
           </div>
           <div class="expression-section">
             <span class="section-title">黄色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.yellowExpression" placeholder="请输入判断表达式" class="expr-input" />
+              <el-input v-model="alarmFormData.yellowExpression" placeholder="请输入判断表达式" class="expr-input" @focus="currentEditingAlarmLevel = 'yellow'" />
               <el-input v-model="alarmFormData.yellowDescription" placeholder="描述" class="desc-input" />
             </div>
           </div>
           <div class="expression-section">
             <span class="section-title">橙色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.orangeExpression" placeholder="请输入判断表达式" class="expr-input" />
+              <el-input v-model="alarmFormData.orangeExpression" placeholder="请输入判断表达式" class="expr-input" @focus="currentEditingAlarmLevel = 'orange'" />
               <el-input v-model="alarmFormData.orangeDescription" placeholder="描述" class="desc-input" />
             </div>
           </div>
           <div class="expression-section">
             <span class="section-title">红色预警</span>
             <div class="expression-row">
-              <el-input v-model="alarmFormData.redExpression" placeholder="请输入判断表达式" class="expr-input" />
+              <el-input v-model="alarmFormData.redExpression" placeholder="请输入判断表达式" class="expr-input" @focus="currentEditingAlarmLevel = 'red'" />
               <el-input v-model="alarmFormData.redDescription" placeholder="描述" class="desc-input" />
             </div>
           </div>
@@ -783,12 +780,10 @@ import {
   Search
 } from '@element-plus/icons-vue'
 import MapBoundaryEditor from '@/components/map/MapBoundaryEditor.vue'
-import MapBoundaryPreview from '@/components/map/MapBoundaryPreview.vue'
 import {type BoundaryCoords, deserialize, type LatLng} from '@/lib/boundaryCoords'
 import {
   getAlarmLevelType,
   getChannelLabel,
-  getStatusTagType,
   getStatusType,
   type HazardPointItem,
   useHazardPointCrud,
@@ -839,10 +834,8 @@ const {
   handleSubmit,
   handleView,
   handleMoreCommand,
-  handleDelete,
   handleTogglePause,
   handleComplete,
-  handleBatchDelete,
   handleBatchPause,
   handleBatchResume,
   handleBatchComplete,
@@ -1018,13 +1011,17 @@ const handleSelectGroup = (group: GroupItem) => {
 const handleViewAndOpen = async (row: HazardPointItem) => {
   await handleView(row)
   activeTab.value = 'basic'
-  initBoundDevices(row.id)
+  await initBoundDevices(row.id)
   initAlarmCriteria(row.id)
   initDispatchRules(row.id)
   detailDialogVisible.value = true
 }
 
-const handleOpenMap = () => {
+const handleOpenMap = async () => {
+  // 打开地图前先加载绑定设备, 使编辑器能在地图上叠加设备 marker
+  if (currentRow.value?.id) {
+    await initBoundDevices(String(currentRow.value.id))
+  }
   mapDialogVisible.value = true
 }
 

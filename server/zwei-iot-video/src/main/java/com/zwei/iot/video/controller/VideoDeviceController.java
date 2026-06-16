@@ -7,13 +7,17 @@ import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
+import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.iot.video.domain.VideoDevice;
+import com.zwei.iot.video.domain.dto.VideoDeviceExportVO;
 import com.zwei.iot.video.service.IVideoDeviceService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -143,5 +147,37 @@ public class VideoDeviceController extends BaseController {
     public AjaxResult remove(@PathVariable Long id) {
         int rows = videoDeviceService.deleteVideoDeviceById(id);
         return rows > 0 ? success() : error("删除失败");
+    }
+
+    /**
+     * 导出视频设备列表
+     */
+    @PreAuthorize("@ss.hasPermi('basic:videoDevice:list')")
+    @Log(title = "视频设备", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response, VideoDevice videoDevice) {
+        List<VideoDevice> list = videoDeviceService.selectVideoDeviceAll();
+        List<VideoDeviceExportVO> exportList = new ArrayList<>(list.size());
+        for (VideoDevice item : list) {
+            VideoDeviceExportVO vo = new VideoDeviceExportVO();
+            vo.setCode(item.getCode());
+            vo.setName(item.getName());
+            vo.setProtocolCode(item.getProtocolCode());
+            vo.setProtocolName(item.getProtocolName());
+            vo.setStreamUrl(item.getStreamUrl());
+            vo.setLongitude(item.getLongitude());
+            vo.setLatitude(item.getLatitude());
+            vo.setStatusName(item.getStatus() == null ? null
+                    : item.getStatus() == 0 ? "离线" : item.getStatus() == 1 ? "在线" : "故障");
+            vo.setLastOnlineTime(item.getLastOnlineTime());
+            vo.setInstallTime(item.getInstallTime());
+            vo.setCreateBy(item.getCreateBy());
+            vo.setCreateTime(item.getCreateTime());
+            vo.setUpdateBy(item.getUpdateBy());
+            vo.setUpdateTime(item.getUpdateTime());
+            exportList.add(vo);
+        }
+        ExcelUtil<VideoDeviceExportVO> util = new ExcelUtil<>(VideoDeviceExportVO.class);
+        util.exportExcel(response, exportList, "视频设备数据");
     }
 }

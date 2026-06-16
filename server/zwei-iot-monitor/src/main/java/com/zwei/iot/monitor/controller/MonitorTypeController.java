@@ -7,15 +7,19 @@ import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
 import com.zwei.common.enums.BusinessType;
+import com.zwei.common.utils.poi.ExcelUtil;
 import com.zwei.iot.monitor.domain.MonitorType;
 import com.zwei.iot.monitor.domain.dto.MonitorTypeCreateRequest;
+import com.zwei.iot.monitor.domain.dto.MonitorTypeExportVO;
 import com.zwei.iot.monitor.domain.dto.MonitorTypeUpdateRequest;
 import com.zwei.iot.monitor.service.IMonitorTypeService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -182,6 +186,33 @@ public class MonitorTypeController extends BaseController {
         int rows = monitorTypeService.updateMonitorType(update);
         String action = status == 0 ? "停用" : "启用";
         return rows > 0 ? AjaxResult.success(action + "成功") : error(action + "失败");
+    }
+
+    /**
+     * 导出监测类型列表
+     */
+    @PreAuthorize("@ss.hasPermi('basic:monitorType:list')")
+    @Log(title = "监测类型", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response, MonitorType monitorType) {
+        List<MonitorType> list = monitorTypeService.selectMonitorTypeList(monitorType);
+        List<MonitorTypeExportVO> exportList = new ArrayList<>(list.size());
+        for (MonitorType item : list) {
+            MonitorTypeExportVO vo = new MonitorTypeExportVO();
+            vo.setCode(item.getCode());
+            vo.setName(item.getName());
+            vo.setIcon(item.getIcon());
+            vo.setDescription(item.getDescription());
+            vo.setSortOrder(item.getSortOrder());
+            vo.setStatusName(item.getStatus() != null && item.getStatus() == 1 ? "启用" : "停用");
+            vo.setCreateBy(item.getCreateBy());
+            vo.setCreateTime(item.getCreateTime());
+            vo.setUpdateBy(item.getUpdateBy());
+            vo.setUpdateTime(item.getUpdateTime());
+            exportList.add(vo);
+        }
+        ExcelUtil<MonitorTypeExportVO> util = new ExcelUtil<>(MonitorTypeExportVO.class);
+        util.exportExcel(response, exportList, "监测类型数据");
     }
 
     private MonitorType buildMonitorTypeForCreate(MonitorTypeCreateRequest request) {

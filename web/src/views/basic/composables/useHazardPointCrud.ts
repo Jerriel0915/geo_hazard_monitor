@@ -4,8 +4,6 @@ import {
     batchOperateHazardPoints,
     completeHazardPoint,
     createHazardPoint,
-    deleteHazardPoint,
-    deleteHazardPoints,
     exportHazardPoints,
     getHazardPointDetail,
     getHazardPointPage,
@@ -51,7 +49,7 @@ const normalizeHazardPoint = (item: any): HazardPointItem => ({
     name: item.name || '',
     groupId: item.groupId ? String(item.groupId) : '',
     groupName: item.groupName || '',
-    status: item.status === 1 ? 'MONITORING' : item.status === 2 ? 'PAUSED' : 'COMPLETED',
+    status: item.status == 1 ? 'MONITORING' : item.status == 2 ? 'PAUSED' : 'COMPLETED',
     statusName: item.statusName || '',
     longitude: item.longitude,
     latitude: item.latitude,
@@ -367,33 +365,8 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
         const map: Record<string, () => void> = {
             togglePause: () => handleTogglePause(row),
             complete: () => handleComplete(row),
-            delete: () => handleDelete(row),
         }
         map[command]?.()
-    }
-
-    const handleDelete = async (row: HazardPointItem) => {
-        try {
-            await ElMessageBox.confirm(`确定要删除隐患点"${row.name}"吗？`, '删除确认', {
-                confirmButtonText: '确定',
-                cancelButtonText: '取消',
-                type: 'warning',
-            })
-            loading.value = true
-            const res: any = await deleteHazardPoint(row.id)
-            if (res.code === 200) {
-                ElMessage.success('删除成功')
-                loadTableData()
-                opts.onRefreshGroups()
-            } else {
-                ElMessage.error(res.msg || '删除失败')
-            }
-        } catch (error: any) {
-            if (error === 'cancel' || error === 'close') return
-            showRequestErrorMessage(error, '删除失败')
-        } finally {
-            loading.value = false
-        }
     }
 
     const handleTogglePause = async (row: HazardPointItem) => {
@@ -451,32 +424,6 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
             return null
         }
         return selectedRows.value.map((row) => parseInt(row.id))
-    }
-
-    const handleBatchDelete = async () => {
-        const ids = checkSelection('删除')
-        if (!ids) return
-        try {
-            await ElMessageBox.confirm(`确定要删除选中的 ${ids.length} 个隐患点吗？`, '批量删除确认', {
-                confirmButtonText: '确定',
-                cancelButtonText: '取消',
-                type: 'warning',
-            })
-            loading.value = true
-            const res: any = await deleteHazardPoints(ids)
-            if (res.code === 200) {
-                ElMessage.success('批量删除成功')
-                loadTableData()
-                opts.onRefreshGroups()
-            } else {
-                ElMessage.error(res.msg || '批量删除失败')
-            }
-        } catch (error: any) {
-            if (error === 'cancel' || error === 'close') return
-            showRequestErrorMessage(error, '批量删除失败')
-        } finally {
-            loading.value = false
-        }
     }
 
     const handleBatchPause = async () => {
@@ -612,10 +559,8 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
         handleSubmit,
         handleView,
         handleMoreCommand,
-        handleDelete,
         handleTogglePause,
         handleComplete,
-        handleBatchDelete,
         handleBatchPause,
         handleBatchResume,
         handleBatchComplete,

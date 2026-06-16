@@ -46,4 +46,12 @@ public interface VideoDeviceHazardPointMapper {
      * @return 影响行数
      */
     int deleteByVideoDeviceIds(@Param("videoDeviceIds") List<Long> videoDeviceIds);
+
+    /**
+     * 根据视频设备ID列表查询关联的隐患点ID
+     *
+     * @param videoDeviceIds 视频设备ID列表
+     * @return 隐患点ID列表
+     */
+    List<Long> selectHazardPointIdsByVideoDeviceIds(@Param("videoDeviceIds") List<Long> videoDeviceIds);
 }

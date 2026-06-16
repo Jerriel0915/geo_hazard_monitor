@@ -7,7 +7,7 @@
     <select id="selectStrategyIdByDeviceId" resultType="long">
         SELECT strategy_id FROM iot_data_parse_strategy_device d
         INNER JOIN iot_data_parse_strategy s ON d.strategy_id = s.id
-        WHERE d.device_id = #{deviceId} AND s.status = 1 AND s.deleted = 0
+        WHERE d.device_id = #{deviceId} AND s.status = 1 AND s.del_flag = 0
         LIMIT 1
     </select>
     <insert id="insert">

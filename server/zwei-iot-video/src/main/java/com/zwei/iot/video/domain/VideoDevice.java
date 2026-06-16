@@ -93,6 +93,11 @@ public class VideoDevice extends BaseEntity {
      */
     private Integer delFlag;
 
+    /**
+     * 关联的隐患点ID，逗号分隔（Service层富化，匹配前端期望格式）
+     */
+    private String hazardPointIds;
+
     @Override
     public String toString() {
         return "VideoDevice{" +

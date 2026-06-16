@@ -32,6 +32,7 @@
                 v-if="currentRow"
                 :initial-value="parsedBoundary"
                 :initial-center="previewCenter"
+                :bound-devices="boundDevices"
                 height="300px"
             />
           </div>
@@ -104,29 +105,32 @@
             <div class="table-wrap">
               <div class="table-wrap__scroll">
                 <el-table :data="dispatchRules" border size="small">
-                  <el-table-column prop="name" label="规则名称" width="150" align="center" />
                   <el-table-column label="类型" width="100" align="center">
                     <template #default="{ row }">
-                      <el-tag :type="row.type === 'ALARM' ? 'warning' : 'info'" size="small">
-                        {{ row.type === 'ALARM' ? '告警分发' : '状态通知' }}
+                      <el-tag :type="row.type === 'alarm' ? 'warning' : 'info'" size="small">
+                        {{ row.type === 'alarm' ? '告警分发' : '状态通知' }}
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="alarmLevel" label="告警等级" width="120" align="center">
+                  <el-table-column label="告警等级" width="120" align="center">
                     <template #default="{ row }">
-                      <span v-if="row.type === 'ALARM'">{{ row.alarmLevel }}</span>
+                      <span v-if="row.type === 'alarm'">{{ row.level?.join(', ') || '-' }}</span>
                       <span v-else class="empty-text">-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="recipientName" label="接收人" width="120" align="center" />
-                  <el-table-column label="通知渠道" min-width="150" align="center">
+                  <el-table-column label="接收人" width="120" align="center">
                     <template #default="{ row }">
-                      <span v-for="ch in row.channel.split(',')" :key="ch" class="channel-tag">{{ getChannelLabel(ch) }}</span>
+                      <span>{{ row.persons?.join(', ') || '-' }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="isEnabled" label="状态" width="80" align="center">
+                  <el-table-column label="通知渠道" min-width="150" align="center">
                     <template #default="{ row }">
-                      <el-tag :type="row.isEnabled ? 'success' : 'info'" size="small">{{ row.isEnabled ? '启用' : '禁用' }}</el-tag>
+                      <span v-for="ch in row.channels" :key="ch" class="channel-tag">{{ getChannelLabel(ch) }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="状态" width="80" align="center">
+                    <template #default="{ row }">
+                      <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
                     </template>
                   </el-table-column>
                 </el-table>
