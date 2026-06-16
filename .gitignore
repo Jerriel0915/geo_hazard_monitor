@@ -17,3 +17,4 @@ dist
 .worktrees/
 .ccg
 .superpowers
+.claude/
