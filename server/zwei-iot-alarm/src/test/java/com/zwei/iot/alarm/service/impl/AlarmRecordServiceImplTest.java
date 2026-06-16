@@ -1,9 +1,12 @@
 package com.zwei.iot.alarm.service.impl;
 
+import com.zwei.iot.alarm.domain.ActionType;
 import com.zwei.iot.alarm.domain.AlarmRecord;
-import com.zwei.iot.alarm.domain.AlarmRecordLog;
-import com.zwei.iot.alarm.mapper.AlarmRecordLogMapper;
+import com.zwei.iot.alarm.domain.AlarmRecordActionLog;
+import com.zwei.iot.alarm.domain.AlarmRecordTriggerDetail;
+import com.zwei.iot.alarm.mapper.AlarmRecordActionLogMapper;
 import com.zwei.iot.alarm.mapper.AlarmRecordMapper;
+import com.zwei.iot.alarm.mapper.AlarmRecordTriggerDetailMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,47 +25,41 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * AlarmRecordServiceImpl 单元测试 — 覆盖告警创建去重、状态流转、批量处置。
+ * AlarmRecordServiceImpl 单元测试 — 覆盖三分支 + dispose/batchDispose + action_log。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AlarmRecordServiceImpl")
 class AlarmRecordServiceImplTest {
 
-    @Mock
-    private AlarmRecordMapper recordMapper;
-    @Mock
-    private AlarmRecordLogMapper logMapper;
+    @Mock private AlarmRecordMapper recordMapper;
+    @Mock private AlarmRecordActionLogMapper actionLogMapper;
+    @Mock private AlarmRecordTriggerDetailMapper triggerDetailMapper;
 
     private AlarmRecordServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new AlarmRecordServiceImpl(recordMapper, logMapper);
+        service = new AlarmRecordServiceImpl(recordMapper, actionLogMapper, triggerDetailMapper);
     }
 
-    // ──────────── createOrUpdateAlarm ────────────
+    // ──────────── createOrUpdateAlarm 三分支 ────────────
 
     @Nested
     @DisplayName("createOrUpdateAlarm")
     class CreateOrUpdate {
 
         @Test
-        @DisplayName("新阈值告警 → 创建记录, status=1(待处理), 记录日志")
-        void newThresholdAlarm() {
+        @DisplayName("新建 → status=1 + 写 CREATE 日志 + 写触发明细")
+        void newAlarmWritesCreateLog() {
             when(recordMapper.selectActiveByCriteria(1L, 100L)).thenReturn(null);
-            doAnswer(inv -> {
-                AlarmRecord r = inv.getArgument(0);
-                r.setId(500L);
-                return 1;
-            }).when(recordMapper).insertRecord(any(AlarmRecord.class));
-            when(logMapper.insertLog(any(AlarmRecordLog.class))).thenReturn(1);
+            doAnswer(inv -> { inv.<AlarmRecord>getArgument(0).setId(500L); return 1; })
+                    .when(recordMapper).insertRecord(any(AlarmRecord.class));
 
             AlarmRecord input = AlarmRecord.builder()
-                    .hazardPointId(100L).hazardPointName("测试隐患点")
+                    .hazardPointId(100L).hazardPointName("测试")
                     .criteriaId(1L)
                     .alarmLevel(3).alarmLevelText("橙色")
-                    .alarmType("THRESHOLD")
-                    .alarmMessage("test")
+                    .alarmType("THRESHOLD").alarmMessage("test")
                     .currentValue(new BigDecimal("15.5"))
                     .createBy("SYSTEM").createTime(new Date())
                     .build();
@@ -71,144 +68,141 @@ class AlarmRecordServiceImplTest {
 
             assertThat(result.getId()).isEqualTo(500L);
             assertThat(result.getStatus()).isEqualTo(1);
-            assertThat(result.getStatusName()).isEqualTo("待处理");
-            assertThat(result.getTriggerCount()).isEqualTo(1);
 
-            ArgumentCaptor<AlarmRecordLog> logCaptor = ArgumentCaptor.forClass(AlarmRecordLog.class);
-            verify(logMapper).insertLog(logCaptor.capture());
-            assertThat(logCaptor.getValue().getToStatus()).isEqualTo(1);
-            assertThat(logCaptor.getValue().getAlarmId()).isEqualTo(500L);
+            // CREATE 日志断言：to_value="1"，action_type=CREATE
+            ArgumentCaptor<AlarmRecordActionLog> logCaptor = ArgumentCaptor.forClass(AlarmRecordActionLog.class);
+            verify(actionLogMapper).insertLog(logCaptor.capture());
+            assertThat(logCaptor.getValue().getActionType()).isEqualTo(ActionType.CREATE.name());
+            assertThat(logCaptor.getValue().getToValue()).isEqualTo("1");
+
+            // 触发明细断言
+            verify(triggerDetailMapper).insertDetail(argThat(d -> d.getAlarmLevel() == 3));
         }
 
         @Test
-        @DisplayName("已存在活动阈值告警 → 不创建新记录, 更新触发次数")
-        void existingThresholdAlarmUpdatesCount() {
+        @DisplayName("再次触发同级 → 更新 triggerCount + 写 RE_TRIGGER 日志（不写 LEVEL_CHANGE）")
+        void reTriggerSameLevelWritesOnlyReTriggerLog() {
             AlarmRecord existing = AlarmRecord.builder()
-                    .id(500L).hazardPointId(100L)
-                    .criteriaId(1L)
-                    .status(1).statusName("待处理")
-                    .triggerCount(3)
+                    .id(500L).criteriaId(1L).hazardPointId(100L)
+                    .status(1).triggerCount(3).alarmLevel(3)
                     .build();
             when(recordMapper.selectActiveByCriteria(1L, 100L)).thenReturn(existing);
             when(recordMapper.updateTriggerCount(eq(500L), anyString(), eq(4))).thenReturn(1);
 
             AlarmRecord input = AlarmRecord.builder()
                     .hazardPointId(100L).criteriaId(1L)
-                    .alarmLevel(3).alarmType("THRESHOLD")
-                    .createBy("SYSTEM").createTime(new Date())
+                    .alarmLevel(3)  // 同级
+                    .alarmType("THRESHOLD").createBy("SYSTEM").createTime(new Date())
                     .build();
 
-            AlarmRecord result = service.createOrUpdateAlarm(input);
+            service.createOrUpdateAlarm(input);
 
-            assertThat(result.getId()).isEqualTo(500L);
-            verify(recordMapper, never()).insertRecord(any());
+            verify(recordMapper, never()).updateAlarmLevel(anyLong(), anyInt(), anyString(), anyString(), anyInt());
+            // 仅 1 条 RE_TRIGGER，无 LEVEL_CHANGE
+            verify(actionLogMapper, times(1)).insertLog(argThat(l ->
+                    ActionType.RE_TRIGGER.name().equals(l.getActionType())));
+            verify(actionLogMapper, never()).insertLog(argThat(l ->
+                    ActionType.LEVEL_CHANGE.name().equals(l.getActionType())));
         }
 
         @Test
-        @DisplayName("新综合告警(strategyId) → 用 selectActiveByStrategy 去重")
-        void newComprehensiveAlarmStrategyDedup() {
-            when(recordMapper.selectActiveByStrategy(2L, 100L)).thenReturn(null);
-            doAnswer(inv -> {
-                AlarmRecord r = inv.getArgument(0);
-                r.setId(600L);
-                return 1;
-            }).when(recordMapper).insertRecord(any(AlarmRecord.class));
-            when(logMapper.insertLog(any())).thenReturn(1);
-
-            AlarmRecord input = AlarmRecord.builder()
-                    .hazardPointId(100L)
-                    .strategyId(2L)  // no criteriaId, uses strategyId path
-                    .alarmLevel(2).alarmType("COMPREHENSIVE")
-                    .alarmMessage("综合策略")
-                    .createBy("SYSTEM").createTime(new Date())
-                    .build();
-
-            AlarmRecord result = service.createOrUpdateAlarm(input);
-
-            assertThat(result.getId()).isEqualTo(600L);
-            verify(recordMapper).selectActiveByStrategy(2L, 100L);
-            verify(recordMapper, never()).selectActiveByCriteria(anyLong(), anyLong());
-        }
-
-        @Test
-        @DisplayName("已存在综合告警 → 更新计数不创建新记录")
-        void existingComprehensiveUpdatesCount() {
+        @DisplayName("再次触发等级变化(3→4) → 更新主表 alarmLevel + 写 RE_TRIGGER + LEVEL_CHANGE 两条日志")
+        void reTriggerLevelChangeWritesTwoLogs() {
             AlarmRecord existing = AlarmRecord.builder()
-                    .id(600L).hazardPointId(100L)
-                    .strategyId(2L)
-                    .status(1).triggerCount(1)
+                    .id(500L).criteriaId(1L).hazardPointId(100L)
+                    .status(1).triggerCount(3).alarmLevel(3)
                     .build();
-            when(recordMapper.selectActiveByStrategy(2L, 100L)).thenReturn(existing);
-            when(recordMapper.updateTriggerCount(eq(600L), anyString(), eq(2))).thenReturn(1);
+            when(recordMapper.selectActiveByCriteria(1L, 100L)).thenReturn(existing);
+            when(recordMapper.updateAlarmLevel(eq(500L), eq(4), eq("红色"), anyString(), eq(4))).thenReturn(1);
 
             AlarmRecord input = AlarmRecord.builder()
-                    .hazardPointId(100L).strategyId(2L)
-                    .alarmLevel(2).alarmType("COMPREHENSIVE")
-                    .createBy("SYSTEM").createTime(new Date())
+                    .hazardPointId(100L).criteriaId(1L)
+                    .alarmLevel(4)  // 等级变化
+                    .alarmType("THRESHOLD").createBy("SYSTEM").createTime(new Date())
                     .build();
 
-            AlarmRecord result = service.createOrUpdateAlarm(input);
-            assertThat(result.getId()).isEqualTo(600L);
-            verify(recordMapper, never()).insertRecord(any());
+            service.createOrUpdateAlarm(input);
+
+            // 更新主表 alarmLevel
+            verify(recordMapper).updateAlarmLevel(eq(500L), eq(4), eq("红色"), anyString(), eq(4));
+            verify(recordMapper, never()).updateTriggerCount(anyLong(), anyString(), anyInt());
+
+            // 两条日志：RE_TRIGGER + LEVEL_CHANGE，先捕获再断言
+            ArgumentCaptor<AlarmRecordActionLog> logCaptor = ArgumentCaptor.forClass(AlarmRecordActionLog.class);
+            verify(actionLogMapper, times(2)).insertLog(logCaptor.capture());
+            List<AlarmRecordActionLog> captured = logCaptor.getAllValues();
+            assertThat(captured).extracting(AlarmRecordActionLog::getActionType)
+                    .containsExactlyInAnyOrder(ActionType.RE_TRIGGER.name(), ActionType.LEVEL_CHANGE.name());
+
+            AlarmRecordActionLog levelChangeLog = captured.stream()
+                    .filter(l -> ActionType.LEVEL_CHANGE.name().equals(l.getActionType()))
+                    .findFirst().orElseThrow();
+            assertThat(levelChangeLog.getFromValue()).isEqualTo("3");
+            assertThat(levelChangeLog.getToValue()).isEqualTo("4");
+
+            // 触发明细等级 = 新等级 4
+            verify(triggerDetailMapper).insertDetail(argThat(d -> d.getAlarmLevel() == 4));
         }
     }
 
-    // ──────────── dispose (status transition) ────────────
+    // ──────────── dispose ────────────
 
     @Nested
     @DisplayName("dispose 状态流转")
     class Dispose {
 
         @Test
-        @DisplayName("待处理→处理中: 状态更新 + 日志记录")
-        void pendingToProcessing() {
-            AlarmRecord record = AlarmRecord.builder()
-                    .id(1L).status(1).statusName("待处理").build();
+        @DisplayName("待处理→处理中(status=2) → 写 FEEDBACK 日志")
+        void pendingToFeedbackWritesFeedbackLog() {
+            AlarmRecord record = AlarmRecord.builder().id(1L).status(1).build();
             when(recordMapper.selectRecordById(1L)).thenReturn(record);
-            when(recordMapper.updateStatus(eq(1L), eq(2), eq("处理中"), eq("admin"), anyString(), anyString())).thenReturn(1);
-            when(logMapper.insertLog(any(AlarmRecordLog.class))).thenReturn(1);
+            when(recordMapper.updateStatus(eq(1L), eq(2), eq("处理中"), eq("admin"), anyString(), any())).thenReturn(1);
 
-            int rows = service.dispose(1L, 2, "开始处置", "admin");
+            int rows = service.dispose(1L, 2, "现场已派员", "a.txt,b.txt", "派员核查", "admin");
 
             assertThat(rows).isEqualTo(1);
-            ArgumentCaptor<AlarmRecordLog> logCaptor = ArgumentCaptor.forClass(AlarmRecordLog.class);
-            verify(logMapper).insertLog(logCaptor.capture());
-            assertThat(logCaptor.getValue().getFromStatus()).isEqualTo(1);
-            assertThat(logCaptor.getValue().getToStatus()).isEqualTo(2);
-            assertThat(logCaptor.getValue().getOperator()).isEqualTo("admin");
+            ArgumentCaptor<AlarmRecordActionLog> logCaptor = ArgumentCaptor.forClass(AlarmRecordActionLog.class);
+            verify(actionLogMapper).insertLog(logCaptor.capture());
+            assertThat(logCaptor.getValue().getActionType()).isEqualTo(ActionType.FEEDBACK.name());
+            assertThat(logCaptor.getValue().getToValue()).isEqualTo("2");
+            assertThat(logCaptor.getValue().getDescription()).isEqualTo("现场已派员");
+            assertThat(logCaptor.getValue().getAttachments()).isEqualTo("a.txt,b.txt");
+            assertThat(logCaptor.getValue().getRemarks()).isEqualTo("派员核查");
         }
 
         @Test
-        @DisplayName("记录不存在时返回 0")
+        @DisplayName("销警(status=3) → 写 DISPOSE_CLOSE 日志")
+        void disposeClose() {
+            AlarmRecord record = AlarmRecord.builder().id(1L).status(1).build();
+            when(recordMapper.selectRecordById(1L)).thenReturn(record);
+            when(recordMapper.updateStatus(eq(1L), eq(3), eq("已销警"), eq("admin"), anyString(), any())).thenReturn(1);
+
+            service.dispose(1L, 3, null, null, "解除", "admin");
+
+            ArgumentCaptor<AlarmRecordActionLog> logCaptor = ArgumentCaptor.forClass(AlarmRecordActionLog.class);
+            verify(actionLogMapper).insertLog(logCaptor.capture());
+            assertThat(logCaptor.getValue().getActionType()).isEqualTo(ActionType.DISPOSE_CLOSE.name());
+            assertThat(logCaptor.getValue().getToValue()).isEqualTo("3");
+        }
+
+        @Test
+        @DisplayName("误报(status=4) → 写 DISPOSE_FALSE_ALARM 日志")
+        void disposeFalseAlarm() {
+            AlarmRecord record = AlarmRecord.builder().id(1L).status(1).build();
+            when(recordMapper.selectRecordById(1L)).thenReturn(record);
+            when(recordMapper.updateStatus(eq(1L), eq(4), eq("误报"), eq("admin"), anyString(), any())).thenReturn(1);
+
+            service.dispose(1L, 4, null, null, "传感器故障", "admin");
+
+            verify(actionLogMapper).insertLog(argThat(l ->
+                    ActionType.DISPOSE_FALSE_ALARM.name().equals(l.getActionType())));
+        }
+
+        @Test
+        @DisplayName("记录不存在返回 0")
         void recordNotFound() {
             when(recordMapper.selectRecordById(99L)).thenReturn(null);
-
-            assertThat(service.dispose(99L, 2, "note", "admin")).isZero();
-            verify(recordMapper, never()).updateStatus(anyLong(), anyInt(), anyString(), anyString(), anyString(), anyString());
-        }
-
-        @Test
-        @DisplayName("处置: 待处理→已销警")
-        void pendingToResolved() {
-            AlarmRecord record = AlarmRecord.builder().id(1L).status(1).build();
-            when(recordMapper.selectRecordById(1L)).thenReturn(record);
-            when(recordMapper.updateStatus(eq(1L), eq(3), eq("已销警"), eq("admin"), anyString(), anyString())).thenReturn(1);
-            when(logMapper.insertLog(any())).thenReturn(1);
-
-            int rows = service.dispose(1L, 3, "问题已处理", "admin");
-            assertThat(rows).isEqualTo(1);
-        }
-
-        @Test
-        @DisplayName("处置: 待处理→误报")
-        void pendingToFalseAlarm() {
-            AlarmRecord record = AlarmRecord.builder().id(1L).status(1).build();
-            when(recordMapper.selectRecordById(1L)).thenReturn(record);
-            when(recordMapper.updateStatus(eq(1L), eq(4), eq("误报"), eq("admin"), anyString(), anyString())).thenReturn(1);
-            when(logMapper.insertLog(any())).thenReturn(1);
-
-            int rows = service.dispose(1L, 4, "传感器故障误触发", "admin");
-            assertThat(rows).isEqualTo(1);
+            assertThat(service.dispose(99L, 2, null, null, null, "admin")).isZero();
         }
     }
 
@@ -219,36 +213,46 @@ class AlarmRecordServiceImplTest {
     class BatchDispose {
 
         @Test
-        @DisplayName("批量销警: 更新记录 + 批量日志")
-        void batchResolve() {
+        @DisplayName("批量销警：逐条写 DISPOSE_CLOSE 日志")
+        void batchClose() {
             Long[] ids = {1L, 2L, 3L};
             when(recordMapper.batchUpdateStatus(eq(ids), eq(3), eq("已销警"), eq("admin"), anyString())).thenReturn(3);
-            when(logMapper.batchInsertLogs(anyList())).thenReturn(3);
 
-            int rows = service.batchDispose(ids, 3, "admin");
+            int rows = service.batchDispose(ids, 3, null, null, "批量销警", "admin");
             assertThat(rows).isEqualTo(3);
-            verify(logMapper).batchInsertLogs(argThat(list -> list.size() == 3));
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<AlarmRecordActionLog>> captor = ArgumentCaptor.forClass(List.class);
+            verify(actionLogMapper).batchInsertLogs(captor.capture());
+            assertThat(captor.getValue()).hasSize(3);
+            assertThat(captor.getValue()).allSatisfy(l -> {
+                assertThat(l.getActionType()).isEqualTo(ActionType.DISPOSE_CLOSE.name());
+                assertThat(l.getToValue()).isEqualTo("3");
+            });
         }
 
         @Test
-        @DisplayName("空 ID 数组返回 0")
+        @DisplayName("空数组返回 0")
         void emptyIds() {
-            assertThat(service.batchDispose(new Long[0], 3, "admin")).isZero();
-            verify(recordMapper, never()).batchUpdateStatus(any(), anyInt(), anyString(), anyString(), anyString());
-        }
-
-        @Test
-        @DisplayName("null ID 数组返回 0")
-        void nullIds() {
-            assertThat(service.batchDispose(null, 3, "admin")).isZero();
+            assertThat(service.batchDispose(new Long[0], 3, null, null, null, "admin")).isZero();
         }
     }
 
-    // ──────────── status name resolution ────────────
+    // ──────────── 查询方法 ────────────
 
     @Test
-    @DisplayName("resolveStatusName: null → 待处理")
-    void nullStatus() {
-        assertThat(service.dispose(1L, null, "", "admin")).isZero();
+    @DisplayName("selectActionLogsByAlarmRecordId 委托 mapper")
+    void selectActionLogs() {
+        when(actionLogMapper.selectLogsByAlarmRecordId(1L)).thenReturn(List.of());
+        service.selectActionLogsByAlarmRecordId(1L);
+        verify(actionLogMapper).selectLogsByAlarmRecordId(1L);
+    }
+
+    @Test
+    @DisplayName("selectTriggerDetailsByAlarmRecordId 委托 mapper")
+    void selectTriggerDetails() {
+        when(triggerDetailMapper.selectByAlarmRecordId(1L)).thenReturn(List.of());
+        service.selectTriggerDetailsByAlarmRecordId(1L);
+        verify(triggerDetailMapper).selectByAlarmRecordId(1L);
     }
 }

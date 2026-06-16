@@ -53,4 +53,13 @@ public interface AlarmRecordMapper {
     int countByStatus(@Param("status") Integer status);
 
     int countByHazardPointId(@Param("hazardPointId") Long hazardPointId);
+
+    /**
+     * 更新告警等级 (再次触发且等级变化时调用)。
+     */
+    int updateAlarmLevel(@Param("id") Long id,
+                         @Param("alarmLevel") Integer alarmLevel,
+                         @Param("alarmLevelText") String alarmLevelText,
+                         @Param("lastTriggerTime") String lastTriggerTime,
+                         @Param("triggerCount") Integer triggerCount);
 }

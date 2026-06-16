@@ -79,31 +79,43 @@
 
     <select id="selectPendingRecords" resultMap="AlarmRecordResult">
         <include refid="selectRecordVo"/>
-        WHERE status IN (1, 2)
-        <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
-        <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
-        <if test="alarmLevels != null and alarmLevels != ''">
-            AND FIND_IN_SET(alarm_level, #{alarmLevels})
-        </if>
-        <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
-        <if test="alarmTypes != null and alarmTypes != ''">
-            AND FIND_IN_SET(alarm_type, #{alarmTypes})
-        </if>
-        <if test="statusList != null and statusList != ''">
-            AND FIND_IN_SET(status, #{statusList})
-        </if>
-        <if test="hazardPointName != null and hazardPointName != ''">
-            AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
-        </if>
-        <if test="startTime != null and startTime != ''">
-            AND first_trigger_time &gt;= #{startTime}
-        </if>
-        <if test="endTime != null and endTime != ''">
-            AND first_trigger_time &lt;= #{endTime}
-        </if>
-        <if test="personName != null and personName != ''">
-            AND resolved_by LIKE CONCAT('%', #{personName}, '%')
-        </if>
+        <where>
+            <choose>
+                <when test="statusList != null and statusList.size() > 0">
+                    status IN
+                    <foreach collection="statusList" item="st" open="(" separator="," close=")">
+                        #{st}
+                    </foreach>
+                </when>
+                <otherwise>
+                    status IN (1, 2)
+                </otherwise>
+            </choose>
+            <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
+            <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
+            <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
+            <if test="alarmLevels != null and alarmLevels.size() > 0">
+                AND alarm_level IN
+                <foreach collection="alarmLevels" item="lv" open="(" separator="," close=")">
+                    #{lv}
+                </foreach>
+            </if>
+            <if test="alarmTypes != null and alarmTypes.size() > 0">
+                AND alarm_type IN
+                <foreach collection="alarmTypes" item="tp" open="(" separator="," close=")">
+                    #{tp}
+                </foreach>
+            </if>
+            <if test="hazardPointName != null and hazardPointName != ''">
+                AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
+            </if>
+            <if test="triggerTimeBegin != null and triggerTimeBegin != ''">
+                AND last_trigger_time &gt;= #{triggerTimeBegin}
+            </if>
+            <if test="triggerTimeEnd != null and triggerTimeEnd != ''">
+                AND last_trigger_time &lt;= #{triggerTimeEnd}
+            </if>
+        </where>
         ORDER BY alarm_level DESC, last_trigger_time DESC
     </select>
 
@@ -112,27 +124,9 @@
         WHERE status IN (3, 4)
         <if test="hazardPointId != null">AND hazard_point_id = #{hazardPointId}</if>
         <if test="alarmLevel != null">AND alarm_level = #{alarmLevel}</if>
-        <if test="alarmLevels != null and alarmLevels != ''">
-            AND FIND_IN_SET(alarm_level, #{alarmLevels})
-        </if>
         <if test="alarmType != null and alarmType != ''">AND alarm_type = #{alarmType}</if>
-        <if test="alarmTypes != null and alarmTypes != ''">
-            AND FIND_IN_SET(alarm_type, #{alarmTypes})
-        </if>
-        <if test="statusList != null and statusList != ''">
-            AND FIND_IN_SET(status, #{statusList})
-        </if>
         <if test="hazardPointName != null and hazardPointName != ''">
             AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
-        </if>
-        <if test="startTime != null and startTime != ''">
-            AND first_trigger_time &gt;= #{startTime}
-        </if>
-        <if test="endTime != null and endTime != ''">
-            AND first_trigger_time &lt;= #{endTime}
-        </if>
-        <if test="personName != null and personName != ''">
-            AND resolved_by LIKE CONCAT('%', #{personName}, '%')
         </if>
         ORDER BY resolved_at DESC
     </select>
@@ -190,6 +184,16 @@
     <update id="updateTriggerCount">
         UPDATE alarm_record
         SET last_trigger_time = #{lastTriggerTime},
+            trigger_count     = #{triggerCount},
+            update_time       = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateAlarmLevel">
+        UPDATE alarm_record
+        SET alarm_level       = #{alarmLevel},
+            alarm_level_text  = #{alarmLevelText},
+            last_trigger_time = #{lastTriggerTime},
             trigger_count     = #{triggerCount},
             update_time       = NOW()
         WHERE id = #{id}

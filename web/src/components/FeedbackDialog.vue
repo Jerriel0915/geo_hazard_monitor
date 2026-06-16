@@ -58,14 +58,14 @@
               <div class="hd-icon time"><Clock /></div>
               <div class="hd-text">
                 <span class="hd-label">发生时间</span>
-                <span class="hd-val">{{ formatDuration(data.firstTriggerTime) }}</span>
+                <span class="hd-val">{{ formatDuration(data.firstAlarmTime) }}</span>
               </div>
             </div>
             <div class="hd-item alarm-count-item" @click="switchToAlarmTab">
               <div class="hd-icon count"><Bell /></div>
               <div class="hd-text">
                 <span class="hd-label">告警次数</span>
-                <span class="hd-count">{{ data.triggerCount || 0 }}</span>
+                <span class="hd-count">{{ data.alarmCount || 0 }}</span>
               </div>
             </div>
           </div>
@@ -78,11 +78,11 @@
                 <div class="info-row">
                   <div class="info-item">
                     <span class="info-label">初次告警</span>
-                    <span class="info-value">{{ data.firstTriggerTime || '-' }}</span>
+                    <span class="info-value">{{ data.firstAlarmTime || '-' }}</span>
                   </div>
                   <div class="info-item">
                     <span class="info-label">最后告警</span>
-                    <span class="info-value">{{ data.lastTriggerTime || '-' }}</span>
+                    <span class="info-value">{{ data.lastAlarmTime || '-' }}</span>
                   </div>
                   <div class="info-item">
                     <span class="info-label">告警等级</span>
@@ -90,7 +90,7 @@
                   </div>
                   <div class="info-item">
                     <span class="info-label">告警次数</span>
-                    <span class="info-value count-link" @click="switchToAlarmTab">{{ data.triggerCount || 0 }}</span>
+                    <span class="info-value count-link" @click="switchToAlarmTab">{{ data.alarmCount || 0 }}</span>
                   </div>
                 </div>
               </div>
@@ -117,7 +117,7 @@
                 </div>
                 <div class="detail-desc">
                   <span class="detail-label">告警描述</span>
-                  <p>{{ data.alarmMessage || '-' }}</p>
+                  <p>{{ data.alarmContent || '-' }}</p>
                 </div>
               </div>
 
@@ -201,8 +201,8 @@
                   <div class="table-wrap__scroll">
                     <div style="max-height: 280px;">
                       <el-table :data="filteredFeedbackList" border stripe size="small">
-                        <el-table-column prop="createTime" label="反馈时间" width="160" />
-                        <el-table-column prop="operator" label="反馈人员" width="120" />
+                        <el-table-column prop="feedbackTime" label="反馈时间" width="160" />
+                        <el-table-column prop="person" label="反馈人员" width="120" />
                         <el-table-column prop="content" label="反馈内容" min-width="300" show-overflow-tooltip />
                       </el-table>
                     </div>
@@ -272,6 +272,7 @@ import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from '
 import FeedBack from "@/components/FeedBack.vue"
 import Notify from "@/components/Notify.vue"
 import {ElMessage} from 'element-plus'
+import request from '@/utils/request'
 import {
   Bell,
   Box,
@@ -290,7 +291,6 @@ import {
   WarnTriangleFilled
 } from '@element-plus/icons-vue'
 import echarts from '@/utils/echarts'
-import {getAlarmRecordLogs, getAlarmFeedbacks, addAlarmFeedback} from '@/api/alarm'
 
 const props = defineProps<{
   modelValue: boolean
@@ -300,7 +300,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'close'): void
-  (e: 'submit'): void
+  (e: 'submit', payload: { description?: string; attachments?: string; remarks?: string }): void
   (e: 'view-detail'): void
   (e: 'quick-response'): void
   (e: 'false-alarm', data: any): void
@@ -325,7 +325,11 @@ const lifeNodes = [
   { icon: Check, label: '核查情况', alarm: false, active: false },
 ]
 
-const timelineData = ref<{ time: string; description: string; type: string }[]>([])
+const timelineData = ref([
+  { time: '2025-01-15 10:30:00', description: '告警触发', type: 'trigger' },
+  { time: '2025-01-15 10:31:00', description: '系统自动响应', type: 'system' },
+  { time: '2025-01-15 10:35:00', description: '值班人员确认', type: 'confirm' }
+])
 
 // 告警等级 — 起止相同时只显示一个
 const alarmLevelRange = computed(() => {
@@ -387,19 +391,23 @@ const filteredNotifyList = computed(() => {
   return list
 })
 
-// 反馈历史 — 从 API 加载
-const feedbackList = ref<any[]>([])
+// 反馈历史 mock
+const feedbackList = ref<any[]>([
+  { feedbackTime: '2024-06-01 09:30:00', person: '张三', content: '已派人员前往现场核查' },
+  { feedbackTime: '2024-06-02 11:20:00', person: '李四', content: '现场情况稳定，持续监控中' },
+  { feedbackTime: '2024-06-03 15:45:00', person: '王五', content: '设备已检修，数据恢复正常' },
+])
 
 const feedbackFilter = reactive({ person: '', timeRange: [] as string[] })
 const filteredFeedbackList = computed(() => {
   let list = feedbackList.value
   if (feedbackFilter.person) {
     const kw = feedbackFilter.person.toLowerCase()
-    list = list.filter(f => (f.operator || '').toLowerCase().includes(kw))
+    list = list.filter(f => f.person.toLowerCase().includes(kw))
   }
   if (feedbackFilter.timeRange?.length === 2) {
     const [s, e] = feedbackFilter.timeRange
-    list = list.filter(f => f.createTime >= s && f.createTime <= e + ' 23:59:59')
+    list = list.filter(f => f.feedbackTime >= s && f.feedbackTime <= e + ' 23:59:59')
   }
   return list
 })
@@ -499,7 +507,6 @@ watch(() => props.modelValue, async (visible) => {
     alarmFilter.desc = ''; alarmFilter.timeRange = []
     notifyFilter.account = ''; notifyFilter.timeRange = []
     feedbackFilter.person = ''; feedbackFilter.timeRange = []
-    loadDisposalData()
     await nextTick()
     initChart()
   }
@@ -511,38 +518,53 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); chartIns
 // ---------- 工具函数 ----------
 const dialogTitle = computed(() => {
   if (!props.data) return '告警反馈'
-  return `${props.data.hazardPointName}[${props.data.firstTriggerTime}]`
+  return `${props.data.hazardPointName}[${props.data.firstAlarmTime}]`
 })
 
-// 加载时间线和反馈数据
-const loadDisposalData = async () => {
-  const id = props.data?.id
-  if (!id) return
-  try {
-    const logs = await getAlarmRecordLogs(id)
-    timelineData.value = (logs || []).map(log => ({
-      time: log.createTime || '',
-      description: log.disposalResult || log.note || log.disposalType || '',
-      type: log.toStatus === 1 ? 'trigger' : log.toStatus === 2 ? 'system' : 'confirm'
-    }))
-  } catch { /* ignore */ }
-  try {
-    const feedbacks = await getAlarmFeedbacks(id)
-    feedbackList.value = feedbacks || []
-  } catch { /* ignore */ }
+// 附件上传：调 /common/upload 拿 fileName，多个逗号拼接
+async function uploadAttachments(files: File[]): Promise<string | undefined> {
+  if (!files || files.length === 0) return undefined
+  const fileNames: string[] = []
+  for (const f of files) {
+    const fd = new FormData()
+    fd.append('file', f)
+    try {
+      const res = await request.post('/common/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const resData = (res as any).data
+      if (resData?.fileName) fileNames.push(resData.fileName)
+    } catch (e) {
+      console.error('附件上传失败:', e)
+    }
+  }
+  return fileNames.length > 0 ? fileNames.join(',') : undefined
 }
 
 // 添加反馈提交处理
 const handleFeedbackSubmit = async (data: { content: string; files: File[] }) => {
-  const id = props.data?.id
-  if (!id) return
-  try {
-    await addAlarmFeedback(id, { content: data.content, files: data.files as any })
+  const hasFiles = data.files && data.files.length > 0
+  const attachments = await uploadAttachments(data.files || [])
+  if (hasFiles && !attachments) {
+    ElMessage.warning('附件上传失败，已提交纯文本反馈')
+  }
+
+  // 添加反馈历史记录
+  feedbackList.value.unshift({
+    feedbackTime: new Date().toLocaleString(),
+    person: '当前用户',
+    content: data.content
+  })
+
+  // 向父组件 emit 带完整载荷
+  emit('submit', {
+    description: data.content,
+    attachments,
+    remarks: data.content,
+  })
+
+  if (!hasFiles || attachments) {
     ElMessage.success('反馈提交成功')
-    await loadDisposalData()
-    emit('submit')
-  } catch {
-    ElMessage.error('反馈提交失败')
   }
 }
 

@@ -22,12 +22,12 @@
               <el-descriptions-item label="警情状态">
                 <el-tag :type="getStatusType(data.status)">{{ getStatusText(data.status) }}</el-tag>
               </el-descriptions-item>
-              <el-descriptions-item label="首次告警时间">{{ data.firstAlarmTime }}</el-descriptions-item>
-              <el-descriptions-item label="最后告警时间">{{ data.lastAlarmTime }}</el-descriptions-item>
-              <el-descriptions-item label="告警次数">{{ data.alarmCount }}</el-descriptions-item>
-              <el-descriptions-item label="响应人员">{{ data.responderName || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="响应时间">{{ data.responseTime || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="告警内容" :span="2">{{ data.alarmContent }}</el-descriptions-item>
+              <el-descriptions-item label="首次告警时间">{{ data.firstTriggerTime }}</el-descriptions-item>
+              <el-descriptions-item label="最后告警时间">{{ data.lastTriggerTime }}</el-descriptions-item>
+              <el-descriptions-item label="告警次数">{{ data.triggerCount }}</el-descriptions-item>
+              <el-descriptions-item label="响应人员">{{ data.resolvedBy || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="响应时间">{{ data.resolvedAt || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="告警内容" :span="2">{{ data.alarmMessage }}</el-descriptions-item>
             </el-descriptions>
           </el-tab-pane>
 
@@ -56,13 +56,13 @@
               <div class="table-wrap__scroll">
                 <div style="max-height: 300px;">
                   <el-table :data="filteredAlarmRecords" border stripe style="width: 100%">
-                    <el-table-column prop="alarmTime" label="告警时间" width="180" />
+                    <el-table-column prop="triggerTime" label="告警时间" width="180" />
                     <el-table-column prop="alarmLevel" label="告警等级" width="100">
                       <template #default="{ row }">
                         <el-tag :type="getAlarmLevelType(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
                       </template>
                     </el-table-column>
-                    <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+                    <el-table-column prop="alarmMessage" label="描述" min-width="200" show-overflow-tooltip />
                   </el-table>
                 </div>
               </div>
@@ -119,11 +119,13 @@
               <div class="table-wrap__scroll">
                 <div style="max-height: 350px;">
                   <el-table :data="disposalRecords" border stripe style="width: 100%">
-                    <el-table-column prop="disposalTime" label="处置时间" width="180" />
-                    <el-table-column prop="disposalType" label="处置类型" width="100" />
+                    <el-table-column prop="createTime" label="处置时间" width="180" />
+                    <el-table-column prop="actionType" label="动作类型" width="140">
+                      <template #default="{ row }">{{ getActionTypeText(row.actionType) }}</template>
+                    </el-table-column>
                     <el-table-column prop="operator" label="处置人员" width="120" />
-                    <el-table-column prop="result" label="处置结果" min-width="150" show-overflow-tooltip />
-                    <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
+                    <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="remarks" label="备注" min-width="180" show-overflow-tooltip />
                   </el-table>
                 </div>
               </div>
@@ -164,143 +166,129 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import {
+  getAlarmRecordDetail,
+  getTriggerDetails,
+  getActionLogs,
+  type AlarmRecordItem,
+  type AlarmRecordTriggerDetail,
+  type AlarmRecordActionLog,
+} from '@/api/alarm'
 
 const props = defineProps<{
   modelValue: boolean
   data: Record<string, any> | null
 }>()
 
-defineEmits<{
-  'update:modelValue': [value: boolean]
-}>()
+defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
 const activeTab = ref('basic')
+const detail = ref<AlarmRecordItem | null>(null)
 
-// 告警记录搜索
-const alarmRecordSearch = ref({
-  description: '',
-  timeRange: [] as string[]
-})
+const alarmRecordSearch = ref({ description: '', timeRange: [] as string[] })
+const triggerDetails = ref<AlarmRecordTriggerDetail[]>([])
 
-const alarmRecords = ref<{ alarmTime: string; alarmLevel: string; description: string }[]>([])
+const disposalRecords = ref<AlarmRecordActionLog[]>([])
 
-// 当弹窗打开时，从 data.alarmList 填充告警记录
-watch(() => props.modelValue, (val) => {
-  if (val && props.data) {
-    activeTab.value = 'basic'
-    alarmRecordSearch.value = { description: '', timeRange: [] }
-    notifyRecordSearch.value = { account: '', timeRange: [] }
-    // 从现有数据的 alarmList 填充告警记录
-    if (props.data.alarmList) {
-      alarmRecords.value = props.data.alarmList.map((item: any) => ({
-        alarmTime: item.alarmTime || '',
-        alarmLevel: item.alarmLevel || '',
-        description: item.alarmContent || ''
-      }))
-    } else {
-      alarmRecords.value = []
-    }
+interface TimelineNode { time: string; description: string; type: string }
+const timelineData = ref<TimelineNode[]>([])
+
+// 通知记录 tab：暂不对接，保留搜索结构 + 空数据
+const notifyRecordSearch = ref({ account: '', timeRange: [] as string[] })
+const filteredNotifyRecords = computed(() => [])
+const queryNotifyRecords = () => {}
+const resetNotifyRecords = () => { notifyRecordSearch.value = { account: '', timeRange: [] } }
+
+// 弹窗打开时并发拉取
+watch(() => props.modelValue, async (val) => {
+  if (!val || !props.data?.id) return
+  activeTab.value = 'basic'
+  alarmRecordSearch.value = { description: '', timeRange: [] }
+  notifyRecordSearch.value = { account: '', timeRange: [] }
+  const id = Number(props.data.id)
+
+  try {
+    const [d, t, l] = await Promise.all([
+      getAlarmRecordDetail(id),
+      getTriggerDetails(id),
+      getActionLogs(id),
+    ])
+    const detailData = (d as any).data ?? d
+    detail.value = detailData ?? null
+    triggerDetails.value = (t as any).data ?? t ?? []
+    const logs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
+    disposalRecords.value = logs.filter((x: AlarmRecordActionLog) =>
+      ['FEEDBACK', 'DISPOSE_CLOSE', 'DISPOSE_FALSE_ALARM'].includes(x.actionType))
+    timelineData.value = buildTimeline(logs)
+  } catch (e) {
+    detail.value = null
+    triggerDetails.value = []
+    disposalRecords.value = []
+    timelineData.value = []
   }
 })
+
+// 由动作日志构造时间线
+function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
+  return [...logs].sort((a, b) => (a.createTime || '').localeCompare(b.createTime || '')).map(log => {
+    const typeMap: Record<string, string> = {
+      CREATE: 'trigger', RE_TRIGGER: 'trigger', LEVEL_CHANGE: 'trigger',
+      NOTIFY: 'notify',
+      FEEDBACK: 'dispose', DISPOSE_CLOSE: 'dispose', DISPOSE_FALSE_ALARM: 'dispose',
+    }
+    const descMap: Record<string, string> = {
+      CREATE: '告警创建', RE_TRIGGER: '告警再次触发',
+      LEVEL_CHANGE: `等级变化 ${log.fromValue}→${log.toValue}`,
+      FEEDBACK: '处置反馈', DISPOSE_CLOSE: '告警销警',
+      DISPOSE_FALSE_ALARM: '标记误报', NOTIFY: `通知发送：${log.remarks || ''}`,
+    }
+    return {
+      time: log.createTime,
+      description: descMap[log.actionType] || log.actionType,
+      type: typeMap[log.actionType] || 'system',
+    }
+  })
+}
 
 const filteredAlarmRecords = computed(() => {
-  let result = [...alarmRecords.value]
+  let list = triggerDetails.value
   if (alarmRecordSearch.value.description) {
     const kw = alarmRecordSearch.value.description.toLowerCase()
-    result = result.filter(r => r.description.toLowerCase().includes(kw))
+    list = list.filter(r => (r.alarmMessage || '').toLowerCase().includes(kw))
   }
   if (alarmRecordSearch.value.timeRange.length === 2) {
-    const [start, end] = alarmRecordSearch.value.timeRange
-    result = result.filter(r => r.alarmTime >= start && r.alarmTime <= end)
+    const [s, e] = alarmRecordSearch.value.timeRange
+    list = list.filter(r => r.triggerTime >= s && r.triggerTime <= e)
   }
-  return result
+  return list
 })
 
-const queryAlarmRecords = () => { /* 触发 computed 更新 */ }
-const resetAlarmRecords = () => {
-  alarmRecordSearch.value = { description: '', timeRange: [] }
+const queryAlarmRecords = () => {}
+const resetAlarmRecords = () => { alarmRecordSearch.value = { description: '', timeRange: [] } }
+
+// 枚举映射（数字/大写）
+const getAlarmLevelType = (level: number | string) => {
+  const n = Number(level)
+  return ({ 1: 'info', 2: 'warning', 3: 'warning', 4: 'danger' } as Record<number, string>)[n] || 'info'
 }
-
-// 通知记录搜索
-const notifyRecordSearch = ref({
-  account: '',
-  timeRange: [] as string[]
-})
-
-const notifyRecords = ref<{ notifyTime: string; channelType: string; account: string; content: string; success: boolean }[]>([])
-
-const filteredNotifyRecords = computed(() => {
-  let result = [...notifyRecords.value]
-  if (notifyRecordSearch.value.account) {
-    const kw = notifyRecordSearch.value.account.toLowerCase()
-    result = result.filter(r => r.account.toLowerCase().includes(kw))
-  }
-  if (notifyRecordSearch.value.timeRange.length === 2) {
-    const [start, end] = notifyRecordSearch.value.timeRange
-    result = result.filter(r => r.notifyTime >= start && r.notifyTime <= end)
-  }
-  return result
-})
-
-const queryNotifyRecords = () => { /* 触发 computed 更新 */ }
-const resetNotifyRecords = () => {
-  notifyRecordSearch.value = { account: '', timeRange: [] }
+const getAlarmLevelText = (level: number | string) => {
+  const n = Number(level)
+  return ({ 1: '一级', 2: '二级', 3: '三级', 4: '四级' } as Record<number, string>)[n] || String(level)
 }
-
-// 处置记录
-const disposalRecords = ref<{ disposalTime: string; disposalType: string; operator: string; result: string; remark: string }[]>([])
-
-// 时间线数据
-const timelineData = ref<{ time: string; description: string; type: string }[]>([])
-
-// 工具函数
-const getAlarmLevelType = (level: string) => {
-  const map: Record<string, string> = {
-    '1': 'danger',
-    '2': 'warning',
-    '3': 'success',
-    '4': 'info'
-  }
-  return map[level] || 'info'
+const getAlarmTypeText = (type: string) =>
+  ({ THRESHOLD: '阈值预警', COMPREHENSIVE: '综合预警' } as Record<string, string>)[type] || type
+const getStatusType = (status: number | string) => {
+  const n = Number(status)
+  return ({ 1: 'danger', 2: 'warning', 3: 'success', 4: 'info' } as Record<number, string>)[n] || 'info'
 }
-
-const getAlarmLevelText = (level: string) => {
-  const map: Record<string, string> = {
-    '1': '一级',
-    '2': '二级',
-    '3': '三级',
-    '4': '四级'
-  }
-  return map[level] || level
+const getStatusText = (status: number | string) => {
+  const n = Number(status)
+  return ({ 1: '待处理', 2: '处理中', 3: '已销警', 4: '误报' } as Record<number, string>)[n] || String(status)
 }
-
-const getAlarmTypeText = (type: string) => {
-  const map: Record<string, string> = {
-    'threshold': '阈值预警',
-    'comprehensive': '综合预警'
-  }
-  return map[type] || type
-}
-
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    'pending': 'danger',
-    'processing': 'warning',
-    'false_alarm': 'info',
-    'closed': 'info'
-  }
-  return map[status] || 'info'
-}
-
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    'pending': '待处理',
-    'processing': '处理中',
-    'false_alarm': '误报',
-    'closed': '已销警'
-  }
-  return map[status] || status
-}
+const getActionTypeText = (t: string) =>
+  ({ CREATE: '创建', RE_TRIGGER: '再次触发', LEVEL_CHANGE: '等级变化',
+     FEEDBACK: '处置反馈', DISPOSE_CLOSE: '销警', DISPOSE_FALSE_ALARM: '误报',
+     NOTIFY: '通知发送' } as Record<string, string>)[t] || t
 </script>
 
 <style scoped>
