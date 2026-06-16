@@ -61,7 +61,7 @@
 | `action_type` | varchar(30) NOT NULL | 枚举（见 3.3），原 `disposal_type` 改名 |
 | `from_value` | varchar(20) | 变更前值，由 action_type 解释语义（等级或状态） |
 | `to_value` | varchar(20) | 变更后值 |
-| `remarks` | varchar(500) | 备注/反馈内容，原 `note` 改名 |
+| `remarks` | varchar(500) | 备注/反馈内容，原 `note`(实际为 text 类型) 改名并收窄 |
 | `description` | varchar(500) | 描述内容（FEEDBACK 等动作附带） |
 | `attachments` | varchar(1000) | 附件文件名，多个逗号分隔（`/common/upload` 返回的 `fileName`） |
 | `operator` | varchar(64) | 操作人 |
@@ -73,7 +73,7 @@
 
 | 值 | 含义 | from_value/to_value 语义 |
 |---|---|---|
-| `CREATE` | 引擎首次创建 | to_value = 等级 |
+| `CREATE` | 引擎首次创建 | to_value = 1（初始状态：待处理） |
 | `RE_TRIGGER` | 再次触发（同级） | — |
 | `LEVEL_CHANGE` | 再次触发且等级变化 | from_value = 旧等级, to_value = 新等级 |
 | `FEEDBACK` | 处置反馈（status→2） | to_value = 2 |
@@ -82,6 +82,38 @@
 | `NOTIFY` | 通知发送 | — |
 
 > `DESCRIPTION` / `ATTACHMENT` **不作为独立 action_type**；描述与附件是 FEEDBACK 等动作的附属字段。
+>
+> `from_value`/`to_value` 语义随 action_type 变化：状态类动作（CREATE/FEEDBACK/DISPOSE_*）记录状态值，LEVEL_CHANGE 记录等级值，RE_TRIGGER/NOTIFY 留空。
+
+### 3.4 升级 SQL（`db/upgrade/v2.5-alarm-action-log.sql`）
+
+已通过 MySQL MCP 核对实际库（URI 格式 `mysql://<表名>`，读取 information_schema 列结构）：
+
+- `alarm_record_log` **存在**，9 字段：`id`/`alarm_id`(bigint)/`from_status`(tinyint)/`to_status`(tinyint)/`disposal_type`(varchar)/`operator`(varchar)/`note`(**text**)/`disposal_result`(varchar)/`create_time`(datetime)
+- `alarm_record` 主表**存在**，27 字段齐全（含 `alarm_level`/`alarm_type`/`trigger_count`/`first_trigger_time`/`last_trigger_time`/`resolved_by`/`resolved_at`/`resolution_note`/`status`/`status_name`）
+- `alarm_record_action_log`、`alarm_record_trigger_detail` **均不存在** → 需新建
+
+脚本须**幂等**（`CREATE TABLE IF NOT EXISTS` / 判断列是否存在再 ALTER），执行顺序：
+
+1. `CREATE TABLE IF NOT EXISTS alarm_record_trigger_detail`（见 3.1）
+2. `RENAME TABLE alarm_record_log TO alarm_record_action_log`
+3. `ALTER TABLE ... ADD COLUMN` 新字段：`action_type`/`from_value`/`to_value`/`remarks`/`description`/`attachments`
+4. `UPDATE` 数据迁移（旧字段 → 新字段，映射见下）
+5. `ALTER TABLE ... CHANGE COLUMN alarm_id → alarm_record_id`；`DROP COLUMN` 旧字段（`from_status`/`to_status`/`disposal_type`/`disposal_result`/`note`）
+6. 更新表注释为「告警动作日志」
+
+`disposal_type → action_type` 迁移映射（CASE WHEN）：
+
+| 旧 disposal_type | 新 action_type |
+|---|---|
+| `开始处置` | FEEDBACK |
+| `已销警` | DISPOSE_CLOSE |
+| `标记误报` | DISPOSE_FALSE_ALARM |
+| `批量销警` | DISPOSE_CLOSE |
+| `批量标记误报` / `批量误报` | DISPOSE_FALSE_ALARM |
+| NULL（系统创建） | CREATE |
+
+字段迁移：`from_status → from_value`、`to_status → to_value`、`note → remarks`、`disposal_result → description`（`note` 为 text，收窄入 varchar(500)，超长截断）。
 
 ## 4. 写入时机（数据流）
 
@@ -175,10 +207,11 @@
 6. 通知发送 → 写 NOTIFY
 7. 导出按钮置灰 + tooltip
 8. 后端单测覆盖 `createOrUpdateAlarm` 的三条触发分支与 dispose 的 action_log 写入
+9. `db/upgrade/v2.5-alarm-action-log.sql` 存在且幂等，执行后表结构与 3.1/3.2 一致，历史日志按映射规则迁移成功（已通过 MCP 核对实际库）
 
 ## 8. 风险与备注
 
-- `alarm_record_log` → `alarm_record_action_log` 涉及表重命名与字段迁移，需提供升级 SQL（`db/upgrade/`），保留历史数据（字段语义映射）
+- 升级 SQL 写入 `db/upgrade/v2.5-alarm-action-log.sql`（该目录已存在 v2.1–v2.4 脚本）；脚本须幂等并保留历史数据，详见 3.4
 - `action_type` 用 varchar 枚举而非 DB enum，便于扩展；Java 侧定义枚举常量类
 - 附件 `attachments` 存 fileName（磁盘路径），不引入文件表；依赖现有 `/common/upload`
 - 再次触发写两条日志（RE_TRIGGER + LEVEL_CHANGE）会使该告警 action_log 条数增长较快，索引 `(alarm_record_id, create_time)` 已覆盖
