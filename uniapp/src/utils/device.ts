@@ -117,6 +117,21 @@ export const deviceApi = {
       return []
     }
   },
+
+  /** @deprecated 未对接，返回空数组。alarm-detail.vue / container-detail.vue 暂用 */
+  getByHazardId(_hazardId: number): DeviceInfo[] {
+    return []
+  },
+
+  /** @deprecated 未对接，返回空数组。container-detail.vue 暂用 */
+  getByContainerId(_containerId: number): DeviceInfo[] {
+    return []
+  },
+
+  /** @deprecated 未对接，返回空数组。chart.vue 将在任务 6 中重写 */
+  getHistoryData(_deviceId: number, _startTime: string, _endTime: string, _property?: string): any[] {
+    return []
+  },
 }
 
 export default deviceApi

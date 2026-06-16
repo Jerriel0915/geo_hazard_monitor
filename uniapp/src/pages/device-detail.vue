@@ -362,10 +362,6 @@ function getStatusClass(status: string): string {
   font-size: 26rpx;
   color: #1a1a2e;
   font-weight: 500;
-
-  &.hazard-name {
-    color: #3068e4;
-  }
 }
 
 .type-tag {
@@ -411,12 +407,6 @@ function getStatusClass(status: string): string {
   display: flex;
   align-items: baseline;
   gap: 6rpx;
-}
-
-.attr-value {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #1a1a2e;
 }
 
 .attr-unit {

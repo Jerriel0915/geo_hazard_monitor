@@ -504,15 +504,6 @@ function formatTime(time: string): string {
 .info-value {
   font-size: 24rpx;
   color: #4b5563;
-
-  &.hazard-name {
-    color: #3068e4;
-    font-weight: 500;
-    max-width: 280rpx;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 /* 空状态 */
