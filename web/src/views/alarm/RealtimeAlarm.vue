@@ -280,7 +280,11 @@ const handleBatchFalseAlarm = async () => {
     ElMessage.success('已标记为误报')
     selectedRows.value = []
     loadList()
-  } catch (e) { /* 用户取消 */ }
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error('标记误报失败')
+    }
+  }
 }
 
 // ── 批量销警 ──
@@ -292,7 +296,11 @@ const handleBatchCloseAlarm = async () => {
     ElMessage.success('销警成功')
     selectedRows.value = []
     loadList()
-  } catch (e) { /* 用户取消 */ }
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error('销警失败')
+    }
+  }
 }
 
 // 导出：按钮已 disabled，函数保留为空
