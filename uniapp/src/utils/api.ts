@@ -7,17 +7,17 @@
 const ENV = {
   // 开发环境
   DEV: {
-    BASE_URL: 'http://192.168.2.11:8080/api',
-    MQTT_URL: 'ws://localhost:8083/mqtt',
+    BASE_URL: 'http://124.221.142.86/api/v1',
+    MQTT_URL: 'ws://124.221.142.86:8083/mqtt',
   },
-  // 生产环境 - 微信云托管
+  // 生产环境
   PROD: {
-    BASE_URL: 'http://8.156.68.220:8856/api',
-    MQTT_URL: 'ws://8.156.68.220:8083/mqtt',
+    BASE_URL: 'http://124.221.142.86/api/v1',
+    MQTT_URL: 'ws://124.221.142.86:8083/mqtt',
   }
 }
 
-// 当前环境：开发时用 DEV，部署时改为 PROD
+// 当前环境
 const currentEnv = ENV.PROD
 
 const BASE_URL = currentEnv.BASE_URL
@@ -84,7 +84,7 @@ const request = (options) => {
           uni.removeStorageSync('user')
           // 如果不是静默模式，跳转登录
           if (!options.silent) {
-            uni.redirectTo({ url: '/pages/login' })
+            uni.reLaunch({ url: '/pages/login' })
           }
           reject(new Error('登录已过期，请重新登录'))
         }
