@@ -1,3 +1,4 @@
+import request from '@/utils/request'
 import type { PageResult } from './system'
 
 // ---------------------------------------------------------------------------
@@ -66,7 +67,7 @@ export interface DeviceOption {
   id: number
   name: string
   deviceType: number
-  hazardPointId: number
+  boundHazardPointId: number
 }
 
 export interface DeviceTypeOption {
@@ -542,24 +543,27 @@ function getMockChartData(
 
 /** Fetch a page of reports (mock) */
 export async function getReportPage(params: ReportPageParams): Promise<PageResult<ReportItem>> {
-  const all = generateMockReports()
-  let filtered = all
-  if (params.keyword) {
-    const kw = params.keyword.toLowerCase()
-    filtered = filtered.filter((r) => r.title.toLowerCase().includes(kw))
-  }
-  if (params.type) {
-    filtered = filtered.filter((r) => r.type === params.type)
-  }
-  if (params.startDate) {
-    filtered = filtered.filter((r) => r.periodStart >= params.startDate!)
-  }
-  if (params.endDate) {
-    filtered = filtered.filter((r) => r.periodEnd <= params.endDate!)
-  }
-  const start = (params.pageNum - 1) * params.pageSize
-  const rows = filtered.slice(start, start + params.pageSize)
-  return { rows, total: filtered.length, pageNum: params.pageNum, pageSize: params.pageSize }
+
+  //  return request.get<PageResult<ReportItem>>('/out/report/list', {params})
+
+  // const all = generateMockReports()
+  // let filtered = all
+  // if (params.keyword) {
+  //   const kw = params.keyword.toLowerCase()
+  //   filtered = filtered.filter((r) => r.title.toLowerCase().includes(kw))
+  // }
+  // if (params.type) {
+  //   filtered = filtered.filter((r) => r.type === params.type)
+  // }
+  // if (params.startDate) {
+  //   filtered = filtered.filter((r) => r.periodStart >= params.startDate!)
+  // }
+  // if (params.endDate) {
+  //   filtered = filtered.filter((r) => r.periodEnd <= params.endDate!)
+  // }
+  // const start = (params.pageNum - 1) * params.pageSize
+  // const rows = filtered.slice(start, start + params.pageSize)
+  // return { rows, total: filtered.length, pageNum: params.pageNum, pageSize: params.pageSize }
 }
 
 /** Fetch a single report detail (mock) */
@@ -575,7 +579,10 @@ export async function deleteReport(_id: number): Promise<void> {}
 
 /** Fetch hazard point options (mock) */
 export async function getHazardPointOptions(): Promise<HazardPointOption[]> {
-  return HAZARD_POINTS
+  let msg = await request.get<HazardPointOption[]>('/hazard-points/page');
+  let rst = msg.data.rows;
+  return rst;
+  // return HAZARD_POINTS
 }
 
 /** Fetch device type options with attributes (mock) */
@@ -588,13 +595,18 @@ export async function getDeviceOptions(params: {
   hazardPointId?: number
   deviceType?: number
 }): Promise<DeviceOption[]> {
-  let filtered = [...DEVICES]
-  if (params.hazardPointId) {
-    filtered = filtered.filter((d) => d.hazardPointId === params.hazardPointId)
-  }
-  if (params.deviceType) {
-    filtered = filtered.filter((d) => d.deviceType === params.deviceType)
-  }
+  // let filtered = [...DEVICES]
+  let devices = await request.get<DeviceOption[]>(`/devices/page?pageNum=1&pageSize=20&boundHazardPointId=${params.hazardPointId}`);
+    let filtered = devices.data.rows;
+  // if (params.hazardPointId) {
+  //   filtered = filtered.filter((d) => d.hazardPointId === params.hazardPointId)
+  // }
+  // if (params.deviceType) {
+  //   filtered = filtered.filter((d) => d.deviceType === params.deviceType)
+  // }
+
+
+
   return filtered
 }
 
