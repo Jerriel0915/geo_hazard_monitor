@@ -155,7 +155,6 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
         if (record == null) {
             return 0;
         }
-        int oldStatus = record.getStatus() != null ? record.getStatus() : 1;
         String statusName = AlarmConstants.resolveStatusName(newStatus);
         String now = LocalDateTime.now().format(FMT);
         Date nowDate = new Date();
