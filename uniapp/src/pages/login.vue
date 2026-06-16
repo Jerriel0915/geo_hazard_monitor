@@ -9,7 +9,6 @@
 
     <view class="login-content" :style="{ paddingTop: `${statusBarHeight + 80}px` }">
       <view class="login-header">
-        <image src="/static/logo.png" class="logo" mode="aspectFit" />
         <text class="title">{{ systemTitle }}</text>
         <text class="subtitle">边坡监测 · 智能预警</text>
       </view>
@@ -56,9 +55,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import authApi from '@/utils/auth'
 import { useSafeArea } from '@/composables/useSafeArea'
+import authApi from '@/utils/auth'
+import { onMounted, ref } from 'vue'
 
 const { statusBarHeight } = useSafeArea()
 
