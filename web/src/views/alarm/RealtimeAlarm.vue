@@ -234,12 +234,14 @@ const handleRowClick = (row: AlarmRecordItem) => { currentRow.value = row; detai
 // ── 处置反馈 ──
 const handleFeedback = (row: AlarmRecordItem) => { currentRow.value = row; feedbackDialogVisible.value = true }
 
-const handleFeedbackSubmit = async (payload: { content: string; files: File[] }) => {
+const handleFeedbackSubmit = async (payload: { description?: string; attachments?: string; remarks?: string }) => {
   if (!currentRow.value) return
   try {
     await disposeAlarm(currentRow.value.id, {
       status: 2,
-      remarks: payload.content,
+      description: payload.description,
+      attachments: payload.attachments,
+      remarks: payload.remarks,
     })
     ElMessage.success('处置成功')
     feedbackDialogVisible.value = false

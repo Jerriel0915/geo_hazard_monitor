@@ -272,6 +272,7 @@ import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from '
 import FeedBack from "@/components/FeedBack.vue"
 import Notify from "@/components/Notify.vue"
 import {ElMessage} from 'element-plus'
+import request from '@/utils/request'
 import {
   Bell,
   Box,
@@ -299,7 +300,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'close'): void
-  (e: 'submit'): void
+  (e: 'submit', payload: { description?: string; attachments?: string; remarks?: string }): void
   (e: 'view-detail'): void
   (e: 'quick-response'): void
   (e: 'false-alarm', data: any): void
@@ -520,10 +521,30 @@ const dialogTitle = computed(() => {
   return `${props.data.hazardPointName}[${props.data.firstAlarmTime}]`
 })
 
+// 附件上传：调 /common/upload 拿 fileName，多个逗号拼接
+async function uploadAttachments(files: File[]): Promise<string | undefined> {
+  if (!files || files.length === 0) return undefined
+  const fileNames: string[] = []
+  for (const f of files) {
+    const fd = new FormData()
+    fd.append('file', f)
+    try {
+      const res = await request.post('/common/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const data = (res as any).data ?? res
+      if (data.fileName) fileNames.push(data.fileName)
+    } catch (e) {
+      console.error('附件上传失败:', e)
+    }
+  }
+  return fileNames.length > 0 ? fileNames.join(',') : undefined
+}
+
 // 添加反馈提交处理
-const handleFeedbackSubmit = (data: { content: string; files: File[] }) => {
-  console.log('反馈内容:', data.content)
-  console.log('反馈文件:', data.files)
+const handleFeedbackSubmit = async (data: { content: string; files: File[] }) => {
+  // 上传附件
+  const attachments = await uploadAttachments(data.files || [])
 
   // 添加反馈历史记录
   feedbackList.value.unshift({
@@ -532,8 +553,14 @@ const handleFeedbackSubmit = (data: { content: string; files: File[] }) => {
     content: data.content
   })
 
+  // 向父组件 emit 带完整载荷
+  emit('submit', {
+    description: data.content,
+    attachments,
+    remarks: data.content,
+  })
+
   ElMessage.success('反馈提交成功')
-  emit('submit')
 }
 
 // 添加通知提交处理
