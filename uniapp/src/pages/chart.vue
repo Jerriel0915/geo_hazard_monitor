@@ -71,8 +71,9 @@
               <view class="chart-container">
                 <EchartsComponent
                   v-if="group.option"
+                  :key="`${group.deviceId}-${chartVersion}`"
                   :onInit="(canvas, width, height) => initChart(canvas, width, height, group.deviceId)"
-                  :canvasId="`chart-${group.deviceId}`"
+                  :canvasId="`chart-${group.deviceId}-${chartVersion}`"
                   width="100%"
                   height="500rpx"
                 />
@@ -183,6 +184,8 @@ interface ChartGroup {
 }
 
 const chartGroups = ref<ChartGroup[]>([])
+// 递增版本号，强制 EchartsComponent 重新挂载以刷新图表
+const chartVersion = ref(0)
 
 const hazardNames = computed(() => allHazards.value.map(h => h.name))
 
@@ -333,6 +336,7 @@ const loadAllCharts = async () => {
     }
 
     chartGroups.value = groups
+    chartVersion.value++
   } finally {
     loading.value = false
   }
