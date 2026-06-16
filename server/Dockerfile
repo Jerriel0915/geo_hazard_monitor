@@ -66,7 +66,7 @@ COPY --from=builder /app/zwei-admin/target/*.jar app.jar
 RUN mkdir -p /app/uploads /app/logs
 
 # 环境变量（可在 docker-compose 或 K8s 中覆盖）
-ENV JAVA_OPTS="-Xmx512m -Xms256m"
+ENV JAVA_OPTS="-Xmx512m -Xms256m -Duser.timezone=Asia/Shanghai -Djava.awt.headless=true"
 ENV SPRING_PROFILES_ACTIVE="prod"
 ENV ZWEI_LOG_RUNTIME_LEVELS="WARN,ERROR"
 ENV ZWEI_LOG_RUNTIME_INFO_ENABLED="false"
