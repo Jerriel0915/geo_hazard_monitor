@@ -142,6 +142,12 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         if (s.id != null) sensorMap.set(s.id, s)
       }
       sensors.value = list
+      // 默认选中第一个传感器（并联动选中其第一个指标）
+      const firstSensor = sensors.value[0]
+      if (firstSensor?.id != null) {
+        filter.sensorId = firstSensor.id
+        selectSensor(firstSensor.id)
+      }
     } catch (error: any) {
       if (error?.name !== 'AbortError' && error?.code !== 'ERR_CANCELED') {
         showRequestErrorMessage(error, '获取传感器列表失败')
@@ -151,8 +157,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
 
   // ── 选择传感器 → 提取指标 ──
   const selectSensor = (sensorId: number | string) => {
-    filter.attrCode = ''
     if (!sensorId) {
+      filter.attrCode = ''
       attrs.value = []
       return
     }
@@ -161,16 +167,20 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       code: a.attrCode,
       label: `${a.attrName || a.attrCode}${a.unit ? ` (${a.unit})` : ''}`,
     }))
+    // 默认选中第一个指标
+    filter.attrCode = attrs.value[0]?.code ?? ''
   }
 
-  // ── 默认时间范围（最近 3 天）──
+  // ── 默认时间范围（最近 7 天，按自然日对齐：起始 00:00:00，结束 23:59:59）──
   const defaultTimeRange = (): [string, string] => {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
     const end = new Date()
-    const start = new Date(end.getTime() - 3 * 24 * 60 * 60 * 1000)
-    const fmt = (d: Date) => {
-      const pad = (n: number) => String(n).padStart(2, '0')
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-    }
+    end.setHours(23, 59, 59, 0)
+    const start = new Date(end)
+    start.setDate(start.getDate() - 6) // 含今日共 7 个自然日
+    start.setHours(0, 0, 0, 0)
     return [fmt(start), fmt(end)]
   }
 
@@ -247,8 +257,6 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
             })
           }
           chartSeries.value = seriesList
-          const totalPoints = seriesList.reduce((sum, s) => sum + s.labels.length, 0)
-          ElMessage.success(`加载 ${seriesList.length} 条曲线，共 ${totalPoints} 个数据点`)
         } else {
           // 表格模式：扁平化所有 attrCode 的数据行（保留 attrCode 归属）
             // 后端 ORDER BY TIME DESC，表格也按正序排列（时间由旧到新）
@@ -314,9 +322,6 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       if (mode.value === 'chart') {
         const series = await getChartData(baseParams as any)
         chartSeries.value = series || []
-        ElMessage.success(
-          `加载 ${series.length} 条曲线，共 ${series[0]?.labels.length || 0} 个数据点`
-        )
       } else {
         const res = await getMonitorDataPage({ ...baseParams, pageNum: 1, pageSize: 100 })
         tableData.value = (res as any).rows || []
@@ -380,6 +385,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       chart: {
         type: 'area' as const,
         height: '100%',
+        parentHeightOffset: 0,
         fontFamily: 'inherit',
         defaultLocale: 'zh-cn',
         locales: [{
@@ -412,7 +418,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       grid: {
         borderColor: '#e7e7e7',
         strokeDashArray: 4,
-        padding: { top: 10, right: 10, bottom: 5, left: 10 },
+        padding: { top: 10, right: 10, bottom: 0, left: 10 },
       },
       legend: {
         position: 'top' as const,
@@ -426,7 +432,11 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       xaxis: {
         type: 'category' as const,
         categories: xCategories,
-        labels: { rotate: -30, style: { fontSize: '11px', colors: '#666' } },
+        labels: {
+          rotate: 0,
+          hideOverlappingLabels: true,
+          style: { fontSize: '11px', colors: '#666' },
+        },
         tickAmount: Math.min(xCategories.length, 10),
         tooltip: { enabled: false },
       },

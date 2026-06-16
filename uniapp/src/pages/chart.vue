@@ -25,7 +25,7 @@
             :key="device.id"
             class="device-tag"
           >
-            <text class="tag-text">{{ device.deviceName }}</text>
+            <text class="tag-text">{{ device.name || device.deviceName }}</text>
             <text class="tag-close" @click="removeDevice(device.id)">×</text>
           </view>
           <view v-if="selectedDevices.length === 0" class="hint-tag">
@@ -138,7 +138,7 @@
           >
             <view class="picker-device-info">
               <text class="picker-device-name">{{ device.name || device.deviceName }}</text>
-              <text class="picker-device-type">{{ device.deviceTypeName || device.deviceType || '-' }}</text>
+              <text class="picker-device-type">{{ device.code || device.deviceCode || '-' }}</text>
             </view>
             <view class="picker-check" v-if="isSelected(device.id)">✓</view>
           </view>
@@ -230,15 +230,14 @@ const onHazardChange = async (e: any) => {
     try {
       const list = await hazardApi.getBoundDevices(selectedHazardId.value)
       allDevices.value = list.map((d: any) => ({
-        // CORRECTION: use d.deviceId (actual device id), NOT d.id (association record id)
         id: d.deviceId ?? d.id,
-        name: d.deviceName || d.name || '',
+        name: d.deviceName || d.name || d.deviceCode || '',
         code: d.deviceCode || d.code || '',
         deviceTypeName: d.deviceTypeName || d.deviceType || '',
         status: d.onlineStatus === 1 ? '在线' : '离线',
         onlineStatus: d.onlineStatus ?? 0,
         lastReportTime: d.lastReportTime || '',
-        deviceName: d.deviceName || d.name || '',
+        deviceName: d.deviceName || d.name || d.deviceCode || '',
         deviceCode: d.deviceCode || d.code || '',
         deviceType: d.deviceTypeName || d.deviceType || ''
       })) as DeviceInfo[]

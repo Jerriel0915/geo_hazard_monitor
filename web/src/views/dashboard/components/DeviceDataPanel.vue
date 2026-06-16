@@ -21,6 +21,7 @@
           :hazard-point-name="hazardPointName"
           :show-device="false"
           :initial-device-id="device.id"
+          fill-container
         />
         <div v-else class="empty-state">
           <el-icon :size="36" color="#c9cdd4"><DataAnalysis/></el-icon>
@@ -32,8 +33,8 @@
 </template>
 
 <script setup lang="ts">
-import {Close, DataAnalysis} from '@element-plus/icons-vue'
-import MonitorDataExplorer from '@/components/MonitorDataExplorer.vue'
+import MonitorDataExplorer from '@/components/MonitorDataExplorer.vue';
+import { Close, DataAnalysis } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   device: any
@@ -63,7 +64,7 @@ const emit = defineEmits<{
   border: 1px solid #e5e6eb;
   display: flex;
   flex-direction: column;
-  height: 340px;
+  height: 400px;
   overflow: hidden;
 }
 
@@ -124,7 +125,7 @@ const emit = defineEmits<{
   display: flex;
   flex-direction: column;
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   padding: 8px 16px;
 }
 

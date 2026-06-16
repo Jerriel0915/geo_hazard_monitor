@@ -28,11 +28,7 @@
               <span>在线</span>
             </div>
             <div class="legend-item">
-              <div class="legend-dot" style="background: #faad14;"></div>
-              <span>预警</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-dot" style="background: #f5222d;"></div>
+              <div class="legend-dot" style="background: #c9cdd4;"></div>
               <span>离线</span>
             </div>
           </div>
