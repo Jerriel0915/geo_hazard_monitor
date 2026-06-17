@@ -78,6 +78,29 @@ public class AlarmStreamPublisher {
     }
 
     /**
+     * 向所有 SSE 订阅者广播一条事件（用于通知推送等）。
+     * <p>
+     * 当前实现是全量广播（与 onAlarmTriggered 一致），前端按接收人/权限过滤。
+     * TODO: 未来如需 per-user 路由，需要 subscribe() 接收 userId 并改造内部数据结构。
+     *
+     * @param eventName SSE 事件名（前端用此字段区分类型）
+     * @param data      事件数据
+     */
+    public void publish(String eventName, Object data) {
+        int sent = 0;
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(data));
+                sent++;
+            } catch (IOException e) {
+                emitters.remove(emitter);
+                log.debug("SSE 事件 [{}] 推送失败，移除订阅: {}", eventName, e.getMessage());
+            }
+        }
+        log.debug("SSE 事件 [{}] 已推送: 目标={}/当前订阅={}", eventName, sent, emitters.size());
+    }
+
+    /**
      * 当前活跃订阅数
      */
     public int getActiveCount() {
