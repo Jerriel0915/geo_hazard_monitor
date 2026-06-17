@@ -11,3 +11,12 @@ ALTER TABLE monitor_content
 
 ALTER TABLE monitor_content
     ADD INDEX idx_monitor_content_field_type (monitor_type_id, field_type);
+
+-- 新增权限: 计算脚本在线测试
+INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, perms,
+                     menu_type, visible, status, create_by, create_time)
+SELECT '监测内容脚本测试', menu_id, 5, '', '', 'basic:monitorContent:test',
+       'F', '0', '0', 'admin', NOW()
+FROM sys_menu
+WHERE perms = 'basic:monitorContent:list'
+LIMIT 1;
