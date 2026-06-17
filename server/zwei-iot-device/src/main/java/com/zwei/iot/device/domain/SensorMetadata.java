@@ -9,6 +9,7 @@ import java.util.List;
 public record SensorMetadata(
         Long deviceId,
         Long sensorId,
+        Long monitorTypeId,
         List<SensorAttribute> attributes
 ) implements Serializable {
     @Serial
