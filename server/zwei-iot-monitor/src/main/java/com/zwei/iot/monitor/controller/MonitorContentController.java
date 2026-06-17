@@ -92,6 +92,12 @@ public class MonitorContentController extends BaseController {
         if (monitorTypeService.selectMonitorTypeById(request.getMonitorTypeId()) == null) {
             return AjaxResult.error(HttpStatus.NOT_FOUND, "监测类型不存在");
         }
+        // fieldType 默认 inherent;computed 时 calcScript 必填
+        String fieldType = request.getFieldType() == null ? "inherent" : request.getFieldType();
+        if ("computed".equals(fieldType)
+                && (request.getCalcScript() == null || request.getCalcScript().isBlank())) {
+            return AjaxResult.error(HttpStatus.BAD_REQUEST, "计算属性必须填写计算脚本");
+        }
         if (!isValidRange(request.getRangeMin(), request.getRangeMax())) {
             return AjaxResult.error(HttpStatus.BAD_REQUEST, "量程范围不合法，最大值不能小于最小值");
         }
@@ -158,6 +164,7 @@ public class MonitorContentController extends BaseController {
     }
 
     private MonitorContent buildMonitorContentForCreate(MonitorContentCreateRequest request) {
+        String fieldType = request.getFieldType() == null ? "inherent" : request.getFieldType();
         MonitorContent monitorContent = new MonitorContent();
         monitorContent.setMonitorTypeId(request.getMonitorTypeId());
         monitorContent.setCode(request.getCode());
@@ -168,6 +175,8 @@ public class MonitorContentController extends BaseController {
         monitorContent.setIcon(request.getIcon());
         monitorContent.setRangeMin(request.getRangeMin());
         monitorContent.setRangeMax(request.getRangeMax());
+        monitorContent.setFieldType(fieldType);
+        monitorContent.setCalcScript(request.getCalcScript());
         return monitorContent;
     }
 
@@ -182,6 +191,7 @@ public class MonitorContentController extends BaseController {
         monitorContent.setIcon(request.getIcon());
         monitorContent.setRangeMin(request.getRangeMin());
         monitorContent.setRangeMax(request.getRangeMax());
+        monitorContent.setCalcScript(request.getCalcScript());
         return monitorContent;
     }
 

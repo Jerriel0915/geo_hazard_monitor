@@ -39,7 +39,12 @@ public class MonitorContentUpdateRequest implements Serializable {
     @Digits(integer = 10, fraction = 2, message = "最大值范围最多支持10位整数和2位小数")
     private BigDecimal rangeMax;
 
+    @Size(max = 65535, message = "计算脚本长度不能超过 64KB")
+    private String calcScript;
+
     public boolean hasUpdatableField() {
-        return name != null || unit != null || sortOrder != null || icon != null || rangeMin != null || rangeMax != null;
+        return name != null || unit != null || sortOrder != null
+                || icon != null || rangeMin != null || rangeMax != null
+                || calcScript != null;
     }
 }
