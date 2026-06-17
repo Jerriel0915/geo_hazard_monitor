@@ -70,7 +70,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true),
+            @CacheEvict(value = "computedAttrs", allEntries = true)
     })
     public int insertMonitorContent(MonitorContent monitorContent) {
         // Auto-assign sortOrder if not provided: set to MAX + 1 for this monitor_type
@@ -93,7 +94,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true),
+            @CacheEvict(value = "computedAttrs", allEntries = true)
     })
     public int updateMonitorContent(MonitorContent monitorContent) {
         if (monitorContent.getSortOrder() != null) {
@@ -131,7 +133,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true),
+            @CacheEvict(value = "computedAttrs", allEntries = true)
     })
     public int deleteMonitorContentById(Long id) {
         return monitorContentMapper.deleteMonitorContentById(id);
@@ -144,7 +147,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true),
+            @CacheEvict(value = "computedAttrs", allEntries = true)
     })
     public int deleteMonitorContentByMonitorTypeId(Long monitorTypeId) {
         return monitorContentMapper.deleteMonitorContentByMonitorTypeId(monitorTypeId);
@@ -157,7 +161,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true),
+            @CacheEvict(value = "computedAttrs", allEntries = true)
     })
     public int deleteMonitorContentByIds(Long[] ids) {
         return monitorContentMapper.deleteMonitorContentByIds(ids);
@@ -170,7 +175,8 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true),
+            @CacheEvict(value = "computedAttrs", allEntries = true)
     })
     public int deleteMonitorContentByMonitorTypeIds(Long[] monitorTypeIds) {
         return monitorContentMapper.deleteMonitorContentByMonitorTypeIds(monitorTypeIds);
@@ -184,5 +190,14 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
         Long id = monitorContent.getId() == null ? 0L : monitorContent.getId();
         MonitorContent exist = monitorContentMapper.checkMonitorContentCodeUnique(monitorContent.getCode(), id);
         return exist == null;
+    }
+
+    /**
+     * 查询指定监测类型下的所有计算属性。
+     * 直接走 mapper, 缓存由 ComputedAttributeRegistry 负责(@Cacheable 在那一层)。
+     */
+    @Override
+    public List<MonitorContent> selectComputedByTypeId(Long monitorTypeId) {
+        return monitorContentMapper.selectComputedByTypeId(monitorTypeId);
     }
 }
