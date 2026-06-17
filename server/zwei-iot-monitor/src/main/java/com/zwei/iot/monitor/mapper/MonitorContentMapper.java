@@ -125,4 +125,12 @@ public interface MonitorContentMapper {
     MonitorContent checkSortOrderExists(@Param("monitorTypeId") Long monitorTypeId,
                                          @Param("sortOrder") Integer sortOrder,
                                          @Param("excludeId") Long excludeId);
+
+    /**
+     * 查询指定监测类型下的所有计算属性(按 sort_order 排序, 仅未删除)
+     *
+     * @param monitorTypeId 监测类型ID
+     * @return 计算属性列表(field_type='computed'), 按 sort_order 升序
+     */
+    List<MonitorContent> selectComputedByTypeId(@Param("monitorTypeId") Long monitorTypeId);
 }

@@ -14,6 +14,8 @@
         <result property="unit" column="unit"/>
         <result property="sortOrder" column="sort_order"/>
         <result property="indicatorType" column="indicator_type"/>
+        <result property="fieldType"   column="field_type"/>
+        <result property="calcScript"  column="calc_script"/>
         <result property="icon" column="icon"/>
         <result property="rangeMin" column="range_min"/>
         <result property="rangeMax" column="range_max"/>
@@ -32,6 +34,8 @@
                mc.unit,
                mc.sort_order,
                mc.indicator_type,
+               mc.field_type,
+               mc.calc_script,
                mc.icon,
                mc.range_min,
                mc.range_max,
@@ -125,6 +129,8 @@
         <if test="unit != null">unit,</if>
         <if test="sortOrder != null">sort_order,</if>
         <if test="indicatorType != null">indicator_type,</if>
+        <if test="fieldType != null">field_type,</if>
+        <if test="calcScript != null">calc_script,</if>
         <if test="icon != null">icon,</if>
         <if test="rangeMin != null">range_min,</if>
         <if test="rangeMax != null">range_max,</if>
@@ -137,6 +143,8 @@
         <if test="unit != null">#{unit},</if>
         <if test="sortOrder != null">#{sortOrder},</if>
         <if test="indicatorType != null">#{indicatorType},</if>
+        <if test="fieldType != null">#{fieldType},</if>
+        <if test="calcScript != null">#{calcScript},</if>
         <if test="icon != null">#{icon},</if>
         <if test="rangeMin != null">#{rangeMin},</if>
         <if test="rangeMax != null">#{rangeMax},</if>
@@ -157,6 +165,8 @@
             <if test="unit != null">unit = #{unit},</if>
             <if test="sortOrder != null">sort_order = #{sortOrder},</if>
             <if test="indicatorType != null">indicator_type = #{indicatorType},</if>
+            <if test="fieldType != null">field_type = #{fieldType},</if>
+            <if test="calcScript != null">calc_script = #{calcScript},</if>
             <if test="icon != null">icon = #{icon},</if>
             <if test="rangeMin != null">range_min = #{rangeMin},</if>
             <if test="rangeMax != null">range_max = #{rangeMax},</if>
@@ -214,5 +224,19 @@
             #{monitorTypeId}
         </foreach>
     </delete>
+
+    <!-- ==================== 计算属性查询 ==================== -->
+
+    <!-- 查询指定监测类型下的所有计算属性(按 sort_order 升序) -->
+    <select id="selectComputedByTypeId" resultMap="MonitorContentResult">
+        SELECT id, monitor_type_id, code, name, unit, indicator_type,
+               field_type, calc_script, sort_order,
+               create_by, create_time, update_by, update_time, del_flag
+        FROM monitor_content
+        WHERE monitor_type_id = #{monitorTypeId}
+          AND field_type = 'computed'
+          AND del_flag = 0
+        ORDER BY sort_order ASC
+    </select>
 
 </mapper>
