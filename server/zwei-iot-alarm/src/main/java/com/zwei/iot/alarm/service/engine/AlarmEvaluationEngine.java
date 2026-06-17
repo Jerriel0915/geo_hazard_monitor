@@ -90,6 +90,7 @@ public class AlarmEvaluationEngine {
     }
 
     private void evaluate(MonitorDataIngestedEvent event) {
+        log.info("evaluating: {}", event);
         if (event.getValue() == null) {
             log.debug("null value, skip");
             return;
