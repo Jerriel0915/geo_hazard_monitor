@@ -3,7 +3,7 @@
     <!-- 页头 -->
     <div class="header">
       <div class="header__left">
-        <h2 class="header__title">算法库</h2>
+        <h2 class="header__title">算法管理</h2>
         <span class="header__subtitle">Python 算法包管理与版本化</span>
       </div>
       <div class="header__right">
