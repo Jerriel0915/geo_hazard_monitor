@@ -310,6 +310,8 @@ public class MonitorIngestConsumerService {
                     ((Number) point.value()).doubleValue(),
                     point.dataTime(),
                     point.sourceType()));
+            log.info("发布 MonitorDataIngestedEvent: deviceId={} attrCode={} value={}",
+                    point.deviceId(), point.attrCode(), point.value());
         } catch (Exception e) {
             // 事件发布失败不影响入库主流程
             log.warn("发布 MonitorDataIngestedEvent 失败 deviceId={} attrCode={}: {}",
