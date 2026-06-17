@@ -3,7 +3,7 @@ package com.zwei.iot.alarm.service.notify;
 import com.zwei.common.core.domain.entity.SysUser;
 import com.zwei.common.event.AlarmTriggeredEvent;
 import com.zwei.common.event.DeviceOfflineEvent;
-import com.zwei.iot.alarm.channel.NotifyChannelDispatcher;
+import com.zwei.iot.alarm.channel.AlarmChannelDispatcher;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule;
 import com.zwei.iot.alarm.dispatch.service.IAlarmRecipientResolver;
 import com.zwei.iot.alarm.dispatch.service.IAlarmRuleMatcher;
@@ -46,7 +46,7 @@ class AlarmNotifierTest {
     @Mock private IAlarmRuleMatcher ruleMatcher;
     @Mock private IAlarmRecipientResolver recipientResolver;
     @Mock private IAlarmNotificationService notificationService;
-    @Mock private NotifyChannelDispatcher channelDispatcher;
+    @Mock private AlarmChannelDispatcher channelDispatcher;
     @Mock private ISysUserService userService;
 
     @InjectMocks

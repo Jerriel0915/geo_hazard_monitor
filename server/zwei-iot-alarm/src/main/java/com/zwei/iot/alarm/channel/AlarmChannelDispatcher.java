@@ -10,16 +10,20 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 渠道路由分发器：按 channel 字符串路由到对应 INotifyChannel 实现
+ * 告警通知渠道路由分发器：按 channel 字符串路由到对应 INotifyChannel 实现。
+ *
+ * <p>注意：本类 Bean 名为 {@code alarmChannelDispatcher}，避免与
+ * {@code com.zwei.system.notice.notify.NotifyChannelDispatcher}（系统公告多通道分发器）
+ * 的默认 Bean 名 {@code notifyChannelDispatcher} 冲突。</p>
  */
 @Component
-public class NotifyChannelDispatcher {
+public class AlarmChannelDispatcher {
 
     private final Map<String, INotifyChannel> channelMap;
     private final IAlarmNotificationService notificationService;
 
     @Autowired
-    public NotifyChannelDispatcher(
+    public AlarmChannelDispatcher(
             List<INotifyChannel> channels,
             IAlarmNotificationService notificationService) {
         this.notificationService = notificationService;

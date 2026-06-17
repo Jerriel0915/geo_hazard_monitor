@@ -3,7 +3,7 @@ package com.zwei.iot.alarm.service.notify;
 import com.zwei.common.event.AlarmTriggeredEvent;
 import com.zwei.common.event.DeviceOfflineEvent;
 import com.zwei.common.core.domain.entity.SysUser;
-import com.zwei.iot.alarm.channel.NotifyChannelDispatcher;
+import com.zwei.iot.alarm.channel.AlarmChannelDispatcher;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule;
 import com.zwei.iot.alarm.dispatch.service.IAlarmRecipientResolver;
 import com.zwei.iot.alarm.dispatch.service.IAlarmRuleMatcher;
@@ -49,7 +49,7 @@ public class AlarmNotifier {
     private IAlarmNotificationService notificationService;
 
     @Autowired
-    private NotifyChannelDispatcher channelDispatcher;
+    private AlarmChannelDispatcher channelDispatcher;
 
     @Autowired
     private ISysUserService userService;
