@@ -18,6 +18,10 @@ import com.zwei.iot.alarm.dispatch.mapper.AlarmDispatchRuleHazardPointMapper;
 import com.zwei.iot.alarm.dispatch.mapper.AlarmDispatchRuleMapper;
 import com.zwei.iot.alarm.dispatch.mapper.AlarmDispatchRuleRecipientMapper;
 import com.zwei.iot.alarm.dispatch.service.IAlarmDispatchRuleService;
+import com.zwei.iot.device.domain.Device;
+import com.zwei.iot.device.service.IDeviceService;
+import com.zwei.iot.hazardpoint.domain.HazardPoint;
+import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import com.zwei.system.service.ISysDeptService;
 import com.zwei.system.service.ISysRoleService;
 import com.zwei.system.service.ISysUserService;
@@ -30,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +54,8 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     @Autowired private ISysRoleService roleService;
     @Autowired private ISysDeptService deptService;
     @Autowired private ISysUserService userService;
+    @Autowired private IHazardPointService hazardPointService;
+    @Autowired private IDeviceService deviceService;
 
     private static final String WILDCARD = "*";
 
@@ -67,18 +74,24 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
         List<Long> ruleIds = all.stream().map(AlarmDispatchRule::getId).toList();
 
         // 批量查关联（避免 N+1）
-        Map<Long, List<AlarmDispatchRuleHazardPoint>> hpMap = groupHp(
-            hpMapper.selectByRuleIds(ruleIds));
-        Map<Long, List<AlarmDispatchRuleDevice>> devMap = groupDev(
-            deviceMapper.selectByRuleIds(ruleIds));
+        List<AlarmDispatchRuleHazardPoint> hpRows = hpMapper.selectByRuleIds(ruleIds);
+        List<AlarmDispatchRuleDevice> devRows = deviceMapper.selectByRuleIds(ruleIds);
         Map<Long, List<AlarmDispatchRuleRecipient>> recipMap = groupRecip(
             recipientMapper.selectByRuleIds(ruleIds));
+
+        // 批量解析 ID→名称（列表展示用）
+        Map<String, String> hpNameMap = resolveHazardPointNames(hpRows);
+        Map<String, String> devNameMap = resolveDeviceNames(devRows);
+
+        Map<Long, List<AlarmDispatchRuleHazardPoint>> hpMap = groupHp(hpRows);
+        Map<Long, List<AlarmDispatchRuleDevice>> devMap = groupDev(devRows);
 
         // 装配 VO
         return all.stream().map(rule -> toItemVO(
             rule, hpMap.getOrDefault(rule.getId(), Collections.emptyList()),
             devMap.getOrDefault(rule.getId(), Collections.emptyList()),
-            recipMap.getOrDefault(rule.getId(), Collections.emptyList())
+            recipMap.getOrDefault(rule.getId(), Collections.emptyList()),
+            hpNameMap, devNameMap
         )).collect(Collectors.toList());
     }
 
@@ -301,7 +314,9 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     private AlarmDispatchRuleItemVO toItemVO(AlarmDispatchRule rule,
             List<AlarmDispatchRuleHazardPoint> hps,
             List<AlarmDispatchRuleDevice> devs,
-            List<AlarmDispatchRuleRecipient> recips) {
+            List<AlarmDispatchRuleRecipient> recips,
+            Map<String, String> hpNameMap,
+            Map<String, String> devNameMap) {
         AlarmDispatchRuleItemVO vo = new AlarmDispatchRuleItemVO();
         vo.setId(rule.getId());
         vo.setName(rule.getName());
@@ -318,7 +333,8 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
         vo.setHazardPointAll(hpAll);
         if (!hpAll) {
             vo.setHazardPointNames(hps.stream()
-                .map(AlarmDispatchRuleHazardPoint::getHazardPointId).toList());
+                .map(h -> hpNameMap.getOrDefault(h.getHazardPointId(), h.getHazardPointId()))
+                .toList());
         }
 
         // 设备
@@ -326,7 +342,8 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
         vo.setDeviceAll(devAll);
         if (!devAll) {
             vo.setDeviceNames(devs.stream()
-                .map(AlarmDispatchRuleDevice::getDeviceId).toList());
+                .map(d -> devNameMap.getOrDefault(d.getDeviceId(), d.getDeviceId()))
+                .toList());
         }
 
         // 接收人
@@ -352,6 +369,50 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
             List<AlarmDispatchRuleDevice> list) {
         return list.stream().collect(
             Collectors.groupingBy(AlarmDispatchRuleDevice::getRuleId));
+    }
+
+    /**
+     * 解析隐患点 ID → 名称映射（列表展示用）。
+     * 只处理非通配符的数值型 ID；通配符 "*" 由调用方自行判断。
+     * 利用 IHazardPointService 的 @Cacheable("hazardPoint") 减少重复查询。
+     */
+    private Map<String, String> resolveHazardPointNames(List<AlarmDispatchRuleHazardPoint> rows) {
+        Set<String> ids = rows.stream()
+            .map(AlarmDispatchRuleHazardPoint::getHazardPointId)
+            .filter(id -> !WILDCARD.equals(id))
+            .collect(Collectors.toSet());
+        if (ids.isEmpty()) return Collections.emptyMap();
+        Map<String, String> result = new HashMap<>(ids.size());
+        for (String id : ids) {
+            try {
+                HazardPoint hp = hazardPointService.selectHazardPointById(Long.parseLong(id));
+                if (hp != null) result.put(id, hp.getName());
+            } catch (NumberFormatException ignored) {
+                // 非数值 ID 直接跳过，列表展示回退为原 ID
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 解析设备 ID → 名称映射（列表展示用）。
+     */
+    private Map<String, String> resolveDeviceNames(List<AlarmDispatchRuleDevice> rows) {
+        Set<String> ids = rows.stream()
+            .map(AlarmDispatchRuleDevice::getDeviceId)
+            .filter(id -> !WILDCARD.equals(id))
+            .collect(Collectors.toSet());
+        if (ids.isEmpty()) return Collections.emptyMap();
+        Map<String, String> result = new HashMap<>(ids.size());
+        for (String id : ids) {
+            try {
+                Device dev = deviceService.selectDeviceById(Long.parseLong(id));
+                if (dev != null) result.put(id, dev.getName());
+            } catch (NumberFormatException ignored) {
+                // 非数值 ID 直接跳过
+            }
+        }
+        return result;
     }
 
     private Map<Long, List<AlarmDispatchRuleRecipient>> groupRecip(
