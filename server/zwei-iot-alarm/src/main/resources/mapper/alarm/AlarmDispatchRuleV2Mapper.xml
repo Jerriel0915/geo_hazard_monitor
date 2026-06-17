@@ -93,4 +93,37 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 告警规则匹配：event_type=ALARM + 等级命中 + 隐患点匹配（含 '*' 通配） -->
+    <select id="matchAlarmRules" resultMap="BaseResultMap">
+        SELECT DISTINCT r.id, r.name, r.event_type, r.alarm_levels, r.channels,
+               r.is_enabled, r.del_flag, r.create_by, r.create_time,
+               r.update_by, r.update_time, r.remark
+        FROM alarm_dispatch_rule r
+        LEFT JOIN alarm_dispatch_rule_hazard_point hp ON hp.rule_id = r.id
+        WHERE r.del_flag = 0
+          AND r.is_enabled = 1
+          AND r.event_type = 'ALARM'
+          AND FIND_IN_SET(#{alarmLevel}, r.alarm_levels)
+          AND (
+              hp.hazard_point_id = '*'
+              OR hp.hazard_point_id = #{hazardPointIdStr}
+          )
+    </select>
+
+    <!-- 离线规则匹配：event_type=OFFLINE + 设备匹配（含 '*' 通配） -->
+    <select id="matchOfflineRules" resultMap="BaseResultMap">
+        SELECT DISTINCT r.id, r.name, r.event_type, r.alarm_levels, r.channels,
+               r.is_enabled, r.del_flag, r.create_by, r.create_time,
+               r.update_by, r.update_time, r.remark
+        FROM alarm_dispatch_rule r
+        LEFT JOIN alarm_dispatch_rule_device d ON d.rule_id = r.id
+        WHERE r.del_flag = 0
+          AND r.is_enabled = 1
+          AND r.event_type = 'OFFLINE'
+          AND (
+              d.device_id = '*'
+              OR d.device_id = #{deviceIdStr}
+          )
+    </select>
+
 </mapper>
