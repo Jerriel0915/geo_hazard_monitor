@@ -31,6 +31,12 @@ zwei:
     cleanup-checkpoint-retention-days: 30
     # 单次清理批次大小
     cleanup-batch-size: 1000
+  report:
+    schedule:
+      enabled: true              # 全局开关
+      weekly-enabled: true       # 周报 Job
+      monthly-enabled: true      # 月报 Job
+      quarterly-enabled: true    # 季报 Job
 
 # 开发环境配置
 server:
