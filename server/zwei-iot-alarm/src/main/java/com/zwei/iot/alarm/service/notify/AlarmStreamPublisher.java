@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -19,6 +20,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * 复用 {@code NoticeStreamPublisher} 的 CopyOnWriteArrayList + SseEmitter 模式，
  * 监听 {@link AlarmTriggeredEvent} 并实时推送给所有已订阅的前端用户。
  *
+ * <p>支持两种推送模式：
+ * <ul>
+ *   <li>{@link #publish(String, Object)} —— 全量广播（兼容旧前端，按接收人/权限二次过滤）</li>
+ *   <li>{@link #publishToUser(Long, String, Map)} —— 单点定向推送（需订阅时绑定 userId）</li>
+ * </ul>
+ *
  * @author zwei
  */
 @Component
@@ -26,12 +33,16 @@ public class AlarmStreamPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(AlarmStreamPublisher.class);
 
+    /** 全量广播订阅列表（向后兼容旧前端） */
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+
+    /** 按 userId 索引的订阅映射（同一用户可多端订阅） */
+    private final Map<Long, List<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
     private static final long SSE_TIMEOUT_MS = 300_000L;
 
     /**
-     * 订阅告警 SSE 流。
+     * 订阅告警 SSE 流（未绑定 userId，仅参与全量广播）。
      */
     public SseEmitter subscribe() {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
@@ -39,16 +50,23 @@ public class AlarmStreamPublisher {
         emitter.onCompletion(() -> emitters.remove(emitter));
         emitter.onTimeout(() -> emitters.remove(emitter));
         emitter.onError(e -> emitters.remove(emitter));
-        try {
-            Map<String, String> ready = new LinkedHashMap<>();
-            ready.put("type", "ready");
-            ready.put("message", "connected");
-            emitter.send(SseEmitter.event().name("ready").data(ready));
-        } catch (IOException e) {
-            emitters.remove(emitter);
-            log.debug("告警SSE ready事件发送失败: {}", e.getMessage());
+        sendReady(emitter);
+        log.debug("告警SSE订阅已建立（匿名），当前订阅数: {}", emitters.size());
+        return emitter;
+    }
+
+    /**
+     * 订阅告警 SSE 流并绑定 userId（同时参与全量广播 + 定向推送）。
+     */
+    public SseEmitter subscribe(Long userId) {
+        SseEmitter emitter = subscribe();
+        if (userId != null) {
+            userEmitters.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+            emitter.onCompletion(() -> removeUserEmitter(userId, emitter));
+            emitter.onTimeout(() -> removeUserEmitter(userId, emitter));
+            emitter.onError(e -> removeUserEmitter(userId, emitter));
+            log.debug("告警SSE订阅绑定 userId={}", userId);
         }
-        log.debug("告警SSE订阅已建立，当前订阅数: {}", emitters.size());
         return emitter;
     }
 
@@ -79,9 +97,6 @@ public class AlarmStreamPublisher {
 
     /**
      * 向所有 SSE 订阅者广播一条事件（用于通知推送等）。
-     * <p>
-     * 当前实现是全量广播（与 onAlarmTriggered 一致），前端按接收人/权限过滤。
-     * TODO: 未来如需 per-user 路由，需要 subscribe() 接收 userId 并改造内部数据结构。
      *
      * @param eventName SSE 事件名（前端用此字段区分类型）
      * @param data      事件数据
@@ -101,9 +116,65 @@ public class AlarmStreamPublisher {
     }
 
     /**
-     * 当前活跃订阅数
+     * 向指定用户推送事件（用于 SYSTEM 通知渠道定向投递）。
+     * <p>
+     * 若目标用户当前无在线订阅，事件已被落库到 alarm_notification 表，不会丢失；
+     * 用户下次拉取 recent 接口即可看到。
+     *
+     * @param userId    接收用户 ID
+     * @param eventType 事件类型（如 "alarm-notify"）
+     * @param data      事件数据
+     */
+    public void publishToUser(Long userId, String eventType, Map<String, Object> data) {
+        if (userId == null) {
+            return;
+        }
+        List<SseEmitter> targets = userEmitters.get(userId);
+        if (targets == null || targets.isEmpty()) {
+            log.debug("publishToUser 目标 userId={} 无在线订阅，事件 {} 已落库不丢失", userId, eventType);
+            return;
+        }
+        int sent = 0;
+        for (SseEmitter emitter : targets) {
+            try {
+                emitter.send(SseEmitter.event().name(eventType).data(data));
+                sent++;
+            } catch (IOException e) {
+                removeUserEmitter(userId, emitter);
+                log.debug("用户 {} SSE 推送失败，移除订阅: {}", userId, e.getMessage());
+            }
+        }
+        log.debug("publishToUser userId={} event={} 推送 {}/{}", userId, eventType, sent, targets.size());
+    }
+
+    /**
+     * 当前活跃订阅数（全量广播列表）。
      */
     public int getActiveCount() {
         return emitters.size();
+    }
+
+    // ============= private =============
+
+    private void sendReady(SseEmitter emitter) {
+        try {
+            Map<String, String> ready = new LinkedHashMap<>();
+            ready.put("type", "ready");
+            ready.put("message", "connected");
+            emitter.send(SseEmitter.event().name("ready").data(ready));
+        } catch (IOException e) {
+            emitters.remove(emitter);
+            log.debug("告警SSE ready事件发送失败: {}", e.getMessage());
+        }
+    }
+
+    private void removeUserEmitter(Long userId, SseEmitter emitter) {
+        List<SseEmitter> list = userEmitters.get(userId);
+        if (list != null) {
+            list.remove(emitter);
+            if (list.isEmpty()) {
+                userEmitters.remove(userId);
+            }
+        }
     }
 }
