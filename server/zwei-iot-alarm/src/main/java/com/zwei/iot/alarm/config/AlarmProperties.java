@@ -20,12 +20,12 @@ public class AlarmProperties {
     /**
      * 判据缓存 TTL（秒）
      */
-    private int criteriaCacheTtlSeconds = 60;
+    private int criteriaCacheTtlSeconds = 3 * 24 * 60 * 60;
 
     /**
      * 预触发计数 Redis TTL（秒）
      */
-    private int preTriggerTtlSeconds = 600;
+    private int preTriggerTtlSeconds = 3 * 24 * 60 * 60;
 
     /**
      * Groovy脚本执行超时（秒）
