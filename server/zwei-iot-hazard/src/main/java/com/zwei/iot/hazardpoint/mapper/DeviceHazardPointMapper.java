@@ -1,5 +1,6 @@
 package com.zwei.iot.hazardpoint.mapper;
 
+import com.zwei.iot.device.domain.brief.DeviceBrief;
 import com.zwei.iot.hazardpoint.domain.DeviceHazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
 import com.zwei.iot.hazardpoint.domain.dto.UnboundDeviceVO;
@@ -98,4 +99,12 @@ public interface DeviceHazardPointMapper {
      * @return 绑定次数
      */
     int countByDeviceId(@Param("deviceId") Long deviceId);
+
+    /**
+     * 查询隐患点绑定的设备摘要 (含在线状态与传感器数, 供 report 模块消费)。
+     *
+     * @param hazardPointId 隐患点ID
+     * @return 设备摘要列表
+     */
+    List<DeviceBrief> selectDeviceBriefByHazardPoint(@Param("hazardPointId") Long hazardPointId);
 }

@@ -1,5 +1,7 @@
 package com.zwei.iot.device.service;
 
+import com.zwei.iot.device.domain.brief.DeviceBrief;
+
 import java.util.List;
 import java.util.Map;
 
@@ -38,4 +40,10 @@ public interface IDeviceHazardRelationService {
     int countAllHazardPoints();
     List<Map<String, Object>> countHazardPointsByStatus();
     List<Map<String, Object>> countHazardPointsByMonth(int months);
+
+    /**
+     * 列出隐患点绑定的所有设备(摘要视图, 含在线状态)。
+     * 实现侧通过 device_hazard_point JOIN device LEFT JOIN device_online_status 完成。
+     */
+    List<DeviceBrief> getDevicesByHazardPoint(Long hazardPointId);
 }
