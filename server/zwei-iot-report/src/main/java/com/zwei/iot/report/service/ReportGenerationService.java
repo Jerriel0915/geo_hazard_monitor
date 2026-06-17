@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -109,6 +110,7 @@ public class ReportGenerationService {
         placeholder.setHazardPointName(hp.name());
         placeholder.setReportName(hp.name() + " - 监测" + type.desc()
             + " (" + period.start() + "~" + period.end() + ")");
+        placeholder.setReportDate(LocalDateTime.now());
         placeholder.setStatus(1);
         placeholder.setDelFlag(0);
         mapper.insert(placeholder);

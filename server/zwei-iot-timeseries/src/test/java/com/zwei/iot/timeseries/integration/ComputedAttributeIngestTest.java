@@ -62,8 +62,7 @@ class ComputedAttributeIngestTest {
         when(valueOps.get(anyString())).thenReturn(null);
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
-        LastMessageStore lastMessageStore = new LastMessageStore(
-                redisTemplate, new com.fasterxml.jackson.databind.ObjectMapper());
+        LastMessageStore lastMessageStore = new LastMessageStore(redisTemplate);
 
         // 设备层 mock
         IDeviceSensorQueryService sensorQuery = mock(IDeviceSensorQueryService.class);

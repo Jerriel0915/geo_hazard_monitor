@@ -44,7 +44,7 @@ public class ReportScheduleJob {
         generationService.generateAll(ReportType.MONTHLY);
     }
 
-    @Scheduled(cron = "0 0 3 1 1,4,7,10")
+    @Scheduled(cron = "0 0 3 1 1,4,7,10 ?")
     @ConditionalOnProperty(name = "zwei.report.schedule.quarterly-enabled", havingValue = "true", matchIfMissing = true)
     public void generateQuarterly() {
         log.info("[report-job] quarterly trigger");

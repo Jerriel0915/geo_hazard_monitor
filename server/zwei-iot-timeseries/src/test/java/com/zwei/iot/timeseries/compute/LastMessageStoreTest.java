@@ -1,6 +1,5 @@
 package com.zwei.iot.timeseries.compute;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +26,7 @@ class LastMessageStoreTest {
         redis = mock(StringRedisTemplate.class);
         valueOps = mock(ValueOperations.class);
         when(redis.opsForValue()).thenReturn(valueOps);
-        store = new LastMessageStore(redis, new ObjectMapper());
+        store = new LastMessageStore(redis);
     }
 
     @Test
