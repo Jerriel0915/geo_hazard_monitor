@@ -30,7 +30,7 @@
         <div class="version-section">
           <div class="version-header">
             <h3>版本列表</h3>
-            <el-button type="primary" size="small" @click="uploadVisible = true">
+            <el-button v-if="hasPermission('iot:algo-library:upload')" type="primary" size="small" @click="uploadVisible = true">
               <el-icon><Upload /></el-icon> 上传新版本
             </el-button>
           </div>
@@ -50,8 +50,8 @@
             <el-table-column label="备注" prop="remark" show-overflow-tooltip />
             <el-table-column label="操作" width="140" fixed="right">
               <template #default="{ row }">
-                <el-button text type="primary" size="small" @click="handleDownload(row)">下载</el-button>
-                <el-button text type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+                <el-button v-if="hasPermission('iot:algo-library:query')" text type="primary" size="small" @click="handleDownload(row)">下载</el-button>
+                <el-button v-if="hasPermission('iot:algo-library:remove')" text type="danger" size="small" @click="handleDelete(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -116,6 +116,7 @@ import {
   type AlgoInfo,
   type AlgoVersion
 } from '@/api/algoLibrary'
+import { hasPermission } from '@/utils/permission'
 
 const props = defineProps<{
   modelValue: boolean
@@ -147,10 +148,10 @@ async function loadDetail() {
   if (!props.algoId) return
   loading.value = true
   try {
-    const res: any = await getAlgoLibraryDetail(props.algoId)
+    const res = await getAlgoLibraryDetail(props.algoId)
     algo.value = res.data
     if (algo.value && !algo.value.versions) {
-      const vRes: any = await getAlgoVersionList(props.algoId)
+      const vRes = await getAlgoVersionList(props.algoId)
       algo.value.versions = vRes.data || []
     }
   } catch (e: any) {
