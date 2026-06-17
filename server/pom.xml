@@ -172,6 +172,13 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+            <!-- 报告模块 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-iot-report</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
             <!-- Source: https://mvnrepository.com/artifact/org.dromara.mica-mqtt/mica-mqtt-server-spring-boot-starter -->
             <dependency>
                 <groupId>org.dromara.mica-mqtt</groupId>
@@ -226,6 +233,7 @@
         <module>zwei-iot-parser</module>
         <module>zwei-iot-video</module>
         <module>zwei-iot-alarm</module>
+        <module>zwei-iot-report</module>
         <module>zwei-monitor</module>
     </modules>
     <packaging>pom</packaging>

@@ -240,4 +240,21 @@
           AND status IN (1, 2)
     </select>
 
+    <!-- ==================== Report 跨模块查询 ==================== -->
+
+    <select id="selectByHazardPointAndTime" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        WHERE hazard_point_id = #{hazardPointId}
+          AND first_trigger_time BETWEEN #{start} AND #{end}
+        ORDER BY first_trigger_time DESC
+    </select>
+
+    <select id="selectTopByHazardPointAndTime" resultMap="AlarmRecordResult">
+        <include refid="selectRecordVo"/>
+        WHERE hazard_point_id = #{hazardPointId}
+          AND first_trigger_time BETWEEN #{start} AND #{end}
+        ORDER BY first_trigger_time DESC
+        LIMIT #{limit}
+    </select>
+
 </mapper>

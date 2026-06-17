@@ -188,6 +188,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </update>
 
     <!-- ==================== 统计查询 ==================== -->
+    <select id="selectAll" resultMap="HazardPointResult">
+        <include refid="selectHazardPointVo"/>
+        ORDER BY h.create_time DESC
+    </select>
+
     <select id="countAll" resultType="int">
         SELECT COUNT(*)
         FROM hazard_point
