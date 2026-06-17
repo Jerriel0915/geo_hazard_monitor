@@ -32,6 +32,7 @@ const routes: RouteRecordRaw[] = [
       { path: '/alarm/notification', name: 'AlarmNotification', component: () => import('@/views/alarm/AlarmNotification.vue') },
       { path: '/alarm/disposal', name: 'AlarmDisposal', component: () => import('@/views/alarm/CompositeAlarm.vue') },
       { path: '/alarm/composite', name: 'CompositeAlarm', component: () => import('@/views/alarm/CompositeAlarm.vue') },
+      { path: '/alarm/algo-library', name: 'AlgoLibrary', component: () => import('@/views/alarm/AlgoLibrary.vue') },
         {
             path: '/alarm/notification-setting',
             name: 'NotificationSetting',
