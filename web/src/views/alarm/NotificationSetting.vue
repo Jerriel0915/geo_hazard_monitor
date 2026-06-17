@@ -36,11 +36,11 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="告警等级" width="180">
+          <el-table-column label="告警等级" width="200">
             <template #default="{ row }">
               <template v-if="row.eventType === 'ALARM'">
                 <el-tag v-for="lv in row.alarmLevels" :key="lv" size="small"
-                        :type="levelTagType(lv)" style="margin-right: 4px;">
+                        :style="getAlarmLevelStyle(lv)" style="margin-right: 4px; border: none;">
                   {{ levelLabel(lv) }}
                 </el-tag>
                 <span v-if="!row.alarmLevels || row.alarmLevels.length === 0" class="empty-text">-</span>
@@ -119,10 +119,10 @@
 
         <el-form-item label="告警等级" prop="alarmLevels" v-if="form.eventType === 'ALARM'">
           <el-checkbox-group v-model="form.alarmLevels">
-            <el-checkbox label="1">蓝色</el-checkbox>
-            <el-checkbox label="2">黄色</el-checkbox>
-            <el-checkbox label="3">橙色</el-checkbox>
-            <el-checkbox label="4">红色</el-checkbox>
+            <el-checkbox label="1">一级（警报）</el-checkbox>
+            <el-checkbox label="2">二级（警戒）</el-checkbox>
+            <el-checkbox label="3">三级（警示）</el-checkbox>
+            <el-checkbox label="4">四级（注意）</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
 
@@ -191,6 +191,7 @@ import {
 } from '@/api/alarmDispatch'
 import { getHazardPointPage } from '@/api/hazardPoint'
 import { getDevicePage } from '@/api/device'
+import { getAlarmLevelStyle } from '@/api/alarm'
 import RecipientPicker from './components/RecipientPicker.vue'
 
 const loading = ref(false)
@@ -284,10 +285,12 @@ async function loadOptions() {
       getHazardPointPage({ pageNum: 1, pageSize: 1000 }),
       getDevicePage({ pageNum: 1, pageSize: 1000 })
     ])
-    // getHazardPointPage 返回原始 TableDataInfo 响应体
-    hazardPointOptions.value = (hpRes as any).rows || []
+    // getHazardPointPage 返回原始响应体 {code, data: {rows, total}}
+    const hpRows = (hpRes as any)?.data?.rows || (hpRes as any)?.rows || []
+    hazardPointOptions.value = hpRows.map((hp: any) => ({ id: Number(hp.id), name: hp.name }))
     // getDevicePage 使用 unwrap，返回 PageResult<DeviceItem>
-    deviceOptions.value = (devRes as any).rows || []
+    const devRows = (devRes as any)?.rows || (devRes as any)?.data?.rows || []
+    deviceOptions.value = devRows.map((d: any) => ({ id: Number(d.id), name: d.name, code: d.code || d.deviceCode }))
   } catch {
     ElMessage.error('选项加载失败')
   }
@@ -407,10 +410,12 @@ function resetForm() {
 }
 
 function levelLabel(lv: string) {
-  return ({ '1': '蓝色', '2': '黄色', '3': '橙色', '4': '红色' } as Record<string, string>)[lv] || lv
-}
-function levelTagType(lv: string) {
-  return ({ '1': 'info', '2': 'warning', '3': 'warning', '4': 'danger' } as Record<string, string>)[lv] || ''
+  return ({
+    '1': '一级（警报）',
+    '2': '二级（警戒）',
+    '3': '三级（警示）',
+    '4': '四级（注意）'
+  } as Record<string, string>)[lv] || lv
 }
 function channelLabel(ch: string) {
   return ({ SYSTEM: '系统', SMS: '短信', EMAIL: '邮件' } as Record<string, string>)[ch] || ch

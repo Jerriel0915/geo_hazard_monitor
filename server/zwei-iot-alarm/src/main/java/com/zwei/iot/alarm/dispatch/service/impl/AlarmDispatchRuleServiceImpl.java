@@ -216,6 +216,7 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
                 AlarmDispatchRuleDetailVO.DeptOption o = new AlarmDispatchRuleDetailVO.DeptOption();
                 o.setId(String.valueOf(d.getDeptId()));
                 o.setName(d.getDeptName());
+                o.setParentId(d.getParentId() == null ? null : String.valueOf(d.getParentId()));
                 return o;
             }).toList();
 

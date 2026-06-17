@@ -28,11 +28,13 @@
           ref="deptTreeRef"
           :data="deptTreeData"
           show-checkbox
+          check-strictly
           node-key="id"
           :props="{ label: 'name', children: 'children' }"
           :disabled="deptAll"
           @check="onDeptTreeCheck"
         />
+        <div class="form-hint">提示：勾选父部门仅取父部门本身，不会自动包含子部门</div>
       </el-tab-pane>
 
       <!-- 指定人员 -->
@@ -131,9 +133,27 @@ watch(() => props.modelValue, (v) => {
   localUserIds.value = v.userIds ? [...v.userIds] : []
 }, { immediate: true })
 
-// 部门树构造（扁平列表，前端暂不拼装层级树）
+// 部门树构造：根据 parentId 拼装层级树；无 parentId 视为根节点
 const deptTreeData = computed(() => {
-  return options.value.depts.map(d => ({ ...d, children: undefined }))
+  const list = options.value.depts
+  const map = new Map<string, any>()
+  const roots: any[] = []
+  // 第一遍：所有节点入 map，预留 children 数组
+  list.forEach(d => {
+    map.set(String(d.id), { id: String(d.id), name: d.name, parentId: d.parentId, children: [] })
+  })
+  // 第二遍：按 parentId 串联；parentId 为空、"0" 或不在 map 中视为根
+  list.forEach(d => {
+    const node = map.get(String(d.id))!
+    const pid = d.parentId != null ? String(d.parentId) : null
+    const parent = pid != null && pid !== '0' ? map.get(pid) : null
+    if (parent) {
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+  return roots
 })
 
 // 通配符互斥
@@ -226,6 +246,12 @@ function userName(id: string) {
   font-size: 13px;
   color: #606266;
   margin-right: 8px;
+}
+.form-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
 }
 .el-tag {
   margin: 2px 4px 2px 0;

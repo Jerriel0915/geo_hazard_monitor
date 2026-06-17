@@ -24,7 +24,7 @@ export interface AlarmDispatchRuleCreateRequest {
 }
 
 export interface RoleOption { id: string; name: string }
-export interface DeptOption { id: string; name: string }
+export interface DeptOption { id: string; name: string; parentId?: string }
 export interface UserOption { id: string; name: string; deptName?: string }
 
 export interface RecipientOptions {

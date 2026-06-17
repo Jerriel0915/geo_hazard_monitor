@@ -63,6 +63,8 @@ public class AlarmDispatchRuleDetailVO {
     public static class DeptOption {
         private String id;
         private String name;
+        /** 父部门 ID（顶级部门为 0 或 null），前端按此构建树形选择器 */
+        private String parentId;
     }
 
     @Data
