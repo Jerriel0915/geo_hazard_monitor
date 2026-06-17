@@ -301,6 +301,27 @@ export const getTriggerDetails = (id: number) =>
 export const getActionLogs = (id: number) =>
     request.get<AlarmRecordActionLog[]>(`/alarm/records/${id}/action-logs`)
 
+/** 告警通知记录 (alarm_notification 表) */
+export interface AlarmNotificationItem {
+    id: number
+    alarmId: number
+    dispatchRuleId?: number
+    recipientId?: number
+    recipientName?: string
+    recipientPhone?: string
+    channel: string
+    title?: string
+    content?: string
+    status: number   // 1=待发送 2=已发送 3=发送失败
+    sendTime?: string
+    errorMsg?: string
+    createTime: string
+}
+
+/** 通知记录列表 */
+export const getAlarmNotifications = (id: number) =>
+    request.get<AlarmNotificationItem[]>(`/alarm/records/${id}/notifications`)
+
 // ==================== 告警判据 API ====================
 
 /** 判据列表 */

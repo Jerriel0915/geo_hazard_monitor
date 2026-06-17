@@ -3,6 +3,7 @@ package com.zwei.iot.alarm.service.engine;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
+import com.zwei.iot.alarm.domain.ConditionGroup;
 import com.zwei.iot.alarm.domain.LevelCondition;
 import com.zwei.iot.alarm.domain.LevelConfig;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ public class CriteriaEvaluator {
      */
     private static final String[] LEVEL_KEYS = {"red", "orange", "yellow", "blue"};
     private static final Map<String, Integer> LEVEL_VALUES = Map.of(
-            "red", 4, "orange", 3, "yellow", 2, "blue", 1
+            "red", 1, "orange", 2, "yellow", 3, "blue", 4
     );
 
     /**
@@ -64,8 +65,23 @@ public class CriteriaEvaluator {
 
     /**
      * 评估单个等级的所有条件。
+     * <p>
+     * 支持两种格式：
+     * <ul>
+     *   <li><b>groups 格式</b>（前端 GroupedRuleBuilder 生成）— 多条件组，组间 AND/OR</li>
+     *   <li><b>conditions 格式</b>（旧/直接 SQL 创建）— 单层条件列表</li>
+     * </ul>
      */
     boolean evaluateLevel(LevelConfig config, Map<String, Double> subjectValues) {
+        if (config == null) return false;
+
+        // 优先 groups 格式
+        List<ConditionGroup> groups = config.getGroups();
+        if (groups != null && !groups.isEmpty()) {
+            return evaluateGroups(groups, config.getGroupLogic(), subjectValues);
+        }
+
+        // 旧 conditions 格式
         List<LevelCondition> conditions = config.getConditions();
         if (conditions == null || conditions.isEmpty()) {
             return false;
@@ -83,17 +99,70 @@ public class CriteriaEvaluator {
     }
 
     /**
+     * 评估多个条件组，组间按 groupLogic (AND/OR) 组合。
+     */
+    private boolean evaluateGroups(List<ConditionGroup> groups, String groupLogic,
+                                   Map<String, Double> subjectValues) {
+        boolean isOr = "OR".equalsIgnoreCase(groupLogic);
+        for (ConditionGroup group : groups) {
+            boolean groupResult = evaluateSingleGroup(group, subjectValues);
+            if (isOr && groupResult) return true;
+            if (!isOr && !groupResult) return false;
+        }
+        return !isOr;
+    }
+
+    /**
+     * 评估单个条件组（组内 conditions 按 logicOperator 组合）。
+     */
+    private boolean evaluateSingleGroup(ConditionGroup group, Map<String, Double> subjectValues) {
+        if (group == null) return false;
+        List<LevelCondition> conditions = group.getConditions();
+        if (conditions == null || conditions.isEmpty()) return false;
+
+        boolean isOr = "OR".equalsIgnoreCase(group.getLogicOperator());
+        for (LevelCondition cond : conditions) {
+            Double value = resolveSubjectValue(cond, subjectValues);
+            boolean condResult = evaluateCondition(cond, value);
+
+            if (isOr && condResult) return true;
+            if (!isOr && !condResult) return false;
+        }
+        return !isOr;
+    }
+
+    /**
      * 根据条件的主语解析出实际值。
+     * <p>
+     * 前端生成的 subject 可能带 {@code payload.current.} 前缀，需标准化为 attrCode。
      */
     Double resolveSubjectValue(LevelCondition cond, Map<String, Double> subjectValues) {
         if (cond == null || cond.getSubject() == null) return null;
 
+        String subject = normalizeSubject(cond.getSubject());
+
         if ("FUNCTION".equals(cond.getSubjectType())) {
-            // 函数主语：尝试从 subjectValues 中查找（由调用方预计算函数值）
-            return subjectValues.get(cond.getSubject());
+            return subjectValues.get(subject);
         }
-        // 直接监测内容
-        return subjectValues.get(cond.getSubject());
+        return subjectValues.get(subject);
+    }
+
+    /**
+     * 标准化 subject — 去除前端 JSONPath 风格前缀。
+     * <p>
+     * 例：{@code payload.current.rainfall_hour} → {@code rainfall_hour}
+     */
+    private String normalizeSubject(String subject) {
+        if (subject == null) return null;
+        String s = subject.trim();
+        // 去除 payload.current. / payload. 等前缀
+        for (String prefix : new String[]{"payload.current.", "payload."}) {
+            if (s.startsWith(prefix)) {
+                s = s.substring(prefix.length());
+                break;
+            }
+        }
+        return s;
     }
 
     /**

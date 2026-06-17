@@ -138,7 +138,8 @@ public class ComprehensiveAlarmJob {
             // 发布告警事件
             eventPublisher.publishEvent(new AlarmTriggeredEvent(
                     saved.getId(), saved.getHazardPointId(),
-                    saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage()));
+                    saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage(),
+                    saved.getTriggerReason()));
         }
 
         updateResult(strategy.getId(), "SUCCESS");

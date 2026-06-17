@@ -6,6 +6,8 @@ import com.zwei.iot.alarm.config.AlarmProperties;
 import com.zwei.iot.alarm.domain.AlarmConstants;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
 import com.zwei.iot.alarm.domain.AlarmRecord;
+import com.zwei.iot.alarm.domain.ConditionGroup;
+import com.zwei.iot.alarm.domain.LevelCondition;
 import com.zwei.iot.alarm.domain.LevelConfig;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import com.zwei.iot.device.domain.SensorAttribute;
@@ -45,7 +47,7 @@ public class AlarmEvaluationEngine {
 
     /** level_config JSON 中等级 key → 数值映射（与 CriteriaEvaluator.LEVEL_VALUES 对齐） */
     private static final Map<String, Integer> LEVEL_VALUES = Map.of(
-            "red", 4, "orange", 3, "yellow", 2, "blue", 1);
+            "red", 1, "orange", 2, "yellow", 3, "blue", 4);
 
     private final AlarmProperties properties;
     private final IAlarmRecordService alarmRecordService;
@@ -103,11 +105,15 @@ public class AlarmEvaluationEngine {
         // 查询传感器属性
         Long monitorContentId = null;
         String sensorAttrCode = event.getAttrCode();
+        String sensorAttrName = sensorAttrCode; // 回退到 attrCode
         try {
             SensorMetadata metadata = sensorQueryService.requireSensorMetadata(event.getDeviceId(), event.getSensorCode());
             for (SensorAttribute attr : metadata.attributes()) {
                 if (sensorAttrCode.equals(attr.getAttrCode())) {
                     monitorContentId = attr.getMonitorContentId();
+                    if (attr.getAttrName() != null && !attr.getAttrName().isBlank()) {
+                        sensorAttrName = attr.getAttrName();
+                    }
                     break;
                 }
             }
@@ -121,7 +127,7 @@ public class AlarmEvaluationEngine {
         for (Long hpId : hazardPointIds) hpCriteria.addAll(criteriaCache.getByHazardPointId(hpId));
 
         if (!hpCriteria.isEmpty()) {
-            evaluateCriteria(event, hpCriteria, hazardPointIds, monitorContentId);
+            evaluateCriteria(event, hpCriteria, hazardPointIds, monitorContentId, sensorAttrName);
             return;
         }
 
@@ -131,7 +137,7 @@ public class AlarmEvaluationEngine {
             if (monitorTypeId != null) {
                 List<AlarmCriteria> mtCriteria = criteriaCache.getByMonitorTypeId(monitorTypeId);
                 if (!mtCriteria.isEmpty()) {
-                    evaluateCriteria(event, mtCriteria, hazardPointIds, monitorContentId);
+                    evaluateCriteria(event, mtCriteria, hazardPointIds, monitorContentId, sensorAttrName);
                 }
             }
         }
@@ -161,7 +167,7 @@ public class AlarmEvaluationEngine {
      * @return true 如果至少产生了一条候选告警
      */
     private boolean evaluateCriteria(MonitorDataIngestedEvent event, List<AlarmCriteria> criteriaList,
-                                     List<Long> hazardPointIds, Long monitorContentId) {
+                                     List<Long> hazardPointIds, Long monitorContentId, String attrName) {
         List<Candidate> candidates = new ArrayList<>();
 
         for (AlarmCriteria criteria : criteriaList) {
@@ -181,41 +187,114 @@ public class AlarmEvaluationEngine {
                 int level = LEVEL_VALUES.getOrDefault(entry.getKey(), 0);
                 if (level <= 0) continue;
 
-                boolean satisfied = criteriaEvaluator.evaluateLevel(entry.getValue(), subjectValues);
+                // 等级独立 persistCount/silencePeriod（前端 groups 格式），回退到 criterion 级别
+                LevelConfig lc = entry.getValue();
+                int effPersistCount  = lc.getPersistCount()  != null ? lc.getPersistCount()  : persistCount;
+                int effSilencePeriod = lc.getSilencePeriod() != null ? lc.getSilencePeriod() : silencePeriod;
+
+                boolean satisfied = criteriaEvaluator.evaluateLevel(lc, subjectValues);
                 if (!satisfied) {
                     dedupService.clearPreTrigger(criteria.getId(), effectiveHpId, level);
                     continue;
                 }
                 if (dedupService.shouldTriggerAlarm(criteria.getId(), effectiveHpId, level,
-                                                    persistCount, silencePeriod)) {
-                    candidates.add(new Candidate(criteria, level, effectiveHpId));
+                                                    effPersistCount, effSilencePeriod)) {
+                    candidates.add(new Candidate(criteria, level, effectiveHpId, entry.getKey(), lc));
                 }
             }
         }
 
         if (candidates.isEmpty()) return false;
 
-        // 候选合并：取最高等级；同等级取首个（max 遇到并列返回较早元素）
+        // 候选合并：等级值越小越严重（red=1 > orange=2 > yellow=3 > blue=4），取最小值
         Candidate winner = candidates.stream()
-                .max(Comparator.comparingInt(Candidate::level))
+                .min(Comparator.comparingInt(Candidate::level))
                 .orElseThrow();
         String hpName = getHazardPointName(winner.effectiveHpId);
+        String message = buildAlarmMessage(attrName, event.getValue(), winner.levelConfig, winner.level);
         AlarmRecord record = AlarmRecord.builder()
                 .hazardPointId(winner.effectiveHpId).hazardPointName(hpName)
                 .deviceId(event.getDeviceId()).sensorId(event.getSensorId())
                 .monitorContentId(monitorContentId)
                 .alarmLevel(winner.level).alarmLevelText(AlarmConstants.resolveLevelText(winner.level))
-                .alarmType("THRESHOLD").alarmMessage("阈值告警: " + winner.criteria.getName())
+                .alarmType("THRESHOLD").alarmMessage(message)
                 .criteriaId(winner.criteria.getId())
                 .currentValue(event.getValue() != null ? new BigDecimal(event.getValue()) : null)
                 .createBy(AlarmConstants.SYSTEM_OPERATOR).createTime(new Date())
                 .build();
         AlarmRecord saved = alarmRecordService.createOrUpdateAlarm(record);
         eventPublisher.publishEvent(new AlarmTriggeredEvent(saved.getId(), saved.getHazardPointId(),
-                saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage()));
+                saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage(), saved.getTriggerReason()));
         log.info("告警触发 id={} level={} criteria={} (candidates={})",
                 saved.getId(), winner.level, winner.criteria.getId(), candidates.size());
         return true;
+    }
+
+    /**
+     * 构建人类可读的告警描述。
+     * <p>示例：{@code 小时雨量当前值 12.0mm 超过蓝色阈值 6.0mm，触发蓝色预警}
+     */
+    private String buildAlarmMessage(String attrName, double currentValue, LevelConfig lc, int level) {
+        String levelText = AlarmConstants.resolveLevelText(level);
+        LevelCondition cond = extractFirstCondition(lc);
+        if (cond == null) {
+            return attrName + "当前值 " + formatValue(currentValue) + "，触发" + levelText + "预警";
+        }
+        String unit = cond.getUnit() != null && !cond.getUnit().isBlank() ? cond.getUnit() : "";
+        String opText = operatorText(cond.getOperator());
+        Double threshold = cond.getThreshold();
+        StringBuilder sb = new StringBuilder();
+        sb.append(attrName).append("当前值 ").append(formatValue(currentValue));
+        if (!unit.isEmpty()) sb.append(unit);
+        sb.append(" ").append(opText).append(levelText).append("阈值 ");
+        if (threshold != null) sb.append(formatValue(threshold));
+        if (!unit.isEmpty()) sb.append(unit);
+        sb.append("，触发").append(levelText).append("预警");
+        return sb.toString();
+    }
+
+    /**
+     * 从 LevelConfig 中提取第一个条件（兼容 groups 和 conditions 两种格式）。
+     */
+    private LevelCondition extractFirstCondition(LevelConfig lc) {
+        if (lc == null) return null;
+        if (lc.getGroups() != null) {
+            for (ConditionGroup g : lc.getGroups()) {
+                if (g.getConditions() != null && !g.getConditions().isEmpty()) {
+                    return g.getConditions().get(0);
+                }
+            }
+        }
+        if (lc.getConditions() != null && !lc.getConditions().isEmpty()) {
+            return lc.getConditions().get(0);
+        }
+        return null;
+    }
+
+    /**
+     * 运算符 → 中文描述。
+     */
+    private String operatorText(String operator) {
+        if (operator == null) return "超过";
+        return switch (operator.toUpperCase()) {
+            case "GT" -> "超过";
+            case "GTE" -> "达到";
+            case "LT" -> "低于";
+            case "LTE" -> "降至";
+            case "EQ" -> "等于";
+            case "BETWEEN" -> "介于";
+            default -> "超过";
+        };
+    }
+
+    /**
+     * 数值格式化 — 去除多余小数位。
+     */
+    private String formatValue(double value) {
+        if (value == Math.floor(value)) {
+            return String.valueOf((long) value);
+        }
+        return String.format("%.2f", value);
     }
 
     private String getHazardPointName(Long id) {
@@ -225,6 +304,7 @@ public class AlarmEvaluationEngine {
         } catch (Exception e) { return null; }
     }
 
-    /** 候选告警（判据 + 等级 + 实际隐患点 ID） */
-    private record Candidate(AlarmCriteria criteria, int level, Long effectiveHpId) {}
+    /** 候选告警（判据 + 等级 + 实际隐患点 ID + 等级 key + 等级配置） */
+    private record Candidate(AlarmCriteria criteria, int level, Long effectiveHpId,
+                             String levelKey, LevelConfig levelConfig) {}
 }

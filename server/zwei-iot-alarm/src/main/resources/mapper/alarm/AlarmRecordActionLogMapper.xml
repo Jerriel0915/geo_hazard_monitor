@@ -38,7 +38,7 @@
                remarks, description, attachments, operator, create_time
         FROM alarm_record_action_log
         WHERE alarm_record_id = #{alarmRecordId}
-        ORDER BY create_time ASC
+        ORDER BY create_time ASC, id ASC
     </select>
 
 </mapper>

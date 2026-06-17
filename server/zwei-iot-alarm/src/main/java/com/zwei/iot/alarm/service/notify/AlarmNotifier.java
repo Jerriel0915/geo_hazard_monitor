@@ -78,7 +78,22 @@ public class AlarmNotifier {
 
         if (!notifications.isEmpty()) {
             notificationService.batchCreate(notifications);
-            // 写 NOTIFY 动作日志：聚合渠道/接收人摘要
+            // 写 NOTIFY 动作日志：触发原因 + 接收人摘要
+            String reason = event.getTriggerReason() != null ? event.getTriggerReason() : "告警触发";
+            // 提取不重复的接收人姓名 (最多列 3 人，其余用"等人"省略)
+            List<String> names = notifications.stream()
+                    .map(AlarmNotification::getRecipientName)
+                    .filter(n -> n != null && !n.isEmpty() && !"系统".equals(n))
+                    .distinct()
+                    .toList();
+            String recipientSummary;
+            if (names.isEmpty()) {
+                recipientSummary = "系统广播";
+            } else if (names.size() <= 3) {
+                recipientSummary = String.join("、", names) + "等人";
+            } else {
+                recipientSummary = String.join("、", names.subList(0, 3)) + "等人";
+            }
             String channelSummary = notifications.stream()
                     .map(n -> n.getChannel() + ":" + (n.getRecipientName() != null ? n.getRecipientName() : "系统"))
                     .reduce((a, b) -> a + "," + b)
@@ -86,6 +101,7 @@ public class AlarmNotifier {
             actionLogMapper.insertLog(AlarmRecordActionLog.builder()
                     .alarmRecordId(event.getAlarmId())
                     .actionType(ActionType.NOTIFY.name())
+                    .description(reason + "，通知" + recipientSummary)
                     .remarks(channelSummary)
                     .operator("SYSTEM")
                     .createTime(new Date())
