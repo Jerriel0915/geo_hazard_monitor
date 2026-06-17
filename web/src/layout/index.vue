@@ -440,6 +440,7 @@ const menuList = [
       {divider: true},
       { name: 'AlarmCriteria', label: '告警判据' },
       {name: 'AlarmDisposal', label: '综合告警'},
+      {name: 'AlgoLibrary', label: '算法管理'},
       {divider: true},
       {name: 'NotificationSetting', label: '通知设置'}
     ]
@@ -507,6 +508,7 @@ const menuRouteMap: Record<string, string> = {
   AlarmCriteria: '/alarm/criteria',
   AlarmNotification: '/alarm/notification',
   AlarmDisposal: '/alarm/disposal',
+  AlgoLibrary: '/alarm/algo-library',
   NotificationSetting: '/alarm/notification-setting',
   Report: '/report/report',
   Query: '/report/query',
@@ -536,6 +538,7 @@ const menuLabelMap: Record<string, string> = {
   AlarmCriteria: '告警判据',
   AlarmNotification: '历史告警',
   AlarmDisposal: '综合告警',
+  AlgoLibrary: '算法管理',
   NotificationSetting: '通知设置',
   Report: '报告管理',
   Query: '查询中心',

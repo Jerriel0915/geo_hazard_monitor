@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.algolib.mapper.AlgoInfoMapper">
+
+    <resultMap type="com.zwei.iot.alarm.algolib.domain.AlgoInfo" id="AlgoInfoResult">
+        <id property="id" column="id"/>
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="versionCount" column="version_count"/>
+        <result property="latestVersionNo" column="latest_version_no"/>
+        <result property="latestUploadTime" column="latest_upload_time"/>
+    </resultMap>
+
+    <select id="selectList" parameterType="com.zwei.iot.alarm.algolib.domain.AlgoInfo"
+            resultMap="AlgoInfoResult">
+        SELECT a.id, a.code, a.name, a.description, a.status, a.del_flag,
+               a.create_by, a.create_time, a.update_by, a.update_time, a.remark,
+               COALESCE(v.cnt, 0)               AS version_count,
+               v.latest_version_no              AS latest_version_no,
+               v.latest_upload_time             AS latest_upload_time
+        FROM algo_info a
+        LEFT JOIN (
+            SELECT algo_id,
+                   COUNT(*)                  AS cnt,
+                   MAX(create_time)          AS latest_upload_time,
+                   SUBSTRING_INDEX(GROUP_CONCAT(version_no ORDER BY create_time DESC), ',', 1) AS latest_version_no
+            FROM algo_version
+            WHERE del_flag = 0
+            GROUP BY algo_id
+        ) v ON v.algo_id = a.id
+        <where>
+            a.del_flag = 0
+            <if test="name != null and name != ''">AND a.name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="status != null">AND a.status = #{status}</if>
+            <if test="code != null and code != ''">AND a.code LIKE CONCAT('%', #{code}, '%')</if>
+        </where>
+        ORDER BY a.create_time DESC
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="AlgoInfoResult">
+        SELECT id, code, name, description, status, del_flag,
+               create_by, create_time, update_by, update_time, remark
+        FROM algo_info
+        WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <select id="checkCodeUnique" resultMap="AlgoInfoResult">
+        SELECT id, code, name, description, status, del_flag,
+               create_by, create_time, update_by, update_time, remark
+        FROM algo_info
+        WHERE del_flag = 0
+        AND code = #{code}
+        AND id != #{id}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.iot.alarm.algolib.domain.AlgoInfo"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO algo_info (code, name, description, status, del_flag,
+                               create_by, create_time, update_by, update_time, remark)
+        VALUES (#{code}, #{name}, #{description}, #{status}, 0,
+                #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, #{remark})
+    </insert>
+
+    <update id="update" parameterType="com.zwei.iot.alarm.algolib.domain.AlgoInfo">
+        UPDATE algo_info
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id} AND del_flag = 0
+    </update>
+
+    <update id="softDelete" parameterType="Long">
+        UPDATE algo_info SET del_flag = 1 WHERE id = #{id}
+    </update>
+
+</mapper>
