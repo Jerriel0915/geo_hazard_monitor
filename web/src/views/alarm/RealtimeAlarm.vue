@@ -132,18 +132,22 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, CircleClose, Download, Warning } from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
 import FeedBack from '@/components/FeedBack.vue'
 import {
   getPendingAlarms,
+  getAlarmRecordDetail,
   disposeAlarm,
   batchDisposeAlarms,
   getAlarmLevelStyle,
   type AlarmRecordItem,
   type AlarmRecordPageParams,
 } from '@/api/alarm'
+
+const route = useRoute()
 
 // 查询参数（已移除人员名称）
 const queryParams = reactive({
@@ -182,7 +186,23 @@ async function loadList() {
   pagination.total = res.total || 0
 }
 
-onMounted(() => { loadList() })
+onMounted(async () => {
+  await loadList()
+  // 通知中心跳转携带 ?alarmId= 时，自动打开该告警详情
+  const alarmId = route.query.alarmId
+  if (alarmId) {
+    const id = Number(alarmId)
+    if (!Number.isNaN(id)) {
+      try {
+        const detail = await getAlarmRecordDetail(id)
+        if (detail) {
+          currentRow.value = detail
+          detailDialogVisible.value = true
+        }
+      } catch { /* 告警可能已不存在或无权查看，静默忽略 */ }
+    }
+  }
+})
 
 // ── 枚举映射（数字/大写）──
 const getAlarmLevelText = (level: number | string) => {
