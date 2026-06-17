@@ -43,6 +43,9 @@ public class AlarmNotification implements Serializable {
      * @return 状态码常量
      */
     public static int statusFromErrorCode(String errorCode) {
+        if (errorCode == null) {
+            return STATUS_FAILED;
+        }
         return switch (errorCode) {
             case "RECIPIENT_PHONE_MISSING", "RECIPIENT_PHONE_INVALID",
                  "RECIPIENT_EMAIL_MISSING", "RECIPIENT_EMAIL_INVALID" -> STATUS_INVALID_RECIPIENT;
