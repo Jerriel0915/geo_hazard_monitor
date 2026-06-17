@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.dispatch.mapper.AlarmDispatchRuleMapper">
+
+    <!-- 通知规则主表 (v2 重构版，与旧 com.zwei.iot.alarm.mapper.AlarmDispatchRuleMapper namespace 不同，可共存) -->
+
+    <resultMap type="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule" id="BaseResultMap">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="eventType" column="event_type"/>
+        <result property="alarmLevels" column="alarm_levels"/>
+        <result property="channels" column="channels"/>
+        <result property="isEnabled" column="is_enabled"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, event_type, alarm_levels, channels, is_enabled, del_flag,
+        create_by, create_time, update_by, update_time, remark
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM alarm_dispatch_rule
+        WHERE id = #{id}
+          AND del_flag = 0
+    </select>
+
+    <select id="selectListByWhere" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM alarm_dispatch_rule
+        <where>
+            del_flag = 0
+            <if test="where.name != null and where.name != ''">
+                AND name LIKE CONCAT('%', #{where.name}, '%')
+            </if>
+            <if test="where.eventType != null and where.eventType != ''">
+                AND event_type = #{where.eventType}
+            </if>
+            <if test="where.isEnabled != null">
+                AND is_enabled = #{where.isEnabled}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_dispatch_rule (name, event_type, alarm_levels, channels, is_enabled,
+                                         del_flag, create_by, create_time, remark)
+        VALUES (#{name}, #{eventType}, #{alarmLevels}, #{channels},
+                <choose>
+                    <when test="isEnabled != null">#{isEnabled}</when>
+                    <otherwise>1</otherwise>
+                </choose>,
+                <choose>
+                    <when test="delFlag != null">#{delFlag}</when>
+                    <otherwise>0</otherwise>
+                </choose>,
+                #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="updateById" parameterType="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule">
+        UPDATE alarm_dispatch_rule
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="eventType != null">event_type = #{eventType},</if>
+            <if test="alarmLevels != null">alarm_levels = #{alarmLevels},</if>
+            <if test="channels != null">channels = #{channels},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="logicDeleteById" parameterType="Long">
+        UPDATE alarm_dispatch_rule
+        SET del_flag = 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateEnabled">
+        UPDATE alarm_dispatch_rule
+        SET is_enabled = #{isEnabled}
+        WHERE id = #{id}
+    </update>
+
+</mapper>
