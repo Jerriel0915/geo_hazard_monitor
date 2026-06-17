@@ -9,6 +9,9 @@
         <el-button v-if="hasPermission('report:record:generate')" type="success" @click="showGenerateDialog = true">
           手动生成
         </el-button>
+        <el-button v-if="hasPermission('report:record:generate')" type="primary" @click="showBatchDialog = true">
+          一键生成
+        </el-button>
       </div>
     </div>
 
@@ -120,6 +123,31 @@
       </template>
     </el-dialog>
 
+    <!-- 批量一键生成弹窗 -->
+    <el-dialog v-model="showBatchDialog" title="一键生成报告" width="480px" destroy-on-close>
+      <el-form :model="batchForm" label-width="110px">
+        <el-form-item label="报告类型" required>
+          <el-select v-model="batchForm.type" placeholder="请选择报告类型" style="width: 100%">
+            <el-option label="周报" value="weekly" />
+            <el-option label="月报" value="monthly" />
+            <el-option label="季报" value="quarterly" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="参考日期">
+          <el-date-picker v-model="batchForm.referenceDate" type="date" value-format="YYYY-MM-DD" placeholder="默认今天" style="width: 100%" />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            留空则以当天为参考生成上一个完整周期的报告（与定时任务逻辑一致）
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showBatchDialog = false">取消</el-button>
+        <el-button type="primary" :loading="batchGenerating" @click="handleBatchGenerate">
+          开始批量生成
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- View dialog -->
     <el-dialog v-model="viewDialogVisible" :title="currentReport?.reportName || '报告详情'" width="900px" destroy-on-close>
       <div class="report-meta">
@@ -164,6 +192,7 @@ import {
   getReportDetail,
   deleteReport,
   generateReport,
+  generateAllReports,
   getHazardPointOptions,
   type ReportItem,
   type ReportType,
@@ -384,6 +413,32 @@ const handleGenerate = async () => {
     showRequestErrorMessage(error, '生成报告失败')
   } finally {
     generating.value = false
+  }
+}
+
+// Batch generate
+const showBatchDialog = ref(false)
+const batchGenerating = ref(false)
+const batchForm = reactive<{ type: ReportType | ''; referenceDate: string }>({
+  type: '',
+  referenceDate: '',
+})
+
+const handleBatchGenerate = async () => {
+  if (!batchForm.type) {
+    ElMessage.warning('请选择报告类型')
+    return
+  }
+  batchGenerating.value = true
+  try {
+    await generateAllReports(batchForm.type, batchForm.referenceDate || undefined)
+    ElMessage.success('批量生成已触发，稍后刷新查看结果')
+    showBatchDialog.value = false
+    loadList()
+  } catch (error: any) {
+    showRequestErrorMessage(error, '批量生成失败')
+  } finally {
+    batchGenerating.value = false
   }
 }
 

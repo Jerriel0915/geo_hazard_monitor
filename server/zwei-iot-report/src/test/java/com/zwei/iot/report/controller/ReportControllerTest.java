@@ -3,6 +3,8 @@ package com.zwei.iot.report.controller;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.iot.device.domain.brief.HazardPointBrief;
 import com.zwei.iot.device.service.IHazardPointQueryService;
+import com.zwei.iot.report.domain.ReportType;
+import com.zwei.iot.report.domain.dto.ReportGenerateAllDTO;
 import com.zwei.iot.report.domain.dto.ReportGenerateDTO;
 import com.zwei.iot.report.service.ReportGenerationService;
 import com.zwei.iot.report.service.ReportRecordService;
@@ -122,5 +124,35 @@ class ReportControllerTest {
         dto.setPeriodStart(LocalDate.parse(start));
         dto.setPeriodEnd(LocalDate.parse(end));
         return dto;
+    }
+
+    @Test
+    @DisplayName("generateAll type 不合法返回 error")
+    void generateAllInvalidType() {
+        ReportGenerateAllDTO dto = new ReportGenerateAllDTO();
+        dto.setType(9);
+        AjaxResult r = controller.generateAll(dto);
+        assertThat(r.get("code")).isEqualTo(500);
+        assertThat(r.get("msg").toString()).contains("type");
+    }
+
+    @Test
+    @DisplayName("generateAll 合法 type 调用 generationService.generateAll")
+    void generateAllSuccess() {
+        ReportGenerateAllDTO dto = new ReportGenerateAllDTO();
+        dto.setType(2);
+        AjaxResult r = controller.generateAll(dto);
+        assertThat(r.get("code")).isEqualTo(200);
+        verify(generationService).generateAll(eq(ReportType.WEEKLY), any(LocalDate.class));
+    }
+
+    @Test
+    @DisplayName("generateAll 传 referenceDate 则用指定日期")
+    void generateAllWithRefDate() {
+        ReportGenerateAllDTO dto = new ReportGenerateAllDTO();
+        dto.setType(3);
+        dto.setReferenceDate(LocalDate.of(2026, 1, 15));
+        controller.generateAll(dto);
+        verify(generationService).generateAll(eq(ReportType.MONTHLY), eq(LocalDate.of(2026, 1, 15)));
     }
 }

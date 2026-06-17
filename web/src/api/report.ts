@@ -110,6 +110,16 @@ export async function generateReport(data: ReportGenerateParams): Promise<{ repo
   }
 }
 
+/** 批量一键生成: 对全部监测中隐患点调用 generateAll */
+export async function generateAllReports(
+  type: ReportType,
+  referenceDate?: string
+): Promise<void> {
+  const payload: any = { type: TYPE_STR_TO_CODE[type] }
+  if (referenceDate) payload.referenceDate = referenceDate
+  await request.post('/report/records/generate-all', payload)
+}
+
 // 隐患点选项 (调用真实 API)
 export async function getHazardPointOptions(): Promise<HazardPointOption[]> {
   try {

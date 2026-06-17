@@ -53,9 +53,15 @@ public class ReportGenerationService {
         this.renderers = renderers;
     }
 
+    /** 以当天为参考日期 → 生成上一周期报告 (定时任务入口)。 */
     public void generateAll(ReportType type) {
-        ReportPeriod period = ReportPeriod.previous(type, LocalDate.now());
-        log.info("[report] start type={} period={}~{}", type, period.start(), period.end());
+        generateAll(type, LocalDate.now());
+    }
+
+    /** 以指定日期为参考日期 → 生成上一周期报告 (手动触发入口，兼容补跑历史数据)。 */
+    public void generateAll(ReportType type, LocalDate referenceDate) {
+        ReportPeriod period = ReportPeriod.previous(type, referenceDate);
+        log.info("[report] start type={} period={}~{} refDate={}", type, period.start(), period.end(), referenceDate);
 
         String lockKey = "report:gen:" + type.code() + ":" + period.key();
         DistributedLock.LockToken token = lock.tryLock(lockKey, LOCK_TTL);

@@ -8,6 +8,7 @@ import com.zwei.common.enums.BusinessType;
 import com.zwei.iot.device.domain.brief.HazardPointBrief;
 import com.zwei.iot.device.service.IHazardPointQueryService;
 import com.zwei.iot.report.domain.ReportType;
+import com.zwei.iot.report.domain.dto.ReportGenerateAllDTO;
 import com.zwei.iot.report.domain.dto.ReportGenerateDTO;
 import com.zwei.iot.report.domain.dto.ReportRecordDetailVO;
 import com.zwei.iot.report.domain.dto.ReportRecordPageDTO;
@@ -103,5 +104,19 @@ public class ReportController extends BaseController {
         Long newId = recordService.findExisting(dto.getType(), dto.getHazardPointId(),
             dto.getPeriodStart(), dto.getPeriodEnd());
         return AjaxResult.success("生成成功").put("reportId", newId);
+    }
+
+    @PreAuthorize("@ss.hasPermi('report:record:generate')")
+    @Log(title = "报告管理-批量生成", businessType = BusinessType.INSERT)
+    @PostMapping("/generate-all")
+    public AjaxResult generateAll(@Valid @RequestBody ReportGenerateAllDTO dto) {
+        if (dto.getType() == null || (dto.getType() != 2 && dto.getType() != 3 && dto.getType() != 4)) {
+            return AjaxResult.error("type 必须为 2(周报)/3(月报)/4(季报)");
+        }
+        LocalDate refDate = dto.getReferenceDate() != null ? dto.getReferenceDate() : LocalDate.now();
+        ReportType type = ReportType.fromCode(dto.getType());
+        // 定时任务逻辑复用的核心：同一方法，按参考日期计算周期
+        generationService.generateAll(type, refDate);
+        return AjaxResult.success("批量生成已触发");
     }
 }
