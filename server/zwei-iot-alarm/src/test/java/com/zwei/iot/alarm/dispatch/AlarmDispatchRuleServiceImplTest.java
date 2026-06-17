@@ -148,7 +148,10 @@ class AlarmDispatchRuleServiceImplTest {
     @Test
     void wildcard_normalization_when_id_is_wildcard_plus_specific() {
         AlarmDispatchRuleCreateRequest req = buildAlarmReq();
+        // 隔离测试：清空 dept/user，只测 role 通配符归一化
         req.getRecipients().setRoleIds(Arrays.asList("*", "1", "2"));
+        req.getRecipients().setUserIds(null);
+        req.getRecipients().setDeptIds(null);
 
         service.create(req);
 
