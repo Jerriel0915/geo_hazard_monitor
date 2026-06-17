@@ -35,7 +35,9 @@ public interface AlarmRecordMapper {
 
     int updateTriggerCount(@Param("id") Long id,
                            @Param("lastTriggerTime") String lastTriggerTime,
-                           @Param("triggerCount") Integer triggerCount);
+                           @Param("triggerCount") Integer triggerCount,
+                           @Param("alarmMessage") String alarmMessage,
+                           @Param("currentValue") String currentValue);
 
     int updateStatus(@Param("id") Long id,
                      @Param("status") Integer status,
@@ -61,5 +63,7 @@ public interface AlarmRecordMapper {
                          @Param("alarmLevel") Integer alarmLevel,
                          @Param("alarmLevelText") String alarmLevelText,
                          @Param("lastTriggerTime") String lastTriggerTime,
-                         @Param("triggerCount") Integer triggerCount);
+                         @Param("triggerCount") Integer triggerCount,
+                         @Param("alarmMessage") String alarmMessage,
+                         @Param("currentValue") String currentValue);
 }

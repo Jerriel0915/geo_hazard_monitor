@@ -76,13 +76,19 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
             Integer newLevel = record.getAlarmLevel();
             boolean levelChanged = oldLevel != null && newLevel != null && !oldLevel.equals(newLevel);
 
+            String currentValueStr = record.getCurrentValue() != null ? record.getCurrentValue().toPlainString() : null;
+
             if (levelChanged) {
-                // 等级变化：更新主表 alarmLevel + triggerCount + lastTriggerTime
+                // 等级变化：更新主表 alarmLevel + triggerCount + lastTriggerTime + alarmMessage
                 alarmRecordMapper.updateAlarmLevel(existing.getId(), newLevel,
-                        AlarmConstants.resolveLevelText(newLevel), now, newCount);
+                        AlarmConstants.resolveLevelText(newLevel), now, newCount,
+                        record.getAlarmMessage(), currentValueStr);
                 existing.setAlarmLevel(newLevel);
+                existing.setAlarmMessage(record.getAlarmMessage());
             } else {
-                alarmRecordMapper.updateTriggerCount(existing.getId(), now, newCount);
+                alarmRecordMapper.updateTriggerCount(existing.getId(), now, newCount,
+                        record.getAlarmMessage(), currentValueStr);
+                existing.setAlarmMessage(record.getAlarmMessage());
             }
 
             // 写触发明细 (RE_TRIGGER 场景)
@@ -113,6 +119,9 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
                         .operator(AlarmConstants.SYSTEM_OPERATOR)
                         .createTime(nowDate)
                         .build());
+                existing.setTriggerReason("等级变化");
+            } else {
+                existing.setTriggerReason("超过静默期");
             }
 
             return existing;
@@ -124,6 +133,7 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
         record.setTriggerCount(1);
         record.setStatus(1);
         record.setStatusName("待处理");
+        record.setTriggerReason("首次告警");
         alarmRecordMapper.insertRecord(record);
 
         // 写触发明细 (CREATE 场景)

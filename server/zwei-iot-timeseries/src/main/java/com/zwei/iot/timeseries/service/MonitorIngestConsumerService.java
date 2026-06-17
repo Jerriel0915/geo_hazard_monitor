@@ -1,6 +1,7 @@
 package com.zwei.iot.timeseries.service;
 
 import com.alibaba.fastjson2.JSON;
+import com.zwei.common.event.MonitorDataIngestedEvent;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceOnlineStatusService;
@@ -11,6 +12,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.connection.stream.*;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -55,6 +57,7 @@ public class MonitorIngestConsumerService {
     private final DeviceMapper deviceMapper;
     private final DeviceOnlineStatusService deviceOnlineStatusService;
     private final IDeviceSensorService deviceSensorService;
+    private final ApplicationEventPublisher eventPublisher;
     private final ExecutorService executorService;
     private volatile boolean running = true;
 
@@ -67,6 +70,7 @@ public class MonitorIngestConsumerService {
      * @param streamService          Stream 写入服务
      * @param deviceMapper           设备 Mapper
      * @param deviceOnlineStatusService 设备在线状态服务
+     * @param eventPublisher         Spring 事件发布器（发布 {@link MonitorDataIngestedEvent}）
      */
     @Autowired
     public MonitorIngestConsumerService(RedisTemplate<Object, Object> redisTemplate,
@@ -75,7 +79,8 @@ public class MonitorIngestConsumerService {
                                         MonitorIngestStreamService streamService,
                                         DeviceMapper deviceMapper,
                                         DeviceOnlineStatusService deviceOnlineStatusService,
-                                        IDeviceSensorService deviceSensorService) {
+                                        IDeviceSensorService deviceSensorService,
+                                        ApplicationEventPublisher eventPublisher) {
         this.redisTemplate = redisTemplate;
         this.properties = properties;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
@@ -83,6 +88,7 @@ public class MonitorIngestConsumerService {
         this.deviceMapper = deviceMapper;
         this.deviceOnlineStatusService = deviceOnlineStatusService;
         this.deviceSensorService = deviceSensorService;
+        this.eventPublisher = eventPublisher;
         this.executorService = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "monitor-ingest-consumer");
             thread.setDaemon(true);
@@ -204,6 +210,8 @@ public class MonitorIngestConsumerService {
                     point.deviceId(), point.sensorCode(), point.attrCode(), point.attrName(),
                     point.value(), point.unit() != null ? point.unit() : "",
                     new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(point.dataTime())));
+            // 发布监测数据入库事件 — 触发告警引擎评估
+            publishIngestedEvent(point);
             ack(record);
         } catch (Exception e) {
             // ── 阶段4: 退避重试 / 死信 ──
@@ -256,6 +264,10 @@ public class MonitorIngestConsumerService {
             }
             log.info("ParsedMessage ingested: deviceCode={} sensorCode={} properties={}",
                     parsed.deviceCode(), parsed.sensorCode(), points.size());
+            // 发布监测数据入库事件 — 触发告警引擎评估（逐点发布）
+            for (StandardMeasurementPoint pt : points) {
+                publishIngestedEvent(pt);
+            }
             ack(record);
         } catch (Exception e) {
             if (retryCount >= properties.getRetryDelaysSeconds().size()) {
@@ -268,6 +280,36 @@ public class MonitorIngestConsumerService {
             record.getValue().put("retryCount", String.valueOf(retryCount + 1));
             redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
             ack(record);
+        }
+    }
+
+    /**
+     * 发布监测数据入库事件，通知告警引擎评估。
+     *
+     * <p>仅在 point.value() 非空时发布，避免无业务意义的占位数据触发评估。
+     * 同步发布 — 由 Spring 事件机制按订阅者线程模型决定执行线程
+     * (alarm 引擎 {@code @EventListener} 默认同步，会在本消费线程内执行；
+     * 如需异步可加 {@code @Async}，本工程当前同步满足告警时延要求)。
+     *
+     * @param point 已成功写入 IoTDB 的测点
+     */
+    private void publishIngestedEvent(StandardMeasurementPoint point) {
+        if (point == null || point.value() == null) {
+            return;
+        }
+        try {
+            eventPublisher.publishEvent(new MonitorDataIngestedEvent(
+                    point.deviceId(),
+                    point.sensorId(),
+                    point.sensorCode(),
+                    point.attrCode(),
+                    point.value(),
+                    point.dataTime(),
+                    point.sourceType()));
+        } catch (Exception e) {
+            // 事件发布失败不影响入库主流程
+            log.warn("发布 MonitorDataIngestedEvent 失败 deviceId={} attrCode={}: {}",
+                    point.deviceId(), point.attrCode(), e.getMessage());
         }
     }
 

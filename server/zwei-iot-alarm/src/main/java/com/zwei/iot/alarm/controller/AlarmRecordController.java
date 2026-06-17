@@ -8,6 +8,7 @@ import com.zwei.iot.alarm.domain.AlarmRecordActionLog;
 import com.zwei.iot.alarm.domain.AlarmRecordTriggerDetail;
 import com.zwei.iot.alarm.domain.dto.AlarmRecordDisposeRequest;
 import com.zwei.iot.alarm.domain.dto.BatchDisposeRequest;
+import com.zwei.iot.alarm.service.IAlarmNotificationService;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -24,9 +25,12 @@ import java.util.List;
 public class AlarmRecordController extends BaseController {
 
     private final IAlarmRecordService alarmRecordService;
+    private final IAlarmNotificationService notificationService;
 
-    public AlarmRecordController(IAlarmRecordService alarmRecordService) {
+    public AlarmRecordController(IAlarmRecordService alarmRecordService,
+                                 IAlarmNotificationService notificationService) {
         this.alarmRecordService = alarmRecordService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/pending")
@@ -89,5 +93,12 @@ public class AlarmRecordController extends BaseController {
     public AjaxResult actionLogs(@PathVariable Long id) {
         List<AlarmRecordActionLog> logs = alarmRecordService.selectActionLogsByAlarmRecordId(id);
         return success(logs);
+    }
+
+    /** 通知记录列表 (通知记录 tab) */
+    @GetMapping("/{id}/notifications")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult notifications(@PathVariable Long id) {
+        return success(notificationService.selectByAlarmId(id));
     }
 }

@@ -8,6 +8,7 @@
         <result property="hazardPointId" column="hazard_point_id"/>
         <result property="hazardPointName" column="hazard_point_name"/>
         <result property="deviceId" column="device_id"/>
+        <result property="deviceName" column="device_name"/>
         <result property="sensorId" column="sensor_id"/>
         <result property="monitorContentId" column="monitor_content_id"/>
         <result property="alarmLevel" column="alarm_level"/>
@@ -38,6 +39,7 @@
                hazard_point_id,
                hazard_point_name,
                device_id,
+               (SELECT d.name FROM device d WHERE d.id = alarm_record.device_id) AS device_name,
                sensor_id,
                monitor_content_id,
                alarm_level,
@@ -116,7 +118,7 @@
                 AND last_trigger_time &lt;= #{triggerTimeEnd}
             </if>
         </where>
-        ORDER BY alarm_level DESC, last_trigger_time DESC
+        ORDER BY first_trigger_time DESC
     </select>
 
     <select id="selectHistoryRecords" resultMap="AlarmRecordResult">
@@ -128,7 +130,7 @@
         <if test="hazardPointName != null and hazardPointName != ''">
             AND hazard_point_name LIKE CONCAT('%', #{hazardPointName}, '%')
         </if>
-        ORDER BY resolved_at DESC
+        ORDER BY first_trigger_time DESC
     </select>
 
     <select id="selectRecordById" parameterType="Long" resultMap="AlarmRecordResult">
@@ -185,6 +187,8 @@
         UPDATE alarm_record
         SET last_trigger_time = #{lastTriggerTime},
             trigger_count     = #{triggerCount},
+            alarm_message     = #{alarmMessage},
+            current_value     = #{currentValue},
             update_time       = NOW()
         WHERE id = #{id}
     </update>
@@ -195,6 +199,8 @@
             alarm_level_text  = #{alarmLevelText},
             last_trigger_time = #{lastTriggerTime},
             trigger_count     = #{triggerCount},
+            alarm_message     = #{alarmMessage},
+            current_value     = #{currentValue},
             update_time       = NOW()
         WHERE id = #{id}
     </update>

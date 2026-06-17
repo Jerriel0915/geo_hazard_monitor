@@ -126,22 +126,26 @@
                 </el-table>
               </div>
 
-              <!-- 通知记录 (暂未对接后端，保留结构与搜索) -->
+              <!-- 通知记录 (NOTIFY 动作日志) -->
               <div v-show="activeTab === 'notify'" class="tab-content">
                 <div class="tab-search">
-                  <el-input v-model="notifyRecordSearch.account" placeholder="账号模糊查询" size="small" clearable class="tab-sch-inp" />
+                  <el-input v-model="notifyRecordSearch.account" placeholder="接收人/原因查询" size="small" clearable class="tab-sch-inp" />
                   <el-date-picker v-model="notifyRecordSearch.timeRange" type="daterange" range-separator="至"
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetNotifyRecords">重置</el-button>
                 </div>
                 <el-table :data="filteredNotifyRecords" border stripe size="small" :height="308" empty-text="暂无通知记录">
-                  <el-table-column prop="notifyTime" label="通知时间" width="180" />
-                  <el-table-column prop="channelType" label="渠道类型" width="100" />
-                  <el-table-column prop="account" label="账号/电话/邮箱" min-width="160" show-overflow-tooltip />
-                  <el-table-column prop="content" label="内容" min-width="180" show-overflow-tooltip />
-                  <el-table-column prop="success" label="是否成功" width="90">
+                  <el-table-column prop="createTime" label="通知时间" width="180" />
+                  <el-table-column prop="channel" label="渠道" width="90">
                     <template #default="{ row }">
-                      <el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag>
+                      <el-tag size="small" :type="row.channel === 'SMS' ? 'warning' : row.channel === 'EMAIL' ? 'success' : 'primary'">{{ row.channel }}</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="recipientName" label="接收人" width="120" show-overflow-tooltip />
+                  <el-table-column prop="content" label="通知内容" min-width="200" show-overflow-tooltip />
+                  <el-table-column prop="status" label="状态" width="80">
+                    <template #default="{ row }">
+                      <el-tag size="small" :type="row.status === 2 ? 'success' : row.status === 3 ? 'danger' : 'info'">{{ row.status === 2 ? '已发送' : row.status === 3 ? '失败' : '待发送' }}</el-tag>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -230,6 +234,7 @@ import FeedBack from '@/components/FeedBack.vue'
 import Notify from '@/components/Notify.vue'
 import echarts from '@/utils/echarts'
 import request from '@/utils/request'
+import { getChartData, type ChartData } from '@/api/monitorData'
 import {
   Bell, ChatDotRound, CircleClose, Clock, Close,
   MapLocation, Monitor, Warning, WarnTriangleFilled,
@@ -241,8 +246,10 @@ import {
   ALARM_LEVEL_COLORS,
   getActionLogs,
   getAlarmLevelStyle,
+  getAlarmNotifications,
   getAlarmRecordDetail,
   getTriggerDetails,
+  type AlarmNotificationItem,
   type AlarmRecordActionLog,
   type AlarmRecordItem,
   type AlarmRecordTriggerDetail,
@@ -282,6 +289,8 @@ let chartInstance: echarts.ECharts | null = null
 const detail = ref<AlarmRecordItem | null>(null)
 const triggerDetails = ref<AlarmRecordTriggerDetail[]>([])
 const disposalRecords = ref<AlarmRecordActionLog[]>([])
+const notifyRecords = ref<AlarmNotificationItem[]>([])
+const chartSeriesData = ref<ChartData[]>([])
 
 interface TimelineNode { time: string; label: string; description: string; operator: string; type: string }
 const timelineData = ref<TimelineNode[]>([])
@@ -289,8 +298,22 @@ const timelineData = ref<TimelineNode[]>([])
 const alarmRecordSearch = ref({ description: '', timeRange: [] as string[] })
 const notifyRecordSearch = ref({ account: '', timeRange: [] as string[] })
 
-// 通知记录暂未对接后端，保留搜索结构 + 空数据
-const filteredNotifyRecords = computed(() => [])
+// 通知记录：从 alarm_notification 表查询，按时间降序
+const filteredNotifyRecords = computed(() => {
+  let list = notifyRecords.value
+  if (notifyRecordSearch.value.account) {
+    const kw = notifyRecordSearch.value.account.toLowerCase()
+    list = list.filter(r =>
+      (r.recipientName || '').toLowerCase().includes(kw) ||
+      (r.channel || '').toLowerCase().includes(kw) ||
+      (r.content || '').toLowerCase().includes(kw))
+  }
+  if (notifyRecordSearch.value.timeRange.length === 2) {
+    const [s, e] = notifyRecordSearch.value.timeRange
+    list = list.filter(r => r.createTime >= s && r.createTime <= e)
+  }
+  return [...list].sort((a, b) => (b.createTime || '').localeCompare(a.createTime || ''))
+})
 const resetNotifyRecords = () => { notifyRecordSearch.value = { account: '', timeRange: [] } }
 
 // 生命周期流程图：按告警等级加载对应图片 (1-4)
@@ -341,7 +364,7 @@ const filteredAlarmRecords = computed(() => {
     const [s, e] = alarmRecordSearch.value.timeRange
     list = list.filter(r => r.triggerTime >= s && r.triggerTime <= e)
   }
-  return list
+  return [...list].sort((a, b) => (b.triggerTime || '').localeCompare(a.triggerTime || ''))
 })
 
 const resetAlarmRecords = () => { alarmRecordSearch.value = { description: '', timeRange: [] } }
@@ -393,15 +416,17 @@ watch(() => props.modelValue, async (val) => {
   const id = Number(props.data.id)
 
   try {
-    const [d, t, l] = await Promise.all([
+    const [d, t, l, n] = await Promise.all([
       getAlarmRecordDetail(id),
       getTriggerDetails(id),
       getActionLogs(id),
+      getAlarmNotifications(id),
     ])
     const detailData = (d as any).data ?? d
     detail.value = detailData ?? null
     triggerDetails.value = (t as any).data ?? t ?? []
     const rawLogs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
+    notifyRecords.value = (n as any).data ?? n ?? []
     // 在 action_log 头部插入"当前状态"元素，作为时间线的当前节点（无时间/描述，仅动作类型）
     // 已销警(3)/误报(4) → ENDED 灰色"结束"；待处理(1)/处理中(2) → CURRENT 蓝色"当前"
     const isEnded = [3, 4].includes(Number(props.data?.status))
@@ -419,11 +444,14 @@ watch(() => props.modelValue, async (val) => {
       ['FEEDBACK', 'DISPOSE_CLOSE', 'DISPOSE_FALSE_ALARM'].includes(x.actionType))
     timelineData.value = buildTimeline(logs)
     dataReady.value = true
+    await loadChartData()
     tryInitChart()
   } catch (e) {
     detail.value = null
     triggerDetails.value = []
     disposalRecords.value = []
+    notifyRecords.value = []
+    chartSeriesData.value = []
     timelineData.value = []
     dataReady.value = false
   }
@@ -435,7 +463,7 @@ function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
     // CURRENT(当前) / ENDED(结束) 元素始终排在最前
     if (a.actionType === 'CURRENT' || a.actionType === 'ENDED') return -1
     if (b.actionType === 'CURRENT' || b.actionType === 'ENDED') return 1
-    return (b.createTime || '').localeCompare(a.createTime || '')
+    return (b.createTime || '').localeCompare(a.createTime || '') || ((a.id ?? 0) - (b.id ?? 0))
   }).map(log => {
     const typeMap: Record<string, string> = {
       CURRENT: 'current', ENDED: 'ended',
@@ -445,15 +473,17 @@ function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
     }
     const labelMap: Record<string, string> = {
       CURRENT: '当前', ENDED: '结束',
-      CREATE: '告警创建', RE_TRIGGER: '告警再次触发',
-      LEVEL_CHANGE: `等级变化 ${log.fromValue || ''}→${log.toValue || ''}`,
+      CREATE: '告警创建', RE_TRIGGER: '告警触发',
+      LEVEL_CHANGE: '等级变化',
       FEEDBACK: '处置反馈', DISPOSE_CLOSE: '告警销警',
       DISPOSE_FALSE_ALARM: '标记误报', NOTIFY: '通知发送',
     }
     // 动作类型标签：使用静态映射，无映射时回退到原始 actionType
     const label = labelMap[log.actionType] || log.actionType
-    // 动作描述：后端返回的 description + remarks 拼接（用 ｜ 分隔），无则为空
-    const description = [log.description, log.remarks].filter(Boolean).join('｜')
+    // 动作描述：LEVEL_CHANGE 展示等级转换，其余展示 description
+    const description = log.actionType === 'LEVEL_CHANGE'
+      ? `${getLevelName(log.fromValue)}→${getLevelName(log.toValue)}`
+      : (log.description || '')
     return {
       time: log.createTime || '',
       label,
@@ -464,25 +494,64 @@ function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
   })
 }
 
-// ---------- 图表（mock，后续可对接时序数据 API） ----------
-const generateChartData = () => {
-  const alarmTime = props.data?.firstTriggerTime || new Date().toISOString()
-  const alarmDate = new Date(alarmTime)
-  const monitorData: { time: string; value: number; isAlarm: boolean }[] = []
+// ---------- 图表（对接监测数据 API） ----------
 
-  for (let i = -3; i <= 3; i++) {
-    const date = new Date(alarmDate)
-    date.setDate(date.getDate() + i)
-    for (let hour = 0; hour < 24; hour += 4) {
-      date.setHours(hour, 0, 0, 0)
-      const timeStr = date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-      const baseValue = 50 + Math.random() * 30
-      const isAlarm = i === 0 && hour >= 8 && hour <= 16 && Math.random() > 0.7
-      const value = isAlarm ? baseValue + 20 + Math.random() * 20 : baseValue
-      monitorData.push({ time: timeStr, value: Math.round(value * 10) / 10, isAlarm })
-    }
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const fmtDateTime = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+
+/** 加载监测曲线数据：首次告警时间前3天 ~ 当天24点 */
+const loadChartData = async () => {
+  const rec = detail.value || (props.data as any)
+  if (!rec) return
+  const hpId = Number(rec.hazardPointId)
+  if (!hpId) { chartSeriesData.value = []; return }
+
+  const firstTime = new Date(rec.firstTriggerTime)
+  if (isNaN(firstTime.getTime())) { chartSeriesData.value = []; return }
+
+  const startTime = new Date(firstTime)
+  startTime.setDate(startTime.getDate() - 3)
+  const endTime = new Date()
+  endTime.setHours(23, 59, 59, 0)
+
+  const params: {
+    hazardPointId: number; startTime: string; endTime: string
+    deviceId?: number; sensorId?: number
+  } = {
+    hazardPointId: hpId,
+    startTime: fmtDateTime(startTime),
+    endTime: fmtDateTime(endTime),
   }
-  return { monitorData }
+  if (rec.deviceId) params.deviceId = Number(rec.deviceId)
+  if (rec.sensorId) params.sensorId = Number(rec.sensorId)
+
+  try {
+    const data = await getChartData(params)
+    chartSeriesData.value = Array.isArray(data) ? data : []
+  } catch {
+    chartSeriesData.value = []
+  }
+}
+
+/** 将触发明细时间匹配到图表 x 轴最近的数据点索引 */
+const findAlarmIndices = (labels: string[]): number[] => {
+  const indices: number[] = []
+  for (const td of triggerDetails.value) {
+    if (!td.triggerTime) continue
+    const triggerTs = new Date(td.triggerTime.replace(/-/g, '/')).getTime()
+    if (isNaN(triggerTs)) continue
+    let bestIdx = -1
+    let bestDiff = Infinity
+    labels.forEach((label, idx) => {
+      const labelTs = new Date(label.replace(/-/g, '/')).getTime()
+      if (isNaN(labelTs)) return
+      const diff = Math.abs(labelTs - triggerTs)
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = idx }
+    })
+    if (bestIdx >= 0 && !indices.includes(bestIdx)) indices.push(bestIdx)
+  }
+  return indices
 }
 
 const initChart = () => {
@@ -494,45 +563,57 @@ const initChart = () => {
 
 const updateChart = () => {
   if (!chartInstance) return
-  const { monitorData } = generateChartData()
-  const chartData = monitorData
-  const alarmPoints = chartData.filter(item => item.isAlarm)
-  const alarmIndices = alarmPoints.map(p => chartData.indexOf(p))
+  const series = chartSeriesData.value
+  if (!series || series.length === 0) {
+    chartInstance.setOption({
+      title: { text: '暂无监测数据', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 14 } },
+    }, true)
+    return
+  }
+
+  const main = series[0]
+  const labels = main.labels || []
+  const alarmIndices = findAlarmIndices(labels)
 
   chartInstance.setOption({
+    title: { text: main.seriesName || main.attrName || '监测数据', left: 'left', textStyle: { fontSize: 13, color: '#606266' } },
     tooltip: {
       trigger: 'axis',
       formatter: (params: any) => {
-        const data = params[0]
-        const isAlarm = alarmIndices.includes(data.dataIndex)
-        return `<div style="padding:8px"><div style="font-weight:bold;margin-bottom:4px">${data.name}</div><div>数值: <span style="color:${isAlarm ? '#f56c6c' : '#409eff'}">${data.value}</span></div>${isAlarm ? '<div style="color:#f56c6c;margin-top:4px">⚠️ 告警数据点</div>' : ''}</div>`
+        const p = params[0]
+        if (!p) return ''
+        const isAlarm = alarmIndices.includes(p.dataIndex)
+        return `<div style="padding:8px"><div style="font-weight:bold;margin-bottom:4px">${p.name}</div><div>${main.seriesName || main.attrName}: <span style="color:${isAlarm ? '#f56c6c' : '#409eff'}">${p.value}${main.unit || ''}</span></div>${isAlarm ? '<div style="color:#f56c6c;margin-top:4px">⚠️ 告警触发点</div>' : ''}</div>`
       }
     },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+    grid: { left: '3%', right: '4%', bottom: '8%', top: '18%', containLabel: true },
     xAxis: {
-      type: 'category', data: chartData.map(item => item.time),
-      axisLabel: { rotate: 45, fontSize: 12, color: '#666' },
+      type: 'category', data: labels,
+      axisLabel: { rotate: 45, fontSize: 11, color: '#666' },
       axisLine: { lineStyle: { color: '#ddd' } }
     },
     yAxis: {
-      type: 'value', name: '监测值',
+      type: 'value', name: main.unit || '监测值',
       axisLabel: { fontSize: 12, color: '#666' },
       axisLine: { lineStyle: { color: '#ddd' } },
       splitLine: { lineStyle: { color: '#f0f0f0' } }
     },
     series: [{
-      name: '监测数据',
+      name: main.seriesName || main.attrName,
       type: 'line',
-      data: chartData.map(item => item.value),
+      data: main.values,
       smooth: true, symbol: 'circle',
-      symbolSize: (_v: number, params: any) => alarmIndices.includes(params.dataIndex) ? 10 : 6,
+      symbolSize: (_v: number, params: any) => alarmIndices.includes(params.dataIndex) ? 10 : 5,
       itemStyle: { color: (params: any) => alarmIndices.includes(params.dataIndex) ? '#f56c6c' : '#409eff' },
       lineStyle: { width: 2, color: '#409eff' },
       areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(64,158,255,.3)' }, { offset: 1, color: 'rgba(64,158,255,.05)' }]) },
       markPoint: {
-        data: alarmPoints.map((point, i) => ({
-          name: `告警点${i + 1}`, coord: [chartData.indexOf(point), point.value],
-          value: point.value, itemStyle: { color: '#f56c6c' }, symbol: 'pin', symbolSize: 40,
+        data: alarmIndices.map((idx, i) => ({
+          name: `告警点${i + 1}`,
+          coord: [idx, main.values[idx]],
+          value: main.values[idx],
+          itemStyle: { color: '#f56c6c' },
+          symbol: 'pin', symbolSize: 40,
           label: { show: true, formatter: '⚠️', fontSize: 14 }
         }))
       }
@@ -562,6 +643,12 @@ const getAlarmLevelText = (level: number | string | undefined) => {
 }
 const getAlarmTypeText = (type: string) =>
   ({ THRESHOLD: '阈值预警', COMPREHENSIVE: '综合预警' } as Record<string, string>)[type] || type
+
+/** 数值等级 → 中文颜色名称 (1=红色 2=橙色 3=黄色 4=蓝色) */
+const getLevelName = (val: string | undefined) => {
+  const n = Number(val)
+  return ({ 1: '红色', 2: '橙色', 3: '黄色', 4: '蓝色' } as Record<number, string>)[n] || val || ''
+}
 
 // ---------- 附件上传 + 底部按钮事件 ----------
 async function uploadAttachments(files: File[]): Promise<string | undefined> {
@@ -609,8 +696,8 @@ const handleClose = () => { emit('update:modelValue', false) }
 </script>
 
 <style scoped>
-.feedback-container { min-height: 500px; display: flex; flex-direction: column; }
-.main-content { display: flex; gap: 12px; flex: 1; min-height: 0; }
+.feedback-container { height: 70vh; display: flex; flex-direction: column; overflow: hidden; }
+.main-content { display: flex; gap: 12px; flex: 1; min-height: 0; overflow: hidden; }
 
 /* ====== 左侧生命周期（按等级加载流程图）====== */
 .left-section {
@@ -775,11 +862,14 @@ const handleClose = () => { emit('update:modelValue', false) }
   border: 1px solid #e9ecef;
   display: flex;
   flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .timeline-header {
   padding: 12px 14px 8px;
   border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
 }
 
 .timeline-title {
@@ -792,7 +882,7 @@ const handleClose = () => { emit('update:modelValue', false) }
   flex: 1;
   padding: 12px 14px;
   overflow-y: auto;
-  min-height: 80px;
+  min-height: 60px;
 }
 
 .timeline { position: relative; padding-left: 16px; }

@@ -15,14 +15,17 @@ public class AlarmTriggeredEvent {
     private final Integer alarmLevel;
     private final String alarmType;
     private final String alarmMessage;
+    /** 触发原因: 首次告警 / 超过静默期 / 等级变化 */
+    private final String triggerReason;
 
     public AlarmTriggeredEvent(Long alarmId, Long hazardPointId, Integer alarmLevel,
-                               String alarmType, String alarmMessage) {
+                               String alarmType, String alarmMessage, String triggerReason) {
         this.alarmId = alarmId;
         this.hazardPointId = hazardPointId;
         this.alarmLevel = alarmLevel;
         this.alarmType = alarmType;
         this.alarmMessage = alarmMessage;
+        this.triggerReason = triggerReason;
     }
 
     public Long getAlarmId() {
@@ -43,5 +46,9 @@ public class AlarmTriggeredEvent {
 
     public String getAlarmMessage() {
         return alarmMessage;
+    }
+
+    public String getTriggerReason() {
+        return triggerReason;
     }
 }

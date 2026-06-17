@@ -43,6 +43,10 @@ public class AlarmRecord extends BaseEntity {
      */
     private Long deviceId;
     /**
+     * 触发设备名称 (关联 device.name，不入库)
+     */
+    private String deviceName;
+    /**
      * 触发传感器ID
      */
     private Long sensorId;
@@ -131,4 +135,7 @@ public class AlarmRecord extends BaseEntity {
     private String triggerTimeBegin;
     /** 触发时间范围 - 结束 (不入库) */
     private String triggerTimeEnd;
+
+    /** 触发原因 (不入库，由 createOrUpdateAlarm 设置: 首次告警/超过静默期/等级变化) */
+    private String triggerReason;
 }

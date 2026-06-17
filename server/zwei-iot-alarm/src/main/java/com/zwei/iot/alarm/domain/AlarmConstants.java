@@ -21,10 +21,10 @@ public final class AlarmConstants {
      * 告警等级 → 文本映射
      */
     public static final Map<Integer, String> LEVEL_TEXT = Map.of(
-            1, "蓝色",
-            2, "黄色",
-            3, "橙色",
-            4, "红色"
+            1, "红色",
+            2, "橙色",
+            3, "黄色",
+            4, "蓝色"
     );
 
     /**
