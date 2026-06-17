@@ -20,16 +20,16 @@
         placeholder="搜索算法名称"
         class="search__input"
         clearable
-        @clear="loadData"
-        @keyup.enter="loadData"
+        @clear="handleSearch"
+        @keyup.enter="handleSearch"
       >
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
-      <el-select v-model="searchStatus" placeholder="状态" clearable class="search__select" @change="loadData">
+      <el-select v-model="searchStatus" placeholder="状态" clearable class="search__select" @change="handleSearch">
         <el-option label="启用" :value="1" />
         <el-option label="停用" :value="0" />
       </el-select>
-      <el-button type="primary" @click="loadData">搜索</el-button>
+      <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleResetSearch">重置</el-button>
     </div>
 
@@ -153,7 +153,7 @@ async function loadData() {
       name: searchName.value || undefined,
       status: searchStatus.value === '' ? undefined : (searchStatus.value as 0 | 1)
     }
-    const res: any = await getAlgoLibraryPage(params)
+    const res = await getAlgoLibraryPage(params)
     algoList.value = res.rows || []
     total.value = res.total || 0
   } catch (e: any) {
@@ -166,6 +166,11 @@ async function loadData() {
 function handleResetSearch() {
   searchName.value = ''
   searchStatus.value = ''
+  pageNum.value = 1
+  loadData()
+}
+
+function handleSearch() {
   pageNum.value = 1
   loadData()
 }
