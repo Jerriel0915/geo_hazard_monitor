@@ -178,6 +178,52 @@ if (hourRain > 50 && dayRain > 120 && soilMoisture > 80) {
 - 单元测试: 阈值判据 / Groovy 脚本 (`GroovyShell` 解析)
 - 集成测试: 启动后注入模拟数据 → 验证告警记录入库 + SSE 推送
 - 覆盖率目标 80%+ (告警引擎是核心)
+- **通知中心测试矩阵** (Mockito 单测, 共 23 case):
+  - `AlarmNotifierTest` — 6 case 覆盖告警/离线事件 → 规则匹配 → 用户筛选 → userId×channel 去重 → 分发
+  - `AlarmNotificationSecurityTest` — 5 case 验证 Controller→Service→Mapper 用户 ID 不被污染
+  - `AlarmStreamPublisherTest` — 6 case 覆盖 SSE publishToUser 按 userId 路由
+  - `AlarmNotificationServiceImplTest` — 12 case 覆盖 batchCreate 守卫、markFailed 错误码映射、状态接口透传
+- 运行: `mvn test -pl zwei-iot-alarm` (60 case 全部 PASS)
+
+## 通知中心 (2026-06 新增)
+
+### 后端 API (用户视角)
+
+| 方法 | 路径 | 权限 | 说明 |
+|---|---|---|---|
+| GET | `/api/v1/alarm/notifications/recent?limit=10` | `alarm:notification:list` | 当前用户最近事件通知 |
+| GET | `/api/v1/alarm/notifications/unread-count` | `alarm:notification:list` | 当前用户 SYSTEM 渠道未读数 |
+| POST | `/api/v1/alarm/notifications/{id}/read` | `alarm:notification:read` | 标记单条已读（仅 owner 生效） |
+| POST | `/api/v1/alarm/notifications/read-all` | `alarm:notification:read` | 当前用户全部已读 |
+
+> 所有用户视角接口均通过 `SecurityUtils.getUserId()` 取当前用户，并强制 `recipient_id` 匹配，避免越权读取他人通知。
+
+### SSE 推送（按 userId 路由）
+
+`AlarmStreamPublisher` 同时维护两个数据结构：
+
+- `List<SseEmitter> emitters` — 全量广播（兼容旧 `publish()` 接口）
+- `Map<Long, List<SseEmitter>> userEmitters` — 按 userId 路由
+
+新增 `publishToUser(Long userId, String eventType, Map<String, Object> data)` 用于通知中心定向推送。
+用户不在线时事件已落库不丢失，下次拉取 `/recent` 即可获取。
+
+### 通知配置（sys_config）
+
+11 个参数挂载在 `sys_config` 表，由前端「系统设置 > 通知配置」分类管理：
+
+- `notify.sms.access-key-id` / `access-key-secret` / `sign-name` / `template.alarm` / `template.offline`
+- `notify.mail.host` / `port` / `username` / `password` / `from` / `ssl`
+
+### 通知状态码
+
+| 码 | 含义 | 触发场景 |
+|---|---|---|
+| 1 | 待发送 | 通知刚创建 |
+| 2 | 已发送 | 渠道分发成功 (`markSent`) |
+| 3 | 发送失败 | 未知错误 (`markFailed` 默认) |
+| 4 | 接收人无效 | 手机号/邮箱缺失或格式错 (`statusFromErrorCode` 映射) |
+| 5 | 渠道未配置 | sys_config 中对应通道未配置 |
 
 ## 常见问题 (FAQ)
 
@@ -189,10 +235,15 @@ A: `AlarmDedupService.shouldTriggerAlarm()` — persistCount 控制预触发计�
 A: `GroovyScriptExecutor` — 沙箱关键字过滤 + 单线程执行 + Future.get(timeout) 强制中断 + Future.cancel(true) 兜底。
 
 **Q: 告警 SSE 推送给谁?**
-A: 当前**全量推送** (未按 data_scope 过滤)，由前端按用户权限二次过滤展示。
+A: 全量广播 `publish()` 仍保留；**通知中心定向推送** 走 `publishToUser(userId, ...)`，仅推送给该用户的在线订阅。
+用户不在线时事件已落库，下次拉取 `/recent` 可获取。
 
 **Q: 告警等级数值映射?**
 A: `AlarmConstants.resolveLevelText()` — 1=蓝/blue, 2=黄/yellow, 3=橙/orange, 4=红/red。
+
+**Q: 通知为什么没发送？**
+A: 检查链路：分发规则是否启用、收件人是否包含当前用户、用户状态是否正常、通道参数是否配置（短信/邮件）。
+详见 `docs/通知中心使用手册.md`。
 
 ## 相关文件清单
 
@@ -217,3 +268,4 @@ A: `AlarmConstants.resolveLevelText()` — 1=蓝/blue, 2=黄/yellow, 3=橙/orang
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描)                                                                                                                                  |
 | 2026-06-10 19:08 | 增量补扫: 修正路径 `engine/` → `service/engine/`、`strategy/` → `service/engine/`、`notify/` → `service/notify/`; 新增核心实现类索引、Redis Key 模式、Groovy 沙箱、Engine/Service 完整清单 |
+| 2026-06-18 01:45 | 通知中心 v1 上线: AlarmNotificationController (用户视角 4 接口) + publishToUser SSE 按 userId 路由 + 23 case 测试矩阵 + sys_config 11 参数配置；详见 `docs/通知中心使用手册.md` |
