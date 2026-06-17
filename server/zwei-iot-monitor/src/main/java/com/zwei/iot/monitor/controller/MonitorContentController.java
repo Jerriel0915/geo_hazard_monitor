@@ -101,7 +101,7 @@ public class MonitorContentController extends BaseController {
         if (!isValidRange(request.getRangeMin(), request.getRangeMax())) {
             return AjaxResult.error(HttpStatus.BAD_REQUEST, "量程范围不合法，最大值不能小于最小值");
         }
-        MonitorContent monitorContent = buildMonitorContentForCreate(request);
+        MonitorContent monitorContent = buildMonitorContentForCreate(request, fieldType);
         // 校验编码唯一性
         if (!monitorContentService.checkMonitorContentCodeUnique(monitorContent)) {
             return error("新增监测内容'" + monitorContent.getName() + "'失败，监测内容编码已存在");
@@ -163,8 +163,7 @@ public class MonitorContentController extends BaseController {
         return rows > 0 ? AjaxResult.success("删除成功") : error("删除失败");
     }
 
-    private MonitorContent buildMonitorContentForCreate(MonitorContentCreateRequest request) {
-        String fieldType = request.getFieldType() == null ? "inherent" : request.getFieldType();
+    private MonitorContent buildMonitorContentForCreate(MonitorContentCreateRequest request, String fieldType) {
         MonitorContent monitorContent = new MonitorContent();
         monitorContent.setMonitorTypeId(request.getMonitorTypeId());
         monitorContent.setCode(request.getCode());
