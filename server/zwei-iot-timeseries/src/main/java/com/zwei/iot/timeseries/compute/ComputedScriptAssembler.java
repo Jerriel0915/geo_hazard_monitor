@@ -18,9 +18,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * def calc_attr2(curData, prevData) { /* user code 2 *\/ }
  * def compute(curData, prevData) {
  *     def out = new LinkedHashMap&lt;String, Object&gt;()
- *     try { out.attr1 = calc_attr1(curData, prevData); curData.properties.putAll(out) }
+ *     try { out.put('attr1', calc_attr1(curData, prevData)); curData.get('properties').putAll(out) }
  *          catch (Exception e) { /* skip *\/ }
- *     try { out.attr2 = calc_attr2(curData, prevData); curData.properties.putAll(out) }
+ *     try { out.put('attr2', calc_attr2(curData, prevData)); curData.get('properties').putAll(out) }
  *          catch (Exception e) { /* skip *\/ }
  *     return out
  * }
@@ -70,9 +70,9 @@ public class ComputedScriptAssembler {
         sb.append("    def out = new LinkedHashMap<String, Object>()\n");
         for (ComputedAttribute a : attrs) {
             sb.append("    try {\n");
-            sb.append("        out.").append(a.code())
-              .append(" = calc_").append(a.code()).append("(curData, prevData)\n");
-            sb.append("        curData.properties.putAll(out)\n");
+            sb.append("        out.put('").append(a.code())
+              .append("', calc_").append(a.code()).append("(curData, prevData))\n");
+            sb.append("        curData.get('properties').putAll(out)\n");
             sb.append("    } catch (Exception ignored) { /* warn-only skip */ }\n");
         }
         sb.append("    return out\n");

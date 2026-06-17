@@ -32,7 +32,7 @@ class ComputedScriptAssemblerTest {
         assertThat(script).contains("def calc_velocity(curData, prevData)")
                           .contains("return curData.properties.displacement / 10")
                           .contains("def compute(curData, prevData)")
-                          .contains("out.velocity = calc_velocity(curData, prevData)");
+                          .contains("out.put('velocity', calc_velocity(curData, prevData))");
     }
 
     @Test
@@ -42,20 +42,20 @@ class ComputedScriptAssemblerTest {
                 attr("delta", "return 1", 2),
                 attr("velocity", "return 2", 1)));
 
-        int posVelocity = script.indexOf("out.velocity =");
-        int posDelta = script.indexOf("out.delta =");
+        int posVelocity = script.indexOf("out.put('velocity'");
+        int posDelta = script.indexOf("out.put('delta'");
         assertThat(posVelocity).isGreaterThan(0);
         assertThat(posDelta).isGreaterThan(posVelocity);  // velocity 先于 delta
     }
 
     @Test
-    @DisplayName("求值顺序回填 curData.properties.putAll(out)")
+    @DisplayName("求值顺序回填 curData.get('properties').putAll(out)")
     void populateCurDataForChaining() {
         String script = assembler.assemble(List.of(
                 attr("a", "return 1", 1), attr("b", "return 2", 2)));
 
         // 至少出现一次 putAll 调用(让 b 能引用 a 的结果)
-        assertThat(script).contains("curData.properties.putAll(out)");
+        assertThat(script).contains("curData.get('properties').putAll(out)");
     }
 
     @Test
