@@ -67,7 +67,6 @@ function buildPayloadNode(contents: MonitorContentItem[]): IndicatorTreeNode {
     value: 'payload', label: '数据载荷信息', displayLabel: '数据载荷信息', disabled: true,
     children: [
       {value: 'payload.current', label: '当前值', displayLabel: '当前值', disabled: true, children: buildPayloadLeaves(contents, 'current', '当前值')},
-      {value: 'payload.realtime', label: '实时值', displayLabel: '实时值', disabled: true, children: buildPayloadLeaves(contents, 'realtime', '实时值')},
       {value: 'payload.previous', label: '上一值', displayLabel: '上一值', disabled: true, children: buildPayloadLeaves(contents, 'previous', '上一值')},
     ]
   }
