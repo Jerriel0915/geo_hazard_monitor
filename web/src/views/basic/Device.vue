@@ -564,7 +564,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref, watch} from 'vue'
-import {useRoute} from 'vue-router'
+import {useRoute, useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Cpu, User, Plus} from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -602,6 +602,7 @@ const {
 } = useDeviceCrud()
 
 const route = useRoute()
+const router = useRouter()
 
 const deviceIconList = getIconList()
 
@@ -1328,6 +1329,8 @@ onMounted(async () => {
   const deviceId = route.query.deviceId
   if (deviceId) {
     const id = Number(deviceId)
+    // 清除 query，避免刷新后再次弹出
+    router.replace({ path: route.path, query: {} })
     if (!Number.isNaN(id)) {
       try {
         const detail = await fetchDetail(id)

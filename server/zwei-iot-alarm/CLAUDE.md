@@ -178,7 +178,7 @@ if (hourRain > 50 && dayRain > 120 && soilMoisture > 80) {
 - 单元测试: 阈值判据 / Groovy 脚本 (`GroovyShell` 解析)
 - 集成测试: 启动后注入模拟数据 → 验证告警记录入库 + SSE 推送
 - 覆盖率目标 80%+ (告警引擎是核心)
-- **通知中心测试矩阵** (Mockito 单测, 共 23 case):
+- **通知中心测试矩阵** (Mockito 单测, 共 29 case):
   - `AlarmNotifierTest` — 6 case 覆盖告警/离线事件 → 规则匹配 → 用户筛选 → userId×channel 去重 → 分发
   - `AlarmNotificationSecurityTest` — 5 case 验证 Controller→Service→Mapper 用户 ID 不被污染
   - `AlarmStreamPublisherTest` — 6 case 覆盖 SSE publishToUser 按 userId 路由

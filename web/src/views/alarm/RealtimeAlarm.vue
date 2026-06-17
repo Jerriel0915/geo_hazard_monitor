@@ -132,7 +132,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, CircleClose, Download, Warning } from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
@@ -148,6 +148,7 @@ import {
 } from '@/api/alarm'
 
 const route = useRoute()
+const router = useRouter()
 
 // 查询参数（已移除人员名称）
 const queryParams = reactive({
@@ -192,6 +193,8 @@ onMounted(async () => {
   const alarmId = route.query.alarmId
   if (alarmId) {
     const id = Number(alarmId)
+    // 清除 query，避免刷新后再次弹出
+    router.replace({ path: route.path, query: {} })
     if (!Number.isNaN(id)) {
       try {
         const detail = await getAlarmRecordDetail(id)

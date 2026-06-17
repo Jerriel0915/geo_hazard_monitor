@@ -76,9 +76,7 @@
 
     <update id="updateStatus">
         UPDATE alarm_notification
-        SET status = #{status}, send_time = #{sendTime},
-        <if test="errorMsg != null">error_msg = #{errorMsg},</if>
-        error_msg = #{errorMsg}
+        SET status = #{status}, send_time = #{sendTime}, error_msg = #{errorMsg}
         WHERE id = #{id}
     </update>
 

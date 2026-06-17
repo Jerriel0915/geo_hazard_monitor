@@ -30,9 +30,9 @@ public class SystemNotifyChannel implements INotifyChannel {
     @Transactional(rollbackFor = Exception.class)
     public void send(AlarmNotification n) {
         try {
-            // 1. SSE 实时推送（当前为全量广播，前端按接收人过滤）
+            // 1. SSE 定向推送到接收人（publishToUser 按 userId 路由，避免跨用户广播泄漏）
             //    即使推送失败（用户不在线），也算"已落库可查"，不影响状态
-            alarmStreamPublisher.publish("alarm-notify", buildPayload(n));
+            alarmStreamPublisher.publishToUser(n.getRecipientId(), "alarm-notify", buildPayloadMap(n));
 
             // 2. 标记为已发送
             notificationService.markSent(n.getId());
@@ -46,41 +46,21 @@ public class SystemNotifyChannel implements INotifyChannel {
         }
     }
 
-    private SsePayload buildPayload(AlarmNotification n) {
-        SsePayload p = new SsePayload();
-        p.setType("alarm-notify");
-        p.setData(new SsePayload.Data(
-            n.getId(),
-            n.getSourceType(),
-            n.getSourceId(),
-            n.getTitle(),
-            n.getContent(),
-            n.getCreateTime(),
-            n.getRecipientId()
-        ));
+    /**
+     * 构造 SSE 推送 payload（Map 形式，匹配 publishToUser 签名 + 前端 onMessage 约定）。
+     */
+    private java.util.Map<String, Object> buildPayloadMap(AlarmNotification n) {
+        java.util.Map<String, Object> p = new java.util.LinkedHashMap<>();
+        p.put("type", "alarm-notify");
+        java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("id", n.getId());
+        data.put("sourceType", n.getSourceType());
+        data.put("sourceId", n.getSourceId());
+        data.put("title", n.getTitle());
+        data.put("content", n.getContent());
+        data.put("createTime", n.getCreateTime());
+        data.put("recipientId", n.getRecipientId());
+        p.put("data", data);
         return p;
-    }
-
-    /** SSE 消息体（与前端 layout/index.vue onMessage 约定） */
-    @lombok.Data
-    @lombok.AllArgsConstructor
-    @lombok.NoArgsConstructor
-    public static class SsePayload {
-        private String type;
-        private Data data;
-
-        @lombok.Data
-        @lombok.AllArgsConstructor
-        @lombok.NoArgsConstructor
-        public static class Data {
-            private Long id;
-            private String sourceType;
-            private Long sourceId;
-            private String title;
-            private String content;
-            private java.util.Date createTime;
-            /** 接收人 ID（前端按此过滤） */
-            private Long recipientId;
-        }
     }
 }

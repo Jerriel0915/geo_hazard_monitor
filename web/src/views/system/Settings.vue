@@ -631,12 +631,18 @@ const handleSaveParams = async () => {
     // 保存通知配置（notify 分类写入 sys_config）
     const notifyItems = paramList.value.filter(p => p.category === 'notify')
     await Promise.all(
-        notifyItems.map(item => {
-          const value = item.type === 'switch'
-              ? (paramsFormData[item.code] ? 'true' : 'false')
-              : String(paramsFormData[item.code] ?? '')
-          return request.put(`/system/config/configKey/${item.code}`, {configValue: value})
-        })
+        notifyItems
+            .filter(item => {
+              // password 字段留空时跳过保存，避免覆盖已存在的密钥
+              if (item.type === 'password' && !paramsFormData[item.code]) return false
+              return true
+            })
+            .map(item => {
+              const value = item.type === 'switch'
+                  ? (paramsFormData[item.code] ? 'true' : 'false')
+                  : String(paramsFormData[item.code] ?? '')
+              return request.put(`/system/config/configKey/${item.code}`, {configValue: value})
+            })
     )
     ElMessage.success('系统参数保存成功')
   } catch {
