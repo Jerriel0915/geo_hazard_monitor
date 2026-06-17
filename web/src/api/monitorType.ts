@@ -11,6 +11,8 @@ export interface MonitorContentItem {
   icon?: string
   rangeMin?: number | null
   rangeMax?: number | null
+  fieldType?: 'inherent' | 'computed'
+  calcScript?: string
 }
 
 export interface MonitorTypeItem {
@@ -61,6 +63,8 @@ export interface MonitorContentCreatePayload {
   icon?: string
   rangeMin?: number | null
   rangeMax?: number | null
+  fieldType?: 'inherent' | 'computed'
+  calcScript?: string
 }
 
 export interface MonitorContentUpdatePayload {
@@ -69,6 +73,7 @@ export interface MonitorContentUpdatePayload {
   icon?: string
   rangeMin?: number | null
   rangeMax?: number | null
+  calcScript?: string
 }
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
@@ -117,3 +122,21 @@ export const updateMonitorContent = (id: number, payload: MonitorContentUpdatePa
 
 export const removeMonitorContent = (id: number) =>
   unwrap<null>(request.delete(`/monitor-contents/${id}`))
+
+export interface CalcScriptTestRequest {
+  monitorTypeId: number
+  attrCode: string
+  calcScript: string
+  curData: Record<string, any>
+  prevData?: Record<string, any>
+}
+
+export interface CalcScriptTestResult {
+  success: boolean
+  result?: Record<string, any>
+  error?: string
+  executionTime?: number
+}
+
+export const testCalcScript = (payload: CalcScriptTestRequest) =>
+  unwrap<CalcScriptTestResult>(request.post('/monitor-contents/test-script', payload))
