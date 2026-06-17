@@ -81,27 +81,35 @@ public class AlarmEvaluationEngine {
 
     @EventListener
     public void onMonitorDataIngested(MonitorDataIngestedEvent event) {
-        if (!properties.isEnabled()) return;
+        if (!properties.isEnabled()) {
+            log.debug("[Alarm][Skip] 告警引擎未启用 alarm.enabled=false deviceId={} sensorCode={} attrCode={}",
+                    event.getDeviceId(), event.getSensorCode(), event.getAttrCode());
+            return;
+        }
+        log.debug("[Alarm][In] 接收监测数据 deviceId={} sensorId={} sensorCode={} attrCode={} value={}",
+                event.getDeviceId(), event.getSensorId(), event.getSensorCode(),
+                event.getAttrCode(), event.getValue());
         try {
             evaluate(event);
         } catch (Exception e) {
-            log.error("告警评估失败 deviceId={}", event.getDeviceId(), e);
+            log.error("[Alarm][Error] 告警评估失败 deviceId={} sensorCode={} attrCode={}",
+                    event.getDeviceId(), event.getSensorCode(), event.getAttrCode(), e);
         }
     }
 
     private void evaluate(MonitorDataIngestedEvent event) {
-        log.info("evaluating: {}", event);
         if (event.getValue() == null) {
-            log.debug("null value, skip");
+            log.debug("[Alarm][Skip] value=null deviceId={} attrCode={}", event.getDeviceId(), event.getAttrCode());
             return;
         }
 
         List<Long> hazardPointIds = hazardRelationService.getHazardPointIdsByDeviceIds(
                 Collections.singletonList(event.getDeviceId()));
         if (hazardPointIds.isEmpty()) {
-            log.debug("no hazard point for deviceId={}", event.getDeviceId());
+            log.debug("[Alarm][Skip] 设备未绑定隐患点 deviceId={}", event.getDeviceId());
             return;
         }
+        log.debug("[Alarm][Step] 设备绑定隐患点 deviceId={} hazardPointIds={}", event.getDeviceId(), hazardPointIds);
 
         // 查询传感器属性
         Long monitorContentId = null;
@@ -109,17 +117,27 @@ public class AlarmEvaluationEngine {
         String sensorAttrName = sensorAttrCode; // 回退到 attrCode
         try {
             SensorMetadata metadata = sensorQueryService.requireSensorMetadata(event.getDeviceId(), event.getSensorCode());
+            boolean attrMatched = false;
             for (SensorAttribute attr : metadata.attributes()) {
                 if (sensorAttrCode.equals(attr.getAttrCode())) {
                     monitorContentId = attr.getMonitorContentId();
                     if (attr.getAttrName() != null && !attr.getAttrName().isBlank()) {
                         sensorAttrName = attr.getAttrName();
                     }
+                    attrMatched = true;
                     break;
                 }
             }
+            if (!attrMatched) {
+                log.debug("[Alarm][Skip] 传感器属性未匹配 attrCode={} deviceId={} sensorCode={}",
+                        sensorAttrCode, event.getDeviceId(), event.getSensorCode());
+            } else {
+                log.debug("[Alarm][Step] 传感器属性匹配 attrCode={} monitorContentId={} attrName={}",
+                        sensorAttrCode, monitorContentId, sensorAttrName);
+            }
         } catch (Exception e) {
-            log.debug("sensor metadata fail: {}", e.getMessage());
+            log.debug("[Alarm][Skip] 传感器元数据查询失败 deviceId={} sensorCode={} err={}",
+                    event.getDeviceId(), event.getSensorCode(), e.getMessage());
             return;
         }
 
@@ -128,20 +146,32 @@ public class AlarmEvaluationEngine {
         for (Long hpId : hazardPointIds) hpCriteria.addAll(criteriaCache.getByHazardPointId(hpId));
 
         if (!hpCriteria.isEmpty()) {
+            log.debug("[Alarm][Branch] 走隐患点专属判据 count={} hazardPointIds={}",
+                    hpCriteria.size(), hazardPointIds);
             evaluateCriteria(event, hpCriteria, hazardPointIds, monitorContentId, sensorAttrName);
             return;
         }
+        log.debug("[Alarm][Branch] 无隐患点专属判据，尝试监测类型兜底 hazardPointIds={}", hazardPointIds);
 
         // ── 优先级 2: 仅当无隐患点判据时，使用监测类型兜底判据 (hazard_point_id IS NULL) ──
-        if (monitorContentId != null) {
-            Long monitorTypeId = resolveMonitorTypeId(monitorContentId);
-            if (monitorTypeId != null) {
-                List<AlarmCriteria> mtCriteria = criteriaCache.getByMonitorTypeId(monitorTypeId);
-                if (!mtCriteria.isEmpty()) {
-                    evaluateCriteria(event, mtCriteria, hazardPointIds, monitorContentId, sensorAttrName);
-                }
-            }
+        if (monitorContentId == null) {
+            log.debug("[Alarm][Skip] monitorContentId=null 无法匹配兜底判据 deviceId={} attrCode={}",
+                    event.getDeviceId(), event.getAttrCode());
+            return;
         }
+        Long monitorTypeId = resolveMonitorTypeId(monitorContentId);
+        if (monitorTypeId == null) {
+            log.debug("[Alarm][Skip] 未解析到 monitorTypeId monitorContentId={}", monitorContentId);
+            return;
+        }
+        List<AlarmCriteria> mtCriteria = criteriaCache.getByMonitorTypeId(monitorTypeId);
+        if (mtCriteria.isEmpty()) {
+            log.debug("[Alarm][Skip] 未匹配监测类型兜底判据 monitorTypeId={}", monitorTypeId);
+            return;
+        }
+        log.debug("[Alarm][Branch] 走监测类型兜底判据 count={} monitorTypeId={}",
+                mtCriteria.size(), monitorTypeId);
+        evaluateCriteria(event, mtCriteria, hazardPointIds, monitorContentId, sensorAttrName);
     }
 
     /**
@@ -150,8 +180,17 @@ public class AlarmEvaluationEngine {
     private Long resolveMonitorTypeId(Long contentId) {
         try {
             MonitorContent mc = monitorContentMapper.selectMonitorContentById(contentId);
-            return mc != null ? mc.getMonitorTypeId() : null;
+            if (mc == null) {
+                log.debug("[Alarm][Skip] monitor_content 记录不存在 contentId={}", contentId);
+                return null;
+            }
+            Long typeId = mc.getMonitorTypeId();
+            if (typeId == null) {
+                log.debug("[Alarm][Skip] monitor_content.monitor_type_id 为 null contentId={}", contentId);
+            }
+            return typeId;
         } catch (Exception e) {
+            log.debug("[Alarm][Skip] 查询 monitor_content 异常 contentId={} err={}", contentId, e.getMessage());
             return null;
         }
     }
@@ -169,24 +208,41 @@ public class AlarmEvaluationEngine {
      */
     private boolean evaluateCriteria(MonitorDataIngestedEvent event, List<AlarmCriteria> criteriaList,
                                      List<Long> hazardPointIds, Long monitorContentId, String attrName) {
+        log.debug("[Alarm][Eval] 开始评估判据 count={} attrCode={} value={} monitorContentId={} hazardPointIds={}",
+                criteriaList.size(), event.getAttrCode(), event.getValue(), monitorContentId, hazardPointIds);
         List<Candidate> candidates = new ArrayList<>();
 
         for (AlarmCriteria criteria : criteriaList) {
             Long effectiveHpId = criteria.getHazardPointId();
             if (effectiveHpId == null && !hazardPointIds.isEmpty()) effectiveHpId = hazardPointIds.get(0);
-            if (effectiveHpId == null) continue;
+            if (effectiveHpId == null) {
+                log.debug("[Alarm][Eval] 判据无 effectiveHpId 跳过 criteriaId={} name={}",
+                        criteria.getId(), criteria.getName());
+                continue;
+            }
 
             Map<String, Double> subjectValues = new HashMap<>();
             subjectValues.put(event.getAttrCode(), event.getValue());
 
             Map<String, LevelConfig> configMap = criteriaEvaluator.parseLevelConfig(criteria.getLevelConfig());
+            if (configMap.isEmpty()) {
+                log.debug("[Alarm][Eval] level_config 解析为空 criteriaId={} name={} levelConfig={}",
+                        criteria.getId(), criteria.getName(), criteria.getLevelConfig());
+                continue;
+            }
             int persistCount  = criteria.getPersistCount()  != null ? criteria.getPersistCount()  : 1;
             int silencePeriod = criteria.getSilencePeriod() != null ? criteria.getSilencePeriod() : 0;
+            log.debug("[Alarm][Eval] 判据配置 criteriaId={} name={} effectiveHpId={} persistCount={} silencePeriod={} levels={}",
+                    criteria.getId(), criteria.getName(), effectiveHpId, persistCount, silencePeriod, configMap.keySet());
 
             // 逐等级独立评估：满足累加，未满足仅重置当前等级
             for (Map.Entry<String, LevelConfig> entry : configMap.entrySet()) {
                 int level = LEVEL_VALUES.getOrDefault(entry.getKey(), 0);
-                if (level <= 0) continue;
+                if (level <= 0) {
+                    log.debug("[Alarm][Eval] 未知 level key 跳过 criteriaId={} levelKey={}",
+                            criteria.getId(), entry.getKey());
+                    continue;
+                }
 
                 // 等级独立 persistCount/silencePeriod（前端 groups 格式），回退到 criterion 级别
                 LevelConfig lc = entry.getValue();
@@ -195,22 +251,38 @@ public class AlarmEvaluationEngine {
 
                 boolean satisfied = criteriaEvaluator.evaluateLevel(lc, subjectValues);
                 if (!satisfied) {
+                    log.debug("[Alarm][Eval] 等级未满足 criteriaId={} level={}({}) attrCode={} value={} subjects={}",
+                            criteria.getId(), level, entry.getKey(), event.getAttrCode(),
+                            event.getValue(), subjectValues.keySet());
                     dedupService.clearPreTrigger(criteria.getId(), effectiveHpId, level);
                     continue;
                 }
+                log.debug("[Alarm][Eval] 等级已满足 criteriaId={} level={}({}) attrCode={} value={}",
+                        criteria.getId(), level, entry.getKey(), event.getAttrCode(), event.getValue());
+
                 if (dedupService.shouldTriggerAlarm(criteria.getId(), effectiveHpId, level,
                                                     effPersistCount, effSilencePeriod)) {
                     candidates.add(new Candidate(criteria, level, effectiveHpId, entry.getKey(), lc));
+                } else {
+                    log.debug("[Alarm][Eval] 去重拦截未触发 criteriaId={} level={}({}) persistCount={} silencePeriod={}",
+                            criteria.getId(), level, entry.getKey(), effPersistCount, effSilencePeriod);
                 }
             }
         }
 
-        if (candidates.isEmpty()) return false;
+        if (candidates.isEmpty()) {
+            log.debug("[Alarm][Eval] 评估结束未产生候选告警 attrCode={} value={}",
+                    event.getAttrCode(), event.getValue());
+            return false;
+        }
 
         // 候选合并：等级值越小越严重（red=1 > orange=2 > yellow=3 > blue=4），取最小值
         Candidate winner = candidates.stream()
                 .min(Comparator.comparingInt(Candidate::level))
                 .orElseThrow();
+        log.debug("[Alarm][Eval] 候选合并 winner criteriaId={} level={} hpId={} candidates={}",
+                winner.criteria.getId(), winner.level, winner.effectiveHpId,
+                candidates.stream().map(c -> c.criteria.getId() + ":L" + c.level).toList());
         String hpName = getHazardPointName(winner.effectiveHpId);
         String message = buildAlarmMessage(attrName, event.getValue(), winner.levelConfig, winner.level);
         AlarmRecord record = AlarmRecord.builder()
@@ -226,8 +298,9 @@ public class AlarmEvaluationEngine {
         AlarmRecord saved = alarmRecordService.createOrUpdateAlarm(record);
         eventPublisher.publishEvent(new AlarmTriggeredEvent(saved.getId(), saved.getHazardPointId(),
                 saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage(), saved.getTriggerReason()));
-        log.info("告警触发 id={} level={} criteria={} (candidates={})",
-                saved.getId(), winner.level, winner.criteria.getId(), candidates.size());
+        log.info("[Alarm][Trigger] 告警触发 id={} level={} criteria={} hpId={} attrCode={} value={} (candidates={})",
+                saved.getId(), winner.level, winner.criteria.getId(), winner.effectiveHpId,
+                event.getAttrCode(), event.getValue(), candidates.size());
         return true;
     }
 

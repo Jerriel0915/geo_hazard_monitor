@@ -72,27 +72,39 @@ public class CriteriaCacheService {
      * 按 monitorContentId 过滤。
      */
     public List<AlarmCriteria> getByMonitorContentId(Long contentId) {
-        return getEnabledCriteria().stream()
+        List<AlarmCriteria> all = getEnabledCriteria();
+        List<AlarmCriteria> filtered = all.stream()
                 .filter(c -> contentId.equals(c.getMonitorContentId()))
                 .collect(Collectors.toList());
+        log.debug("[Alarm][Cache] 按 monitorContentId 过滤 contentId={} total={} matched={}",
+                contentId, all.size(), filtered.size());
+        return filtered;
     }
 
     /**
      * 按 hazardPointId 过滤。
      */
     public List<AlarmCriteria> getByHazardPointId(Long hpId) {
-        return getEnabledCriteria().stream()
+        List<AlarmCriteria> all = getEnabledCriteria();
+        List<AlarmCriteria> filtered = all.stream()
                 .filter(c -> hpId.equals(c.getHazardPointId()))
                 .collect(Collectors.toList());
+        log.debug("[Alarm][Cache] 按 hazardPointId 过滤 hpId={} total={} matched={}",
+                hpId, all.size(), filtered.size());
+        return filtered;
     }
 
     /**
      * 按 monitorTypeId 获取兜底判据（hazard_point_id IS NULL）。
      */
     public List<AlarmCriteria> getByMonitorTypeId(Long typeId) {
-        return getEnabledCriteria().stream()
+        List<AlarmCriteria> all = getEnabledCriteria();
+        List<AlarmCriteria> filtered = all.stream()
                 .filter(c -> typeId.equals(c.getMonitorTypeId()) && c.getHazardPointId() == null)
                 .collect(Collectors.toList());
+        log.debug("[Alarm][Cache] 按 monitorTypeId 过滤兜底 typeId={} total={} matched={}",
+                typeId, all.size(), filtered.size());
+        return filtered;
     }
 
     /**

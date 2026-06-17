@@ -78,12 +78,16 @@ public class CriteriaEvaluator {
         // 优先 groups 格式
         List<ConditionGroup> groups = config.getGroups();
         if (groups != null && !groups.isEmpty()) {
-            return evaluateGroups(groups, config.getGroupLogic(), subjectValues);
+            boolean result = evaluateGroups(groups, config.getGroupLogic(), subjectValues);
+            log.debug("[Alarm][Criteria][Level] groups 评估结果={} groupLogic={} groupCount={} subjects={}",
+                    result, config.getGroupLogic(), groups.size(), subjectValues.keySet());
+            return result;
         }
 
         // 旧 conditions 格式
         List<LevelCondition> conditions = config.getConditions();
         if (conditions == null || conditions.isEmpty()) {
+            log.debug("[Alarm][Criteria][Level] 等级配置无 groups 且无 conditions，跳过");
             return false;
         }
 
@@ -91,6 +95,9 @@ public class CriteriaEvaluator {
         for (LevelCondition cond : conditions) {
             Double value = resolveSubjectValue(cond, subjectValues);
             boolean condResult = evaluateCondition(cond, value);
+            log.debug("[Alarm][Criteria][Level] condition result={} logic={} subject={} operator={} threshold={} actual={}",
+                    condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
+                    cond.getThreshold(), value);
 
             if (isOr && condResult) return true;       // OR: 任一满足即通过
             if (!isOr && !condResult) return false;     // AND: 任一不满足即失败
@@ -124,6 +131,9 @@ public class CriteriaEvaluator {
         for (LevelCondition cond : conditions) {
             Double value = resolveSubjectValue(cond, subjectValues);
             boolean condResult = evaluateCondition(cond, value);
+            log.debug("[Alarm][Criteria][Group] condition result={} logic={} subject={} operator={} threshold={} actual={}",
+                    condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
+                    cond.getThreshold(), value);
 
             if (isOr && condResult) return true;
             if (!isOr && !condResult) return false;
@@ -141,10 +151,17 @@ public class CriteriaEvaluator {
 
         String subject = normalizeSubject(cond.getSubject());
 
+        Double value;
         if ("FUNCTION".equals(cond.getSubjectType())) {
-            return subjectValues.get(subject);
+            value = subjectValues.get(subject);
+        } else {
+            value = subjectValues.get(subject);
         }
-        return subjectValues.get(subject);
+        if (value == null) {
+            log.debug("[Alarm][Criteria][Subject] 未找到对应值 raw={} normalized={} subjectType={} available={}",
+                    cond.getSubject(), subject, cond.getSubjectType(), subjectValues.keySet());
+        }
+        return value;
     }
 
     /**
@@ -170,10 +187,16 @@ public class CriteriaEvaluator {
      */
     boolean evaluateCondition(LevelCondition cond, Double value) {
         if (value == null || cond == null || cond.getOperator() == null) {
+            log.debug("[Alarm][Criteria][Cond] 输入无效 value={} operator={} subject={}",
+                    value, cond != null ? cond.getOperator() : null, cond != null ? cond.getSubject() : null);
             return false;
         }
         Double threshold = cond.getThreshold();
-        if (threshold == null) return false;
+        if (threshold == null) {
+            log.debug("[Alarm][Criteria][Cond] threshold=null 跳过 subject={} operator={}",
+                    cond.getSubject(), cond.getOperator());
+            return false;
+        }
 
         switch (cond.getOperator().toUpperCase()) {
             case "GT":
@@ -189,9 +212,14 @@ public class CriteriaEvaluator {
             case "NEQ":
                 return Math.abs(value - threshold) >= 0.0001;
             case "BETWEEN":
-                return cond.getThresholdMax() != null
-                        && value >= threshold && value <= cond.getThresholdMax();
+                if (cond.getThresholdMax() == null) {
+                    log.debug("[Alarm][Criteria][Cond] BETWEEN thresholdMax=null 跳过 subject={}", cond.getSubject());
+                    return false;
+                }
+                return value >= threshold && value <= cond.getThresholdMax();
             default:
+                log.debug("[Alarm][Criteria][Cond] 未知 operator 跳过 subject={} operator={}",
+                        cond.getSubject(), cond.getOperator());
                 return false;
         }
     }
