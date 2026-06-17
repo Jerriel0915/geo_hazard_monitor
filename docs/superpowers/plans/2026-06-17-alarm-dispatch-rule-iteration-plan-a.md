@@ -466,12 +466,13 @@ git commit -m "feat(alarm): 通知规则领域实体 - 主表 + 3 张关联表"
 - 创建：`.../mapper/AlarmDispatchRuleDeviceMapper.java`
 - 创建：`.../mapper/AlarmDispatchRuleRecipientMapper.java`
 
+> **注**：本项目使用**原生 MyBatis**（无 MyBatis-Plus），所有 CRUD 方法显式声明，不继承 BaseMapper。
+
 - [ ] **步骤 1：编写 AlarmDispatchRuleMapper**
 
 ```java
 package com.zwei.iot.alarm.dispatch.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -479,7 +480,19 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 @Mapper
-public interface AlarmDispatchRuleMapper extends BaseMapper<AlarmDispatchRule> {
+public interface AlarmDispatchRuleMapper {
+
+    /** 主键查询 */
+    AlarmDispatchRule selectById(Long id);
+
+    /** 条件查询列表（列表展示用，del_flag=0） */
+    List<AlarmDispatchRule> selectListByWhere(@Param("where") AlarmDispatchRule where);
+
+    /** 新增（写回自增主键） */
+    int insert(AlarmDispatchRule rule);
+
+    /** 按主键更新 */
+    int updateById(AlarmDispatchRule rule);
 
     /** 逻辑删除（按规范：del_flag=1） */
     int logicDeleteById(@Param("id") Long id);
@@ -494,7 +507,6 @@ public interface AlarmDispatchRuleMapper extends BaseMapper<AlarmDispatchRule> {
 ```java
 package com.zwei.iot.alarm.dispatch.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRuleHazardPoint;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -502,8 +514,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 @Mapper
-public interface AlarmDispatchRuleHazardPointMapper
-        extends BaseMapper<AlarmDispatchRuleHazardPoint> {
+public interface AlarmDispatchRuleHazardPointMapper {
 
     /** 按 ruleId 删除（更新主表时先清空） */
     int deleteByRuleId(@Param("ruleId") Long ruleId);
@@ -524,7 +535,6 @@ public interface AlarmDispatchRuleHazardPointMapper
 ```java
 package com.zwei.iot.alarm.dispatch.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRuleDevice;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -532,8 +542,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 @Mapper
-public interface AlarmDispatchRuleDeviceMapper
-        extends BaseMapper<AlarmDispatchRuleDevice> {
+public interface AlarmDispatchRuleDeviceMapper {
 
     int deleteByRuleId(@Param("ruleId") Long ruleId);
 
@@ -550,7 +559,6 @@ public interface AlarmDispatchRuleDeviceMapper
 ```java
 package com.zwei.iot.alarm.dispatch.mapper;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRuleRecipient;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -558,8 +566,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 @Mapper
-public interface AlarmDispatchRuleRecipientMapper
-        extends BaseMapper<AlarmDispatchRuleRecipient> {
+public interface AlarmDispatchRuleRecipientMapper {
 
     int deleteByRuleId(@Param("ruleId") Long ruleId);
 
@@ -603,6 +610,72 @@ git commit -m "feat(alarm): 通知规则 Mapper 接口 - 主表 + 3 关联表"
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zwei.iot.alarm.dispatch.mapper.AlarmDispatchRuleMapper">
+
+    <resultMap id="BaseResultMap"
+               type="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule">
+        <id     property="id"          column="id"/>
+        <result property="name"        column="name"/>
+        <result property="eventType"   column="event_type"/>
+        <result property="alarmLevels" column="alarm_levels"/>
+        <result property="channels"    column="channels"/>
+        <result property="isEnabled"   column="is_enabled"/>
+        <result property="delFlag"     column="del_flag"/>
+        <result property="createBy"    column="create_by"/>
+        <result property="createTime"  column="create_time"/>
+        <result property="updateBy"    column="update_by"/>
+        <result property="updateTime"  column="update_time"/>
+        <result property="remark"      column="remark"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, event_type, alarm_levels, channels, is_enabled, del_flag,
+        create_by, create_time, update_by, update_time, remark
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM alarm_dispatch_rule
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectListByWhere" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM alarm_dispatch_rule
+        WHERE del_flag = 0
+        <if test="where.name != null and where.name != ''">
+            AND name LIKE CONCAT('%', #{where.name}, '%')
+        </if>
+        <if test="where.eventType != null and where.eventType != ''">
+            AND event_type = #{where.eventType}
+        </if>
+        <if test="where.isEnabled != null">
+            AND is_enabled = #{where.isEnabled}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_dispatch_rule
+            (name, event_type, alarm_levels, channels, is_enabled, del_flag,
+             create_by, create_time, remark)
+        VALUES
+            (#{name}, #{eventType}, #{alarmLevels}, #{channels}, #{isEnabled}, #{delFlag},
+             #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="updateById" parameterType="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule">
+        UPDATE alarm_dispatch_rule
+        SET name          = #{name},
+            event_type    = #{eventType},
+            alarm_levels  = #{alarmLevels},
+            channels      = #{channels},
+            is_enabled    = #{isEnabled},
+            update_by     = #{updateBy},
+            update_time   = #{updateTime},
+            remark        = #{remark}
+        WHERE id = #{id}
+    </update>
 
     <update id="logicDeleteById">
         UPDATE alarm_dispatch_rule
@@ -1262,8 +1335,6 @@ git commit -m "test(alarm): 通知规则 Service 单测 - TDD 红灯"
 ```java
 package com.zwei.iot.alarm.dispatch.service.impl;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRuleDevice;
@@ -1305,8 +1376,7 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     // ============= 列表 =============
     @Override
     public List<AlarmDispatchRuleItemVO> selectList(AlarmDispatchRuleQuery query) {
-        // 1. 分页查主表
-        Page<AlarmDispatchRule> page = new Page<>(query.getPageNum(), query.getPageSize());
+        // 1. 查主表（内存分页，数据量小）
         AlarmDispatchRule where = new AlarmDispatchRule();
         where.setName(query.getName());
         where.setEventType(query.getEventType());
@@ -1617,41 +1687,12 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
 ```
 
 > **注**：
-> 1. `ruleMapper.selectListByWhere(where)` 需在 Mapper 接口加方法 + XML，实现阶段补全
+> 1. `ruleMapper.selectListByWhere(where)` 已在任务 4/5 的 Mapper 接口 + XML 中定义，无需再补
 > 2. `groupByRuleId` 通用版本实现时按具体类型补全（参考 RuoYi `stream().collect(Collectors.groupingBy(...))`）
 > 3. SysRole/SysDept/SysUser 包路径按项目实际调整（RuoYi 标准为 `com.zwei.common.core.domain.entity.*`）
 > 4. `SecurityUtils.getUsername()` 来自 `com.zwei.common.utils.SecurityUtils`
 
-- [ ] **步骤 2：补充主表 selectListByWhere**
-
-在 `AlarmDispatchRuleMapper` 接口加方法：
-
-```java
-List<AlarmDispatchRule> selectListByWhere(@Param("where") AlarmDispatchRule where);
-```
-
-在 `AlarmDispatchRuleMapper.xml` 加：
-
-```xml
-<select id="selectListByWhere" resultType="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule">
-    SELECT id, name, event_type, alarm_levels, channels, is_enabled, del_flag,
-           create_by, create_time, update_by, update_time, remark
-    FROM alarm_dispatch_rule
-    WHERE del_flag = 0
-    <if test="where.name != null and where.name != ''">
-        AND name LIKE CONCAT('%', #{where.name}, '%')
-    </if>
-    <if test="where.eventType != null and where.eventType != ''">
-        AND event_type = #{where.eventType}
-    </if>
-    <if test="where.isEnabled != null">
-        AND is_enabled = #{where.isEnabled}
-    </if>
-    ORDER BY create_time DESC
-</select>
-```
-
-- [ ] **步骤 3：补全 groupByRuleId 工具方法**
+- [ ] **步骤 2：补全 groupByRuleId 工具方法**
 
 ```java
 // 在 ServiceImpl 内替换为具体类型版本
@@ -1668,7 +1709,7 @@ private Map<Long, List<AlarmDispatchRuleRecipient>> groupRecip(List<AlarmDispatc
 
 并在 `selectList` 中替换 `groupByRuleId` 调用为这三个具体方法。
 
-- [ ] **步骤 4：编译验证**
+- [ ] **步骤 3：编译验证**
 
 ```bash
 cd server && mvn compile -pl zwei-iot-alarm -am -q
@@ -1676,7 +1717,7 @@ cd server && mvn compile -pl zwei-iot-alarm -am -q
 
 预期：BUILD SUCCESS。
 
-- [ ] **步骤 5：运行单测验证通过**
+- [ ] **步骤 4：运行单测验证通过**
 
 ```bash
 cd server && mvn test -pl zwei-iot-alarm -am -Dtest=AlarmDispatchRuleServiceImplTest
@@ -1684,12 +1725,10 @@ cd server && mvn test -pl zwei-iot-alarm -am -Dtest=AlarmDispatchRuleServiceImpl
 
 预期：所有 6 个测试 PASS。
 
-- [ ] **步骤 6：Commit**
+- [ ] **步骤 5：Commit**
 
 ```bash
 git add server/zwei-iot-alarm/src/main/java/com/zwei/iot/alarm/dispatch/service/impl/AlarmDispatchRuleServiceImpl.java
-git add server/zwei-iot-alarm/src/main/java/com/zwei/iot/alarm/dispatch/mapper/AlarmDispatchRuleMapper.java
-git add server/zwei-iot-alarm/src/main/resources/mapper/alarm/AlarmDispatchRuleMapper.xml
 git commit -m "feat(alarm): 通知规则 Service 实现 - TDD 绿灯"
 ```
 
