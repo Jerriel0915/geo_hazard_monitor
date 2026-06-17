@@ -55,28 +55,18 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     // ============= 列表 =============
     @Override
     public List<AlarmDispatchRuleItemVO> selectList(AlarmDispatchRuleQuery query) {
-        // 0. 分页参数防御性校验
-        int pageNum = query.getPageNum() != null && query.getPageNum() > 0 ? query.getPageNum() : 1;
-        int pageSize = query.getPageSize() != null && query.getPageSize() > 0 ? query.getPageSize() : 10;
-
-        // 1. 查主表（内存分页，数据量小）
+        // 查主表全量匹配结果（前端客户端分页）
         AlarmDispatchRule where = new AlarmDispatchRule();
         where.setName(query.getName());
         where.setEventType(query.getEventType());
         where.setIsEnabled(query.getIsEnabled());
         where.setDelFlag(0);
         List<AlarmDispatchRule> all = ruleMapper.selectListByWhere(where);
-        int start = (pageNum - 1) * pageSize;
-        int end = Math.min(start + pageSize, all.size());
-        List<AlarmDispatchRule> paged = start >= all.size()
-            ? Collections.emptyList()
-            : all.subList(start, end);
+        if (all.isEmpty()) return Collections.emptyList();
 
-        if (paged.isEmpty()) return Collections.emptyList();
+        List<Long> ruleIds = all.stream().map(AlarmDispatchRule::getId).toList();
 
-        List<Long> ruleIds = paged.stream().map(AlarmDispatchRule::getId).toList();
-
-        // 2. 批量查关联（避免 N+1）
+        // 批量查关联（避免 N+1）
         Map<Long, List<AlarmDispatchRuleHazardPoint>> hpMap = groupHp(
             hpMapper.selectByRuleIds(ruleIds));
         Map<Long, List<AlarmDispatchRuleDevice>> devMap = groupDev(
@@ -84,8 +74,8 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
         Map<Long, List<AlarmDispatchRuleRecipient>> recipMap = groupRecip(
             recipientMapper.selectByRuleIds(ruleIds));
 
-        // 3. 装配 VO
-        return paged.stream().map(rule -> toItemVO(
+        // 装配 VO
+        return all.stream().map(rule -> toItemVO(
             rule, hpMap.getOrDefault(rule.getId(), Collections.emptyList()),
             devMap.getOrDefault(rule.getId(), Collections.emptyList()),
             recipMap.getOrDefault(rule.getId(), Collections.emptyList())
