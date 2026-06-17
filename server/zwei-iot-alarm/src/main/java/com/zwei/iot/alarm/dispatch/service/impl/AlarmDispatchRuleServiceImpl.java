@@ -3,6 +3,7 @@ package com.zwei.iot.alarm.dispatch.service.impl;
 import com.zwei.common.core.domain.entity.SysDept;
 import com.zwei.common.core.domain.entity.SysRole;
 import com.zwei.common.core.domain.entity.SysUser;
+import com.zwei.common.exception.ServiceException;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRuleDevice;
@@ -54,6 +55,10 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     // ============= 列表 =============
     @Override
     public List<AlarmDispatchRuleItemVO> selectList(AlarmDispatchRuleQuery query) {
+        // 0. 分页参数防御性校验
+        int pageNum = query.getPageNum() != null && query.getPageNum() > 0 ? query.getPageNum() : 1;
+        int pageSize = query.getPageSize() != null && query.getPageSize() > 0 ? query.getPageSize() : 10;
+
         // 1. 查主表（内存分页，数据量小）
         AlarmDispatchRule where = new AlarmDispatchRule();
         where.setName(query.getName());
@@ -61,8 +66,8 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
         where.setIsEnabled(query.getIsEnabled());
         where.setDelFlag(0);
         List<AlarmDispatchRule> all = ruleMapper.selectListByWhere(where);
-        int start = (query.getPageNum() - 1) * query.getPageSize();
-        int end = Math.min(start + query.getPageSize(), all.size());
+        int start = (pageNum - 1) * pageSize;
+        int end = Math.min(start + pageSize, all.size());
         List<AlarmDispatchRule> paged = start >= all.size()
             ? Collections.emptyList()
             : all.subList(start, end);
@@ -91,7 +96,9 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     @Override
     public AlarmDispatchRuleDetailVO selectDetail(Long id) {
         AlarmDispatchRule rule = ruleMapper.selectById(id);
-        if (rule == null) return null;
+        if (rule == null) {
+            throw new ServiceException("通知规则不存在: " + id);
+        }
 
         AlarmDispatchRuleDetailVO vo = new AlarmDispatchRuleDetailVO();
         vo.setId(rule.getId());
@@ -166,7 +173,7 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     public int update(Long id, AlarmDispatchRuleCreateRequest req) {
         AlarmDispatchRule rule = ruleMapper.selectById(id);
         if (rule == null) {
-            throw new IllegalArgumentException("规则不存在: " + id);
+            throw new ServiceException("通知规则不存在: " + id);
         }
         rule.setName(req.getName());
         rule.setEventType(req.getEventType());
@@ -364,7 +371,10 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
 
     private List<String> splitCsv(String csv) {
         if (StringUtils.isBlank(csv)) return Collections.emptyList();
-        return Arrays.asList(csv.split(","));
+        return Arrays.stream(csv.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toList();
     }
 
     private String joinCsv(List<String> list) {
