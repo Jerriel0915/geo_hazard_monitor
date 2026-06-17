@@ -37,6 +37,11 @@
             <groupId>com.zwei</groupId>
             <artifactId>zwei-iot-hazard</artifactId>
         </dependency>
+        <!-- RBAC 服务（角色/部门/用户查询，用于通知接收人选项） -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-system</artifactId>
+        </dependency>
         <!-- MyBatis -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
