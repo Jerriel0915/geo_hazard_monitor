@@ -127,7 +127,7 @@ class ComputedAttributeEvaluatorTest {
     }
 
     @Test
-    @DisplayName("返回值非数值: 该属性被跳过, 其他保留")
+    @DisplayName("非数值结果(字符串/布尔)也被保留")
     void nonNumericResult() {
         stubSensor();
         when(registry.getByMonitorTypeId(100L)).thenReturn(List.of(
@@ -140,8 +140,11 @@ class ComputedAttributeEvaluatorTest {
 
         List<PropertyValue> out = evaluator.evaluate(1L, "S1", msg(12.0));
 
-        assertThat(out).hasSize(1);
+        assertThat(out).hasSize(2);
         assertThat(out.get(0).identifier()).isEqualTo("good");
+        assertThat(out.get(0).value()).isEqualTo(1.0);
+        assertThat(out.get(1).identifier()).isEqualTo("bad");
+        assertThat(out.get(1).value()).isEqualTo("not a number");
     }
 
     @Test

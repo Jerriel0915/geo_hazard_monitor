@@ -139,4 +139,4 @@ export interface CalcScriptTestResult {
 }
 
 export const testCalcScript = (payload: CalcScriptTestRequest) =>
-  unwrap<CalcScriptTestResult>(request.post('/monitor-contents/test-script', payload))
+  unwrap<CalcScriptTestResult>(request.post('/computed-attributes/test-script', payload))

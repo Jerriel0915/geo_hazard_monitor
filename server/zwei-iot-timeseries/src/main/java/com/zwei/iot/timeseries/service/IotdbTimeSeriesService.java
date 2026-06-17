@@ -81,19 +81,25 @@ public class IotdbTimeSeriesService {
             return;
         }
         ensureDatabase();
-        // 确保所有 measurement 已创建
+        // 确保所有 measurement 已创建（根据 value 类型推断 IoTDB 数据类型）
         for (StandardMeasurementPoint point : points) {
-            ensureMeasurement(point.attrCode(), point.deviceId(), point.sensorCode(), "DOUBLE", "GORILLA");
+            if (point.value() == null) continue;
+            String dataType = inferDataType(point.value());
+            String encoding = dataType.equals("TEXT") ? "PLAIN" : "GORILLA";
+            ensureMeasurement(point.attrCode(), point.deviceId(), point.sensorCode(), dataType, encoding);
             ensureMeasurement("quality", point.deviceId(), point.sensorCode(), "INT32", "RLE");
         }
         // 批量组装 SQL → 单连接 executeBatch()
         List<String> sqlList = new ArrayList<>(points.size());
         for (StandardMeasurementPoint point : points) {
+            if (point.value() == null) continue;
             sqlList.add("INSERT INTO " + pathResolver.buildSensorPath(point.deviceId(), point.sensorCode())
                     + "(timestamp," + point.attrCode() + ",quality) ALIGNED VALUES("
-                    + point.dataTime() + "," + point.value() + "," + point.quality() + ")");
+                    + point.dataTime() + "," + formatValue(point.value()) + "," + point.quality() + ")");
         }
-        jdbcClient.executeBatch(sqlList);
+        if (!sqlList.isEmpty()) {
+            jdbcClient.executeBatch(sqlList);
+        }
     }
 
     /**
@@ -765,5 +771,18 @@ public class IotdbTimeSeriesService {
             log.debug("IoTDB 列不存在: {}", column);
             return 0;
         }
+    }
+
+    /** 根据 Java 值类型推断 IoTDB 数据类型。 */
+    static String inferDataType(Object value) {
+        if (value instanceof Number) return "DOUBLE";
+        if (value instanceof Boolean) return "BOOLEAN";
+        return "TEXT";
+    }
+
+    /** 将值格式化为 IoTDB INSERT SQL 字面量（TEXT 需加单引号）。 */
+    static String formatValue(Object value) {
+        if (value instanceof Number || value instanceof Boolean) return String.valueOf(value);
+        return "'" + value.toString().replace("'", "\\'") + "'";
     }
 }

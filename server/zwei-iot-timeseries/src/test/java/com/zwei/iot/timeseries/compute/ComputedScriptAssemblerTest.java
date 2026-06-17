@@ -32,7 +32,7 @@ class ComputedScriptAssemblerTest {
         assertThat(script).contains("def calc_velocity(curData, prevData)")
                           .contains("return curData.properties.displacement / 10")
                           .contains("def compute(curData, prevData)")
-                          .contains("out.put('velocity', calc_velocity(curData, prevData))");
+                          .contains("out.put('velocity', __v)");
     }
 
     @Test

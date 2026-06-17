@@ -157,15 +157,15 @@ public class MonitorIngestFacade {
                 message.dataTime(), message.receiveTime(), message.payloadHash(), enriched);
     }
 
-    private void validateValue(com.zwei.iot.device.domain.tsl.TslProperty tslProp, Double value) {
+    private void validateValue(com.zwei.iot.device.domain.tsl.TslProperty tslProp, Object value) {
         if (tslProp.dataType() == null || tslProp.dataType().specs() == null) return;
+        if (!(value instanceof Number)) return; // 非数值跳过 min/max 校验
         var specs = tslProp.dataType().specs();
-        if (specs.min() != null && value != null
-                && value < Double.parseDouble(specs.min())) {
+        double dv = ((Number) value).doubleValue();
+        if (specs.min() != null && dv < Double.parseDouble(specs.min())) {
             log.warn("Property value below min: {}={}, min={}", tslProp.identifier(), value, specs.min());
         }
-        if (specs.max() != null && value != null
-                && value > Double.parseDouble(specs.max())) {
+        if (specs.max() != null && dv > Double.parseDouble(specs.max())) {
             log.warn("Property value exceeds max: {}={}, max={}", tslProp.identifier(), value, specs.max());
         }
     }

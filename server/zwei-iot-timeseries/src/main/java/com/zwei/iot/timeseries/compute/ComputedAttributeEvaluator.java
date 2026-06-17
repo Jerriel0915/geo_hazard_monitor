@@ -76,22 +76,16 @@ public class ComputedAttributeEvaluator {
             // 6. 执行
             Map<String, Object> results = scriptEngine.executeComputed(script, curData, prevData);
 
-            // 7. 转 PropertyValue (失败/非数值跳过)
+            // 7. 转 PropertyValue (null 值跳过)
             List<PropertyValue> computed = new ArrayList<>();
             for (ComputedAttribute a : attrs) {
                 Object val = results.get(a.code());
                 if (val == null) continue;
-                Double dv = toDouble(val);
-                if (dv == null) {
-                    log.warn("Computed attribute returned non-numeric value: code={}, val={}",
-                            a.code(), val);
-                    continue;
-                }
-                computed.add(new PropertyValue(a.code(), a.name(), a.unit(), dv, 0));
+                computed.add(new PropertyValue(a.code(), a.name(), a.unit(), val, 0));
             }
 
             // 8. 总是写回 prevData(避免下次脚本看到更旧的 prev)
-            Map<String, Double> mergedProps = new LinkedHashMap<>();
+            Map<String, Object> mergedProps = new LinkedHashMap<>();
             for (PropertyValue p : message.properties()) {
                 if (p.value() != null) mergedProps.put(p.identifier(), p.value());
             }
@@ -131,13 +125,4 @@ public class ComputedAttributeEvaluator {
         return data;
     }
 
-    private Double toDouble(Object v) {
-        if (v == null) return null;
-        if (v instanceof Number n) return n.doubleValue();
-        try {
-            return Double.parseDouble(v.toString().trim());
-        } catch (Exception e) {
-            return null;
-        }
-    }
 }

@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * ParsedMessage 的精简快照, 用于 Redis 缓存上一条消息(prevData)。
  *
- * <p>properties 是 {@code Map<String, Double>}(attrCode -> value),
+ * <p>properties 是 {@code Map<String, Object>}(attrCode -> value),
  * 含固有属性 + 计算属性结果。
  *
  * @param deviceCode 设备编码
@@ -17,6 +17,6 @@ public record ParsedMessageSnapshot(
         String deviceCode,
         String sensorCode,
         long dataTime,
-        Map<String, Double> properties
+        Map<String, Object> properties
 ) {
 }

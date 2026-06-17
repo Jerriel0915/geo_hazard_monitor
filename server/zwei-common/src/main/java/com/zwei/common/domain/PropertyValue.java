@@ -12,14 +12,14 @@ import java.io.Serializable;
  * @param identifier TslProperty.identifier（如 "rainfall_hour"）
  * @param name       TslProperty.name（中文名称）
  * @param unit       计量单位（如 "mm"）
- * @param value      运行时数值
+ * @param value      运行时数值（Double / String / Boolean / null）
  * @param quality    质量码（0=正常，非零=异常）
  */
 public record PropertyValue(
         String identifier,
         String name,
         String unit,
-        Double value,
+        Object value,
         Integer quality
 ) implements Serializable {
     @Serial

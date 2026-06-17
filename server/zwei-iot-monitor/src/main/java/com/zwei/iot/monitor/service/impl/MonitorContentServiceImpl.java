@@ -3,15 +3,19 @@ package com.zwei.iot.monitor.service.impl;
 import com.zwei.iot.monitor.domain.MonitorContent;
 import com.zwei.iot.monitor.mapper.MonitorContentMapper;
 import com.zwei.iot.monitor.service.IMonitorContentService;
+import com.zwei.common.event.MonitorContentChangedEvent;
 import com.zwei.common.exception.ServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 监测内容Service实现类
@@ -22,10 +26,13 @@ import java.util.List;
 public class MonitorContentServiceImpl implements IMonitorContentService {
 
     private final MonitorContentMapper monitorContentMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public MonitorContentServiceImpl(MonitorContentMapper monitorContentMapper) {
+    public MonitorContentServiceImpl(MonitorContentMapper monitorContentMapper,
+                                     ApplicationEventPublisher eventPublisher) {
         this.monitorContentMapper = monitorContentMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -70,8 +77,7 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true),
-            @CacheEvict(value = "computedAttrs", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int insertMonitorContent(MonitorContent monitorContent) {
         // Auto-assign sortOrder if not provided: set to MAX + 1 for this monitor_type
@@ -83,7 +89,11 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
             // If explicitly provided, validate uniqueness (UNIQUE constraint is the safety net)
             validateSortOrderUniqueness(monitorContent, null);
         }
-        return monitorContentMapper.insertMonitorContent(monitorContent);
+        int rows = monitorContentMapper.insertMonitorContent(monitorContent);
+        eventPublisher.publishEvent(new MonitorContentChangedEvent(
+                monitorContent.getMonitorTypeId(),
+                MonitorContentChangedEvent.ChangeType.INSERT));
+        return rows;
     }
 
     /**
@@ -94,14 +104,24 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true),
-            @CacheEvict(value = "computedAttrs", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int updateMonitorContent(MonitorContent monitorContent) {
         if (monitorContent.getSortOrder() != null) {
             validateSortOrderUniqueness(monitorContent, monitorContent.getId());
         }
-        return monitorContentMapper.updateMonitorContent(monitorContent);
+        // 防御：前端 PUT 可能不传 monitorTypeId，从 DB 回填
+        Long monitorTypeId = monitorContent.getMonitorTypeId();
+        if (monitorTypeId == null) {
+            MonitorContent existing = monitorContentMapper.selectMonitorContentById(monitorContent.getId());
+            monitorTypeId = existing != null ? existing.getMonitorTypeId() : null;
+        }
+        int rows = monitorContentMapper.updateMonitorContent(monitorContent);
+        if (rows > 0 && monitorTypeId != null) {
+            eventPublisher.publishEvent(new MonitorContentChangedEvent(
+                    monitorTypeId, MonitorContentChangedEvent.ChangeType.UPDATE));
+        }
+        return rows;
     }
 
     /**
@@ -133,11 +153,17 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true),
-            @CacheEvict(value = "computedAttrs", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentById(Long id) {
-        return monitorContentMapper.deleteMonitorContentById(id);
+        MonitorContent content = monitorContentMapper.selectMonitorContentById(id);
+        Long monitorTypeId = content != null ? content.getMonitorTypeId() : null;
+        int rows = monitorContentMapper.deleteMonitorContentById(id);
+        if (rows > 0 && monitorTypeId != null) {
+            eventPublisher.publishEvent(new MonitorContentChangedEvent(
+                    monitorTypeId, MonitorContentChangedEvent.ChangeType.DELETE));
+        }
+        return rows;
     }
 
     /**
@@ -147,11 +173,15 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true),
-            @CacheEvict(value = "computedAttrs", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentByMonitorTypeId(Long monitorTypeId) {
-        return monitorContentMapper.deleteMonitorContentByMonitorTypeId(monitorTypeId);
+        int rows = monitorContentMapper.deleteMonitorContentByMonitorTypeId(monitorTypeId);
+        if (rows > 0) {
+            eventPublisher.publishEvent(new MonitorContentChangedEvent(
+                    monitorTypeId, MonitorContentChangedEvent.ChangeType.DELETE));
+        }
+        return rows;
     }
 
     /**
@@ -161,11 +191,22 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true),
-            @CacheEvict(value = "computedAttrs", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentByIds(Long[] ids) {
-        return monitorContentMapper.deleteMonitorContentByIds(ids);
+        Set<Long> monitorTypeIds = new HashSet<>();
+        for (Long id : ids) {
+            MonitorContent content = monitorContentMapper.selectMonitorContentById(id);
+            if (content != null) {
+                monitorTypeIds.add(content.getMonitorTypeId());
+            }
+        }
+        int rows = monitorContentMapper.deleteMonitorContentByIds(ids);
+        for (Long monitorTypeId : monitorTypeIds) {
+            eventPublisher.publishEvent(new MonitorContentChangedEvent(
+                    monitorTypeId, MonitorContentChangedEvent.ChangeType.DELETE));
+        }
+        return rows;
     }
 
     /**
@@ -175,11 +216,17 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", allEntries = true),
             @CacheEvict(value = "monitorContentList", allEntries = true),
-            @CacheEvict(value = "monitorType", allEntries = true),
-            @CacheEvict(value = "computedAttrs", allEntries = true)
+            @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentByMonitorTypeIds(Long[] monitorTypeIds) {
-        return monitorContentMapper.deleteMonitorContentByMonitorTypeIds(monitorTypeIds);
+        int rows = monitorContentMapper.deleteMonitorContentByMonitorTypeIds(monitorTypeIds);
+        if (rows > 0) {
+            for (Long monitorTypeId : monitorTypeIds) {
+                eventPublisher.publishEvent(new MonitorContentChangedEvent(
+                        monitorTypeId, MonitorContentChangedEvent.ChangeType.DELETE));
+            }
+        }
+        return rows;
     }
 
     /**

@@ -23,11 +23,12 @@ import java.util.Map;
 /**
  * 计算脚本在线测试端点。
  *
- * <p>路径前缀: /api/v1/monitor-contents
- * (沿用 monitor-contents 资源语义, 但 controller 在 timeseries 模块以避免依赖反向)
+ * <p>路径前缀: /api/v1/computed-attributes
+ * (与 monitor-contents 分开, 避免 MonitorContentController 的 {@code @GetMapping("/{id}")}
+ * 把 "test-script" 当作 {id} 匹配导致 POST 405 冲突)
  */
 @RestController
-@RequestMapping("api/v1/monitor-contents")
+@RequestMapping("api/v1/computed-attributes")
 public class ComputedAttributeTestController extends BaseController {
 
     private final ComputedAttributeRegistry registry;
@@ -78,7 +79,15 @@ public class ComputedAttributeTestController extends BaseController {
         Map<String, Object> result = scriptEngine.executeComputed(script, curData, prevData);
         long elapsed = System.currentTimeMillis() - start;
 
-        // 4. 返回(只取目标 attrCode 的结果)
+        // 4. 检查是否有执行异常
+        String errKey = "__err_" + request.getAttrCode();
+        Object errDetail = result.get(errKey);
+        if (errDetail != null) {
+            return AjaxResult.success("脚本执行失败",
+                    CalcScriptTestResult.fail("属性 '" + request.getAttrCode() + "' 执行异常: " + errDetail));
+        }
+
+        // 5. 返回(只取目标 attrCode 的结果)
         Object targetValue = result.get(request.getAttrCode());
         if (targetValue == null) {
             return AjaxResult.success("脚本执行失败或返回 null",

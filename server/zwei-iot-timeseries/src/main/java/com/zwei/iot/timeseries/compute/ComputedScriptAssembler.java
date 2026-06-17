@@ -70,10 +70,10 @@ public class ComputedScriptAssembler {
         sb.append("    def out = new LinkedHashMap<String, Object>()\n");
         for (ComputedAttribute a : attrs) {
             sb.append("    try {\n");
-            sb.append("        out.put('").append(a.code())
-              .append("', calc_").append(a.code()).append("(curData, prevData))\n");
-            sb.append("        curData.get('properties').putAll(out)\n");
-            sb.append("    } catch (Exception ignored) { /* warn-only skip */ }\n");
+            sb.append("        def __v = calc_").append(a.code()).append("(curData, prevData)\n");
+            sb.append("        out.put('").append(a.code()).append("', __v)\n");
+            sb.append("        if (curData != null && curData.get('properties') != null) curData.get('properties').putAll(out)\n");
+            sb.append("    } catch (Exception e) { out.put('__err_").append(a.code()).append("', e.getClass().getSimpleName() + ': ' + e.getMessage()) }\n");
         }
         sb.append("    return out\n");
         sb.append("}\n");

@@ -25,9 +25,9 @@ public class LastMessageStore {
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
 
-    public LastMessageStore(StringRedisTemplate redis, ObjectMapper objectMapper) {
+    public LastMessageStore(StringRedisTemplate redis) {
         this.redis = redis;
-        this.objectMapper = objectMapper;
+        this.objectMapper = new ObjectMapper();
     }
 
     /** 取上一条精简消息; null 表示首次上报 / 已过期 / Redis 异常。 */

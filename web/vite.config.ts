@@ -1,12 +1,12 @@
-import {defineConfig} from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
+import { defineConfig } from 'vite'
 
+import { visualizer } from 'rollup-plugin-visualizer'
 import AutoImport from 'unplugin-auto-import/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
-import {ElementPlusResolver} from 'unplugin-vue-components/resolvers'
 import compression from 'vite-plugin-compression'
-import {visualizer} from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   plugins: [
@@ -74,7 +74,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://124.221.142.86',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },

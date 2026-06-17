@@ -297,13 +297,17 @@ public class MonitorIngestConsumerService {
         if (point == null || point.value() == null) {
             return;
         }
+        // 告警引擎仅处理数值型数据（阈值比较），非数值（String/Boolean）跳过
+        if (!(point.value() instanceof Number)) {
+            return;
+        }
         try {
             eventPublisher.publishEvent(new MonitorDataIngestedEvent(
                     point.deviceId(),
                     point.sensorId(),
                     point.sensorCode(),
                     point.attrCode(),
-                    point.value(),
+                    ((Number) point.value()).doubleValue(),
                     point.dataTime(),
                     point.sourceType()));
         } catch (Exception e) {
