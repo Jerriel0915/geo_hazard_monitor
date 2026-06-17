@@ -43,7 +43,7 @@ import static org.mockito.Mockito.when;
  * </ul>
  */
 @DisplayName("Computed Attribute 端到端 wiring")
-class ComputedAttributeIngestIT {
+class ComputedAttributeIngestTest {
 
     private ComputedAttributeEvaluator evaluator;
 
