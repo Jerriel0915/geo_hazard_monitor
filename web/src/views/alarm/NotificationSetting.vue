@@ -1,101 +1,109 @@
 <template>
-  <div class="app-container">
-    <!-- 搜索栏 -->
-    <el-form :inline="true" :model="queryParams" @submit.prevent>
-      <el-form-item label="名称">
-        <el-input v-model="queryParams.name" placeholder="规则名称" clearable
-                  @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="事件类型">
-        <el-select v-model="queryParams.eventType" clearable placeholder="全部">
-          <el-option label="告警事件" value="ALARM" />
-          <el-option label="设备离线" value="OFFLINE" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="状态">
-        <el-select v-model="queryParams.isEnabled" clearable placeholder="全部">
-          <el-option label="启用" :value="1" />
-          <el-option label="禁用" :value="0" />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="handleQuery">搜索</el-button>
-        <el-button @click="resetQuery">重置</el-button>
-        <el-button type="success" @click="handleAdd">新增</el-button>
-      </el-form-item>
-    </el-form>
-
-    <!-- 列表 -->
-    <el-table :data="pagedList" v-loading="loading" border>
-      <el-table-column label="名称" prop="name" min-width="160" />
-      <el-table-column label="事件类型" width="100">
-        <template #default="{ row }">
-          <el-tag :type="row.eventType === 'ALARM' ? 'danger' : 'warning'">
-            {{ row.eventType === 'ALARM' ? '告警' : '设备离线' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="告警等级" width="180">
-        <template #default="{ row }">
-          <el-tag v-for="lv in row.alarmLevels" :key="lv" size="small"
-                  :type="levelTagType(lv)" style="margin-right: 4px;">
-            {{ levelLabel(lv) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="隐患点/设备" min-width="180">
-        <template #default="{ row }">
-          <template v-if="row.eventType === 'ALARM'">
-            <el-tag v-if="row.hazardPointAll" size="small" type="warning">全部隐患点</el-tag>
-            <span v-else>{{ (row.hazardPointNames || []).join('、') }}</span>
-          </template>
-          <template v-else>
-            <el-tag v-if="row.deviceAll" size="small" type="warning">全部设备</el-tag>
-            <span v-else>{{ (row.deviceNames || []).join('、') }}</span>
-          </template>
-        </template>
-      </el-table-column>
-      <el-table-column label="接收人" min-width="160">
-        <template #default="{ row }">
-          <el-tag v-if="row.recipientAll" size="small" type="warning">全部</el-tag>
-          <span v-else>{{ row.recipientSummary || '-' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="渠道" width="180">
-        <template #default="{ row }">
-          <el-tag v-for="ch in row.channels" :key="ch" size="small"
-                  :type="channelTagType(ch)" style="margin-right: 4px;">
-            {{ channelLabel(ch) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="状态" width="80">
-        <template #default="{ row }">
-          <el-switch :model-value="row.isEnabled === 1"
-                     @change="(v: boolean) => handleToggleEnabled(row, v)" />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
-        <template #default="{ row }">
-          <el-button size="small" link type="primary" @click="handleEdit(row)">编辑</el-button>
-          <el-button size="small" link type="danger" @click="handleDelete(row)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <!-- 客户端分页 -->
-    <div style="margin-top: 16px; display: flex; justify-content: flex-end;" v-if="list.length > 0">
-      <el-pagination
-        v-model:current-page="queryParams.pageNum"
-        v-model:page-size="queryParams.pageSize"
-        :total="list.length"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next"
-        :disabled="list.length === 0"
-      />
+  <div class="page">
+    <div class="header">
+      <div class="header__left">
+        <h2 class="header__title">通知设置</h2>
+        <span class="header__subtitle">告警分发规则配置与通知渠道管理</span>
+      </div>
+      <div class="header__right">
+        <el-button type="primary" @click="handleAdd">新增规则</el-button>
+      </div>
     </div>
 
-    <!-- 弹窗 -->
+    <div class="search">
+      <el-input v-model="queryParams.name" placeholder="规则名称" clearable
+                @keyup.enter="handleQuery" @clear="handleQuery" />
+      <el-select v-model="queryParams.eventType" placeholder="事件类型" clearable @change="handleQuery">
+        <el-option label="告警事件" value="ALARM" />
+        <el-option label="设备离线" value="OFFLINE" />
+      </el-select>
+      <el-select v-model="queryParams.isEnabled" placeholder="状态" clearable @change="handleQuery">
+        <el-option label="启用" :value="1" />
+        <el-option label="禁用" :value="0" />
+      </el-select>
+      <el-button type="primary" @click="handleQuery">查询</el-button>
+      <el-button @click="resetQuery">重置</el-button>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-wrap__scroll">
+        <el-table :data="pagedList" v-loading="loading" border stripe>
+          <el-table-column label="名称" prop="name" min-width="160" />
+          <el-table-column label="事件类型" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.eventType === 'ALARM' ? 'danger' : 'warning'" size="small">
+                {{ row.eventType === 'ALARM' ? '告警' : '设备离线' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="告警等级" width="180">
+            <template #default="{ row }">
+              <template v-if="row.eventType === 'ALARM'">
+                <el-tag v-for="lv in row.alarmLevels" :key="lv" size="small"
+                        :type="levelTagType(lv)" style="margin-right: 4px;">
+                  {{ levelLabel(lv) }}
+                </el-tag>
+                <span v-if="!row.alarmLevels || row.alarmLevels.length === 0" class="empty-text">-</span>
+              </template>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="隐患点/设备" min-width="180">
+            <template #default="{ row }">
+              <template v-if="row.eventType === 'ALARM'">
+                <el-tag v-if="row.hazardPointAll" size="small" type="warning">全部隐患点</el-tag>
+                <span v-else>{{ (row.hazardPointNames || []).join('、') || '-' }}</span>
+              </template>
+              <template v-else>
+                <el-tag v-if="row.deviceAll" size="small" type="warning">全部设备</el-tag>
+                <span v-else>{{ (row.deviceNames || []).join('、') || '-' }}</span>
+              </template>
+            </template>
+          </el-table-column>
+          <el-table-column label="接收人" min-width="160">
+            <template #default="{ row }">
+              <el-tag v-if="row.recipientAll" size="small" type="warning">全部</el-tag>
+              <span v-else>{{ row.recipientSummary || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="渠道" min-width="150">
+            <template #default="{ row }">
+              <el-tag v-for="ch in row.channels" :key="ch" size="small"
+                      :type="channelTagType(ch)" style="margin-right: 4px;">
+                {{ channelLabel(ch) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="80" align="center">
+            <template #default="{ row }">
+              <el-switch :model-value="row.isEnabled === 1"
+                         @change="(v: boolean) => handleToggleEnabled(row, v)" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" link type="primary" @click="handleEdit(row)">编辑</el-button>
+              <el-button size="small" link type="danger" @click="handleDelete(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div class="table-wrap__pagination">
+        <el-pagination
+            v-model:current-page="queryParams.pageNum"
+            v-model:page-size="queryParams.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="list.length"
+            layout="total, sizes, prev, pager, next, jumper"
+            prev-text="上一页"
+            next-text="下一页"
+            :disabled="list.length === 0"
+        />
+      </div>
+    </div>
+
+    <!-- 规则弹窗 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="720px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="规则名称" prop="name">
@@ -422,5 +430,9 @@ onMounted(() => {
   font-size: 12px;
   color: #909399;
   line-height: 1.4;
+}
+
+.empty-text {
+  color: #c0c4cc;
 }
 </style>
