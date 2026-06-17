@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.report.mapper.ReportRecordMapper">
+
+    <resultMap id="ReportRecordResult" type="com.zwei.iot.report.domain.ReportRecord">
+        <id     property="id"               column="id"/>
+        <result property="templateId"       column="template_id"/>
+        <result property="templateName"     column="template_name"/>
+        <result property="type"             column="type"/>
+        <result property="periodStart"      column="period_start"/>
+        <result property="periodEnd"        column="period_end"/>
+        <result property="hazardPointId"    column="hazard_point_id"/>
+        <result property="hazardPointCode"  column="hazard_point_code"/>
+        <result property="hazardPointName"  column="hazard_point_name"/>
+        <result property="reportName"       column="report_name"/>
+        <result property="reportDate"       column="report_date"/>
+        <result property="content"          column="content"/>
+        <result property="filePath"         column="file_path"/>
+        <result property="status"           column="status"/>
+        <result property="errorMsg"         column="error_msg"/>
+        <result property="delFlag"          column="del_flag"/>
+        <result property="createBy"         column="create_by"/>
+        <result property="createTime"       column="create_time"/>
+        <result property="updateBy"         column="update_by"/>
+        <result property="updateTime"       column="update_time"/>
+    </resultMap>
+
+    <sql id="selectColumnsNoContent">
+        id, template_id, template_name, type, period_start, period_end,
+        hazard_point_id, hazard_point_code, hazard_point_name,
+        report_name, report_date, file_path, status, error_msg, del_flag,
+        create_by, create_time, update_by, update_time
+    </sql>
+
+    <sql id="selectColumnsAll">
+        id, template_id, template_name, type, period_start, period_end,
+        hazard_point_id, hazard_point_code, hazard_point_name,
+        report_name, report_date, content, file_path, status, error_msg, del_flag,
+        create_by, create_time, update_by, update_time
+    </sql>
+
+    <insert id="insert" parameterType="com.zwei.iot.report.domain.ReportRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO report_record (
+            template_id, template_name, type, period_start, period_end,
+            hazard_point_id, hazard_point_code, hazard_point_name,
+            report_name, report_date, content, file_path, status, error_msg,
+            create_by, create_time
+        ) VALUES (
+            #{templateId}, #{templateName}, #{type}, #{periodStart}, #{periodEnd},
+            #{hazardPointId}, #{hazardPointCode}, #{hazardPointName},
+            #{reportName}, #{reportDate}, #{content}, #{filePath}, #{status}, #{errorMsg},
+            #{createBy}, NOW()
+        )
+    </insert>
+
+    <update id="updateStatusAndContent">
+        UPDATE report_record
+        SET status = #{status},
+            content = #{content},
+            error_msg = #{errorMsg},
+            report_date = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateDeleteFlag">
+        UPDATE report_record SET del_flag = #{delFlag} WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="ReportRecordResult">
+        SELECT <include refid="selectColumnsAll"/>
+        FROM report_record
+        WHERE id = #{id} AND del_flag = 0
+    </select>
+
+    <select id="selectPageList" resultMap="ReportRecordResult">
+        SELECT <include refid="selectColumnsNoContent"/>
+        FROM report_record
+        WHERE del_flag = 0
+        <if test="type != null">           AND type = #{type}</if>
+        <if test="hazardPointId != null">  AND hazard_point_id = #{hazardPointId}</if>
+        <if test="periodStart != null">    AND period_start &gt;= #{periodStart}</if>
+        <if test="periodEnd != null">      AND period_end   &lt;= #{periodEnd}</if>
+        <if test="status != null">         AND status = #{status}</if>
+        <if test="keyword != null and keyword != ''">
+            AND report_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="countPageList" resultType="long">
+        SELECT COUNT(*) FROM report_record
+        WHERE del_flag = 0
+        <if test="type != null">           AND type = #{type}</if>
+        <if test="hazardPointId != null">  AND hazard_point_id = #{hazardPointId}</if>
+        <if test="periodStart != null">    AND period_start &gt;= #{periodStart}</if>
+        <if test="periodEnd != null">      AND period_end   &lt;= #{periodEnd}</if>
+        <if test="status != null">         AND status = #{status}</if>
+        <if test="keyword != null and keyword != ''">
+            AND report_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+
+    <select id="selectExistingSuccess" resultMap="ReportRecordResult">
+        SELECT <include refid="selectColumnsNoContent"/>
+        FROM report_record
+        WHERE type = #{type}
+          AND hazard_point_id = #{hazardPointId}
+          AND period_start = #{periodStart}
+          AND period_end = #{periodEnd}
+          AND status = 2
+          AND del_flag = 0
+        LIMIT 1
+    </select>
+
+</mapper>
