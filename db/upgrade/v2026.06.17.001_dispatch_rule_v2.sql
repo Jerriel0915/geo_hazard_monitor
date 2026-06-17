@@ -8,6 +8,10 @@
 --   旧表无 remark 字段 → 迁移为 NULL
 --   本脚本不可重入（RENAME 后二次执行会失败），由 DBA 手工控制升级时机
 -- ============================================================
+-- 设计决策：
+--   关联表（_hazard_point/_device/_recipient）采用复合主键，与 alarm_strategy_hazard_point 的代理主键不同，
+--   原因是纯 M:N 关系无独立生命周期，复合主键更直接表达关系且天然防重复。
+--   关联表不含 create_by/create_time 审计字段，遵循规格 §4.2 的最小字段设计。
 
 -- ---------- 1. 备份旧主表 ----------
 RENAME TABLE `alarm_dispatch_rule` TO `alarm_dispatch_rule_bak`;
@@ -20,15 +24,15 @@ CREATE TABLE `alarm_dispatch_rule` (
     `alarm_levels` varchar(50)  DEFAULT NULL COMMENT '订阅告警等级（逗号分隔）: 1,2,3,4；OFFLINE 类型时为 NULL',
     `channels`     varchar(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '通知渠道（逗号分隔）: SYSTEM,SMS,EMAIL',
     `is_enabled`   tinyint      DEFAULT 1 COMMENT '0=禁用 1=启用',
-    `del_flag`     tinyint      DEFAULT 0,
-    `create_by`    varchar(64)  DEFAULT '',
-    `create_time`  datetime     DEFAULT CURRENT_TIMESTAMP,
-    `update_by`    varchar(64)  DEFAULT '',
-    `update_time`  datetime     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `del_flag`     tinyint      DEFAULT 0 COMMENT '0=正常 1=删除',
+    `create_by`    varchar(64)  DEFAULT '' COMMENT '创建者',
+    `create_time`  datetime     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by`    varchar(64)  DEFAULT '' COMMENT '更新者',
+    `update_time`  datetime     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `remark`       varchar(500) DEFAULT NULL,
     PRIMARY KEY (`id`),
     KEY `idx_dispatch_event_enabled` (`event_type`, `is_enabled`, `del_flag`)
-) COMMENT='通知规则主表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='通知规则主表';
 
 -- ---------- 3. 关联表：隐患点 ----------
 CREATE TABLE `alarm_dispatch_rule_hazard_point` (
@@ -36,7 +40,7 @@ CREATE TABLE `alarm_dispatch_rule_hazard_point` (
     `hazard_point_id` varchar(20) NOT NULL COMMENT '隐患点ID；"*" 表示全部',
     PRIMARY KEY (`rule_id`, `hazard_point_id`),
     KEY `idx_adrhp_hp` (`hazard_point_id`)
-) COMMENT='通知规则-隐患点关联表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='通知规则-隐患点关联表';
 
 -- ---------- 4. 关联表：设备（离线通知专用） ----------
 CREATE TABLE `alarm_dispatch_rule_device` (
@@ -44,7 +48,7 @@ CREATE TABLE `alarm_dispatch_rule_device` (
     `device_id`  varchar(20) NOT NULL COMMENT '设备ID；"*" 表示全部',
     PRIMARY KEY (`rule_id`, `device_id`),
     KEY `idx_adrd_dev` (`device_id`)
-) COMMENT='通知规则-设备关联表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='通知规则-设备关联表';
 
 -- ---------- 5. 关联表：接收人 ----------
 CREATE TABLE `alarm_dispatch_rule_recipient` (
@@ -53,9 +57,11 @@ CREATE TABLE `alarm_dispatch_rule_recipient` (
     `recipient_id`   varchar(20) NOT NULL COMMENT '角色/部门/用户ID；"*" 表示该类型全部',
     PRIMARY KEY (`rule_id`, `recipient_type`, `recipient_id`),
     KEY `idx_adrr_type_id` (`recipient_type`, `recipient_id`)
-) COMMENT='通知规则-接收人关联表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='通知规则-接收人关联表';
 
 -- ---------- 6. alarm_notification 表扩展（计划 B 用，此处一并升级） ----------
+-- 注意：以下 ALTER TABLE 不可重入。如已执行过本脚本或计划 B 的 uk_notif_dedup 脚本，
+--       请先确认 read_time/source_type/source_id 列不存在，否则会因 Duplicate column 报错。
 ALTER TABLE `alarm_notification`
     ADD COLUMN `read_time`   datetime     DEFAULT NULL COMMENT '已读时间',
     ADD COLUMN `source_type` varchar(20)  DEFAULT 'alarm' COMMENT 'alarm=告警 / offline=设备离线',
