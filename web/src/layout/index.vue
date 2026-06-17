@@ -218,10 +218,14 @@
 
     <div class="message-panel" :class="{ visible: messagePanelVisible }">
       <div class="message-panel-header">
-        <span class="message-panel-title">系统消息</span>
+        <span class="message-panel-title">通知中心</span>
         <div class="message-tabs">
-          <span :class="['tab', { active: messageTab === 'unread' }]" @click="messageTab = 'unread'">未读 ({{ unreadMessageCount }})</span>
-          <span :class="['tab', { active: messageTab === 'read' }]" @click="messageTab = 'read'">已读</span>
+          <span :class="['tab', { active: notifyTab === 'event' }]" @click="switchNotifyTab('event')">
+            事件<span v-if="eventUnreadCount > 0" class="tab-count">({{ eventUnreadCount }})</span>
+          </span>
+          <span :class="['tab', { active: notifyTab === 'notice' }]" @click="switchNotifyTab('notice')">
+            公告<span v-if="noticeUnreadCount > 0" class="tab-count">({{ noticeUnreadCount }})</span>
+          </span>
         </div>
         <span class="close-btn" @click="messagePanelVisible = false"><svg xmlns="http://www.w3.org/2000/svg"
                                                                           viewBox="0 0 24 24" fill="none"
@@ -232,40 +236,70 @@
             x1="6" y1="6" x2="18" y2="18"/></svg></span>
       </div>
       <div class="message-list">
-        <div
-          v-for="msg in filteredMessages"
-          :key="msg.id"
-          :class="['message-item', { unread: !msg.read }]"
-          @click="markMessageAsRead(msg)"
-        >
-          <div class="message-icon-wrapper">
-            <svg v-if="msg.type === 'alarm'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#faad14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            <svg v-else-if="msg.type === 'system'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1890ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
+        <!-- 事件 Tab -->
+        <template v-if="notifyTab === 'event'">
+          <div
+            v-for="msg in eventMessages"
+            :key="'event-' + msg.id"
+            :class="['message-item', { unread: !msg.read }]"
+            @click="handleEventClick(msg)"
+          >
+            <div class="message-icon-wrapper">
+              <svg v-if="msg.sourceType === 'alarm'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f56c6c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e6a23c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+              </svg>
+            </div>
+            <div class="message-content">
+              <div class="message-title">{{ msg.title }}</div>
+              <div class="message-desc">{{ msg.content }}</div>
+              <div class="message-time">{{ msg.time }}</div>
+            </div>
           </div>
-          <div class="message-content">
-            <div class="message-title">{{ msg.title }}</div>
-            <div class="message-desc">{{ msg.content }}</div>
-            <div class="message-time">{{ msg.time }}</div>
+          <div v-if="eventMessages.length === 0" class="empty-message">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>暂无事件通知</span>
           </div>
-        </div>
-        <div v-if="filteredMessages.length === 0" class="empty-message">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>暂无消息</span>
-        </div>
+        </template>
+        <!-- 公告 Tab -->
+        <template v-else>
+          <div
+            v-for="msg in noticeMessages"
+            :key="'notice-' + msg.id"
+            :class="['message-item', { unread: !msg.read }]"
+            @click="handleNoticeClick(msg)"
+          >
+            <div class="message-icon-wrapper">
+              <svg v-if="msg.type === 'system'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1890ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div class="message-content">
+              <div class="message-title">{{ msg.title }}</div>
+              <div class="message-desc">{{ msg.content }}</div>
+              <div class="message-time">{{ msg.time }}</div>
+            </div>
+          </div>
+          <div v-if="noticeMessages.length === 0" class="empty-message">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>暂无公告</span>
+          </div>
+        </template>
       </div>
-      <div class="message-panel-footer" v-if="messages.length > 0">
+      <div class="message-panel-footer" v-if="currentTabHasMessages">
         <el-button size="small" @click="markAllAsRead">全部标为已读</el-button>
       </div>
     </div>
@@ -274,22 +308,32 @@
 </template>
 
 <script setup lang="ts">
-import {getTopNotices, markRead, markReadAll, type SysNotice} from '@/api/notice'
+import {getTopNotices, markRead as markNoticeRead, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
+import {
+  getRecentAlarmNotifications,
+  getAlarmNotificationUnreadCount,
+  markAlarmNotificationRead,
+  markAllAlarmNotificationsRead,
+  type AlarmNotificationItem
+} from '@/api/alarmNotification'
 import {loadPermissions} from '@/utils/permission'
 import {getAuthInfo, getUserInfo} from '@/utils/userApi'
+import {ElNotification} from 'element-plus'
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import draggable from 'vuedraggable'
 
 
-/** 通知消息（来自 SysNotice 后端） */
-interface NoticeMessage {
+/** 通知中心统一消息结构（公告 + 事件共用） */
+interface NotifyMessage {
   id: number
   title: string
   content: string
   time: string
   read: boolean
-  type: string
+  type: string                       // 公告：'system' | 'other'；事件：'alarm'
+  sourceType?: 'alarm' | 'offline'   // 事件 Tab 用：跳转目标
+  sourceId?: number                  // 事件 Tab 用：跳转目标 ID
 }
 
 // 非 Chrome 浏览器检测 + localStorage 持久化"不再提醒"
@@ -330,19 +374,28 @@ const infoDialogVisible = ref(false)
 const pwdDialogVisible = ref(false)
 
 const messagePanelVisible = ref(false)
-const messageTab = ref<'unread' | 'read'>('unread')
-const messages = ref<NoticeMessage[]>([])
-const unreadMessageCount = ref(0)
+/** Tab 默认 'event'（更紧急） */
+const notifyTab = ref<'event' | 'notice'>('event')
+const noticeMessages = ref<NotifyMessage[]>([])
+const eventMessages = ref<NotifyMessage[]>([])
+const noticeUnreadCount = ref(0)
+const eventUnreadCount = ref(0)
 let noticeEventSource: EventSource | null = null
+let alarmEventSource: EventSource | null = null
 
-const filteredMessages = computed(() => {
-  if (messageTab.value === 'unread') {
-    return messages.value.filter(m => !m.read)
-  }
-  return messages.value.filter(m => m.read)
-})
+/** 顶部铃铛角标总数 */
+const unreadMessageCount = computed(() => noticeUnreadCount.value + eventUnreadCount.value)
 
-function toNoticeMessage(n: SysNotice): NoticeMessage {
+/** 当前 Tab 是否有消息（控制底部"全部标为已读"按钮） */
+const currentTabHasMessages = computed(() =>
+  notifyTab.value === 'event' ? eventMessages.value.length > 0 : noticeMessages.value.length > 0
+)
+
+function switchNotifyTab(tab: 'event' | 'notice') {
+  notifyTab.value = tab
+}
+
+function toNoticeMessage(n: SysNotice): NotifyMessage {
   return {
     id: n.noticeId,
     title: n.noticeTitle,
@@ -353,12 +406,36 @@ function toNoticeMessage(n: SysNotice): NoticeMessage {
   }
 }
 
-async function fetchNotices() {
+function toEventMessage(n: AlarmNotificationItem): NotifyMessage {
+  return {
+    id: n.id,
+    title: n.title,
+    content: n.content ?? '',
+    time: n.createTime ?? '',
+    read: n.readTime != null,
+    type: 'alarm',
+    sourceType: n.sourceType,
+    sourceId: n.sourceId
+  }
+}
+
+async function fetchNoticeMessages() {
   try {
     const res = await getTopNotices()
     const data = res.data
-    messages.value = (data.list ?? []).map(toNoticeMessage)
-    unreadMessageCount.value = data.unreadCount ?? 0
+    noticeMessages.value = (data.list ?? []).map(toNoticeMessage)
+    noticeUnreadCount.value = data.unreadCount ?? 0
+  } catch { /* keep previous data */ }
+}
+
+async function fetchEventMessages() {
+  try {
+    const [recentRes, unreadRes] = await Promise.all([
+      getRecentAlarmNotifications(20),
+      getAlarmNotificationUnreadCount()
+    ])
+    eventMessages.value = (recentRes.data ?? []).map(toEventMessage)
+    eventUnreadCount.value = unreadRes.data?.unreadCount ?? 0
   } catch { /* keep previous data */ }
 }
 
@@ -370,7 +447,7 @@ function startNoticeSSE() {
   noticeEventSource.addEventListener('notice', (event) => {
     try {
       const data = JSON.parse(event.data)
-      const msg: NoticeMessage = {
+      const msg: NotifyMessage = {
         id: data.noticeId,
         title: data.title,
         content: data.content ?? '',
@@ -378,14 +455,52 @@ function startNoticeSSE() {
         read: false,
         type: data.type === '1' ? 'system' : 'other'
       }
-      messages.value.unshift(msg)
-      if (messages.value.length > 20) messages.value.pop()
-      unreadMessageCount.value++
+      noticeMessages.value.unshift(msg)
+      if (noticeMessages.value.length > 20) noticeMessages.value.pop()
+      noticeUnreadCount.value++
     } catch { /* ignore malformed event */ }
   })
   noticeEventSource.onerror = () => {
     noticeEventSource?.close()
     setTimeout(startNoticeSSE, 3000)
+  }
+}
+
+/** 告警 SSE：监听 alarm-notify 单点事件 + alarm 全量广播 */
+function startAlarmSSE() {
+  if (alarmEventSource) alarmEventSource.close()
+  const token = localStorage.getItem('token')
+  if (!token) return
+  alarmEventSource = new EventSource(`/api/v1/alarm/stream?token=${encodeURIComponent(token)}`)
+  // SYSTEM 通知定向推送（按接收人路由）
+  alarmEventSource.addEventListener('alarm-notify', (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      ElNotification({
+        title: data.title ?? '告警通知',
+        message: data.content ?? '',
+        type: 'warning',
+        duration: 5000
+      })
+      fetchEventMessages()
+    } catch { /* ignore */ }
+  })
+  // 告警原始事件全量广播（兜底，确保前端有感知）
+  alarmEventSource.addEventListener('alarm', (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      ElNotification({
+        title: '告警',
+        message: data.alarmMessage ?? '',
+        type: 'error',
+        duration: 5000
+      })
+      fetchEventMessages()
+    } catch { /* ignore */ }
+  })
+  alarmEventSource.onerror = () => {
+    alarmEventSource?.close()
+    setTimeout(startAlarmSSE, 3000)
   }
 }
 
@@ -640,22 +755,50 @@ const openBigScreen = () => {
   window.open('/bigscreen/disaster', '_blank')
 }
 
-const markMessageAsRead = async (msg: NoticeMessage) => {
-  try {
-    await markRead(msg.id)
-    msg.read = true
-    unreadMessageCount.value = Math.max(0, unreadMessageCount.value - 1)
-  } catch { /* ignore */ }
+const handleNoticeClick = async (msg: NotifyMessage) => {
+  if (!msg.read) {
+    try {
+      await markNoticeRead(msg.id)
+      msg.read = true
+      noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
+    } catch { /* ignore */ }
+  }
+  router.push(`/system/notice/detail/${msg.id}`)
+  messagePanelVisible.value = false
+}
+
+const handleEventClick = async (msg: NotifyMessage) => {
+  if (!msg.read) {
+    try {
+      await markAlarmNotificationRead(msg.id)
+      msg.read = true
+      eventUnreadCount.value = Math.max(0, eventUnreadCount.value - 1)
+    } catch { /* ignore */ }
+  }
+  if (msg.sourceType === 'alarm') {
+    router.push({path: '/alarm/realtime', query: msg.sourceId ? {alarmId: String(msg.sourceId)} : {}})
+  } else if (msg.sourceType === 'offline') {
+    router.push({path: '/basic/device', query: msg.sourceId ? {deviceId: String(msg.sourceId)} : {}})
+  }
+  messagePanelVisible.value = false
 }
 
 const markAllAsRead = async () => {
-  const unreadIds = messages.value.filter(m => !m.read).map(m => m.id)
-  if (unreadIds.length === 0) return
-  try {
-    await markReadAll(unreadIds.join(','))
-    messages.value.forEach(m => { m.read = true })
-    unreadMessageCount.value = 0
-  } catch { /* ignore */ }
+  if (notifyTab.value === 'event') {
+    try {
+      await markAllAlarmNotificationsRead()
+      eventMessages.value.forEach(m => { m.read = true })
+      eventUnreadCount.value = 0
+    } catch { /* ignore */ }
+  } else {
+    const unreadIds = noticeMessages.value.filter(m => !m.read).map(m => m.id)
+    if (unreadIds.length === 0) return
+    try {
+      await markAllNoticeRead(unreadIds.join(','))
+      noticeMessages.value.forEach(m => { m.read = true })
+      noticeUnreadCount.value = 0
+    } catch { /* ignore */ }
+  }
 }
 
 /** localStorage key：tabs 状态持久化 */
@@ -720,15 +863,21 @@ onMounted(async () => {
   } catch {
     // keep default
   }
-  // 首次加载通知 + SSE 实时推送
-  fetchNotices()
+  // 首次加载通知（公告 + 事件）+ SSE 实时推送
+  fetchNoticeMessages()
+  fetchEventMessages()
   startNoticeSSE()
+  startAlarmSSE()
 })
 
 onUnmounted(() => {
   if (noticeEventSource) {
     noticeEventSource.close()
     noticeEventSource = null
+  }
+  if (alarmEventSource) {
+    alarmEventSource.close()
+    alarmEventSource = null
   }
 })
 
@@ -1128,6 +1277,13 @@ const goToDashboard = () => {
   z-index: 1000;
   display: flex;
   flex-direction: column;
+}
+
+.tab-count {
+  display: inline-block;
+  margin-left: 2px;
+  font-size: 11px;
+  color: #f56c6c;
 }
 
 .message-panel.visible {
