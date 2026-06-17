@@ -70,9 +70,9 @@
         >
           <el-table-column type="selection" width="55" />
           <el-table-column prop="hazardPointName" label="隐患点名称" min-width="180" />
-          <el-table-column prop="alarmLevel" label="告警等级" width="100">
+          <el-table-column prop="alarmLevel" label="告警等级" width="130">
             <template #default="{ row }">
-              <el-tag :style="getAlarmLevelStyle(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+              <el-tag :style="getAlarmLevelStyle(row.alarmLevel)" style="border: none;">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="firstTriggerTime" label="首次告警时间" width="180" />
@@ -210,7 +210,12 @@ onMounted(async () => {
 // ── 枚举映射（数字/大写）──
 const getAlarmLevelText = (level: number | string) => {
   const n = Number(level)
-  return ({ 1: '一级', 2: '二级', 3: '三级', 4: '四级' } as Record<number, string>)[n] || String(level)
+  return ({
+    1: '一级（警报）',
+    2: '二级（警戒）',
+    3: '三级（警示）',
+    4: '四级（注意）'
+  } as Record<number, string>)[n] || String(level)
 }
 const getAlarmTypeText = (type: string) =>
   ({ THRESHOLD: '阈值预警', COMPREHENSIVE: '综合预警' } as Record<string, string>)[type] || type
