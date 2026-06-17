@@ -7,6 +7,7 @@ import com.zwei.iot.parser.engine.GroovyScriptEngine;
 import com.zwei.iot.parser.service.MonitorMetadataService;
 import com.zwei.iot.parser.support.MonitorTopic;
 import com.zwei.iot.parser.support.MonitorTopicParser;
+import com.zwei.iot.timeseries.compute.ComputedAttributeEvaluator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,16 +28,19 @@ public class MonitorIngestFacade {
     private final MonitorMetadataService metadataService;
     private final GroovyScriptEngine scriptEngine;
     private final MonitorIngestStreamService streamService;
+    private final ComputedAttributeEvaluator computedAttrEvaluator;
 
     @Autowired
     public MonitorIngestFacade(MonitorTopicParser topicParser,
                                MonitorMetadataService metadataService,
                                GroovyScriptEngine scriptEngine,
-                               MonitorIngestStreamService streamService) {
+                               MonitorIngestStreamService streamService,
+                               ComputedAttributeEvaluator computedAttrEvaluator) {
         this.topicParser = topicParser;
         this.metadataService = metadataService;
         this.scriptEngine = scriptEngine;
         this.streamService = streamService;
+        this.computedAttrEvaluator = computedAttrEvaluator;
     }
 
     /**
@@ -82,6 +86,24 @@ public class MonitorIngestFacade {
             }
         } catch (Exception e) {
             log.warn("TSL lookup failed, skip enrichment and validation: deviceId={}", deviceId, e);
+        }
+
+        // 4.5 Computed attributes evaluation
+        try {
+            List<com.zwei.common.domain.PropertyValue> computed =
+                    computedAttrEvaluator.evaluate(deviceId, parsedMessage.sensorCode(), parsedMessage);
+            if (!computed.isEmpty()) {
+                List<com.zwei.common.domain.PropertyValue> merged =
+                        new java.util.ArrayList<>(parsedMessage.properties());
+                merged.addAll(computed);
+                parsedMessage = new com.zwei.common.domain.ParsedMessage(
+                        parsedMessage.deviceCode(), parsedMessage.sensorCode(),
+                        parsedMessage.sourceType(), parsedMessage.dataTime(),
+                        parsedMessage.receiveTime(), parsedMessage.payloadHash(), merged);
+            }
+        } catch (Exception e) {
+            log.warn("Computed attribute evaluation failed, skip: deviceId={}, sensorCode={}",
+                    deviceId, parsedMessage.sensorCode(), e);
         }
 
         // 5. Enqueue to Redis Stream
