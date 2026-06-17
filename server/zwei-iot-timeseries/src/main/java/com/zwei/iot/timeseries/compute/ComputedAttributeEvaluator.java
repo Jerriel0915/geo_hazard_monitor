@@ -111,7 +111,8 @@ public class ComputedAttributeEvaluator {
         data.put("deviceCode", msg.deviceCode());
         data.put("sensorCode", msg.sensorCode());
         data.put("dataTime", msg.dataTime());
-        data.put("properties", props);
+        data.put("props", props);
+        data.put("properties", props); // 兼容 bracket 写法 curData['properties']
         return data;
     }
 
@@ -121,7 +122,8 @@ public class ComputedAttributeEvaluator {
         data.put("deviceCode", snap.deviceCode());
         data.put("sensorCode", snap.sensorCode());
         data.put("dataTime", snap.dataTime());
-        data.put("properties", props);
+        data.put("props", props);
+        data.put("properties", props); // 兼容 bracket 写法
         return data;
     }
 

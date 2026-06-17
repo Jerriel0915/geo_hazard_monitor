@@ -49,13 +49,13 @@ class ComputedScriptAssemblerTest {
     }
 
     @Test
-    @DisplayName("求值顺序回填 curData.get('properties').putAll(out)")
+    @DisplayName("求值顺序回填 curData.get('props').putAll(out)")
     void populateCurDataForChaining() {
         String script = assembler.assemble(List.of(
                 attr("a", "return 1", 1), attr("b", "return 2", 2)));
 
         // 至少出现一次 putAll 调用(让 b 能引用 a 的结果)
-        assertThat(script).contains("curData.get('properties').putAll(out)");
+        assertThat(script).contains("curData.get('props').putAll(out)");
     }
 
     @Test

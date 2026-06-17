@@ -13,10 +13,10 @@
       class="form-alert"
     >
       <template #title>
-        可用变量 (Groovy 5 语法, 必须用 .get() 访问):
-        <code>curData.get('properties').get('{{ attrCode }}')</code>
+        可用变量:
+        <code>curData?.props?.{{ attrCode }}</code>
         (当前数据包) ·
-        <code>prevData?.get('properties')?.get('{{ attrCode }}')</code>
+        <code>prevData?.props?.{{ attrCode }}</code>
         (上一条数据包, 可空)
         <br />
         返回: 数值(Number)
@@ -39,7 +39,7 @@
               v-model="curDataJson"
               type="textarea"
               :rows="4"
-              placeholder='{"properties":{"attrCode":12.5}}'
+              placeholder='{"props":{"attrCode":12.5}}'
             />
           </el-form-item>
           <el-form-item label="prevData">
@@ -47,7 +47,7 @@
               v-model="prevDataJson"
               type="textarea"
               :rows="4"
-              placeholder='{"properties":{"attrCode":10.0},"dataTime":1700000000000}'
+              placeholder='{"props":{"attrCode":10.0},"dataTime":1700000000000}'
             />
           </el-form-item>
           <el-form-item>
@@ -104,19 +104,19 @@ const emit = defineEmits<{
 
 const localScript = ref(props.script)
 const testPanelActive = ref<string[]>(['test'])
-const curDataJson = ref('{\n  "properties": {}\n}')
+const curDataJson = ref('{\n  "props": {}\n}')
 const prevDataJson = ref('')
 const testing = ref(false)
 const testResult = ref<CalcScriptTestResult | null>(null)
 
-// Groovy 5 兼容: 使用 .get('properties').get('xxx') 而非 .properties.xxx
+// key 用 'props': Groovy 中 map.properties 会触发 GDK Object.getProperties(), 用 .props 规避
 const defaultTemplate = computed(() =>
   `// 计算属性: ${props.attrCode}\n` +
-  '// 可用变量 (Groovy 5 必须用 .get() 访问):\n' +
-  `//   curData.get('properties').get('${props.attrCode}')  当前数据包属性值\n` +
-  `//   prevData?.get('properties')?.get('${props.attrCode}')  上一条数据包属性值(可空)\n` +
+  '// 可用变量:\n' +
+  `//   curData?.props?.${props.attrCode}  当前数据包属性值\n` +
+  `//   prevData?.props?.${props.attrCode}  上一条数据包属性值(可空)\n` +
   '// 返回: 数值 (Number)\n\n' +
-  `return curData.get('properties').get('${props.attrCode}')\n`
+  `return curData?.props?.${props.attrCode}\n`
 )
 
 // 每次打开重置本地状态
