@@ -37,7 +37,8 @@ COPY zwei-iot-video/pom.xml      zwei-iot-video/
 COPY zwei-iot-alarm/pom.xml      zwei-iot-alarm/
 COPY zwei-iot-parser/pom.xml    zwei-iot-parser/
 COPY zwei-iot-report/pom.xml    zwei-iot-report/
-COPY zwei-admin/pom.xml    zwei-admin/
+COPY zwei-admin/pom.xml      zwei-admin/
+COPY zwei-datashare/pom.xml  zwei-datashare/
 
 # BuildKit 缓存 ~/.m2 — 跨次构建复用依赖，二次构建几乎 0 秒
 RUN --mount=type=cache,target=/root/.m2/repository \
