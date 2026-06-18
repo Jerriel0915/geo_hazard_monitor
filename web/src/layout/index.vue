@@ -422,9 +422,10 @@ function toEventMessage(n: AlarmNotificationItem): NotifyMessage {
 async function fetchNoticeMessages() {
   try {
     const res = await getTopNotices()
-    const data = res.data
-    noticeMessages.value = (data.list ?? []).map(toNoticeMessage)
-    noticeUnreadCount.value = data.unreadCount ?? 0
+    // 后端响应：{code,msg,data: SysNotice[], unreadCount, timestamp}
+    // data 直接是公告数组，unreadCount 在顶层
+    noticeMessages.value = (res.data ?? []).map(toNoticeMessage)
+    noticeUnreadCount.value = res.unreadCount ?? 0
   } catch { /* keep previous data */ }
 }
 
