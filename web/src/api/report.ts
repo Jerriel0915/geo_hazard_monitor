@@ -414,50 +414,6 @@ function getMockChartData(
 // API functions (try real API, fall back to mock)
 // ---------------------------------------------------------------------------
 
-/** Fetch a page of reports (mock) */
-export async function getReportPage(params: ReportPageParams): Promise<PageResult<ReportItem>> {
-
-  //  return request.get<PageResult<ReportItem>>('/out/report/list', {params})
-
-  const all = generateMockReports()
-  let filtered = all
-  if (params.keyword) {
-    const kw = params.keyword.toLowerCase()
-    filtered = filtered.filter((r) => r.title.toLowerCase().includes(kw))
-  }
-  if (params.type) {
-    filtered = filtered.filter((r) => r.type === params.type)
-  }
-  if (params.startDate) {
-    filtered = filtered.filter((r) => r.periodStart >= params.startDate!)
-  }
-  if (params.endDate) {
-    filtered = filtered.filter((r) => r.periodEnd <= params.endDate!)
-  }
-  const start = (params.pageNum - 1) * params.pageSize
-  const rows = filtered.slice(start, start + params.pageSize)
-  return { rows, total: filtered.length, pageNum: params.pageNum, pageSize: params.pageSize }
-}
-
-/** Fetch a single report detail (mock) */
-export async function getReportDetail(id: number): Promise<ReportItem> {
-  const all = generateMockReports()
-  const found = all.find((r) => r.id === id)
-  if (found) return found
-  throw new Error(`Report ${id} not found`)
-}
-
-/** Delete a report (mock: no-op) */
-export async function deleteReport(_id: number): Promise<void> {}
-
-/** Fetch hazard point options (mock) */
-export async function getHazardPointOptions(): Promise<HazardPointOption[]> {
-  let msg = await request.get<HazardPointOption[]>('/hazard-points/page');
-  let rst = msg.data.rows;
-  return rst;
-  // return HAZARD_POINTS
-}
-
 /** Fetch device type options with attributes (mock) */
 export async function getDeviceTypeOptions(): Promise<DeviceTypeOption[]> {
   return DEVICE_TYPES
