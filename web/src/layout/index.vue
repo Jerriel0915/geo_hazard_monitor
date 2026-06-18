@@ -771,8 +771,9 @@ const handleEventClick = async (msg: NotifyMessage) => {
   if (!msg.read) {
     try {
       await markAlarmNotificationRead(msg.id)
-      msg.read = true
       eventUnreadCount.value = Math.max(0, eventUnreadCount.value - 1)
+      // 已读后从列表移除（与后端 selectUserRecent 过滤一致）
+      eventMessages.value = eventMessages.value.filter(m => m.id !== msg.id)
     } catch { /* ignore */ }
   }
   if (msg.sourceType === 'alarm') {
@@ -787,7 +788,8 @@ const markAllAsRead = async () => {
   if (notifyTab.value === 'event') {
     try {
       await markAllAlarmNotificationsRead()
-      eventMessages.value.forEach(m => { m.read = true })
+      // 全部已读 → 列表清空（后端查询也会过滤已读项）
+      eventMessages.value = []
       eventUnreadCount.value = 0
     } catch { /* ignore */ }
   } else {

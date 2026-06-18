@@ -197,8 +197,10 @@ onMounted(async () => {
     router.replace({ path: route.path, query: {} })
     if (!Number.isNaN(id)) {
       try {
-        const detail = await getAlarmRecordDetail(id)
-        if (detail) {
+        // getAlarmRecordDetail 返回 AjaxResult 包裹 {code,msg,data}，需取 .data
+        const res: any = await getAlarmRecordDetail(id)
+        const detail = res?.data ?? res
+        if (detail && detail.id) {
           currentRow.value = detail
           detailDialogVisible.value = true
         }

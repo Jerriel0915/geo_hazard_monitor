@@ -34,7 +34,7 @@ public interface AlarmNotificationMapper {
                     @org.apache.ibatis.annotations.Param("channel") String channel);
 
     /**
-     * 查询指定用户最近的 N 条通知 (仅 SYSTEM 渠道 + alarm/offline 来源)
+     * 查询指定用户最近的 N 条未读通知 (仅 SYSTEM 渠道 + alarm/offline 来源)
      */
     List<AlarmNotification> selectUserRecent(@org.apache.ibatis.annotations.Param("userId") Long userId,
                                              @org.apache.ibatis.annotations.Param("limit") int limit);

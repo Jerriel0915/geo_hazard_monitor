@@ -37,7 +37,8 @@ public class AlarmNotificationController extends BaseController {
     }
 
     /**
-     * 当前用户最近事件通知列表（默认 10 条，最多 100 条）。
+     * 当前用户最近未读事件通知列表（默认 10 条，最多 100 条）。
+     * <p>已读事件不再返回，配合前端下拉面板实现"读后即焚"。</p>
      */
     @GetMapping("/recent")
     @PreAuthorize("@ss.hasPermi('alarm:notification:list')")
