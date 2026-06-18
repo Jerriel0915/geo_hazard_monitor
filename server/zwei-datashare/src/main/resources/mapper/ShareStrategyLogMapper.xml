@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.datashare.mapper.ShareStrategyLogMapper">
+
+    <resultMap id="ShareStrategyLogResultMap" type="com.zwei.datashare.domain.ShareStrategyLog">
+        <id column="id" property="id"/>
+        <result column="strategy_id" property="strategyId"/>
+        <result column="run_time" property="runTime"/>
+        <result column="status" property="status"/>
+        <result column="message" property="message"/>
+        <result column="duration" property="duration"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.zwei.datashare.domain.ShareStrategyLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO share_strategy_log (strategy_id, run_time, status, message, duration, create_time)
+        VALUES (#{strategyId}, #{runTime}, #{status}, #{message}, #{duration}, #{createTime})
+    </insert>
+
+    <select id="selectByStrategyId" parameterType="java.lang.Long" resultMap="ShareStrategyLogResultMap">
+        SELECT * FROM share_strategy_log WHERE strategy_id = #{strategyId} ORDER BY run_time DESC
+    </select>
+
+    <delete id="deleteByStrategyId" parameterType="java.lang.Long">
+        DELETE FROM share_strategy_log WHERE strategy_id = #{strategyId}
+    </delete>
+</mapper>

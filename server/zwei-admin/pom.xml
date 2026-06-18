@@ -73,6 +73,12 @@
             <artifactId>zwei-iot-alarm</artifactId>
         </dependency>
 
+        <!-- 数据共享模块 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-datashare</artifactId>
+        </dependency>
+
         <!-- 监控模块-->
         <dependency>
             <groupId>com.zwei</groupId>
@@ -109,5 +115,4 @@
         </plugins>
         <finalName>${project.artifactId}</finalName>
     </build>
-
-</project>
+    </project>

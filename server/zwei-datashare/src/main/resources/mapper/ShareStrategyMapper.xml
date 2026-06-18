@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.datashare.mapper.ShareStrategyMapper">
+
+    <resultMap id="ShareStrategyResultMap" type="com.zwei.datashare.domain.ShareStrategy">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="method" property="method"/>
+        <result column="address" property="address"/>
+        <result column="topic" property="topic"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="params" property="params"/>
+        <result column="scope_type" property="scopeType"/>
+        <result column="scope_ids" property="scopeIds"/>
+        <result column="cron" property="cron"/>
+        <result column="status" property="status"/>
+        <result column="success_count" property="successCount"/>
+        <result column="last_run_time" property="lastRunTime"/>
+        <result column="last_run_status" property="lastRunStatus"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.zwei.datashare.domain.ShareStrategy" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO share_strategy (code, name, description, method, address, topic, username, password, params, scope_type, scope_ids, cron, status, success_count, create_time, update_time)
+        VALUES (#{code}, #{name}, #{description}, #{method}, #{address}, #{topic}, #{username}, #{password}, #{params}, #{scopeType}, #{scopeIds}, #{cron}, #{status}, #{successCount}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateById" parameterType="com.zwei.datashare.domain.ShareStrategy">
+        UPDATE share_strategy SET
+        <if test="code != null">code = #{code},</if>
+        <if test="name != null">name = #{name},</if>
+        <if test="description != null">description = #{description},</if>
+        <if test="method != null">method = #{method},</if>
+        <if test="address != null">address = #{address},</if>
+        <if test="topic != null">topic = #{topic},</if>
+        <if test="username != null">username = #{username},</if>
+        <if test="password != null">password = #{password},</if>
+        <if test="params != null">params = #{params},</if>
+        <if test="scopeType != null">scope_type = #{scopeType},</if>
+        <if test="scopeIds != null">scope_ids = #{scopeIds},</if>
+        <if test="cron != null">cron = #{cron},</if>
+        <if test="status != null">status = #{status},</if>
+        <if test="successCount != null">success_count = #{successCount},</if>
+        <if test="lastRunTime != null">last_run_time = #{lastRunTime},</if>
+        <if test="lastRunStatus != null">last_run_status = #{lastRunStatus},</if>
+        update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM share_strategy WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="ShareStrategyResultMap">
+        SELECT * FROM share_strategy WHERE id = #{id}
+    </select>
+
+    <select id="selectList" resultMap="ShareStrategyResultMap">
+        SELECT * FROM share_strategy
+        <where>
+            <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="method != null and method != ''">AND method = #{method}</if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByStatus" parameterType="com.zwei.datashare.enums.StrategyStatus" resultMap="ShareStrategyResultMap">
+        SELECT * FROM share_strategy WHERE status = #{status}
+    </select>
+
+    <update id="incrementSuccessCount" parameterType="java.lang.Long">
+        UPDATE share_strategy SET success_count = success_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="updateLastRunInfo">
+        UPDATE share_strategy SET last_run_time = #{lastRunTime}, last_run_status = #{lastRunStatus} WHERE id = #{id}
+    </update>
+
+    <select id="selectStrategyList" parameterType="com.zwei.datashare.domain.ShareStrategy" resultMap="ShareStrategyResultMap">
+        SELECT * FROM share_strategy d
+        <where>
+            <if test="code != null and code != ''">
+                AND d.code LIKE CONCAT('%', #{code}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND d.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="description != null and description != ''">
+                AND d.description LIKE CONCAT('%', #{description}, '%')
+            </if>
+            <if test="status != null">
+                AND d.status = #{status}
+            </if>
+        </where>
+        ORDER BY d.id DESC
+    </select>
+</mapper>

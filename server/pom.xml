@@ -208,6 +208,13 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+            <!-- 数据共享模块 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-datashare</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -227,6 +234,7 @@
         <module>zwei-iot-video</module>
         <module>zwei-iot-alarm</module>
         <module>zwei-monitor</module>
+        <module>zwei-datashare</module>
     </modules>
     <packaging>pom</packaging>
 

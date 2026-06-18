@@ -73,11 +73,11 @@
             </div>
             <div class="card__info-item">
               <span class="card__info-label">范围</span>
-              <span class="card__info-value">{{ SCOPE_TYPE_LABELS[item.scopeType] }} ({{ item.scopeIds.length }}个)</span>
+              <span class="card__info-value">{{ SCOPE_TYPE_LABELS[item.scopeType] }} ({{ item.scopeIds ? item.scopeIds.length : 0 }}个)</span>
             </div>
             <div class="card__info-item">
               <span class="card__info-label">频率</span>
-              <span class="card__info-value">{{ item.frequency }}</span>
+              <span class="card__info-value">{{ item.cron }}</span>
             </div>
             <div class="card__info-item">
               <span class="card__info-label">成功分享</span>
@@ -199,8 +199,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="执行频率" prop="frequency">
-              <el-input v-model="formData.frequency" placeholder="Cron表达式，如: 0 0/30 * * * ?" maxlength="50" />
+            <el-form-item label="执行频率" prop="cron">
+              <el-input v-model="formData.cron" placeholder="Cron表达式，如: 0 0/30 * * * ?" maxlength="50" />
               <el-tooltip content="常用: 每分钟(0 * * * * ?) 每5分钟(0 0/5 * * * ?) 每小时(0 0 * * * ?) 每天2点(0 0 2 * * ?)">
                 <el-icon class="form-hint-icon"><QuestionFilled /></el-icon>
               </el-tooltip>
@@ -350,7 +350,7 @@ const formData = reactive({
   params: {} as Record<string, any>,
   scopeType: 'HAZARD_POINT' as ShareStrategyItem['scopeType'],
   scopeIds: [] as number[],
-  frequency: ''
+  cron: ''
 })
 
 const scopeForm = reactive({
@@ -376,7 +376,7 @@ const formRules: FormRules = {
   name: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
   method: [{ required: true, message: '请选择分享方式', trigger: 'change' }],
   address: [{ required: true, message: '请输入目标地址', trigger: 'blur' }],
-  frequency: [{ required: true, message: '请输入执行频率', trigger: 'blur' }],
+  cron: [{ required: true, message: '请输入执行频率', trigger: 'blur' }],
   scopeType: [{ required: true, message: '请选择数据范围类型', trigger: 'change' }]
 }
 
@@ -419,7 +419,7 @@ function handleAdd() {
     params: {},
     scopeType: 'HAZARD_POINT',
     scopeIds: [],
-    frequency: ''
+    cron: ''
   })
   dialogVisible.value = true
 }
@@ -438,7 +438,7 @@ function handleEdit(item: ShareStrategyItem) {
     params: item.params || {},
     scopeType: item.scopeType,
     scopeIds: [...item.scopeIds],
-    frequency: item.frequency
+    cron: item.cron
   })
   dialogVisible.value = true
 }
@@ -459,7 +459,7 @@ async function handleSubmit() {
       params: formData.params,
       scopeType: formData.scopeType,
       scopeIds: formData.scopeIds,
-      frequency: formData.frequency,
+      cron: formData.cron,
       status: 'DISABLED' as const
     }
     if (editingItem.value) {
