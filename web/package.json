@@ -35,7 +35,8 @@
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "vue3-apexcharts": "^1.11.1",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "webworkify-webpack": "2.1.5"
   },
   "overrides": {
     "webworkify-webpack": "2.1.5"
