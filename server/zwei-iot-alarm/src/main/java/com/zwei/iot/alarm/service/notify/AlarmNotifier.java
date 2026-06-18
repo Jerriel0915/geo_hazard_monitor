@@ -39,6 +39,9 @@ import java.util.Set;
 @Component
 public class AlarmNotifier {
 
+    /** SYSTEM 渠道标识 — 站内消息，发送即达，创建时直接置为"已发送" */
+    private static final String CHANNEL_SYSTEM = "SYSTEM";
+
     @Autowired
     private IAlarmRuleMatcher ruleMatcher;
 
@@ -165,7 +168,10 @@ public class AlarmNotifier {
                     n.setChannel(channel);
                     n.setTitle(title);
                     n.setContent(content);
-                    n.setStatus(AlarmNotification.STATUS_PENDING);
+                    // SYSTEM 渠道（站内消息）一定可达，默认"已发送"，避免与 SystemNotifyChannel.send() 之间的竞态窗口显示成"待发送"
+                    n.setStatus(CHANNEL_SYSTEM.equals(channel)
+                        ? AlarmNotification.STATUS_SENT
+                        : AlarmNotification.STATUS_PENDING);
                     dedup.put(key, n);
                 }
             }

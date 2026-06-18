@@ -132,6 +132,39 @@ class AlarmNotifierTest {
         verify(channelDispatcher, times(2)).dispatch(any());
     }
 
+    @Test
+    void onAlarmTriggered_system_channel_defaults_to_sent_sms_pending() {
+        // SYSTEM 渠道一定可达 → 创建时直接置为已发送；SMS/EMAIL 仍为待发送
+        AlarmTriggeredEvent event = new AlarmTriggeredEvent(
+            905L, 6L, 4, "THRESHOLD", "状态默认", "首次");
+
+        AlarmDispatchRule rule = buildRule(14L, "SYSTEM,SMS,EMAIL");
+        when(ruleMatcher.matchAlarmRules(6L, "4")).thenReturn(List.of(rule));
+        when(recipientResolver.resolveUserIds(14L)).thenReturn(new HashSet<>(List.of(70L)));
+        when(userService.selectUserById(70L)).thenReturn(buildUser(70L, "0", "user70"));
+        when(notificationService.batchCreate(anyList())).thenReturn(3);
+
+        notifier.onAlarmTriggered(event);
+
+        ArgumentCaptor<List<AlarmNotification>> captor =
+            ArgumentCaptor.forClass(List.class);
+        verify(notificationService, times(1)).batchCreate(captor.capture());
+        List<AlarmNotification> saved = captor.getValue();
+        assertThat(saved).hasSize(3);
+
+        AlarmNotification sysNotif = saved.stream()
+            .filter(n -> "SYSTEM".equals(n.getChannel())).findFirst().orElseThrow();
+        assertThat(sysNotif.getStatus()).isEqualTo(AlarmNotification.STATUS_SENT);
+
+        AlarmNotification smsNotif = saved.stream()
+            .filter(n -> "SMS".equals(n.getChannel())).findFirst().orElseThrow();
+        assertThat(smsNotif.getStatus()).isEqualTo(AlarmNotification.STATUS_PENDING);
+
+        AlarmNotification emailNotif = saved.stream()
+            .filter(n -> "EMAIL".equals(n.getChannel())).findFirst().orElseThrow();
+        assertThat(emailNotif.getStatus()).isEqualTo(AlarmNotification.STATUS_PENDING);
+    }
+
     // ============= 离线事件 =============
 
     @Test
