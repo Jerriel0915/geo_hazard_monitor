@@ -59,6 +59,15 @@ const request = (options) => {
               if (res.data.code === 200) {
                 // 返回data字段或整个响应
                 resolve(res.data.data !== undefined ? res.data.data : res.data)
+              } else if (res.data.code === 401) {
+                // 业务码 401：登录过期/未授权（HTTP 200 + body code:401）
+                uni.removeStorageSync('accessToken')
+                uni.removeStorageSync('refreshToken')
+                uni.removeStorageSync('user')
+                if (!options.silent) {
+                  uni.reLaunch({ url: '/pages/login' })
+                }
+                reject(new Error('登录已过期，请重新登录'))
               } else {
                 // 业务错误，显示错误消息
                 const message = res.data.message || '请求失败'

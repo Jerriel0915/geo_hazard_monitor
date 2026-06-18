@@ -1,46 +1,26 @@
 <!-- src/pages/index.vue -->
 <template>
   <view class="page-container">
-    <!-- 渐变头部 -->
+    <!-- 渐变头部（简化：标题 + 副标题） -->
     <view class="header">
       <view class="header-bg">
-        <view class="status-bar" :style="{ height: `${statusBarHeight + 322}rpx` }"></view>
+        <view class="status-bar" :style="{ height: `${statusBarHeight + 220}rpx` }"></view>
         <view class="bg-circle bg-circle-1"></view>
         <view class="bg-circle bg-circle-2"></view>
       </view>
       <view class="header-content" :style="{ paddingTop: `${statusBarHeight}px` }">
-        <view class="header-top">
-          <text class="header-title">事件大厅</text>
-          <text class="header-subtitle">边坡监测 · 智能预警</text>
-        </view>
-        <view class="stats-row">
-          <view class="stat-item stat-red">
-            <text class="stat-value">{{ stats.red }}</text>
-            <text class="stat-label">红色</text>
-          </view>
-          <view class="stat-item stat-orange">
-            <text class="stat-value">{{ stats.orange }}</text>
-            <text class="stat-label">橙色</text>
-          </view>
-          <view class="stat-item stat-yellow">
-            <text class="stat-value">{{ stats.yellow }}</text>
-            <text class="stat-label">黄色</text>
-          </view>
-          <view class="stat-item stat-blue">
-            <text class="stat-value">{{ stats.blue }}</text>
-            <text class="stat-label">蓝色</text>
-          </view>
-        </view>
+        <text class="header-title">事件大厅</text>
+        <text class="header-subtitle">边坡监测 · 智能预警</text>
       </view>
     </view>
 
     <!-- Tab切换：待处理 / 历史事件 -->
     <view class="tab-bar">
-      <view class="tab-item" :class="{ active: activeTab === 'pending' }" @click="activeTab = 'pending'">
+      <view class="tab-item" :class="{ active: activeTab === 'pending' }" @click="switchTab('pending')">
         <text class="tab-text">待处理</text>
-        <text v-if="pendingCount > 0" class="tab-badge">{{ pendingCount }}</text>
+        <text v-if="pendingTotal > 0" class="tab-badge">{{ pendingTotal }}</text>
       </view>
-      <view class="tab-item" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">
+      <view class="tab-item" :class="{ active: activeTab === 'history' }" @click="switchTab('history')">
         <text class="tab-text">历史事件</text>
       </view>
     </view>
@@ -52,10 +32,12 @@
       refresher-enabled
       :refresher-triggered="isRefreshing"
       @refresherrefresh="onRefresh"
+      @scrolltolower="onLoadMore"
+      lower-threshold="100"
     >
       <view class="list-inner">
         <!-- 骨架屏 -->
-        <view v-if="loading" class="skeleton-wrapper">
+        <view v-if="loading && pageNum === 1" class="skeleton-wrapper">
           <Skeleton :rows="4" />
           <Skeleton :rows="4" />
           <Skeleton :rows="4" />
@@ -64,36 +46,61 @@
         <!-- 列表内容 -->
         <view v-else>
           <view
-            v-for="alarm in displayAlarms"
+            v-for="alarm in alarms"
             :key="alarm.id"
             class="alarm-card"
             @click="goToDetail(alarm)"
             hover-class="alarm-card-hover"
           >
             <!-- 左侧颜色条 -->
-            <view class="alarm-bar" :style="{ backgroundColor: getLevelColor(alarm.alarmLevel) }"></view>
+            <view class="alarm-bar" :style="{ backgroundColor: getAlarmLevelColor(alarm.alarmLevel) }"></view>
 
             <view class="alarm-body">
               <view class="alarm-header">
-                <text class="alarm-hazard-name">{{ alarm.hazardName }}</text>
-                <view class="alarm-tag" :style="{ backgroundColor: getLevelColor(alarm.alarmLevel) + '15', color: getLevelColor(alarm.alarmLevel) }">
-                  <text class="alarm-tag-text">{{ alarm.alarmType }}</text>
+                <text class="alarm-hazard-name">{{ alarm.hazardPointName || '-' }}</text>
+                <view
+                  class="alarm-level-tag"
+                  :style="{
+                    backgroundColor: getAlarmLevelColor(alarm.alarmLevel) + '20',
+                    color: getAlarmLevelColor(alarm.alarmLevel),
+                  }"
+                >
+                  <text class="alarm-level-text">{{ getAlarmLevelText(alarm.alarmLevel) }}</text>
                 </view>
               </view>
-              <text class="alarm-content">{{ alarm.alarmContent }}</text>
+
+              <text class="alarm-content">{{ alarm.alarmMessage || '-' }}</text>
+
               <view class="alarm-footer">
-                <text class="alarm-device">{{ alarm.deviceName }}</text>
-                <text class="alarm-time">{{ formatTime(alarm.createTime) }}</text>
+                <view class="alarm-meta-left">
+                  <view
+                    v-if="alarm.statusName"
+                    class="status-tag"
+                    :class="getStatusTypeClass(alarm.status)"
+                  >
+                    {{ alarm.statusName }}
+                  </view>
+                  <text class="alarm-device">{{ alarm.deviceName || '' }}</text>
+                </view>
+                <text class="alarm-time">{{ formatTime(alarm.firstTriggerTime) }}</text>
               </view>
             </view>
           </view>
 
           <EmptyState
-            v-if="displayAlarms.length === 0"
+            v-if="alarms.length === 0"
             :useImage="true"
-            :title="activeTab === 'pending' ? '暂无告警事件' : '暂无历史事件'"
+            :title="activeTab === 'pending' ? '暂无待处理告警' : '暂无历史事件'"
             :description="activeTab === 'pending' ? '当前没有未处理的告警事件' : '暂无已处理的告警事件'"
           />
+
+          <view v-if="!hasMore && alarms.length > 0" class="no-more-wrapper">
+            <text class="no-more-text">没有更多了</text>
+          </view>
+
+          <view v-if="loadingMore" class="loading-more-wrapper">
+            <text class="loading-more-text">加载中...</text>
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -104,37 +111,36 @@
 import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { useSafeArea } from '@/composables/useSafeArea'
-import { alarmApi } from '@/utils/alarm'
-import type { Alarm } from '@/utils/alarm'
+import { alarmApi, getAlarmLevelColor, getAlarmLevelText, getStatusType } from '@/utils/alarm'
+import type { AlarmRecordItem } from '@/utils/alarm'
 import { startPolling, stopPolling } from '@/utils/polling'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const { statusBarHeight } = useSafeArea()
 
 const loading = ref(true)
+const loadingMore = ref(false)
 const isRefreshing = ref(false)
 const activeTab = ref<'pending' | 'history'>('pending')
-const allAlarms = ref<Alarm[]>([])
-const stats = ref({ red: 0, orange: 0, yellow: 0, blue: 0 })
 
-const pendingCount = computed(() => allAlarms.value.filter(a => a.status === 0).length)
+const alarms = ref<AlarmRecordItem[]>([])
+const pageNum = ref(1)
+const pageSize = 20
+const hasMore = ref(true)
+/** 待处理总数（用于 tab badge） */
+const pendingTotal = ref(0)
+/** 当前 tab 的总数（用于判断 hasMore） */
+const currentTotal = ref(0)
 
-const displayAlarms = computed(() => {
-  if (activeTab.value === 'pending') {
-    return allAlarms.value.filter(a => a.status === 0)
-  }
-  return allAlarms.value.filter(a => a.status === 1)
-})
-
-const getLevelColor = (level: number) => {
-  const map: Record<number, string> = { 4: '#f5222d', 3: '#fa541c', 2: '#faad14', 1: '#1890ff' }
-  return map[level] || '#1890ff'
+const getStatusTypeClass = (status: number) => {
+  return `status-${getStatusType(status)}`
 }
 
 const formatTime = (time: string) => {
   if (!time) return '-'
-  const iosTime = time.replace(' ', 'T').replace(/\.\d+Z$/, '')
+  const iosTime = time.replace(/-/g, '/').replace(' ', 'T').replace(/\.\d+Z$/, '')
   const date = new Date(iosTime)
+  if (isNaN(date.getTime())) return time
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   const hours = String(date.getHours()).padStart(2, '0')
@@ -142,50 +148,85 @@ const formatTime = (time: string) => {
   return `${month}-${day} ${hours}:${minutes}`
 }
 
-const loadData = async () => {
+const loadAlarms = async (reset = false) => {
+  if (reset) {
+    pageNum.value = 1
+    alarms.value = []
+    hasMore.value = true
+  }
+
+  if (loadingMore.value) return
+  if (!reset && !hasMore.value) return
+
   try {
-    const accessToken = uni.getStorageSync('accessToken')
-    if (!accessToken) {
-      uni.redirectTo({ url: '/pages/login' })
-      return
+    if (reset) {
+      loading.value = true
+    } else {
+      loadingMore.value = true
     }
 
-    const [alarmStats, alarmList] = await Promise.all([
-      alarmApi.getStats(),
-      alarmApi.getUnprocessed()
-    ])
+    const params = { pageNum: pageNum.value, pageSize }
+    const result = activeTab.value === 'pending'
+      ? await alarmApi.getPendingAlarms(params)
+      : await alarmApi.getHistoryAlarms(params)
 
-    if (alarmStats) {
-      stats.value = {
-        red: alarmStats.red || 0,
-        orange: alarmStats.orange || 0,
-        yellow: alarmStats.yellow || 0,
-        blue: alarmStats.blue || 0
-      }
+    const rows = result.rows || []
+    if (reset) {
+      alarms.value = rows
+    } else {
+      alarms.value.push(...rows)
     }
 
-    // 同时获取所有告警（含已处理）用于历史事件
-    allAlarms.value = (alarmApi as any).getAll ? (alarmApi as any).getAll() : (alarmList || [])
+    currentTotal.value = Number(result.total ?? 0)
+    hasMore.value = alarms.value.length < currentTotal.value
+
+    // 待处理 tab 的 total 同步到 badge
+    if (activeTab.value === 'pending') {
+      pendingTotal.value = currentTotal.value
+    } else {
+      // 切到历史 tab 时，并行刷新 pending total（不影响当前列表）
+      alarmApi.getPendingAlarms({ pageNum: 1, pageSize: 1 })
+        .then(r => { pendingTotal.value = Number(r.total ?? 0) })
+        .catch(() => { /* ignore */ })
+    }
   } catch (error) {
-    console.error('加载数据失败:', error)
+    console.error('加载告警数据失败:', error)
   } finally {
     loading.value = false
+    loadingMore.value = false
     isRefreshing.value = false
   }
 }
 
-const onRefresh = async () => {
-  isRefreshing.value = true
-  await loadData()
+const switchTab = (tab: 'pending' | 'history') => {
+  if (activeTab.value === tab) return
+  activeTab.value = tab
+  loadAlarms(true)
 }
 
-const goToDetail = (alarm: Alarm) => {
+const onLoadMore = () => {
+  if (loading.value || loadingMore.value || !hasMore.value) return
+  pageNum.value++
+  loadAlarms(false)
+}
+
+const onRefresh = async () => {
+  isRefreshing.value = true
+  await loadAlarms(true)
+}
+
+const goToDetail = (alarm: AlarmRecordItem) => {
   uni.navigateTo({ url: `/pages/alarm-detail?id=${alarm.id}` })
 }
 
 onMounted(() => {
-  loadData()
-  startPolling(loadData, 30000)
+  const accessToken = uni.getStorageSync('accessToken')
+  if (!accessToken) {
+    uni.redirectTo({ url: '/pages/login' })
+    return
+  }
+  loadAlarms(true)
+  startPolling(() => loadAlarms(true), 30000)
 })
 
 onUnmounted(() => {
@@ -226,15 +267,13 @@ onUnmounted(() => {
 }
 
 .bg-circle-1 { width: 300rpx; height: 300rpx; top: -80rpx; right: -60rpx; }
-.bg-circle-2 { width: 200rpx; height: 200rpx; top: 120rpx; left: -50rpx; }
+.bg-circle-2 { width: 200rpx; height: 200rpx; top: 60rpx; left: -50rpx; }
 
 .header-content {
   position: relative;
   z-index: 1;
   padding: 40rpx 32rpx 24rpx;
 }
-
-.header-top { margin-bottom: 24rpx; }
 
 .header-title {
   font-size: 40rpx;
@@ -247,45 +286,6 @@ onUnmounted(() => {
 .header-subtitle {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.8);
-}
-
-.stats-row {
-  display: flex;
-  gap: 24rpx;
-}
-
-.stat-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20rpx 0;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 16rpx;
-  backdrop-filter: blur(10px);
-
-  .stat-value {
-    font-size: 36rpx;
-    font-weight: bold;
-    background: rgba(255, 255, 255, 0.9);
-    width: 48rpx;
-    height: 48rpx;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 8rpx;
-  }
-
-  .stat-label {
-    font-size: 22rpx;
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  &.stat-red .stat-value { color: #f5222d; }
-  &.stat-orange .stat-value { color: #fa541c; }
-  &.stat-yellow .stat-value { color: #faad14; }
-  &.stat-blue .stat-value { color: #1890ff; }
 }
 
 /* Tab 切换栏 */
@@ -402,13 +402,13 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.alarm-tag {
+.alarm-level-tag {
   flex-shrink: 0;
-  padding: 4rpx 16rpx;
+  padding: 4rpx 14rpx;
   border-radius: 8rpx;
 }
 
-.alarm-tag-text {
+.alarm-level-text {
   font-size: 22rpx;
   font-weight: 500;
 }
@@ -428,16 +428,64 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-top: 4rpx;
+  gap: 8rpx;
+}
+
+.alarm-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status-tag {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+
+  &.status-danger { background: rgba(245, 63, 63, 0.1); color: #f53f3f; }
+  &.status-warning { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
+  &.status-success { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+  &.status-info { background: rgba(144, 147, 153, 0.1); color: #909399; }
 }
 
 .alarm-device {
   font-size: 22rpx;
   color: #3068e4;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .alarm-time {
   font-size: 22rpx;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.no-more-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 30rpx 0;
+}
+
+.no-more-text {
+  font-size: 24rpx;
+  color: #d1d5db;
+}
+
+.loading-more-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 30rpx 0;
+}
+
+.loading-more-text {
+  font-size: 24rpx;
   color: #9ca3af;
 }
 </style>

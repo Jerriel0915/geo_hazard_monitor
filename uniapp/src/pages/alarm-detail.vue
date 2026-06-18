@@ -8,252 +8,628 @@
         <view class="header-nav">
           <view class="back-btn" @click="goBack">←</view>
         </view>
-        <view class="alarm-info-top">
-          <view class="alarm-level-badge" :style="{ background: getLevelColor(alarm.alarmLevel) }">
-            {{ getLevelText(alarm.alarmLevel) }}预警
+        <view class="alarm-info-top" v-if="alarmData">
+          <view class="alarm-level-badge" :style="{ background: getAlarmLevelColor(alarmData.alarmLevel) }">
+            {{ getAlarmLevelText(alarmData.alarmLevel) }}
           </view>
-          <text class="alarm-time-text">{{ alarm.createTime }}</text>
+          <text class="alarm-time-text">{{ formatTime(alarmData.firstTriggerTime) }}</text>
         </view>
       </view>
     </view>
 
     <!-- 内容 -->
-    <scroll-view class="content-scroll" scroll-y>
-      <!-- 告警信息 -->
-      <view class="section">
-        <text class="section-title">告警信息</text>
-        <view class="info-card">
-          <view class="info-row">
-            <text class="info-label">隐患点</text>
-            <text class="info-value">{{ alarm.hazardName || '-' }}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">告警类型</text>
-            <view class="type-tag" :class="alarm.alarmType === '综合预警' ? 'comprehensive' : 'threshold'">
-              {{ alarm.alarmType }}
-            </view>
-          </view>
-          <view class="info-row">
-            <text class="info-label">告警内容</text>
-            <text class="info-value content-text">{{ alarm.alarmContent || '-' }}</text>
-          </view>
-          <view class="info-row" v-if="alarm.alarmValue && alarm.alarmValue !== '-'">
-            <text class="info-label">告警数值</text>
-            <text class="info-value alarm-value">{{ alarm.alarmValue }}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">告警次数</text>
-            <text class="info-value">{{ alarm.alarmCount }}次</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">状态</text>
-            <view class="status-badge" :class="alarm.status === 1 ? 'handled' : 'pending'">
-              {{ alarm.status === 1 ? '已处理' : '待处理' }}
-            </view>
-          </view>
-          <view v-if="alarm.handleTime" class="info-row">
-            <text class="info-label">处理时间</text>
-            <text class="info-value">{{ alarm.handleTime }}</text>
-          </view>
-          <view v-if="alarm.handleRemark" class="info-row">
-            <text class="info-label">处理备注</text>
-            <text class="info-value">{{ alarm.handleRemark }}</text>
-          </view>
-        </view>
+    <scroll-view class="content-scroll" scroll-y refresher-enabled :refresher-triggered="isRefreshing" @refresherrefresh="loadAll">
+      <view v-if="loading && !alarmData" class="loading-wrapper">
+        <text class="loading-text">加载中...</text>
       </view>
 
-      <!-- 分发日志 -->
-      <view class="section">
-        <text class="section-title">分发日志</text>
-        <view class="timeline-card">
-          <view
-            v-for="(log, index) in alarm.dispatchLogs"
-            :key="log.id"
-            class="timeline-item"
-          >
-            <view class="timeline-dot" :class="{ active: index === 0 }"></view>
-            <view class="timeline-line" v-if="index < alarm.dispatchLogs.length - 1"></view>
-            <view class="timeline-content">
-              <text class="timeline-action">{{ log.action }}</text>
-              <view class="timeline-meta">
-                <text class="timeline-operator">{{ log.operator }}</text>
-                <text class="timeline-time">{{ log.time }}</text>
+      <view v-else-if="!alarmData" class="loading-wrapper">
+        <text class="loading-text">{{ loadError || '告警不存在' }}</text>
+      </view>
+
+      <template v-else>
+        <!-- 告警信息卡 -->
+        <view class="section">
+          <text class="section-title">告警信息</text>
+          <view class="info-card">
+            <view class="info-row">
+              <text class="info-label">告警等级</text>
+              <view class="level-badge" :style="{ background: getAlarmLevelColor(alarmData.alarmLevel) }">
+                {{ getAlarmLevelText(alarmData.alarmLevel) }}
+              </view>
+            </view>
+            <view class="info-row">
+              <text class="info-label">告警类型</text>
+              <text class="info-value">{{ getAlarmTypeText(alarmData.alarmType) }}</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">告警时间</text>
+              <text class="info-value time-range">{{ formatTime(alarmData.firstTriggerTime) }} ~ {{ formatTime(alarmData.lastTriggerTime) }}</text>
+            </view>
+            <view class="info-row column">
+              <text class="info-label">警情来源</text>
+              <view class="source-row">
+                <view class="source-main">
+                  <text class="source-name">{{ alarmData.hazardPointName || '-' }}</text>
+                  <text v-if="alarmData.deviceName" class="source-device">{{ alarmData.deviceName }}</text>
+                </view>
+                <view v-if="canNavigate" class="nav-btn" @click.stop="openMap">📍</view>
+              </view>
+            </view>
+            <view class="info-row column">
+              <text class="info-label">告警描述</text>
+              <text class="info-value content-text">{{ alarmData.alarmMessage || '-' }}</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">触发次数</text>
+              <text class="info-value">{{ alarmData.triggerCount || 0 }} 次</text>
+            </view>
+            <view class="info-row">
+              <text class="info-label">状态</text>
+              <view class="status-badge" :class="`status-${getStatusType(alarmData.status)}`">
+                {{ alarmData.statusName || getStatusText(alarmData.status) }}
               </view>
             </view>
           </view>
-          <view v-if="!alarm.dispatchLogs || alarm.dispatchLogs.length === 0" class="empty-logs">
-            <text class="empty-text">暂无分发日志</text>
-          </view>
         </view>
-      </view>
 
-      <!-- 关联设备 -->
-      <view class="section">
-        <text class="section-title">关联设备</text>
-        <view class="device-list">
-          <view
-            v-for="device in relatedDevices"
-            :key="device.id"
-            class="device-item"
-            @click="goToDeviceDetail(device.id)"
-          >
-            <view class="device-info">
-              <text class="device-name">{{ device.deviceName }}</text>
-              <text class="device-type">{{ device.deviceType }}</text>
+        <!-- 项目信息卡 -->
+        <view class="section" v-if="hazardPointData">
+          <text class="section-title">项目信息</text>
+          <view class="info-card">
+            <view class="info-row">
+              <text class="info-label">地理位置</text>
+              <text class="info-value">{{ formatLocation(hazardPointData) }}</text>
             </view>
-            <view class="device-status">
-              <view class="status-dot" :class="device.status === '在线' ? 'online' : device.status === '故障' ? 'fault' : 'offline'"></view>
-              <text class="status-text">{{ device.status }}</text>
+            <view class="info-row">
+              <text class="info-label">所属分组</text>
+              <text class="info-value">{{ hazardPointData.groupName || '-' }}</text>
+            </view>
+            <view class="info-row column">
+              <text class="info-label">隐患点描述</text>
+              <text class="info-value content-text">{{ hazardPointData.description || '-' }}</text>
             </view>
           </view>
-          <view v-if="relatedDevices.length === 0" class="empty-logs">
-            <text class="empty-text">暂无关联设备</text>
+        </view>
+
+        <!-- 支撑数据卡 (4 Tab) -->
+        <view class="section">
+          <text class="section-title">支撑数据</text>
+          <view class="support-card">
+            <view class="sub-tabs">
+              <view
+                v-for="tab in supportTabs"
+                :key="tab.value"
+                class="sub-tab"
+                :class="{ active: activeSupportTab === tab.value }"
+                @click="switchSupportTab(tab.value)"
+              >
+                {{ tab.label }}
+              </view>
+            </view>
+
+            <!-- 监测数据 -->
+            <view v-if="activeSupportTab === 'monitor'" class="sub-content">
+              <EchartsComponent
+                v-if="chartOption && chartReady"
+                :key="`alarm-chart-${alarmId}-${chartVersion}`"
+                :onInit="initChart"
+                :canvasId="`alarm-chart-${alarmId}-${chartVersion}`"
+                width="100%"
+                height="420rpx"
+              />
+              <view v-else class="empty-block">
+                <text class="empty-block-text">暂无监测数据</text>
+              </view>
+            </view>
+
+            <!-- 告警次数 (触发明细) -->
+            <view v-else-if="activeSupportTab === 'trigger'" class="sub-content">
+              <view v-if="triggerDetails.length === 0" class="empty-block">
+                <text class="empty-block-text">暂无触发记录</text>
+              </view>
+              <view v-else>
+                <view
+                  v-for="t in triggerDetails"
+                  :key="t.id"
+                  class="trigger-item"
+                >
+                  <view class="trigger-dot" :style="{ background: getAlarmLevelColor(t.alarmLevel) }"></view>
+                  <view class="trigger-info">
+                    <view class="trigger-top">
+                      <text class="trigger-level" :style="{ color: getAlarmLevelColor(t.alarmLevel) }">
+                        {{ getAlarmLevelText(t.alarmLevel) }}
+                      </text>
+                      <text class="trigger-time">{{ formatTime(t.triggerTime) }}</text>
+                    </view>
+                    <text v-if="t.alarmMessage" class="trigger-message">{{ t.alarmMessage }}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+
+            <!-- 通知记录 -->
+            <view v-else-if="activeSupportTab === 'notify'" class="sub-content">
+              <view v-if="notifyRecords.length === 0" class="empty-block">
+                <text class="empty-block-text">暂无通知记录</text>
+              </view>
+              <view v-else>
+                <view
+                  v-for="n in notifyRecords"
+                  :key="n.id"
+                  class="notify-item"
+                >
+                  <view class="notify-top">
+                    <view class="notify-channel" :class="`channel-${n.channel?.toLowerCase()}`">
+                      {{ getChannelText(n.channel) }}
+                    </view>
+                    <view class="notify-status" :class="`notify-status-${getNotifyStatusType(n.status)}`">
+                      {{ getNotifyStatusText(n.status) }}
+                    </view>
+                  </view>
+                  <view class="notify-recipient">
+                    <text class="notify-label">接收人：</text>
+                    <text class="notify-value">{{ n.recipientName || n.recipientPhone || '-' }}</text>
+                  </view>
+                  <view v-if="n.content" class="notify-content-row">
+                    <text class="notify-content">{{ n.content }}</text>
+                  </view>
+                  <text v-if="n.sendTime" class="notify-time">{{ formatTime(n.sendTime) }}</text>
+                </view>
+              </view>
+            </view>
+
+            <!-- 反馈记录 -->
+            <view v-else-if="activeSupportTab === 'feedback'" class="sub-content">
+              <view v-if="feedbackLogs.length === 0" class="empty-block">
+                <text class="empty-block-text">暂无反馈记录</text>
+              </view>
+              <view v-else>
+                <view
+                  v-for="f in feedbackLogs"
+                  :key="f.id"
+                  class="feedback-item"
+                >
+                  <view class="feedback-top">
+                    <view class="feedback-action" :class="`feedback-action-${getFeedbackActionType(f.actionType)}`">
+                      {{ getFeedbackActionText(f.actionType) }}
+                    </view>
+                    <text class="feedback-time">{{ formatTime(f.createTime) }}</text>
+                  </view>
+                  <view v-if="f.operator" class="feedback-operator">
+                    <text class="feedback-label">操作人：</text>
+                    <text class="feedback-value">{{ f.operator }}</text>
+                  </view>
+                  <text v-if="f.description" class="feedback-content">{{ f.description }}</text>
+                </view>
+              </view>
+            </view>
           </view>
         </view>
-      </view>
 
-      <!-- 底部操作按钮 -->
-      <view v-if="alarm.status !== 1" class="section">
-        <view class="action-row">
-          <view class="action-btn feedback-btn" @click="handleFeedback">反馈</view>
-          <view class="action-btn false-btn" @click="handleFalseAlarm">误报</view>
-          <view class="action-btn clear-btn" @click="handleClear">消警</view>
-          <view class="action-btn notify-btn" @click="handleNotify">通知</view>
+        <!-- 时间线 -->
+        <view class="section">
+          <view class="timeline-header">
+            <text class="section-title">时间线</text>
+            <text v-if="timeline.length > 5" class="timeline-toggle" @click="toggleTimeline">
+              {{ showAllTimeline ? '收起' : '展开全部' }}
+            </text>
+          </view>
+          <view class="timeline-card">
+            <view
+              v-for="(node, idx) in displayedTimeline"
+              :key="idx"
+              class="timeline-item"
+            >
+              <view class="timeline-dot" :class="`type-${node.type}`"></view>
+              <view v-if="idx < displayedTimeline.length - 1" class="timeline-line"></view>
+              <view class="timeline-content">
+                <view class="timeline-row">
+                  <text class="timeline-label">{{ node.label }}</text>
+                  <text class="timeline-time">{{ formatTime(node.time) }}</text>
+                </view>
+                <text v-if="node.description" class="timeline-desc">{{ node.description }}</text>
+                <text v-if="node.operator" class="timeline-operator">{{ node.operator }}</text>
+              </view>
+            </view>
+            <view v-if="timeline.length === 0" class="empty-block">
+              <text class="empty-block-text">暂无时间线</text>
+            </view>
+          </view>
         </view>
-      </view>
 
-      <view class="bottom-spacer" />
+        <!-- 底部留白 -->
+        <view class="bottom-spacer" />
+      </template>
     </scroll-view>
+
+    <!-- 底部操作栏 -->
+    <view v-if="showActions" class="action-bar" :style="{ paddingBottom: `${safeAreaBottom + 16}rpx` }">
+      <view class="action-btn feedback-btn" @click="goFeedback">反馈</view>
+      <view class="action-btn false-btn" @click="handleFalseAlarm">误报</view>
+      <view class="action-btn clear-btn" @click="handleClear">消警</view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref, computed, nextTick } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useSafeArea } from '@/composables/useSafeArea'
-import { alarmApi } from '@/utils/alarm'
-import { deviceApi } from '@/utils/device'
-import type { Alarm } from '@/utils/alarm'
-import type { DeviceInfo } from '@/utils/device'
+import EchartsComponent from '@/components/echarts.vue'
+import * as echartsLib from '@/components/echarts.esm.min.js'
+import {
+  alarmApi,
+  getAlarmLevelColor,
+  getAlarmLevelText,
+  getAlarmTypeText,
+  getStatusText,
+  getStatusType,
+  getChannelText,
+  getNotifyStatusText,
+  getNotifyStatusType,
+  getFeedbackActionText,
+  getFeedbackActionType,
+  buildTimeline,
+} from '@/utils/alarm'
+import type {
+  AlarmRecordItem,
+  AlarmRecordTriggerDetail,
+  AlarmRecordActionLog,
+  AlarmNotificationItem,
+  TimelineNode,
+} from '@/utils/alarm'
+import { monitorApi } from '@/utils/monitor'
+import type { ChartSeries } from '@/utils/monitor'
+import { hazardApi } from '@/utils/hazard'
+import type { HazardWithDevices } from '@/utils/hazard'
 
-const { statusBarHeight } = useSafeArea()
+const { statusBarHeight, safeAreaBottom } = useSafeArea()
 
-const alarm = ref<Partial<Alarm>>({
-  dispatchLogs: []
+const alarmId = ref<number>(0)
+const loading = ref(false)
+const loadError = ref('')
+const isRefreshing = ref(false)
+
+const alarmData = ref<AlarmRecordItem | null>(null)
+const triggerDetails = ref<AlarmRecordTriggerDetail[]>([])
+const actionLogs = ref<AlarmRecordActionLog[]>([])
+const notifyRecords = ref<AlarmNotificationItem[]>([])
+const hazardPointData = ref<HazardWithDevices | null>(null)
+
+const timeline = ref<TimelineNode[]>([])
+const showAllTimeline = ref(false)
+
+// 支撑数据 Tab
+type SupportTab = 'monitor' | 'trigger' | 'notify' | 'feedback'
+const supportTabs: { label: string; value: SupportTab }[] = [
+  { label: '监测数据', value: 'monitor' },
+  { label: '告警次数', value: 'trigger' },
+  { label: '通知记录', value: 'notify' },
+  { label: '反馈记录', value: 'feedback' },
+]
+const activeSupportTab = ref<SupportTab>('monitor')
+
+// 图表
+const chartSeries = ref<ChartSeries[]>([])
+const chartOption = ref<any>(null)
+const chartReady = ref(false)
+const chartVersion = ref(0)
+
+const feedbackLogs = computed(() =>
+  actionLogs.value.filter(x =>
+    ['FEEDBACK', 'DISPOSE_CLOSE', 'DISPOSE_FALSE_ALARM'].includes(x.actionType),
+  ),
+)
+
+const showActions = computed(() => {
+  const s = Number(alarmData.value?.status)
+  return s === 1 || s === 2
 })
-const relatedDevices = ref<DeviceInfo[]>([])
+
+const canNavigate = computed(() => {
+  const hp = hazardPointData.value
+  return !!(hp && hp.longitude != null && hp.latitude != null)
+})
+
+const displayedTimeline = computed(() =>
+  showAllTimeline.value ? timeline.value : timeline.value.slice(0, 5),
+)
+
+const toggleTimeline = () => {
+  showAllTimeline.value = !showAllTimeline.value
+}
 
 onLoad((options) => {
   if (options?.id) {
-    loadAlarmDetail(Number(options.id))
+    alarmId.value = Number(options.id)
+  } else {
+    loadError.value = '缺少告警 ID'
   }
 })
 
-const loadAlarmDetail = (id: number) => {
-  const detail = alarmApi.getById(id)
-  if (detail) {
-    alarm.value = detail
-    loadRelatedDevices(detail)
-  } else {
-    uni.showToast({ title: '告警不存在', icon: 'none' })
-    setTimeout(() => uni.navigateBack(), 1500)
+onShow(() => {
+  // 从 alarm-handle 返回时触发刷新
+  if (alarmId.value && !loading.value) {
+    loadAll()
+  }
+})
+
+const formatTime = (time: string) => {
+  if (!time) return '-'
+  const iosTime = time.replace(/-/g, '/').replace(' ', 'T').replace(/\.\d+Z$/, '')
+  const date = new Date(iosTime)
+  if (isNaN(date.getTime())) return time
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  const mm = pad(date.getMonth() + 1)
+  const dd = pad(date.getDate())
+  const hh = pad(date.getHours())
+  const mi = pad(date.getMinutes())
+  const ss = pad(date.getSeconds())
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+}
+
+const formatLocation = (hp: HazardWithDevices | null) => {
+  if (!hp) return '-'
+  if (hp.longitude != null && hp.latitude != null) {
+    return `${Number(hp.longitude).toFixed(6)}, ${Number(hp.latitude).toFixed(6)}`
+  }
+  return hp.location || '-'
+}
+
+const switchSupportTab = (tab: SupportTab) => {
+  activeSupportTab.value = tab
+  if (tab === 'monitor') {
+    nextTick(() => {
+      chartReady.value = false
+      nextTick(() => {
+        chartReady.value = true
+      })
+    })
   }
 }
 
-const loadRelatedDevices = (alarmData: Alarm) => {
-  if (alarmData.alarmType === '综合预警') {
-    // 综合预警：该隐患点下所有设备
-    relatedDevices.value = deviceApi.getByHazardId(alarmData.hazardId)
-  } else {
-    // 阈值预警：单设备
-    const device = deviceApi.getById(alarmData.deviceId)
-    relatedDevices.value = device ? [device] : []
+const loadAll = async () => {
+  if (!alarmId.value) {
+    loadError.value = '缺少告警 ID'
+    return
   }
-}
+  loading.value = true
+  loadError.value = ''
+  try {
+    const id = alarmId.value
+    const [detail, triggers, logs, notifies] = await Promise.all([
+      alarmApi.getAlarmRecordDetail(id),
+      alarmApi.getTriggerDetails(id),
+      alarmApi.getActionLogs(id),
+      alarmApi.getNotifications(id),
+    ])
 
-const getLevelColor = (level: number) => {
-  const map: Record<number, string> = { 4: '#f5222d', 3: '#fa541c', 2: '#faad14', 1: '#1890ff' }
-  return map[level] || '#1890ff'
-}
+    alarmData.value = detail as AlarmRecordItem
+    triggerDetails.value = triggers
+    actionLogs.value = logs
+    notifyRecords.value = notifies
 
-const getLevelText = (level: number) => {
-  const map: Record<number, string> = { 4: '红色', 3: '橙色', 2: '黄色', 1: '蓝色' }
-  return map[level] || '蓝色'
-}
+    // 构造时间线（含 CURRENT/ENDED 虚拟节点）
+    const isEnded = [3, 4].includes(Number(detail?.status))
+    const virtualLog: AlarmRecordActionLog = {
+      id: 0,
+      alarmRecordId: id,
+      actionType: isEnded ? 'ENDED' : 'CURRENT',
+      createTime: '',
+      description: '',
+      remarks: '',
+      operator: '',
+    } as AlarmRecordActionLog
+    timeline.value = buildTimeline([virtualLog, ...logs])
 
-const handleFeedback = () => {
-  uni.showModal({
-    title: '反馈',
-    editable: true,
-    placeholderText: '请输入反馈说明...',
-    success: async (res) => {
-      if (res.confirm) {
-        const remark = res.content || '已反馈'
-        alarmApi.handle(alarm.value.id!, remark)
-        uni.showToast({ title: '反馈成功', icon: 'success' })
-        alarm.value.handleTime = new Date().toISOString()
-        alarm.value.handleRemark = remark
+    // 加载隐患点详情
+    if (detail?.hazardPointId) {
+      try {
+        hazardPointData.value = await hazardApi.getById(Number(detail.hazardPointId)) || null
+      } catch {
+        hazardPointData.value = null
       }
     }
-  })
+
+    // 加载监测曲线
+    await loadChartData()
+    chartReady.value = true
+    chartVersion.value++
+  } catch (e: any) {
+    console.error('加载告警详情失败:', e)
+    loadError.value = e?.message || '加载失败，请重试'
+    alarmData.value = null
+  } finally {
+    loading.value = false
+    isRefreshing.value = false
+  }
+}
+
+// ─── 图表 ───
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const fmtDateTime = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+
+/** 加载监测曲线：首次告警时间前3天 ~ 当天24点 */
+const loadChartData = async () => {
+  const rec: AlarmRecordItem | null = alarmData.value
+  chartSeries.value = []
+  chartOption.value = null
+  if (!rec) return
+
+  const hpId = Number(rec.hazardPointId)
+  if (!hpId) return
+
+  const firstTime = new Date(String(rec.firstTriggerTime).replace(/-/g, '/'))
+  if (isNaN(firstTime.getTime())) return
+
+  const startTime = new Date(firstTime)
+  startTime.setDate(startTime.getDate() - 3)
+  const endTime = new Date()
+  endTime.setHours(23, 59, 59, 0)
+
+  const params: any = {
+    hazardPointId: hpId,
+    startTime: fmtDateTime(startTime),
+    endTime: fmtDateTime(endTime),
+  }
+  if (rec.deviceId) params.deviceId = Number(rec.deviceId)
+  if (rec.sensorId) params.sensorId = Number(rec.sensorId)
+
+  try {
+    const list = await monitorApi.getChart(params)
+    chartSeries.value = Array.isArray(list) ? list : []
+    chartOption.value = buildChartOption(chartSeries.value)
+  } catch (e) {
+    chartSeries.value = []
+    chartOption.value = null
+  }
+}
+
+/** 将触发明细时间匹配到图表 x 轴最近的数据点索引 */
+const findAlarmIndices = (labels: string[]): number[] => {
+  const indices: number[] = []
+  for (const td of triggerDetails.value) {
+    if (!td.triggerTime) continue
+    const triggerTs = new Date(String(td.triggerTime).replace(/-/g, '/')).getTime()
+    if (isNaN(triggerTs)) continue
+    let bestIdx = -1
+    let bestDiff = Infinity
+    labels.forEach((label, idx) => {
+      const labelTs = new Date(String(label).replace(/-/g, '/')).getTime()
+      if (isNaN(labelTs)) return
+      const diff = Math.abs(labelTs - triggerTs)
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = idx }
+    })
+    if (bestIdx >= 0 && !indices.includes(bestIdx)) indices.push(bestIdx)
+  }
+  return indices
+}
+
+const buildChartOption = (series: ChartSeries[]): any => {
+  if (!series || series.length === 0) return null
+  const main = series[0]
+  if (!main || !main.labels || main.labels.length === 0) return null
+
+  const alarmIndices = findAlarmIndices(main.labels)
+
+  return {
+    title: { text: main.seriesName || main.attrName || '监测数据', left: 'left', textStyle: { fontSize: 12, color: '#606266' } },
+    tooltip: { trigger: 'axis' },
+    grid: { left: '15%', right: '8%', bottom: '18%', top: '15%' },
+    xAxis: {
+      type: 'category', data: main.labels,
+      axisLabel: { rotate: 45, fontSize: 9, color: '#666' },
+      axisLine: { lineStyle: { color: '#ddd' } },
+    },
+    yAxis: {
+      type: 'value', name: main.unit || '',
+      nameTextStyle: { fontSize: 10 },
+      axisLabel: { fontSize: 10, color: '#666' },
+      axisLine: { lineStyle: { color: '#ddd' } },
+      splitLine: { lineStyle: { color: '#f0f0f0' } },
+    },
+    series: [{
+      name: main.seriesName || main.attrName,
+      type: 'line',
+      data: main.values,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: (_v: number, params: any) => alarmIndices.includes(params.dataIndex) ? 10 : 5,
+      itemStyle: { color: (params: any) => alarmIndices.includes(params.dataIndex) ? '#f56c6c' : '#409eff' },
+      lineStyle: { width: 2, color: '#409eff' },
+      areaStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(64,158,255,0.3)' },
+            { offset: 1, color: 'rgba(64,158,255,0.05)' },
+          ],
+        },
+      },
+      markPoint: {
+        data: alarmIndices.map((idx, i) => ({
+          name: `告警点${i + 1}`,
+          coord: [idx, main.values[idx]],
+          value: main.values[idx],
+          itemStyle: { color: '#f56c6c' },
+          symbol: 'pin', symbolSize: 30,
+          label: { show: true, formatter: '⚠', fontSize: 10 },
+        })),
+      },
+    }],
+  }
+}
+
+const initChart = (canvas: any, width: number, height: number) => {
+  if (!chartOption.value) return null
+  const chart = echartsLib.init(canvas, null, { width, height })
+  canvas.setChart(chart)
+  chart.setOption(chartOption.value)
+  return chart
+}
+
+// ─── 处置操作 ───
+
+const goFeedback = () => {
+  if (!alarmId.value) return
+  uni.navigateTo({ url: `/pages/alarm-handle?alarmId=${alarmId.value}` })
 }
 
 const handleFalseAlarm = () => {
   uni.showModal({
     title: '确认误报',
     content: '确定将此告警标记为误报吗？',
-    success: (res) => {
-      if (res.confirm) {
-        alarmApi.handle(alarm.value.id!, '误报')
-        uni.showToast({ title: '已标记误报', icon: 'success' })
-        alarm.value.status = 1
-        alarm.value.handleTime = new Date().toISOString()
-        alarm.value.handleRemark = '误报'
-        setTimeout(() => uni.navigateBack(), 1500)
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await alarmApi.disposeAlarm(alarmId.value, { status: 4 })
+        uni.showToast({ title: '已标记为误报', icon: 'success' })
+        await loadAll()
+      } catch (e: any) {
+        uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
       }
-    }
+    },
   })
 }
 
 const handleClear = () => {
   uni.showModal({
-    title: '消警',
-    editable: true,
-    placeholderText: '请输入消警说明...',
-    success: (res) => {
-      if (res.confirm) {
-        const remark = res.content || '已消警'
-        alarmApi.handle(alarm.value.id!, remark)
-        uni.showToast({ title: '已消警', icon: 'success' })
-        alarm.value.status = 1
-        alarm.value.handleTime = new Date().toISOString()
-        alarm.value.handleRemark = remark
-        setTimeout(() => uni.navigateBack(), 1500)
+    title: '确认消警',
+    content: '确定将此告警销警吗？',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await alarmApi.disposeAlarm(alarmId.value, { status: 3 })
+        uni.showToast({ title: '已销警', icon: 'success' })
+        await loadAll()
+      } catch (e: any) {
+        uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
       }
-    }
+    },
   })
 }
 
-const handleNotify = () => {
-  uni.showModal({
-    title: '通知',
-    editable: true,
-    placeholderText: '请输入通知内容...',
-    success: (res) => {
-      if (res.confirm) {
-        const content = res.content || '请关注告警信息'
-        uni.showToast({ title: '通知已发送', icon: 'success' })
-        alarm.value.dispatchLogs = [
-          { id: Date.now(), action: `手动通知: ${content}`, operator: '当前用户', time: new Date().toLocaleString() },
-          ...(alarm.value.dispatchLogs || [])
-        ]
-      }
-    }
+const openMap = () => {
+  const hp = hazardPointData.value
+  if (!hp || hp.longitude == null || hp.latitude == null) {
+    uni.showToast({ title: '暂无位置信息', icon: 'none' })
+    return
+  }
+  uni.openLocation({
+    latitude: Number(hp.latitude),
+    longitude: Number(hp.longitude),
+    name: hp.name || '',
+    address: hp.location || '',
+    scale: 16,
+    fail: (err) => {
+      console.error('openLocation failed', err)
+      uni.showToast({ title: '打开地图失败', icon: 'none' })
+    },
   })
-}
-
-const goToDeviceDetail = (id: number) => {
-  uni.navigateTo({ url: `/pages/device-detail?id=${id}` })
 }
 
 const goBack = () => {
@@ -324,6 +700,18 @@ const goBack = () => {
 .alarm-time-text {
   font-size: 26rpx;
   color: rgba(255, 255, 255, 0.85);
+  flex: 1;
+}
+
+.loading-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 80rpx 0;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #9ca3af;
 }
 
 .content-scroll {
@@ -356,8 +744,15 @@ const goBack = () => {
   align-items: center;
   padding: 12rpx 0;
   border-bottom: 1rpx solid #f5f5f5;
+  gap: 16rpx;
 
   &:last-child { border-bottom: none; }
+
+  &.column {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8rpx;
+  }
 }
 
 .info-label {
@@ -372,31 +767,62 @@ const goBack = () => {
   font-weight: 500;
   text-align: right;
 
-  &.content-text {
-    max-width: 420rpx;
-    line-height: 1.5;
+  &.time-range {
+    font-size: 24rpx;
   }
 
-  &.alarm-value {
-    color: #f5222d;
-    font-weight: 600;
+  &.content-text {
+    max-width: 100%;
+    line-height: 1.5;
+    text-align: left;
+    word-break: break-all;
   }
 }
 
-.type-tag {
+.level-badge {
   padding: 6rpx 16rpx;
   border-radius: 8rpx;
   font-size: 22rpx;
+  color: #ffffff;
+}
 
-  &.threshold {
-    background: rgba(48, 104, 228, 0.1);
-    color: #3068e4;
-  }
+.source-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
 
-  &.comprehensive {
-    background: rgba(250, 173, 20, 0.1);
-    color: #faad14;
-  }
+.source-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.source-name {
+  font-size: 26rpx;
+  color: #1a1a2e;
+  font-weight: 500;
+}
+
+.source-device {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+.nav-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: rgba(48, 104, 228, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  flex-shrink: 0;
 }
 
 .status-badge {
@@ -404,18 +830,239 @@ const goBack = () => {
   border-radius: 8rpx;
   font-size: 22rpx;
 
-  &.handled {
-    background: rgba(82, 196, 26, 0.1);
-    color: #52c41a;
-  }
+  &.status-danger { background: rgba(245, 63, 63, 0.1); color: #f53f3f; }
+  &.status-warning { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
+  &.status-success { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+  &.status-info { background: rgba(144, 147, 153, 0.1); color: #909399; }
+}
 
-  &.pending {
-    background: rgba(250, 173, 20, 0.1);
-    color: #faad14;
+/* 支撑数据 Tab */
+.support-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 0;
+  box-shadow: 0 8rpx 32rpx rgba(102, 126, 234, 0.12);
+  overflow: hidden;
+}
+
+.sub-tabs {
+  display: flex;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.sub-tab {
+  flex: 1;
+  padding: 20rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: #6b7280;
+  position: relative;
+
+  &.active {
+    color: #3068e4;
+    font-weight: 600;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40rpx;
+      height: 4rpx;
+      background: #3068e4;
+      border-radius: 2rpx;
+    }
   }
 }
 
+.sub-content {
+  padding: 24rpx;
+  min-height: 240rpx;
+}
+
+.empty-block {
+  padding: 60rpx 0;
+  text-align: center;
+}
+
+.empty-block-text {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+/* 触发明细 */
+.trigger-item {
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+
+  &:last-child { border-bottom: none; }
+}
+
+.trigger-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  margin-top: 10rpx;
+  flex-shrink: 0;
+}
+
+.trigger-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.trigger-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.trigger-level {
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.trigger-time {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.trigger-message {
+  font-size: 24rpx;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+/* 通知记录 */
+.notify-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+
+  &:last-child { border-bottom: none; }
+}
+
+.notify-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.notify-channel {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+
+  &.channel-system { background: rgba(48, 104, 228, 0.1); color: #3068e4; }
+  &.channel-sms { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+  &.channel-email { background: rgba(250, 140, 22, 0.1); color: #fa8c16; }
+}
+
+.notify-status {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+
+  &.notify-status-info { background: rgba(144, 147, 153, 0.1); color: #909399; }
+  &.notify-status-success { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+  &.notify-status-danger { background: rgba(245, 63, 63, 0.1); color: #f53f3f; }
+  &.notify-status-warning { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
+}
+
+.notify-recipient,
+.notify-content-row {
+  display: flex;
+  gap: 8rpx;
+  margin-bottom: 4rpx;
+}
+
+.notify-label,
+.feedback-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.notify-value,
+.feedback-value {
+  font-size: 22rpx;
+  color: #1a1a2e;
+}
+
+.notify-content {
+  font-size: 22rpx;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.notify-time {
+  font-size: 20rpx;
+  color: #9ca3af;
+  display: block;
+  margin-top: 4rpx;
+}
+
+/* 反馈记录 */
+.feedback-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+
+  &:last-child { border-bottom: none; }
+}
+
+.feedback-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.feedback-action {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+
+  &.feedback-action-primary { background: rgba(48, 104, 228, 0.1); color: #3068e4; }
+  &.feedback-action-success { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+  &.feedback-action-warning { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
+  &.feedback-action-info { background: rgba(144, 147, 153, 0.1); color: #909399; }
+}
+
+.feedback-time {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.feedback-operator {
+  margin-bottom: 4rpx;
+}
+
+.feedback-content {
+  font-size: 24rpx;
+  color: #4b5563;
+  line-height: 1.5;
+  display: block;
+}
+
 /* 时间线 */
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.timeline-toggle {
+  font-size: 24rpx;
+  color: #3068e4;
+}
+
 .timeline-card {
   background: #ffffff;
   border-radius: 24rpx;
@@ -440,7 +1087,11 @@ const goBack = () => {
   border-radius: 50%;
   background: #d9d9d9;
 
-  &.active { background: #3068e4; }
+  &.type-current { background: #f53f3f; box-shadow: 0 0 0 6rpx rgba(245, 63, 63, 0.15); }
+  &.type-ended { background: #909399; }
+  &.type-trigger { background: #3068e4; }
+  &.type-notify { background: #fa8c16; }
+  &.type-dispose { background: #52c41a; }
 }
 
 .timeline-line {
@@ -458,20 +1109,17 @@ const goBack = () => {
   gap: 4rpx;
 }
 
-.timeline-action {
+.timeline-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.timeline-label {
   font-size: 26rpx;
   color: #1a1a2e;
   font-weight: 500;
-}
-
-.timeline-meta {
-  display: flex;
-  gap: 16rpx;
-}
-
-.timeline-operator {
-  font-size: 22rpx;
-  color: #9ca3af;
 }
 
 .timeline-time {
@@ -479,79 +1127,25 @@ const goBack = () => {
   color: #9ca3af;
 }
 
-.empty-logs {
-  padding: 40rpx 0;
-  text-align: center;
+.timeline-desc {
+  font-size: 24rpx;
+  color: #4b5563;
+  line-height: 1.5;
 }
 
-.empty-text {
-  font-size: 24rpx;
+.timeline-operator {
+  font-size: 22rpx;
   color: #9ca3af;
 }
 
-/* 关联设备 */
-.device-list {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 8rpx 24rpx;
-  box-shadow: 0 8rpx 32rpx rgba(102, 126, 234, 0.12);
-}
-
-.device-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #f5f5f5;
-
-  &:last-child { border-bottom: none; }
-}
-
-.device-info {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.device-name {
-  font-size: 28rpx;
-  color: #1a1a2e;
-  font-weight: 500;
-}
-
-.device-type {
-  font-size: 22rpx;
-  color: #6b7280;
-  background: #f5f5f5;
-  padding: 4rpx 12rpx;
-  border-radius: 6rpx;
-}
-
-.device-status {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.status-dot {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 50%;
-
-  &.online { background: #52c41a; }
-  &.offline { background: #d9d9d9; }
-  &.fault { background: #f5222d; }
-}
-
-.status-text {
-  font-size: 24rpx;
-  color: #6b7280;
-}
-
-/* 操作按钮 */
-.action-row {
+/* 底部操作栏 */
+.action-bar {
   display: flex;
   gap: 16rpx;
+  padding: 16rpx 32rpx;
+  background: #ffffff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
 }
 
 .action-btn {
@@ -581,11 +1175,7 @@ const goBack = () => {
   background: linear-gradient(135deg, #f5222d 0%, #cf1322 100%);
 }
 
-.notify-btn {
-  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
-}
-
 .bottom-spacer {
-  height: 32rpx;
+  height: 60rpx;
 }
 </style>

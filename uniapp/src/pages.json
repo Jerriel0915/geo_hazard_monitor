@@ -50,6 +50,13 @@
       }
     },
     {
+      "path": "pages/alarm-handle",
+      "style": {
+        "navigationBarTitleText": "处置反馈",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/hazard-detail",
       "style": {
         "navigationBarTitleText": "隐患点详情",
