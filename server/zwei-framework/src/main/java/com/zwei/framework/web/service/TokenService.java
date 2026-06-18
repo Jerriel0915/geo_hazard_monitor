@@ -248,6 +248,11 @@ public class TokenService
         {
             token = token.replace(Constants.TOKEN_PREFIX, "");
         }
+        // EventSource SSE 连接无法携带自定义请求头，前端通过 ?token=xxx 查询参数传递
+        if (StringUtils.isEmpty(token))
+        {
+            token = request.getParameter("token");
+        }
         return token;
     }
 
