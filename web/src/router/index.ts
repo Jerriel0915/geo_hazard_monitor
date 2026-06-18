@@ -83,7 +83,8 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   if (to.path !== '/login') {
     if (!localStorage.getItem('token')) {
-      next('/login')
+      // 记录原始目标路径，登录后由 Login.vue 跳回（支持 H5 流程：未登录访问 /h5/disposal/:id → 登录后自动返回）
+      next({ path: '/login', query: { redirect: to.fullPath } })
     } else {
       next()
     }

@@ -67,32 +67,42 @@
           <div class="event-body">
             <!-- 数据区域 - 页签 -->
             <div class="data-section">
-              <!-- 基本资料行 -->
-              <div class="basic-info">
-                <div class="info-row">
-                  <div class="info-item">
-                    <span class="info-label">初次告警</span>
-                    <span class="info-value">{{ data.firstTriggerTime || '-' }}</span>
+              <!-- 基本资料 + 告警描述 + H5 二维码 (合并容器) -->
+              <div class="info-summary">
+                <div class="info-summary-main">
+                  <div class="info-row">
+                    <div class="info-item">
+                      <span class="info-label">初次告警</span>
+                      <span class="info-value">{{ data.firstTriggerTime || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">最后告警</span>
+                      <span class="info-value">{{ data.lastTriggerTime || '-' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">告警类型</span>
+                      <span class="info-value">{{ getAlarmTypeText(data.alarmType) }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">告警次数</span>
+                      <span class="info-value count-link" @click="switchToAlarmTab">{{ data.triggerCount || 0 }}</span>
+                    </div>
                   </div>
-                  <div class="info-item">
-                    <span class="info-label">最后告警</span>
-                    <span class="info-value">{{ data.lastTriggerTime || '-' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">告警类型</span>
-                    <span class="info-value">{{ getAlarmTypeText(data.alarmType) }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">告警次数</span>
-                    <span class="info-value count-link" @click="switchToAlarmTab">{{ data.triggerCount || 0 }}</span>
+                  <div class="desc-row">
+                    <span class="detail-label">告警描述</span>
+                    <p>{{ data.alarmMessage || '-' }}</p>
                   </div>
                 </div>
-              </div>
-
-              <!-- 告警描述 -->
-              <div class="detail-desc">
-                <span class="detail-label">告警描述</span>
-                <p>{{ data.alarmMessage || '-' }}</p>
+                <div class="info-summary-side">
+                  <div class="qr-card">
+                    <div class="qr-title">H5 现场处置</div>
+                    <img v-if="h5QrcodeDataUrl" :src="h5QrcodeDataUrl" alt="H5 告警处置二维码" class="qr-img" />
+                    <div v-else class="qr-placeholder">生成中…</div>
+                    <el-button size="small" type="primary" plain @click="handleCopyH5Url">
+                      <el-icon><CopyDocument /></el-icon>&nbsp;复制链接
+                    </el-button>
+                  </div>
+                </div>
               </div>
 
               <div class="data-tabs">
@@ -234,10 +244,11 @@ import FeedBack from '@/components/FeedBack.vue'
 import Notify from '@/components/Notify.vue'
 import echarts from '@/utils/echarts'
 import request from '@/utils/request'
+import QRCode from 'qrcode'
 import { getChartData, type ChartData } from '@/api/monitorData'
 import {
   Bell, ChatDotRound, CircleClose, Clock, Close,
-  MapLocation, Monitor, Warning, WarnTriangleFilled,
+  CopyDocument, MapLocation, Monitor, Warning, WarnTriangleFilled,
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -291,6 +302,12 @@ const triggerDetails = ref<AlarmRecordTriggerDetail[]>([])
 const disposalRecords = ref<AlarmRecordActionLog[]>([])
 const notifyRecords = ref<AlarmNotificationItem[]>([])
 const chartSeriesData = ref<ChartData[]>([])
+
+// H5 处置二维码（弹窗打开时按当前 data.id 生成 base64）
+const h5QrcodeDataUrl = ref('')
+const h5Url = computed(() => props.data?.id
+  ? `${window.location.origin}/h5/disposal/${props.data.id}`
+  : '')
 
 interface TimelineNode { time: string; label: string; description: string; operator: string; type: string }
 const timelineData = ref<TimelineNode[]>([])
@@ -407,6 +424,7 @@ watch(() => props.modelValue, async (val) => {
   if (!val) {
     dialogOpened.value = false
     dataReady.value = false
+    h5QrcodeDataUrl.value = ''
     return
   }
   if (!props.data?.id) return
@@ -414,6 +432,11 @@ watch(() => props.modelValue, async (val) => {
   alarmRecordSearch.value = { description: '', timeRange: [] }
   notifyRecordSearch.value = { account: '', timeRange: [] }
   const id = Number(props.data.id)
+
+  // 并发生成 H5 二维码（不阻塞主流程）
+  QRCode.toDataURL(h5Url.value, { width: 140, margin: 1 })
+    .then(url => { h5QrcodeDataUrl.value = url })
+    .catch(() => { h5QrcodeDataUrl.value = '' })
 
   try {
     const [d, t, l, n] = await Promise.all([
@@ -456,6 +479,30 @@ watch(() => props.modelValue, async (val) => {
     dataReady.value = false
   }
 })
+
+/** 复制 H5 链接到剪贴板 */
+const handleCopyH5Url = async () => {
+  if (!h5Url.value) return
+  try {
+    await navigator.clipboard.writeText(h5Url.value)
+    ElMessage.success('H5 链接已复制')
+  } catch {
+    // 降级：使用临时 textarea 兼容旧浏览器/非 HTTPS 环境
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = h5Url.value
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      ElMessage.success('H5 链接已复制')
+    } catch {
+      ElMessage.error('复制失败，请手动复制')
+    }
+  }
+}
 
 // 由动作日志构造时间线（按时间倒序；CURRENT/ENDED 当前状态节点始终置顶）
 function buildTimeline(logs: AlarmRecordActionLog[]): TimelineNode[] {
@@ -796,8 +843,24 @@ const handleClose = () => { emit('update:modelValue', false) }
   display: flex; flex-direction: column;
 }
 
-/* 基本资料行 */
-.basic-info { margin-bottom: 8px; }
+/* 合并容器：左侧基本资料 + 告警描述，右侧 H5 二维码 */
+.info-summary {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  align-items: stretch;
+}
+.info-summary-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.info-summary-side {
+  flex-shrink: 0;
+  width: 150px;
+}
 .info-row { display: flex; gap: 10px; }
 .info-item {
   flex: 1;
@@ -808,13 +871,49 @@ const handleClose = () => { emit('update:modelValue', false) }
 .count-link { color: #409eff; cursor: pointer; text-decoration: underline; }
 .count-link:hover { color: #66b1ff; }
 
-/* 告警描述 */
-.detail-desc {
+/* 告警描述（在合并容器主体内） */
+.desc-row {
+  flex: 1;
   background: #f8f9fa; border-radius: 6px; padding: 6px 10px;
-  margin-bottom: 8px;
 }
-.detail-desc .detail-label { display: block; margin-bottom: 2px; font-size: var(--el-font-size-extra-small); color: #909399; }
-.detail-desc p { font-size: var(--el-font-size-base); color: #606266; line-height: 1.5; margin: 0; }
+.desc-row .detail-label { display: block; margin-bottom: 2px; font-size: var(--el-font-size-extra-small); color: #909399; }
+.desc-row p { font-size: var(--el-font-size-base); color: #606266; line-height: 1.5; margin: 0; }
+
+/* H5 二维码卡片 */
+.qr-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  box-sizing: border-box;
+}
+.qr-title {
+  font-size: var(--el-font-size-small);
+  color: #606266;
+  font-weight: 600;
+}
+.qr-img {
+  width: 130px;
+  height: 130px;
+  display: block;
+}
+.qr-placeholder {
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: var(--el-font-size-small);
+  background: #fff;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+}
 
 .data-tabs {
   display: flex; gap: 16px; margin-bottom: 8px;

@@ -44,7 +44,9 @@ export interface AlarmRecordItem {
     hazardPointId: number
     hazardPointName: string
     deviceId?: number
+    deviceName?: string
     sensorId?: number
+    sensorName?: string
     monitorContentId?: number
     alarmLevel: number
     alarmLevelText: string
@@ -54,6 +56,10 @@ export interface AlarmRecordItem {
     strategyId?: number
     currentValue?: number
     thresholdValue?: number
+    /** 历史告警中曾出现的最低等级（用于"X-Y级"区间展示） */
+    minAlarmLevel?: number
+    /** 历史告警中曾出现的最高等级 */
+    maxAlarmLevel?: number
     firstTriggerTime: string
     lastTriggerTime: string
     triggerCount: number
