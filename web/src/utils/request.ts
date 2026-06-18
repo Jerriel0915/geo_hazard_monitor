@@ -42,6 +42,9 @@ const request = {
   put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     return rawRequest.put(url, data, config).then((response: AxiosResponse<T>) => response.data)
   },
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return rawRequest.patch(url, data, { ...config, headers: { 'Content-Type': 'application/json', ...config?.headers } }).then((response: AxiosResponse<T>) => response.data)
+  },
   delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return rawRequest.delete(url, config).then((response: AxiosResponse<T>) => response.data)
   },

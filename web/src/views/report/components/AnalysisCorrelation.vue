@@ -164,7 +164,7 @@ const dialogDevices = ref<DeviceOption[]>([])
 
 const filteredDevices = computed(() => {
   return dialogDevices.value.filter(
-      (d) => !addSensorForm.hazardPointId || d.hazardPointId === addSensorForm.hazardPointId
+      (d) => !addSensorForm.hazardPointId || d.boundHazardPointId === addSensorForm.hazardPointId
   )
 })
 
@@ -206,13 +206,13 @@ const confirmAddSensor = () => {
   const attr = dt?.attrs.find((a) => a.code === addSensorForm.attrCode)
   if (!device || !attr) return
 
-  const hp = hazardPointOptions.value.find((h) => h.id === device.hazardPointId)
+  const hp = hazardPointOptions.value.find((h) => h.id === device.boundHazardPointId)
   const id = `${device.id}_${addSensorForm.attrCode}_${Date.now()}`
   const colorIndex = selectedSensors.value.length % COLORS.length
 
   selectedSensors.value.push({
     id,
-    hazardPointId: device.hazardPointId || 0,
+    hazardPointId: device.boundHazardPointId || 0,
     hazardPointName: hp?.name || '',
     deviceId: device.id,
     deviceName: device.name,

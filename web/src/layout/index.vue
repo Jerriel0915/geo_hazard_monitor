@@ -568,7 +568,8 @@ const menuList = [
     children: [
       { name: 'Report', label: '报告管理' },
       { name: 'Query', label: '查询中心' },
-      { name: 'Analysis', label: '数据分析' }
+      { name: 'Analysis', label: '数据分析' },
+      { name: 'ShareStrategy', label: '共享策略' }
     ]
   },
   {
@@ -629,6 +630,7 @@ const menuRouteMap: Record<string, string> = {
   Report: '/report/report',
   Query: '/report/query',
   Analysis: '/report/analysis',
+  ShareStrategy: '/report/share-strategy',
   Screen: '/report/screen',
   AlarmEngine: '/iot/alarm-engine',
   DataParse: '/iot/data-parse',
@@ -659,6 +661,7 @@ const menuLabelMap: Record<string, string> = {
   Report: '报告管理',
   Query: '查询中心',
   Analysis: '数据分析',
+  ShareStrategy: '共享策略',
   Screen: '运营大屏',
   AlarmEngine: '告警引擎',
   DataParse: '数据解析',
