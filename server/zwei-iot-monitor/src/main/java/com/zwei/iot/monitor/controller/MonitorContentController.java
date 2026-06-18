@@ -92,10 +92,16 @@ public class MonitorContentController extends BaseController {
         if (monitorTypeService.selectMonitorTypeById(request.getMonitorTypeId()) == null) {
             return AjaxResult.error(HttpStatus.NOT_FOUND, "监测类型不存在");
         }
+        // fieldType 默认 inherent;computed 时 calcScript 必填
+        String fieldType = request.getFieldType() == null ? "inherent" : request.getFieldType();
+        if ("computed".equals(fieldType)
+                && (request.getCalcScript() == null || request.getCalcScript().isBlank())) {
+            return AjaxResult.error(HttpStatus.BAD_REQUEST, "计算属性必须填写计算脚本");
+        }
         if (!isValidRange(request.getRangeMin(), request.getRangeMax())) {
             return AjaxResult.error(HttpStatus.BAD_REQUEST, "量程范围不合法，最大值不能小于最小值");
         }
-        MonitorContent monitorContent = buildMonitorContentForCreate(request);
+        MonitorContent monitorContent = buildMonitorContentForCreate(request, fieldType);
         // 校验编码唯一性
         if (!monitorContentService.checkMonitorContentCodeUnique(monitorContent)) {
             return error("新增监测内容'" + monitorContent.getName() + "'失败，监测内容编码已存在");
@@ -157,7 +163,7 @@ public class MonitorContentController extends BaseController {
         return rows > 0 ? AjaxResult.success("删除成功") : error("删除失败");
     }
 
-    private MonitorContent buildMonitorContentForCreate(MonitorContentCreateRequest request) {
+    private MonitorContent buildMonitorContentForCreate(MonitorContentCreateRequest request, String fieldType) {
         MonitorContent monitorContent = new MonitorContent();
         monitorContent.setMonitorTypeId(request.getMonitorTypeId());
         monitorContent.setCode(request.getCode());
@@ -168,6 +174,8 @@ public class MonitorContentController extends BaseController {
         monitorContent.setIcon(request.getIcon());
         monitorContent.setRangeMin(request.getRangeMin());
         monitorContent.setRangeMax(request.getRangeMax());
+        monitorContent.setFieldType(fieldType);
+        monitorContent.setCalcScript(request.getCalcScript());
         return monitorContent;
     }
 
@@ -182,6 +190,7 @@ public class MonitorContentController extends BaseController {
         monitorContent.setIcon(request.getIcon());
         monitorContent.setRangeMin(request.getRangeMin());
         monitorContent.setRangeMax(request.getRangeMax());
+        monitorContent.setCalcScript(request.getCalcScript());
         return monitorContent;
     }
 

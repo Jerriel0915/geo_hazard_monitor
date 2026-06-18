@@ -100,6 +100,7 @@ web/
 | `alarm.ts`          | 告警   |
 | `realtimeAlarm.ts`  | 实时告警 |
 | `compositeAlarm.ts` | 综合告警 |
+| `alarmNotification.ts` | 告警通知中心 (事件 Tab) |
 | `report.ts`         | 报表   |
 | `notice.ts`         | 通知公告 |
 | `system.ts`         | 系统管理 |
@@ -175,8 +176,44 @@ A: 检查: 1) `EventSource` URL; 2) 后端是否启用 SSE (`@RestController` + 
 - `src/utils/*.ts` (6 个)
 - `src/views/**/*.vue` (~60 个页面/组件)
 
+## 通知中心 (2026-06 新增)
+
+### 入口与布局
+
+- 顶部铃铛 → 下拉面板双 Tab：「事件」(默认) / 「公告」
+- 角标 = 事件未读 + 公告未读 (computed)
+- SSE 双流：`/api/v1/alarm/stream` (告警事件，按 userId 路由) + `/api/v1/system/notice/stream` (公告)
+
+### 关键文件
+
+| 文件 | 职责 |
+|---|---|
+| `src/api/alarmNotification.ts` | 通知中心 API 封装 (4 接口 + Item/Summary 类型) |
+| `src/layout/index.vue` | 铃铛 + 双 Tab + SSE 订阅 + 跳转逻辑 |
+| `src/views/system/Settings.vue` | 「通知配置」分类 (11 个 sys_config 参数) |
+| `src/views/alarm/RealtimeAlarm.vue` | 支持 `?alarmId=` query 自动打开详情 |
+| `src/views/basic/Device.vue` | 支持 `?deviceId=` query 自动打开详情 |
+
+### 跳转协议
+
+| 通知 sourceType | 跳转 |
+|---|---|
+| `alarm` | `/alarm/realtime?alarmId={sourceId}` |
+| `offline` | `/basic/device?deviceId={sourceId}` |
+
+### 通道参数 (sys_config)
+
+「系统设置 > 通知配置」分类下 11 个参数：
+`notify.sms.{access-key-id, access-key-secret, sign-name, template.alarm, template.offline}` +
+`notify.mail.{host, port, username, password, from, ssl}`
+
+读取 `GET /system/config/configKey/{key}`，保存 `PUT /system/config/configKey/{key}` body `{configValue}`。
+
+详见 `docs/通知中心使用手册.md`。
+
 ## 变更记录 (Changelog)
 
 | 时间               | 变更                          |
 |------------------|-----------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描) |
+| 2026-06-18 01:45 | 通知中心 v1: alarmNotification API + layout 双 Tab + Settings 通知配置分类 + 路由 query 兼容 |

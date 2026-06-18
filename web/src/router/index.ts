@@ -32,6 +32,7 @@ const routes: RouteRecordRaw[] = [
       { path: '/alarm/notification', name: 'AlarmNotification', component: () => import('@/views/alarm/AlarmNotification.vue') },
       { path: '/alarm/disposal', name: 'AlarmDisposal', component: () => import('@/views/alarm/CompositeAlarm.vue') },
       { path: '/alarm/composite', name: 'CompositeAlarm', component: () => import('@/views/alarm/CompositeAlarm.vue') },
+      { path: '/alarm/algo-library', name: 'AlgoLibrary', component: () => import('@/views/alarm/AlgoLibrary.vue') },
         {
             path: '/alarm/notification-setting',
             name: 'NotificationSetting',
@@ -83,7 +84,8 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   if (to.path !== '/login') {
     if (!localStorage.getItem('token')) {
-      next('/login')
+      // 记录原始目标路径，登录后由 Login.vue 跳回（支持 H5 流程：未登录访问 /h5/disposal/:id → 登录后自动返回）
+      next({ path: '/login', query: { redirect: to.fullPath } })
     } else {
       next()
     }

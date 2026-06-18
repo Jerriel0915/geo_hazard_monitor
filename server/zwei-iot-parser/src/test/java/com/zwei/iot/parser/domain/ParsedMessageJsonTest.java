@@ -37,10 +37,12 @@ class ParsedMessageJsonTest {
         assertThat(restored.payloadHash()).isEqualTo("abc123def456");
         assertThat(restored.properties()).hasSize(2);
         assertThat(restored.properties().get(0).identifier()).isEqualTo("rainfall");
-        assertThat(restored.properties().get(0).value()).isEqualTo(25.5);
+        assertThat(restored.properties().get(0).value()).isInstanceOf(Number.class);
+        assertThat(((Number) restored.properties().get(0).value()).doubleValue()).isEqualTo(25.5);
         assertThat(restored.properties().get(0).unit()).isEqualTo("mm");
         assertThat(restored.properties().get(1).identifier()).isEqualTo("temperature");
-        assertThat(restored.properties().get(1).value()).isEqualTo(18.2);
+        assertThat(restored.properties().get(1).value()).isInstanceOf(Number.class);
+        assertThat(((Number) restored.properties().get(1).value()).doubleValue()).isEqualTo(18.2);
     }
 
     @Test

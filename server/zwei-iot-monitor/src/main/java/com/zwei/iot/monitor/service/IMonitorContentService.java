@@ -100,4 +100,13 @@ public interface IMonitorContentService {
      * @return true-唯一，false-已存在
      */
     boolean checkMonitorContentCodeUnique(MonitorContent monitorContent);
+
+    /**
+     * 查询指定监测类型下的所有计算属性(按 sort_order 排序)。
+     * 供 ComputedAttributeRegistry 使用。
+     *
+     * @param monitorTypeId 监测类型ID
+     * @return 计算属性列表, 空列表表示无计算属性
+     */
+    List<MonitorContent> selectComputedByTypeId(Long monitorTypeId);
 }

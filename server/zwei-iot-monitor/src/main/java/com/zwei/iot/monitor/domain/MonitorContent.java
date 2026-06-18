@@ -80,6 +80,16 @@ public class MonitorContent extends BaseEntity {
      */
     private BigDecimal rangeMax;
 
+    /**
+     * 字段类型: inherent-固有属性, computed-计算属性
+     */
+    private String fieldType;
+
+    /**
+     * 计算属性脚本(Groovy 代码块, 仅 field_type=computed 时必填)
+     */
+    private String calcScript;
+
     @Override
     public String toString() {
         return "MonitorContent{" +
@@ -93,6 +103,8 @@ public class MonitorContent extends BaseEntity {
                 ", icon='" + icon + '\'' +
                 ", rangeMin=" + rangeMin +
                 ", rangeMax=" + rangeMax +
+                ", fieldType='" + fieldType + '\'' +
+                ", calcScript='" + (calcScript == null ? "null" : "[" + calcScript.length() + " chars]") + '\'' +
                 '}';
     }
 }

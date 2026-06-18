@@ -20,7 +20,7 @@ import java.io.Serializable;
  *   <li>{@code attrName} — 指标中文名称</li>
  *   <li>{@code unit} — 数据单位</li>
  *   <li>{@code dataTime} — 数据发生时间，毫秒时间戳</li>
- *   <li>{@code value} — 指标数值</li>
+ *   <li>{@code value} — 指标值（Double / String / Boolean / null）</li>
  *   <li>{@code quality} — 质量码，0=正常，非0=异常</li>
  *   <li>{@code reportTime} — 设备上报时间，毫秒时间戳</li>
  *   <li>{@code receiveTime} — 服务端接收时间，毫秒时间戳</li>
@@ -38,7 +38,7 @@ public record StandardMeasurementPoint(
         String attrName,
         String unit,
         long dataTime,
-        Double value,
+        Object value,
         Integer quality,
         long reportTime,
         long receiveTime,

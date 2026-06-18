@@ -24,6 +24,36 @@ public class AlarmNotification implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    // ===== 状态码常量 =====
+    /** 待发送 */
+    public static final int STATUS_PENDING                = 1;
+    /** 已发送 */
+    public static final int STATUS_SENT                   = 2;
+    /** 发送失败 */
+    public static final int STATUS_FAILED                 = 3;
+    /** 接收人无效（电话/邮箱缺失或格式错误） */
+    public static final int STATUS_INVALID_RECIPIENT      = 4;
+    /** 渠道未配置 */
+    public static final int STATUS_CHANNEL_NOT_CONFIGURED = 5;
+
+    /**
+     * 根据错误码推导 status
+     *
+     * @param errorCode 错误码 (如 RECIPIENT_PHONE_MISSING / CHANNEL_NOT_CONFIGURED)
+     * @return 状态码常量
+     */
+    public static int statusFromErrorCode(String errorCode) {
+        if (errorCode == null) {
+            return STATUS_FAILED;
+        }
+        return switch (errorCode) {
+            case "RECIPIENT_PHONE_MISSING", "RECIPIENT_PHONE_INVALID",
+                 "RECIPIENT_EMAIL_MISSING", "RECIPIENT_EMAIL_INVALID" -> STATUS_INVALID_RECIPIENT;
+            case "CHANNEL_NOT_CONFIGURED"                            -> STATUS_CHANNEL_NOT_CONFIGURED;
+            default                                                  -> STATUS_FAILED;
+        };
+    }
+
     /**
      * 主键ID
      */
@@ -61,7 +91,7 @@ public class AlarmNotification implements Serializable {
      */
     private String content;
     /**
-     * 状态: 1=待发送 2=已发送 3=发送失败
+     * 状态: 1=待发送 2=已发送 3=发送失败 4=接收人无效 5=渠道未配置
      */
     private Integer status;
     /**
@@ -72,6 +102,18 @@ public class AlarmNotification implements Serializable {
      * 错误信息
      */
     private String errorMsg;
+    /**
+     * 已读时间
+     */
+    private Date readTime;
+    /**
+     * 来源类型: alarm / offline
+     */
+    private String sourceType;
+    /**
+     * 来源 ID（alarm_record.id 或 device.id）
+     */
+    private Long sourceId;
     /**
      * 创建时间
      */

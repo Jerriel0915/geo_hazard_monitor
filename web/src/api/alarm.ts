@@ -3,8 +3,33 @@ import type {PageResult} from './system'
 
 // ==================== 类型定义 ====================
 
-/** 告警等级: 1=蓝色 2=黄色 3=橙色 4=红色 */
+/** 告警等级: 1=红色 2=橙色 3=黄色 4=蓝色 (1=最严重) */
 export type AlarmLevel = 1 | 2 | 3 | 4
+
+/**
+ * 告警等级颜色配置 — 严格遵循 一级红/二级橙/三级黄/四级蓝
+ * 不使用 UI 主题色，每个等级独立颜色
+ *  - solid: 主色（tag 背景）
+ *  - light: 浅色（icon 背景）
+ *  - dark: 深色（icon 字色）
+ *  - fg: tag 文字色（黄底用深字保证对比度）
+ */
+export const ALARM_LEVEL_COLORS: Record<number, { solid: string; light: string; dark: string; fg: string }> = {
+    1: { solid: '#F53F3F', light: '#fee2e2', dark: '#dc3545', fg: '#ffffff' }, // 红
+    2: { solid: '#FF7D00', light: '#fff3e0', dark: '#e67e22', fg: '#ffffff' }, // 橙
+    3: { solid: '#FACC22', light: '#fff9e6', dark: '#b08200', fg: '#1d2129' }, // 黄 (深字保对比度)
+    4: { solid: '#1890FF', light: '#e6f4ff', dark: '#0958d9', fg: '#ffffff' }, // 蓝
+}
+
+/** 告警等级 tag 的 inline style (背景 + 边框 + 文字色) */
+export const getAlarmLevelStyle = (level: number | string | undefined): Record<string, string> => {
+    const c = ALARM_LEVEL_COLORS[Number(level)] || { solid: '#909399', fg: '#ffffff' }
+    return {
+        backgroundColor: c.solid,
+        borderColor: c.solid,
+        color: c.fg,
+    }
+}
 /** 告警类型: THRESHOLD=阈值 COMPREHENSIVE=综合 */
 export type AlarmType = 'THRESHOLD' | 'COMPREHENSIVE'
 /** 警情状态: 1=待处理 2=处理中 3=已销警 4=误报 */
@@ -19,7 +44,9 @@ export interface AlarmRecordItem {
     hazardPointId: number
     hazardPointName: string
     deviceId?: number
+    deviceName?: string
     sensorId?: number
+    sensorName?: string
     monitorContentId?: number
     alarmLevel: number
     alarmLevelText: string
@@ -29,6 +56,10 @@ export interface AlarmRecordItem {
     strategyId?: number
     currentValue?: number
     thresholdValue?: number
+    /** 历史告警中曾出现的最低等级（用于"X-Y级"区间展示） */
+    minAlarmLevel?: number
+    /** 历史告警中曾出现的最高等级 */
+    maxAlarmLevel?: number
     firstTriggerTime: string
     lastTriggerTime: string
     triggerCount: number
@@ -45,38 +76,62 @@ export interface AlarmRecordPageParams {
     pageSize?: number
     hazardPointId?: number
     hazardPointName?: string
+    /** 原有单选 */
     alarmLevel?: number
-    alarmLevels?: string
     alarmType?: string
-    alarmTypes?: string
-    statusList?: string
-    startTime?: string
-    endTime?: string
-    personName?: string
+    /** 新增多选筛选 */
+    alarmLevels?: number[]
+    alarmTypes?: string[]
+    statusList?: number[]
+    /** 触发时间范围 */
+    triggerTimeBegin?: string
+    triggerTimeEnd?: string
 }
 
 export interface AlarmDisposePayload {
     status: number
+    /** @deprecated 旧字段，保留向后兼容 */
     note?: string
+    /** 描述 (FEEDBACK 时附带) */
+    description?: string
+    /** 附件 fileName (逗号分隔) */
+    attachments?: string
+    /** 备注/反馈内容 */
+    remarks?: string
 }
 
 export interface AlarmBatchDisposePayload {
     ids: number[]
     status: number
     note?: string
+    description?: string
+    attachments?: string
+    remarks?: string
 }
 
-export interface AlarmRecordLog {
+/** 告警动作日志（处置记录 tab + 时间线） */
+export interface AlarmRecordActionLog {
     id: number
-    alarmId: number
-    fromStatus?: number
-    toStatus: number
-    /** 处置类型: 告警引擎自动创建/开始处置/已销警/标记误报/批量销警/批量标记误报 */
-    disposalType?: string
-    operator: string
-    /** 处置结果描述 */
-    disposalResult?: string
-    note?: string
+    alarmRecordId: number
+    /** 动作类型: CREATE/RE_TRIGGER/LEVEL_CHANGE/FEEDBACK/DISPOSE_CLOSE/DISPOSE_FALSE_ALARM/NOTIFY */
+    actionType: string
+    fromValue?: string
+    toValue?: string
+    remarks?: string
+    description?: string
+    attachments?: string
+    operator?: string
+    createTime: string
+}
+
+/** 告警触发明细（告警记录 tab） */
+export interface AlarmRecordTriggerDetail {
+    id: number
+    alarmRecordId: number
+    triggerTime: string
+    alarmLevel?: number
+    alarmType?: string
+    alarmMessage?: string
     createTime: string
 }
 
@@ -244,28 +299,34 @@ export const disposeAlarm = (id: number, payload: AlarmDisposePayload) =>
 export const batchDisposeAlarms = (payload: AlarmBatchDisposePayload) =>
     request.post('/alarm/records/batch', payload)
 
-/** 告警状态变更日志 */
-export const getAlarmRecordLogs = (id: number) =>
-    request.get<AlarmRecordLog[]>(`/alarm/records/${id}/logs`)
+/** 告警触发明细列表 */
+export const getTriggerDetails = (id: number) =>
+    request.get<AlarmRecordTriggerDetail[]>(`/alarm/records/${id}/trigger-details`)
 
-// ── 告警反馈 ──
+/** 告警动作日志列表（处置记录 + 时间线） */
+export const getActionLogs = (id: number) =>
+    request.get<AlarmRecordActionLog[]>(`/alarm/records/${id}/action-logs`)
 
-export interface AlarmFeedbackItem {
+/** 告警通知记录 (alarm_notification 表) */
+export interface AlarmNotificationItem {
     id: number
     alarmId: number
-    content: string
-    files?: { name: string; url: string; size: number }[]
-    operator: string
+    dispatchRuleId?: number
+    recipientId?: number
+    recipientName?: string
+    recipientPhone?: string
+    channel: string
+    title?: string
+    content?: string
+    status: number   // 1=待发送 2=已发送 3=发送失败
+    sendTime?: string
+    errorMsg?: string
     createTime: string
 }
 
-/** 查询告警反馈列表 */
-export const getAlarmFeedbacks = (id: number) =>
-    request.get<AlarmFeedbackItem[]>(`/alarm/records/${id}/feedbacks`)
-
-/** 添加告警反馈 */
-export const addAlarmFeedback = (id: number, data: { content: string; files?: any[] }) =>
-    request.post(`/alarm/records/${id}/feedback`, data)
+/** 通知记录列表 */
+export const getAlarmNotifications = (id: number) =>
+    request.get<AlarmNotificationItem[]>(`/alarm/records/${id}/notifications`)
 
 // ==================== 告警判据 API ====================
 

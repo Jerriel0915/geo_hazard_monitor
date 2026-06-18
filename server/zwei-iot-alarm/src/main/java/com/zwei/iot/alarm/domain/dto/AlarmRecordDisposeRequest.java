@@ -20,6 +20,19 @@ public class AlarmRecordDisposeRequest {
      */
     private String note;
 
+    /**
+     * 处置描述 (FEEDBACK 时附带的详细描述)
+     */
+    private String description;
+    /**
+     * 附件文件名，多个逗号分隔 (/common/upload 返回的 fileName)
+     */
+    private String attachments;
+    /**
+     * 备注/反馈内容 (等价于 note，新前端优先使用 remarks)
+     */
+    private String remarks;
+
     public Integer getStatus() {
         return status;
     }
@@ -35,4 +48,11 @@ public class AlarmRecordDisposeRequest {
     public void setNote(String note) {
         this.note = note;
     }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getAttachments() { return attachments; }
+    public void setAttachments(String attachments) { this.attachments = attachments; }
+    public String getRemarks() { return remarks; }
+    public void setRemarks(String remarks) { this.remarks = remarks; }
 }

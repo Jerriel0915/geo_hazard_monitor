@@ -30,6 +30,6 @@ public class DeviceSensorQueryServiceImpl implements IDeviceSensorQueryService {
         DeviceSensor sensor = sensors.get(0);
         List<SensorAttribute> attributes = attributeMapper.selectAttributeListBySensorId(sensor.getId());
         attributes.sort(Comparator.comparing(SensorAttribute::getId));
-        return SensorMetadata.builder().deviceId(deviceId).sensorId(sensor.getId()).attributes(attributes).build();
+        return SensorMetadata.builder().deviceId(deviceId).sensorId(sensor.getId()).monitorTypeId(sensor.getMonitorTypeId()).attributes(attributes).build();
     }
 }

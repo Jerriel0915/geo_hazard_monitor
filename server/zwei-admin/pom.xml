@@ -78,6 +78,11 @@
             <groupId>com.zwei</groupId>
             <artifactId>zwei-datashare</artifactId>
         </dependency>
+        <!-- 报告模块 -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-iot-report</artifactId>
+        </dependency>
 
         <!-- 监控模块-->
         <dependency>

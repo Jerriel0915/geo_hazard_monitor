@@ -1,168 +1,223 @@
 package com.zwei.iot.alarm.service.notify;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONObject;
 import com.zwei.common.event.AlarmTriggeredEvent;
-import com.zwei.iot.alarm.domain.AlarmDispatchRule;
+import com.zwei.common.event.DeviceOfflineEvent;
+import com.zwei.common.core.domain.entity.SysUser;
+import com.zwei.iot.alarm.channel.AlarmChannelDispatcher;
+import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule;
+import com.zwei.iot.alarm.dispatch.service.IAlarmRecipientResolver;
+import com.zwei.iot.alarm.dispatch.service.IAlarmRuleMatcher;
 import com.zwei.iot.alarm.domain.AlarmNotification;
-import com.zwei.iot.alarm.service.IAlarmDispatchService;
 import com.zwei.iot.alarm.service.IAlarmNotificationService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.zwei.system.service.ISysUserService;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * 告警通知编排器 — 监听 AlarmTriggeredEvent，匹配分发规则并创建通知记录。
- * <p>
- * SYSTEM 渠道通知由 {@link AlarmStreamPublisher} 通过 SSE 实时推送；
- * SMS/EMAIL 渠道创建通知记录（状态=待发送），预留后续对接第三方服务。
+ * 告警通知编排器 — 双事件监听 + 用户×渠道去重。
  *
- * @author zwei
+ * <p>监听 {@link AlarmTriggeredEvent}（告警触发）与 {@link DeviceOfflineEvent}（设备离线），
+ * 通过 {@link IAlarmRuleMatcher} 匹配分发规则，经 {@link IAlarmRecipientResolver} 展开收件人，
+ * 按 userId|channel 去重后批量入库并分发到各通知渠道。</p>
  */
-@Service
+@Slf4j
+@Component
 public class AlarmNotifier {
 
-    private static final Logger log = LoggerFactory.getLogger(AlarmNotifier.class);
+    /** SYSTEM 渠道标识 — 站内消息，发送即达，创建时直接置为"已发送" */
+    private static final String CHANNEL_SYSTEM = "SYSTEM";
 
-    private final IAlarmDispatchService dispatchService;
-    private final IAlarmNotificationService notificationService;
+    @Autowired
+    private IAlarmRuleMatcher ruleMatcher;
 
-    public AlarmNotifier(IAlarmDispatchService dispatchService,
-                         IAlarmNotificationService notificationService) {
-        this.dispatchService = dispatchService;
-        this.notificationService = notificationService;
-    }
+    @Autowired
+    private IAlarmRecipientResolver recipientResolver;
 
-    /**
-     * 监听告警触发事件，执行通知分发。
-     */
+    @Autowired
+    private IAlarmNotificationService notificationService;
+
+    @Autowired
+    private AlarmChannelDispatcher channelDispatcher;
+
+    @Autowired
+    private ISysUserService userService;
+
     @EventListener
+    @Async("alarmNotifyExecutor")
     public void onAlarmTriggered(AlarmTriggeredEvent event) {
         try {
-            dispatch(event);
+            log.info("收到告警事件 alarmId={} hazardPointId={} level={}",
+                event.getAlarmId(), event.getHazardPointId(), event.getAlarmLevel());
+            dispatchForAlarm(event);
         } catch (Exception e) {
-            log.error("告警通知分发失败 alarmId={}", event.getAlarmId(), e);
+            log.error("告警通知处理失败 alarmId={}", event.getAlarmId(), e);
         }
     }
 
-    private void dispatch(AlarmTriggeredEvent event) {
-        List<AlarmDispatchRule> rules = dispatchService.selectEnabledRules();
-        if (rules.isEmpty()) {
-            log.debug("无启用的分发规则，跳过通知创建 alarmId={}", event.getAlarmId());
+    @EventListener
+    @Async("alarmNotifyExecutor")
+    public void onDeviceOffline(DeviceOfflineEvent event) {
+        try {
+            log.info("收到设备离线事件 deviceId={}", event.getDeviceId());
+            dispatchForOffline(event);
+        } catch (Exception e) {
+            log.error("离线通知处理失败 deviceId={}", event.getDeviceId(), e);
+        }
+    }
+
+    private void dispatchForAlarm(AlarmTriggeredEvent event) {
+        List<AlarmDispatchRule> rules = ruleMatcher.matchAlarmRules(
+            event.getHazardPointId(),
+            event.getAlarmLevel() == null ? null : String.valueOf(event.getAlarmLevel()));
+
+        if (rules == null || rules.isEmpty()) {
+            log.debug("无匹配告警规则 alarmId={}", event.getAlarmId());
             return;
         }
 
-        List<AlarmNotification> notifications = new ArrayList<>();
+        String title = "[告警] " + StringUtils.defaultString(event.getAlarmType(), "告警通知");
+        String content = String.format("等级:%s | %s",
+            event.getAlarmLevel(),
+            StringUtils.defaultString(event.getAlarmMessage(), "-"));
+
+        Collection<AlarmNotification> notifications = buildAndDedup(
+            rules, "alarm", event.getAlarmId(), title, content);
+
+        dispatch(notifications);
+    }
+
+    private void dispatchForOffline(DeviceOfflineEvent event) {
+        List<AlarmDispatchRule> rules = ruleMatcher.matchOfflineRules(event.getDeviceId());
+
+        if (rules == null || rules.isEmpty()) {
+            log.debug("无匹配离线规则 deviceId={}", event.getDeviceId());
+            return;
+        }
+
+        String clientId = StringUtils.defaultString(event.getClientId(), "-");
+        String title = "[设备离线] " + clientId;
+        String content = String.format("设备(clientId=%s) | 原因:%s | 时间:%s",
+            clientId,
+            StringUtils.defaultString(event.getReason(), "-"),
+            new Date());
+
+        Collection<AlarmNotification> notifications = buildAndDedup(
+            rules, "offline", event.getDeviceId(), title, content);
+
+        dispatch(notifications);
+    }
+
+    private Collection<AlarmNotification> buildAndDedup(
+            List<AlarmDispatchRule> rules,
+            String sourceType,
+            Long sourceId,
+            String title,
+            String content) {
+
+        Map<String, AlarmNotification> dedup = new HashMap<>();
+
         for (AlarmDispatchRule rule : rules) {
-            if (!matches(event, rule)) {
+            Set<Long> userIds = recipientResolver.resolveUserIds(rule.getId());
+            if (userIds == null || userIds.isEmpty()) {
                 continue;
             }
-            if (!isInTimeWindow(rule.getTimeWindow())) {
+
+            Set<String> channels = parseChannels(rule.getChannels());
+            if (channels.isEmpty()) {
                 continue;
             }
-            notifications.addAll(buildNotifications(event, rule));
-        }
 
-        if (!notifications.isEmpty()) {
-            notificationService.batchCreate(notifications);
-            log.info("告警通知已创建: alarmId={}, 通知数={}", event.getAlarmId(), notifications.size());
-        }
-    }
-
-    private boolean matches(AlarmTriggeredEvent event, AlarmDispatchRule rule) {
-        // 检查告警等级匹配
-        if (rule.getAlarmLevels() != null && !rule.getAlarmLevels().isEmpty()) {
-            List<String> levels = Arrays.asList(rule.getAlarmLevels().split(","));
-            if (!levels.contains(String.valueOf(event.getAlarmLevel()))) {
-                return false;
-            }
-        }
-        // 检查告警类型匹配
-        if (rule.getAlarmTypes() != null && !rule.getAlarmTypes().isEmpty()) {
-            List<String> types = Arrays.asList(rule.getAlarmTypes().split(","));
-            if (!types.contains(event.getAlarmType())) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean isInTimeWindow(String timeWindow) {
-        if (timeWindow == null || timeWindow.isEmpty()) {
-            return true; // 全天
-        }
-        // 简单实现：暂不限制时间窗口，预留后续扩展
-        return true;
-    }
-
-    private List<AlarmNotification> buildNotifications(AlarmTriggeredEvent event, AlarmDispatchRule rule) {
-        List<AlarmNotification> list = new ArrayList<>();
-        String[] channels = rule.getChannels() != null
-                ? rule.getChannels().split(",") : new String[]{"SYSTEM"};
-        List<Recipient> recipients = parseRecipients(rule.getRecipientsJson());
-
-        for (String channel : channels) {
-            String ch = channel.trim();
-            if (recipients.isEmpty()) {
-                // 无具体接收人 → 仅创建 SYSTEM 通道的广播通知
-                if ("SYSTEM".equals(ch)) {
-                    list.add(createNotification(event, rule, null, "SYSTEM"));
+            for (Long userId : userIds) {
+                SysUser user = userService.selectUserById(userId);
+                if (user == null) {
+                    continue;
                 }
-            } else {
-                for (Recipient r : recipients) {
-                    list.add(createNotification(event, rule, r, ch));
+                if ("1".equals(user.getStatus())) {
+                    continue;   // 0=正常 1=停用
+                }
+
+                for (String channel : channels) {
+                    String key = userId + "|" + channel;
+                    if (dedup.containsKey(key)) {
+                        continue;
+                    }
+
+                    AlarmNotification n = new AlarmNotification();
+                    n.setSourceType(sourceType);
+                    n.setSourceId(sourceId);
+                    n.setAlarmId(sourceId);   // 兼容旧字段
+                    n.setDispatchRuleId(rule.getId());
+                    n.setRecipientId(userId);
+                    n.setRecipientName(user.getUserName());
+                    n.setRecipientPhone(user.getPhonenumber());
+                    n.setChannel(channel);
+                    n.setTitle(title);
+                    n.setContent(content);
+                    // SYSTEM 渠道（站内消息）一定可达，默认"已发送"，避免与 SystemNotifyChannel.send() 之间的竞态窗口显示成"待发送"
+                    n.setStatus(CHANNEL_SYSTEM.equals(channel)
+                        ? AlarmNotification.STATUS_SENT
+                        : AlarmNotification.STATUS_PENDING);
+                    dedup.put(key, n);
                 }
             }
         }
-        return list;
+        return dedup.values();
     }
 
-    private AlarmNotification createNotification(AlarmTriggeredEvent event, AlarmDispatchRule rule,
-                                                 Recipient recipient, String channel) {
-        return AlarmNotification.builder()
-                .alarmId(event.getAlarmId())
-                .dispatchRuleId(rule.getId())
-                .recipientId(recipient != null ? recipient.userId : 0L)
-                .recipientName(recipient != null ? recipient.name : "系统")
-                .recipientPhone(recipient != null ? recipient.phone : null)
-                .channel(channel)
-                .title("告警通知: " + event.getAlarmMessage())
-                .content(event.getAlarmMessage())
-                .status("SYSTEM".equals(channel) ? 2 : 1) // SYSTEM 直接标记已发送，其他待发送
-                .sendTime("SYSTEM".equals(channel) ? new Date() : null)
-                .createTime(new Date())
-                .build();
-    }
-
-    private List<Recipient> parseRecipients(String recipientsJson) {
-        if (recipientsJson == null || recipientsJson.isEmpty()) {
-            return new ArrayList<>();
+    private void dispatch(Collection<AlarmNotification> notifications) {
+        if (notifications.isEmpty()) {
+            return;
         }
+
+        // 1) 批量落库 (uk_notif_dedup 唯一键兜底)
+        List<AlarmNotification> list = new ArrayList<>(notifications);
         try {
-            List<Recipient> list = new ArrayList<>();
-            JSONArray array = JSON.parseArray(recipientsJson);
-            for (int i = 0; i < array.size(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                list.add(new Recipient(
-                        obj.getLong("userId"),
-                        obj.getString("name"),
-                        obj.getString("phone")
-                ));
+            notificationService.batchCreate(list);
+        } catch (DuplicateKeyException e) {
+            log.warn("通知整批重复被忽略（事件已处理） sourceId={}",
+                list.isEmpty() ? null : list.get(0).getSourceId(), e);
+            return;
+        }
+
+        // 2) 逐条分发到渠道
+        for (AlarmNotification n : list) {
+            try {
+                channelDispatcher.dispatch(n);
+            } catch (Exception e) {
+                log.error("通知分发失败 notifId={} channel={}",
+                    n.getId(), n.getChannel(), e);
+                notificationService.markFailed(n.getId(), "UNKNOWN",
+                    "分发异常: " + e.getClass().getSimpleName()
+                    + ": " + e.getMessage());
             }
-            return list;
-        } catch (Exception e) {
-            log.warn("解析接收人JSON失败: {}", recipientsJson);
-            return new ArrayList<>();
         }
     }
 
-    private record Recipient(Long userId, String name, String phone) {
+    private Set<String> parseChannels(String channelsCsv) {
+        if (StringUtils.isBlank(channelsCsv)) {
+            return Collections.emptySet();
+        }
+        Set<String> set = new LinkedHashSet<>();
+        for (String c : channelsCsv.split(",")) {
+            if (StringUtils.isNotBlank(c)) {
+                set.add(c.trim());
+            }
+        }
+        return set;
     }
 }

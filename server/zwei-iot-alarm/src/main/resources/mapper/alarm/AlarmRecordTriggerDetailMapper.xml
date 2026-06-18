@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmRecordTriggerDetailMapper">
+
+    <resultMap type="com.zwei.iot.alarm.domain.AlarmRecordTriggerDetail" id="AlarmRecordTriggerDetailResult">
+        <id property="id" column="id"/>
+        <result property="alarmRecordId" column="alarm_record_id"/>
+        <result property="triggerTime" column="trigger_time"/>
+        <result property="alarmLevel" column="alarm_level"/>
+        <result property="alarmType" column="alarm_type"/>
+        <result property="alarmMessage" column="alarm_message"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <insert id="insertDetail" parameterType="com.zwei.iot.alarm.domain.AlarmRecordTriggerDetail"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_record_trigger_detail (alarm_record_id, trigger_time, alarm_level,
+                                                 alarm_type, alarm_message, create_time)
+        VALUES (#{alarmRecordId}, #{triggerTime}, #{alarmLevel}, #{alarmType}, #{alarmMessage}, #{createTime})
+    </insert>
+
+    <select id="selectByAlarmRecordId" resultMap="AlarmRecordTriggerDetailResult">
+        SELECT id, alarm_record_id, trigger_time, alarm_level, alarm_type, alarm_message, create_time
+        FROM alarm_record_trigger_detail
+        WHERE alarm_record_id = #{alarmRecordId}
+        ORDER BY trigger_time ASC
+    </select>
+
+</mapper>

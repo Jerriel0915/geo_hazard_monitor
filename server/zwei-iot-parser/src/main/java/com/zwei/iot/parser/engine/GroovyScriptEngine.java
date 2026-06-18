@@ -110,6 +110,51 @@ public class GroovyScriptEngine {
         }
     }
 
+    /**
+     * 执行合并后的计算属性脚本。
+     *
+     * <p>与 {@link #execute} 共享沙箱配置 ({@link #createSecureConfig()}) 和 executor,
+     * 但调用约定不同: 脚本必须定义 {@code compute(curData, prevData)} 主入口,
+     * 返回 {@code Map<String, Object>}(attrCode -> value)。
+     *
+     * <p>失败永远返回空 Map, 不抛异常(主链路数据接入可用性优先)。
+     *
+     * @param scriptCode ComputedScriptAssembler.assemble() 产物
+     * @param curData    当前精简消息 Map (含 deviceCode/sensorCode/dataTime/properties)
+     * @param prevData   上一条精简消息 Map, 首次上报时为 null
+     * @return 计算结果 Map; 失败时为空 Map
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> executeComputed(String scriptCode,
+                                                Map<String, Object> curData,
+                                                Map<String, Object> prevData) {
+        Future<Map<String, Object>> future = executor.submit(() -> {
+            try {
+                GroovyShell shell = new GroovyShell(createSecureConfig());
+                Binding binding = new Binding();
+                binding.setVariable("builtin", builtInFunctions);
+                Script script = shell.parse(scriptCode);
+                script.setBinding(binding);
+                Object result = script.invokeMethod(
+                        "compute", new Object[]{curData, prevData});
+                return result instanceof Map ? (Map<String, Object>) result : Map.of();
+            } catch (Exception e) {
+                log.warn("Computed script execution failed", e);
+                return Map.of();
+            }
+        });
+        try {
+            return future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.warn("Computed script timed out ({}s)", TIMEOUT_SECONDS);
+            future.cancel(true);
+            return Map.of();
+        } catch (Exception e) {
+            log.warn("Computed script interrupted", e);
+            return Map.of();
+        }
+    }
+
     /** Evaluate a script without persisting anything — for the test API. */
     @SuppressWarnings("unchecked")
     public Map<String, Object> testScript(String scriptCode, String topic, String testData) {

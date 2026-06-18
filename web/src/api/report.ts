@@ -1,29 +1,139 @@
 import request from '@/utils/request'
 import type { PageResult } from './system'
+import { getHazardPointPage } from './hazardPoint'
 
-// ---------------------------------------------------------------------------
-// Interfaces
-// ---------------------------------------------------------------------------
+// ====== 报告管理 API (真实接口) ======
 
-// --- Report ---
+export type ReportType = 'weekly' | 'monthly' | 'quarterly'
+
 export interface ReportItem {
   id: number
-  title: string
-  type: 'weekly' | 'monthly'
+  type: ReportType
+  typeDesc: string
   periodStart: string
   periodEnd: string
+  hazardPointId: number
+  hazardPointCode: string
+  hazardPointName: string
+  reportName: string
+  status: 1 | 2 | 3
+  statusDesc: string
+  errorMsg: string | null
   createTime: string
-  content: string // HTML rich text
+  content?: string
 }
 
 export interface ReportPageParams {
   pageNum: number
   pageSize: number
+  type?: ReportType | ''
+  hazardPointId?: number
+  periodStart?: string
+  periodEnd?: string
+  status?: number
   keyword?: string
-  type?: 'weekly' | 'monthly' | ''
-  startDate?: string
-  endDate?: string
 }
+
+export interface ReportGenerateParams {
+  type: ReportType
+  hazardPointId: number
+  periodStart: string
+  periodEnd: string
+}
+
+export interface HazardPointOption {
+  id: number
+  name: string
+}
+
+// 后端类型码 -> 前端字符串
+const TYPE_CODE_TO_STR: Record<number, ReportType> = { 2: 'weekly', 3: 'monthly', 4: 'quarterly' }
+const TYPE_STR_TO_CODE: Record<ReportType, number> = { weekly: 2, monthly: 3, quarterly: 4 }
+
+function mapRecord(raw: any): ReportItem {
+  return {
+    id: raw.id,
+    type: TYPE_CODE_TO_STR[raw.type] ?? 'weekly',
+    typeDesc: raw.typeDesc ?? '',
+    periodStart: raw.periodStart,
+    periodEnd: raw.periodEnd,
+    hazardPointId: raw.hazardPointId,
+    hazardPointCode: raw.hazardPointCode ?? '',
+    hazardPointName: raw.hazardPointName ?? '',
+    reportName: raw.reportName ?? '',
+    status: raw.status,
+    statusDesc: raw.statusDesc ?? '',
+    errorMsg: raw.errorMsg,
+    createTime: raw.createTime,
+    content: raw.content,
+  }
+}
+
+export async function getReportPage(params: ReportPageParams): Promise<PageResult<ReportItem>> {
+  const payload: any = { ...params }
+  if (params.type) payload.type = TYPE_STR_TO_CODE[params.type]
+  const res: any = await request.get('/report/records/page', { params: payload })
+  const data = res.data ?? res
+  return {
+    rows: (data.rows ?? []).map(mapRecord),
+    total: data.total ?? 0,
+    pageNum: data.pageNum ?? params.pageNum,
+    pageSize: data.pageSize ?? params.pageSize,
+  }
+}
+
+export async function getReportDetail(id: number): Promise<ReportItem> {
+  const res: any = await request.get(`/report/records/${id}`)
+  return mapRecord(res.data ?? res)
+}
+
+export async function deleteReport(id: number): Promise<void> {
+  await request.delete(`/report/records/${id}`)
+}
+
+export async function generateReport(data: ReportGenerateParams): Promise<{ reportId: number; existed: boolean }> {
+  const payload = {
+    type: TYPE_STR_TO_CODE[data.type],
+    hazardPointId: data.hazardPointId,
+    periodStart: data.periodStart,
+    periodEnd: data.periodEnd,
+  }
+  try {
+    const res: any = await request.post('/report/records/generate', payload)
+    return { reportId: res.reportId ?? -1, existed: false }
+  } catch (err: any) {
+    const respData = err?.response?.data
+    if (respData?.code === 409) {
+      return { reportId: respData.reportId ?? -1, existed: true }
+    }
+    throw err
+  }
+}
+
+/** 批量一键生成: 对全部监测中隐患点调用 generateAll */
+export async function generateAllReports(
+  type: ReportType,
+  referenceDate?: string
+): Promise<void> {
+  const payload: any = { type: TYPE_STR_TO_CODE[type] }
+  if (referenceDate) payload.referenceDate = referenceDate
+  await request.post('/report/records/generate-all', payload)
+}
+
+// 隐患点选项 (调用真实 API)
+export async function getHazardPointOptions(): Promise<HazardPointOption[]> {
+  try {
+    const res = await getHazardPointPage({ pageNum: 1, pageSize: 500 })
+    return ((res as any).data?.rows ?? (res as any).rows ?? []).map((hp: any) => ({
+      id: hp.id,
+      name: hp.name ?? hp.hazardPointName ?? '',
+    }))
+  } catch {
+    return []
+  }
+}
+
+// ====== Query / Analysis (保留原 mock, 不在本次改动范围) ======
 
 // --- Query ---
 export interface MonitorQueryParams {
@@ -58,11 +168,6 @@ export interface ChartDataItem {
 }
 
 // --- Options for dropdowns ---
-export interface HazardPointOption {
-  id: number
-  name: string
-}
-
 export interface DeviceOption {
   id: number
   name: string
@@ -194,238 +299,6 @@ function formatDateTime(d: Date): string {
   return `${date} ${h}:${min}:${s}`
 }
 
-function generateMockReports(): ReportItem[] {
-  const now = new Date()
-  const reports: ReportItem[] = []
-
-  const weeklyAnalysisTexts = [
-    '本周各监测点数据整体平稳，位移变化速率在正常范围内。王家坪滑坡X方向累计位移增长约0.3mm，需持续关注。',
-    '本周降雨量较上周有所增加，李家沟泥石流监测点日累计雨量峰值达到38mm，建议加强巡视。',
-    '本周赵家坡危岩体倾角传感器数据显示微小波动，X倾角变化不超过0.05°，暂无异常。',
-    '本周张家湾崩塌区域土压力数据稳定，各监测点数值波动范围在±0.2kPa以内。',
-    '本周刘家坳滑坡位移计数据呈缓慢增长趋势，Y方向累计位移增加0.5mm，建议密切关注。',
-    '本周所有监测点设备运行正常，数据采集完整率达到99.2%，未发现异常数据。',
-    '本周受降雨影响，部分监测点数据波动较大，已自动触发预警评估，暂无需人工干预。',
-    '本周王家坪滑坡与刘家坳滑坡监测数据相关性分析表明，两者变形趋势基本一致。',
-  ]
-
-  const monthlyAnalysisTexts = [
-    '本月各隐患点监测数据汇总分析如下：位移类传感器数据整体呈稳定趋势，仅在个别降雨集中时段出现短暂波动。雨量数据与位移变化具有明显相关性，建议在强降雨期间加密监测频率。本月未达到黄色预警阈值。',
-    '本月综合分析结果表明，各监测点处于基本稳定状态。李家沟泥石流沟道在7月中旬经历一次强降雨过程，累计位移有所增加但仍在安全范围内。建议下月重点关注雨季期间的监测数据变化。',
-    '本月赵家坡危岩体倾角数据无明显异常，土压力变化在合理范围内。设备在线率达到98.5%，数据质量良好。建议下月对2号倾角传感器进行现场标定校验。',
-    '本月张家湾崩塌区域整体稳定，各监测指标变化量较小。本月进行了两次现场巡查，巡查结果与监测数据吻合。建议继续按当前频率进行监测。',
-    '本月刘家坳滑坡位移持续缓慢增长，月累计位移量约为1.2mm，变形速率较上月略有增加。建议提高关注等级，加强人工巡查频次。',
-    '本月全区域监测设备运行状况良好，数据完整率99.0%。共触发2次蓝色预警，经核实均为降雨引起的正常波动，已自动解除。下月将进入主汛期，需做好应急准备工作。',
-    '本月综合监测报告：各隐患点整体安全。建议下月对王家坪滑坡布设的3台位移计进行年度检定，确保数据准确性。',
-  ]
-
-  // Generate weekly reports (8 reports going back ~2 months)
-  for (let i = 0; i < 8; i++) {
-    const endOfWeek = new Date(now)
-    endOfWeek.setDate(now.getDate() - i * 7)
-    const startOfWeek = new Date(endOfWeek)
-    startOfWeek.setDate(endOfWeek.getDate() - 6)
-
-    const periodStart = formatDate(startOfWeek)
-    const periodEnd = formatDate(endOfWeek)
-    const created = new Date(endOfWeek)
-    created.setHours(9, 0, 0)
-
-    const analysis = weeklyAnalysisTexts[i % weeklyAnalysisTexts.length]
-
-    const content = buildWeeklyReportContent(periodStart, periodEnd, analysis)
-
-    reports.push({
-      id: 1000 + i,
-      title: `监测周报 (${periodStart} ~ ${periodEnd})`,
-      type: 'weekly',
-      periodStart,
-      periodEnd,
-      createTime: formatDateTime(created),
-      content,
-    })
-  }
-
-  // Generate monthly reports (7 reports going back ~7 months)
-  for (let i = 0; i < 7; i++) {
-    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const year = monthDate.getFullYear()
-    const month = monthDate.getMonth()
-    const periodStart = `${year}-${String(month + 1).padStart(2, '0')}-01`
-    const lastDay = new Date(year, month + 1, 0).getDate()
-    const periodEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-    const created = new Date(year, month + 1, 2, 10, 0, 0)
-
-    const analysis = monthlyAnalysisTexts[i % monthlyAnalysisTexts.length]
-
-    const content = buildMonthlyReportContent(periodStart, periodEnd, analysis, i)
-
-    reports.push({
-      id: 2000 + i,
-      title: `${year}年${month + 1}月监测月报`,
-      type: 'monthly',
-      periodStart,
-      periodEnd,
-      createTime: formatDateTime(created),
-      content,
-    })
-  }
-
-  return reports
-}
-
-function buildWeeklyReportContent(periodStart: string, periodEnd: string, analysis: string): string {
-  return `<h2>地质灾害监测周报</h2>
-<p><strong>报告周期：</strong>${periodStart} 至 ${periodEnd}</p>
-<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;text-align:center;">
-  <thead>
-    <tr style="background:#f0f5ff;">
-      <th>监测点</th>
-      <th>设备类型</th>
-      <th>数据完整率</th>
-      <th>最大变化量</th>
-      <th>预警状态</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>王家坪滑坡</td>
-      <td>位移计</td>
-      <td>99.5%</td>
-      <td>0.32mm</td>
-      <td>正常</td>
-    </tr>
-    <tr>
-      <td>李家沟泥石流</td>
-      <td>雨量计</td>
-      <td>100%</td>
-      <td>38.2mm</td>
-      <td>正常</td>
-    </tr>
-    <tr>
-      <td>赵家坡危岩体</td>
-      <td>倾角传感器</td>
-      <td>98.8%</td>
-      <td>0.05°</td>
-      <td>正常</td>
-    </tr>
-    <tr>
-      <td>张家湾崩塌</td>
-      <td>土压力计</td>
-      <td>99.1%</td>
-      <td>0.18kPa</td>
-      <td>正常</td>
-    </tr>
-    <tr>
-      <td>刘家坳滑坡</td>
-      <td>位移计</td>
-      <td>99.8%</td>
-      <td>0.51mm</td>
-      <td>关注</td>
-    </tr>
-  </tbody>
-</table>
-<h2>分析说明</h2>
-<p>${analysis}</p>
-<ul>
-  <li>建议持续关注刘家坳滑坡变形趋势</li>
-  <li>雨季期间适当加密监测频率</li>
-  <li>确保各监测点设备供电及通信正常</li>
-</ul>`
-}
-
-function buildMonthlyReportContent(periodStart: string, periodEnd: string, analysis: string, seed: number): string {
-  const rng = seededRandom(seed * 37 + 7)
-  const onlineRate = toFixed(randRange(rng, 97.5, 99.9), 1)
-  const dataCompleteRate = toFixed(randRange(rng, 98.0, 99.8), 1)
-  const blueAlertCount = Math.floor(randRange(rng, 0, 4))
-  const yellowAlertCount = Math.floor(randRange(rng, 0, 2))
-
-  return `<h2>地质灾害监测月报</h2>
-<p><strong>报告周期：</strong>${periodStart} 至 ${periodEnd}</p>
-<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;text-align:center;">
-  <thead>
-    <tr style="background:#f0f5ff;">
-      <th>监测点</th>
-      <th>监测设备数</th>
-      <th>数据完整率</th>
-      <th>月累计变化量</th>
-      <th>最大日变化量</th>
-      <th>预警次数</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>王家坪滑坡</td>
-      <td>3</td>
-      <td>${toFixed(randRange(rng, 98.5, 100), 1)}%</td>
-      <td>${toFixed(randRange(rng, 0.3, 1.5), 2)}mm</td>
-      <td>${toFixed(randRange(rng, 0.05, 0.2), 2)}mm</td>
-      <td>${Math.floor(randRange(rng, 0, 2))}</td>
-    </tr>
-    <tr>
-      <td>李家沟泥石流</td>
-      <td>4</td>
-      <td>${toFixed(randRange(rng, 99.0, 100), 1)}%</td>
-      <td>${toFixed(randRange(rng, 0.5, 2.0), 2)}mm</td>
-      <td>${toFixed(randRange(rng, 0.1, 0.5), 2)}mm</td>
-      <td>${Math.floor(randRange(rng, 0, 3))}</td>
-    </tr>
-    <tr>
-      <td>赵家坡危岩体</td>
-      <td>3</td>
-      <td>${toFixed(randRange(rng, 98.0, 99.5), 1)}%</td>
-      <td>${toFixed(randRange(rng, 0.01, 0.1), 3)}°</td>
-      <td>${toFixed(randRange(rng, 0.005, 0.03), 3)}°</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <td>张家湾崩塌</td>
-      <td>3</td>
-      <td>${toFixed(randRange(rng, 98.5, 99.8), 1)}%</td>
-      <td>${toFixed(randRange(rng, 0.1, 0.5), 2)}kPa</td>
-      <td>${toFixed(randRange(rng, 0.02, 0.1), 2)}kPa</td>
-      <td>${Math.floor(randRange(rng, 0, 1))}</td>
-    </tr>
-    <tr>
-      <td>刘家坳滑坡</td>
-      <td>2</td>
-      <td>${toFixed(randRange(rng, 99.0, 100), 1)}%</td>
-      <td>${toFixed(randRange(rng, 0.8, 2.5), 2)}mm</td>
-      <td>${toFixed(randRange(rng, 0.1, 0.4), 2)}mm</td>
-      <td>${Math.floor(randRange(rng, 1, 3))}</td>
-    </tr>
-  </tbody>
-</table>
-<h2>综合统计</h2>
-<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;text-align:center;">
-  <thead>
-    <tr style="background:#fff7e6;">
-      <th>指标</th>
-      <th>数值</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>监测点总数</td><td>5</td></tr>
-    <tr><td>在线设备数</td><td>15</td></tr>
-    <tr><td>设备在线率</td><td>${onlineRate}%</td></tr>
-    <tr><td>数据完整率</td><td>${dataCompleteRate}%</td></tr>
-    <tr><td>蓝色预警次数</td><td>${blueAlertCount}</td></tr>
-    <tr><td>黄色预警次数</td><td>${yellowAlertCount}</td></tr>
-    <tr><td>橙色预警次数</td><td>0</td></tr>
-    <tr><td>红色预警次数</td><td>0</td></tr>
-  </tbody>
-</table>
-<h2>分析说明</h2>
-<p>${analysis}</p>
-<ul>
-  <li>本月所有隐患点未触发橙色及以上级别预警</li>
-  <li>设备运行状况良好，数据采集基本完整</li>
-  <li>建议下月继续按照既定监测方案执行</li>
-</ul>`
-}
-
 /** Generate mock query data (time-series rows) */
 function getMockQueryData(params: MonitorQueryParams): PageResult<Record<string, any>> {
   const { deviceType = 1, pageNum = 1, pageSize = 20 } = params
@@ -537,6 +410,7 @@ function getMockChartData(
   return { times, values }
 }
 
+<<<<<<< HEAD
 // ---------------------------------------------------------------------------
 // API functions (try real API, fall back to mock)
 // ---------------------------------------------------------------------------

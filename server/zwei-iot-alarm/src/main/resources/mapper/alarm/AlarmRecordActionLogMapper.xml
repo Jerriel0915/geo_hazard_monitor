@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.AlarmRecordActionLogMapper">
+
+    <resultMap type="com.zwei.iot.alarm.domain.AlarmRecordActionLog" id="AlarmRecordActionLogResult">
+        <id property="id" column="id"/>
+        <result property="alarmRecordId" column="alarm_record_id"/>
+        <result property="actionType" column="action_type"/>
+        <result property="fromValue" column="from_value"/>
+        <result property="toValue" column="to_value"/>
+        <result property="remarks" column="remarks"/>
+        <result property="description" column="description"/>
+        <result property="attachments" column="attachments"/>
+        <result property="operator" column="operator"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <insert id="insertLog" parameterType="com.zwei.iot.alarm.domain.AlarmRecordActionLog">
+        INSERT INTO alarm_record_action_log (alarm_record_id, action_type, from_value, to_value,
+                                             remarks, description, attachments, operator, create_time)
+        VALUES (#{alarmRecordId}, #{actionType}, #{fromValue}, #{toValue},
+                #{remarks}, #{description}, #{attachments}, #{operator}, #{createTime})
+    </insert>
+
+    <insert id="batchInsertLogs" parameterType="list">
+        INSERT INTO alarm_record_action_log (alarm_record_id, action_type, from_value, to_value,
+                                             remarks, description, attachments, operator, create_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.alarmRecordId}, #{item.actionType}, #{item.fromValue}, #{item.toValue},
+             #{item.remarks}, #{item.description}, #{item.attachments}, #{item.operator}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <select id="selectLogsByAlarmRecordId" resultMap="AlarmRecordActionLogResult">
+        SELECT id, alarm_record_id, action_type, from_value, to_value,
+               remarks, description, attachments, operator, create_time
+        FROM alarm_record_action_log
+        WHERE alarm_record_id = #{alarmRecordId}
+        ORDER BY create_time ASC, id ASC
+    </select>
+
+</mapper>

@@ -34,7 +34,7 @@
               @update:model-value="(v: number | null) => updateField('silencePeriod', v ?? 0)"
               :min="0" :max="1000" size="small" controls-position="right"
           />
-          <span class="field-unit">次</span>
+          <span class="field-unit">h</span>
         </div>
       </div>
 

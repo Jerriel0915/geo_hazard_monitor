@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${subject}">通知</title>
+</head>
+<body style="font-family:'Microsoft YaHei',sans-serif;color:#333;margin:0;padding:0;background:#f5f5f5;">
+  <div style="max-width:600px;margin:24px auto;background:#fff;border-radius:4px;overflow:hidden;
+              box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+    <div th:style="${headerStyle}" style="padding:16px 24px;">
+      <h2 style="margin:0;font-size:18px;" th:text="${title}">告警通知</h2>
+    </div>
+    <div style="padding:24px;">
+      <p th:if="${hazardPointName != null}" style="margin:8px 0;">
+        <strong>隐患点：</strong><span th:text="${hazardPointName}">-</span>
+      </p>
+      <p th:if="${deviceName != null}" style="margin:8px 0;">
+        <strong>设备：</strong>
+        <span th:text="${deviceName}">-</span>
+      </p>
+      <p th:if="${alarmLevel != null}" style="margin:8px 0;">
+        <strong>等级：</strong><span th:text="${alarmLevel}">-</span>
+      </p>
+      <p th:if="${content != null}" style="margin:8px 0;">
+        <strong>事件：</strong><span th:text="${content}">-</span>
+      </p>
+      <p th:if="${eventTime != null}" style="margin:8px 0;">
+        <strong>时间：</strong><span th:text="${#dates.format(eventTime, 'yyyy-MM-dd HH:mm:ss')}">-</span>
+      </p>
+      <a th:if="${linkUrl != null}" th:href="${linkUrl}"
+         style="display:inline-block;margin-top:16px;padding:10px 24px;
+                background:#409eff;color:#fff;text-decoration:none;border-radius:4px;">
+        查看详情
+      </a>
+    </div>
+    <div style="padding:12px 24px;background:#f9f9f9;font-size:12px;color:#909399;">
+      知微地质灾害监测预警系统 · 此邮件由系统自动发送，请勿回复
+    </div>
+  </div>
+</body>
+</html>

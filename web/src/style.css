@@ -212,10 +212,16 @@ html, body, #app {
   flex-shrink: 0;
 }
 
-/* 检索控件均分宽度，按钮保持自适应 */
+/* 检索控件固定宽度（不均分拉伸），按钮保持自适应 */
 .search > :not(.el-button) {
-  flex: 1 1 0%;
-  min-width: 80px;
+  flex: 0;
+  min-width: 200px;
+}
+
+/* 日期选择器单独 300px；min-width 用于覆盖父级 flex:0 带来的 flex-basis:0% 收缩 */
+.search .el-date-editor {
+  width: 300px;
+  min-width: 300px;
 }
 
 /* ---------- Grid 卡片网格 ---------- */

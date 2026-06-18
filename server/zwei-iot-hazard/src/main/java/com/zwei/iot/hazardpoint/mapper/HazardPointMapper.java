@@ -124,6 +124,11 @@ public interface HazardPointMapper
 
     // ==================== 统计查询 ====================
 
+    /**
+     * 查询全部未删除的隐患点 (不带过滤条件)。
+     */
+    List<HazardPoint> selectAll();
+
     int countAll();
 
     List<java.util.Map<String, Object>> countByStatus();

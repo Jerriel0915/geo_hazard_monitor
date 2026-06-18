@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.dispatch.mapper.AlarmDispatchRuleDeviceMapper">
+
+    <resultMap type="com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRuleDevice" id="BaseResultMap">
+        <id property="ruleId" column="rule_id"/>
+        <id property="deviceId" column="device_id"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        rule_id, device_id
+    </sql>
+
+    <delete id="deleteByRuleId">
+        DELETE FROM alarm_dispatch_rule_device
+        WHERE rule_id = #{ruleId}
+    </delete>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO alarm_dispatch_rule_device (rule_id, device_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.ruleId}, #{item.deviceId})
+        </foreach>
+    </insert>
+
+    <select id="selectByRuleId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM alarm_dispatch_rule_device
+        WHERE rule_id = #{ruleId}
+    </select>
+
+    <select id="selectByRuleIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM alarm_dispatch_rule_device
+        WHERE rule_id IN
+        <foreach collection="ruleIds" item="ruleId" open="(" separator="," close=")">
+            #{ruleId}
+        </foreach>
+    </select>
+
+</mapper>

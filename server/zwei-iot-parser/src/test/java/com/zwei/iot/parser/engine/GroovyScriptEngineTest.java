@@ -63,9 +63,9 @@ class GroovyScriptEngineTest {
 
             assertThat(result).isNotNull();
             assertThat(result.properties()).hasSize(3);
-            assertThat(result.properties()).anyMatch(p -> p.identifier().equals("rainfall") && p.value() == 12.3);
-            assertThat(result.properties()).anyMatch(p -> p.identifier().equals("temperature") && p.value() == 25.0);
-            assertThat(result.properties()).anyMatch(p -> p.identifier().equals("humidity") && p.value() == 68.5);
+            assertThat(result.properties()).anyMatch(p -> p.identifier().equals("rainfall") && p.value().equals(12.3));
+            assertThat(result.properties()).anyMatch(p -> p.identifier().equals("temperature") && p.value().equals(25.0));
+            assertThat(result.properties()).anyMatch(p -> p.identifier().equals("humidity") && p.value().equals(68.5));
         }
 
         @Test
@@ -152,7 +152,7 @@ class GroovyScriptEngineTest {
             assertThat(result.sensorCode()).isEqualTo("1");
             assertThat(result.properties()).hasSize(1);
             assertThat(result.properties().get(0).identifier()).isEqualTo("attr_1");
-            assertThat(result.properties().get(0).value()).isCloseTo(25.5, org.assertj.core.data.Offset.offset(0.01));
+            assertThat((Double) result.properties().get(0).value()).isCloseTo(25.5, org.assertj.core.data.Offset.offset(0.01));
             assertThat(result.properties().get(0).quality()).isEqualTo(0);
         }
 
@@ -179,9 +179,9 @@ class GroovyScriptEngineTest {
             assertThat(result.sourceType()).isEqualTo("gb");
             assertThat(result.properties()).hasSize(2);
             assertThat(result.properties().get(0).identifier()).isEqualTo("attr_1");
-            assertThat(result.properties().get(0).value()).isCloseTo(25.5, org.assertj.core.data.Offset.offset(0.01));
+            assertThat((Double) result.properties().get(0).value()).isCloseTo(25.5, org.assertj.core.data.Offset.offset(0.01));
             assertThat(result.properties().get(1).identifier()).isEqualTo("attr_2");
-            assertThat(result.properties().get(1).value()).isCloseTo(-10.0, org.assertj.core.data.Offset.offset(0.01));
+            assertThat((Double) result.properties().get(1).value()).isCloseTo(-10.0, org.assertj.core.data.Offset.offset(0.01));
         }
     }
 

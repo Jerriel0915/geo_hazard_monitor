@@ -3,6 +3,7 @@ package com.zwei.iot.alarm.service.engine;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
+import com.zwei.iot.alarm.domain.ConditionGroup;
 import com.zwei.iot.alarm.domain.LevelCondition;
 import com.zwei.iot.alarm.domain.LevelConfig;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ public class CriteriaEvaluator {
      */
     private static final String[] LEVEL_KEYS = {"red", "orange", "yellow", "blue"};
     private static final Map<String, Integer> LEVEL_VALUES = Map.of(
-            "red", 4, "orange", 3, "yellow", 2, "blue", 1
+            "red", 1, "orange", 2, "yellow", 3, "blue", 4
     );
 
     /**
@@ -64,10 +65,29 @@ public class CriteriaEvaluator {
 
     /**
      * 评估单个等级的所有条件。
+     * <p>
+     * 支持两种格式：
+     * <ul>
+     *   <li><b>groups 格式</b>（前端 GroupedRuleBuilder 生成）— 多条件组，组间 AND/OR</li>
+     *   <li><b>conditions 格式</b>（旧/直接 SQL 创建）— 单层条件列表</li>
+     * </ul>
      */
     boolean evaluateLevel(LevelConfig config, Map<String, Double> subjectValues) {
+        if (config == null) return false;
+
+        // 优先 groups 格式
+        List<ConditionGroup> groups = config.getGroups();
+        if (groups != null && !groups.isEmpty()) {
+            boolean result = evaluateGroups(groups, config.getGroupLogic(), subjectValues);
+            log.debug("[Alarm][Criteria][Level] groups 评估结果={} groupLogic={} groupCount={} subjects={}",
+                    result, config.getGroupLogic(), groups.size(), subjectValues.keySet());
+            return result;
+        }
+
+        // 旧 conditions 格式
         List<LevelCondition> conditions = config.getConditions();
         if (conditions == null || conditions.isEmpty()) {
+            log.debug("[Alarm][Criteria][Level] 等级配置无 groups 且无 conditions，跳过");
             return false;
         }
 
@@ -75,6 +95,9 @@ public class CriteriaEvaluator {
         for (LevelCondition cond : conditions) {
             Double value = resolveSubjectValue(cond, subjectValues);
             boolean condResult = evaluateCondition(cond, value);
+            log.debug("[Alarm][Criteria][Level] condition result={} logic={} subject={} operator={} threshold={} actual={}",
+                    condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
+                    cond.getThreshold(), value);
 
             if (isOr && condResult) return true;       // OR: 任一满足即通过
             if (!isOr && !condResult) return false;     // AND: 任一不满足即失败
@@ -83,17 +106,80 @@ public class CriteriaEvaluator {
     }
 
     /**
+     * 评估多个条件组，组间按 groupLogic (AND/OR) 组合。
+     */
+    private boolean evaluateGroups(List<ConditionGroup> groups, String groupLogic,
+                                   Map<String, Double> subjectValues) {
+        boolean isOr = "OR".equalsIgnoreCase(groupLogic);
+        for (ConditionGroup group : groups) {
+            boolean groupResult = evaluateSingleGroup(group, subjectValues);
+            if (isOr && groupResult) return true;
+            if (!isOr && !groupResult) return false;
+        }
+        return !isOr;
+    }
+
+    /**
+     * 评估单个条件组（组内 conditions 按 logicOperator 组合）。
+     */
+    private boolean evaluateSingleGroup(ConditionGroup group, Map<String, Double> subjectValues) {
+        if (group == null) return false;
+        List<LevelCondition> conditions = group.getConditions();
+        if (conditions == null || conditions.isEmpty()) return false;
+
+        boolean isOr = "OR".equalsIgnoreCase(group.getLogicOperator());
+        for (LevelCondition cond : conditions) {
+            Double value = resolveSubjectValue(cond, subjectValues);
+            boolean condResult = evaluateCondition(cond, value);
+            log.debug("[Alarm][Criteria][Group] condition result={} logic={} subject={} operator={} threshold={} actual={}",
+                    condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
+                    cond.getThreshold(), value);
+
+            if (isOr && condResult) return true;
+            if (!isOr && !condResult) return false;
+        }
+        return !isOr;
+    }
+
+    /**
      * 根据条件的主语解析出实际值。
+     * <p>
+     * 前端生成的 subject 可能带 {@code payload.current.} 前缀，需标准化为 attrCode。
      */
     Double resolveSubjectValue(LevelCondition cond, Map<String, Double> subjectValues) {
         if (cond == null || cond.getSubject() == null) return null;
 
+        String subject = normalizeSubject(cond.getSubject());
+
+        Double value;
         if ("FUNCTION".equals(cond.getSubjectType())) {
-            // 函数主语：尝试从 subjectValues 中查找（由调用方预计算函数值）
-            return subjectValues.get(cond.getSubject());
+            value = subjectValues.get(subject);
+        } else {
+            value = subjectValues.get(subject);
         }
-        // 直接监测内容
-        return subjectValues.get(cond.getSubject());
+        if (value == null) {
+            log.debug("[Alarm][Criteria][Subject] 未找到对应值 raw={} normalized={} subjectType={} available={}",
+                    cond.getSubject(), subject, cond.getSubjectType(), subjectValues.keySet());
+        }
+        return value;
+    }
+
+    /**
+     * 标准化 subject — 去除前端 JSONPath 风格前缀。
+     * <p>
+     * 例：{@code payload.current.rainfall_hour} → {@code rainfall_hour}
+     */
+    private String normalizeSubject(String subject) {
+        if (subject == null) return null;
+        String s = subject.trim();
+        // 去除 payload.current. / payload. 等前缀
+        for (String prefix : new String[]{"payload.current.", "payload."}) {
+            if (s.startsWith(prefix)) {
+                s = s.substring(prefix.length());
+                break;
+            }
+        }
+        return s;
     }
 
     /**
@@ -101,10 +187,16 @@ public class CriteriaEvaluator {
      */
     boolean evaluateCondition(LevelCondition cond, Double value) {
         if (value == null || cond == null || cond.getOperator() == null) {
+            log.debug("[Alarm][Criteria][Cond] 输入无效 value={} operator={} subject={}",
+                    value, cond != null ? cond.getOperator() : null, cond != null ? cond.getSubject() : null);
             return false;
         }
         Double threshold = cond.getThreshold();
-        if (threshold == null) return false;
+        if (threshold == null) {
+            log.debug("[Alarm][Criteria][Cond] threshold=null 跳过 subject={} operator={}",
+                    cond.getSubject(), cond.getOperator());
+            return false;
+        }
 
         switch (cond.getOperator().toUpperCase()) {
             case "GT":
@@ -120,9 +212,14 @@ public class CriteriaEvaluator {
             case "NEQ":
                 return Math.abs(value - threshold) >= 0.0001;
             case "BETWEEN":
-                return cond.getThresholdMax() != null
-                        && value >= threshold && value <= cond.getThresholdMax();
+                if (cond.getThresholdMax() == null) {
+                    log.debug("[Alarm][Criteria][Cond] BETWEEN thresholdMax=null 跳过 subject={}", cond.getSubject());
+                    return false;
+                }
+                return value >= threshold && value <= cond.getThresholdMax();
             default:
+                log.debug("[Alarm][Criteria][Cond] 未知 operator 跳过 subject={} operator={}",
+                        cond.getSubject(), cond.getOperator());
                 return false;
         }
     }

@@ -1,0 +1,137 @@
+package com.zwei.iot.alarm.algolib.service.impl;
+
+import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.alarm.algolib.domain.AlgoInfo;
+import com.zwei.iot.alarm.algolib.domain.AlgoVersion;
+import com.zwei.iot.alarm.algolib.mapper.AlgoInfoMapper;
+import com.zwei.iot.alarm.algolib.mapper.AlgoVersionMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.file.Path;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+/**
+ * AlgoVersionServiceImpl 单元测试。
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("AlgoVersionServiceImpl")
+class AlgoVersionServiceImplTest {
+
+    @Mock private AlgoInfoMapper algoInfoMapper;
+    @Mock private AlgoVersionMapper algoVersionMapper;
+
+    @TempDir
+    Path tempDir;
+
+    private AlgoVersionServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        String tempPath = tempDir.toString();
+        service = new AlgoVersionServiceImpl(algoInfoMapper, algoVersionMapper) {
+            @Override
+            protected String getProfilePath() {
+                return tempPath;
+            }
+        };
+    }
+
+    @Nested
+    @DisplayName("upload")
+    class Upload {
+
+        @Test
+        @DisplayName("非 zip 文件抛异常")
+        void nonZipThrows() {
+            MultipartFile file = new MockMultipartFile(
+                    "file", "algo.tar", "application/octet-stream", new byte[]{1, 2, 3});
+
+            assertThatThrownBy(() -> service.upload(1L, "v1", null, file, "admin"))
+                    .isInstanceOf(ServiceException.class)
+                    .hasMessageContaining("zip");
+
+            verify(algoVersionMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("算法不存在抛异常")
+        void algoNotFoundThrows() {
+            when(algoInfoMapper.selectById(99L)).thenReturn(null);
+            MultipartFile file = new MockMultipartFile(
+                    "file", "algo.zip", "application/zip", new byte[]{1, 2, 3});
+
+            assertThatThrownBy(() -> service.upload(99L, "v1", null, file, "admin"))
+                    .isInstanceOf(ServiceException.class)
+                    .hasMessageContaining("不存在");
+
+            verify(algoVersionMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("版本号冲突抛异常")
+        void versionDuplicateThrows() {
+            when(algoInfoMapper.selectById(1L))
+                    .thenReturn(AlgoInfo.builder().id(1L).code("ALGO_X").name("X").build());
+            when(algoVersionMapper.checkVersionUnique(1L, "v1"))
+                    .thenReturn(AlgoVersion.builder().id(50L).versionNo("v1").build());
+
+            MultipartFile file = new MockMultipartFile(
+                    "file", "algo.zip", "application/zip", new byte[]{1, 2, 3});
+
+            assertThatThrownBy(() -> service.upload(1L, "v1", null, file, "admin"))
+                    .isInstanceOf(ServiceException.class)
+                    .hasMessageContaining("版本号已存在");
+
+            verify(algoVersionMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("合法 zip 上传 → 落盘 + 入库 + 返回版本 ID")
+        void success() {
+            when(algoInfoMapper.selectById(1L))
+                    .thenReturn(AlgoInfo.builder().id(1L).code("ALGO_X").name("X").build());
+            when(algoVersionMapper.checkVersionUnique(1L, "v1.0.0")).thenReturn(null);
+            when(algoVersionMapper.insert(any(AlgoVersion.class))).thenAnswer(inv -> {
+                inv.<AlgoVersion>getArgument(0).setId(777L);
+                return 1;
+            });
+
+            byte[] content = "fake-zip-content".getBytes();
+            MultipartFile file = new MockMultipartFile(
+                    "file", "algo.zip", "application/zip", content);
+
+            Long versionId = service.upload(1L, "v1.0.0", "首次上传", file, "admin");
+
+            assertThat(versionId).isEqualTo(777L);
+            verify(algoVersionMapper).insert(argThat(v ->
+                    v.getAlgoId().equals(1L)
+                    && v.getVersionNo().equals("v1.0.0")
+                    && v.getOriginalName().equals("algo.zip")
+                    && v.getFileSize().equals((long) content.length)
+                    && v.getFileName().startsWith("algo-lib/")
+                    && v.getSha256() != null && !v.getSha256().isEmpty()
+                    && v.getCreateBy().equals("admin")));
+        }
+    }
+
+    @Test
+    @DisplayName("delete 委托 mapper.softDeleteById")
+    void delete() {
+        when(algoVersionMapper.softDeleteById(5L)).thenReturn(1);
+        assertThat(service.delete(5L)).isEqualTo(1);
+        verify(algoVersionMapper).softDeleteById(5L);
+    }
+}

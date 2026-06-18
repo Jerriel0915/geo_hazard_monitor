@@ -1,5 +1,6 @@
 package com.zwei.iot.hazardpoint.service.impl;
 
+import com.zwei.iot.device.domain.brief.DeviceBrief;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceHazardRelationService.HazardPointRef;
 import com.zwei.iot.hazardpoint.domain.DeviceHazardPoint;
@@ -79,4 +80,9 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
     @Override public int countAllHazardPoints() { return hazardPointMapper.countAll(); }
     @Override public List<Map<String, Object>> countHazardPointsByStatus() { return hazardPointMapper.countByStatus(); }
     @Override public List<Map<String, Object>> countHazardPointsByMonth(int months) { return hazardPointMapper.countByMonth(months); }
+
+    @Override
+    public List<DeviceBrief> getDevicesByHazardPoint(Long hazardPointId) {
+        return deviceHazardPointMapper.selectDeviceBriefByHazardPoint(hazardPointId);
+    }
 }

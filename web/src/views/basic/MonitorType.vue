@@ -250,6 +250,24 @@
                 </el-select>
               </template>
             </el-table-column>
+            <el-table-column label="字段类型" width="110" align="center">
+              <template #default="{ row }">
+                <template v-if="isView">
+                  <el-tag v-if="row.fieldType === 'computed'" type="warning" size="small">计算属性</el-tag>
+                  <el-tag v-else type="info" size="small">固有属性</el-tag>
+                </template>
+                <el-select
+                  v-else
+                  v-model="row.fieldType"
+                  :disabled="Boolean(row.id)"
+                  placeholder="请选择"
+                  @change="handleFieldTypeChange(row)"
+                >
+                  <el-option label="固有属性" value="inherent" />
+                  <el-option label="计算属性" value="computed" />
+                </el-select>
+              </template>
+            </el-table-column>
             <el-table-column label="单位" min-width="64" align="center">
               <template #default="{ row }">
                 <template v-if="isView">{{ row.unit || '-' }}</template>
@@ -280,11 +298,20 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="80" align="center" v-if="!isView">
-              <template #default="{ $index }">
-                <el-button type="text" size="small" class="danger-text" @click="handleRemoveModelAttr($index)">
-                  删除
-                </el-button>
+            <el-table-column label="操作" width="140" fixed="right" align="center" v-if="!isView">
+              <template #default="{ row, $index }">
+                <div class="op-cell">
+                  <el-button
+                    v-if="row.fieldType === 'computed'"
+                    type="primary"
+                    text
+                    size="small"
+                    @click="handleEditScript(row, $index)"
+                  >脚本</el-button>
+                  <el-button type="text" size="small" class="danger-text" @click="handleRemoveModelAttr($index)">
+                    删除
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -313,6 +340,17 @@
         </div>
       </div>
     </el-dialog>
+
+    <CalcScriptEditor
+      v-if="editingScriptRow"
+      v-model="calcScriptDialogVisible"
+      :attr-code="editingScriptRow.code"
+      :attr-name="editingScriptRow.name || editingScriptRow.code"
+      :unit="editingScriptRow.unit"
+      :script="editingScriptRow.calcScript || ''"
+      :monitor-type-id="formData.id || 0"
+      @save="handleScriptSaved"
+    />
   </div>
 </template>
 
@@ -336,6 +374,7 @@ import {
 } from '@/api/monitorType'
 import {getIconList, type IconItem} from '@/constants/monitorIcons'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
+import CalcScriptEditor from './components/CalcScriptEditor.vue'
 
 type SearchType = 'code' | 'name'
 
@@ -423,7 +462,9 @@ const normalizeMonitorContent = (item: any): MonitorContentItem => ({
   unit: String(item?.unit || '').trim(),
   icon: item?.icon || '',
   rangeMin: item?.rangeMin === null || item?.rangeMin === undefined ? null : Number(item.rangeMin),
-  rangeMax: item?.rangeMax === null || item?.rangeMax === undefined ? null : Number(item.rangeMax)
+  rangeMax: item?.rangeMax === null || item?.rangeMax === undefined ? null : Number(item.rangeMax),
+  fieldType: item?.fieldType === 'computed' ? 'computed' : 'inherent',
+  calcScript: item?.calcScript || ''
 })
 
 const normalizeMonitorType = (item: any): MonitorTypeItem => ({
@@ -540,6 +581,14 @@ const validateModelAttrs = () => {
       ElMessage.warning(`第 ${index + 1} 行指标类型不能为空`)
       return false
     }
+    if (!row.fieldType) {
+      ElMessage.warning(`第 ${index + 1} 行字段类型不能为空`)
+      return false
+    }
+    if (row.fieldType === 'computed' && !row.calcScript?.trim()) {
+      ElMessage.warning(`第 ${index + 1} 行(${row.name || row.code})为计算属性, 必须设置计算脚本`)
+      return false
+    }
     if (row.code.length > 100) {
       ElMessage.warning(`第 ${index + 1} 行监测内容编码长度不能超过100个字符`)
       return false
@@ -601,7 +650,9 @@ const syncMonitorContents = async (monitorTypeId: number) => {
     unit: item.unit.trim(),
     icon: item.icon || '',
     rangeMin: item.rangeMin ?? null,
-    rangeMax: item.rangeMax ?? null
+    rangeMax: item.rangeMax ?? null,
+    fieldType: item.fieldType || 'inherent',
+    calcScript: item.calcScript ?? ''
   }))
 
   const existingMap = new Map(originalContents.value.map((item) => [item.id, item]))
@@ -630,7 +681,9 @@ const syncMonitorContents = async (monitorTypeId: number) => {
           indicatorType: item.indicatorType,
           icon: item.icon,
           rangeMin: item.rangeMin,
-          rangeMax: item.rangeMax
+          rangeMax: item.rangeMax,
+          fieldType: item.fieldType,
+          calcScript: item.calcScript
         })
         continue
       }
@@ -640,14 +693,16 @@ const syncMonitorContents = async (monitorTypeId: number) => {
         oldItem.unit !== item.unit ||
         (oldItem.icon || '') !== (item.icon || '') ||
         (oldItem.rangeMin ?? null) !== (item.rangeMin ?? null) ||
-        (oldItem.rangeMax ?? null) !== (item.rangeMax ?? null)
+        (oldItem.rangeMax ?? null) !== (item.rangeMax ?? null) ||
+        (oldItem.calcScript ?? '') !== (item.calcScript ?? '')
       ) {
         await updateMonitorContent(item.id, {
           name: item.name,
           unit: item.unit,
           icon: item.icon,
           rangeMin: item.rangeMin,
-          rangeMax: item.rangeMax
+          rangeMax: item.rangeMax,
+          calcScript: item.calcScript
         })
       }
       continue
@@ -661,7 +716,9 @@ const syncMonitorContents = async (monitorTypeId: number) => {
       indicatorType: item.indicatorType,
       icon: item.icon,
       rangeMin: item.rangeMin,
-      rangeMax: item.rangeMax
+      rangeMax: item.rangeMax,
+      fieldType: item.fieldType,
+      calcScript: item.calcScript
     })
   }
 }
@@ -839,7 +896,9 @@ const handleAddModelAttr = () => {
     unit: '',
     icon: formData.icon || '',
     rangeMin: null,
-    rangeMax: null
+    rangeMax: null,
+    fieldType: 'inherent',
+    calcScript: ''
   })
 }
 
@@ -859,6 +918,35 @@ const handleRemoveModelAttr = (index: number) => {
 const handleIndicatorTypeChange = (row: MonitorContentItem) => {
   const type = indicatorTypeOptions.find((item) => item.code === row.indicatorType)
   row.unit = type?.unit || ''
+}
+
+const calcScriptDialogVisible = ref(false)
+const editingScriptIndex = ref<number>(-1)
+const editingScriptRow = ref<MonitorContentItem | null>(null)
+
+const handleFieldTypeChange = (row: MonitorContentItem) => {
+  if (row.fieldType === 'computed' && !row.calcScript) {
+    // Groovy 5 兼容: 使用 .get('properties').get('xxx') 而非 .properties.xxx
+    row.calcScript = `// 计算属性: ${row.code || '属性编码'}\n`
+      + '// 可用变量 (Groovy 5 语法, 必须用 .get() 访问):\n'
+      + `//   curData.get('properties').get('${row.code || 'attrCode'}')  当前值\n`
+      + `//   prevData?.get('properties')?.get('${row.code || 'attrCode'}')  上一条值\n`
+      + '// 返回: 计算结果 (数值类型)\n\n'
+      + `return curData.get('properties').get('${row.code || 'attrCode'}')\n`
+  }
+}
+
+const handleEditScript = (row: MonitorContentItem, index: number) => {
+  editingScriptIndex.value = index
+  editingScriptRow.value = row
+  calcScriptDialogVisible.value = true
+}
+
+const handleScriptSaved = (script: string) => {
+  if (editingScriptRow.value) {
+    editingScriptRow.value.calcScript = script
+  }
+  calcScriptDialogVisible.value = false
 }
 
 const handleSelectTypeIcon = () => {

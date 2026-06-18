@@ -48,6 +48,16 @@
                       style="width: 400px"
                   />
                 </template>
+                <template v-else-if="param.type === 'password'">
+                  <el-input
+                      v-model="paramsFormData[param.code]"
+                      type="password"
+                      show-password
+                      :placeholder="param.placeholder"
+                      :maxlength="param.maxLength"
+                      style="width: 400px"
+                  />
+                </template>
                 <template v-else-if="param.type === 'number'">
                   <el-input-number
                       v-model="paramsFormData[param.code]"
@@ -229,13 +239,14 @@ import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import type {FormInstance, UploadFile} from 'element-plus'
 import {ElMessage} from 'element-plus'
 import {getFocusArea, getLogCleanupConfig, saveFocusArea, updateLogCleanupConfig} from '@/api/system'
+import request from '@/utils/request'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 interface ParamItem {
   code: string
   name: string
-  type: 'string' | 'number' | 'select' | 'switch' | 'textarea' | 'geojson'
+  type: 'string' | 'number' | 'select' | 'switch' | 'textarea' | 'geojson' | 'password'
   category: string
   value: any
   placeholder?: string
@@ -255,7 +266,8 @@ const paramCategories = [
   { key: 'basic', label: '基础配置' },
   { key: 'data', label: '数据管理' },
   { key: 'alarm', label: '告警配置' },
-  { key: 'security', label: '安全设置' }
+  { key: 'security', label: '安全设置' },
+  { key: 'notify', label: '通知配置' }
 ]
 
 const paramList = ref<ParamItem[]>([
@@ -282,7 +294,19 @@ const paramList = ref<ParamItem[]>([
   { code: 'login_fail_times', name: '允许失败次数', type: 'number', category: 'security', value: 5, min: 3, max: 10, remark: '允许的最大登录失败次数' },
   { code: 'lock_duration', name: '锁定时长(分钟)', type: 'number', category: 'security', value: 30, min: 5, max: 1440, step: 5, remark: '账号锁定后自动解锁时间' },
   { code: 'token_expire', name: 'Token过期(小时)', type: 'number', category: 'security', value: 2, min: 1, max: 24, remark: '用户登录Token有效期' },
-  { code: 'password_expire', name: '密码有效期(天)', type: 'number', category: 'security', value: 90, min: 30, max: 365, step: 30, remark: '密码过期后需强制修改' }
+  { code: 'password_expire', name: '密码有效期(天)', type: 'number', category: 'security', value: 90, min: 30, max: 365, step: 30, remark: '密码过期后需强制修改' },
+
+  { code: 'notify.sms.access-key-id', name: '短信 AccessKeyId', type: 'string', category: 'notify', value: '', placeholder: '阿里云/腾讯云 AccessKeyId', maxLength: 128, remark: '短信服务商访问密钥 ID' },
+  { code: 'notify.sms.access-key-secret', name: '短信 AccessKeySecret', type: 'password', category: 'notify', value: '', placeholder: 'AccessKeySecret', maxLength: 128, remark: '短信服务商访问密钥（不回显）' },
+  { code: 'notify.sms.sign-name', name: '短信签名', type: 'string', category: 'notify', value: '', placeholder: '如：地质灾害监测', maxLength: 32, remark: '已审批通过的短信签名' },
+  { code: 'notify.sms.template.alarm', name: '告警短信模板', type: 'string', category: 'notify', value: '', placeholder: '如：SMS_123456789', maxLength: 64, remark: '告警触发短信模板编号' },
+  { code: 'notify.sms.template.offline', name: '离线短信模板', type: 'string', category: 'notify', value: '', placeholder: '如：SMS_987654321', maxLength: 64, remark: '设备离线短信模板编号' },
+  { code: 'notify.mail.host', name: '邮件服务器', type: 'string', category: 'notify', value: '', placeholder: '如：smtp.qiye.aliyun.com', maxLength: 128, remark: 'SMTP 服务器地址' },
+  { code: 'notify.mail.port', name: '邮件端口', type: 'number', category: 'notify', value: 465, min: 1, max: 65535, remark: 'SMTP 端口（SSL 通常 465）' },
+  { code: 'notify.mail.username', name: '邮件账号', type: 'string', category: 'notify', value: '', placeholder: '发件邮箱地址', maxLength: 128, remark: 'SMTP 登录账号' },
+  { code: 'notify.mail.password', name: '邮件密码', type: 'password', category: 'notify', value: '', placeholder: 'SMTP 密码或授权码', maxLength: 128, remark: 'SMTP 登录密码（不回显）' },
+  { code: 'notify.mail.from', name: '发件人地址', type: 'string', category: 'notify', value: '', placeholder: 'noreply@example.com', maxLength: 128, remark: '发件人邮箱地址' },
+  { code: 'notify.mail.ssl', name: '启用 SSL', type: 'switch', category: 'notify', value: true, remark: '是否使用 SSL 加密连接' }
 ])
 
 const paramsFormData = reactive<Record<string, any>>({})
@@ -568,6 +592,29 @@ onMounted(async () => {
     }
   } catch { /* 未配置 */
   }
+  // 加载通知配置（notify 分类下的所有 code 从 sys_config 读取）
+  const notifyCodes = paramList.value
+      .filter(p => p.category === 'notify')
+      .map(p => p.code)
+  const results = await Promise.allSettled(
+      notifyCodes.map(code => request.get<any>(`/system/config/configKey/${code}`))
+  )
+  results.forEach((r, idx) => {
+    if (r.status !== 'fulfilled') return // 配置项缺失，保留默认值
+    const raw: any = (r.value as any)?.data ?? (r.value as any)?.msg
+    if (raw == null || raw === '') return
+    const code = notifyCodes[idx]
+    const item = paramList.value.find(p => p.code === code)
+    if (!item) return
+    if (item.type === 'switch') {
+      paramsFormData[code] = raw === true || raw === 'true' || raw === 'Y' || raw === 1 || raw === '1'
+    } else if (item.type === 'number') {
+      const n = Number(raw)
+      paramsFormData[code] = Number.isNaN(n) ? item.value : n
+    } else {
+      paramsFormData[code] = String(raw)
+    }
+  })
 })
 
 const handleSaveParams = async () => {
@@ -581,6 +628,22 @@ const handleSaveParams = async () => {
     if (geoJsonData.value) {
       await saveFocusArea(geoJsonData.value)
     }
+    // 保存通知配置（notify 分类写入 sys_config）
+    const notifyItems = paramList.value.filter(p => p.category === 'notify')
+    await Promise.all(
+        notifyItems
+            .filter(item => {
+              // password 字段留空时跳过保存，避免覆盖已存在的密钥
+              if (item.type === 'password' && !paramsFormData[item.code]) return false
+              return true
+            })
+            .map(item => {
+              const value = item.type === 'switch'
+                  ? (paramsFormData[item.code] ? 'true' : 'false')
+                  : String(paramsFormData[item.code] ?? '')
+              return request.put(`/system/config/configKey/${item.code}`, {configValue: value})
+            })
+    )
     ElMessage.success('系统参数保存成功')
   } catch {
     ElMessage.error('保存失败，请稍后重试')

@@ -309,9 +309,10 @@
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 import {onMounted, onUnmounted, reactive, ref} from 'vue'
-import {useRouter} from 'vue-router'
+import {useRoute, useRouter} from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 
 const loginFormRef = ref()
 const loginMethod = ref('account')
@@ -425,7 +426,9 @@ const login = async () => {
     }
 
     ElMessage.success('登录成功')
-    router.push('/dashboard')
+    // 支持 H5 等场景：未登录访问被路由守卫拦截到登录页时，登录后跳回原地址（如 /h5/disposal/:id）
+    const redirect = route.query.redirect
+    router.push((typeof redirect === 'string' && redirect) ? redirect : '/dashboard')
   } catch (error: any) {
     console.error('登录失败:', error)
     ElMessage.error(error?.response?.data?.msg || error?.message || '登录失败')

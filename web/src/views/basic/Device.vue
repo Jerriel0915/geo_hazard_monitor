@@ -564,6 +564,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, reactive, ref, watch} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Cpu, User, Plus} from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -594,11 +595,14 @@ const {
   dialogVisible, dialogTitle, isEdit, isView, formRef, formData, formRules,
   detailDialogVisible, currentRow,
   getStatusType, nowString,
-  loadTableData,
+  loadTableData, fetchDetail,
   handleSearch, handleReset, handleSizeChange, handlePageChange,
   handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopyOpen, handleCopyConfirm, handleExport,
   copyDialogVisible, copyFormRef, copyFormData, copyFormRules, copySubmitLoading,
 } = useDeviceCrud()
+
+const route = useRoute()
+const router = useRouter()
 
 const deviceIconList = getIconList()
 
@@ -1317,10 +1321,26 @@ const handleDeviceIconSelect = (item: { code: string; name: string; icon: string
   deviceIconDialogVisible.value = false
 }
 
-onMounted(() => {
-  loadTableData()
+onMounted(async () => {
+  await loadTableData()
   loadMonitorTypeList()
   loadHazardPointList()
+  // 通知中心跳转携带 ?deviceId= 时，自动打开该设备详情
+  const deviceId = route.query.deviceId
+  if (deviceId) {
+    const id = Number(deviceId)
+    // 清除 query，避免刷新后再次弹出
+    router.replace({ path: route.path, query: {} })
+    if (!Number.isNaN(id)) {
+      try {
+        const detail = await fetchDetail(id)
+        if (detail) {
+          currentRow.value = detail
+          detailDialogVisible.value = true
+        }
+      } catch { /* 设备不存在或无权查看，静默忽略 */ }
+    }
+  }
 })
 </script>
 

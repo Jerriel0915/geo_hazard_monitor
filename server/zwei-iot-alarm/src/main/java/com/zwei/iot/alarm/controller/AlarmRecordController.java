@@ -3,18 +3,17 @@ package com.zwei.iot.alarm.controller;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.TableDataInfo;
-import com.zwei.iot.alarm.domain.AlarmFeedback;
 import com.zwei.iot.alarm.domain.AlarmRecord;
-import com.zwei.iot.alarm.domain.AlarmRecordLog;
+import com.zwei.iot.alarm.domain.AlarmRecordActionLog;
+import com.zwei.iot.alarm.domain.AlarmRecordTriggerDetail;
 import com.zwei.iot.alarm.domain.dto.AlarmRecordDisposeRequest;
 import com.zwei.iot.alarm.domain.dto.BatchDisposeRequest;
-import com.zwei.iot.alarm.service.IAlarmFeedbackService;
+import com.zwei.iot.alarm.service.IAlarmNotificationService;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 告警记录管理 Controller
@@ -26,12 +25,12 @@ import java.util.Map;
 public class AlarmRecordController extends BaseController {
 
     private final IAlarmRecordService alarmRecordService;
-    private final IAlarmFeedbackService alarmFeedbackService;
+    private final IAlarmNotificationService notificationService;
 
     public AlarmRecordController(IAlarmRecordService alarmRecordService,
-                                 IAlarmFeedbackService alarmFeedbackService) {
+                                 IAlarmNotificationService notificationService) {
         this.alarmRecordService = alarmRecordService;
-        this.alarmFeedbackService = alarmFeedbackService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/pending")
@@ -59,7 +58,13 @@ public class AlarmRecordController extends BaseController {
     @PutMapping("/{id}/dispose")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:dispose')")
     public AjaxResult dispose(@PathVariable Long id, @RequestBody AlarmRecordDisposeRequest request) {
-        return toAjax(alarmRecordService.dispose(id, request.getStatus(), request.getNote(), getUsername()));
+        return toAjax(alarmRecordService.dispose(
+                id,
+                request.getStatus(),
+                request.getDescription(),
+                request.getAttachments(),
+                request.getRemarks() != null ? request.getRemarks() : request.getNote(),
+                getUsername()));
     }
 
     @PostMapping("/batch")
@@ -68,29 +73,32 @@ public class AlarmRecordController extends BaseController {
         return toAjax(alarmRecordService.batchDispose(
                 request.getIds().toArray(new Long[0]),
                 request.getStatus(),
+                request.getDescription(),
+                request.getAttachments(),
+                request.getRemarks() != null ? request.getRemarks() : request.getNote(),
                 getUsername()));
     }
 
-    @GetMapping("/{id}/logs")
+    /** 触发明细列表 (告警记录 tab) */
+    @GetMapping("/{id}/trigger-details")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
-    public AjaxResult getLogs(@PathVariable Long id) {
-        List<AlarmRecordLog> logs = alarmRecordService.selectLogsByAlarmId(id);
+    public AjaxResult triggerDetails(@PathVariable Long id) {
+        List<AlarmRecordTriggerDetail> details = alarmRecordService.selectTriggerDetailsByAlarmRecordId(id);
+        return success(details);
+    }
+
+    /** 动作日志列表 (处置记录 tab + 时间线) */
+    @GetMapping("/{id}/action-logs")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult actionLogs(@PathVariable Long id) {
+        List<AlarmRecordActionLog> logs = alarmRecordService.selectActionLogsByAlarmRecordId(id);
         return success(logs);
     }
 
-    @GetMapping("/{id}/feedbacks")
+    /** 通知记录列表 (通知记录 tab) */
+    @GetMapping("/{id}/notifications")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
-    public AjaxResult getFeedbacks(@PathVariable Long id) {
-        List<AlarmFeedback> feedbacks = alarmFeedbackService.getFeedbacksByAlarmId(id);
-        return success(feedbacks);
-    }
-
-    @PostMapping("/{id}/feedback")
-    @PreAuthorize("@ss.hasPermi('iot:alarm-record:dispose')")
-    public AjaxResult addFeedback(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        String content = body.get("content") != null ? body.get("content").toString() : "";
-        String files = body.get("files") != null ? body.get("files").toString() : null;
-        alarmFeedbackService.addFeedback(id, content, files, getUsername());
-        return success();
+    public AjaxResult notifications(@PathVariable Long id) {
+        return success(notificationService.selectByAlarmId(id));
     }
 }

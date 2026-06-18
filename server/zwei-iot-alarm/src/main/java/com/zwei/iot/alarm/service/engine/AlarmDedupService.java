@@ -1,6 +1,8 @@
 package com.zwei.iot.alarm.service.engine;
 
 import com.zwei.iot.alarm.config.AlarmProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,8 @@ import java.time.Duration;
  */
 @Service
 public class AlarmDedupService {
+
+    private static final Logger log = LoggerFactory.getLogger(AlarmDedupService.class);
 
     private static final String PRE_TRIGGER_KEY = "alarm:pre-trigger";
     private static final String LAST_TRIGGER_KEY = "alarm:last-trigger";
@@ -54,28 +58,38 @@ public class AlarmDedupService {
         if (persistCount <= 1) {
             // 检查静默期
             if (isInSilencePeriod(lastKey, silencePeriod)) {
+                log.debug("[Alarm][Dedup] persistCount=1 静默期内未触发 criteriaId={} hpId={} level={} silencePeriod={}",
+                        criteriaId, hazardPointId, alarmLevel, silencePeriod);
                 return false;
             }
+            log.debug("[Alarm][Dedup] persistCount=1 立即触发 criteriaId={} hpId={} level={}",
+                    criteriaId, hazardPointId, alarmLevel);
             markTriggered(lastKey);
             return true;
         }
 
         // 累加预触发计数
         Long currentCount = redisTemplate.opsForValue().increment(preKey);
-        if (currentCount == 1) {
+        if (currentCount != null && currentCount == 1) {
             // 首次计数，设置 TTL（数据周期 × persistCount × 2 的安全窗口）
             int ttl = properties.getPreTriggerTtlSeconds();
             redisTemplate.expire(preKey, Duration.ofSeconds(ttl));
         }
+        log.debug("[Alarm][Dedup] 预触发计数累加 criteriaId={} hpId={} level={} current={} persistCount={} silencePeriod={}",
+                criteriaId, hazardPointId, alarmLevel, currentCount, persistCount, silencePeriod);
 
         if (currentCount != null && currentCount >= persistCount) {
             // 达到持续触发次数
             if (isInSilencePeriod(lastKey, silencePeriod)) {
+                log.debug("[Alarm][Dedup] 已达阈值但处于静默期 criteriaId={} hpId={} level={} silencePeriod={}",
+                        criteriaId, hazardPointId, alarmLevel, silencePeriod);
                 return false;
             }
             // 达到阈值，清理预触发计数并生成告警
             redisTemplate.delete(preKey);
             markTriggered(lastKey);
+            log.debug("[Alarm][Dedup] 达到阈值触发 criteriaId={} hpId={} level={} persistCount={} reached={}",
+                    criteriaId, hazardPointId, alarmLevel, persistCount, currentCount);
             return true;
         }
 

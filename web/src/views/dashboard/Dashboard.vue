@@ -113,30 +113,30 @@
 </template>
 
 <script setup lang="ts">
-import {getBoundDevices, getHazardPointDetail, getHazardPointGroups, getHazardPointPage} from '@/api/hazardPoint'
-import {deserialize, type BoundaryCoords} from '@/lib/boundaryCoords'
-import {getDeviceMapIconPath} from '@/utils/deviceIcon'
-import {getDashboardFull} from '@/api/monitor'
-import {getMonitorTypeList, type MonitorTypeItem} from '@/api/monitorType'
-import {type AlarmRecordItem, getRealtimeAlarmPage} from '@/api/realtimeAlarm'
-import {getFocusArea} from '@/api/system'
-import {ArrowLeft, ArrowRight, Close} from '@element-plus/icons-vue'
+import { getBoundDevices, getHazardPointDetail, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
+import { getDashboardFull } from '@/api/monitor'
+import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
+import { getRealtimeAlarmPage, type AlarmRecordItem } from '@/api/realtimeAlarm'
+import { getFocusArea } from '@/api/system'
+import { buildTiandituUrl } from '@/composables/useLeafletMap'
+import { deserialize, type BoundaryCoords } from '@/lib/boundaryCoords'
+import { getDeviceMapIconPath } from '@/utils/deviceIcon'
+import { ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue'
 import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import {computed, onMounted, onUnmounted, ref, shallowRef} from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import AlarmWidget from './components/AlarmWidget.vue'
 import DeviceDataPanel from './components/DeviceDataPanel.vue'
+import DeviceStatusWidget from './components/DeviceStatusWidget.vue'
 import HazardAlarmWidget from './components/HazardAlarmWidget.vue'
 import HazardDetailWidget from './components/HazardDetailWidget.vue'
-import DeviceStatusWidget from './components/DeviceStatusWidget.vue'
 import HealthWidget from './components/HealthWidget.vue'
 import LayoutConfigDialog from './components/LayoutConfigDialog.vue'
 import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
 import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import ResourceWidget from './components/ResourceWidget.vue'
-import {LAYER_OPTIONS as layerOptions} from './composables/useDashboardMap'
-import {buildTiandituUrl} from '@/composables/useLeafletMap'
+import { LAYER_OPTIONS as layerOptions } from './composables/useDashboardMap'
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -189,7 +189,7 @@ const isRightPanelCollapsed = ref(false)
 // ========== 面板布局配置 ==========
 const DEFAULT_LAYOUT = {
   left: ['systemHealth', 'assetInfo'],
-  right: ['alarmStatus'],
+  right: ['alarmStatus', 'deviceStatus'],
   hidden: []
 }
 

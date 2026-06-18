@@ -4,6 +4,7 @@ import com.zwei.iot.alarm.domain.AlarmRecord;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -35,7 +36,9 @@ public interface AlarmRecordMapper {
 
     int updateTriggerCount(@Param("id") Long id,
                            @Param("lastTriggerTime") String lastTriggerTime,
-                           @Param("triggerCount") Integer triggerCount);
+                           @Param("triggerCount") Integer triggerCount,
+                           @Param("alarmMessage") String alarmMessage,
+                           @Param("currentValue") String currentValue);
 
     int updateStatus(@Param("id") Long id,
                      @Param("status") Integer status,
@@ -53,4 +56,30 @@ public interface AlarmRecordMapper {
     int countByStatus(@Param("status") Integer status);
 
     int countByHazardPointId(@Param("hazardPointId") Long hazardPointId);
+
+    /**
+     * 更新告警等级 (再次触发且等级变化时调用)。
+     */
+    int updateAlarmLevel(@Param("id") Long id,
+                         @Param("alarmLevel") Integer alarmLevel,
+                         @Param("alarmLevelText") String alarmLevelText,
+                         @Param("lastTriggerTime") String lastTriggerTime,
+                         @Param("triggerCount") Integer triggerCount,
+                         @Param("alarmMessage") String alarmMessage,
+                         @Param("currentValue") String currentValue);
+
+    /**
+     * 按隐患点+时间窗查询告警记录 (供 report 汇总)。
+     */
+    List<AlarmRecord> selectByHazardPointAndTime(@Param("hazardPointId") Long hazardPointId,
+                                                  @Param("start") LocalDateTime start,
+                                                  @Param("end") LocalDateTime end);
+
+    /**
+     * 按隐患点+时间窗查询最近 limit 条告警 (供 report Top N 展示)。
+     */
+    List<AlarmRecord> selectTopByHazardPointAndTime(@Param("hazardPointId") Long hazardPointId,
+                                                     @Param("start") LocalDateTime start,
+                                                     @Param("end") LocalDateTime end,
+                                                     @Param("limit") int limit);
 }

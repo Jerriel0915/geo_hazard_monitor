@@ -23,7 +23,7 @@
         <yauaa.version>8.1.0</yauaa.version>
         <kaptcha.version>2.3.3</kaptcha.version>
         <pagehelper.boot.version>2.1.1</pagehelper.boot.version>
-        <fastjson.version>2.0.61</fastjson.version>
+        <fastjson.version>2.0.62</fastjson.version>
         <oshi.version>6.10.0</oshi.version>
         <commons.io.version>2.21.0</commons.io.version>
         <poi.version>4.1.2</poi.version>
@@ -172,6 +172,13 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+            <!-- 报告模块 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-iot-report</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
             <!-- Source: https://mvnrepository.com/artifact/org.dromara.mica-mqtt/mica-mqtt-server-spring-boot-starter -->
             <dependency>
                 <groupId>org.dromara.mica-mqtt</groupId>
@@ -233,6 +240,7 @@
         <module>zwei-iot-parser</module>
         <module>zwei-iot-video</module>
         <module>zwei-iot-alarm</module>
+        <module>zwei-iot-report</module>
         <module>zwei-monitor</module>
         <module>zwei-datashare</module>
     </modules>
