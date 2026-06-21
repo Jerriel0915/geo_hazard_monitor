@@ -1,5 +1,5 @@
-import request from '@/utils/request'
-import type {PageResult} from './system'
+import request from '@/utils/request';
+import type { PageResult } from './system';
 
 // ==================== 类型定义 ====================
 
@@ -17,7 +17,7 @@ export type AlarmLevel = 1 | 2 | 3 | 4
 export const ALARM_LEVEL_COLORS: Record<number, { solid: string; light: string; dark: string; fg: string }> = {
     1: { solid: '#F53F3F', light: '#fee2e2', dark: '#dc3545', fg: '#ffffff' }, // 红
     2: { solid: '#FF7D00', light: '#fff3e0', dark: '#e67e22', fg: '#ffffff' }, // 橙
-    3: { solid: '#FACC22', light: '#fff9e6', dark: '#b08200', fg: '#1d2129' }, // 黄 (深字保对比度)
+    3: { solid: '#e1ff00', light: '#fff9e6', dark: '#f5e856', fg: '#1d2129' }, // 黄 (深字保对比度)
     4: { solid: '#1890FF', light: '#e6f4ff', dark: '#0958d9', fg: '#ffffff' }, // 蓝
 }
 
