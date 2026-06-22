@@ -75,7 +75,9 @@
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="告警配置" name="alarmConfig">
+
+      <!--暂时先屏蔽这个板块-->
+      <!-- <el-tab-pane label="告警配置" name="alarmConfig">
         <div class="alarm-config-view">
           <div class="config-section">
             <h3 class="section-title">告警判据</h3>
@@ -138,7 +140,7 @@
             </div>
           </div>
         </div>
-      </el-tab-pane>
+      </el-tab-pane> -->
 
       <el-tab-pane label="监测数据" name="monitorData">
         <MonitorDataExplorer
