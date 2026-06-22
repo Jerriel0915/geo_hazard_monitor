@@ -147,19 +147,15 @@ public class CriteriaEvaluator {
     /**
      * 根据条件的主语解析出实际值。
      * <p>
-     * 前端生成的 subject 可能带 {@code payload.current.} 前缀，需标准化为 attrCode。
+     * subject 格式由 {@link #normalizeSubject} 校验: 3 段 ({kind}.{dimension}.{attrCode})
+     * 或 4 段 ({sensorCode}.{kind}.{dimension}.{attrCode}), 非法格式返回 null。
      */
     Double resolveSubjectValue(LevelCondition cond, Map<String, Double> subjectValues) {
         if (cond == null || cond.getSubject() == null) return null;
 
         String subject = normalizeSubject(cond.getSubject());
 
-        Double value;
-        if ("FUNCTION".equals(cond.getSubjectType())) {
-            value = subjectValues.get(subject);
-        } else {
-            value = subjectValues.get(subject);
-        }
+        Double value = subjectValues.get(subject);
         if (value == null) {
             log.debug("[Alarm][Criteria][Subject] 未找到对应值 raw={} normalized={} subjectType={} available={}",
                     cond.getSubject(), subject, cond.getSubjectType(), subjectValues.keySet());
