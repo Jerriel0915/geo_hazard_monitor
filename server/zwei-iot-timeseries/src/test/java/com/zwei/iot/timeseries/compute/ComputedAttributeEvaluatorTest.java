@@ -94,13 +94,10 @@ class ComputedAttributeEvaluatorTest {
         assertThat(out).hasSize(1);
         assertThat(out.get(0).identifier()).isEqualTo("velocity");
         assertThat(out.get(0).value()).isEqualTo(24.0);
-        verify(lastMessageStore).put(eq(1L), eq("S1"), argThat(s ->
-                s.properties().containsKey("velocity") &&
-                s.properties().containsKey("displacement")));
     }
 
     @Test
-    @DisplayName("全部脚本失败(返回空 Map): 不写回 lastMessageStore, 返回空 list")
+    @DisplayName("全部脚本失败(返回空 Map): 返回空 list")
     void allScriptsFail() {
         stubSensor();
         when(registry.getByMonitorTypeId(100L)).thenReturn(List.of(
@@ -113,9 +110,7 @@ class ComputedAttributeEvaluatorTest {
         List<PropertyValue> out = evaluator.evaluate(1L, "S1", msg(12.0));
 
         assertThat(out).isEmpty();
-        // 即使全部失败, prevData 也按规格修复后逻辑应更新(否则下次仍是旧值)
-        // — 这里规格修复点是"只要进入求值阶段就更新", 故仍调用 put
-        verify(lastMessageStore).put(eq(1L), eq("S1"), any());
+        verify(lastMessageStore, never()).put(any(), any(), any());
     }
 
     @Test
