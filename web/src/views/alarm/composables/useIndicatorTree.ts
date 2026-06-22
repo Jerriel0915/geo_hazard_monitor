@@ -32,56 +32,49 @@ export interface LevelFormState {
   description: string
 }
 
-const DEVICE_NODES: IndicatorTreeNode[] = [
-  {
-    value: 'device', label: '设备基础信息', displayLabel: '设备基础信息', disabled: true,
-    children: [
-      {value: 'device.onlineStatus', label: '在线状态', displayLabel: '在线状态', meta: {subjectType: 'DEVICE'}},
-      {value: 'device.lastReportTime', label: '最后上报时间', displayLabel: '最后上报时间', meta: {subjectType: 'DEVICE'}},
-    ]
-  },
-  {
-    value: 'packet', label: '数据包信息', displayLabel: '数据包信息', disabled: true,
-    children: [
-      {value: 'packet.dataTime', label: '数据时间', displayLabel: '数据时间', meta: {subjectType: 'PACKET'}},
-      {value: 'packet.quality', label: '数据质量', displayLabel: '数据质量', meta: {subjectType: 'PACKET'}},
-    ]
-  },
-]
-
-function buildPayloadLeaves(contents: MonitorContentItem[], valueKind: string, parentLabel: string): IndicatorTreeNode[] {
-  return (contents || []).map(c => {
+/** 构建 dimension 层子节点: payload / device / packet */
+function buildDimensionChildren(contents: MonitorContentItem[]): IndicatorTreeNode[] {
+  const payloadChildren: IndicatorTreeNode[] = (contents || []).map(c => {
     const shortLabel = `${c.name}${c.unit ? ` (${c.unit})` : ''}`
     return {
-      value: `payload.${valueKind}.${c.code}`,
+      value: `payload.${c.code}`,
       label: shortLabel,
-      displayLabel: `${parentLabel}.${shortLabel}`,
+      displayLabel: shortLabel,
       unit: c.unit || undefined,
-      meta: {subjectType: 'CONTENT' as const, valueKind},
+      meta: {subjectType: 'CONTENT' as const, valueKind: 'current'},
     }
   })
+  return [
+    {
+      value: 'payload', label: '数据载荷信息', displayLabel: '数据载荷信息', disabled: true,
+      children: payloadChildren,
+    },
+    {
+      value: 'device', label: '设备基础信息', displayLabel: '设备基础信息', disabled: true,
+      children: [
+        {value: 'device.onlineStatus', label: '在线状态', displayLabel: '在线状态', meta: {subjectType: 'DEVICE' as const}},
+        {value: 'device.lastReportTime', label: '最后上报时间', displayLabel: '最后上报时间', meta: {subjectType: 'DEVICE' as const}},
+      ],
+    },
+    {
+      value: 'packet', label: '数据包信息', displayLabel: '数据包信息', disabled: true,
+      children: [
+        {value: 'packet.dataTime', label: '数据时间', displayLabel: '数据时间', meta: {subjectType: 'PACKET' as const}},
+      ],
+    },
+  ]
 }
 
-function buildPayloadNode(contents: MonitorContentItem[]): IndicatorTreeNode {
-  return {
-    value: 'payload', label: '数据载荷信息', displayLabel: '数据载荷信息', disabled: true,
-    children: [
-      {value: 'payload.current', label: '当前值', displayLabel: '当前值', disabled: true, children: buildPayloadLeaves(contents, 'current', '当前值')},
-      {value: 'payload.previous', label: '上一值', displayLabel: '上一值', disabled: true, children: buildPayloadLeaves(contents, 'previous', '上一值')},
-    ]
-  }
-}
-
-/** 深拷贝节点树，为所有 displayLabel 加上前缀（用于传感器模式下显示"传感器.指标"） */
+/** 深拷贝节点树, 为所有 disabled=false 的节点 value 和 displayLabel 都加上前缀 */
 function prefixDisplayLabels(nodes: IndicatorTreeNode[], prefix: string): IndicatorTreeNode[] {
   return nodes.map(n => {
     const copy: IndicatorTreeNode = {...n}
     if (!n.disabled) {
-      // 可选叶子 / 可选节点：前缀 + 原始短 label
+      // 可选叶子 / 可选节点: value 和 displayLabel 都加前缀（修复多传感器 value 重复 bug）
+      copy.value = `${prefix}.${n.value}`
       copy.displayLabel = `${prefix}.${n.label}`
     } else if (n.children) {
-      // 分组节点：保持自身 label，递归处理子节点
-      copy.displayLabel = n.displayLabel
+      // 分组节点: 保持自身 label, 递归处理子节点
       copy.children = prefixDisplayLabels(n.children, prefix)
     }
     return copy
@@ -111,8 +104,14 @@ export function useIndicatorTree() {
       const detail = await getMonitorTypeDetail(typeId)
       const contents = detail.contents || []
       const tree: IndicatorTreeNode[] = [
-        ...DEVICE_NODES,
-        buildPayloadNode(contents),
+        {
+          value: 'current', label: '当前值', displayLabel: '当前值', disabled: true,
+          children: prefixDisplayLabels(buildDimensionChildren(contents), 'current'),
+        },
+        {
+          value: 'prev', label: '上一值', displayLabel: '上一值', disabled: true,
+          children: prefixDisplayLabels(buildDimensionChildren(contents), 'prev'),
+        },
       ]
       setTree(tree)
     } catch {
@@ -120,7 +119,7 @@ export function useIndicatorTree() {
     }
   }
 
-  async function buildFromSensors(sensors: { sensorId: number; sensorName: string; monitorTypeId: number }[]) {
+  async function buildFromSensors(sensors: { sensorCode: string; sensorName: string; monitorTypeId: number }[]) {
     const seenTypes = new Map<number, MonitorContentItem[]>()
     for (const s of sensors) {
       if (!seenTypes.has(s.monitorTypeId)) {
@@ -136,17 +135,30 @@ export function useIndicatorTree() {
     const tree: IndicatorTreeNode[] = sensors.map(s => {
       const contents = seenTypes.get(s.monitorTypeId) || []
       return {
-        value: `sensor_${s.sensorId}`,
+        value: s.sensorCode,
         label: s.sensorName,
         displayLabel: s.sensorName,
         disabled: true,
-        children: prefixDisplayLabels(
-          [...DEVICE_NODES, buildPayloadNode(contents)],
-          s.sensorName
-        )
+        children: [
+          {
+            value: 'current', label: '当前值', displayLabel: '当前值', disabled: true,
+            children: prefixDisplayLabels(buildDimensionChildren(contents), 'current'),
+          },
+          {
+            value: 'prev', label: '上一值', displayLabel: '上一值', disabled: true,
+            children: prefixDisplayLabels(buildDimensionChildren(contents), 'prev'),
+          },
+        ],
       } satisfies IndicatorTreeNode
     })
-    setTree(tree)
+
+    // 对每个 sensor 子树再次应用 prefixDisplayLabels, 加上 sensorCode 前缀
+    const prefixedTree = tree.map(sensorNode => ({
+      ...sensorNode,
+      children: prefixDisplayLabels(sensorNode.children!, sensorNode.value),
+    }))
+
+    setTree(prefixedTree)
   }
 
   function clear() {
