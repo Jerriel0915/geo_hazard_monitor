@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.service.engine;
 
+import com.zwei.common.domain.PropertyValue;
 import com.zwei.common.event.AlarmTriggeredEvent;
 import com.zwei.common.event.MonitorDataIngestedEvent;
 import com.zwei.iot.alarm.config.AlarmProperties;
@@ -82,24 +83,34 @@ public class AlarmEvaluationEngine {
     @EventListener
     public void onMonitorDataIngested(MonitorDataIngestedEvent event) {
         if (!properties.isEnabled()) {
-            log.debug("[Alarm][Skip] 告警引擎未启用 alarm.enabled=false deviceId={} sensorCode={} attrCode={}",
-                    event.getDeviceId(), event.getSensorCode(), event.getAttrCode());
+            log.debug("[Alarm][Skip] 告警引擎未启用 alarm.enabled=false deviceId={} sensorCode={}",
+                    event.getDeviceId(), event.getSensorCode());
             return;
         }
-        log.debug("[Alarm][In] 接收监测数据 deviceId={} sensorId={} sensorCode={} attrCode={} value={}",
-                event.getDeviceId(), event.getSensorId(), event.getSensorCode(),
-                event.getAttrCode(), event.getValue());
+        int propCount = event.getProperties() != null ? event.getProperties().size() : 0;
+        log.debug("[Alarm][In] 接收监测数据 deviceId={} sensorId={} sensorCode={} properties={}",
+                event.getDeviceId(), event.getSensorId(), event.getSensorCode(), propCount);
         try {
             evaluate(event);
         } catch (Exception e) {
-            log.error("[Alarm][Error] 告警评估失败 deviceId={} sensorCode={} attrCode={}",
-                    event.getDeviceId(), event.getSensorCode(), event.getAttrCode(), e);
+            log.error("[Alarm][Error] 告警评估失败 deviceId={} sensorCode={}",
+                    event.getDeviceId(), event.getSensorCode(), e);
         }
     }
 
     private void evaluate(MonitorDataIngestedEvent event) {
-        if (event.getValue() == null) {
-            log.debug("[Alarm][Skip] value=null deviceId={} attrCode={}", event.getDeviceId(), event.getAttrCode());
+        // 一次性构建 subjectValues — 报文所有数值属性
+        Map<String, Double> subjectValues = new HashMap<>();
+        if (event.getProperties() != null) {
+            for (PropertyValue pv : event.getProperties()) {
+                if (pv.value() instanceof Number n) {
+                    subjectValues.put(pv.identifier(), n.doubleValue());
+                }
+            }
+        }
+        if (subjectValues.isEmpty()) {
+            log.debug("[Alarm][Skip] 报文无数值属性 deviceId={} sensorCode={}",
+                    event.getDeviceId(), event.getSensorCode());
             return;
         }
 
@@ -111,29 +122,27 @@ public class AlarmEvaluationEngine {
         }
         log.debug("[Alarm][Step] 设备绑定隐患点 deviceId={} hazardPointIds={}", event.getDeviceId(), hazardPointIds);
 
-        // 查询传感器属性
+        // 查询传感器属性 — 遍历报文 properties，取第一个匹配且 monitorContentId 非空的（用于兜底判据路径）
         Long monitorContentId = null;
-        String sensorAttrCode = event.getAttrCode();
-        String sensorAttrName = sensorAttrCode; // 回退到 attrCode
         try {
             SensorMetadata metadata = sensorQueryService.requireSensorMetadata(event.getDeviceId(), event.getSensorCode());
-            boolean attrMatched = false;
+            Set<String> propIdentifiers = new HashSet<>();
+            if (event.getProperties() != null) {
+                for (PropertyValue pv : event.getProperties()) {
+                    propIdentifiers.add(pv.identifier());
+                }
+            }
             for (SensorAttribute attr : metadata.attributes()) {
-                if (sensorAttrCode.equals(attr.getAttrCode())) {
+                if (propIdentifiers.contains(attr.getAttrCode()) && attr.getMonitorContentId() != null) {
                     monitorContentId = attr.getMonitorContentId();
-                    if (attr.getAttrName() != null && !attr.getAttrName().isBlank()) {
-                        sensorAttrName = attr.getAttrName();
-                    }
-                    attrMatched = true;
+                    log.debug("[Alarm][Step] 传感器属性匹配 attrCode={} monitorContentId={}",
+                            attr.getAttrCode(), monitorContentId);
                     break;
                 }
             }
-            if (!attrMatched) {
-                log.debug("[Alarm][Skip] 传感器属性未匹配 attrCode={} deviceId={} sensorCode={}",
-                        sensorAttrCode, event.getDeviceId(), event.getSensorCode());
-            } else {
-                log.debug("[Alarm][Step] 传感器属性匹配 attrCode={} monitorContentId={} attrName={}",
-                        sensorAttrCode, monitorContentId, sensorAttrName);
+            if (monitorContentId == null) {
+                log.debug("[Alarm][Step] 报文属性未匹配到 monitorContentId deviceId={} sensorCode={} subjects={}",
+                        event.getDeviceId(), event.getSensorCode(), subjectValues.keySet());
             }
         } catch (Exception e) {
             log.debug("[Alarm][Skip] 传感器元数据查询失败 deviceId={} sensorCode={} err={}",
@@ -148,15 +157,15 @@ public class AlarmEvaluationEngine {
         if (!hpCriteria.isEmpty()) {
             log.debug("[Alarm][Branch] 走隐患点专属判据 count={} hazardPointIds={}",
                     hpCriteria.size(), hazardPointIds);
-            evaluateCriteria(event, hpCriteria, hazardPointIds, monitorContentId, sensorAttrName);
+            evaluateCriteria(event, subjectValues, hpCriteria, hazardPointIds, monitorContentId);
             return;
         }
         log.debug("[Alarm][Branch] 无隐患点专属判据，尝试监测类型兜底 hazardPointIds={}", hazardPointIds);
 
         // ── 优先级 2: 仅当无隐患点判据时，使用监测类型兜底判据 (hazard_point_id IS NULL) ──
         if (monitorContentId == null) {
-            log.debug("[Alarm][Skip] monitorContentId=null 无法匹配兜底判据 deviceId={} attrCode={}",
-                    event.getDeviceId(), event.getAttrCode());
+            log.debug("[Alarm][Skip] monitorContentId=null 无法匹配兜底判据 deviceId={}",
+                    event.getDeviceId());
             return;
         }
         Long monitorTypeId = resolveMonitorTypeId(monitorContentId);
@@ -171,7 +180,7 @@ public class AlarmEvaluationEngine {
         }
         log.debug("[Alarm][Branch] 走监测类型兜底判据 count={} monitorTypeId={}",
                 mtCriteria.size(), monitorTypeId);
-        evaluateCriteria(event, mtCriteria, hazardPointIds, monitorContentId, sensorAttrName);
+        evaluateCriteria(event, subjectValues, mtCriteria, hazardPointIds, monitorContentId);
     }
 
     /**
@@ -206,10 +215,13 @@ public class AlarmEvaluationEngine {
      *
      * @return true 如果至少产生了一条候选告警
      */
-    private boolean evaluateCriteria(MonitorDataIngestedEvent event, List<AlarmCriteria> criteriaList,
-                                     List<Long> hazardPointIds, Long monitorContentId, String attrName) {
-        log.debug("[Alarm][Eval] 开始评估判据 count={} attrCode={} value={} monitorContentId={} hazardPointIds={}",
-                criteriaList.size(), event.getAttrCode(), event.getValue(), monitorContentId, hazardPointIds);
+    private boolean evaluateCriteria(MonitorDataIngestedEvent event,
+                                     Map<String, Double> subjectValues,
+                                     List<AlarmCriteria> criteriaList,
+                                     List<Long> hazardPointIds,
+                                     Long monitorContentId) {
+        log.debug("[Alarm][Eval] 开始评估判据 count={} subjects={} monitorContentId={} hazardPointIds={}",
+                criteriaList.size(), subjectValues.keySet(), monitorContentId, hazardPointIds);
         List<Candidate> candidates = new ArrayList<>();
 
         for (AlarmCriteria criteria : criteriaList) {
@@ -220,9 +232,6 @@ public class AlarmEvaluationEngine {
                         criteria.getId(), criteria.getName());
                 continue;
             }
-
-            Map<String, Double> subjectValues = new HashMap<>();
-            subjectValues.put(event.getAttrCode(), event.getValue());
 
             Map<String, LevelConfig> configMap = criteriaEvaluator.parseLevelConfig(criteria.getLevelConfig());
             if (configMap.isEmpty()) {
@@ -251,14 +260,13 @@ public class AlarmEvaluationEngine {
 
                 boolean satisfied = criteriaEvaluator.evaluateLevel(lc, subjectValues);
                 if (!satisfied) {
-                    log.debug("[Alarm][Eval] 等级未满足 criteriaId={} level={}({}) attrCode={} value={} subjects={}",
-                            criteria.getId(), level, entry.getKey(), event.getAttrCode(),
-                            event.getValue(), subjectValues.keySet());
+                    log.debug("[Alarm][Eval] 等级未满足 criteriaId={} level={}({}) subjects={}",
+                            criteria.getId(), level, entry.getKey(), subjectValues.keySet());
                     dedupService.clearPreTrigger(criteria.getId(), effectiveHpId, level);
                     continue;
                 }
-                log.debug("[Alarm][Eval] 等级已满足 criteriaId={} level={}({}) attrCode={} value={}",
-                        criteria.getId(), level, entry.getKey(), event.getAttrCode(), event.getValue());
+                log.debug("[Alarm][Eval] 等级已满足 criteriaId={} level={}({}) subjects={}",
+                        criteria.getId(), level, entry.getKey(), subjectValues.keySet());
 
                 if (dedupService.shouldTriggerAlarm(criteria.getId(), effectiveHpId, level,
                                                     effPersistCount, effSilencePeriod)) {
@@ -271,8 +279,7 @@ public class AlarmEvaluationEngine {
         }
 
         if (candidates.isEmpty()) {
-            log.debug("[Alarm][Eval] 评估结束未产生候选告警 attrCode={} value={}",
-                    event.getAttrCode(), event.getValue());
+            log.debug("[Alarm][Eval] 评估结束未产生候选告警 subjects={}", subjectValues.keySet());
             return false;
         }
 
@@ -283,8 +290,16 @@ public class AlarmEvaluationEngine {
         log.debug("[Alarm][Eval] 候选合并 winner criteriaId={} level={} hpId={} candidates={}",
                 winner.criteria.getId(), winner.level, winner.effectiveHpId,
                 candidates.stream().map(c -> c.criteria.getId() + ":L" + c.level).toList());
+
+        // 通过 winner 判据引用的主属性查 currentValue 和 attrName
+        String winnerSubject = extractFirstSubject(winner.levelConfig);
+        String normalizedSubject = normalizeAttrCode(winnerSubject);
+        Double currentValue = normalizedSubject != null ? subjectValues.get(normalizedSubject) : null;
+        String attrName = resolveAttrName(event, normalizedSubject);
+
         String hpName = getHazardPointName(winner.effectiveHpId);
-        String message = buildAlarmMessage(attrName, event.getValue(), winner.levelConfig, winner.level);
+        String message = buildAlarmMessage(attrName,
+                currentValue != null ? currentValue : 0.0, winner.levelConfig, winner.level);
         AlarmRecord record = AlarmRecord.builder()
                 .hazardPointId(winner.effectiveHpId).hazardPointName(hpName)
                 .deviceId(event.getDeviceId()).sensorId(event.getSensorId())
@@ -292,15 +307,15 @@ public class AlarmEvaluationEngine {
                 .alarmLevel(winner.level).alarmLevelText(AlarmConstants.resolveLevelText(winner.level))
                 .alarmType("THRESHOLD").alarmMessage(message)
                 .criteriaId(winner.criteria.getId())
-                .currentValue(event.getValue() != null ? new BigDecimal(event.getValue()) : null)
+                .currentValue(currentValue != null ? new BigDecimal(currentValue) : null)
                 .createBy(AlarmConstants.SYSTEM_OPERATOR).createTime(new Date())
                 .build();
         AlarmRecord saved = alarmRecordService.createOrUpdateAlarm(record);
         eventPublisher.publishEvent(new AlarmTriggeredEvent(saved.getId(), saved.getHazardPointId(),
                 saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage(), saved.getTriggerReason()));
-        log.info("[Alarm][Trigger] 告警触发 id={} level={} criteria={} hpId={} attrCode={} value={} (candidates={})",
+        log.info("[Alarm][Trigger] 告警触发 id={} level={} criteria={} hpId={} subject={} currentValue={} (candidates={})",
                 saved.getId(), winner.level, winner.criteria.getId(), winner.effectiveHpId,
-                event.getAttrCode(), event.getValue(), candidates.size());
+                normalizedSubject, currentValue, candidates.size());
         return true;
     }
 
@@ -343,6 +358,46 @@ public class AlarmEvaluationEngine {
             return lc.getConditions().get(0);
         }
         return null;
+    }
+
+    /**
+     * 从 LevelConfig 中提取第一个条件的 subject（判据引用的主属性）。
+     * <p>用于定位 AlarmRecord.currentValue 和告警消息中的属性名。
+     */
+    private String extractFirstSubject(LevelConfig lc) {
+        LevelCondition cond = extractFirstCondition(lc);
+        return cond != null ? cond.getSubject() : null;
+    }
+
+    /**
+     * 标准化 subject — 去除前端 JSONPath 风格前缀。
+     * <p>例：{@code payload.current.rainfall_hour} → {@code rainfall_hour}
+     * <p>与 {@link CriteriaEvaluator} 内部 normalizeSubject 保持一致。
+     */
+    private String normalizeAttrCode(String subject) {
+        if (subject == null) return null;
+        String s = subject.trim();
+        for (String prefix : new String[]{"payload.current.", "payload."}) {
+            if (s.startsWith(prefix)) {
+                return s.substring(prefix.length());
+            }
+        }
+        return s;
+    }
+
+    /**
+     * 根据 subject 从报文 properties 中查属性中文名，查不到时回退为 subject。
+     */
+    private String resolveAttrName(MonitorDataIngestedEvent event, String normalizedSubject) {
+        if (normalizedSubject == null) return null;
+        if (event.getProperties() != null) {
+            for (PropertyValue pv : event.getProperties()) {
+                if (normalizedSubject.equals(pv.identifier())) {
+                    return (pv.name() != null && !pv.name().isBlank()) ? pv.name() : normalizedSubject;
+                }
+            }
+        }
+        return normalizedSubject;
     }
 
     /**
