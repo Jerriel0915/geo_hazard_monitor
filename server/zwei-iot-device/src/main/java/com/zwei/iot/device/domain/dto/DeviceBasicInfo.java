@@ -5,8 +5,8 @@ package com.zwei.iot.device.domain.dto;
  *
  * <p>由 {@code DeviceQueryServiceImpl.getBasicInfoById} 装配, 字段来源:
  * <ul>
- *   <li>{@code online} — {@code device_online_status.status}</li>
- *   <li>{@code lastReportAt} — {@code device.last_report_time} (epoch seconds)</li>
+ *   <li>{@code online} — {@code device_online_status.status} (1=在线)</li>
+ *   <li>{@code lastReportAt} — 优先取 {@code device_online_status.last_report_at}, 为空时回退 {@code device.last_report_time} (epoch seconds)</li>
  *   <li>{@code status} — {@code device.status} (1-正常 2-维修 3-停用)</li>
  * </ul>
  */

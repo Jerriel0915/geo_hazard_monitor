@@ -11,7 +11,9 @@ import com.zwei.iot.device.service.IDeviceQueryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -21,7 +23,8 @@ public class DeviceQueryServiceImpl implements IDeviceQueryService {
     private final IDeviceHazardRelationService hazardRelationService;
     private final DeviceOnlineStatusService deviceOnlineStatusService;
 
-    private static final SimpleDateFormat DATE_FMT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FMT =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
     public DeviceQueryServiceImpl(DeviceMapper deviceMapper,
@@ -95,10 +98,11 @@ public class DeviceQueryServiceImpl implements IDeviceQueryService {
     /**
      * 将 "yyyy-MM-dd HH:mm:ss" 字符串解析为 epoch seconds; 解析失败或 null 返回 0。
      */
-    private static synchronized long parseTimeToEpochSeconds(String timeStr) {
+    private static long parseTimeToEpochSeconds(String timeStr) {
         if (timeStr == null || timeStr.isBlank()) return 0L;
         try {
-            return DATE_FMT.parse(timeStr).getTime() / 1000;
+            return LocalDateTime.parse(timeStr, DATE_FMT)
+                .toEpochSecond(ZoneOffset.ofHours(8));
         } catch (Exception ignored) {
             return 0L;
         }
