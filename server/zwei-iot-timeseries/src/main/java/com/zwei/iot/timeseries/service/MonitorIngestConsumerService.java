@@ -1,6 +1,8 @@
 package com.zwei.iot.timeseries.service;
 
 import com.alibaba.fastjson2.JSON;
+import com.zwei.common.domain.ParsedMessage;
+import com.zwei.common.domain.PropertyValue;
 import com.zwei.common.event.MonitorDataIngestedEvent;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
@@ -210,8 +212,8 @@ public class MonitorIngestConsumerService {
                     point.deviceId(), point.sensorCode(), point.attrCode(), point.attrName(),
                     point.value(), point.unit() != null ? point.unit() : "",
                     new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(point.dataTime())));
-            // 发布监测数据入库事件 — 触发告警引擎评估
-            publishIngestedEvent(point);
+            // 包装为单属性 ParsedMessage 后发布事件（统一契约，与 PARSED_MESSAGE 路径走同一发布方法）
+            publishIngestedEvent(point.deviceId(), point.sensorId(), wrapPointAsParsedMessage(point));
             ack(record);
         } catch (Exception e) {
             // ── 阶段4: 退避重试 / 死信 ──
@@ -234,8 +236,8 @@ public class MonitorIngestConsumerService {
      * Handle ParsedMessage-type records -- adapt to StandardMeasurementPoint then write to IoTDB.
      */
     private void processParsedMessage(MapRecord<Object, Object, Object> record, String payload, int retryCount) {
-        com.zwei.common.domain.ParsedMessage parsed =
-                JSON.parseObject(payload, com.zwei.common.domain.ParsedMessage.class);
+        ParsedMessage parsed =
+                JSON.parseObject(payload, ParsedMessage.class);
         try {
             List<StandardMeasurementPoint> points = adapt(parsed);
             if (points.isEmpty()) {
@@ -264,10 +266,8 @@ public class MonitorIngestConsumerService {
             }
             log.info("ParsedMessage ingested: deviceCode={} sensorCode={} properties={}",
                     parsed.deviceCode(), parsed.sensorCode(), points.size());
-            // 发布监测数据入库事件 — 触发告警引擎评估（逐点发布）
-            for (StandardMeasurementPoint pt : points) {
-                publishIngestedEvent(pt);
-            }
+            // 发布监测数据入库事件 — 携带完整 ParsedMessage（一次报文一次事件）
+            publishIngestedEvent(points.get(0).deviceId(), points.get(0).sensorId(), parsed);
             ack(record);
         } catch (Exception e) {
             if (retryCount >= properties.getRetryDelaysSeconds().size()) {
@@ -286,37 +286,58 @@ public class MonitorIngestConsumerService {
     /**
      * 发布监测数据入库事件，通知告警引擎评估。
      *
-     * <p>仅在 point.value() 非空时发布，避免无业务意义的占位数据触发评估。
+     * <p>携带完整的 ParsedMessage 数据包（全部属性），一次报文对应一次事件。
      * 同步发布 — 由 Spring 事件机制按订阅者线程模型决定执行线程
      * (alarm 引擎 {@code @EventListener} 默认同步，会在本消费线程内执行；
      * 如需异步可加 {@code @Async}，本工程当前同步满足告警时延要求)。
      *
-     * @param point 已成功写入 IoTDB 的测点
+     * @param deviceId 已解析的设备 ID（来自 adapt 阶段，避免下游重复查 DB）
+     * @param sensorId 已解析的传感器 ID
+     * @param msg      已成功写入 IoTDB 的完整报文
      */
-    private void publishIngestedEvent(StandardMeasurementPoint point) {
-        if (point == null || point.value() == null) {
-            return;
-        }
-        // 告警引擎仅处理数值型数据（阈值比较），非数值（String/Boolean）跳过
-        if (!(point.value() instanceof Number)) {
-            return;
-        }
+    private void publishIngestedEvent(Long deviceId, Long sensorId, ParsedMessage msg) {
         try {
             eventPublisher.publishEvent(new MonitorDataIngestedEvent(
-                    point.deviceId(),
-                    point.sensorId(),
-                    point.sensorCode(),
-                    point.attrCode(),
-                    ((Number) point.value()).doubleValue(),
-                    point.dataTime(),
-                    point.sourceType()));
-            log.info("发布 MonitorDataIngestedEvent: deviceId={} attrCode={} value={}",
-                    point.deviceId(), point.attrCode(), point.value());
+                    deviceId, sensorId, msg.deviceCode(), msg.sensorCode(), msg.sourceType(),
+                    msg.receiveTime(), msg.payloadHash(), msg.properties()));
+            log.info("发布 MonitorDataIngestedEvent: deviceCode={} sensorCode={} properties={}",
+                    msg.deviceCode(), msg.sensorCode(), msg.properties().size());
         } catch (Exception e) {
             // 事件发布失败不影响入库主流程
-            log.warn("发布 MonitorDataIngestedEvent 失败 deviceId={} attrCode={}: {}",
-                    point.deviceId(), point.attrCode(), e.getMessage());
+            log.warn("发布 MonitorDataIngestedEvent 失败 deviceCode={} sensorCode={}: {}",
+                    msg.deviceCode(), msg.sensorCode(), e.getMessage());
         }
+    }
+
+    /**
+     * 将单点 StandardMeasurementPoint 包装为只含 1 个属性的 ParsedMessage。
+     *
+     * <p>用于 STANDARD_POINT 路径（已无生产调用方）与 PARSED_MESSAGE 路径走同一发布方法。
+     * deviceCode 通过 deviceMapper 反查（失败时置 null，事件容错）。
+     */
+    private ParsedMessage wrapPointAsParsedMessage(StandardMeasurementPoint point) {
+        String deviceCode = null;
+        try {
+            Device dev = deviceMapper.selectDeviceById(point.deviceId());
+            if (dev != null) {
+                deviceCode = dev.getCode();
+            }
+        } catch (Exception ignored) {
+            // deviceCode 仅用于日志/审计，反查失败不影响主流程
+        }
+        return new ParsedMessage(
+                deviceCode,
+                point.sensorCode(),
+                point.sourceType(),
+                point.dataTime(),
+                point.receiveTime(),
+                point.payloadHash(),
+                List.of(new PropertyValue(
+                        point.attrCode(),
+                        point.attrName(),
+                        point.unit(),
+                        point.value(),
+                        point.quality())));
     }
 
     /**
@@ -324,7 +345,7 @@ public class MonitorIngestConsumerService {
      *
      * deviceCode → deviceId lookup is done in the consumer, not the parser.
      */
-    private List<StandardMeasurementPoint> adapt(com.zwei.common.domain.ParsedMessage msg) {
+    private List<StandardMeasurementPoint> adapt(ParsedMessage msg) {
         Long deviceId = resolveDeviceId(msg.deviceCode());
         Long sensorId = resolveSensorId(msg.sensorCode());
         return msg.properties().stream()
