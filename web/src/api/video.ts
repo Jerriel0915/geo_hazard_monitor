@@ -11,13 +11,13 @@ export interface VideoDeviceItem {
     icon: string
     iconPath: string
     protocolCode: string
-    protocolName: string
+    protocolName: string | null   // ← 允许 null
     streamUrl: string
-    hazardPointIds?: string
-    hazardPointNames: string
+    hazardPointIds?: string | null  // ← 后端返回的是 hazardPointIds
+    // hazardPointNames: string     // ← 删除，后端没有这个字段
     status: number
-    installTime: string
-    lastOnlineTime?: string
+    installTime: string | null    // ← 允许 null
+    lastOnlineTime?: string | null
     longitude?: number | null
     latitude?: number | null
 }

@@ -44,38 +44,47 @@
           </el-table-column>
           <el-table-column prop="code" label="编号" width="130" align="center" />
           <el-table-column prop="name" label="名称" min-width="160" align="center" />
-          <el-table-column prop="protocolName" label="协议类型" width="120" align="center">
+
+          <el-table-column prop="protocolCode" label="协议类型" width="120" align="center">
             <template #default="{ row }">
-              <el-tag :type="getProtocolType(row.protocolCode)" effect="plain">{{ row.protocolName }}</el-tag>
+              <el-tag v-if="row.protocolCode" :type="getProtocolType(row.protocolCode)" effect="plain">
+                {{ row.protocolCode }}
+              </el-tag>
+              <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
+
           <el-table-column prop="streamUrl" label="视频流地址" min-width="280" align="center">
             <template #default="{ row }">
-              <span class="stream-url">{{ row.streamUrl }}</span>
+              <span class="stream-url">{{ row.streamUrl || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="hazardPointNames" label="关联隐患点" min-width="180" align="center">
+
+          <el-table-column prop="hazardPointIds" label="关联隐患点" min-width="180" align="center">
             <template #default="{ row }">
-              <span v-if="row.hazardPointNames" class="hazard-tags">
-                <el-tag v-for="hp in row.hazardPointNames.split(',')" :key="hp" size="small" class="hazard-tag">{{ hp }}</el-tag>
-              </span>
+              <div class="hazard-tags-wrapper">
+                <span v-if="row.hazardPointIds && row.hazardPointIds.trim()" class="hazard-tags">
+                  <el-tag 
+                    v-for="hpId in row.hazardPointIds.split(',')" 
+                    :key="hpId" 
+                    size="small" 
+                    class="hazard-tag"
+                  >
+                    {{ getHazardPointName(hpId.trim()) }}
+                  </el-tag>
+                </span>
+                <el-tag v-else size="small" class="hazard-tag" type="info">无</el-tag>
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="installTime" label="安装时间" min-width="170" align="center">
+            <template #default="{ row }">
+              <span v-if="row.installTime">{{ row.installTime }}</span>
               <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="状态" width="90" align="center">
-            <template #default="{ row }">
-              <el-tag :type="getStatusType(row.status)" effect="plain">
-                {{ getStatusLabel(row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="lastOnlineTime" label="最近在线时间" min-width="170" align="center">
-            <template #default="{ row }">
-              <span v-if="row.lastOnlineTime">{{ row.lastOnlineTime }}</span>
-              <span v-else class="empty-text">-</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="installTime" label="安装时间" min-width="170" align="center" />
+
           <el-table-column label="操作" width="200" fixed="right" align="center">
             <template #default="{ row }">
               <div class="op-cell">
@@ -200,7 +209,7 @@
       </template>
     </el-dialog>
 
-    <!-- 地图坐标选择弹窗(公共组件,支持叠加隐患点范围 + 度分秒展示) -->
+    <!-- 地图坐标选择弹窗 -->
     <MapLocationPickerDialog
         v-model="mapDialogVisible"
         :initial-point="mapInitialPoint"
@@ -269,43 +278,33 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios'
-import {ElMessage, ElMessageBox} from 'element-plus'
-import {computed, onMounted, reactive, ref} from 'vue'
-import {showRequestErrorMessage} from '@/utils/errorHandler'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { showRequestErrorMessage } from '@/utils/errorHandler'
 import MapLocationPickerDialog from '@/components/map/MapLocationPickerDialog.vue'
-import type {LatLng} from '@/lib/boundaryCoords'
+import type { LatLng } from '@/lib/boundaryCoords'
+import {
+  getVideoDevicePage,
+  getVideoDeviceDetail,
+  createVideoDevice,
+  updateVideoDevice,
+  deleteVideoDevice,
+  exportVideoDevices,
+  type VideoDeviceItem,
+  type VideoDevicePageParams,
+} from '@/api/video'
+import { getHazardPointPage } from '@/api/hazardPoint'
 
-// 获取token
-const getToken = () => localStorage.getItem('token')
-
-interface VideoDeviceItem {
-  id: string
-  code: string
-  name: string
-  icon: string
-  iconPath: string
-  protocolCode: string
-  protocolName: string
-  streamUrl: string
-  hazardPointIds?: string
-  hazardPointNames: string
-  status: number
-  installTime: string
-  lastOnlineTime?: string
-  longitude?: number | null
-  latitude?: number | null
-}
-
+// ==================== 类型定义 ====================
 interface HazardPointItem {
   id: string
-  code: string
+  code?: string
   name: string
   longitude?: number
   latitude?: number
 }
 
-// 视频设备图标列表
+// ==================== 视频设备图标列表 ====================
 const videoIconList = Array.from({ length: 10 }, (_, i) => {
   const num = i + 1
   return {
@@ -316,15 +315,16 @@ const videoIconList = Array.from({ length: 10 }, (_, i) => {
   }
 })
 
+// ==================== 状态 ====================
 const loading = ref(false)
 const submitLoading = ref(false)
-const bindLoading = ref(false)
 const tableData = ref<VideoDeviceItem[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const searchKeyword = ref('')
 const searchProtocol = ref('')
+const hazardPointList = ref<HazardPointItem[]>([])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -339,22 +339,11 @@ const videoLoaded = ref(false)
 const videoError = ref(false)
 const isPlaying = ref(false)
 
-const hazardPointList = ref<HazardPointItem[]>([])
-
-// 地图选点弹窗
 const mapDialogVisible = ref(false)
-// 弹窗打开时的初始点:从表单当前经纬度派生
-const mapInitialPoint = computed<LatLng | null>(() =>
-    formData.longitude != null && formData.latitude != null
-        ? {lng: formData.longitude, lat: formData.latitude}
-        : null
-)
-
-// 安装位置文本(经度,纬度)与经纬度数值互转
 const locationText = ref('')
-
 const videoIconDialogVisible = ref(false)
 
+// ==================== 表单数据 ====================
 const formData = reactive<{
   id?: string
   code: string
@@ -366,7 +355,6 @@ const formData = reactive<{
   longitude: number | null
   latitude: number | null
   hazardPointId: string
-  // 用于编辑时比对原始绑定,以便判断是否需要解绑/绑定
   originalHazardPointId: string
 }>({
   code: '',
@@ -381,6 +369,13 @@ const formData = reactive<{
   originalHazardPointId: ''
 })
 
+const mapInitialPoint = computed<LatLng | null>(() =>
+  formData.longitude != null && formData.latitude != null
+    ? { lng: formData.longitude, lat: formData.latitude }
+    : null
+)
+
+// ==================== 表单校验规则 ====================
 const formRules = {
   code: [{ required: true, message: '请输入设备编号', trigger: 'blur' }],
   name: [{ required: true, message: '请输入设备名称', trigger: 'blur' }],
@@ -388,6 +383,7 @@ const formRules = {
   streamUrl: [{ required: true, message: '请输入视频流地址', trigger: 'blur' }]
 }
 
+// ==================== 工具函数 ====================
 const getProtocolType = (code: string) => {
   const types: Record<string, string> = {
     'RTMP': 'success',
@@ -397,34 +393,36 @@ const getProtocolType = (code: string) => {
   return types[code] || 'default'
 }
 
-const getStatusType = (status: number) => {
-  const types: Record<number, string> = {
-    0: 'danger',
-    1: 'success',
-    2: 'warning'
-  }
-  return types[status] || 'default'
+const getHazardPointName = (id: string) => {
+  const hp = hazardPointList.value.find(item => item.id === id)
+  return hp ? hp.name : id
 }
 
-const getStatusLabel = (status: number) => {
-  const labels: Record<number, string> = {
-    0: '离线',
-    1: '在线',
-    2: '故障'
+// ==================== 隐患点列表 ====================
+const loadHazardPointList = async () => {
+  try {
+    const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 })
+    hazardPointList.value = res.data?.rows || []
+  } catch (error) {
+    console.error('获取隐患点列表失败:', error)
+    hazardPointList.value = [
+      { id: '1', name: '龙潭寺滑坡点' },
+      { id: '2', name: '大坝监测点' },
+      { id: '3', name: '边坡监测点' },
+      { id: '4', name: '泥石流隐患点' },
+      { id: '15', name: '隐患点15' },
+      { id: '16', name: '隐患点16' },
+    ]
   }
-  return labels[status] || '未知'
 }
 
-// ==================== API 请求 ====================
-
-// 分页查询视频设备
+// ==================== 加载数据 ====================
 const loadTableData = async () => {
   loading.value = true
   try {
-    const token = getToken()
-    const params: any = {
+    const params: VideoDevicePageParams = {
       pageNum: currentPage.value,
-      pageSize: pageSize.value
+      pageSize: pageSize.value,
     }
     if (searchKeyword.value) {
       params.code = searchKeyword.value
@@ -434,17 +432,12 @@ const loadTableData = async () => {
       params.protocolCode = searchProtocol.value
     }
 
-    const response = await axios.get('/api/v1/video-devices/page', {
-      params,
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    if (response.data.code === 200) {
-      const data = response.data.data
-      tableData.value = data.rows || []
-      total.value = data.total || 0
+    const res = await getVideoDevicePage(params)
+    if (res.code === 200) {
+      tableData.value = res.data?.rows || []
+      total.value = res.data?.total || 0
     } else {
-      ElMessage.error(response.data.msg || '获取数据失败')
+      ElMessage.error(res.msg || '获取数据失败')
     }
   } catch (error) {
     console.error('请求失败:', error)
@@ -454,112 +447,7 @@ const loadTableData = async () => {
   }
 }
 
-// 获取隐患点列表
-const loadHazardPointList = async () => {
-  try {
-    const token = getToken()
-    const response = await axios.get('/api/v1/hazard-points/page', {
-      params: {
-        pageNum: 1,
-        pageSize: 1000
-      },
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    if (response.data.code === 200) {
-      hazardPointList.value = response.data.data?.rows || []
-    } else {
-      console.error('获取隐患点列表失败:', response.data.msg)
-    }
-  } catch (error) {
-    console.error('获取隐患点列表失败:', error)
-  }
-}
-
-// 获取视频设备详情
-const fetchDetail = async (id: string) => {
-  try {
-    const token = getToken()
-    const response = await axios.get(`/api/v1/video-devices/${id}`, {
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    if (response.data.code === 200) {
-      return response.data.data
-    } else {
-      ElMessage.error(response.data.msg || '获取详情失败')
-      return null
-    }
-  } catch (error) {
-    console.error('获取详情失败:', error)
-    showRequestErrorMessage(error, '网络请求失败')
-    return null
-  }
-}
-
-// 新增视频设备
-// 删除视频设备
-const deleteVideoDevice = async (id: string) => {
-  try {
-    const token = getToken()
-    const response = await axios.delete(`/api/v1/video-devices/${id}`, {
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('删除成功')
-      loadTableData()
-    } else {
-      ElMessage.error(response.data.msg || '删除失败')
-    }
-  } catch (error) {
-    console.error('删除失败:', error)
-    showRequestErrorMessage(error, '网络请求失败')
-  }
-}
-
-// 绑定视频设备到隐患点（批量）
-const bindToHazardPoints = async (hpId: string, videoDeviceId: string, installLng: number, installLat: number) => {
-  try {
-    const token = getToken()
-    const response = await axios.post(`/api/v1/hazard-points/${hpId}/bind-video-devices`, {
-      videoDeviceIds: [parseInt(videoDeviceId)],
-      installPositions: [
-        {
-          videoDeviceId: parseInt(videoDeviceId),
-          installLongitude: installLng,
-          installLatitude: installLat
-        }
-      ]
-    }, {
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    return response.data.code === 200
-  } catch (error) {
-    console.error('绑定失败:', error)
-    return false
-  }
-}
-
-// 解绑视频设备
-const unbindVideoDevice = async (hpId: string, videoDeviceId: string) => {
-  try {
-    const token = getToken()
-    const response = await axios.delete(`/api/v1/hazard-points/${hpId}/unbind-video-devices`, {
-      data: {videoDeviceIds: [parseInt(videoDeviceId)]},
-      headers: {Authorization: `Bearer ${token}`}
-    })
-
-    return response.data.code === 200
-  } catch (error) {
-    console.error('解绑失败:', error)
-    return false
-  }
-}
-
 // ==================== 事件处理方法 ====================
-
 const handleSearch = () => {
   currentPage.value = 1
   loadTableData()
@@ -603,25 +491,30 @@ const handleAdd = () => {
 const handleEdit = async (row: VideoDeviceItem) => {
   dialogTitle.value = '编辑视频设备'
   isEdit.value = true
-  const detail = await fetchDetail(row.id)
-  const initialHpId = row.hazardPointIds ? row.hazardPointIds.split(',').filter(Boolean)[0] || '' : ''
-  if (detail) {
-    Object.assign(formData, {
-      id: detail.id,
-      code: detail.code,
-      name: detail.name,
-      icon: detail.icon || '',
-      iconPath: detail.iconPath || '',
-      protocolCode: detail.protocolCode,
-      streamUrl: detail.streamUrl,
-      longitude: detail.longitude ?? null,
-      latitude: detail.latitude ?? null,
-      hazardPointId: initialHpId,
-      originalHazardPointId: initialHpId
-    })
-    syncFormToText()
+  try {
+    const res = await getVideoDeviceDetail(row.id)
+    if (res.code === 200 && res.data) {
+      const detail = res.data
+      const initialHpId = detail.hazardPointIds ? detail.hazardPointIds.split(',').filter(Boolean)[0] || '' : ''
+      Object.assign(formData, {
+        id: detail.id,
+        code: detail.code,
+        name: detail.name,
+        icon: detail.icon || '',
+        iconPath: detail.iconPath || '',
+        protocolCode: detail.protocolCode,
+        streamUrl: detail.streamUrl,
+        longitude: detail.longitude ?? null,
+        latitude: detail.latitude ?? null,
+        hazardPointId: initialHpId,
+        originalHazardPointId: initialHpId
+      })
+      syncFormToText()
+    }
+    dialogVisible.value = true
+  } catch (error) {
+    showRequestErrorMessage(error, '获取详情失败')
   }
-  dialogVisible.value = true
 }
 
 const handleDelete = (row: VideoDeviceItem) => {
@@ -629,23 +522,29 @@ const handleDelete = (row: VideoDeviceItem) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    deleteVideoDevice(row.id)
+  }).then(async () => {
+    try {
+      const res = await deleteVideoDevice(row.id)
+      if (res.code === 200) {
+        ElMessage.success('删除成功')
+        loadTableData()
+      } else {
+        ElMessage.error(res.msg || '删除失败')
+      }
+    } catch (error) {
+      showRequestErrorMessage(error, '删除失败')
+    }
   }).catch(() => {})
 }
 
 const handleExport = async () => {
   try {
-    const token = getToken()
-    const response = await axios.post('/api/v1/video-devices/export', {}, {
-      responseType: 'blob',
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await exportVideoDevices()
+    const blob = response.data
     const disposition = String(response.headers['content-disposition'] || '')
     const fileName = disposition
-        ? decodeURIComponent(disposition.split("filename*=UTF-8''")[1] || disposition.split('filename=')[1]?.replace(/"/g, '') || '视频设备数据.xlsx')
-        : '视频设备数据.xlsx'
-    const blob = response.data instanceof Blob ? response.data : new Blob([response.data])
+      ? decodeURIComponent(disposition.split("filename*=UTF-8''")[1] || disposition.split('filename=')[1]?.replace(/"/g, '') || '视频设备数据.xlsx')
+      : '视频设备数据.xlsx'
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -658,9 +557,7 @@ const handleExport = async () => {
   }
 }
 
-// ==================== 提交(设备保存 + 隐患点绑定 一体化) ====================
-
-/** 把 formData 内的 (lng, lat) 数值同步到 locationText 文本 */
+// ==================== 表单操作 ====================
 const syncFormToText = () => {
   if (formData.longitude != null && formData.latitude != null) {
     locationText.value = `${formData.longitude}, ${formData.latitude}`
@@ -669,7 +566,6 @@ const syncFormToText = () => {
   }
 }
 
-/** locationText 失焦时,把 "lng, lat" 解析回 formData */
 const onLocationBlur = () => {
   const raw = locationText.value.trim()
   if (!raw) {
@@ -688,76 +584,45 @@ const onLocationBlur = () => {
       return
     }
   }
-  // 解析失败:不破坏原值,仅提示
   ElMessage.warning('坐标格式无效，请输入"经度,纬度"（例如 104.063456, 30.671234）')
 }
 
-// ── 地图选点弹窗 ──
-
-/** 打开弹窗:先把表单文本同步到 formData,再让公共组件从 formData 派生初始点 */
 const openMapPicker = () => {
   onLocationBlur()
   mapDialogVisible.value = true
 }
 
-/** 公共组件确认选点 → 写回 formData + 同步表单文本 */
 const onMapConfirm = (point: LatLng) => {
   formData.longitude = point.lng
   formData.latitude = point.lat
   syncFormToText()
 }
 
-// 同步绑定/解绑隐患点(单选:仅在变更时调用 API)
-const syncHazardPointBindings = async (videoDeviceId: string) => {
-  const orig = formData.originalHazardPointId
-  const curr = formData.hazardPointId
-  if (orig === curr) return
-
-  bindLoading.value = true
-  try {
-    if (orig) {
-      await unbindVideoDevice(orig, videoDeviceId)
-    }
-    if (curr) {
-      // 设备位置作为隐患点下的安装位置
-      await bindToHazardPoints(
-          curr,
-          videoDeviceId,
-          formData.longitude ?? 0,
-          formData.latitude ?? 0,
-      )
-    }
-  } finally {
-    bindLoading.value = false
-  }
-}
-
 const handleSubmit = async () => {
-  // 提交前同步一次 locationText → formData
   onLocationBlur()
-
   formRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     submitLoading.value = true
     try {
       if (formData.id) {
-        // 编辑
-        await axios.put(`/api/v1/video-devices/${formData.id}`, {
+        const res = await updateVideoDevice(formData.id, {
           name: formData.name,
           icon: formData.icon,
           iconPath: formData.iconPath,
           protocolCode: formData.protocolCode,
           streamUrl: formData.streamUrl,
           longitude: formData.longitude,
-          latitude: formData.latitude
-        }, {headers: {Authorization: `Bearer ${getToken()}`}})
-        await syncHazardPointBindings(formData.id)
-        ElMessage.success('修改成功')
-        dialogVisible.value = false
-        loadTableData()
+          latitude: formData.latitude,
+        })
+        if (res.code === 200) {
+          ElMessage.success('修改成功')
+          dialogVisible.value = false
+          loadTableData()
+        } else {
+          ElMessage.error(res.msg || '修改失败')
+        }
       } else {
-        // 新增
-        const resp = await axios.post('/api/v1/video-devices', {
+        const res = await createVideoDevice({
           code: formData.code,
           name: formData.name,
           icon: formData.icon,
@@ -767,14 +632,14 @@ const handleSubmit = async () => {
           longitude: formData.longitude,
           latitude: formData.latitude,
           status: 1
-        }, {headers: {Authorization: `Bearer ${getToken()}`}})
-        const newId = resp.data?.data?.id ? String(resp.data.data.id) : ''
-        if (newId && formData.hazardPointId) {
-          await syncHazardPointBindings(newId)
+        })
+        if (res.code === 200) {
+          ElMessage.success('新增成功')
+          dialogVisible.value = false
+          loadTableData()
+        } else {
+          ElMessage.error(res.msg || '新增失败')
         }
-        ElMessage.success('新增成功')
-        dialogVisible.value = false
-        loadTableData()
       }
     } catch (error: any) {
       console.error('保存失败:', error)
@@ -795,6 +660,7 @@ const handleVideoIconSelect = (item: { code: string; name: string; icon: string;
   videoIconDialogVisible.value = false
 }
 
+// ==================== 视频播放 ====================
 const handlePlay = (row: VideoDeviceItem) => {
   playUrl.value = row.streamUrl
   videoLoaded.value = false
@@ -849,7 +715,6 @@ const handleScreenshot = () => {
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    // 尝试导出，捕获安全错误
     try {
       const dataUrl = canvas.toDataURL('image/png')
       const link = document.createElement('a')
@@ -858,7 +723,6 @@ const handleScreenshot = () => {
       link.click()
       ElMessage.success('截图已保存')
     } catch (securityError) {
-      // 如果是跨域问题，提示用户
       ElMessage.error('由于浏览器安全限制，无法截取跨域视频，请使用浏览器截图工具')
       console.error('跨域截图失败:', securityError)
     }
@@ -886,6 +750,7 @@ const onVideoError = () => {
   videoError.value = true
 }
 
+// ==================== 生命周期 ====================
 onMounted(() => {
   loadTableData()
   loadHazardPointList()
@@ -893,20 +758,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
-
-
-
-
-
-
-
-
-
-
 .table-icon {
   width: 28px;
   height: 28px;
   object-fit: contain;
+}
+
+.empty-text {
+  color: #909399;
 }
 
 .hazard-tags {
@@ -919,15 +778,19 @@ onMounted(() => {
   margin: 2px;
 }
 
+.hazard-tags-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .stream-url {
   font-size: 12px;
   color: #606266;
   word-break: break-all;
 }
-
-
-
-
 
 .device-icon-selector {
   display: flex;
@@ -957,7 +820,6 @@ onMounted(() => {
   font-size: 12px;
 }
 
-/* ========== 安装位置(参考 Device.vue 风格) ========== */
 .install-location-wrap {
   display: flex;
   align-items: center;
@@ -1008,10 +870,6 @@ onMounted(() => {
   color: #606266;
   margin-top: 6px;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
 }
 
 .video-play-dialog :deep(.el-dialog__body) {
@@ -1053,7 +911,6 @@ onMounted(() => {
   gap: 10px;
 }
 
-/* 替代 el-spinner：纯 CSS 旋转动画，无外部依赖 */
 .custom-spinner {
   width: 24px;
   height: 24px;
@@ -1078,5 +935,4 @@ onMounted(() => {
 :deep(.el-form-item) {
   margin-bottom: 18px;
 }
-
 </style>
