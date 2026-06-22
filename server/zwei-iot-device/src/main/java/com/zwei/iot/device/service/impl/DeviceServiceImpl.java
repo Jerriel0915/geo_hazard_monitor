@@ -287,31 +287,33 @@ public class DeviceServiceImpl implements IDeviceService {
 
         deviceMapper.insertDevice(copy);
 
-        // 复制传感器（含属性）
-        List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(id);
-        for (DeviceSensor originalSensor : sensors) {
-            String newSensorCode = resolveCopySensorCode(originalSensor.getSensorCode());
-            DeviceSensor newSensor = DeviceSensor.builder()
-                    .deviceId(copy.getId())
-                    .deviceCode(copy.getCode())
-                    .sensorCode(newSensorCode)
-                    .sensorName(originalSensor.getSensorName())
-                    .monitorTypeId(originalSensor.getMonitorTypeId())
-                    .monitorTypeCode(originalSensor.getMonitorTypeCode())
-                    .monitorTypeName(originalSensor.getMonitorTypeName())
-                    .status(originalSensor.getStatus())
-                    .createBy(original.getCreateBy())
-                    .build();
-            sensorMapper.insertSensor(newSensor);
+        // 复制传感器（含属性），copySensors=false 时跳过
+        if (Boolean.TRUE.equals(request.getCopySensors())) {
+            List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(id);
+            for (DeviceSensor originalSensor : sensors) {
+                String newSensorCode = resolveCopySensorCode(originalSensor.getSensorCode());
+                DeviceSensor newSensor = DeviceSensor.builder()
+                        .deviceId(copy.getId())
+                        .deviceCode(copy.getCode())
+                        .sensorCode(newSensorCode)
+                        .sensorName(originalSensor.getSensorName())
+                        .monitorTypeId(originalSensor.getMonitorTypeId())
+                        .monitorTypeCode(originalSensor.getMonitorTypeCode())
+                        .monitorTypeName(originalSensor.getMonitorTypeName())
+                        .status(originalSensor.getStatus())
+                        .createBy(original.getCreateBy())
+                        .build();
+                sensorMapper.insertSensor(newSensor);
 
-            List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(originalSensor.getId());
-            if (!attrs.isEmpty()) {
-                for (SensorAttribute attr : attrs) {
-                    attr.setId(null);
-                    attr.setSensorId(newSensor.getId());
-                    attr.setCreateBy(original.getCreateBy());
+                List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(originalSensor.getId());
+                if (!attrs.isEmpty()) {
+                    for (SensorAttribute attr : attrs) {
+                        attr.setId(null);
+                        attr.setSensorId(newSensor.getId());
+                        attr.setCreateBy(original.getCreateBy());
+                    }
+                    attributeMapper.batchInsertAttribute(attrs);
                 }
-                attributeMapper.batchInsertAttribute(attrs);
             }
         }
 
