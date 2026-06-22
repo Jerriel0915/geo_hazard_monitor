@@ -1,8 +1,14 @@
 package com.zwei.log.infrastructure.tail;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import com.zwei.log.infrastructure.config.LogModuleProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,15 +17,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import com.zwei.log.infrastructure.config.LogModuleProperties;
 
 /**
  * 日志文件追踪服务 — 使用 RandomAccessFile 轮询 tail 日志文件，广播新行给所有 SSE 订阅者
@@ -194,27 +191,22 @@ public class LogFileTailService implements InitializingBean, DisposableBean {
                 return result;
             }
 
-            RandomAccessFile reader = new RandomAccessFile(file, "r");
-            long pos = file.length() - 1;
-            int linesFound = 0;
-            StringBuilder sb = new StringBuilder();
-
-            while (pos >= 0 && linesFound < count) {
-                reader.seek(pos);
-                char c = (char) reader.readByte();
-                if (c == '\n' && sb.length() > 0) {
-                    result.add(0, sb.reverse().toString());
-                    sb.setLength(0);
-                    linesFound++;
-                } else if (c != '\r') {
-                    sb.append(c);
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+                String[] ring = new String[count];
+                int idx = 0;
+                int total = 0;
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    ring[idx % count] = line;
+                    idx++;
+                    total++;
                 }
-                pos--;
+                int start = Math.max(0, total - count);
+                for (int i = start; i < total; i++) {
+                    result.add(ring[i % count]);
+                }
             }
-            if (sb.length() > 0 && linesFound < count) {
-                result.add(0, sb.reverse().toString());
-            }
-            reader.close();
         } catch (IOException e) {
             log.warn("Failed to read last lines for replay: {}", e.getMessage());
         }
