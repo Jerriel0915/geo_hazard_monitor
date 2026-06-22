@@ -34,7 +34,13 @@
 
     <div class="table-wrap">
       <div class="table-wrap__scroll">
-        <el-table :data="tableData" border stripe v-loading="loading">
+        <el-table 
+          :data="sortedTableData" 
+          border 
+          stripe 
+          v-loading="loading"
+          @sort-change="handleSortChange"
+        >
           <el-table-column prop="reportName" label="报告名称" min-width="280" show-overflow-tooltip />
           <el-table-column prop="type" label="报告类型" width="100" align="center">
             <template #default="{ row }">
@@ -44,7 +50,8 @@
             </template>
           </el-table-column>
           <el-table-column prop="hazardPointName" label="隐患点" min-width="150" show-overflow-tooltip />
-          <el-table-column label="报告周期" width="200" align="center">
+          <!-- 报告周期列 - 移除 sortable，不需要排序 -->
+          <el-table-column prop="periodStart" label="报告周期" width="200" align="center">
             <template #default="{ row }">
               {{ row.periodStart }} ~ {{ row.periodEnd }}
             </template>
@@ -61,7 +68,12 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="生成时间" min-width="170" align="center" />
+          <!-- 生成时间列 - 保留 sortable -->
+          <el-table-column prop="createTime" label="生成时间" width="190" align="center" sortable="custom">
+            <template #default="{ row }">
+              {{ formatBjTime(row.createTime) }}
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="150" fixed="right" align="center">
             <template #default="{ row }">
               <div class="op-cell">
@@ -183,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import {nextTick, onMounted, reactive, ref} from 'vue'
+import {nextTick, onMounted, reactive, ref, computed} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -220,6 +232,38 @@ function typeLabel(t: ReportType): string { return ({ weekly: '周报', monthly:
 function typeTagType(t: ReportType): string { return ({ weekly: 'success', monthly: 'warning', quarterly: 'danger' } as const)[t] ?? '' }
 function statusLabel(s: number): string { return ({ 1: '生成中', 2: '已生成', 3: '生成失败' } as const)[s] ?? '未知' }
 function statusTagType(s: number): string { return ({ 1: 'info', 2: 'success', 3: 'danger' } as const)[s] ?? '' }
+
+// 北京时间格式化（后端返回的 createTime 为 yyyy-MM-dd HH:mm:ss 或 ISO）
+function formatBjTime(raw: string): string {
+  if (!raw) return '-'
+  const d = new Date(raw.replace(' ', 'T'))
+  if (isNaN(d.getTime())) return raw
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}年${pad(d.getMonth() + 1)}月${pad(d.getDate())}日 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+// 排序状态（只对生成时间排序）
+const sortState = ref<{ prop: string; order: 'ascending' | 'descending' | null }>({ prop: '', order: null })
+
+// 前端本地排序
+const sortedTableData = computed(() => {
+  const rows = [...tableData.value]
+  const { prop, order } = sortState.value
+  if (!prop || !order) return rows
+  return rows.sort((a: any, b: any) => {
+    const va = a[prop] ?? ''
+    const vb = b[prop] ?? ''
+    // 时间字符串可以直接用 localeCompare 比较
+    return order === 'ascending' 
+      ? String(va).localeCompare(String(vb)) 
+      : String(vb).localeCompare(String(va))
+  })
+})
+
+// 排序变化事件
+const handleSortChange = ({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) => {
+  sortState.value = { prop, order }
+}
 
 const loadList = async () => {
   loading.value = true
@@ -263,7 +307,6 @@ const handleMoreCommand = (cmd: string, row: ReportItem) => {
 
 // ── 打印：克隆报告内容到独立 window，绕过 scoped CSS ──
 const handlePrint = () => {
-  // 移除旧 iframe
   document.querySelectorAll('#__print_frame').forEach(el => el.remove())
 
   const r = currentReport.value
@@ -273,12 +316,11 @@ const handlePrint = () => {
   const pad = (n: number) => String(n).padStart(2, '0')
   const bjTime = `${now.getFullYear()}年${pad(now.getMonth() + 1)}月${pad(now.getDate())}日 ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 
-  // 报告头信息
   const typeMap: Record<string, string> = { weekly: '周报', monthly: '月报', quarterly: '季报' }
   const reportType = typeMap[r?.type ?? 'weekly'] ?? '周报'
   const hazardPointName = r?.hazardPointName || '-'
   const period = r ? `${r.periodStart} ~ ${r.periodEnd}` : '-'
-  const createTime = r?.createTime || '-'
+  const createTime = formatBjTime(r?.createTime || '')
 
   const iframe = document.createElement('iframe')
   iframe.id = '__print_frame'
@@ -296,8 +338,6 @@ const handlePrint = () => {
     font-size: 15px; line-height: 1.9; color: #1d2129;
     padding: 0 14mm;
   }
-
-  /* 打印时间行 */
   .print-header {
     display: flex; justify-content: space-between; align-items: baseline;
     padding: 8mm 0 4mm 0;
@@ -306,8 +346,6 @@ const handlePrint = () => {
   }
   .print-header__title { font-size: 13px; font-weight: 600; color: #333; }
   .print-header__time { font-size: 12px; color: #666; }
-
-  /* 报告头信息块 */
   .print-meta {
     margin-bottom: 14px; padding: 10px 14px;
     background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
@@ -317,15 +355,11 @@ const handlePrint = () => {
   .print-meta td { padding: 2px 8px; font-size: 14px; border: none !important; background: transparent !important; }
   .print-meta td.label { color: #6b7280; width: 1%; white-space: nowrap; text-align: right; }
   .print-meta td.value { color: #1f2937; font-weight: 500; }
-
-  /* 页脚 */
   .print-footer {
     text-align: center; font-size: 11px; color: #999;
     padding: 6mm 0 4mm 0; margin-top: 20px;
     border-top: 1px solid #e8e8e8;
   }
-
-  /* 报告正文 */
   .print-body h2 { font-size: 20px; margin: 16px 0 10px; color: #303133; }
   .print-body h3 { font-size: 17px; margin: 12px 0 8px; color: #303133; }
   .print-body table { width: 100%; border-collapse: collapse; margin: 10px 0; }
@@ -335,7 +369,6 @@ const handlePrint = () => {
   .print-body th { background: #f5f7fa; font-weight: bold; }
   .print-body p, .print-body li, .print-body span { font-size: 15px; }
   .print-body img { max-width: 100%; height: auto; }
-
   @page {
     margin: 20mm 14mm 15mm 14mm;
     size: A4;
@@ -348,7 +381,6 @@ const handlePrint = () => {
   <span class="print-header__title">${title}</span>
   <span class="print-header__time">${bjTime}</span>
 </div>
-
 <div class="print-meta">
   <table>
     <tr>
@@ -361,7 +393,6 @@ const handlePrint = () => {
     </tr>
   </table>
 </div>
-
 <div class="print-body">${contentHtml}</div>
 <div class="print-footer">第 <span class="page-number"></span> 页</div>
 </body></html>`)
