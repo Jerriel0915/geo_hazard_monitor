@@ -30,6 +30,49 @@ export const getAlarmLevelStyle = (level: number | string | undefined): Record<s
         color: c.fg,
     }
 }
+
+/**
+ * 告警等级配置（文字 + 样式）
+ * 返回: { text: string; style: Record<string, string> }
+ */
+export const getAlarmLevelConfig = (level: number | string | undefined) => {
+    const n = Number(level)
+    const configMap: Record<number, { text: string; style: Record<string, string> }> = {
+        1: {
+            text: '一级（警报）',
+            style: { backgroundColor: '#F53F3F', borderColor: '#F53F3F', color: '#ffffff' }
+        },
+        2: {
+            text: '二级（警戒）',
+            style: { backgroundColor: '#FF7D00', borderColor: '#FF7D00', color: '#ffffff' }
+        },
+        3: {
+            text: '三级（警示）',
+            style: { backgroundColor: '#e1ff00', borderColor: '#e1ff00', color: '#1d2129' }
+        },
+        4: {
+            text: '四级（注意）',
+            style: { backgroundColor: '#1890FF', borderColor: '#1890FF', color: '#ffffff' }
+        }
+    }
+    return configMap[n] || {
+        text: String(level),
+        style: { backgroundColor: '#909399', borderColor: '#909399', color: '#ffffff' }
+    }
+}
+
+/**
+ * 告警类型对应的标签类型
+ * 综合预警 → warning（橙色），阈值预警 → danger（红色）
+ */
+export const getAlarmTypeTagType = (type: string): string => {
+    const typeMap: Record<string, string> = {
+        'COMPREHENSIVE': 'warning',
+        'THRESHOLD': 'danger'
+    }
+    return typeMap[type] || 'info'
+}
+
 /** 告警类型: THRESHOLD=阈值 COMPREHENSIVE=综合 */
 export type AlarmType = 'THRESHOLD' | 'COMPREHENSIVE'
 /** 警情状态: 1=待处理 2=处理中 3=已销警 4=误报 */

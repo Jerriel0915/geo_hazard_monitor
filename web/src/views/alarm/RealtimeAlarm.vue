@@ -70,11 +70,15 @@
         >
           <el-table-column type="selection" width="55" />
           <el-table-column prop="hazardPointName" label="隐患点名称" min-width="180" />
+
           <el-table-column prop="alarmLevel" label="告警等级" width="130">
             <template #default="{ row }">
-              <el-tag :style="getAlarmLevelStyle(row.alarmLevel)" style="border: none;">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+              <el-tag :style="getAlarmLevelConfig(row.alarmLevel).style" style="border: none;">
+                {{ getAlarmLevelConfig(row.alarmLevel).text }}
+              </el-tag>
             </template>
           </el-table-column>
+
           <el-table-column prop="firstTriggerTime" label="首次告警时间" width="180" />
           <el-table-column prop="lastTriggerTime" label="最后告警时间" width="180" />
           <el-table-column prop="triggerCount" label="告警次数" width="100">
@@ -82,9 +86,15 @@
               <span class="alarm-count" @click.stop="handleView(row)">{{ row.triggerCount }}</span>
             </template>
           </el-table-column>
+
           <el-table-column prop="alarmType" label="告警类型" width="120">
-            <template #default="{ row }">{{ getAlarmTypeText(row.alarmType) }}</template>
+            <template #default="{ row }">
+              <el-tag :type="getAlarmTypeTagType(row.alarmType)">
+                {{ getAlarmTypeText(row.alarmType) }}
+              </el-tag>
+            </template>
           </el-table-column>
+
           <el-table-column prop="status" label="警情状态" width="100">
             <template #default="{ row }">
               <el-tag :type="getStatusType(row.status)">{{ row.statusName || getStatusText(row.status) }}</el-tag>
@@ -142,7 +152,8 @@ import {
   getAlarmRecordDetail,
   disposeAlarm,
   batchDisposeAlarms,
-  getAlarmLevelStyle,
+  getAlarmLevelConfig,
+  getAlarmTypeTagType,
   type AlarmRecordItem,
   type AlarmRecordPageParams,
 } from '@/api/alarm'
@@ -209,16 +220,7 @@ onMounted(async () => {
   }
 })
 
-// ── 枚举映射（数字/大写）──
-const getAlarmLevelText = (level: number | string) => {
-  const n = Number(level)
-  return ({
-    1: '一级（警报）',
-    2: '二级（警戒）',
-    3: '三级（警示）',
-    4: '四级（注意）'
-  } as Record<number, string>)[n] || String(level)
-}
+
 const getAlarmTypeText = (type: string) =>
   ({ THRESHOLD: '阈值预警', COMPREHENSIVE: '综合预警' } as Record<string, string>)[type] || type
 const getStatusType = (status: number | string) => {
@@ -269,6 +271,7 @@ const handleFeedbackSubmit = async (payload: { description?: string; attachments
     ElMessage.error('处置失败')
   }
 }
+
 
 // ── 详情内单条误报 ──
 const handleDetailFalseAlarm = async (row: AlarmRecordItem | null) => {

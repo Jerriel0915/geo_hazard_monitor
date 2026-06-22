@@ -51,12 +51,15 @@
           border
           stripe
         >
-          <el-table-column prop="hazardPointName" label="隐患点名称" min-width="160" />
-          <el-table-column prop="alarmLevel" label="告警等级" width="90">
+          <el-table-column prop="hazardPointName" label="隐患点名称" min-width="140" />
+          <el-table-column prop="alarmLevel" label="告警等级" width="130">
             <template #default="{ row }">
-              <el-tag :style="getAlarmLevelStyle(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+              <el-tag :style="getAlarmLevelConfig(row.alarmLevel).style" style="border: none;">
+                {{ getAlarmLevelConfig(row.alarmLevel).text }}
+              </el-tag>
             </template>
           </el-table-column>
+
           <el-table-column prop="firstTriggerTime" label="首次告警时间" min-width="160" />
           <el-table-column prop="lastTriggerTime" label="最后告警时间" min-width="160" />
           <el-table-column prop="triggerCount" label="告警次数" width="90">
@@ -64,11 +67,15 @@
               <span class="alarm-count" @click.stop="handleView(row)">{{ row.triggerCount }}</span>
             </template>
           </el-table-column>
+
           <el-table-column prop="alarmType" label="告警类型" width="100">
             <template #default="{ row }">
-              {{ getAlarmTypeText(row.alarmType) }}
+              <el-tag :type="getAlarmTypeTagType(row.alarmType)">
+                {{ getAlarmTypeText(row.alarmType) }}
+              </el-tag>
             </template>
           </el-table-column>
+
           <el-table-column prop="status" label="警情状态" width="90">
             <template #default="{ row }">
               <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
@@ -110,7 +117,7 @@ import {onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {Download, View} from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
-import {getHistoryAlarms, getAlarmLevelStyle} from '@/api/alarm'
+import {getHistoryAlarms, getAlarmLevelConfig, getAlarmTypeTagType} from '@/api/alarm'
 
 // 查询参数
 const queryParams = reactive({
@@ -173,16 +180,6 @@ onMounted(() => {
   fetchData()
 })
 
-// 获取告警等级文本
-const getAlarmLevelText = (level: number | string) => {
-  const map: Record<string, string> = {
-    '1': '一级',
-    '2': '二级',
-    '3': '三级',
-    '4': '四级'
-  }
-  return map[String(level)] || String(level)
-}
 
 // 获取告警类型文本
 const getAlarmTypeText = (type: string) => {
