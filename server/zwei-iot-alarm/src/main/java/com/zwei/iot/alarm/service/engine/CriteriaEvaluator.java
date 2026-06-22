@@ -33,6 +33,9 @@ public class CriteriaEvaluator {
             "red", 1, "orange", 2, "yellow", 3, "blue", 4
     );
 
+    private static final java.util.Set<String> KINDS = java.util.Set.of("current", "prev");
+    private static final java.util.Set<String> DIMENSIONS = java.util.Set.of("payload", "device", "packet");
+
     /**
      * 评估判据，返回触发的最高告警等级。
      *
@@ -165,21 +168,43 @@ public class CriteriaEvaluator {
     }
 
     /**
-     * 标准化 subject — 去除前端 JSONPath 风格前缀。
-     * <p>
-     * 例：{@code payload.current.rainfall_hour} → {@code rainfall_hour}
+     * 标准化 subject — 按段数 + 枚举值校验新格式。
+     *
+     * <p>合法格式:
+     * <ul>
+     *   <li>4 段: {@code sensorCode.{kind}.{dimension}.{attrCode}}</li>
+     *   <li>3 段: {@code {kind}.{dimension}.{attrCode}}</li>
+     * </ul>
+     * 老格式 {@code payload.current.x} / {@code payload.x} 不再兼容。
      */
     private String normalizeSubject(String subject) {
         if (subject == null) return null;
         String s = subject.trim();
-        // 去除 payload.current. / payload. 等前缀
-        for (String prefix : new String[]{"payload.current.", "payload."}) {
-            if (s.startsWith(prefix)) {
-                s = s.substring(prefix.length());
-                break;
+        if (s.isEmpty()) return null;
+        String[] parts = s.split("\\.");
+        if (parts.length == 4) {
+            if (!KINDS.contains(parts[1])) {
+                log.warn("[Alarm][Criteria] 非法 kind: {} (subject={})", parts[1], subject);
+                return null;
             }
+            if (!DIMENSIONS.contains(parts[2])) {
+                log.warn("[Alarm][Criteria] 非法 dimension: {} (subject={})", parts[2], subject);
+                return null;
+            }
+            return s;
+        } else if (parts.length == 3) {
+            if (!KINDS.contains(parts[0])) {
+                log.warn("[Alarm][Criteria] 非法 kind: {} (subject={})", parts[0], subject);
+                return null;
+            }
+            if (!DIMENSIONS.contains(parts[1])) {
+                log.warn("[Alarm][Criteria] 非法 dimension: {} (subject={})", parts[1], subject);
+                return null;
+            }
+            return s;
         }
-        return s;
+        log.warn("[Alarm][Criteria] 不支持的 subject 段数: {} (subject={})", parts.length, subject);
+        return null;
     }
 
     /**
