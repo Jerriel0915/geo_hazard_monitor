@@ -4,6 +4,12 @@
 
     <!-- ==================== device_online_status 快照表 ==================== -->
 
+    <select id="selectByDeviceId" resultType="com.zwei.iot.device.domain.DeviceOnlineStatus">
+        SELECT id, device_id, client_id, status, online_at, offline_at, last_report_at, session_duration_sec
+        FROM device_online_status
+        WHERE device_id = #{deviceId}
+    </select>
+
     <insert id="upsertOnline">
         INSERT INTO device_online_status (device_id, client_id, status, online_at)
         VALUES (#{deviceId}, #{clientId}, 1, #{onlineAt})

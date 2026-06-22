@@ -66,6 +66,16 @@ public class DeviceOnlineStatusService {
         mapper.updateLastReportAt(deviceId, now);
     }
 
+    /**
+     * 按设备 ID 查询在线状态记录。
+     *
+     * @param deviceId 设备主键
+     * @return 在线状态记录; null 表示无记录
+     */
+    public DeviceOnlineStatus getByDeviceId(Long deviceId) {
+        return mapper.selectByDeviceId(deviceId);
+    }
+
     private void insertLog(Long deviceId, String eventType, String clientId, String clientIp, String reason) {
         DeviceOnlineEventLog log = new DeviceOnlineEventLog();
         log.setDeviceId(deviceId);

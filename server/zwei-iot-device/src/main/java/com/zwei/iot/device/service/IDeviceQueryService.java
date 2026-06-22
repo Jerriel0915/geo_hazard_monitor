@@ -1,5 +1,6 @@
 package com.zwei.iot.device.service;
 
+import com.zwei.iot.device.domain.dto.DeviceBasicInfo;
 import com.zwei.iot.device.domain.dto.DeviceBriefDTO;
 
 import java.util.Map;
@@ -25,4 +26,12 @@ public interface IDeviceQueryService {
      * 避免调用方的 N+1 查询问题。
      */
     Map<String, DeviceBriefDTO> getDeviceBriefsByAuthUsernames(Set<String> usernames);
+
+    /**
+     * 按设备 ID 查询基础信息 (供告警引擎解析 device 维度 subject)。
+     *
+     * @param deviceId 设备主键
+     * @return 基础信息; null 表示设备不存在或已逻辑删除
+     */
+    DeviceBasicInfo getBasicInfoById(Long deviceId);
 }
