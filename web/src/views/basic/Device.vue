@@ -385,17 +385,17 @@
         </el-button>
       </div>
       <el-table :data="isDraftMode ? draftSensors : sensorTableData" border size="small" v-loading="sensorLoading">
-        <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center" />
-        <el-table-column prop="sensorName" label="传感器名称" width="150" align="center" />
-        <el-table-column prop="monitorTypeName" label="监测类型" width="180" align="center" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column prop="sensorCode" label="传感器编号" width="120" align="center" />
+        <el-table-column prop="sensorName" label="传感器名称" width="130" align="center" />
+        <el-table-column prop="monitorTypeName" label="监测类型" width="160" align="center" />
+        <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="属性配置" min-width="320" align="center">
+        <el-table-column label="属性配置" align="center">
           <template #default="{ row }">
             <div v-if="row.attrList?.length" class="attr-config-list">
               <div v-for="attr in row.attrList" :key="attr.id || attr.attrCode" class="attr-config-item">
@@ -407,7 +407,7 @@
             <span v-else class="empty-text">暂无属性</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
+        <el-table-column label="操作" width="100" align="center">
           <template #default="{ row }">
             <el-button type="text" size="small" @click="handleEditSensor(row)">编辑</el-button>
             <el-button type="text" size="small" class="danger-text" @click="handleDeleteSensor(row)">删除</el-button>
@@ -478,10 +478,10 @@
         </el-divider>
 
         <el-table :data="sensorFormData.attrList" border size="small">
-          <el-table-column prop="attrCode" label="属性编码" width="150" align="center" />
-          <el-table-column prop="attrName" label="属性名称" width="150" align="center" />
-          <el-table-column prop="unit" label="单位" width="100" align="center" />
-          <el-table-column label="初始值" width="140" align="center">
+          <el-table-column prop="attrCode" label="属性编码" width="120" align="center" />
+          <el-table-column prop="attrName" label="属性名称" width="120" align="center" />
+          <el-table-column prop="unit" label="单位" width="70" align="center" />
+          <el-table-column label="初始值" width="130" align="center">
             <template #default="{ row }">
               <el-input-number
                   v-model="row.initialValue"
@@ -493,13 +493,12 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="量程范围" width="180" align="center">
+          <el-table-column label="量程范围" width="160" align="center">
             <template #default="{ row }">
               {{ row.rangeMin }} ~ {{ row.rangeMax }}
             </template>
           </el-table-column>
-          <el-table-column prop="unit" label="单位" width="80" align="center" />
-          <el-table-column label="操作" width="80" align="center">
+          <el-table-column label="操作" width="70" align="center">
             <template #default="{ $index }">
               <el-button type="danger" text size="small" @click="handleDeleteAttr($index)">删除</el-button>
             </template>
@@ -743,7 +742,7 @@ const locationText = ref('')
 
 const syncFormToText = () => {
   if (formData.longitude != null && formData.latitude != null) {
-    locationText.value = `${formData.longitude}, ${formData.latitude}`
+    locationText.value = `${Number(formData.longitude).toFixed(6)}, ${Number(formData.latitude).toFixed(6)}`
   } else {
     locationText.value = ''
   }
@@ -770,7 +769,7 @@ const onLocationBlur = () => {
     if (!isNaN(lng) && !isNaN(lat)) {
       formData.longitude = lng
       formData.latitude = lat
-      locationText.value = `${lng}, ${lat}`
+      locationText.value = `${lng.toFixed(6)}, ${lat.toFixed(6)}`
       return
     }
   }

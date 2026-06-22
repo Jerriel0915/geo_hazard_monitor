@@ -560,7 +560,7 @@ const handleExport = async () => {
 // ==================== 表单操作 ====================
 const syncFormToText = () => {
   if (formData.longitude != null && formData.latitude != null) {
-    locationText.value = `${formData.longitude}, ${formData.latitude}`
+    locationText.value = `${Number(formData.longitude).toFixed(6)}, ${Number(formData.latitude).toFixed(6)}`
   } else {
     locationText.value = ''
   }
@@ -580,7 +580,7 @@ const onLocationBlur = () => {
     if (!isNaN(lng) && !isNaN(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90) {
       formData.longitude = lng
       formData.latitude = lat
-      locationText.value = `${lng}, ${lat}`
+      locationText.value = `${lng.toFixed(6)}, ${lat.toFixed(6)}`
       return
     }
   }

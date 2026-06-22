@@ -1,9 +1,12 @@
 package com.zwei.iot.device.domain.dto;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 /**
  * 后台手工新增设备请求
@@ -31,8 +34,10 @@ public class DeviceCreateRequest {
 
     private String iconPath;
 
-    private Double longitude;
-    private Double latitude;
+    @Digits(integer = 3, fraction = 6, message = "经度精度不超过6位小数")
+    private BigDecimal longitude;
+    @Digits(integer = 2, fraction = 6, message = "纬度精度不超过6位小数")
+    private BigDecimal latitude;
 
     @NotNull(message = "设备状态不能为空")
     private Integer status;

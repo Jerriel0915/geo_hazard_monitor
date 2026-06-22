@@ -118,7 +118,7 @@
               </el-table-column>
               <el-table-column prop="coordinates" label="中心坐标" min-width="160" align="center">
                 <template #default="{ row }">
-                  <span v-if="row.longitude && row.latitude">{{ row.longitude }}, {{ row.latitude }}</span>
+                  <span v-if="row.longitude && row.latitude">{{ Number(row.longitude).toFixed(6) }}, {{ Number(row.latitude).toFixed(6) }}</span>
                   <span v-else class="empty-text">-</span>
                 </template>
               </el-table-column>
