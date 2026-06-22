@@ -32,8 +32,10 @@ export interface LevelFormState {
   description: string
 }
 
-/** 构建 dimension 层子节点: payload / device / packet */
-function buildDimensionChildren(contents: MonitorContentItem[]): IndicatorTreeNode[] {
+/** 构建 dimension 层子节点: payload / device / packet
+ *  valueKind 由调用方传入, 区分 'current' / 'prev' 上下文
+ */
+function buildDimensionChildren(contents: MonitorContentItem[], valueKind: 'current' | 'prev' = 'current'): IndicatorTreeNode[] {
   const payloadChildren: IndicatorTreeNode[] = (contents || []).map(c => {
     const shortLabel = `${c.name}${c.unit ? ` (${c.unit})` : ''}`
     return {
@@ -41,7 +43,7 @@ function buildDimensionChildren(contents: MonitorContentItem[]): IndicatorTreeNo
       label: shortLabel,
       displayLabel: shortLabel,
       unit: c.unit || undefined,
-      meta: {subjectType: 'CONTENT' as const, valueKind: 'current'},
+      meta: {subjectType: 'CONTENT' as const, valueKind},
     }
   })
   return [
@@ -52,27 +54,29 @@ function buildDimensionChildren(contents: MonitorContentItem[]): IndicatorTreeNo
     {
       value: 'device', label: '设备基础信息', displayLabel: '设备基础信息', disabled: true,
       children: [
-        {value: 'device.onlineStatus', label: '在线状态', displayLabel: '在线状态', meta: {subjectType: 'DEVICE' as const}},
-        {value: 'device.lastReportTime', label: '最后上报时间', displayLabel: '最后上报时间', meta: {subjectType: 'DEVICE' as const}},
+        {value: 'device.onlineStatus', label: '在线状态', displayLabel: '在线状态', meta: {subjectType: 'DEVICE' as const, valueKind}},
+        {value: 'device.lastReportTime', label: '最后上报时间', displayLabel: '最后上报时间', meta: {subjectType: 'DEVICE' as const, valueKind}},
       ],
     },
     {
       value: 'packet', label: '数据包信息', displayLabel: '数据包信息', disabled: true,
       children: [
-        {value: 'packet.dataTime', label: '数据时间', displayLabel: '数据时间', meta: {subjectType: 'PACKET' as const}},
+        {value: 'packet.dataTime', label: '数据时间', displayLabel: '数据时间', meta: {subjectType: 'PACKET' as const, valueKind}},
       ],
     },
   ]
 }
 
-/** 深拷贝节点树, 为所有 disabled=false 的节点 value 和 displayLabel 都加上前缀 */
+/** 深拷贝节点树, 为所有 disabled=false 的节点 value 和 displayLabel 都加上前缀
+ *  displayLabel 使用 n.displayLabel (而非 n.label) 作为基底, 保证多次 prefix 叠加不丢失
+ */
 function prefixDisplayLabels(nodes: IndicatorTreeNode[], prefix: string): IndicatorTreeNode[] {
   return nodes.map(n => {
     const copy: IndicatorTreeNode = {...n}
     if (!n.disabled) {
-      // 可选叶子 / 可选节点: value 和 displayLabel 都加前缀（修复多传感器 value 重复 bug）
+      // 可选叶子 / 可选节点: value 和 displayLabel 都加前缀
       copy.value = `${prefix}.${n.value}`
-      copy.displayLabel = `${prefix}.${n.label}`
+      copy.displayLabel = `${prefix}.${n.displayLabel || n.label}`
     } else if (n.children) {
       // 分组节点: 保持自身 label, 递归处理子节点
       copy.children = prefixDisplayLabels(n.children, prefix)
@@ -106,11 +110,11 @@ export function useIndicatorTree() {
       const tree: IndicatorTreeNode[] = [
         {
           value: 'current', label: '当前值', displayLabel: '当前值', disabled: true,
-          children: prefixDisplayLabels(buildDimensionChildren(contents), 'current'),
+          children: prefixDisplayLabels(buildDimensionChildren(contents, 'current'), 'current'),
         },
         {
           value: 'prev', label: '上一值', displayLabel: '上一值', disabled: true,
-          children: prefixDisplayLabels(buildDimensionChildren(contents), 'prev'),
+          children: prefixDisplayLabels(buildDimensionChildren(contents, 'prev'), 'prev'),
         },
       ]
       setTree(tree)
@@ -142,11 +146,11 @@ export function useIndicatorTree() {
         children: [
           {
             value: 'current', label: '当前值', displayLabel: '当前值', disabled: true,
-            children: prefixDisplayLabels(buildDimensionChildren(contents), 'current'),
+            children: prefixDisplayLabels(buildDimensionChildren(contents, 'current'), 'current'),
           },
           {
             value: 'prev', label: '上一值', displayLabel: '上一值', disabled: true,
-            children: prefixDisplayLabels(buildDimensionChildren(contents), 'prev'),
+            children: prefixDisplayLabels(buildDimensionChildren(contents, 'prev'), 'prev'),
           },
         ],
       } satisfies IndicatorTreeNode
