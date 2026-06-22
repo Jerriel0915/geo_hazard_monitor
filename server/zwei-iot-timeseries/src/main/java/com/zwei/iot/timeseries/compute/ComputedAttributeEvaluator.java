@@ -1,6 +1,7 @@
 package com.zwei.iot.timeseries.compute;
 
 import com.zwei.common.domain.ParsedMessage;
+import com.zwei.common.domain.ParsedMessageSnapshot;
 import com.zwei.common.domain.PropertyValue;
 import com.zwei.iot.device.domain.SensorMetadata;
 import com.zwei.iot.device.service.IDeviceSensorQueryService;

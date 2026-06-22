@@ -1,5 +1,6 @@
 package com.zwei.iot.timeseries.compute;
 
+import com.zwei.common.domain.ParsedMessageSnapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
