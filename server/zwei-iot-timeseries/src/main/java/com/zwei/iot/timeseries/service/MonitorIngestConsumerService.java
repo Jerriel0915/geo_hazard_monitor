@@ -2,12 +2,14 @@ package com.zwei.iot.timeseries.service;
 
 import com.alibaba.fastjson2.JSON;
 import com.zwei.common.domain.ParsedMessage;
+import com.zwei.common.domain.ParsedMessageSnapshot;
 import com.zwei.common.domain.PropertyValue;
 import com.zwei.common.event.MonitorDataIngestedEvent;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceOnlineStatusService;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.timeseries.compute.LastMessageStore;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
 import jakarta.annotation.PreDestroy;
@@ -21,7 +23,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -60,6 +64,7 @@ public class MonitorIngestConsumerService {
     private final DeviceOnlineStatusService deviceOnlineStatusService;
     private final IDeviceSensorService deviceSensorService;
     private final ApplicationEventPublisher eventPublisher;
+    private final LastMessageStore lastMessageStore;
     private final ExecutorService executorService;
     private volatile boolean running = true;
 
@@ -82,7 +87,8 @@ public class MonitorIngestConsumerService {
                                         DeviceMapper deviceMapper,
                                         DeviceOnlineStatusService deviceOnlineStatusService,
                                         IDeviceSensorService deviceSensorService,
-                                        ApplicationEventPublisher eventPublisher) {
+                                        ApplicationEventPublisher eventPublisher,
+                                        LastMessageStore lastMessageStore) {
         this.redisTemplate = redisTemplate;
         this.properties = properties;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
@@ -91,6 +97,7 @@ public class MonitorIngestConsumerService {
         this.deviceOnlineStatusService = deviceOnlineStatusService;
         this.deviceSensorService = deviceSensorService;
         this.eventPublisher = eventPublisher;
+        this.lastMessageStore = lastMessageStore;
         this.executorService = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "monitor-ingest-consumer");
             thread.setDaemon(true);
@@ -213,7 +220,9 @@ public class MonitorIngestConsumerService {
                     point.value(), point.unit() != null ? point.unit() : "",
                     new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(point.dataTime())));
             // 包装为单属性 ParsedMessage 后发布事件（统一契约，与 PARSED_MESSAGE 路径走同一发布方法）
-            publishIngestedEvent(point.deviceId(), point.sensorId(), wrapPointAsParsedMessage(point));
+            // STANDARD_POINT 是非 sys 报文格式，不参与告警评估，prevSnapshot 传 null
+            publishIngestedEvent(point.deviceId(), point.sensorId(),
+                    wrapPointAsParsedMessage(point), null);
             ack(record);
         } catch (Exception e) {
             // ── 阶段4: 退避重试 / 死信 ──
@@ -266,8 +275,20 @@ public class MonitorIngestConsumerService {
             }
             log.info("ParsedMessage ingested: deviceCode={} sensorCode={} properties={}",
                     parsed.deviceCode(), parsed.sensorCode(), points.size());
-            // 发布监测数据入库事件 — 携带完整 ParsedMessage（一次报文一次事件）
-            publishIngestedEvent(points.get(0).deviceId(), points.get(0).sensorId(), parsed);
+            // ── prev snapshot: get 必须在 put 之前, 此时 store 里是上一条 ──
+            Long deviceId = points.get(0).deviceId();
+            Long sensorId = points.get(0).sensorId();
+            ParsedMessageSnapshot prevSnapshot = lastMessageStore.get(deviceId, parsed.sensorCode());
+            // ── 推进 store: 当前条覆盖上一条 ──
+            Map<String, Object> currentProps = new LinkedHashMap<>();
+            for (PropertyValue pv : parsed.properties()) {
+                if (pv.value() != null) currentProps.put(pv.identifier(), pv.value());
+            }
+            lastMessageStore.put(deviceId, parsed.sensorCode(),
+                    new ParsedMessageSnapshot(parsed.deviceCode(), parsed.sensorCode(),
+                            parsed.dataTime(), currentProps));
+            // ── 发布携带 prevSnapshot 的事件 ──
+            publishIngestedEvent(deviceId, sensorId, parsed, prevSnapshot);
             ack(record);
         } catch (Exception e) {
             if (retryCount >= properties.getRetryDelaysSeconds().size()) {
@@ -291,18 +312,21 @@ public class MonitorIngestConsumerService {
      * (alarm 引擎 {@code @EventListener} 默认同步，会在本消费线程内执行；
      * 如需异步可加 {@code @Async}，本工程当前同步满足告警时延要求)。
      *
-     * @param deviceId 已解析的设备 ID（来自 adapt 阶段，避免下游重复查 DB）
-     * @param sensorId 已解析的传感器 ID
-     * @param msg      已成功写入 IoTDB 的完整报文
+     * @param deviceId     已解析的设备 ID（来自 adapt 阶段，避免下游重复查 DB）
+     * @param sensorId     已解析的传感器 ID
+     * @param msg          已成功写入 IoTDB 的完整报文
+     * @param prevSnapshot 同设备+传感器上一条报文的精简快照; null 表示首次上报或缓存失效
      */
-    private void publishIngestedEvent(Long deviceId, Long sensorId, ParsedMessage msg) {
+    private void publishIngestedEvent(Long deviceId, Long sensorId, ParsedMessage msg,
+                                      ParsedMessageSnapshot prevSnapshot) {
         try {
             eventPublisher.publishEvent(new MonitorDataIngestedEvent(
                     deviceId, sensorId, msg.deviceCode(), msg.sensorCode(), msg.sourceType(),
                     msg.receiveTime(), msg.payloadHash(), msg.properties(),
-                    msg.dataTime(), null));
-            log.info("发布 MonitorDataIngestedEvent: deviceCode={} sensorCode={} properties={}",
-                    msg.deviceCode(), msg.sensorCode(), msg.properties().size());
+                    msg.dataTime(), prevSnapshot));
+            log.info("发布 MonitorDataIngestedEvent: deviceCode={} sensorCode={} properties={} hasPrev={}",
+                    msg.deviceCode(), msg.sensorCode(), msg.properties().size(),
+                    prevSnapshot != null);
         } catch (Exception e) {
             // 事件发布失败不影响入库主流程
             log.warn("发布 MonitorDataIngestedEvent 失败 deviceCode={} sensorCode={}: {}",
