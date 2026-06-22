@@ -108,7 +108,7 @@ public class AlarmEvaluationEngine {
         // 一次性构建 subjectValues — 4 维度双 key (传感器模式 + 监测类型模式)
         Map<String, Double> subjectValues = new HashMap<>();
         String sensorCode = event.getSensorCode();
-        String prefix = sensorCode != null ? sensorCode : "";
+        String prefix = sensorCode != null ? sensorCode + "." : "";
         ParsedMessageSnapshot prev = event.getPrevSnapshot();
         long currentDataTime = event.getDataTime();
 
@@ -117,7 +117,7 @@ public class AlarmEvaluationEngine {
             for (PropertyValue pv : event.getProperties()) {
                 if (pv.value() instanceof Number n) {
                     double v = n.doubleValue();
-                    subjectValues.put(prefix + ".current.payload." + pv.identifier(), v);
+                    subjectValues.put(prefix + "current.payload." + pv.identifier(), v);
                     subjectValues.put("current.payload." + pv.identifier(), v);
                 }
             }
@@ -128,17 +128,17 @@ public class AlarmEvaluationEngine {
             for (Map.Entry<String, Object> e : prev.properties().entrySet()) {
                 if (e.getValue() instanceof Number n) {
                     double v = n.doubleValue();
-                    subjectValues.put(prefix + ".prev.payload." + e.getKey(), v);
+                    subjectValues.put(prefix + "prev.payload." + e.getKey(), v);
                     subjectValues.put("prev.payload." + e.getKey(), v);
                 }
             }
         }
 
         // ── bucket 3: packet.dataTime ──
-        subjectValues.put(prefix + ".current.packet.dataTime", (double) currentDataTime);
+        subjectValues.put(prefix + "current.packet.dataTime", (double) currentDataTime);
         subjectValues.put("current.packet.dataTime", (double) currentDataTime);
         if (prev != null) {
-            subjectValues.put(prefix + ".prev.packet.dataTime", (double) prev.dataTime());
+            subjectValues.put(prefix + "prev.packet.dataTime", (double) prev.dataTime());
             subjectValues.put("prev.packet.dataTime", (double) prev.dataTime());
         }
 
@@ -148,8 +148,8 @@ public class AlarmEvaluationEngine {
             double online = dev.online() ? 1.0 : 0.0;
             double lastReport = (double) dev.lastReportAt();
             for (String kind : new String[]{"current", "prev"}) {
-                subjectValues.put(prefix + "." + kind + ".device.onlineStatus", online);
-                subjectValues.put(prefix + "." + kind + ".device.lastReportTime", lastReport);
+                subjectValues.put(prefix + kind + ".device.onlineStatus", online);
+                subjectValues.put(prefix + kind + ".device.lastReportTime", lastReport);
                 subjectValues.put(kind + ".device.onlineStatus", online);
                 subjectValues.put(kind + ".device.lastReportTime", lastReport);
             }
@@ -436,16 +436,16 @@ public class AlarmEvaluationEngine {
     /**
      * 根据 subject 从报文 properties 中查属性中文名，查不到时回退为 subject。
      */
-    private String resolveAttrName(MonitorDataIngestedEvent event, String normalizedSubject) {
-        if (normalizedSubject == null) return null;
+    private String resolveAttrName(MonitorDataIngestedEvent event, String attrCode) {
+        if (attrCode == null) return null;
         if (event.getProperties() != null) {
             for (PropertyValue pv : event.getProperties()) {
-                if (normalizedSubject.equals(pv.identifier())) {
-                    return (pv.name() != null && !pv.name().isBlank()) ? pv.name() : normalizedSubject;
+                if (attrCode.equals(pv.identifier())) {
+                    return (pv.name() != null && !pv.name().isBlank()) ? pv.name() : attrCode;
                 }
             }
         }
-        return normalizedSubject;
+        return attrCode;
     }
 
     /**
