@@ -62,6 +62,18 @@ export const getAlarmLevelConfig = (level: number | string | undefined) => {
 }
 
 /**
+ * 告警类型文本映射
+ * THRESHOLD → 阈值告警，COMPREHENSIVE → 综合预警
+ */
+export const getAlarmTypeText = (type: string): string => {
+    const map: Record<string, string> = {
+        'THRESHOLD': '阈值告警',
+        'COMPREHENSIVE': '综合预警'
+    }
+    return map[type] || type
+}
+
+/**
  * 告警类型对应的标签类型
  * 综合预警 → warning（橙色），阈值预警 → danger（红色）
  */

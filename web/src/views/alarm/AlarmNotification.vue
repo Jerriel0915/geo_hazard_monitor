@@ -31,8 +31,8 @@
         <el-option label="四级" value="4" />
       </el-select>
       <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple collapse-tags collapse-tags-tooltip>
-        <el-option label="阈值预警" value="THRESHOLD" />
-        <el-option label="综合预警" value="COMPREHENSIVE" />
+        <el-option label="阈值告警" value="THRESHOLD" />
+        <el-option label="综合告警" value="COMPREHENSIVE" />
       </el-select>
       <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple collapse-tags collapse-tags-tooltip>
         <el-option label="误报" value="4" />
@@ -117,7 +117,7 @@ import {onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {Download, View} from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
-import {getHistoryAlarms, getAlarmLevelConfig, getAlarmTypeTagType} from '@/api/alarm'
+import {getHistoryAlarms, getAlarmLevelConfig, getAlarmTypeTagType, getAlarmTypeText} from '@/api/alarm'
 
 // 查询参数
 const queryParams = reactive({
@@ -179,16 +179,6 @@ const fetchData = async () => {
 onMounted(() => {
   fetchData()
 })
-
-
-// 获取告警类型文本
-const getAlarmTypeText = (type: string) => {
-  const map: Record<string, string> = {
-    'THRESHOLD': '阈值预警',
-    'COMPREHENSIVE': '综合预警'
-  }
-  return map[type] || type
-}
 
 // 获取状态类型
 const getStatusType = (status: number) => {

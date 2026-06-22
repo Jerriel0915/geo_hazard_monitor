@@ -45,8 +45,8 @@
         <el-option label="四级" :value="4" />
       </el-select>
       <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
-        <el-option label="阈值预警" value="THRESHOLD" />
-        <el-option label="综合预警" value="COMPREHENSIVE" />
+        <el-option label="阈值告警" value="THRESHOLD" />
+        <el-option label="综合告警" value="COMPREHENSIVE" />
       </el-select>
       <el-select v-model="queryParams.status" placeholder="警情状态" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
         <el-option label="待处理" :value="1" />
@@ -154,6 +154,7 @@ import {
   batchDisposeAlarms,
   getAlarmLevelConfig,
   getAlarmTypeTagType,
+  getAlarmTypeText,
   type AlarmRecordItem,
   type AlarmRecordPageParams,
 } from '@/api/alarm'
@@ -221,8 +222,6 @@ onMounted(async () => {
 })
 
 
-const getAlarmTypeText = (type: string) =>
-  ({ THRESHOLD: '阈值预警', COMPREHENSIVE: '综合预警' } as Record<string, string>)[type] || type
 const getStatusType = (status: number | string) => {
   const n = Number(status)
   return ({ 1: 'danger', 2: 'warning', 3: 'success', 4: 'info' } as Record<number, string>)[n] || 'info'
