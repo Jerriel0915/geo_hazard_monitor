@@ -299,7 +299,8 @@ public class MonitorIngestConsumerService {
         try {
             eventPublisher.publishEvent(new MonitorDataIngestedEvent(
                     deviceId, sensorId, msg.deviceCode(), msg.sensorCode(), msg.sourceType(),
-                    msg.receiveTime(), msg.payloadHash(), msg.properties()));
+                    msg.receiveTime(), msg.payloadHash(), msg.properties(),
+                    msg.dataTime(), null));
             log.info("发布 MonitorDataIngestedEvent: deviceCode={} sensorCode={} properties={}",
                     msg.deviceCode(), msg.sensorCode(), msg.properties().size());
         } catch (Exception e) {
