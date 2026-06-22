@@ -119,6 +119,19 @@ public class LogModuleProperties {
         this.cleanupBatchSize = Math.max(100, cleanupBatchSize);
     }
 
+    /**
+     * 控制台日志文件路径（用于实时文件追踪SSE）
+     */
+    private String consoleLogPath = "./logs/sys-all.log";
+
+    public String getConsoleLogPath() {
+        return consoleLogPath;
+    }
+
+    public void setConsoleLogPath(String consoleLogPath) {
+        this.consoleLogPath = consoleLogPath;
+    }
+
     public boolean supportsRuntimeLevel(String level) {
         if (level == null || level.isBlank()) {
             return false;
