@@ -340,9 +340,11 @@ public class AlarmEvaluationEngine {
 
         // 通过 winner 判据引用的主属性查 currentValue 和 attrName
         String winnerSubject = extractFirstSubject(winner.levelConfig);
-        String normalizedSubject = normalizeAttrCode(winnerSubject);
-        Double currentValue = normalizedSubject != null ? subjectValues.get(normalizedSubject) : null;
-        String attrName = resolveAttrName(event, normalizedSubject);
+        // 用于显示的 attrCode (最后一段)
+        String attrCode = normalizeAttrCode(winnerSubject);
+        // 用于查找的标准化 subject — winnerSubject 本身已经是用户配置的新格式 subject
+        Double currentValue = winnerSubject != null ? subjectValues.get(winnerSubject) : null;
+        String attrName = resolveAttrName(event, attrCode);
 
         String hpName = getHazardPointName(winner.effectiveHpId);
         String message = buildAlarmMessage(attrName,
@@ -362,7 +364,7 @@ public class AlarmEvaluationEngine {
                 saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage(), saved.getTriggerReason()));
         log.info("[Alarm][Trigger] 告警触发 id={} level={} criteria={} hpId={} subject={} currentValue={} (candidates={})",
                 saved.getId(), winner.level, winner.criteria.getId(), winner.effectiveHpId,
-                normalizedSubject, currentValue, candidates.size());
+                winnerSubject, currentValue, candidates.size());
         return true;
     }
 
