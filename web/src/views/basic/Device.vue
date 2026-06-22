@@ -1345,25 +1345,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-
-
-
-
-
-
-
-
-
-
 .table-icon {
   width: 28px;
   height: 28px;
   object-fit: contain;
 }
-
-
-
-
 
 .divider-title {
   font-size: 14px;

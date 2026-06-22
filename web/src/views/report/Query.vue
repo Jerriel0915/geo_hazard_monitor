@@ -76,8 +76,9 @@
             stripe
             v-loading="loading"
         >
-          <el-table-column prop="dataTime" label="时间" width="180" align="center" />
-          <el-table-column prop="deviceName" label="设备名称" width="200" align="center" />
+          <el-table-column prop="dataTime" label="时间" width="170" align="center" />
+          <el-table-column prop="deviceName" label="设备名称" width="180" align="center" />
+          <el-table-column prop="sensorName" label="传感器" width="180" align="center" />
           <el-table-column label="监测数据" min-width="300" align="center">
             <template #default="{ row }">
               <div v-for="item in row.dataList" :key="item.attrCode" class="monitor-data-item">
@@ -110,6 +111,7 @@ import { showRequestErrorMessage } from '@/utils/errorHandler'
 import { getHazardPointPage } from '@/api/hazardPoint'
 import { getDevicePage, type DeviceItem } from '@/api/device'
 import { getMonitorDataPage, type MonitorDataPageItem, type MonitorDataPageQuery } from '@/api/monitorData'
+import { getDeviceSensors } from '@/api/sensor'
 
 // 类型定义
 interface HazardPointOption {
@@ -186,25 +188,28 @@ const loadDeviceOptions = async () => {
   }
 }
 
-// 加载设备的监测属性（需要后端提供接口）
+// 加载设备的监测属性（从该设备的传感器属性列表中提取去重）
 const loadDeviceAttrs = async (deviceId: number): Promise<DeviceAttr[]> => {
-  // TODO: 替换为实际接口
-  // 模拟数据
-  const mockAttrs: Record<number, DeviceAttr[]> = {
-    1: [
-      { code: 'displacement', name: '位移', unit: 'mm' },
-      { code: 'velocity', name: '速率', unit: 'mm/h' }
-    ],
-    2: [
-      { code: 'rainfall', name: '降雨量', unit: 'mm' }
-    ],
-    3: [
-      { code: 'width', name: '裂缝宽度', unit: 'mm' }
-    ]
+  try {
+    const sensors = await getDeviceSensors(deviceId)
+    const seen = new Set<string>()
+    const attrs: DeviceAttr[] = []
+    for (const sensor of sensors) {
+      for (const attr of sensor.attrList) {
+        if (!seen.has(attr.attrCode)) {
+          seen.add(attr.attrCode)
+          attrs.push({
+            code: attr.attrCode,
+            name: attr.attrName || attr.attrCode,
+            unit: attr.unit || ''
+          })
+        }
+      }
+    }
+    return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '' }]
+  } catch {
+    return [{ code: 'value', name: '监测值', unit: '' }]
   }
-  return mockAttrs[deviceId] || [
-    { code: 'value', name: '监测值', unit: '' }
-  ]
 }
 
 // 设备变化时加载其属性
@@ -225,12 +230,14 @@ const transformMonitorData = (rows: MonitorDataPageItem[]) => {
   const grouped: Record<string, any> = {}
 
   rows.forEach(item => {
-    const key = `${item.dataTime}_${item.deviceId}_${item.deviceName}`
+    const key = `${item.dataTime}_${item.deviceId}_${item.sensorId}`
     if (!grouped[key]) {
       grouped[key] = {
         dataTime: item.dataTime,
         deviceId: item.deviceId,
         deviceName: item.deviceName,
+        sensorId: item.sensorId,
+        sensorName: item.sensorName,
         dataList: []
       }
     }
@@ -306,23 +313,65 @@ const handleReset = () => {
   deviceAttrsMap.value.clear()
 }
 
-const handleExportCsv = () => {
-  if (!tableData.value.length) {
+const EXPORT_MAX = 20000
+
+const handleExportCsv = async () => {
+  if (!selectedDeviceId.value || !selectedHazardPointId.value) {
+    ElMessage.warning('请先选择隐患点和设备并查询')
+    return
+  }
+  if (total.value === 0) {
     ElMessage.warning('没有数据可导出')
     return
   }
+  if (total.value > EXPORT_MAX) {
+    ElMessage.warning(`数据量过大（${total.value} 条，上限 ${EXPORT_MAX} 条），请缩小查询范围后重试`)
+    return
+  }
 
-  // 构建CSV数据
-  const headers = ['时间', '设备名称', '监测数据']
-  const rows = tableData.value.map(row => {
+  // 拉取全部数据（分页循环）
+  const allRows: MonitorDataPageItem[] = []
+  const fetchPageSize = 500
+  const totalPages = Math.ceil(total.value / fetchPageSize)
+  loading.value = true
+  try {
+    for (let p = 1; p <= totalPages; p++) {
+      const params: MonitorDataPageQuery = {
+        hazardPointId: selectedHazardPointId.value,
+        deviceId: selectedDeviceId.value,
+        pageNum: p,
+        pageSize: fetchPageSize
+      }
+      if (selectedAttrCodes.value.length > 0) {
+        params.attrCode = selectedAttrCodes.value[0]
+      }
+      if (timeRange.value) {
+        params.startTime = timeRange.value[0]
+        params.endTime = timeRange.value[1]
+      }
+      const res = await getMonitorDataPage(params)
+      allRows.push(...(res.rows || []))
+    }
+  } catch (error) {
+    showRequestErrorMessage(error, '导出数据拉取失败')
+    loading.value = false
+    return
+  }
+  loading.value = false
+
+  const exportRows = transformMonitorData(allRows)
+
+  // 构建CSV数据（与查询表格一致：时间 | 设备名称 | 传感器 | 监测数据）
+  const headers = ['时间', '设备名称', '传感器', '监测数据']
+  const rows = exportRows.map(row => {
     const monitorDataStr = row.dataList.map((item: any) =>
-        `${item.attrName}: ${item.value}${item.unit}`
+      `${item.attrName}: ${item.value}${item.unit}`
     ).join('; ')
-    return [row.dataTime, row.deviceName, monitorDataStr]
+    return [row.dataTime, row.deviceName, row.sensorName, monitorDataStr]
   })
 
-  const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const csv = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

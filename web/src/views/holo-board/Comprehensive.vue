@@ -4,14 +4,12 @@
     <div class="left-panel">
       <div class="panel-section health-section">
         <div class="section-header">
-          <span class="section-title">系统健康度</span>
+          <span class="section-title-group">
+            <el-icon class="section-icon" :size="18"><TrendCharts/></el-icon>
+            <span class="section-title">系统健康度</span>
+          </span>
           <span ref="healthTriggerRef" class="health-question" @mouseenter="showPopover" @mouseleave="hidePopover">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
+            <el-icon :size="16"><Warning/></el-icon>
           </span>
           <Teleport to="body">
             <div
@@ -36,16 +34,16 @@
         </div>
         <div class="health-content">
           <div class="health-ring-container">
-            <svg class="health-ring" viewBox="0 0 200 200">
-              <circle class="ring-bg" cx="100" cy="100" r="85"/>
+            <svg class="health-ring" viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="50"/>
               <circle
                   v-for="(segment, index) in ringSegments"
                   :key="index"
                   class="ring-segment"
-                  :class="['segment-' + (index + 1), { active: activeSegment === index }]"
-                  cx="100"
-                  cy="100"
-                  r="85"
+                  :class="{ active: activeSegment === index }"
+                  cx="60"
+                  cy="60"
+                  r="50"
                   :stroke="segment.color"
                   :stroke-dasharray="segment.dashArray"
                   :stroke-dashoffset="segment.dashOffset"
@@ -141,7 +139,7 @@
               <span class="panel-title">告警趋势分析</span>
               <span class="panel-subtitle">近12个月告警统计及未来预测</span>
             </div>
-            <div ref="alarmTrendChart" class="echarts-body" style="transform: scale(0.82);"></div>
+            <div ref="alarmTrendChart" class="echarts-body" style="transform: scale(0.97);"></div>
           </div>
 
           <!-- 第二行：左右两个图表 -->
@@ -152,7 +150,7 @@
                 <span class="panel-title">隐患点增长分析</span>
                 <span class="panel-subtitle">近12个月新增隐患点统计</span>
               </div>
-              <div ref="hazardTrendChart" class="echarts-body" style="transform: scale(0.80);"></div>
+              <div ref="hazardTrendChart" class="echarts-body" style="transform: scale(0.92);"></div>
             </div>
 
             <!-- 右侧：隐患点平均监测率（纯柱状图） -->
@@ -161,7 +159,7 @@
                 <span class="panel-title">隐患点平均监测率</span>
                 <span class="panel-subtitle">各隐患点设备监测有效率统计</span>
               </div>
-              <div ref="monitorRateChart" class="echarts-body" style="transform: scale(0.80);"></div>
+              <div ref="monitorRateChart" class="echarts-body" style="transform: scale(0.92);"></div>
             </div>
           </div>
         </div>
@@ -214,6 +212,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
+import { TrendCharts, Warning } from '@element-plus/icons-vue'
 import echarts from '@/utils/echarts'
 import L from 'leaflet'
 import {
@@ -224,6 +223,7 @@ import {
   type RateByTypeVO,
   type SensorDistributionVO
 } from '@/api/monitor'
+import { getPendingAlarms, getHistoryAlarms } from '@/api/alarm'
 
 import {TIANDITU_KEY} from '@/composables/useLeafletMap'
 import ResourceSection from './components/ResourceSection.vue'
@@ -317,9 +317,12 @@ const deviceOnlineRate = ref<RateByTypeVO | null>(null)
 const hazardTrend = ref<HazardPointTrendVO | null>(null)
 const sensorDist = ref<SensorDistributionVO | null>(null)
 
+const alarmPendingCount = ref(0)
+const alarmHistoryCount = ref(0)
+
 const summaryStats = computed(() => ({
-  recentThreeMonthsAlarms: 0,
-  totalAlarms: 0,
+  recentThreeMonthsAlarms: alarmPendingCount.value + alarmHistoryCount.value,
+  totalAlarms: alarmHistoryCount.value,
   totalMonitorCount: 0,
   hazardPointCount: overview.value?.hazardPoint?.total ?? 0,
   deviceCount: overview.value?.device?.total ?? 0
@@ -666,6 +669,44 @@ onMounted(async () => {
     healthStats.value = d.healthScore
   } catch { /* use defaults */
   }
+
+  // 获取待办告警（实时告警事件 + 等级统计）
+  try {
+    const pending = await getPendingAlarms({ pageNum: 1, pageSize: 5 })
+    const rows = pending?.rows ?? []
+    alarmStats.value.pendingCount = alarmPendingCount.value = pending?.total ?? 0
+    // 按等级实时统计（与 DashboardFull 的 healthScore 两码事）
+    const levelMap: Record<number, { name: string; key: string; color: string }> = {
+      1: { name: '红色告警', key: 'red', color: '#dc2626' },
+      2: { name: '橙色告警', key: 'orange', color: '#ea580c' },
+      3: { name: '黄色告警', key: 'yellow', color: '#ca8a04' },
+      4: { name: '绿色提示', key: 'green', color: '#16a34a' }
+    }
+    const levelCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
+    rows.forEach((item: any) => {
+      const lv = item.alarmLevel
+      if (lv && levelCounts[lv] !== undefined) levelCounts[lv]++
+    })
+    // 等级统计 — 基于当前页面的实际返回
+    // TODO: 后端提供 /alarm/records/level-stats 独立接口后替换
+    alarmStats.value.levelStats = [1, 2, 3, 4].map(lv => ({
+      ...levelMap[lv],
+      count: levelCounts[lv]
+    }))
+    alarmStats.value.recentAlarms = rows.map((item: any) => ({
+      id: item.id,
+      title: item.alarmMessage || item.hazardPointName || '告警事件',
+      source: item.deviceName || item.sensorName || '',
+      time: item.lastTriggerTime ? item.lastTriggerTime.substring(11, 16) : '',
+      level: levelMap[item.alarmLevel]?.key ?? 'green'
+    }))
+  } catch { /* keep defaults */ }
+
+  // 获取历史告警总数
+  try {
+    const history = await getHistoryAlarms({ pageNum: 1, pageSize: 1 })
+    alarmStats.value.historyCount = alarmHistoryCount.value = history?.total ?? 0
+  } catch { /* keep defaults */ }
   initAlarmTrendChart()
   initMonitorRateChart()
   initHazardTrendChart()
@@ -720,7 +761,7 @@ const initHazardTrendChart = () => {
       left: '3%',
       right: '3%',
       bottom: '2%',
-      top: '5%',
+      top: '15%',
       containLabel: true
     },
     xAxis: {
@@ -793,7 +834,7 @@ const initAlarmTrendChart = () => {
       left: '3%',
       right: '3%',
       bottom: '16%',
-      top: '5%',
+      top: '15%',
       containLabel: true
     },
     xAxis: {
@@ -963,11 +1004,11 @@ const healthStats = ref<HealthScoreVO>({
 })
 
 const ringSegments = computed(() => {
-  const circumference = 2 * Math.PI * 85
+  const circumference = 2 * Math.PI * 50
   let currentOffset = 0
   return healthStats.value.items.map((item, index) => {
     const segmentLength = (item.weight * circumference * item.value / 100)
-    const gapLength = 4
+    const gapLength = 3
     const segment = {
       color: item.color,
       dashArray: `${segmentLength} ${circumference - segmentLength}`,
@@ -978,12 +1019,6 @@ const ringSegments = computed(() => {
     return segment
   })
 })
-
-const getHealthColor = (value: number) => {
-  if (value >= 90) return '#52c41a'
-  if (value >= 70) return '#faad14'
-  return '#f5222d'
-}
 
 const resourceStats = computed(() => {
   const types = sensorDist.value?.list?.map(t => ({name: t.monitorTypeName, count: t.sensorCount})) ?? []
@@ -1010,21 +1045,15 @@ const onlineStats = computed(() => {
 })
 
 const alarmStats = ref({
-  pendingCount: 0,
-  historyCount: 0,
+  pendingCount: alarmPendingCount,
+  historyCount: alarmHistoryCount,
   levelStats: [
-    {name: '红色告警', key: 'red', count: 2},
-    {name: '橙色告警', key: 'orange', count: 3},
-    {name: '黄色告警', key: 'yellow', count: 2},
-    {name: '绿色提示', key: 'green', count: 1}
-  ],
-  recentAlarms: [
-    {id: 1, title: '龙潭寺滑坡点位移超过警戒值', source: 'GNSS-A1', time: '14:32', level: 'red'},
-    {id: 2, title: '地声异常波动预警', source: '地声传感器', time: '13:45', level: 'orange'},
-    {id: 3, title: 'ZZ水库水位接近警戒水位', source: '渗压计-B1', time: '12:20', level: 'orange'},
-    {id: 4, title: '设备应变计-B2离线告警', source: '系统监测', time: '11:15', level: 'yellow'},
-    {id: 5, title: '日降雨量达到预警阈值', source: '雨量计-A1', time: '10:30', level: 'yellow'}
-  ]
+    {name: '红色告警', key: 'red', count: 0},
+    {name: '橙色告警', key: 'orange', count: 0},
+    {name: '黄色告警', key: 'yellow', count: 0},
+    {name: '绿色提示', key: 'green', count: 0}
+  ] as { name: string; key: string; count: number }[],
+  recentAlarms: [] as { id: number; title: string; source: string; time: string; level: string }[]
 })
 
 const hazardPoints = ref<HazardPoint[]>([
@@ -1178,12 +1207,6 @@ const chartAreaPath = computed(() => {
   return `${linePath} L ${lastX} 150 L 20 150 Z`
 })
 
-const getHealthClass = (value: number) => {
-  if (value >= 90) return 'healthy'
-  if (value >= 70) return 'warning'
-  return 'danger'
-}
-
 const handleMapZoom = () => {
 }
 
@@ -1320,6 +1343,25 @@ const trendAreaPath = computed(() => {
   box-shadow: none;
 }
 
+/* 系统健康度卡片 — 统一毛玻璃风格 */
+.health-section.panel-section {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(24, 144, 255, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.health-section.panel-section:hover {
+  border-color: rgba(24, 144, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -1329,14 +1371,39 @@ const trendAreaPath = computed(() => {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.health-section .section-header {
+  padding: 8px 14px 10px;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.03) 100%);
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(24, 144, 255, 0.12);
+  margin: -16px -18px 16px;
+}
+
 .section-title {
   font-size: 17px;
   font-weight: 600;
   color: #1f2937;
 }
 
+.health-section .section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2129;
+  font-family: var(--font-display, inherit);
+}
+
+.section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-icon {
+  color: #1890ff;
+}
+
 .health-question {
-  color: #3b82f6;
+  color: #1890ff;
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -1345,89 +1412,19 @@ const trendAreaPath = computed(() => {
 }
 
 .health-question:hover {
-  background: rgba(79, 172, 254, 0.2);
-}
-
-.health-overview {
-  margin-bottom: 16px;
-}
-
-.health-score {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 12px;
-}
-
-.score-value {
-  font-size: 48px;
-  font-weight: 700;
-  color: #52c41a;
-}
-
-.score-unit {
-  font-size: 24px;
-  color: rgba(255, 255, 255, 0.6);
-  margin-left: 4px;
-}
-
-.health-bar {
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.health-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #52c41a, #4facfe);
-  border-radius: 4px;
-  transition: width 0.5s ease;
-}
-
-.health-items {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.health-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.health-label {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.health-value {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.health-value.healthy {
-  color: #52c41a;
-}
-
-.health-value.warning {
-  color: #faad14;
-}
-
-.health-value.danger {
-  color: #f5222d;
+  background: rgba(24, 144, 255, 0.1);
 }
 
 .health-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .health-ring-container {
   position: relative;
-  width: 140px;
-  height: 140px;
+  width: 110px;
+  height: 110px;
   margin: 0 auto;
 }
 
@@ -1439,21 +1436,21 @@ const trendAreaPath = computed(() => {
 
 .ring-bg {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.1);
-  stroke-width: 12;
+  stroke: rgba(24, 144, 255, 0.08);
+  stroke-width: 8;
 }
 
 .ring-segment {
   fill: none;
-  stroke-width: 12;
+  stroke-width: 8;
   stroke-linecap: round;
   transition: all 0.3s ease;
   cursor: pointer;
 }
 
 .ring-segment.active {
-  stroke-width: 16;
-  filter: drop-shadow(0 0 6px currentColor);
+  stroke-width: 10;
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
 .ring-segment:not(.active) {
@@ -1469,26 +1466,45 @@ const trendAreaPath = computed(() => {
 }
 
 .ring-score {
-  font-size: 32px;
+  font-size: 22px;
   font-weight: 700;
-  color: #1f2937;
+  color: #1d2129;
+  font-family: var(--font-display, inherit);
 }
 
 .ring-label {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 10px;
+  color: #86909c;
+  margin-top: 2px;
 }
 
 .health-bars {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .health-bar-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.health-bar-item.active {
+  background: rgba(24, 144, 255, 0.06);
+}
+
+.health-bar-item:not(.active) {
+  opacity: 1;
+}
+
+.health-bar-item:hover {
+  background: rgba(24, 144, 255, 0.04);
 }
 
 .bar-info {
@@ -1498,47 +1514,28 @@ const trendAreaPath = computed(() => {
 }
 
 .bar-name {
-  font-size: 14px;
-  color: #4b5563;
+  font-size: 12px;
+  color: #4e5969;
+  font-weight: 500;
 }
 
 .bar-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-display, inherit);
 }
 
 .bar-track {
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .bar-progress {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 2px;
   transition: width 0.5s ease;
-}
-
-.health-bar-item {
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.health-bar-item.active {
-  background: rgba(59, 130, 246, 0.1);
-  transform: translateX(4px);
-}
-
-.health-bar-item:not(.active) {
-  opacity: 0.5;
-}
-
-.health-bar-item:hover {
-  background: rgba(59, 130, 246, 0.05);
 }
 
 .resource-cards {
@@ -2572,11 +2569,11 @@ const trendAreaPath = computed(() => {
   position: fixed;
   width: 300px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(24, 144, 255, 0.15);
   border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(24, 144, 255, 0.12);
   padding: 14px 16px;
-  z-index: 1000;
+  z-index: 2000;
   cursor: default;
   pointer-events: auto;
 }
@@ -2588,14 +2585,14 @@ const trendAreaPath = computed(() => {
   width: 12px;
   height: 12px;
   background: #fff;
-  border-left: 1px solid #e2e8f0;
-  border-top: 1px solid #e2e8f0;
+  border-left: 1px solid rgba(24, 144, 255, 0.15);
+  border-top: 1px solid rgba(24, 144, 255, 0.15);
   transform: rotate(45deg);
 }
 
 .algorithm-popover p {
   font-size: 12px;
-  color: #374151;
+  color: #1d2129;
   line-height: 1.5;
   margin: 0;
 }
@@ -2607,13 +2604,13 @@ const trendAreaPath = computed(() => {
 
 .algorithm-popover li {
   font-size: 12px;
-  color: #4b5563;
+  color: #4e5969;
   margin-bottom: 3px;
   line-height: 1.5;
 }
 
 .algorithm-popover li strong {
-  color: #3b82f6;
+  color: #1890ff;
 }
 
 /* 隐患点标记样式 */

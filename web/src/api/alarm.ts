@@ -68,7 +68,7 @@ export const getAlarmLevelConfig = (level: number | string | undefined) => {
 export const getAlarmTypeText = (type: string): string => {
     const map: Record<string, string> = {
         'THRESHOLD': '阈值告警',
-        'COMPREHENSIVE': '综合预警'
+        'COMPREHENSIVE': '综合告警'
     }
     return map[type] || type
 }

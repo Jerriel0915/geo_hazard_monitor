@@ -29,7 +29,8 @@
       "Bash(python3 _perm.py)",
       "Bash(python3 _perm_style.py)",
       "Bash(python3 _fix_log.py)",
-      "Bash(python3 _dp_clean.py)"
+      "Bash(python3 _dp_clean.py)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

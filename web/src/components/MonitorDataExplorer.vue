@@ -137,7 +137,6 @@
         <el-table-column prop="attrName" label="指标" width="100" align="center" />
         <el-table-column prop="value" label="数值" width="100" align="center" />
         <el-table-column prop="unit" label="单位" width="80" align="center" />
-        <el-table-column prop="qualityText" label="质量" width="80" align="center" />
       </el-table>
       <div v-if="loading" class="mde-skeleton" />
     </div>

@@ -72,17 +72,37 @@
       </el-tab-pane>
 
       <el-tab-pane label="运行状态变更" name="online">
-        <el-table :data="onlineLogs" border size="small" max-height="400">
-          <el-table-column prop="eventTime" label="时间" width="170"/>
-          <el-table-column label="类型" width="80">
+        <el-table :data="onlineLogs" border size="small" max-height="360">
+          <el-table-column prop="eventTime" label="变更时间" width="170" align="center"/>
+          <el-table-column label="变更类型" width="90" align="center">
             <template #default="{row}">
-              <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small">{{ row.eventType }}</el-tag>
+              <el-tag :type="row.eventType==='ONLINE'?'success':'danger'" size="small" effect="plain">
+                {{ row.eventType === 'ONLINE' ? '🟢 上线' : '🔴 离线' }}
+              </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="clientId" label="Client ID" min-width="160"/>
-          <el-table-column prop="clientIp" label="IP" width="140"/>
-          <el-table-column prop="reason" label="原因" min-width="120"/>
+          <el-table-column label="状态变化" width="160" align="center">
+            <template #default="{row}">
+              <span class="status-change">
+                <el-tag size="small" type="info" effect="plain">{{ row.fromStatus || '离线' }}</el-tag>
+                <span class="arrow">→</span>
+                <el-tag 
+                  size="small" 
+                  :type="row.eventType === 'ONLINE' ? 'success' : 'danger'" 
+                  effect="plain"
+                >
+                  {{ row.eventType === 'ONLINE' ? '在线' : '离线' }}
+                </el-tag>
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="clientId" label="Client ID" min-width="160" align="center"/>
+          <el-table-column prop="clientIp" label="IP" width="140" align="center"/>
+          <el-table-column prop="reason" label="原因" min-width="120" align="center"/>
         </el-table>
+        <div v-if="onlineLogs.length === 0" class="mde-empty">
+          <span>暂无状态变更记录</span>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="维修记录" name="maintenance">
@@ -244,5 +264,24 @@ const copyPwd = (pwd: string) => {
   font-size: 13px;
   color: #606266;
   padding: 2px 0;
+}
+
+.status-change {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.status-change .arrow {
+  color: #c0c4cc;
+  font-size: 12px;
+}
+
+.mde-empty {
+  padding: 20px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
 }
 </style>
