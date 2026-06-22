@@ -135,21 +135,23 @@
         </el-form-item>
         <el-form-item label="参考日期">
           <el-date-picker v-model="batchForm.referenceDate" type="date" value-format="YYYY-MM-DD" placeholder="默认今天" style="width: 100%" />
-          <div style="color: #909399; font-size: 12px; margin-top: 4px">
-            留空则以当天为参考生成上一个完整周期的报告（与定时任务逻辑一致）
-          </div>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">留空则以当天为参考生成上一个完整周期的报告（与定时任务逻辑一致）</div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showBatchDialog = false">取消</el-button>
-        <el-button type="primary" :loading="batchGenerating" @click="handleBatchGenerate">
-          开始批量生成
-        </el-button>
+        <el-button type="primary" :loading="batchGenerating" @click="handleBatchGenerate">开始批量生成</el-button>
       </template>
     </el-dialog>
 
-    <!-- View dialog -->
-    <el-dialog v-model="viewDialogVisible" :title="currentReport?.reportName || '报告详情'" width="900px" destroy-on-close>
+    <!-- 查看弹窗 -->
+    <el-dialog
+      v-model="viewDialogVisible"
+      :title="currentReport?.reportName || '报告详情'"
+      width="900px"
+      destroy-on-close
+      class="report-view-dialog"
+    >
       <div class="report-meta">
         <el-descriptions :column="3" border size="small">
           <el-descriptions-item label="报告类型">
@@ -188,19 +190,11 @@ import jsPDF from 'jspdf'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import {hasPermission} from '@/utils/permission'
 import {
-  getReportPage,
-  getReportDetail,
-  deleteReport,
-  generateReport,
-  generateAllReports,
-  getHazardPointOptions,
-  type ReportItem,
-  type ReportType,
-  type ReportPageParams,
-  type HazardPointOption,
+  getReportPage, getReportDetail, deleteReport,
+  generateReport, generateAllReports, getHazardPointOptions,
+  type ReportItem, type ReportType, type ReportPageParams, type HazardPointOption,
 } from '@/api/report'
 
-// State
 const loading = ref(false)
 const tableData = ref<ReportItem[]>([])
 const currentPage = ref(1)
@@ -211,189 +205,208 @@ const searchType = ref<ReportType | ''>('')
 const searchStatus = ref<number | undefined>(undefined)
 const searchDateRange = ref<[string, string] | null>(null)
 
-// Generate dialog
 const showGenerateDialog = ref(false)
 const hazardOptions = ref<HazardPointOption[]>([])
 const generating = ref(false)
-const generateForm = reactive<{
-  type: ReportType | ''
-  hazardPointId: number | ''
-  periodStart: string
-  periodEnd: string
-}>({
-  type: '',
-  hazardPointId: '',
-  periodStart: '',
-  periodEnd: '',
-})
+const generateForm = reactive<{ type: ReportType | ''; hazardPointId: number | ''; periodStart: string; periodEnd: string }>(
+  { type: '', hazardPointId: '', periodStart: '', periodEnd: '' })
 
-// View dialog
 const viewDialogVisible = ref(false)
 const currentReport = ref<ReportItem | null>(null)
 const reportContentRef = ref<HTMLElement>()
 const pdfLoading = ref(false)
 
-// Helpers
-function typeLabel(t: ReportType): string {
-  const map: Record<ReportType, string> = { weekly: '周报', monthly: '月报', quarterly: '季报' }
-  return map[t] ?? t
-}
+function typeLabel(t: ReportType): string { return ({ weekly: '周报', monthly: '月报', quarterly: '季报' } as const)[t] ?? t }
+function typeTagType(t: ReportType): string { return ({ weekly: 'success', monthly: 'warning', quarterly: 'danger' } as const)[t] ?? '' }
+function statusLabel(s: number): string { return ({ 1: '生成中', 2: '已生成', 3: '生成失败' } as const)[s] ?? '未知' }
+function statusTagType(s: number): string { return ({ 1: 'info', 2: 'success', 3: 'danger' } as const)[s] ?? '' }
 
-function typeTagType(t: ReportType): 'success' | 'warning' | 'danger' | '' {
-  const map: Record<ReportType, 'success' | 'warning' | 'danger' | ''> = {
-    weekly: 'success',
-    monthly: 'warning',
-    quarterly: 'danger',
-  }
-  return map[t] ?? ''
-}
-
-function statusLabel(s: number): string {
-  const map: Record<number, string> = { 1: '生成中', 2: '已生成', 3: '生成失败' }
-  return map[s] ?? '未知'
-}
-
-function statusTagType(s: number): 'info' | 'success' | 'danger' | '' {
-  const map: Record<number, 'info' | 'success' | 'danger' | ''> = {
-    1: 'info',
-    2: 'success',
-    3: 'danger',
-  }
-  return map[s] ?? ''
-}
-
-// Methods
 const loadList = async () => {
   loading.value = true
   try {
-    const params: ReportPageParams = {
-      pageNum: currentPage.value,
-      pageSize: pageSize.value,
+    const result = await getReportPage({
+      pageNum: currentPage.value, pageSize: pageSize.value,
       keyword: searchKeyword.value || undefined,
       type: (searchType.value as ReportType) || undefined,
       status: searchStatus.value,
       periodStart: searchDateRange.value?.[0] || undefined,
       periodEnd: searchDateRange.value?.[1] || undefined,
-    }
-    const result = await getReportPage(params)
-    tableData.value = result.rows
-    total.value = result.total
-  } catch (error: any) {
-    showRequestErrorMessage(error, '加载报告数据失败')
-  } finally {
-    loading.value = false
-  }
+    })
+    tableData.value = result.rows; total.value = result.total
+  } catch (error: any) { showRequestErrorMessage(error, '加载报告数据失败') }
+  finally { loading.value = false }
 }
 
-const handleSearch = () => {
-  currentPage.value = 1
-  loadList()
-}
-
+const handleSearch = () => { currentPage.value = 1; loadList() }
 const handleReset = () => {
-  searchKeyword.value = ''
-  searchType.value = ''
-  searchStatus.value = undefined
-  searchDateRange.value = null
-  currentPage.value = 1
-  loadList()
+  searchKeyword.value = ''; searchType.value = ''; searchStatus.value = undefined
+  searchDateRange.value = null; currentPage.value = 1; loadList()
 }
 
 const handleView = async (row: ReportItem) => {
-  try {
-    const detail = await getReportDetail(row.id)
-    currentReport.value = detail
-    viewDialogVisible.value = true
-  } catch (error) {
-    showRequestErrorMessage(error, '获取报告详情失败')
-  }
+  try { currentReport.value = await getReportDetail(row.id); viewDialogVisible.value = true }
+  catch (error) { showRequestErrorMessage(error, '获取报告详情失败') }
 }
 
 const handleDelete = async (row: ReportItem) => {
   try {
     await ElMessageBox.confirm(`确定删除报告"${row.reportName}"？`, '提示', { type: 'warning' })
-    await deleteReport(row.id)
-    ElMessage.success('删除成功')
-    loadList()
+    await deleteReport(row.id); ElMessage.success('删除成功'); loadList()
   } catch { /* cancelled */ }
 }
 
 const handleMoreCommand = (cmd: string, row: ReportItem) => {
-  if (cmd === 'pdf') {
-    handleExportPdf(row)
-  } else if (cmd === 'print') {
-    handleView(row).then(() => {
-      nextTick(() => handlePrint())
-    })
-  } else if (cmd === 'delete') {
-    handleDelete(row)
-  }
+  if (cmd === 'pdf') handleExportPdf(row)
+  else if (cmd === 'print') handleView(row).then(() => nextTick(() => handlePrint()))
+  else if (cmd === 'delete') handleDelete(row)
 }
 
+// ── 打印：克隆报告内容到独立 window，绕过 scoped CSS ──
 const handlePrint = () => {
-  window.print()
+  // 移除旧 iframe
+  document.querySelectorAll('#__print_frame').forEach(el => el.remove())
+
+  const r = currentReport.value
+  const title = r?.reportName || '监测报告'
+  const contentHtml = r?.content || '<p style="color:#909399">暂无报告内容</p>'
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const bjTime = `${now.getFullYear()}年${pad(now.getMonth() + 1)}月${pad(now.getDate())}日 ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+
+  // 报告头信息
+  const typeMap: Record<string, string> = { weekly: '周报', monthly: '月报', quarterly: '季报' }
+  const reportType = typeMap[r?.type ?? 'weekly'] ?? '周报'
+  const hazardPointName = r?.hazardPointName || '-'
+  const period = r ? `${r.periodStart} ~ ${r.periodEnd}` : '-'
+  const createTime = r?.createTime || '-'
+
+  const iframe = document.createElement('iframe')
+  iframe.id = '__print_frame'
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;'
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentDocument || iframe.contentWindow!.document
+  doc.open()
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: white; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px; line-height: 1.9; color: #1d2129;
+    padding: 0 14mm;
+  }
+
+  /* 打印时间行 */
+  .print-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 8mm 0 4mm 0;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .print-header__title { font-size: 13px; font-weight: 600; color: #333; }
+  .print-header__time { font-size: 12px; color: #666; }
+
+  /* 报告头信息块 */
+  .print-meta {
+    margin-bottom: 14px; padding: 10px 14px;
+    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+    font-size: 14px; line-height: 2;
+  }
+  .print-meta table { width: 100%; border-collapse: collapse; }
+  .print-meta td { padding: 2px 8px; font-size: 14px; border: none !important; background: transparent !important; }
+  .print-meta td.label { color: #6b7280; width: 1%; white-space: nowrap; text-align: right; }
+  .print-meta td.value { color: #1f2937; font-weight: 500; }
+
+  /* 页脚 */
+  .print-footer {
+    text-align: center; font-size: 11px; color: #999;
+    padding: 6mm 0 4mm 0; margin-top: 20px;
+    border-top: 1px solid #e8e8e8;
+  }
+
+  /* 报告正文 */
+  .print-body h2 { font-size: 20px; margin: 16px 0 10px; color: #303133; }
+  .print-body h3 { font-size: 17px; margin: 12px 0 8px; color: #303133; }
+  .print-body table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  .print-body th, .print-body td {
+    border: 1px solid #dcdfe6; padding: 6px 10px; text-align: center; font-size: 14px;
+  }
+  .print-body th { background: #f5f7fa; font-weight: bold; }
+  .print-body p, .print-body li, .print-body span { font-size: 15px; }
+  .print-body img { max-width: 100%; height: auto; }
+
+  @page {
+    margin: 20mm 14mm 15mm 14mm;
+    size: A4;
+  }
+  @media print {
+    html, body { margin: 0 !important; padding: 0 !important; }
+  }
+</style></head><body>
+<div class="print-header">
+  <span class="print-header__title">${title}</span>
+  <span class="print-header__time">${bjTime}</span>
+</div>
+
+<div class="print-meta">
+  <table>
+    <tr>
+      <td class="label">报告类型：</td><td class="value">${reportType}</td>
+      <td class="label">生成时间：</td><td class="value">${createTime}</td>
+    </tr>
+    <tr>
+      <td class="label">隐患点：</td><td class="value">${hazardPointName}</td>
+      <td class="label">报告周期：</td><td class="value">${period}</td>
+    </tr>
+  </table>
+</div>
+
+<div class="print-body">${contentHtml}</div>
+<div class="print-footer">第 <span class="page-number"></span> 页</div>
+</body></html>`)
+  doc.close()
+
+  setTimeout(() => {
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
+  }, 400)
 }
 
-// PDF export from table row (quick download)
+// ── PDF 导出 ──
 const handleExportPdf = async (row: ReportItem) => {
   try {
-    const detail = await getReportDetail(row.id)
-    currentReport.value = detail
+    currentReport.value = await getReportDetail(row.id)
     viewDialogVisible.value = true
-    // Wait for dialog to render
     await new Promise(r => setTimeout(r, 300))
     await doExportPdf()
-  } catch (error) {
-    showRequestErrorMessage(error, '导出PDF失败')
-  }
+  } catch (error) { showRequestErrorMessage(error, '导出PDF失败') }
 }
 
-// PDF export from dialog
 const handleExportPdfDialog = async () => {
   if (!reportContentRef.value || !currentReport.value) return
   pdfLoading.value = true
-  try {
-    await doExportPdf()
-  } catch (error) {
-    showRequestErrorMessage(error, '导出PDF失败')
-  } finally {
-    pdfLoading.value = false
-  }
+  try { await doExportPdf() }
+  catch (error) { showRequestErrorMessage(error, '导出PDF失败') }
+  finally { pdfLoading.value = false }
 }
 
 const doExportPdf = async () => {
   if (!reportContentRef.value || !currentReport.value) return
-  const canvas = await html2canvas(reportContentRef.value, {
-    scale: 2,
-    useCORS: true,
-    logging: false
-  })
-  const imgData = canvas.toDataURL('image/png')
+  const canvas = await html2canvas(reportContentRef.value, { scale: 2, useCORS: true, logging: false })
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pdfWidth = pdf.internal.pageSize.getWidth()
   const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, pdfHeight)
   pdf.save(`${currentReport.value.reportName || '监测报告'}.pdf`)
 }
 
-// Manual generate
+// ── 生成报告 ──
 const handleGenerate = async () => {
-  if (!generateForm.type) {
-    ElMessage.warning('请选择报告类型')
-    return
-  }
-  if (!generateForm.hazardPointId) {
-    ElMessage.warning('请选择隐患点')
-    return
-  }
-  if (!generateForm.periodStart || !generateForm.periodEnd) {
-    ElMessage.warning('请选择报告周期')
-    return
-  }
-  if (generateForm.periodStart >= generateForm.periodEnd) {
-    ElMessage.warning('周期起始不能晚于周期截止')
-    return
-  }
+  if (!generateForm.type) return ElMessage.warning('请选择报告类型')
+  if (!generateForm.hazardPointId) return ElMessage.warning('请选择隐患点')
+  if (!generateForm.periodStart || !generateForm.periodEnd) return ElMessage.warning('请选择报告周期')
+  if (generateForm.periodStart >= generateForm.periodEnd) return ElMessage.warning('周期起始不能晚于周期截止')
   generating.value = true
   try {
     const result = await generateReport({
@@ -402,44 +415,27 @@ const handleGenerate = async () => {
       periodStart: generateForm.periodStart,
       periodEnd: generateForm.periodEnd,
     })
-    if (result.existed) {
-      ElMessage.warning(`该报告已存在 (ID: ${result.reportId})，请勿重复生成`)
-    } else {
-      ElMessage.success(`报告生成成功 (ID: ${result.reportId})`)
-    }
-    showGenerateDialog.value = false
-    loadList()
-  } catch (error: any) {
-    showRequestErrorMessage(error, '生成报告失败')
-  } finally {
-    generating.value = false
-  }
+    if (result.existed) ElMessage.warning(`该报告已存在 (ID: ${result.reportId})，请勿重复生成`)
+    else ElMessage.success(`报告生成成功 (ID: ${result.reportId})`)
+    showGenerateDialog.value = false; loadList()
+  } catch (error: any) { showRequestErrorMessage(error, '生成报告失败') }
+  finally { generating.value = false }
 }
 
-// Batch generate
+// ── 批量生成 ──
 const showBatchDialog = ref(false)
 const batchGenerating = ref(false)
-const batchForm = reactive<{ type: ReportType | ''; referenceDate: string }>({
-  type: '',
-  referenceDate: '',
-})
+const batchForm = reactive<{ type: ReportType | ''; referenceDate: string }>({ type: '', referenceDate: '' })
 
 const handleBatchGenerate = async () => {
-  if (!batchForm.type) {
-    ElMessage.warning('请选择报告类型')
-    return
-  }
+  if (!batchForm.type) return ElMessage.warning('请选择报告类型')
   batchGenerating.value = true
   try {
     await generateAllReports(batchForm.type, batchForm.referenceDate || undefined)
     ElMessage.success('批量生成已触发，稍后刷新查看结果')
-    showBatchDialog.value = false
-    loadList()
-  } catch (error: any) {
-    showRequestErrorMessage(error, '批量生成失败')
-  } finally {
-    batchGenerating.value = false
-  }
+    showBatchDialog.value = false; loadList()
+  } catch (error: any) { showRequestErrorMessage(error, '批量生成失败') }
+  finally { batchGenerating.value = false }
 }
 
 onMounted(async () => {
@@ -449,81 +445,21 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.header__left {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-.header__title {
-  margin: 0;
-}
-.header__subtitle {
-  color: #909399;
-  font-size: 14px;
-}
-.header__right {
-  display: flex;
-  gap: 8px;
-}
-.report-meta {
-  margin-bottom: 20px;
-}
-.report-content {
-  padding: 20px;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  max-height: 60vh;
-  overflow-y: auto;
-  line-height: 1.8;
-}
-.report-content :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 10px 0;
-}
-.report-content :deep(th),
-.report-content :deep(td) {
-  border: 1px solid #dcdfe6;
-  padding: 8px 12px;
-  text-align: center;
-}
-.report-content :deep(th) {
-  background: #f5f7fa;
-  font-weight: bold;
-}
-.report-content :deep(h2) {
-  margin: 15px 0 10px;
-  font-size: 16px;
-  color: #303133;
-}
-.report-content :deep(p) {
-  margin: 8px 0;
-}
-.search {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.table-wrap {
-  margin-top: 16px;
-}
-.table-wrap__scroll {
-  overflow-x: auto;
-}
-.table-wrap__pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-.op-cell {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-}
+.header { display: flex; justify-content: space-between; align-items: center; }
+.header__left { display: flex; align-items: baseline; gap: 12px; }
+.header__title { margin: 0; }
+.header__subtitle { color: #909399; font-size: 14px; }
+.header__right { display: flex; gap: 8px; }
+.report-meta { margin-bottom: 20px; }
+.report-content { padding: 20px; border: 1px solid #e8e8e8; border-radius: 4px; max-height: 60vh; overflow-y: auto; line-height: 1.8; }
+.report-content :deep(table) { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.report-content :deep(th), .report-content :deep(td) { border: 1px solid #dcdfe6; padding: 8px 12px; text-align: center; }
+.report-content :deep(th) { background: #f5f7fa; font-weight: bold; }
+.report-content :deep(h2) { margin: 15px 0 10px; font-size: 16px; color: #303133; }
+.report-content :deep(p) { margin: 8px 0; }
+.search { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.table-wrap { margin-top: 16px; }
+.table-wrap__scroll { overflow-x: auto; }
+.table-wrap__pagination { display: flex; justify-content: flex-end; margin-top: 16px; }
+.op-cell { display: flex; justify-content: center; gap: 4px; }
 </style>
