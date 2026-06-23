@@ -85,7 +85,7 @@
 
 | 表名                | 中文名   | 字段数 | 关键索引                                                  | 说明               |
 |-------------------|-------|-----|-------------------------------------------------------|------------------|
-| `monitor_content` | 监测内容表 | 15  | uk_monitor_content_code / idx_monitor_content_type_id | 小时雨量/X轴位移/温度/... |
+| `monitor_content` | 监测内容表 | 15  | uk_monitor_content_code(monitor_type_id,code) / idx_monitor_content_type_id | 类型内唯一编码 (v2.10 从全局唯一改为类型内唯一) |
 | `monitor_type`    | 监测类型表 | 12  | uk_monitor_type_code                                  | 雨量监测/位移监测/...    |
 
 ### 日志域 (4)
@@ -304,6 +304,7 @@ LIMIT 10;
 
 - `geo_hazard_monitor_v2.0.sql` (3099 行, mysqldump 输出)
 - `upgrade/v2.9-sensor-code-device-unique.sql` (传感器编号约束：全局唯一 → 设备内唯一)
+- `upgrade/v2.10-monitor-content-code-type-unique.sql` (监测内容编码约束：全局唯一 → 监测类型内唯一)
 - `api_20260525.md` (数据库相关 API 备忘)
 - `CLAUDE.md` (本文档)
 
@@ -313,3 +314,4 @@ LIMIT 10;
 |------------------|--------------------------------------------------------------------|
 | 2026-06-10 19:08 | 首次创建 db/CLAUDE.md (架构师增量扫描) — 提取 59 张表清单、按业务域分组、核心 E-R 关系图、初始化数据摘要 |
 | 2026-06-23 | **v2.9 升级**: `device_sensor.sensor_code` 唯一约束从全局唯一 `uk_device_sensor_code` 改为设备内唯一 `uk_device_sensor (device_id, sensor_code)`；下游 IoTDB 路径与告警引擎已使用 (deviceId, sensorCode) 复合键，无影响 |
+| 2026-06-23 | **v2.10 升级**: `monitor_content.code` 唯一约束从全局唯一 `uk_monitor_content_code` 改为类型内唯一 `uk_monitor_content_code (monitor_type_id, code)`；下游告警用 PK 匹配、同步按 typeId 过滤，无影响 |

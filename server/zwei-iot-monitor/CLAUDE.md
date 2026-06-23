@@ -59,7 +59,7 @@
 A: `zwei-iot-device` 的 `device_sensor` 表中有 `monitor_type_id` / `monitor_content_id` 外键, 查询时连表获取名称/单位/字段名。
 
 **Q: 监测内容编码 (`code`) 有什么约束?**
-A: 必须唯一, 用于与 sensor_attribute.attr_code 关联; 建议 `snake_case` 且不含特殊字符, 与前端 ECharts 字段映射对齐。
+A: 同一监测类型内唯一 (`uk_monitor_content_code(monitor_type_id, code)`，v2.10 从全局唯一改为类型内唯一)，用于与 sensor_attribute.attr_code 关联; 建议 `snake_case` 且不含特殊字符, 与前端 ECharts 字段映射对齐。
 
 ## 相关文件清单
 

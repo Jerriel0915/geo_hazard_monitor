@@ -38,14 +38,6 @@ public interface IMonitorContentService {
     MonitorContent selectMonitorContentById(Long id);
 
     /**
-     * 根据编码查询监测内容
-     *
-     * @param code 监测内容编码
-     * @return 监测内容详情
-     */
-    MonitorContent selectMonitorContentByCode(String code);
-
-    /**
      * 新增监测内容
      *
      * @param monitorContent 监测内容信息

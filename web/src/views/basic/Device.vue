@@ -818,8 +818,24 @@ const sensorFormData = reactive<SensorFormModel>({
   attrList: []
 })
 
+// sensorCode 设备内唯一校验：失焦时实时检查是否已被本设备其他传感器占用
+const validateSensorCodeUnique = (_rule: any, value: string, callback: (err?: Error) => void) => {
+  if (sensorFormMode.value === 'edit') return callback()
+  const code = (value || '').trim()
+  if (!code) return callback()
+  const existingList = isDraftMode.value ? draftSensors.value : sensorTableData.value
+  const conflict = existingList.find((s: any) => s.sensorCode === code)
+  if (conflict) {
+    return callback(new Error(`传感器编号 ${code} 已被【${conflict.sensorName}】占用`))
+  }
+  callback()
+}
+
 const sensorFormRules = {
-  sensorCode: [{ required: true, message: '请输入传感器编号', trigger: 'blur' }],
+  sensorCode: [
+    { required: true, message: '请输入传感器编号', trigger: 'blur' },
+    { validator: validateSensorCodeUnique, trigger: 'blur' },
+  ],
   sensorName: [{ required: true, message: '请输入传感器名称', trigger: 'blur' }],
   monitorTypeId: [{ required: true, message: '请选择监测类型', trigger: 'change' }],
   status: [{required: true, message: '请选择状态', trigger: 'change'}],

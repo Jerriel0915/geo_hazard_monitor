@@ -85,16 +85,14 @@
         WHERE mc.id = #{id} AND mc.del_flag = 0
     </select>
 
-    <!-- 根据编码查询监测内容 -->
-    <select id="selectMonitorContentByCode" parameterType="String" resultMap="MonitorContentResult">
-        <include refid="selectMonitorContentVo"/>
-        WHERE mc.code = #{code} AND mc.del_flag = 0
-    </select>
-
-    <!-- 校验监测内容编码是否唯一 -->
+    <!-- 校验监测内容编码在监测类型内是否唯一 -->
     <select id="checkMonitorContentCodeUnique" resultMap="MonitorContentResult">
         <include refid="selectMonitorContentVo"/>
-        WHERE mc.code = #{code} AND mc.del_flag = 0 AND mc.id != #{id} LIMIT 1
+        WHERE mc.monitor_type_id = #{monitorTypeId}
+          AND mc.code = #{code}
+          AND mc.del_flag = 0
+          AND mc.id != #{id}
+        LIMIT 1
     </select>
 
     <!-- 查询指定监测类型下最大的 sort_order -->
