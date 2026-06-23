@@ -177,7 +177,19 @@ function renderBoundary(map: L.Map) {
     L.marker([d.installLatitude, d.installLongitude], {icon, zIndexOffset: 500})
         .addTo(lg)
         .bindPopup(
-            `<div style="font-size:12px;line-height:1.6"><b>${d.deviceName}</b><br>编号: ${d.deviceCode}<br>坐标: ${d.installLongitude!.toFixed(6)}, ${d.installLatitude!.toFixed(6)}</div>`
+            `<div class="hpv2-card">
+              <div class="hpv2-header"><span class="hpv2-title">${d.deviceName}</span></div>
+              <div class="hpv2-dash"></div>
+              <div class="hpv2-body">
+                <div class="hpv2-row single">
+                  <div class="hpv2-cell full"><span class="hpv2-label">编号</span><span class="hpv2-val">${d.deviceCode}</span></div>
+                </div>
+                <div class="hpv2-dash"></div>
+                <div class="hpv2-row single">
+                  <div class="hpv2-cell full"><span class="hpv2-label">坐标</span><span class="hpv2-val">${d.installLongitude!.toFixed(6)}, ${d.installLatitude!.toFixed(6)}</span></div>
+                </div>
+              </div>
+            </div>`
         )
   })
 
