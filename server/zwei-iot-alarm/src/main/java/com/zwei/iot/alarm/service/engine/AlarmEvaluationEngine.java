@@ -29,6 +29,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -106,47 +107,50 @@ public class AlarmEvaluationEngine {
 
     private void evaluate(MonitorDataIngestedEvent event) {
         // 一次性构建 subjectValues — 4 维度双 key (传感器模式 + 监测类型模式)
-        Map<String, Double> subjectValues = new HashMap<>();
+        Map<String, Object> subjectValues = new HashMap<>();
         String sensorCode = event.getSensorCode();
         String prefix = sensorCode != null ? sensorCode + "." : "";
         ParsedMessageSnapshot prev = event.getPrevSnapshot();
         long currentDataTime = event.getDataTime();
 
         // ── bucket 1: 本 sensorCode 的 current payload ──
+        // 多类型支持: payload 值原样放入 (Number/String/Boolean)，DATETIME 由 device/packet 维度提供
         if (event.getProperties() != null) {
             for (PropertyValue pv : event.getProperties()) {
-                if (pv.value() instanceof Number n) {
-                    double v = n.doubleValue();
-                    subjectValues.put(prefix + "current.payload." + pv.identifier(), v);
-                    subjectValues.put("current.payload." + pv.identifier(), v);
-                }
+                Object v = pv.value();
+                if (v == null) continue;
+                String key1 = prefix + "current.payload." + pv.identifier();
+                String key2 = "current.payload." + pv.identifier();
+                subjectValues.put(key1, v);
+                subjectValues.put(key2, v);
             }
         }
 
         // ── bucket 2: 本 sensorCode 的 prev payload ──
         if (prev != null && prev.properties() != null) {
             for (Map.Entry<String, Object> e : prev.properties().entrySet()) {
-                if (e.getValue() instanceof Number n) {
-                    double v = n.doubleValue();
-                    subjectValues.put(prefix + "prev.payload." + e.getKey(), v);
-                    subjectValues.put("prev.payload." + e.getKey(), v);
-                }
+                Object v = e.getValue();
+                if (v == null) continue;
+                subjectValues.put(prefix + "prev.payload." + e.getKey(), v);
+                subjectValues.put("prev.payload." + e.getKey(), v);
             }
         }
 
-        // ── bucket 3: packet.dataTime ──
-        subjectValues.put(prefix + "current.packet.dataTime", (double) currentDataTime);
-        subjectValues.put("current.packet.dataTime", (double) currentDataTime);
+        // ── bucket 3: packet.dataTime (DATETIME，存 Instant) ──
+        Instant currentInstant = Instant.ofEpochMilli(currentDataTime);
+        subjectValues.put(prefix + "current.packet.dataTime", currentInstant);
+        subjectValues.put("current.packet.dataTime", currentInstant);
         if (prev != null) {
-            subjectValues.put(prefix + "prev.packet.dataTime", (double) prev.dataTime());
-            subjectValues.put("prev.packet.dataTime", (double) prev.dataTime());
+            Instant prevInstant = Instant.ofEpochMilli(prev.dataTime());
+            subjectValues.put(prefix + "prev.packet.dataTime", prevInstant);
+            subjectValues.put("prev.packet.dataTime", prevInstant);
         }
 
-        // ── bucket 4: device.* — 无视 current/prev, 查 device 表 ──
+        // ── bucket 4: device.* (onlineStatus=BOOLEAN, lastReportTime=DATETIME) ──
         DeviceBasicInfo dev = deviceQueryService.getBasicInfoById(event.getDeviceId());
         if (dev != null) {
-            double online = dev.online() ? 1.0 : 0.0;
-            double lastReport = (double) dev.lastReportAt();
+            Integer online = dev.online() ? 1 : 0;
+            Instant lastReport = Instant.ofEpochMilli(dev.lastReportAt());
             for (String kind : new String[]{"current", "prev"}) {
                 subjectValues.put(prefix + kind + ".device.onlineStatus", online);
                 subjectValues.put(prefix + kind + ".device.lastReportTime", lastReport);
@@ -263,7 +267,7 @@ public class AlarmEvaluationEngine {
      * @return true 如果至少产生了一条候选告警
      */
     private boolean evaluateCriteria(MonitorDataIngestedEvent event,
-                                     Map<String, Double> subjectValues,
+                                     Map<String, Object> subjectValues,
                                      List<AlarmCriteria> criteriaList,
                                      List<Long> hazardPointIds,
                                      Long monitorContentId) {
@@ -343,7 +347,9 @@ public class AlarmEvaluationEngine {
         // 用于显示的 attrCode (最后一段)
         String attrCode = normalizeAttrCode(winnerSubject);
         // 用于查找的标准化 subject — winnerSubject 本身已经是用户配置的新格式 subject
-        Double currentValue = winnerSubject != null ? subjectValues.get(winnerSubject) : null;
+        // subjectValues 已升级为 Map<String, Object>，winner 主体通常是 payload 数值
+        Object rawValue = winnerSubject != null ? subjectValues.get(winnerSubject) : null;
+        Double currentValue = rawValue instanceof Number n ? n.doubleValue() : null;
         String attrName = resolveAttrName(event, attrCode);
 
         String hpName = getHazardPointName(winner.effectiveHpId);

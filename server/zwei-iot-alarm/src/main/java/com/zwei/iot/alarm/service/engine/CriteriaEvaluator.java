@@ -43,7 +43,7 @@ public class CriteriaEvaluator {
      * @param subjectValues 主语 → 当前值的映射（由调用方从 IoTDB 查询填充）
      * @return 告警等级 1-4，0 表示未触发
      */
-    public int evaluate(AlarmCriteria criteria, Map<String, Double> subjectValues) {
+    public int evaluate(AlarmCriteria criteria, Map<String, Object> subjectValues) {
         if (subjectValues == null || subjectValues.isEmpty()) {
             return 0;
         }
@@ -75,7 +75,7 @@ public class CriteriaEvaluator {
      *   <li><b>conditions 格式</b>（旧/直接 SQL 创建）— 单层条件列表</li>
      * </ul>
      */
-    boolean evaluateLevel(LevelConfig config, Map<String, Double> subjectValues) {
+    boolean evaluateLevel(LevelConfig config, Map<String, Object> subjectValues) {
         if (config == null) return false;
 
         // 优先 groups 格式
@@ -96,7 +96,8 @@ public class CriteriaEvaluator {
 
         boolean isOr = "OR".equalsIgnoreCase(config.getLogicOperator());
         for (LevelCondition cond : conditions) {
-            Double value = resolveSubjectValue(cond, subjectValues);
+            Object resolved = resolveSubjectValue(cond, subjectValues);
+            Double value = resolved instanceof Number n ? n.doubleValue() : null;
             boolean condResult = evaluateCondition(cond, value);
             log.debug("[Alarm][Criteria][Level] condition result={} logic={} subject={} operator={} threshold={} actual={}",
                     condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
@@ -112,7 +113,7 @@ public class CriteriaEvaluator {
      * 评估多个条件组，组间按 groupLogic (AND/OR) 组合。
      */
     private boolean evaluateGroups(List<ConditionGroup> groups, String groupLogic,
-                                   Map<String, Double> subjectValues) {
+                                   Map<String, Object> subjectValues) {
         boolean isOr = "OR".equalsIgnoreCase(groupLogic);
         for (ConditionGroup group : groups) {
             boolean groupResult = evaluateSingleGroup(group, subjectValues);
@@ -125,14 +126,15 @@ public class CriteriaEvaluator {
     /**
      * 评估单个条件组（组内 conditions 按 logicOperator 组合）。
      */
-    private boolean evaluateSingleGroup(ConditionGroup group, Map<String, Double> subjectValues) {
+    private boolean evaluateSingleGroup(ConditionGroup group, Map<String, Object> subjectValues) {
         if (group == null) return false;
         List<LevelCondition> conditions = group.getConditions();
         if (conditions == null || conditions.isEmpty()) return false;
 
         boolean isOr = "OR".equalsIgnoreCase(group.getLogicOperator());
         for (LevelCondition cond : conditions) {
-            Double value = resolveSubjectValue(cond, subjectValues);
+            Object resolved = resolveSubjectValue(cond, subjectValues);
+            Double value = resolved instanceof Number n ? n.doubleValue() : null;
             boolean condResult = evaluateCondition(cond, value);
             log.debug("[Alarm][Criteria][Group] condition result={} logic={} subject={} operator={} threshold={} actual={}",
                     condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
@@ -150,12 +152,12 @@ public class CriteriaEvaluator {
      * subject 格式由 {@link #normalizeSubject} 校验: 3 段 ({kind}.{dimension}.{attrCode})
      * 或 4 段 ({sensorCode}.{kind}.{dimension}.{attrCode}), 非法格式返回 null。
      */
-    Double resolveSubjectValue(LevelCondition cond, Map<String, Double> subjectValues) {
+    Object resolveSubjectValue(LevelCondition cond, Map<String, Object> subjectValues) {
         if (cond == null || cond.getSubject() == null) return null;
 
         String subject = normalizeSubject(cond.getSubject());
 
-        Double value = subjectValues.get(subject);
+        Object value = subjectValues.get(subject);
         if (value == null) {
             log.debug("[Alarm][Criteria][Subject] 未找到对应值 raw={} normalized={} subjectType={} available={}",
                     cond.getSubject(), subject, cond.getSubjectType(), subjectValues.keySet());
