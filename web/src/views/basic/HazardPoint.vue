@@ -19,6 +19,7 @@
 
     <!-- 主体：左侧分组 + 右侧表格 -->
     <div class="page-body">
+      <!-- 左侧分组面板 -->
       <div class="group-panel" :style="{ width: groupPanelWidth + 'px' }">
         <div class="group-panel__header">
           <span class="group-panel__title">分组列表</span>
@@ -54,7 +55,9 @@
 
       <div class="resize-handle" @mousedown="startResize"></div>
 
+      <!-- 右侧内容面板 -->
       <div class="content-panel">
+        <!-- 搜索栏 -->
         <div class="search">
           <el-select v-model="searchType" placeholder="搜索方式" class="search__select">
             <el-option label="按名称" value="name" />
@@ -81,6 +84,7 @@
           <el-button @click="handleReset">重置</el-button>
         </div>
 
+        <!-- 表格 -->
         <div class="table-wrap">
           <div class="table-wrap__scroll">
             <el-table
@@ -165,6 +169,7 @@
             </el-table>
           </div>
 
+          <!-- 分页 -->
           <div class="table-wrap__pagination">
             <div class="pagination-stats">
               <span>隐患点 <strong>{{ statsTotal }}</strong></span>
@@ -192,6 +197,7 @@
       </div>
     </div>
 
+    <!-- ========== 分组弹窗 ========== -->
     <el-dialog
       v-model="groupDialogVisible"
       :title="groupDialogTitle"
@@ -217,6 +223,7 @@
       </template>
     </el-dialog>
 
+    <!-- ========== 隐患点新增/编辑弹窗 ========== -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
@@ -225,6 +232,7 @@
       destroy-on-close
     >
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+        <!-- 第一行：编号 + 名称 -->
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="编号" prop="code">
@@ -237,11 +245,13 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <!-- 第二行：分组（占满整行） -->
         <el-row :gutter="20">
           <el-col :span="24">
             <el-form-item label="分组" prop="groupId">
               <div style="display: flex; align-items: center; width: 100%; gap: 5px;">
-                <el-select v-model="formData.groupId" placeholder="未分组" style="width: 85%;">
+                <el-select v-model="formData.groupId" placeholder="未分组" style="flex: 1;">
                   <el-option v-for="g in groupOptions" :key="g.id" :value="g.id" :label="g.name">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                       <span>{{ g.name }}</span>
@@ -263,19 +273,27 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="中心坐标" prop="coordinates">
-          <div class="coordinate-input">
-            <el-input-number v-model="formData.longitude" placeholder="经度" class="coord-input"/>
-            <span class="coord-separator">,</span>
-            <el-input-number v-model="formData.latitude" placeholder="纬度" class="coord-input"/>
-            <el-button type="primary" size="small" @click="handleOpenMap">
-              <el-icon>
-                <Location/>
-              </el-icon>
-              地图设置
-            </el-button>
-          </div>
-        </el-form-item>
+
+        <!-- 第三行：中心坐标（占满整行） -->
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="中心坐标" prop="coordinates">
+              <el-input
+                v-model="coordinateDisplay"
+                placeholder="请在地图上选择坐标"
+                readonly
+              >
+                <template #suffix>
+                  <el-button link @click="handleOpenMap" title="在地图上选择坐标" class="map-btn-inline">
+                    <el-icon><Location /></el-icon>
+                  </el-button>
+                </template>
+              </el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 第四行：描述 -->
         <el-form-item label="描述" prop="description">
           <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
         </el-form-item>
@@ -287,6 +305,7 @@
       </template>
     </el-dialog>
 
+    <!-- ========== 地图绘制弹窗 ========== -->
     <el-dialog
       v-model="mapDialogVisible"
       title="绘制隐患点范围"
@@ -305,7 +324,7 @@
       />
     </el-dialog>
 
-    <!-- 隐患点详情组件 -->
+    <!-- ========== 隐患点详情组件 ========== -->
     <HazardPointDetail
         v-model:visible="detailDialogVisible"
         :hazard-point="currentRow"
@@ -314,6 +333,7 @@
         :dispatch-rules="dispatchRules"
     />
 
+    <!-- ========== 告警配置弹窗 ========== -->
     <el-dialog
       v-model="alarmConfigDialogVisible"
       :title="`告警配置[${currentRow?.name || ''}]`"
@@ -422,6 +442,7 @@
       </template>
     </el-dialog>
 
+    <!-- ========== 设备绑定弹窗 ========== -->
     <el-dialog
       v-model="bindDeviceDialogVisible"
       :title="`绑定设备[${currentRow?.name || ''}]`"
@@ -579,6 +600,7 @@
       </template>
     </el-dialog>
 
+    <!-- ========== 告警判据弹窗 ========== -->
     <el-dialog
       v-model="alarmDialogVisible"
       :title="`${isEditAlarm ? '编辑告警判据' : '添加告警判据'}[${currentRow?.name || ''}]`"
@@ -674,6 +696,7 @@
       </template>
     </el-dialog>
 
+    <!-- ========== 告警分发规则弹窗 ========== -->
     <el-dialog
       v-model="dispatchDialogVisible"
       :title="`${isEditDispatch ? '编辑告警分发规则' : '添加告警分发规则'}[${currentRow?.name || ''}]`"
@@ -794,7 +817,6 @@ import {type BoundDevice, useHazardPointDeviceBind} from './composables/useHazar
 
 // ── Local refs shared between composables ──
 const boundDevices = ref<BoundDevice[]>([])
-
 
 // ── CRUD composable ──
 const selectedGroupId = ref<string | null>(null)
@@ -923,6 +945,19 @@ const mapInitialCenter = computed<LatLng>(() => ({
   lng: formData.longitude
 }))
 
+// 中心坐标显示（经纬度合并展示）
+const coordinateDisplay = computed({
+  get: () => {
+    if (formData.longitude != null && formData.latitude != null) {
+      return `${Number(formData.longitude).toFixed(6)}, ${Number(formData.latitude).toFixed(6)}`
+    }
+    return ''
+  },
+  set: () => {
+    // 只读，不处理
+  }
+})
+
 const detailDialogVisible = ref(false)
 
 // ── Device bind composable ──
@@ -1038,8 +1073,6 @@ const onMapDone = (value: BoundaryCoords, center: LatLng | null) => {
   }
   mapDialogVisible.value = false
 }
-
-// ── Old Leaflet map code replaced by <MapBoundaryEditor> component ──
 
 onMounted(() => {
   loadTableData()
@@ -1281,7 +1314,6 @@ onMounted(() => {
 .c-amber { color: #f59e0b; }
 .c-purple { color: #6366f1; }
 
-/* ========== 统计条 ========== */
 /* ========== 分页激活态 ========== */
 :deep(.el-pagination .el-pager li.is-active) {
   background: #3b82f6;
@@ -1325,20 +1357,39 @@ onMounted(() => {
   background: #fef2f2;
 }
 
-/* ========== 坐标输入 ========== */
-.coordinate-input {
+/* ========== 中心坐标 - 长框样式 ========== */
+.coordinate-input-wrapper {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  width: 100%;
 }
 
-.coord-input {
-  width: 150px;
+.coordinate-display-input {
+  width: 100%;
 }
 
-.coord-separator {
-  margin: 0 4px;
-  color: #94a3b8;
+.coordinate-display-input :deep(.el-input__wrapper) {
+  border-radius: 4px;
+}
+
+.coordinate-display-input :deep(.el-input__inner) {
+  cursor: default;
+}
+
+/* 按钮在框内，无背景 */
+.map-btn-inline {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  color: #606266 !important;
+  font-size: 16px !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.map-btn-inline:hover {
+  color: #1890ff !important;
+  background: transparent !important;
 }
 
 /* ========== 地图 ========== */
@@ -1726,6 +1777,22 @@ onMounted(() => {
 :deep(.el-tree-node__content) {
   height: 32px;
   font-size: 13px;
+}
+
+.map-btn-inline {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  color: #606266 !important;
+  font-size: 16px !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.map-btn-inline:hover {
+  color: #1890ff !important;
+  background: transparent !important;
 }
 
 /* 设备数量单元格（列表行内可点击徽标，与设备管理页保持一致） */
