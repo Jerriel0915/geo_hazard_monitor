@@ -41,10 +41,8 @@
       </div>
       <div class="device-type-section">
         <div class="type-title">设备分类</div>
-        <div class="type-bars">
-          <div v-for="type in stats.deviceTypes" :key="type.name" class="type-bar-row">
-            <span class="type-name">{{ type.name }}</span><span class="type-count">{{ type.count }}</span>
-          </div>
+        <div class="type-tags">
+          <span v-for="type in stats.deviceTypes" :key="type.name" class="type-tag">{{ type.name }}: {{ type.count }}</span>
         </div>
       </div>
     </div>
@@ -191,32 +189,25 @@ defineProps<{
 }
 
 .type-title {
-  font-size: 14px;
+  font-size: 13px;
   color: #4b5563;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-.type-bars {
+.type-tags {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.type-bar-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-}
-
-.type-name {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.type-count {
-  font-size: 15px;
+.type-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
   color: #3b82f6;
-  font-weight: 600;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 4px;
+  font-weight: 500;
 }
 </style>
