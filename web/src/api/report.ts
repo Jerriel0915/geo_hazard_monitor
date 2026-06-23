@@ -236,6 +236,7 @@ const DEVICE_TYPES: DeviceTypeOption[] = [
       { code: 'disp_x', name: 'X方向位移', unit: 'mm' },
       { code: 'disp_y', name: 'Y方向位移', unit: 'mm' },
       { code: 'disp_z', name: 'Z方向位移', unit: 'mm' },
+      { code: 'disp_result', name: '成果值', unit: 'mm' },
     ],
   },
   {

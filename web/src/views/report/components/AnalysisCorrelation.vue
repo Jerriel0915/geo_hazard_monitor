@@ -31,7 +31,7 @@
           >
             + 添加传感器
           </el-button>
-          <div class="sensor-tags">
+          <div class="sensor-tags" :class="{ 'sensor-tags--scroll': selectedSensors.length > 10 }">
             <div v-for="(s, idx) in selectedSensors" :key="s.id" class="sensor-tag-item">
               <el-tag :color="s.color" effect="dark" closable @close="removeSensor(idx)" style="width: 100%">
                 {{ s.deviceName }} - {{ s.attrName }}
@@ -129,15 +129,12 @@ import {showRequestErrorMessage} from '@/utils/errorHandler'
 import echarts from '@/utils/echarts'
 import {
   type ChartDataItem,
-  type DeviceOption,
-  type DeviceTypeOption,
   getChartData,
-  getDeviceOptions,
-  getDeviceTypeOptions,
-  getHazardPointOptions,
-  type HazardPointOption,
   type SensorSeriesItem,
 } from '@/api/report'
+import { getHazardPointPage } from '@/api/hazardPoint'
+import { getDevicePage, type DeviceItem } from '@/api/device'
+import { getDeviceSensors } from '@/api/sensor'
 
 const emit = defineEmits<{
   (e: 'back'): void
@@ -146,9 +143,27 @@ const emit = defineEmits<{
 // Props
 const COLORS = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4']
 
+// Types from real APIs
+interface HazardPointOption {
+  id: number
+  name: string
+}
+
+interface DeviceOption {
+  id: number
+  name: string
+  deviceType?: number | null
+  boundHazardPointId?: number | null
+}
+
+interface DeviceAttr {
+  code: string
+  name: string
+  unit: string
+}
+
 // State
 const hazardPointOptions = ref<HazardPointOption[]>([])
-const deviceTypeOptions = ref<DeviceTypeOption[]>([])
 const selectedSensors = ref<SensorSeriesItem[]>([])
 const correlationTimeRange = ref<[string, string] | null>(null)
 const activeTools = ref<string[]>([])
@@ -161,24 +176,55 @@ const statisticsData = ref<{ name: string; max: string; min: string; avg: string
 const addSensorDialogVisible = ref(false)
 const addSensorForm = reactive({ hazardPointId: '' as number | '', deviceId: '' as number | '', attrCode: '' })
 const dialogDevices = ref<DeviceOption[]>([])
+const deviceAttrsMap = ref<Map<number, DeviceAttr[]>>(new Map())
 
 const filteredDevices = computed(() => {
   return dialogDevices.value.filter(
-      (d) => !addSensorForm.hazardPointId || d.boundHazardPointId === addSensorForm.hazardPointId
+    (d) => !addSensorForm.hazardPointId || d.boundHazardPointId === addSensorForm.hazardPointId
   )
 })
 
 const availableAttrs = computed(() => {
-  const allAttrs: { code: string; name: string; unit: string }[] = []
-  deviceTypeOptions.value.forEach((dt) => allAttrs.push(...dt.attrs))
-  return allAttrs
+  if (!addSensorForm.deviceId) return []
+  return deviceAttrsMap.value.get(addSensorForm.deviceId) || []
 })
 
-// Load data
+// Load options
 const loadOptions = async () => {
-  const [hps, dts] = await Promise.all([getHazardPointOptions(), getDeviceTypeOptions()])
-  hazardPointOptions.value = hps
-  deviceTypeOptions.value = dts
+  try {
+    const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 })
+    const rows = res.data?.rows || []
+    hazardPointOptions.value = rows.map((item: any) => ({
+      id: item.id,
+      name: item.name
+    }))
+  } catch {
+    hazardPointOptions.value = []
+  }
+}
+
+// Load device attrs from real API (same as Query.vue)
+const loadDeviceAttrs = async (deviceId: number): Promise<DeviceAttr[]> => {
+  try {
+    const sensors = await getDeviceSensors(deviceId)
+    const seen = new Set<string>()
+    const attrs: DeviceAttr[] = []
+    for (const sensor of sensors) {
+      for (const attr of sensor.attrList) {
+        if (!seen.has(attr.attrCode)) {
+          seen.add(attr.attrCode)
+          attrs.push({
+            code: attr.attrCode,
+            name: attr.attrName || attr.attrCode,
+            unit: attr.unit || ''
+          })
+        }
+      }
+    }
+    return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '' }]
+  } catch {
+    return [{ code: 'value', name: '监测值', unit: '' }]
+  }
 }
 
 // Dialog handlers
@@ -192,27 +238,46 @@ const openAddSensorDialog = () => {
 const onAddSensorHpChange = async () => {
   addSensorForm.deviceId = ''
   addSensorForm.attrCode = ''
-  const devices = await getDeviceOptions({ hazardPointId: addSensorForm.hazardPointId || undefined })
-  dialogDevices.value = devices
+  deviceAttrsMap.value.clear()
+  try {
+    const params: any = { pageNum: 1, pageSize: 1000 }
+    if (addSensorForm.hazardPointId) {
+      params.boundHazardPointId = addSensorForm.hazardPointId
+    }
+    const res = await getDevicePage(params)
+    const rows = res.rows || []
+    dialogDevices.value = rows.map((item: DeviceItem) => ({
+      id: item.id!,
+      name: item.name,
+      deviceType: item.deviceType,
+      boundHazardPointId: item.boundHazardPointId
+    }))
+  } catch {
+    dialogDevices.value = []
+  }
 }
 
-const onAddSensorDeviceChange = () => {
+const onAddSensorDeviceChange = async () => {
   addSensorForm.attrCode = ''
+  if (addSensorForm.deviceId) {
+    const attrs = await loadDeviceAttrs(addSensorForm.deviceId)
+    deviceAttrsMap.value.set(addSensorForm.deviceId, attrs)
+  }
 }
 
 const confirmAddSensor = () => {
   const device = dialogDevices.value.find((d) => d.id === addSensorForm.deviceId)
-  const dt = deviceTypeOptions.value.find((dt) => dt.attrs.some((a) => a.code === addSensorForm.attrCode))
-  const attr = dt?.attrs.find((a) => a.code === addSensorForm.attrCode)
+  const attrs = availableAttrs.value
+  const attr = attrs.find((a) => a.code === addSensorForm.attrCode)
   if (!device || !attr) return
 
-  const hp = hazardPointOptions.value.find((h) => h.id === device.boundHazardPointId)
+  const hp = hazardPointOptions.value.find((h) => h.id === addSensorForm.hazardPointId)
   const id = `${device.id}_${addSensorForm.attrCode}_${Date.now()}`
   const colorIndex = selectedSensors.value.length % COLORS.length
 
   selectedSensors.value.push({
     id,
-    hazardPointId: device.boundHazardPointId || 0,
+    hazardPointId: (addSensorForm.hazardPointId as number) || 0,
     hazardPointName: hp?.name || '',
     deviceId: device.id,
     deviceName: device.name,
@@ -263,9 +328,6 @@ const generateCorrelationChart = async () => {
       correlationChartInstance.value.dispose()
       correlationChartInstance.value = null
     }
-    if (container.clientHeight < 10) {
-      container.style.height = '450px'
-    }
     const chart = echarts.init(container)
     correlationChartInstance.value = chart
 
@@ -282,22 +344,38 @@ const generateCorrelationChart = async () => {
         type: 'value',
         name: `${sensor.attrName}(${sensor.unit})`,
         position: idx % 2 === 0 ? 'left' : 'right',
-        offset: Math.floor(idx / 2) * 60,
-        axisLabel: { fontSize: 11 },
-        nameTextStyle: { fontSize: 11 },
+        offset: Math.floor(idx / 2) * 55,
+        axisLabel: { fontSize: 10 },
+        nameTextStyle: { fontSize: 10 },
+        splitLine: { show: idx === 0 },       // 仅在第一个Y轴显示网格线，避免重叠
       })
 
       const dataMap = new Map(chartData.times.map((t, i) => [t, chartData.values[i]]))
       const seriesData = sortedTimes.map((t) => dataMap.get(t) ?? null)
 
+      // 降雨量相关属性使用柱状图
+      const isRainAttr = sensor.attrCode.toLowerCase().includes('rain')
+      const seriesType = isRainAttr ? 'bar' : 'line'
+
       series.push({
         name: `${sensor.deviceName}-${sensor.attrName}`,
-        type: 'line',
+        type: seriesType,
         yAxisIndex: idx,
         data: seriesData,
-        itemStyle: { color: sensor.color },
-        lineStyle: { width: 2 },
-        symbolSize: 4,
+        ...(isRainAttr
+          ? {
+              itemStyle: {
+                color: sensor.color,
+                borderRadius: [4, 4, 0, 0],
+                opacity: 0.85,
+              },
+              barMaxWidth: 20,
+            }
+          : {
+              itemStyle: { color: sensor.color },
+              lineStyle: { width: 2 },
+              symbolSize: 4,
+            }),
         connectNulls: true,
       })
 
@@ -381,11 +459,31 @@ const generateCorrelationChart = async () => {
       })
     }
 
+    // X 轴标签抽稀：根据数据量自动计算间隔，同时格式化时间显示
+    const xLabelInterval = Math.max(1, Math.floor(sortedTimes.length / 12))
+
     const option = {
       tooltip: { trigger: 'axis' },
       legend: { type: 'scroll', bottom: 0 },
-      grid: { left: 80, right: 80, top: 30, bottom: 60, containLabel: true },
-      xAxis: { type: 'category', data: sortedTimes, axisLabel: { fontSize: 11, rotate: 30 } },
+      grid: { left: 80, right: 80, top: 30, bottom: 80, containLabel: true },
+      xAxis: {
+        type: 'category',
+        name: '时间',
+        nameLocation: 'center',
+        nameGap: 40,
+        nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#606266' },
+        data: sortedTimes,
+        axisLabel: {
+          fontSize: 11,
+          rotate: 30,
+          interval: xLabelInterval,
+          formatter: (val: string) => {
+            // 简化时间格式：MM-DD HH:mm
+            const t = val.replace('T', ' ')
+            return t.slice(5, 16)
+          },
+        },
+      },
       yAxis: yAxesArray,
       series,
       dataZoom: [{ type: 'inside' }, { type: 'slider' }],
@@ -430,6 +528,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .correlation-mode {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .mode-header {
   display: flex;
@@ -438,6 +538,7 @@ onBeforeUnmount(() => {
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
 }
 .mode-label {
   font-size: 16px;
@@ -447,7 +548,8 @@ onBeforeUnmount(() => {
 .correlation-layout {
   display: flex;
   gap: 16px;
-  height: calc(100% - 60px);
+  flex: 1;
+  min-height: 0;
 }
 .correlation-panel {
   width: 280px;
@@ -455,6 +557,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
 }
 .panel-section {
   margin-bottom: 12px;
@@ -470,21 +573,34 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 .chart-main {
   flex: 1;
-  min-height: 400px;
-  height: 450px;
+  min-height: 300px;
 }
 .chart-toolbar {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 8px;
+  flex-shrink: 0;
 }
 .sensor-tags {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.sensor-tags--scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.sensor-tags--scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sensor-tags--scroll::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 2px;
 }
 .sensor-tag-item {
   width: 100%;
@@ -499,6 +615,7 @@ onBeforeUnmount(() => {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #e8e8e8;
+  flex-shrink: 0;
 }
 .tool-checkbox {
   margin-bottom: 4px;
