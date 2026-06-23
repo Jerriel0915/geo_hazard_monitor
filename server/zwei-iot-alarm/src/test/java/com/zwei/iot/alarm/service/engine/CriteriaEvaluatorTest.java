@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.service.engine;
 
+import com.zwei.iot.alarm.domain.LevelCondition;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -8,6 +9,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.lang.reflect.Method;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("CriteriaEvaluator.normalizeSubject 段数校验")
 class CriteriaEvaluatorTest {
@@ -66,5 +69,76 @@ class CriteriaEvaluatorTest {
     void nullAndBlank() throws Exception {
         assertThat(normalize(null)).isNull();
         assertThat(normalize("   ")).isNull();
+    }
+
+    // ── 多态比较测试 ──
+
+    @Test
+    void evaluateCondition_stringContains_hit() {
+        LevelCondition c = new LevelCondition();
+        c.setOperator("CONTAINS");
+        c.setValueType("STRING");
+        c.setThreshold("sensor");
+        assertTrue(evaluator.evaluateCondition(c, "sensor_001"));
+    }
+
+    @Test
+    void evaluateCondition_stringContains_miss() {
+        LevelCondition c = new LevelCondition();
+        c.setOperator("CONTAINS");
+        c.setValueType("STRING");
+        c.setThreshold("xyz");
+        assertFalse(evaluator.evaluateCondition(c, "sensor_001"));
+    }
+
+    @Test
+    void evaluateCondition_stringGt_ascii() {
+        LevelCondition c = new LevelCondition();
+        c.setOperator("GT");
+        c.setValueType("STRING");
+        c.setThreshold("apple");
+        assertTrue(evaluator.evaluateCondition(c, "banana"));
+        assertFalse(evaluator.evaluateCondition(c, "apple"));
+    }
+
+    @Test
+    void evaluateCondition_booleanEq_true() {
+        LevelCondition c = new LevelCondition();
+        c.setOperator("EQ");
+        c.setValueType("BOOLEAN");
+        c.setThreshold(1);
+        assertTrue(evaluator.evaluateCondition(c, 1));
+        assertFalse(evaluator.evaluateCondition(c, 0));
+    }
+
+    @Test
+    void evaluateCondition_datetimeGt_absolute() {
+        LevelCondition c = new LevelCondition();
+        c.setOperator("GT");
+        c.setValueType("DATETIME");
+        c.setThreshold("2026-06-23T10:00:00Z");
+        java.time.Instant v = java.time.Instant.parse("2026-06-23T11:00:00Z");
+        assertTrue(evaluator.evaluateCondition(c, v));
+    }
+
+    @Test
+    void evaluateCondition_datetimeLt_relative() {
+        LevelCondition c = new LevelCondition();
+        c.setOperator("LT");
+        c.setValueType("DATETIME");
+        c.setThreshold("now-5h");   // 5h 前
+        java.time.Instant stale = java.time.Instant.now().minus(10, java.time.temporal.ChronoUnit.HOURS);
+        java.time.Instant fresh = java.time.Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS);
+        assertTrue(evaluator.evaluateCondition(c, stale));   // 10h 前 < 5h 前
+        assertFalse(evaluator.evaluateCondition(c, fresh));  // 1h 前 > 5h 前
+    }
+
+    @Test
+    void evaluateCondition_unknownValueType_fallbackToNumber() {
+        LevelCondition c = new LevelCondition();
+        c.setOperator("GT");
+        c.setValueType(null);       // 未知 -> 默认 NUMBER
+        c.setThreshold(5.0);
+        assertTrue(evaluator.evaluateCondition(c, 10.0));
     }
 }

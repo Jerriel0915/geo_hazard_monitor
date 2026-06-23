@@ -6,6 +6,7 @@ import com.zwei.iot.alarm.domain.AlarmCriteria;
 import com.zwei.iot.alarm.domain.ConditionGroup;
 import com.zwei.iot.alarm.domain.LevelCondition;
 import com.zwei.iot.alarm.domain.LevelConfig;
+import com.zwei.iot.monitor.constant.IndicatorValueType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -96,9 +97,7 @@ public class CriteriaEvaluator {
 
         boolean isOr = "OR".equalsIgnoreCase(config.getLogicOperator());
         for (LevelCondition cond : conditions) {
-            // TODO 任务 5: 替换为按 cond.getValueType() 多态分派
-            Object resolved = resolveSubjectValue(cond, subjectValues);
-            Double value = resolved instanceof Number n ? n.doubleValue() : null;
+            Object value = resolveSubjectValue(cond, subjectValues);
             boolean condResult = evaluateCondition(cond, value);
             log.debug("[Alarm][Criteria][Level] condition result={} logic={} subject={} operator={} threshold={} actual={}",
                     condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
@@ -134,9 +133,7 @@ public class CriteriaEvaluator {
 
         boolean isOr = "OR".equalsIgnoreCase(group.getLogicOperator());
         for (LevelCondition cond : conditions) {
-            // TODO 任务 5: 替换为按 cond.getValueType() 多态分派
-            Object resolved = resolveSubjectValue(cond, subjectValues);
-            Double value = resolved instanceof Number n ? n.doubleValue() : null;
+            Object value = resolveSubjectValue(cond, subjectValues);
             boolean condResult = evaluateCondition(cond, value);
             log.debug("[Alarm][Criteria][Group] condition result={} logic={} subject={} operator={} threshold={} actual={}",
                     condResult, isOr ? "OR" : "AND", cond.getSubject(), cond.getOperator(),
@@ -208,56 +205,105 @@ public class CriteriaEvaluator {
     }
 
     /**
-     * 评估单个条件。
+     * 评估单个条件 — 按 valueType 多态分派。
      */
-    boolean evaluateCondition(LevelCondition cond, Double value) {
+    boolean evaluateCondition(LevelCondition cond, Object value) {
         if (value == null || cond == null || cond.getOperator() == null) {
             log.debug("[Alarm][Criteria][Cond] 输入无效 value={} operator={} subject={}",
                     value, cond != null ? cond.getOperator() : null, cond != null ? cond.getSubject() : null);
             return false;
         }
-        Object thresholdObj = cond.getThreshold();
-        if (!(thresholdObj instanceof Number)) {
-            log.debug("[Alarm][Criteria][Cond] threshold 非 Number 跳过 (临时兼容) subject={}", cond.getSubject());
-            return false;
-        }
-        Double threshold = ((Number) thresholdObj).doubleValue();
-        if (threshold == null) {
+        if (cond.getThreshold() == null) {
             log.debug("[Alarm][Criteria][Cond] threshold=null 跳过 subject={} operator={}",
                     cond.getSubject(), cond.getOperator());
             return false;
         }
 
-        switch (cond.getOperator().toUpperCase()) {
-            case "GT":
-                return value > threshold;
-            case "GTE":
-                return value >= threshold;
-            case "LT":
-                return value < threshold;
-            case "LTE":
-                return value <= threshold;
-            case "EQ":
-                return Math.abs(value - threshold) < 0.0001;
-            case "NEQ":
-                return Math.abs(value - threshold) >= 0.0001;
-            case "BETWEEN":
-                if (cond.getThresholdMax() == null) {
-                    log.debug("[Alarm][Criteria][Cond] BETWEEN thresholdMax=null 跳过 subject={}", cond.getSubject());
-                    return false;
-                }
-                Object maxObj = cond.getThresholdMax();
-                if (!(maxObj instanceof Number)) {
-                    log.debug("[Alarm][Criteria][Cond] BETWEEN thresholdMax 非 Number 跳过 subject={}", cond.getSubject());
-                    return false;
-                }
-                double thresholdMax = ((Number) maxObj).doubleValue();
-                return value >= threshold && value <= thresholdMax;
-            default:
-                log.debug("[Alarm][Criteria][Cond] 未知 operator 跳过 subject={} operator={}",
-                        cond.getSubject(), cond.getOperator());
-                return false;
+        String valueType = cond.getValueType() != null ? cond.getValueType() : IndicatorValueType.NUMBER;
+        switch (valueType) {
+            case IndicatorValueType.STRING:   return compareString(cond, value);
+            case IndicatorValueType.DATETIME: return compareDatetime(cond, value);
+            case IndicatorValueType.BOOLEAN:  return compareNumber(cond, toNumber(value));
+            case IndicatorValueType.NUMBER:
+            default:                          return compareNumber(cond, toNumber(value));
         }
+    }
+
+    private static Double toNumber(Object v) {
+        if (v instanceof Number n) return n.doubleValue();
+        return null;
+    }
+
+    boolean compareNumber(LevelCondition cond, Double value) {
+        if (value == null) return false;
+        Object tObj = cond.getThreshold();
+        if (!(tObj instanceof Number)) return false;
+        double threshold = ((Number) tObj).doubleValue();
+        switch (cond.getOperator().toUpperCase()) {
+            case "GT":  return value > threshold;
+            case "GTE": return value >= threshold;
+            case "LT":  return value < threshold;
+            case "LTE": return value <= threshold;
+            case "EQ":  return Math.abs(value - threshold) < 0.0001;
+            case "NEQ": return Math.abs(value - threshold) >= 0.0001;
+            case "BETWEEN": {
+                Object maxObj = cond.getThresholdMax();
+                if (!(maxObj instanceof Number)) return false;
+                return value >= threshold && value <= ((Number) maxObj).doubleValue();
+            }
+            default: return false;
+        }
+    }
+
+    boolean compareString(LevelCondition cond, Object value) {
+        if (!(value instanceof String) || !(cond.getThreshold() instanceof String)) return false;
+        String s = (String) value;
+        String t = (String) cond.getThreshold();
+        switch (cond.getOperator().toUpperCase()) {
+            case "CONTAINS": return s.contains(t);
+            case "EQ":       return s.equals(t);
+            case "NEQ":      return !s.equals(t);
+            case "GT":       return s.compareTo(t) > 0;
+            case "LT":       return s.compareTo(t) < 0;
+            default:         return false;
+        }
+    }
+
+    boolean compareDatetime(LevelCondition cond, Object value) {
+        java.time.Instant v = toInstant(value);
+        if (v == null) return false;
+        java.time.Instant t = resolveTime(cond.getThreshold());
+        if (t == null) return false;
+        switch (cond.getOperator().toUpperCase()) {
+            case "GT": return v.isAfter(t);
+            case "LT": return v.isBefore(t);
+            case "BETWEEN": {
+                java.time.Instant tMax = resolveTime(cond.getThresholdMax());
+                if (tMax == null) return false;
+                return !v.isBefore(t) && !v.isAfter(tMax);
+            }
+            default: return false;
+        }
+    }
+
+    private static java.time.Instant toInstant(Object v) {
+        if (v instanceof java.time.Instant i) return i;
+        if (v instanceof java.time.temporal.TemporalAccessor ta) return java.time.Instant.from(ta);
+        if (v instanceof Number n) return java.time.Instant.ofEpochMilli(n.longValue());
+        if (v instanceof String s) {
+            try { return java.time.Instant.parse(s); } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
+    private static java.time.Instant resolveTime(Object threshold) {
+        if (!(threshold instanceof String s)) return null;
+        if (RelativeTimeParser.isRelative(s)) {
+            try { return RelativeTimeParser.resolve(s); }
+            catch (Exception e) { return null; }
+        }
+        try { return java.time.Instant.parse(s); }
+        catch (Exception e) { return null; }
     }
 
     /**
