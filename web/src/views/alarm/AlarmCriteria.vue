@@ -148,7 +148,7 @@ import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import CriteriaDetailPanel from './components/CriteriaDetailPanel.vue'
-import { useIndicatorTree, type ConditionGroup, type LevelFormState } from './composables/useIndicatorTree'
+import { useIndicatorTree, type Condition, type ConditionGroup, type LevelFormState } from './composables/useIndicatorTree'
 
 // ── 常量 ──
 const alarmLevels = [
@@ -211,11 +211,49 @@ function resetLevelForm() {
   }
 }
 
+/** DATETIME 反序列化: 从 threshold 字符串拆分出 rel* 编辑态字段 */
+function hydrateCondition(c: Condition): Condition {
+  if (c.valueType !== 'DATETIME' || !c.threshold) return c
+  const t = String(c.threshold)
+  if (t.startsWith('now')) {
+    const match = /^now([+-])(\d+)([smhd])$/.exec(t)
+    if (match) {
+      return {
+        ...c,
+        thresholdMode: 'RELATIVE',
+        relDirection: match[1] as '+' | '-',
+        relValue: Number(match[2]),
+        relUnit: match[3] as 's' | 'm' | 'h' | 'd',
+      }
+    }
+    return {...c, thresholdMode: 'RELATIVE', relDirection: '-', relValue: 0, relUnit: 'h'}
+  }
+  return {...c, thresholdMode: 'ABSOLUTE'}
+}
+
+/** DATETIME 序列化: 将 rel* 编辑态字段合并回 threshold 字符串，剔除编辑态字段 */
+function serializeCondition(c: Condition): Condition {
+  if (c.valueType === 'DATETIME' && c.thresholdMode === 'RELATIVE') {
+    const dir = c.relDirection || '-'
+    const n = c.relValue || 0
+    const unit = c.relUnit || 'h'
+    const {thresholdMode, relDirection, relValue, relUnit, ...rest} = c
+    return {...rest, threshold: n > 0 ? `now${dir}${n}${unit}` : 'now'}
+  }
+  // strip edit-only fields
+  const {thresholdMode, relDirection, relValue, relUnit, ...rest} = c
+  return rest
+}
+
 function migrateToGroups(lc: any): { groups: ConditionGroup[]; groupLogic: 'AND' | 'OR' } {
   if (Array.isArray(lc?.groups)) {
-    return { groups: lc.groups, groupLogic: lc.groupLogic || 'AND' }
+    const groups: ConditionGroup[] = lc.groups.map((g: any) => ({
+      ...g,
+      conditions: (g.conditions || []).map((c: any) => hydrateCondition(c)),
+    }))
+    return { groups, groupLogic: lc.groupLogic || 'AND' }
   }
-  const conditions = (lc?.conditions || []).map((c: any) => ({...c}))
+  const conditions = (lc?.conditions || []).map((c: any) => hydrateCondition({...c}))
   if (conditions.length === 0) return { groups: [], groupLogic: 'AND' }
   return { groups: [{ conditions, logicOperator: lc?.logicOperator || 'AND' }], groupLogic: 'AND' }
 }
@@ -377,8 +415,12 @@ function buildLevelConfigFromForm(): string {
   for (const key of ['blue', 'yellow', 'orange', 'red'] as const) {
     const lf = levelForm[key]
     if (lf.groups.length === 0 && !lf.description) continue
+    const groups = lf.groups.map(g => ({
+      ...g,
+      conditions: g.conditions.map(c => serializeCondition(c)),
+    }))
     config[key] = {
-      groupLogic: lf.groupLogic, groups: lf.groups,
+      groupLogic: lf.groupLogic, groups,
       description: lf.description, persistCount: lf.persistCount, silencePeriod: lf.silencePeriod,
     }
   }
