@@ -258,6 +258,12 @@ function onSubjectChange(val: string) {
     // DATETIME 默认绝对模式
     thresholdMode: vt === 'DATETIME' ? 'ABSOLUTE' : undefined,
     threshold: vt === 'NUMBER' ? 0 : vt === 'BOOLEAN' ? 1 : '',
+    // 显式清除 stale thresholdMax（不同类型切换时数据卫生）
+    thresholdMax: undefined,
+    // 显式清除 stale 相对模式字段（仅 DATETIME 用得到，且会在 updateField 中重新初始化）
+    relDirection: undefined,
+    relValue: undefined,
+    relUnit: undefined,
   }
   emit('update:condition', updated)
 }
@@ -270,6 +276,29 @@ function updateField(field: string, value: any) {
     const n = updated.relValue || 0
     const unit = updated.relUnit || 'h'
     updated.threshold = n > 0 ? `now${dir}${n}${unit}` : 'now'
+  }
+  // thresholdMode 切换时清理 stale 值或初始化相对模式字段
+  if (field === 'thresholdMode') {
+    if (value === 'ABSOLUTE') {
+      // 切回绝对模式：如果 threshold 是相对表达式则清空，否则保留用户之前输入的绝对时间
+      if (typeof updated.threshold === 'string' && updated.threshold.startsWith('now')) {
+        updated.threshold = ''
+      }
+      // 同时清空 thresholdMax 如果它也是相对表达式（BETWEEN 场景）
+      if (typeof updated.thresholdMax === 'string' && updated.thresholdMax.startsWith('now')) {
+        updated.thresholdMax = ''
+      }
+    } else if (value === 'RELATIVE') {
+      // 切到相对模式：初始化 rel 字段（如果未设置）
+      if (updated.relDirection === undefined) updated.relDirection = '-'
+      if (updated.relValue === undefined) updated.relValue = 0
+      if (updated.relUnit === undefined) updated.relUnit = 'h'
+      // 立即序列化 threshold
+      const dir = (updated.relDirection || '-') as '+' | '-'
+      const n = updated.relValue || 0
+      const unit = updated.relUnit || 'h'
+      updated.threshold = n > 0 ? `now${dir}${n}${unit}` : 'now'
+    }
   }
   // 切换 operator 到 BETWEEN 时初始化 thresholdMax
   if (field === 'operator' && value === 'BETWEEN' && updated.thresholdMax === undefined) {
