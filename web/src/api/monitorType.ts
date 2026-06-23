@@ -13,6 +13,8 @@ export interface MonitorContentItem {
   rangeMax?: number | null
   fieldType?: 'inherent' | 'computed'
   calcScript?: string
+  /** 数据类型 (前端从 indicator_type 派生，后端不持久化) */
+  valueType?: 'NUMBER' | 'DATETIME' | 'STRING' | 'BOOLEAN'
 }
 
 export interface MonitorTypeItem {

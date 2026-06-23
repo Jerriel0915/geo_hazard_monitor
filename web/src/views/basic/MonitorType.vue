@@ -374,32 +374,11 @@ import {
 } from '@/api/monitorType'
 import {getIconList, type IconItem} from '@/constants/monitorIcons'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
+import {INDICATOR_TYPE_OPTIONS as indicatorTypeOptions, indicatorTypeLabel} from '@/utils/indicatorType'
 import CalcScriptEditor from './components/CalcScriptEditor.vue'
 
 type SearchType = 'code' | 'name'
 
-const IndicatorTypeEnum = {
-  WY: { code: 'wy', name: '位移', unit: 'mm' },
-  WD: { code: 'wd', name: '温度', unit: '℃' },
-  JD: { code: 'jd', name: '角度', unit: '°' },
-  YL: { code: 'yl', name: '压力', unit: 'MPa' },
-  SW: { code: 'sw', name: '水位', unit: 'm' },
-  JSD: { code: 'jsd', name: '加速度', unit: 'm/s²' },
-  HSL: { code: 'hsl', name: '含水率', unit: '%' },
-  LJN: { code: 'ljn', name: '力矩', unit: 'N/m²' },
-  ZDL: { code: 'zdl', name: '震动频率', unit: 'Hz' },
-  DL: { code: 'dl', name: '电量', unit: 'V' },
-  DX: { code: 'dx', name: '断线', unit: '1' },
-  SG: { code: 'sg', name: '声光', unit: '1' },
-  SP: { code: 'sp', name: '视频', unit: '1' }
-} as const
-
-const indicatorTypeOptions = Object.values(IndicatorTypeEnum)
-
-const indicatorTypeLabel = (code: string) => {
-  const item = indicatorTypeOptions.find((i) => i.code === code)
-  return item?.name || ''
-}
 const typeIconList: IconItem[] = getIconList()
 
 const sort = useTableSort()
