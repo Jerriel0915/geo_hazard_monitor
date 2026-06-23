@@ -383,6 +383,31 @@ export interface AlarmNotificationItem {
 export const getAlarmNotifications = (id: number) =>
     request.get<AlarmNotificationItem[]>(`/alarm/records/${id}/notifications`)
 
+// ==================== 告警统计 API ====================
+
+/** 待处理告警等级统计: { 1: count, 2: count, 3: count, 4: count } */
+export const getAlarmLevelStats = () =>
+    request.get<Record<number, number>>('/alarm/records/level-stats')
+
+/** 告警趋势数据 (近N个月+2个月预测) */
+export interface AlarmTrendVO {
+    months: string[]
+    level1: number[]
+    level2: number[]
+    level3: number[]
+    level4: number[]
+    total: number[]
+    forecastMonths: string[]
+    forecastLevel1: number[]
+    forecastLevel2: number[]
+    forecastLevel3: number[]
+    forecastLevel4: number[]
+    forecastTotal: number[]
+}
+
+export const getAlarmTrend = (months?: number) =>
+    request.get<AlarmTrendVO>('/alarm/records/trend', { params: { months } })
+
 // ==================== 告警判据 API ====================
 
 /** 判据列表 */

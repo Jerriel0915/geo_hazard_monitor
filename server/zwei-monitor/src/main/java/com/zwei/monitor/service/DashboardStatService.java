@@ -90,6 +90,8 @@ public class DashboardStatService {
         vs.setByStatus(toMap(deviceStatService.countVideoDevicesByStatus(), "status"));
         vo.setVideoDevice(vs);
 
+        vo.setTotalMonitorCount(deviceStatService.countTotalMonitorDataPoints());
+
         return vo;
     }
 

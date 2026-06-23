@@ -101,4 +101,18 @@ public class AlarmRecordController extends BaseController {
     public AjaxResult notifications(@PathVariable Long id) {
         return success(notificationService.selectByAlarmId(id));
     }
+
+    /** 待处理告警等级统计 (所有待处理告警，非分页) */
+    @GetMapping("/level-stats")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult levelStats() {
+        return success(alarmRecordService.getPendingLevelStats());
+    }
+
+    /** 告警趋势统计 (近N个月+2个月预测) */
+    @GetMapping("/trend")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult trend(@RequestParam(defaultValue = "12") int months) {
+        return success(alarmRecordService.getMonthlyTrend(months));
+    }
 }

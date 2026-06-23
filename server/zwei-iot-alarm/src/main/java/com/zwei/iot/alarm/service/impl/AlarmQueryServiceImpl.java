@@ -69,6 +69,23 @@ public class AlarmQueryServiceImpl implements IAlarmQueryService {
     }
 
     @Override
+    public Map<Long, Boolean> hasPendingAlarm(List<Long> hazardPointIds) {
+        if (hazardPointIds == null || hazardPointIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Map<String, Object>> rows = alarmRecordMapper.countPendingByHazardPointIds(hazardPointIds);
+        Map<Long, Boolean> result = new HashMap<>();
+        for (Long id : hazardPointIds) {
+            result.put(id, false);
+        }
+        for (Map<String, Object> row : rows) {
+            Long hpId = ((Number) row.get("hazardPointId")).longValue();
+            result.put(hpId, true);
+        }
+        return result;
+    }
+
+    @Override
     public Map<String, Integer> countByMonth(Long hazardPointId, LocalDateTime start, LocalDateTime end) {
         List<AlarmRecord> records = alarmRecordMapper.selectByHazardPointAndTime(hazardPointId, start, end);
         return records.stream()

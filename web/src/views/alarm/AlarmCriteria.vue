@@ -211,20 +211,11 @@ function resetLevelForm() {
   }
 }
 
-function migrateSubject(subject: string): string {
-  if (!subject) return subject
-  if (subject.includes('.')) return subject
-  return `payload.current.${subject}`
-}
-
 function migrateToGroups(lc: any): { groups: ConditionGroup[]; groupLogic: 'AND' | 'OR' } {
   if (Array.isArray(lc?.groups)) {
     return { groups: lc.groups, groupLogic: lc.groupLogic || 'AND' }
   }
-  const conditions = (lc?.conditions || []).map((c: any) => ({
-    ...c,
-    subject: migrateSubject(c.subject),
-  }))
+  const conditions = (lc?.conditions || []).map((c: any) => ({...c}))
   if (conditions.length === 0) return { groups: [], groupLogic: 'AND' }
   return { groups: [{ conditions, logicOperator: lc?.logicOperator || 'AND' }], groupLogic: 'AND' }
 }
@@ -294,7 +285,7 @@ async function onDeviceCardClick(device: any) {
     // 构建含传感器层级的指标树
     await buildFromSensors(
       device.sensors.map((s: any) => ({
-        sensorId: s.id || s.sensorId,
+        sensorCode: s.sensorCode,
         sensorName: s.monitorTypeName || s.name || s.sensorName || '',
         monitorTypeId: s.monitorTypeId,
       }))

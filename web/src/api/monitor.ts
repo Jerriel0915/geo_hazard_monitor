@@ -197,6 +197,7 @@ export interface DashboardOverview {
     hazardPoint: { total: number; byStatus: Record<string, number> }
     monitorType: { total: number }
     videoDevice: { total: number; byStatus: Record<string, number> }
+    totalMonitorCount: number
 }
 
 export interface RateByTypeVO {

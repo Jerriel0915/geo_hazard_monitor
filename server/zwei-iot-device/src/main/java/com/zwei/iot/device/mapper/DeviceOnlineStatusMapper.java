@@ -19,6 +19,9 @@ public interface DeviceOnlineStatusMapper {
     /** 上线时写入/更新在线状态 */
     int upsertOnline(DeviceOnlineStatus status);
 
+    /** 按设备 ID 查询在线状态记录 */
+    DeviceOnlineStatus selectByDeviceId(@Param("deviceId") Long deviceId);
+
     /** 离线时更新离线状态与会话时长 */
     int upsertOffline(@Param("deviceId") Long deviceId,
                       @Param("offlineAt") String offlineAt,

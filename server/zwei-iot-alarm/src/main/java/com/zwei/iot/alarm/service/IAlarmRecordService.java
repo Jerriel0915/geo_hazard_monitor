@@ -5,6 +5,7 @@ import com.zwei.iot.alarm.domain.AlarmRecordActionLog;
 import com.zwei.iot.alarm.domain.AlarmRecordTriggerDetail;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 告警记录服务接口
@@ -49,4 +50,10 @@ public interface IAlarmRecordService {
     int countPending();
 
     int countByHazardPointId(Long hazardPointId);
+
+    /** 按等级统计待处理告警数量 (所有待处理告警，非分页) */
+    Map<Integer, Integer> getPendingLevelStats();
+
+    /** 按月+等级统计告警趋势 (近N个月)，含2个月预测 */
+    Map<String, Object> getMonthlyTrend(int months);
 }

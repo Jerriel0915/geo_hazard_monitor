@@ -1,6 +1,7 @@
 package com.zwei.iot.timeseries.compute;
 
 import com.zwei.common.domain.ParsedMessage;
+import com.zwei.common.domain.ParsedMessageSnapshot;
 import com.zwei.common.domain.PropertyValue;
 import com.zwei.iot.device.domain.SensorMetadata;
 import com.zwei.iot.device.service.IDeviceSensorQueryService;
@@ -83,16 +84,6 @@ public class ComputedAttributeEvaluator {
                 if (val == null) continue;
                 computed.add(new PropertyValue(a.code(), a.name(), a.unit(), val, 0));
             }
-
-            // 8. 总是写回 prevData(避免下次脚本看到更旧的 prev)
-            Map<String, Object> mergedProps = new LinkedHashMap<>();
-            for (PropertyValue p : message.properties()) {
-                if (p.value() != null) mergedProps.put(p.identifier(), p.value());
-            }
-            for (PropertyValue p : computed) mergedProps.put(p.identifier(), p.value());
-            lastMessageStore.put(deviceId, sensorCode,
-                    new ParsedMessageSnapshot(message.deviceCode(), message.sensorCode(),
-                            message.dataTime(), mergedProps));
 
             return computed;
         } catch (Exception e) {

@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.service.engine;
 
+import com.zwei.common.domain.ParsedMessageSnapshot;
 import com.zwei.common.domain.PropertyValue;
 import com.zwei.common.event.AlarmTriggeredEvent;
 import com.zwei.common.event.MonitorDataIngestedEvent;
@@ -13,7 +14,9 @@ import com.zwei.iot.alarm.domain.LevelConfig;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.domain.SensorMetadata;
+import com.zwei.iot.device.domain.dto.DeviceBasicInfo;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
+import com.zwei.iot.device.service.IDeviceQueryService;
 import com.zwei.iot.device.service.IDeviceSensorQueryService;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
@@ -60,6 +63,7 @@ public class AlarmEvaluationEngine {
     private final CriteriaCacheService criteriaCache;
     private final ApplicationEventPublisher eventPublisher;
     private final MonitorContentMapper monitorContentMapper;
+    private final IDeviceQueryService deviceQueryService;
 
     public AlarmEvaluationEngine(AlarmProperties properties, IAlarmRecordService alarmRecordService,
                                  IDeviceHazardRelationService hazardRelationService,
@@ -67,7 +71,8 @@ public class AlarmEvaluationEngine {
                                  IHazardPointService hazardPointService, CriteriaEvaluator criteriaEvaluator,
                                  AlarmDedupService dedupService, CriteriaCacheService criteriaCache,
                                  ApplicationEventPublisher eventPublisher,
-                                 MonitorContentMapper monitorContentMapper) {
+                                 MonitorContentMapper monitorContentMapper,
+                                 IDeviceQueryService deviceQueryService) {
         this.properties = properties;
         this.alarmRecordService = alarmRecordService;
         this.hazardRelationService = hazardRelationService;
@@ -78,6 +83,7 @@ public class AlarmEvaluationEngine {
         this.criteriaCache = criteriaCache;
         this.eventPublisher = eventPublisher;
         this.monitorContentMapper = monitorContentMapper;
+        this.deviceQueryService = deviceQueryService;
     }
 
     @EventListener
@@ -99,15 +105,56 @@ public class AlarmEvaluationEngine {
     }
 
     private void evaluate(MonitorDataIngestedEvent event) {
-        // 一次性构建 subjectValues — 报文所有数值属性
+        // 一次性构建 subjectValues — 4 维度双 key (传感器模式 + 监测类型模式)
         Map<String, Double> subjectValues = new HashMap<>();
+        String sensorCode = event.getSensorCode();
+        String prefix = sensorCode != null ? sensorCode + "." : "";
+        ParsedMessageSnapshot prev = event.getPrevSnapshot();
+        long currentDataTime = event.getDataTime();
+
+        // ── bucket 1: 本 sensorCode 的 current payload ──
         if (event.getProperties() != null) {
             for (PropertyValue pv : event.getProperties()) {
                 if (pv.value() instanceof Number n) {
-                    subjectValues.put(pv.identifier(), n.doubleValue());
+                    double v = n.doubleValue();
+                    subjectValues.put(prefix + "current.payload." + pv.identifier(), v);
+                    subjectValues.put("current.payload." + pv.identifier(), v);
                 }
             }
         }
+
+        // ── bucket 2: 本 sensorCode 的 prev payload ──
+        if (prev != null && prev.properties() != null) {
+            for (Map.Entry<String, Object> e : prev.properties().entrySet()) {
+                if (e.getValue() instanceof Number n) {
+                    double v = n.doubleValue();
+                    subjectValues.put(prefix + "prev.payload." + e.getKey(), v);
+                    subjectValues.put("prev.payload." + e.getKey(), v);
+                }
+            }
+        }
+
+        // ── bucket 3: packet.dataTime ──
+        subjectValues.put(prefix + "current.packet.dataTime", (double) currentDataTime);
+        subjectValues.put("current.packet.dataTime", (double) currentDataTime);
+        if (prev != null) {
+            subjectValues.put(prefix + "prev.packet.dataTime", (double) prev.dataTime());
+            subjectValues.put("prev.packet.dataTime", (double) prev.dataTime());
+        }
+
+        // ── bucket 4: device.* — 无视 current/prev, 查 device 表 ──
+        DeviceBasicInfo dev = deviceQueryService.getBasicInfoById(event.getDeviceId());
+        if (dev != null) {
+            double online = dev.online() ? 1.0 : 0.0;
+            double lastReport = (double) dev.lastReportAt();
+            for (String kind : new String[]{"current", "prev"}) {
+                subjectValues.put(prefix + kind + ".device.onlineStatus", online);
+                subjectValues.put(prefix + kind + ".device.lastReportTime", lastReport);
+                subjectValues.put(kind + ".device.onlineStatus", online);
+                subjectValues.put(kind + ".device.lastReportTime", lastReport);
+            }
+        }
+
         if (subjectValues.isEmpty()) {
             log.debug("[Alarm][Skip] 报文无数值属性 deviceId={} sensorCode={}",
                     event.getDeviceId(), event.getSensorCode());
@@ -293,9 +340,11 @@ public class AlarmEvaluationEngine {
 
         // 通过 winner 判据引用的主属性查 currentValue 和 attrName
         String winnerSubject = extractFirstSubject(winner.levelConfig);
-        String normalizedSubject = normalizeAttrCode(winnerSubject);
-        Double currentValue = normalizedSubject != null ? subjectValues.get(normalizedSubject) : null;
-        String attrName = resolveAttrName(event, normalizedSubject);
+        // 用于显示的 attrCode (最后一段)
+        String attrCode = normalizeAttrCode(winnerSubject);
+        // 用于查找的标准化 subject — winnerSubject 本身已经是用户配置的新格式 subject
+        Double currentValue = winnerSubject != null ? subjectValues.get(winnerSubject) : null;
+        String attrName = resolveAttrName(event, attrCode);
 
         String hpName = getHazardPointName(winner.effectiveHpId);
         String message = buildAlarmMessage(attrName,
@@ -315,7 +364,7 @@ public class AlarmEvaluationEngine {
                 saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage(), saved.getTriggerReason()));
         log.info("[Alarm][Trigger] 告警触发 id={} level={} criteria={} hpId={} subject={} currentValue={} (candidates={})",
                 saved.getId(), winner.level, winner.criteria.getId(), winner.effectiveHpId,
-                normalizedSubject, currentValue, candidates.size());
+                winnerSubject, currentValue, candidates.size());
         return true;
     }
 
@@ -370,34 +419,33 @@ public class AlarmEvaluationEngine {
     }
 
     /**
-     * 标准化 subject — 去除前端 JSONPath 风格前缀。
-     * <p>例：{@code payload.current.rainfall_hour} → {@code rainfall_hour}
-     * <p>与 {@link CriteriaEvaluator} 内部 normalizeSubject 保持一致。
+     * 从 subject 提取 attrCode 用于告警记录显示。
+     * <p>
+     * subject 格式: {sensorCode.}{kind}.{dimension}.{attrCode}, 取最后一段。
+     * 老格式 {@code payload.current.attrCode} 不再兼容。
      */
     private String normalizeAttrCode(String subject) {
         if (subject == null) return null;
         String s = subject.trim();
-        for (String prefix : new String[]{"payload.current.", "payload."}) {
-            if (s.startsWith(prefix)) {
-                return s.substring(prefix.length());
-            }
-        }
-        return s;
+        if (s.isEmpty()) return null;
+        int lastDot = s.lastIndexOf('.');
+        if (lastDot < 0) return s;
+        return s.substring(lastDot + 1);
     }
 
     /**
      * 根据 subject 从报文 properties 中查属性中文名，查不到时回退为 subject。
      */
-    private String resolveAttrName(MonitorDataIngestedEvent event, String normalizedSubject) {
-        if (normalizedSubject == null) return null;
+    private String resolveAttrName(MonitorDataIngestedEvent event, String attrCode) {
+        if (attrCode == null) return null;
         if (event.getProperties() != null) {
             for (PropertyValue pv : event.getProperties()) {
-                if (normalizedSubject.equals(pv.identifier())) {
-                    return (pv.name() != null && !pv.name().isBlank()) ? pv.name() : normalizedSubject;
+                if (attrCode.equals(pv.identifier())) {
+                    return (pv.name() != null && !pv.name().isBlank()) ? pv.name() : attrCode;
                 }
             }
         }
-        return normalizedSubject;
+        return attrCode;
     }
 
     /**
