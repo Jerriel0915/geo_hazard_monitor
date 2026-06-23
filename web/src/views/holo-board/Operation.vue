@@ -276,7 +276,8 @@ const initBarChart = () => {
         }
       },
       axisLine: {
-        show: false
+        show: true,
+        lineStyle: { color: '#c0c4cc' }
       }
     },
     series: [

@@ -394,7 +394,8 @@ const initTrendChart = () => {
         fontSize: 12
       },
       axisLine: {
-        show: false
+        show: true,
+        lineStyle: { color: '#c0c4cc' }
       },
       axisLabel: {
         color: '#6b7280',
@@ -411,6 +412,7 @@ const initTrendChart = () => {
         name: '一级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#ef4444',
         data: [...alarmTrendData.value.level1, null, null]
       },
@@ -418,6 +420,7 @@ const initTrendChart = () => {
         name: '二级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#f97316',
         data: [...alarmTrendData.value.level2, null, null]
       },
@@ -425,6 +428,7 @@ const initTrendChart = () => {
         name: '三级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#eab308',
         data: [...alarmTrendData.value.level3, null, null]
       },
@@ -432,6 +436,7 @@ const initTrendChart = () => {
         name: '四级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#22c55e',
         data: [...alarmTrendData.value.level4, null, null]
       },
@@ -439,6 +444,7 @@ const initTrendChart = () => {
         name: '合计',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#3b82f6',
         lineStyle: {
           width: 3
@@ -454,8 +460,7 @@ const initTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level1[11], ...alarmTrendData.value.forecastLevel1]
       },
       {
@@ -467,8 +472,7 @@ const initTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level2[11], ...alarmTrendData.value.forecastLevel2]
       },
       {
@@ -480,8 +484,7 @@ const initTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level3[11], ...alarmTrendData.value.forecastLevel3]
       },
       {
@@ -493,8 +496,7 @@ const initTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level4[11], ...alarmTrendData.value.forecastLevel4]
       },
       {
@@ -506,8 +508,7 @@ const initTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.total[11], ...alarmTrendData.value.forecastTotal]
       }
     ]

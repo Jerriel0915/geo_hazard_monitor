@@ -346,8 +346,9 @@ const generateCorrelationChart = async () => {
         position: idx % 2 === 0 ? 'left' : 'right',
         offset: Math.floor(idx / 2) * 55,
         axisLabel: { fontSize: 10 },
-        nameTextStyle: { fontSize: 10 },
-        splitLine: { show: idx === 0 },       // 仅在第一个Y轴显示网格线，避免重叠
+        nameTextStyle: { fontSize: 10, color: '#606266' },
+        splitLine: { show: idx === 0, lineStyle: { type: 'dashed', color: '#e8e8e8' } },
+        axisLine: { show: true, lineStyle: { color: '#c0c4cc' } },
       })
 
       const dataMap = new Map(chartData.times.map((t, i) => [t, chartData.values[i]]))
@@ -372,9 +373,10 @@ const generateCorrelationChart = async () => {
               barMaxWidth: 20,
             }
           : {
+              smooth: true,
+              symbol: 'none',
               itemStyle: { color: sensor.color },
               lineStyle: { width: 2 },
-              symbolSize: 4,
             }),
         connectNulls: true,
       })
@@ -469,17 +471,21 @@ const generateCorrelationChart = async () => {
       xAxis: {
         type: 'category',
         name: '时间',
-        nameLocation: 'center',
-        nameGap: 40,
-        nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#606266' },
+        nameLocation: 'end',
+        nameGap: 10,
+        nameTextStyle: { fontSize: 12, color: '#909399' },
         data: sortedTimes,
         axisLabel: {
-          fontSize: 11,
+          fontSize: 10,
           rotate: 30,
           interval: xLabelInterval,
           formatter: (val: string) => {
-            // 简化时间格式：MM-DD HH:mm
+            // 简化时间格式：MM月DD日 HH:mm
             const t = val.replace('T', ' ')
+            const parts = t.split(/[\s-:]/)  // ['2026','06','23','14','30','00']
+            if (parts.length >= 5) {
+              return `${Number(parts[1])}月${Number(parts[2])}日 ${parts[3]}:${parts[4]}`
+            }
             return t.slice(5, 16)
           },
         },

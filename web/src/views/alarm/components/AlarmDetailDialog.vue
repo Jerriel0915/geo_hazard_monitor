@@ -633,16 +633,34 @@ const updateChart = () => {
         return `<div style="padding:8px"><div style="font-weight:bold;margin-bottom:4px">${p.name}</div><div>${main.seriesName || main.attrName}: <span style="color:${isAlarm ? '#f56c6c' : '#409eff'}">${p.value}${main.unit || ''}</span></div>${isAlarm ? '<div style="color:#f56c6c;margin-top:4px">⚠️ 告警触发点</div>' : ''}</div>`
       }
     },
-    grid: { left: '3%', right: '4%', bottom: '8%', top: '18%', containLabel: true },
+    grid: { left: '3%', right: '8%', bottom: '12%', top: '18%', containLabel: true },
     xAxis: {
       type: 'category', data: labels,
-      axisLabel: { rotate: 45, fontSize: 11, color: '#666' },
-      axisLine: { lineStyle: { color: '#ddd' } }
+      name: '时间',
+      nameLocation: 'end',
+      nameGap: 10,
+      nameTextStyle: { fontSize: 11, color: '#909399' },
+      axisLabel: {
+        rotate: 30,
+        fontSize: 10,
+        color: '#666',
+        interval: Math.max(1, Math.floor((labels || []).length / 8)),
+        formatter: (val: string) => {
+          const t = val.replace('T', ' ')
+          const parts = t.split(/[\s-:]/)
+          if (parts.length >= 5) {
+            return `${Number(parts[1])}月${Number(parts[2])}日 ${parts[3]}:${parts[4]}`
+          }
+          return t.slice(5, 16)
+        },
+      },
+      axisLine: { lineStyle: { color: '#c0c4cc' } }
     },
     yAxis: {
-      type: 'value', name: main.unit || '监测值',
+      type: 'value', name: main.attrName && main.unit ? `${main.attrName}(${main.unit})` : (main.unit || '监测值'),
       axisLabel: { fontSize: 12, color: '#666' },
-      axisLine: { lineStyle: { color: '#ddd' } },
+      nameTextStyle: { fontSize: 11, color: '#606266' },
+      axisLine: { show: true, lineStyle: { color: '#c0c4cc' } },
       splitLine: { lineStyle: { color: '#f0f0f0' } }
     },
     series: [{

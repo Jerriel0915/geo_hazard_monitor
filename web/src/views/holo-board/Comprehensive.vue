@@ -726,7 +726,7 @@ const initHazardTrendChart = () => {
       type: 'value',
       name: '新增隐患点',
       nameTextStyle: { color: '#6b7280', fontSize: 12 },
-      axisLine: { show: false },
+      axisLine: { show: true, lineStyle: { color: '#c0c4cc' } },
       axisTick: { show: false },
       axisLabel: { color: '#6b7280', fontSize: 12 },
       splitLine: { lineStyle: { color: '#f3f4f6' } }
@@ -736,10 +736,9 @@ const initHazardTrendChart = () => {
         name: '新增隐患点',
         type: 'line',
         smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
+        symbol: 'none',
         lineStyle: { width: 3, color: '#6366f1' },
-        itemStyle: { color: '#6366f1', borderColor: '#fff', borderWidth: 2 },
+        itemStyle: { color: '#6366f1' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'rgba(99, 102, 241, 0.3)' },
@@ -811,7 +810,8 @@ const initAlarmTrendChart = () => {
         fontSize: 12
       },
       axisLine: {
-        show: false
+        show: true,
+        lineStyle: { color: '#c0c4cc' }
       },
       axisTick: {
         show: false
@@ -831,6 +831,7 @@ const initAlarmTrendChart = () => {
         name: '一级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#ef4444',
         data: [...alarmTrendData.value.level1, null, null]
       },
@@ -838,6 +839,7 @@ const initAlarmTrendChart = () => {
         name: '二级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#f97316',
         data: [...alarmTrendData.value.level2, null, null]
       },
@@ -845,6 +847,7 @@ const initAlarmTrendChart = () => {
         name: '三级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#eab308',
         data: [...alarmTrendData.value.level3, null, null]
       },
@@ -852,6 +855,7 @@ const initAlarmTrendChart = () => {
         name: '四级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#22c55e',
         data: [...alarmTrendData.value.level4, null, null]
       },
@@ -859,6 +863,7 @@ const initAlarmTrendChart = () => {
         name: '合计',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#3b82f6',
         lineStyle: {
           width: 3
@@ -874,8 +879,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level1[alarmTrendData.value.level1.length - 1], ...alarmTrendData.value.forecastLevel1]
       },
       {
@@ -887,8 +891,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level2[alarmTrendData.value.level2.length - 1], ...alarmTrendData.value.forecastLevel2]
       },
       {
@@ -900,8 +903,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level3[alarmTrendData.value.level3.length - 1], ...alarmTrendData.value.forecastLevel3]
       },
       {
@@ -913,8 +915,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level4[alarmTrendData.value.level4.length - 1], ...alarmTrendData.value.forecastLevel4]
       },
       {
@@ -926,8 +927,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.total[alarmTrendData.value.total.length - 1], ...alarmTrendData.value.forecastTotal]
       }
     ]
