@@ -12,7 +12,8 @@
     <header class="header">
       <div class="header-left">
         <span class="logo">
-          <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <img v-if="systemLogo" :src="systemLogo" alt="logo" class="logo-img" />
+          <svg v-else viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M40 5L70 25V55L40 75L10 55V25L40 5Z" fill="url(#logoGrad)" opacity="0.9"/>
                 <path d="M40 15L60 30V50L40 65L20 50V30L40 15Z" fill="white" opacity="0.3"/>
                 <path d="M40 25L50 32V48L40 55L30 48V32L40 25Z" fill="white" opacity="0.5"/>
@@ -25,7 +26,7 @@
                 </defs>
               </svg>
         </span>
-        <span class="title">地质灾害监测预警系统v1.0</span>
+        <span class="title">{{ systemName }}</span>
         <span class="home-icon-wrapper" @click="goToDashboard">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round" class="home-icon">
@@ -322,6 +323,7 @@ import {ElNotification} from 'element-plus'
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import draggable from 'vuedraggable'
+import request from '@/utils/request'
 
 
 /** 通知中心统一消息结构（公告 + 事件共用） */
@@ -360,6 +362,11 @@ const tabs = ref<Array<{ name: string; label: string }>>([])
 const activeTab = ref('Dashboard')
 
 /** 首页 tab（锁定不可拖、不可关） */
+/** 系统名称 / Logo / 版权 — 从 sys_config 动态加载 */
+const systemName = ref('地质灾害监测预警系统')
+const systemLogo = ref('')
+const systemCopyright = ref('')
+
 const dashboardTab = computed(() => tabs.value.find(t => t.name === 'Dashboard'))
 
 /** 其他 tabs（可拖动），通过 getter/setter 桥接到 tabs.value */
@@ -874,6 +881,21 @@ onMounted(async () => {
   fetchEventMessages()
   startNoticeSSE()
   startAlarmSSE()
+
+  // 加载系统外观配置（系统名称 / Logo / 版权）
+  try {
+    const [nameRes, logoRes, copyrightRes] = await Promise.all([
+      request.get<any>('/system/config/configKey/sys_name'),
+      request.get<any>('/system/config/configKey/sys_logo'),
+      request.get<any>('/system/config/configKey/sys_copyright'),
+    ]);
+    const n = (nameRes as any)?.data ?? (nameRes as any)?.msg
+    if (n && typeof n === 'string' && n.trim()) systemName.value = n.trim()
+    const l = (logoRes as any)?.data ?? (logoRes as any)?.msg
+    if (l && typeof l === 'string' && l.trim()) systemLogo.value = l.trim()
+    const c = (copyrightRes as any)?.data ?? (copyrightRes as any)?.msg
+    if (c && typeof c === 'string' && c.trim()) systemCopyright.value = c.trim()
+  } catch { /* 未配置时使用默认值 */ }
 })
 
 onUnmounted(() => {
@@ -1039,6 +1061,12 @@ const goToDashboard = () => {
   height: 44px;
 }
 
+.logo-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 6px;
+}
 
 .logo .icon {
   width: 24px;
