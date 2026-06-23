@@ -16,7 +16,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">坐标</span>
-        <span class="info-value">{{ hazardPoint ? `${hazardPoint.latitude.toFixed(4)}, ${hazardPoint.longitude.toFixed(4)}` : '--' }}</span>
+        <span class="info-value">{{ hazardPoint ? `${hazardPoint.latitude.toFixed(6)}, ${hazardPoint.longitude.toFixed(6)}` : '--' }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">分组</span>

@@ -223,7 +223,8 @@ import {
   type RateByTypeVO,
   type SensorDistributionVO
 } from '@/api/monitor'
-import { getPendingAlarms, getHistoryAlarms } from '@/api/alarm'
+import { getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmTrend, type AlarmTrendVO } from '@/api/alarm'
+import { getMonitorRates, getMapOverview, type HazardPointMapVO, type HazardPointMonitorRate } from '@/api/hazardPoint'
 
 import {TIANDITU_KEY} from '@/composables/useLeafletMap'
 import ResourceSection from './components/ResourceSection.vue'
@@ -239,15 +240,11 @@ interface HazardPoint {
   name: string
   code: string
   type: string
-  location: string
+  description: string
   level: string
-  x: number
-  y: number
+  longitude: number
+  latitude: number
   hasAlarm: boolean
-  displacement: number
-  rainfall: number
-  waterLevel: number
-  inclination: number
   deviceCount: number
   devices: DeviceInfo[]
 }
@@ -266,14 +263,7 @@ const monitorRateChart = ref<HTMLDivElement | null>(null)
 let monitorRateChartInstance: echarts.ECharts | null = null
 
 // 隐患点平均监测率数据
-const monitorRateData = ref([
-  { name: '龙潭寺滑坡点', rate: 98.5, deviceCount: 5 },
-  { name: '大坝监测点', rate: 95.2, deviceCount: 4 },
-  { name: '边坡监测点', rate: 88.6, deviceCount: 3 },
-  { name: '泥石流隐患点', rate: 92.3, deviceCount: 6 },
-  { name: '地面沉降点', rate: 96.8, deviceCount: 3 },
-  { name: '桥梁监测点', rate: 99.1, deviceCount: 4 }
-])
+const monitorRateData = ref<Array<{ name: string; rate: number; deviceCount: number }>>([])
 const showPopover = () => {
   if (hideTimer) {
     clearTimeout(hideTimer);
@@ -323,7 +313,7 @@ const alarmHistoryCount = ref(0)
 const summaryStats = computed(() => ({
   recentThreeMonthsAlarms: alarmPendingCount.value + alarmHistoryCount.value,
   totalAlarms: alarmHistoryCount.value,
-  totalMonitorCount: 0,
+  totalMonitorCount: overview.value?.totalMonitorCount ?? 0,
   hazardPointCount: overview.value?.hazardPoint?.total ?? 0,
   deviceCount: overview.value?.device?.total ?? 0
 }))
@@ -348,102 +338,22 @@ const hazardTrendData = computed(() => ({
 }))
 
 
-const alarmTrendData = ref({
-  months: ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
-  level1: [5, 8, 12, 10, 15, 12, 14, 16, 12, 14, 10, 12],
-  level2: [8, 12, 15, 14, 18, 15, 17, 20, 16, 18, 14, 15],
-  level3: [3, 5, 7, 6, 8, 6, 7, 8, 6, 7, 5, 6],
-  level4: [2, 3, 4, 3, 5, 4, 4, 5, 4, 4, 3, 4],
-  total: [18, 28, 38, 33, 46, 37, 42, 49, 38, 43, 32, 37],
-  forecastTotal: [35, 38],
-  forecastLevel1: [11, 12],
-  forecastLevel2: [16, 17],
-  forecastLevel3: [6, 6],
-  forecastLevel4: [4, 4]
+const alarmTrendData = ref<AlarmTrendVO>({
+  months: [],
+  level1: [],
+  level2: [],
+  level3: [],
+  level4: [],
+  total: [],
+  forecastMonths: [],
+  forecastLevel1: [],
+  forecastLevel2: [],
+  forecastLevel3: [],
+  forecastLevel4: [],
+  forecastTotal: []
 })
 
-const monitorChartLinePath = computed(() => {
-  const points = monitorDataPoints.value
-  if (points.length === 0) return ''
-  return points.map((p: ChartPoint, i: number) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-})
-
-const monitorChartAreaPath = computed(() => {
-  const linePath = monitorChartLinePath.value
-  if (!linePath) return ''
-  const points = monitorDataPoints.value
-  const lastX = points[points.length - 1]?.x || 500
-  return `${linePath} L ${lastX} 180 L 25 180 Z`
-})
-
-const currentChartYLabels = computed(() => ['30', '25', '20', '15', '10', '5', '0'])
-
-const currentChartXLabels = computed(() => ['0时', '4时', '8时', '12时', '16时', '20时'])
-
-const monitorDataTable = ref([
-  {
-    time: '2024-01-15 00:00:00',
-    deviceName: 'GNSS接收机-A1',
-    sensorName: '节点1',
-    value: '12.3',
-    unit: 'mm',
-    direction: 'X'
-  },
-  {
-    time: '2024-01-15 04:00:00',
-    deviceName: 'GNSS接收机-A1',
-    sensorName: '节点1',
-    value: '15.1',
-    unit: 'mm',
-    direction: 'X'
-  },
-  {
-    time: '2024-01-15 08:00:00',
-    deviceName: 'GNSS接收机-A1',
-    sensorName: '节点1',
-    value: '18.2',
-    unit: 'mm',
-    direction: 'X'
-  },
-  {
-    time: '2024-01-15 12:00:00',
-    deviceName: 'GNSS接收机-A1',
-    sensorName: '节点1',
-    value: '22.0',
-    unit: 'mm',
-    direction: 'X'
-  },
-  {
-    time: '2024-01-15 16:00:00',
-    deviceName: 'GNSS接收机-A1',
-    sensorName: '节点1',
-    value: '19.5',
-    unit: 'mm',
-    direction: 'X'
-  },
-  {
-    time: '2024-01-15 20:00:00',
-    deviceName: 'GNSS接收机-A1',
-    sensorName: '节点1',
-    value: '16.8',
-    unit: 'mm',
-    direction: 'X'
-  }
-])
-
-const monitorDataPoints = computed<ChartPoint[]>(() => {
-  const values = monitorDataTable.value.map(item => Number(item.value))
-  const maxValue = Math.max(...values, 30)
-  const chartWidth = 475
-  const chartHeight = 180
-  const startX = 25
-  const stepX = values.length > 1 ? chartWidth / (values.length - 1) : 0
-
-  return values.map((value, index) => ({
-    x: startX + index * stepX,
-    y: chartHeight - (value / maxValue) * chartHeight
-  }))
-})
+// 监测数据表格 — 待接入 getLatestData(hazardPointId) 后替换为实时数据
 
 // 初始化隐患点平均监测率图表（纯柱状图）
 const initMonitorRateChart = () => {
@@ -560,7 +470,7 @@ const initMap = () => {
       iconAnchor: [16, 16]
     })
 
-    const marker = L.marker([point.y / 100 * 0.1 + 30.55, point.x / 100 * 0.2 + 104.0], {
+    const marker = L.marker([point.latitude, point.longitude], {
       icon: customIcon
     }).addTo(leafletMap)
 
@@ -603,17 +513,10 @@ const initMap = () => {
           <div class="hpv2-dash"></div>
           <div class="hpv2-row">
             <div class="hpv2-cell">
-              <span class="hpv2-label">位置</span>
-              <span class="hpv2-val">${point.location}</span>
-            </div>
-            <div class="hpv2-cell">
               <span class="hpv2-label">状态</span>
               <span class="hpv2-badge" style="background:${statusBg};color:${statusColor}">${statusText}</span>
             </div>
-          </div>
-          <div class="hpv2-dash"></div>
-          <div class="hpv2-row single">
-            <div class="hpv2-cell full">
+            <div class="hpv2-cell">
               <span class="hpv2-label">预警等级</span>
               <span class="hpv2-level" style="background:${levelInfo.bg};color:${levelInfo.color}">${levelInfo.text}</span>
             </div>
@@ -646,7 +549,7 @@ const initMap = () => {
 const handleHazardClick = (point: HazardPoint) => {
   selectedPoint.value = point
   if (map) {
-    map.flyTo([point.y / 100 * 0.1 + 30.55, point.x / 100 * 0.2 + 104.0], 14)
+    map.flyTo([point.latitude, point.longitude], 14)
   }
 }
 
@@ -670,36 +573,50 @@ onMounted(async () => {
   } catch { /* use defaults */
   }
 
-  // 获取待办告警（实时告警事件 + 等级统计）
+  // 获取待办告警（实时告警事件）
   try {
     const pending = await getPendingAlarms({ pageNum: 1, pageSize: 5 })
     const rows = pending?.rows ?? []
     alarmStats.value.pendingCount = alarmPendingCount.value = pending?.total ?? 0
-    // 按等级实时统计（与 DashboardFull 的 healthScore 两码事）
     const levelMap: Record<number, { name: string; key: string; color: string }> = {
       1: { name: '红色告警', key: 'red', color: '#dc2626' },
       2: { name: '橙色告警', key: 'orange', color: '#ea580c' },
       3: { name: '黄色告警', key: 'yellow', color: '#ca8a04' },
-      4: { name: '绿色提示', key: 'green', color: '#16a34a' }
+      4: { name: '蓝色提示', key: 'blue', color: '#1890ff' }
     }
-    const levelCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
-    rows.forEach((item: any) => {
-      const lv = item.alarmLevel
-      if (lv && levelCounts[lv] !== undefined) levelCounts[lv]++
-    })
-    // 等级统计 — 基于当前页面的实际返回
-    // TODO: 后端提供 /alarm/records/level-stats 独立接口后替换
-    alarmStats.value.levelStats = [1, 2, 3, 4].map(lv => ({
-      ...levelMap[lv],
-      count: levelCounts[lv]
-    }))
     alarmStats.value.recentAlarms = rows.map((item: any) => ({
       id: item.id,
       title: item.alarmMessage || item.hazardPointName || '告警事件',
       source: item.deviceName || item.sensorName || '',
       time: item.lastTriggerTime ? item.lastTriggerTime.substring(11, 16) : '',
-      level: levelMap[item.alarmLevel]?.key ?? 'green'
+      level: levelMap[item.alarmLevel]?.key ?? 'blue'
     }))
+  } catch { /* keep defaults */ }
+
+  // 获取告警等级统计（独立接口，所有待处理告警准确计数）
+  try {
+    const levelStatsRes = await getAlarmLevelStats()
+    const levelMap: Record<number, { name: string; key: string; color: string }> = {
+      1: { name: '红色告警', key: 'red', color: '#dc2626' },
+      2: { name: '橙色告警', key: 'orange', color: '#ea580c' },
+      3: { name: '黄色告警', key: 'yellow', color: '#ca8a04' },
+      4: { name: '蓝色提示', key: 'blue', color: '#1890ff' }
+    }
+    const data = (levelStatsRes as any)?.data ?? levelStatsRes ?? {}
+    alarmStats.value.levelStats = [1, 2, 3, 4].map(lv => ({
+      ...levelMap[lv],
+      count: Number(data[lv]) || 0
+    }))
+  } catch { /* keep defaults */ }
+
+  // 获取告警趋势
+  try {
+    const trendRes = await getAlarmTrend(12)
+    const td = (trendRes as any)?.data ?? trendRes
+    if (td && td.months?.length > 0) {
+      alarmTrendData.value = td as AlarmTrendVO
+      initAlarmTrendChart()
+    }
   } catch { /* keep defaults */ }
 
   // 获取历史告警总数
@@ -707,8 +624,42 @@ onMounted(async () => {
     const history = await getHistoryAlarms({ pageNum: 1, pageSize: 1 })
     alarmStats.value.historyCount = alarmHistoryCount.value = history?.total ?? 0
   } catch { /* keep defaults */ }
-  initAlarmTrendChart()
+
+  // 获取隐患点设备监测率
+  try {
+    const mrRes = await getMonitorRates(60)
+    const data = (mrRes as any)?.data ?? mrRes ?? []
+    if (Array.isArray(data) && data.length > 0) {
+      monitorRateData.value = data.map((item: HazardPointMonitorRate) => ({
+        name: item.hazardPointName,
+        rate: item.totalDevices > 0 ? Math.round(item.activeDevices * 10000 / item.totalDevices) / 100 : 0,
+        deviceCount: item.totalDevices
+      }))
+    }
+  } catch { /* keep defaults */ }
   initMonitorRateChart()
+
+  // 获取地图总览数据
+  try {
+    const mapRes = await getMapOverview()
+    const data = (mapRes as any)?.data ?? mapRes ?? []
+    if (Array.isArray(data) && data.length > 0) {
+      hazardPoints.value = data.map((item: HazardPointMapVO) => ({
+        id: item.id,
+        name: item.name,
+        code: item.code,
+        type: item.type || '',
+        description: item.description || '',
+        level: item.level || 'low',
+        longitude: item.longitude,
+        latitude: item.latitude,
+        hasAlarm: item.hasAlarm,
+        deviceCount: item.deviceCount,
+        devices: item.devices?.map((d: any) => ({ name: d.name, status: d.status as DeviceInfo['status'] })) ?? []
+      }))
+    }
+  } catch { /* keep defaults */ }
+
   initHazardTrendChart()
   setTimeout(() => {
     animateStats.value = true
@@ -840,7 +791,7 @@ const initAlarmTrendChart = () => {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: [...alarmTrendData.value.months, '2026-06', '2026-07'],
+      data: [...alarmTrendData.value.months, ...alarmTrendData.value.forecastMonths],
       axisLine: {
         lineStyle: {
           color: '#e2e8f0'
@@ -925,7 +876,7 @@ const initAlarmTrendChart = () => {
         },
         symbol: 'diamond',
         symbolSize: 6,
-        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level1[11], ...alarmTrendData.value.forecastLevel1]
+        data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level1[alarmTrendData.value.level1.length - 1], ...alarmTrendData.value.forecastLevel1]
       },
       {
         name: '预测二级',
@@ -938,7 +889,7 @@ const initAlarmTrendChart = () => {
         },
         symbol: 'diamond',
         symbolSize: 6,
-        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level2[11], ...alarmTrendData.value.forecastLevel2]
+        data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level2[alarmTrendData.value.level2.length - 1], ...alarmTrendData.value.forecastLevel2]
       },
       {
         name: '预测三级',
@@ -951,7 +902,7 @@ const initAlarmTrendChart = () => {
         },
         symbol: 'diamond',
         symbolSize: 6,
-        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level3[11], ...alarmTrendData.value.forecastLevel3]
+        data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level3[alarmTrendData.value.level3.length - 1], ...alarmTrendData.value.forecastLevel3]
       },
       {
         name: '预测四级',
@@ -964,7 +915,7 @@ const initAlarmTrendChart = () => {
         },
         symbol: 'diamond',
         symbolSize: 6,
-        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.level4[11], ...alarmTrendData.value.forecastLevel4]
+        data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level4[alarmTrendData.value.level4.length - 1], ...alarmTrendData.value.forecastLevel4]
       },
       {
         name: '预测合计',
@@ -977,7 +928,7 @@ const initAlarmTrendChart = () => {
         },
         symbol: 'diamond',
         symbolSize: 6,
-        data: [null, null, null, null, null, null, null, null, null, null, null, alarmTrendData.value.total[11], ...alarmTrendData.value.forecastTotal]
+        data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.total[alarmTrendData.value.total.length - 1], ...alarmTrendData.value.forecastTotal]
       }
     ]
   }
@@ -1051,161 +1002,12 @@ const alarmStats = ref({
     {name: '红色告警', key: 'red', count: 0},
     {name: '橙色告警', key: 'orange', count: 0},
     {name: '黄色告警', key: 'yellow', count: 0},
-    {name: '绿色提示', key: 'green', count: 0}
+    {name: '蓝色提示', key: 'blue', count: 0}
   ] as { name: string; key: string; count: number }[],
   recentAlarms: [] as { id: number; title: string; source: string; time: string; level: string }[]
 })
 
-const hazardPoints = ref<HazardPoint[]>([
-  {
-    id: 1,
-    name: '龙潭寺滑坡点',
-    code: 'HZ-001',
-    type: '滑坡',
-    location: '龙潭寺镇西北侧',
-    level: 'high',
-    x: 35,
-    y: 28,
-    hasAlarm: true,
-    displacement: 15.6,
-    rainfall: 128.5,
-    waterLevel: 2.3,
-    inclination: 12.5,
-    deviceCount: 5,
-    devices: [{name: 'GNSS接收机-A1', status: 'online'}, {name: '位移计-B1', status: 'online'}, {
-      name: '雨量计-C1',
-      status: 'online'
-    }, {name: '视频监控-D1', status: 'online'}, {name: '裂缝计-E1', status: 'warning'}]
-  },
-  {
-    id: 2,
-    name: '大坝监测点',
-    code: 'HZ-002',
-    type: '坝体',
-    location: 'ZZ水库大坝',
-    level: 'medium',
-    x: 65,
-    y: 45,
-    hasAlarm: false,
-    displacement: 5.2,
-    rainfall: 98.3,
-    waterLevel: 15.8,
-    inclination: 3.2,
-    deviceCount: 4,
-    devices: [{name: '渗压计-A2', status: 'online'}, {name: '水位计-B2', status: 'online'}, {
-      name: '应变计-C2',
-      status: 'online'
-    }, {name: '视频监控-D2', status: 'online'}]
-  },
-  {
-    id: 3,
-    name: '边坡监测点',
-    code: 'HZ-003',
-    type: '边坡',
-    location: '高速公路K120段',
-    level: 'low',
-    x: 45,
-    y: 68,
-    hasAlarm: false,
-    displacement: 2.1,
-    rainfall: 76.2,
-    waterLevel: 0,
-    inclination: 1.8,
-    deviceCount: 3,
-    devices: [{name: 'GNSS接收机-A3', status: 'online'}, {name: '倾角仪-B3', status: 'online'}, {
-      name: '视频监控-C3',
-      status: 'offline'
-    }]
-  },
-  {
-    id: 4,
-    name: '泥石流隐患点',
-    code: 'HZ-004',
-    type: '泥石流',
-    location: '山区公路沿线',
-    level: 'high',
-    x: 78,
-    y: 35,
-    hasAlarm: true,
-    displacement: 28.5,
-    rainfall: 156.8,
-    waterLevel: 1.2,
-    inclination: 8.5,
-    deviceCount: 6,
-    devices: [{name: '雨量计-A4', status: 'online'}, {name: '地声传感器-B4', status: 'online'}, {
-      name: '位移计-C4',
-      status: 'online'
-    }, {name: '视频监控-D4', status: 'online'}, {name: '振动传感器-E4', status: 'warning'}, {
-      name: '裂缝计-F4',
-      status: 'online'
-    }]
-  },
-  {
-    id: 5,
-    name: '地面沉降点',
-    code: 'HZ-005',
-    type: '沉降',
-    location: '工业园区A区',
-    level: 'medium',
-    x: 22,
-    y: 55,
-    hasAlarm: false,
-    displacement: 8.3,
-    rainfall: 65.4,
-    waterLevel: 4.5,
-    inclination: 0.5,
-    deviceCount: 3,
-    devices: [{name: '沉降计-A5', status: 'online'}, {name: '水位计-B5', status: 'online'}, {
-      name: '视频监控-C5',
-      status: 'online'
-    }]
-  },
-  {
-    id: 6,
-    name: '桥梁监测点',
-    code: 'HZ-006',
-    type: '桥梁',
-    location: 'XX大桥',
-    level: 'low',
-    x: 55,
-    y: 35,
-    hasAlarm: false,
-    displacement: 1.2,
-    rainfall: 88.6,
-    waterLevel: 0,
-    inclination: 0.3,
-    deviceCount: 4,
-    devices: [{name: '应变计-A6', status: 'online'}, {name: '位移计-B6', status: 'online'}, {
-      name: '倾角仪-C6',
-      status: 'online'
-    }, {name: '视频监控-D6', status: 'online'}]
-  }
-])
-
-const chartYLabels = ['30', '25', '20', '15', '10', '5', '0']
-const chartXLabels = ['0时', '4时', '8时', '12时', '16时', '20时']
-
-const chartDataPoints = computed(() => {
-  const data = [12, 15, 18, 22, 19, 16]
-  return data.map((value, index) => ({
-    x: index * 80 + 20,
-    y: 150 - (value / 30) * 150
-  }))
-})
-
-const chartLinePath = computed(() => {
-  const points = chartDataPoints.value
-  if (points.length === 0) return ''
-  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-})
-
-const chartAreaPath = computed(() => {
-  const linePath = chartLinePath.value
-  if (!linePath) return ''
-  const points = chartDataPoints.value
-  const lastX = points[points.length - 1]?.x || 400
-  return `${linePath} L ${lastX} 150 L 20 150 Z`
-})
+const hazardPoints = ref<HazardPoint[]>([])
 
 const handleMapZoom = () => {
 }
@@ -2464,6 +2266,10 @@ const trendAreaPath = computed(() => {
   background: #dc2626;
 }
 
+.level-dot.blue {
+  background: #1890ff;
+}
+
 .level-dot.orange {
   background: #ea580c;
 }
@@ -2532,6 +2338,10 @@ const trendAreaPath = computed(() => {
 
 .alarm-level-dot.red {
   background: #dc2626;
+}
+
+.alarm-level-dot.blue {
+  background: #1890ff;
 }
 
 .alarm-level-dot.orange {

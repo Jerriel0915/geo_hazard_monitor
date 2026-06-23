@@ -72,13 +72,14 @@ public interface IDeviceSensorService {
     List<DeviceSensor> selectSensorList(DeviceSensor sensor);
 
     /**
-     * 校验传感器编码是否唯一
+     * 校验传感器编码在指定设备内是否唯一
      *
+     * @param deviceId   设备ID
      * @param sensorCode 传感器编码
      * @param id         排除的传感器ID（更新时使用）
      * @return true-唯一，false-已存在
      */
-    boolean checkSensorCodeUnique(String sensorCode, Long id);
+    boolean checkSensorCodeUnique(Long deviceId, String sensorCode, Long id);
 
     /**
      * 预测指定设备下一个可用的传感器序号。
@@ -104,14 +105,6 @@ public interface IDeviceSensorService {
      * @param attrId   属性ID
      */
     void deleteSensorAttribute(Long sensorId, Long attrId);
-
-    /**
-     * 根据传感器编码查询传感器。
-     *
-     * @param sensorCode 传感器编码
-     * @return 传感器详情（空 Optional 表示不存在）
-     */
-    java.util.Optional<DeviceSensor> findBySensorCode(String sensorCode);
 
     /**
      * 根据设备ID和传感器编码查询该传感器下所有属性编码列表（按监测内容排序）。

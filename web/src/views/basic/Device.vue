@@ -1,4 +1,3 @@
-<!--设备管理-->
 <template>
   <div class="page">
     <div class="header">
@@ -245,39 +244,37 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="安装位置">
-              <div class="install-location-wrap">
-                <el-input
-                    v-model="locationText"
-                    size="small"
-                    :disabled="isView"
-                    class="location-input"
-                    @blur="onLocationBlur"
-                />
-                <el-button
-                    size="small"
-                    :disabled="isView"
-                    class="map-pick-btn"
-                    @click="openMapPicker"
-                    title="在地图上获取坐标"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                    <circle cx="12" cy="10" r="3"/>
-                  </svg>
-                </el-button>
-              </div>
+              <el-input
+                v-model="locationText"
+                placeholder="经度,纬度（例如 104.063456, 30.671234）"
+                :disabled="isView"
+                @blur="onLocationBlur"
+              >
+                <template #suffix>
+                  <el-button link :disabled="isView" @click="openMapPicker" title="在地图上获取坐标" class="map-btn-inline">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  </el-button>
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
 
-      <template #footer v-if="!isView">
+      <template #footer v-if="isView">
+        <el-button @click="dialogVisible = false">关闭</el-button>
+      </template>
+      <template #footer v-else-if="isCopyMode">
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
+        <el-button @click="handleSubmit(false)">仅复制设备</el-button>
+        <el-button type="primary" @click="handleSubmit(true)">确定（复制设备及传感器）</el-button>
       </template>
       <template #footer v-else>
-        <el-button @click="dialogVisible = false">关闭</el-button>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmit()" :loading="submitLoading">确定</el-button>
       </template>
     </el-dialog>
 
@@ -365,6 +362,7 @@
         :title="`传感器配置[${currentSensorDevice?.name || ''}]`"
         width="900px"
         :close-on-click-modal="false"
+        :before-close="handleSensorDialogClose"
         destroy-on-close
     >
       <div class="device-info-bar">
@@ -378,18 +376,18 @@
           <span class="btn-icon">+</span> 添加传感器
         </el-button>
       </div>
-      <el-table :data="sensorTableData" border size="small" v-loading="sensorLoading">
-        <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center" />
-        <el-table-column prop="sensorName" label="传感器名称" width="150" align="center" />
-        <el-table-column prop="monitorTypeName" label="监测类型" width="180" align="center" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
+      <el-table :data="isDraftMode ? draftSensors : sensorTableData" border size="small" v-loading="sensorLoading">
+        <el-table-column prop="sensorCode" label="传感器编号" width="120" align="center" />
+        <el-table-column prop="sensorName" label="传感器名称" width="130" align="center" />
+        <el-table-column prop="monitorTypeName" label="监测类型" width="160" align="center" />
+        <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="属性配置" min-width="320" align="center">
+        <el-table-column label="属性配置" align="center">
           <template #default="{ row }">
             <div v-if="row.attrList?.length" class="attr-config-list">
               <div v-for="attr in row.attrList" :key="attr.id || attr.attrCode" class="attr-config-item">
@@ -401,7 +399,7 @@
             <span v-else class="empty-text">暂无属性</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
+        <el-table-column label="操作" width="100" align="center">
           <template #default="{ row }">
             <el-button type="text" size="small" @click="handleEditSensor(row)">编辑</el-button>
             <el-button type="text" size="small" class="danger-text" @click="handleDeleteSensor(row)">删除</el-button>
@@ -409,7 +407,12 @@
         </el-table-column>
       </el-table>
 
-      <template #footer>
+      <template #footer v-if="isDraftMode">
+        <el-button @click="handleDiscardDraft">取消</el-button>
+        <el-button @click="handleBackToDevice">返回上一步</el-button>
+        <el-button type="primary" @click="commitDraft" :loading="submitLoading">确认（提交所有修改）</el-button>
+      </template>
+      <template #footer v-else>
         <el-button @click="sensorDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
@@ -467,10 +470,10 @@
         </el-divider>
 
         <el-table :data="sensorFormData.attrList" border size="small">
-          <el-table-column prop="attrCode" label="属性编码" width="150" align="center" />
-          <el-table-column prop="attrName" label="属性名称" width="150" align="center" />
-          <el-table-column prop="unit" label="单位" width="100" align="center" />
-          <el-table-column label="初始值" width="140" align="center">
+          <el-table-column prop="attrCode" label="属性编码" width="120" align="center" />
+          <el-table-column prop="attrName" label="属性名称" width="120" align="center" />
+          <el-table-column prop="unit" label="单位" width="70" align="center" />
+          <el-table-column label="初始值" width="130" align="center">
             <template #default="{ row }">
               <el-input-number
                   v-model="row.initialValue"
@@ -482,13 +485,12 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="量程范围" width="180" align="center">
+          <el-table-column label="量程范围" width="160" align="center">
             <template #default="{ row }">
               {{ row.rangeMin }} ~ {{ row.rangeMax }}
             </template>
           </el-table-column>
-          <el-table-column prop="unit" label="单位" width="80" align="center" />
-          <el-table-column label="操作" width="80" align="center">
+          <el-table-column label="操作" width="70" align="center">
             <template #default="{ $index }">
               <el-button type="danger" text size="small" @click="handleDeleteAttr($index)">删除</el-button>
             </template>
@@ -538,27 +540,6 @@
         @confirm="onMapConfirm"
     />
 
-    <!-- 复制设备弹窗 -->
-    <el-dialog
-        v-model="copyDialogVisible"
-        title="复制设备"
-        width="480px"
-        :close-on-click-modal="false"
-        destroy-on-close
-    >
-      <el-form ref="copyFormRef" :model="copyFormData" :rules="copyFormRules" label-width="80px">
-        <el-form-item label="设备编号" prop="code">
-          <el-input v-model="copyFormData.code" placeholder="请输入新设备编号" />
-        </el-form-item>
-        <el-form-item label="设备名称" prop="name">
-          <el-input v-model="copyFormData.name" placeholder="请输入新设备名称" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="copyDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleCopyConfirm" :loading="copySubmitLoading">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -572,7 +553,7 @@ import DeviceDetail from './components/DeviceDetail.vue'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import MapLocationPickerDialog from '@/components/map/MapLocationPickerDialog.vue'
 import {type LatLng} from '@/lib/boundaryCoords'
-import {changeDeviceAuthStatus, type DeviceAuthAccount, getDeviceAuthAccount, resetDevicePassword} from '@/api/device'
+import {changeDeviceAuthStatus, copyDevice as copyDeviceApi, type DeviceAuthAccount, getDeviceAuthAccount, resetDevicePassword} from '@/api/device'
 import {getMonitorTypeListWithContents} from '@/api/monitorType'
 import {getHazardPointPage} from '@/api/hazardPoint'
 import {
@@ -592,13 +573,14 @@ import {type DeviceItem, useDeviceCrud} from './composables/useDeviceCrud'
 const {
   searchKeyword, searchStatus,
   loading, submitLoading, tableData, currentPage, pageSize, total,
-  dialogVisible, dialogTitle, isEdit, isView, formRef, formData, formRules,
+  dialogVisible, dialogTitle, isEdit, isView, isCopyMode, formRef, formData, formRules,
   detailDialogVisible, currentRow,
   getStatusType, nowString,
   loadTableData, fetchDetail,
   handleSearch, handleReset, handleSizeChange, handlePageChange,
-  handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopyOpen, handleCopyConfirm, handleExport,
-  copyDialogVisible, copyFormRef, copyFormData, copyFormRules, copySubmitLoading,
+  handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleExport,
+  createDevice, openCopyDialog,
+  draftMode, draftSourceId, draftCopySensors, clearDraft,
 } = useDeviceCrud()
 
 const route = useRoute()
@@ -687,9 +669,23 @@ const authDialogVisible = ref(false)
 const currentAuthDevice = ref<DeviceItem | null>(null)
 const authAccount = ref<DeviceAuthAccount | null>(null)
 
+// ── Draft mode（新增/复制后暂存传感器草稿，统一提交）──
+interface SensorDraftItem {
+  tempId: number
+  sensorCode: string
+  sensorName: string
+  monitorTypeId: number | null
+  monitorTypeName: string
+  status: number
+  attrList: SensorAttrItem[]
+}
+
 const sensorDialogVisible = ref(false)
 const currentSensorDevice = ref<DeviceItem | null>(null)
 const sensorTableData = ref<SensorItem[]>([])
+const isDraftMode = ref(false)
+const draftSensors = ref<SensorDraftItem[]>([])
+let draftTempIdCounter = -1
 const sensorFormDialogVisible = ref(false)
 const sensorFormTitle = ref('新增传感器')
 const sensorFormMode = ref<'add' | 'edit'>('add')
@@ -738,7 +734,7 @@ const locationText = ref('')
 
 const syncFormToText = () => {
   if (formData.longitude != null && formData.latitude != null) {
-    locationText.value = `${formData.longitude}, ${formData.latitude}`
+    locationText.value = `${Number(formData.longitude).toFixed(6)}, ${Number(formData.latitude).toFixed(6)}`
   } else {
     locationText.value = ''
   }
@@ -765,7 +761,7 @@ const onLocationBlur = () => {
     if (!isNaN(lng) && !isNaN(lat)) {
       formData.longitude = lng
       formData.latitude = lat
-      locationText.value = `${lng}, ${lat}`
+      locationText.value = `${lng.toFixed(6)}, ${lat.toFixed(6)}`
       return
     }
   }
@@ -893,7 +889,7 @@ const handleMoreCommand = (command: string, row: DeviceItem) => {
     account: () => handleViewAuth(row),
     maintenance: () => handleMaintenance(row),
     sensors: () => handleConfigSensors(row),
-    copy: () => handleCopyOpen(row),
+    copy: () => openCopyDialog(row),
     delete: () => handleDelete(row),
   }
   map[command]?.()
@@ -1029,6 +1025,9 @@ const handleResetPassword = async () => {
 }
 
 const handleConfigSensors = async (row: DeviceItem) => {
+  isDraftMode.value = false
+  draftSensors.value = []
+  clearDraft()
   currentSensorDevice.value = row
   await loadSensorTableData(Number(row.id))
   sensorDialogVisible.value = true
@@ -1131,20 +1130,46 @@ const handleAddSensor = async () => {
   sensorFormMode.value = 'add'
   resetSensorForm()
   sensorFormDialogVisible.value = true
-  // 拉取当前设备的下一个预测序号（设备下未删除传感器数 +1）
-  nextSensorId.value = null
-  await fetchNextSensorCode()
-  if (!sensorCodeManuallyEdited.value) {
-    sensorFormData.sensorCode = computeSensorCodePlaceholder()
+  if (isDraftMode.value) {
+    // 草稿模式：使用本地计数器
+    nextSensorId.value = draftSensors.value.length + 1
+    if (!sensorCodeManuallyEdited.value) {
+      sensorFormData.sensorCode = computeSensorCodePlaceholder()
+    }
+  } else {
+    nextSensorId.value = null
+    await fetchNextSensorCode()
+    if (!sensorCodeManuallyEdited.value) {
+      sensorFormData.sensorCode = computeSensorCodePlaceholder()
+    }
   }
 }
 
-const handleEditSensor = async (row: SensorItem) => {
+const handleEditSensor = async (row: SensorItem | SensorDraftItem) => {
   sensorFormTitle.value = '编辑传感器'
   sensorFormMode.value = 'edit'
   resetSensorForm()
+  if (isDraftMode.value) {
+    // 草稿模式：从本地 draftSensors 查找
+    const draft = draftSensors.value.find(d => d.tempId === (row as SensorDraftItem).tempId)
+    if (draft) {
+      Object.assign(sensorFormData, {
+        id: undefined,
+        _tempId: draft.tempId,
+        sensorCode: draft.sensorCode,
+        sensorName: draft.sensorName,
+        monitorTypeId: draft.monitorTypeId,
+        monitorTypeName: draft.monitorTypeName || '',
+        status: draft.status,
+        attrList: draft.attrList.map(a => ({ ...a })),
+      })
+    }
+    sensorFormDialogVisible.value = true
+    return
+  }
+  // 正常模式：从 API 加载
   try {
-    const detail = await getSensorDetail(Number(row.id))
+    const detail = await getSensorDetail(Number((row as SensorItem).id))
     Object.assign(sensorFormData, {
       id: detail.id,
       sensorCode: detail.sensorCode,
@@ -1169,14 +1194,20 @@ const handleEditSensor = async (row: SensorItem) => {
   }
 }
 
-const handleDeleteSensor = (row: SensorItem) => {
+const handleDeleteSensor = (row: SensorItem | SensorDraftItem) => {
   ElMessageBox.confirm(`确定要删除传感器"${row.sensorName}"吗?`, '删除确认', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
+    if (isDraftMode.value) {
+      const idx = draftSensors.value.findIndex(d => d.tempId === (row as SensorDraftItem).tempId)
+      if (idx >= 0) draftSensors.value.splice(idx, 1)
+      ElMessage.success('已删除')
+      return
+    }
     try {
-      await deleteSensor(Number(row.id))
+      await deleteSensor(Number((row as SensorItem).id))
       ElMessage.success('删除成功')
       await loadSensorTableData(Number(currentSensorDevice.value?.id))
     } catch (error) {
@@ -1237,13 +1268,21 @@ const validateSensorAttrs = () => {
   return true
 }
 
-// 对当前设备已加载的 sensorTableData 做 sensorCode 快速查重，命中后再依赖后端兜底做全局校验
+// 对当前设备已加载的 sensorTableData / draftSensors 做 sensorCode 快速查重
 const validateSensorCode = () => {
   if (sensorFormMode.value !== 'add') {
     return true
   }
   const code = sensorFormData.sensorCode?.trim()
   if (!code) {
+    return true
+  }
+  if (isDraftMode.value) {
+    const conflict = draftSensors.value.find((s) => s.sensorCode === code)
+    if (conflict) {
+      ElMessage.warning(`传感器编号 ${code} 已被【${conflict.sensorName}】占用`)
+      return false
+    }
     return true
   }
   const conflict = sensorTableData.value.find((s) => s.sensorCode === code)
@@ -1273,7 +1312,7 @@ const buildSensorPayload = () => ({
 
 const handleDeleteAttr = async (index: number) => {
   const attr = sensorFormData.attrList[index]
-  if (attr.id) {
+  if (!isDraftMode.value && attr.id) {
     try {
       await deleteSensorAttribute(sensorFormData.id!, attr.id)
     } catch { /* ignore, frontend already removed */ }
@@ -1290,6 +1329,40 @@ const handleSensorSubmit = () => {
     sensorFormSubmitLoading.value = true
     try {
       const payload = buildSensorPayload()
+      if (isDraftMode.value) {
+        // 草稿模式：操作本地 draftSensors 数组
+        if (sensorFormMode.value === 'add') {
+          draftSensors.value.push({
+            tempId: --draftTempIdCounter,
+            sensorCode: payload.sensorCode,
+            sensorName: payload.sensorName,
+            monitorTypeId: sensorFormData.monitorTypeId,
+            monitorTypeName: sensorFormData.monitorTypeName,
+            status: sensorFormData.status,
+            attrList: sensorFormData.attrList.map(a => ({ ...a })),
+          })
+        } else {
+          // 编辑模式：更新草稿中的对应项
+          const tempId = (sensorFormData as any)._tempId
+          const idx = draftSensors.value.findIndex(d => d.tempId === tempId)
+          if (idx >= 0) {
+            draftSensors.value[idx] = {
+              ...draftSensors.value[idx],
+              sensorCode: payload.sensorCode,
+              sensorName: payload.sensorName,
+              monitorTypeId: sensorFormData.monitorTypeId!,
+              monitorTypeName: sensorFormData.monitorTypeName,
+              status: sensorFormData.status,
+              attrList: sensorFormData.attrList.map(a => ({ ...a })),
+            }
+          }
+        }
+        ElMessage.success('已保存到草稿')
+        sensorFormDialogVisible.value = false
+        return
+      }
+
+      // 正常模式：调用 API
       if (sensorFormMode.value === 'add') {
         await createSensor(Number(currentSensorDevice.value?.id), payload)
         ElMessage.success('新增成功')
@@ -1320,6 +1393,150 @@ const handleDeviceIconSelect = (item: { code: string; name: string; icon: string
   formData.iconPath = item.path
   deviceIconDialogVisible.value = false
 }
+
+// ── Draft 提交流程 ──
+const computeCopySuffix = (original: string): string => {
+  const match = original.match(/^(.+)_(\d+)$/)
+  if (match) {
+    return `${match[1]}_${parseInt(match[2]) + 1}`
+  }
+  return `${original}_1`
+}
+
+const commitDraft = async () => {
+  let deviceId: number | undefined
+  const mode = draftMode.value
+  try {
+    if (mode === 'add') {
+      submitLoading.value = true
+      const result = await createDevice()
+      deviceId = result?.id
+    } else if (mode === 'copy') {
+      submitLoading.value = true
+      deviceId = await copyDeviceApi(draftSourceId.value!, {
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        copySensors: false,
+      })
+    }
+    if (!deviceId) {
+      ElMessage.error('设备创建失败')
+      return
+    }
+
+    // 逐个创建传感器草稿
+    for (const s of draftSensors.value) {
+      await createSensor(deviceId, {
+        sensorCode: s.sensorCode.trim(),
+        sensorName: s.sensorName.trim(),
+        monitorTypeId: Number(s.monitorTypeId),
+        status: s.status,
+        attrList: s.attrList.map(a => ({
+          attrCode: a.attrCode.trim(),
+          attrName: a.attrName.trim(),
+          initialValue: a.initialValue,
+          unit: a.unit || undefined,
+          rangeMin: a.rangeMin,
+          rangeMax: a.rangeMax,
+          icon: a.icon || undefined,
+        })),
+      })
+    }
+
+    ElMessage.success(mode === 'add' ? '设备创建成功' : '设备复制成功')
+    isDraftMode.value = false
+    draftSensors.value = []
+    sensorDialogVisible.value = false
+    clearDraft()
+    await loadTableData()
+  } catch (error: any) {
+    showRequestErrorMessage(error, mode === 'add' ? '设备创建失败' : '设备复制失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const discardDraft = () => {
+  isDraftMode.value = false
+  draftSensors.value = []
+  sensorDialogVisible.value = false
+  clearDraft()
+}
+
+const handleBackToDevice = () => {
+  sensorDialogVisible.value = false
+  // 重置 draftMode，以便再次提交时 watch 能重新触发
+  draftMode.value = null
+  dialogVisible.value = true
+}
+
+const handleDiscardDraft = () => {
+  ElMessageBox.confirm(
+    '确定要取消吗？所有未提交的设备和传感器修改将会丢失。',
+    '取消确认',
+    { confirmButtonText: '确定丢弃', cancelButtonText: '返回编辑', type: 'warning' }
+  ).then(() => {
+    discardDraft()
+  }).catch(() => {})
+}
+
+const handleSensorDialogClose = (done: () => void) => {
+  if (isDraftMode.value) {
+    ElMessageBox.confirm(
+      '确定要关闭吗？所有未提交的设备和传感器修改将会丢失。',
+      '关闭确认',
+      { confirmButtonText: '确定丢弃', cancelButtonText: '返回编辑', type: 'warning' }
+    ).then(() => {
+      discardDraft()
+      done()
+    }).catch(() => {})
+  } else {
+    done()
+  }
+}
+
+// 监听 draftMode 变化，进入草稿传感器配置阶段
+watch(draftMode, async (mode) => {
+  if (!mode) return
+  isDraftMode.value = true
+  sensorLoading.value = true
+  try {
+    if (mode === 'copy' && draftCopySensors.value && draftSourceId.value) {
+      const sourceSensors = await getDeviceSensors(draftSourceId.value)
+      draftSensors.value = sourceSensors.map(s => ({
+        tempId: --draftTempIdCounter,
+        sensorCode: computeCopySuffix(s.sensorCode),
+        sensorName: s.sensorName,
+        monitorTypeId: s.monitorTypeId,
+        monitorTypeName: s.monitorTypeName || '',
+        status: s.status,
+        attrList: (s.attrList || []).map((a: any) => ({
+          attrCode: a.attrCode,
+          attrName: a.attrName,
+          initialValue: Number(a.initialValue ?? 0),
+          unit: a.unit || '',
+          rangeMin: Number(a.rangeMin ?? 0),
+          rangeMax: Number(a.rangeMax ?? 999999),
+          icon: a.icon || '',
+        })),
+      }))
+    } else {
+      draftSensors.value = []
+    }
+  } catch {
+    draftSensors.value = []
+  } finally {
+    sensorLoading.value = false
+  }
+
+  currentSensorDevice.value = {
+    id: undefined,
+    code: formData.code,
+    name: formData.name,
+    status: formData.status,
+  } as DeviceItem
+  sensorDialogVisible.value = true
+})
 
 onMounted(async () => {
   await loadTableData()
@@ -1492,20 +1709,25 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-/* 安装位置 */
-.install-location-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
+/* 地图按钮在框内，无背景 */
+.map-btn-inline {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  color: #606266 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
-.install-location-wrap :deep(.el-input) {
-  width: 100%;
+.map-btn-inline:hover {
+  color: #1890ff !important;
+  background: transparent !important;
 }
 
-.map-pick-btn {
-  flex-shrink: 0;
+.map-btn-inline.is-disabled {
+  color: #c0c4cc !important;
+  cursor: not-allowed !important;
 }
 
 /* 地图坐标选择器 */

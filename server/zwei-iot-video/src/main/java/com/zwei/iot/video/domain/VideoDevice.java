@@ -81,12 +81,12 @@ public class VideoDevice extends BaseEntity {
     /**
      * 经度
      */
-    private Double longitude;
+    private java.math.BigDecimal longitude;
 
     /**
      * 纬度
      */
-    private Double latitude;
+    private java.math.BigDecimal latitude;
 
     /**
      * 删除标记: 0-正常, 1-删除

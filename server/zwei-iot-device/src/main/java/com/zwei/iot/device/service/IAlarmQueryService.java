@@ -28,4 +28,7 @@ public interface IAlarmQueryService {
      * @return key=yyyy-MM, value=count
      */
     Map<String, Integer> countByMonth(Long hazardPointId, LocalDateTime start, LocalDateTime end);
+
+    /** 批量查询隐患点是否有待处理告警 (status 1=待处理 2=处理中) */
+    Map<Long, Boolean> hasPendingAlarm(List<Long> hazardPointIds);
 }

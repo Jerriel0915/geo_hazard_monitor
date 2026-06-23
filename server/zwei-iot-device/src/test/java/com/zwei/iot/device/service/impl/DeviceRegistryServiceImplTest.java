@@ -32,6 +32,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -84,7 +85,7 @@ class DeviceRegistryServiceImplTest {
         when(registrationLogService.selectByRequestId("REQ-001")).thenReturn(null);
         when(deviceMapper.selectDeviceBySn("SN001")).thenReturn(null);
         when(deviceMapper.selectDeviceByCode("DEV-SN001")).thenReturn(null);
-        when(sensorMapper.selectSensorByCode("DEV-SN001_1")).thenReturn(null);
+        when(sensorMapper.selectSensorByDeviceIdAndCode(eq(101L), eq("DEV-SN001_1"))).thenReturn(null);
         when(accountGenerator.generateUsername()).thenReturn("A1B2C3");
         when(accountGenerator.generatePassword()).thenReturn("Ab12Cd34");
 

@@ -62,14 +62,6 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     }
 
     /**
-     * 根据编码查询监测内容
-     */
-    @Override
-    public MonitorContent selectMonitorContentByCode(String code) {
-        return monitorContentMapper.selectMonitorContentByCode(code);
-    }
-
-    /**
      * 新增监测内容
      */
     @Override
@@ -230,12 +222,13 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
     }
 
     /**
-     * 校验监测内容编码是否唯一
+     * 校验监测内容编码在指定监测类型内是否唯一
      */
     @Override
     public boolean checkMonitorContentCodeUnique(MonitorContent monitorContent) {
         Long id = monitorContent.getId() == null ? 0L : monitorContent.getId();
-        MonitorContent exist = monitorContentMapper.checkMonitorContentCodeUnique(monitorContent.getCode(), id);
+        MonitorContent exist = monitorContentMapper.checkMonitorContentCodeUnique(
+                monitorContent.getMonitorTypeId(), monitorContent.getCode(), id);
         return exist == null;
     }
 

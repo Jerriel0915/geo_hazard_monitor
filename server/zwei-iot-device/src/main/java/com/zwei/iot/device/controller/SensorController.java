@@ -127,7 +127,7 @@ public class SensorController extends BaseController {
         DeviceSensor sensor = buildSensorForCreate(request);
         sensor.setDeviceId(deviceId);
         sensor.setCreateBy(getUsername());
-        if (!sensorService.checkSensorCodeUnique(sensor.getSensorCode(), 0L)) {
+        if (!sensorService.checkSensorCodeUnique(deviceId, sensor.getSensorCode(), 0L)) {
             return error("新增传感器'" + sensor.getSensorName() + "'失败，传感器编码已存在");
         }
         Long id = sensorService.insertSensor(sensor, buildAttributes(request.getAttrList()));

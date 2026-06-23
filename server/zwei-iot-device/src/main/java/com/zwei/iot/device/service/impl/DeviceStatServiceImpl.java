@@ -3,11 +3,15 @@ package com.zwei.iot.device.service.impl;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.mapper.DeviceOnlineStatusMapper;
 import com.zwei.iot.device.mapper.DeviceSensorMapper;
+import com.zwei.iot.device.mapper.MonitorStatMapper;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceStatService;
 import com.zwei.iot.device.service.IVideoDeviceStatService;
 import com.zwei.iot.monitor.mapper.MonitorTypeMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,6 +32,8 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     private final MonitorTypeMapper monitorTypeMapper;
     private final IVideoDeviceStatService videoDeviceStatService;
     private final DeviceOnlineStatusMapper onlineStatusMapper;
+    private final RedisTemplate<Object, Object> redisTemplate;
+    private final MonitorStatMapper monitorStatMapper;
 
     @Autowired
     public DeviceStatServiceImpl(DeviceMapper deviceMapper,
@@ -35,13 +41,17 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
                                  IDeviceHazardRelationService hazardRelationService,
                                  MonitorTypeMapper monitorTypeMapper,
                                  IVideoDeviceStatService videoDeviceStatService,
-                                 DeviceOnlineStatusMapper onlineStatusMapper) {
+                                 DeviceOnlineStatusMapper onlineStatusMapper,
+                                 RedisTemplate<Object, Object> redisTemplate,
+                                 MonitorStatMapper monitorStatMapper) {
         this.deviceMapper = deviceMapper;
         this.deviceSensorMapper = deviceSensorMapper;
         this.hazardRelationService = hazardRelationService;
         this.monitorTypeMapper = monitorTypeMapper;
         this.videoDeviceStatService = videoDeviceStatService;
         this.onlineStatusMapper = onlineStatusMapper;
+        this.redisTemplate = redisTemplate;
+        this.monitorStatMapper = monitorStatMapper;
     }
 
     @Override
@@ -132,5 +142,38 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     @Override
     public int countSensorsByDeviceOnline() {
         return deviceSensorMapper.countByDeviceOnline();
+    }
+
+    @Override
+    public long countTotalMonitorDataPoints() {
+        // 优先读 Redis（热路径）
+        Long redisVal = readRedisCounter();
+        if (redisVal != null && redisVal > 0) {
+            return redisVal;
+        }
+        // Redis 丢失时兜底 MySQL
+        try {
+            var row = monitorStatMapper.selectByKey("total_monitor_count");
+            if (row != null && row.getStatValue() != null && row.getStatValue() > 0) {
+                redisTemplate.opsForValue().set("stats:total:monitor:count", String.valueOf(row.getStatValue()));
+                return row.getStatValue();
+            }
+        } catch (Exception ignored) {
+        }
+        return 0L;
+    }
+
+    private Long readRedisCounter() {
+        Object val = redisTemplate.opsForValue().get("stats:total:monitor:count");
+        if (val instanceof Number) {
+            return ((Number) val).longValue();
+        }
+        if (val instanceof String) {
+            try {
+                return Long.parseLong((String) val);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
     }
 }

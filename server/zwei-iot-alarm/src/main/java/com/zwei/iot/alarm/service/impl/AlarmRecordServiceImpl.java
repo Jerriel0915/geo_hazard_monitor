@@ -13,9 +13,14 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 告警记录服务实现
@@ -252,5 +257,149 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
     @Override
     public int countByHazardPointId(Long hazardPointId) {
         return alarmRecordMapper.countByHazardPointId(hazardPointId);
+    }
+
+    @Override
+    public Map<Integer, Integer> getPendingLevelStats() {
+        List<Map<String, Object>> rows = alarmRecordMapper.countPendingByLevel();
+        Map<Integer, Integer> result = new HashMap<>();
+        for (int i = 1; i <= 4; i++) {
+            result.put(i, 0);
+        }
+        for (Map<String, Object> row : rows) {
+            Integer level = ((Number) row.get("alarmLevel")).intValue();
+            Integer cnt = ((Number) row.get("cnt")).intValue();
+            result.put(level, cnt);
+        }
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getMonthlyTrend(int months) {
+        List<Map<String, Object>> rows = alarmRecordMapper.selectMonthlyLevelCounts(months);
+
+        // 生成月份序列 (近 N 个月)
+        YearMonth now = YearMonth.now();
+        List<String> monthLabels = new ArrayList<>(months);
+        for (int i = months - 1; i >= 0; i--) {
+            monthLabels.add(now.minusMonths(i).toString()); // yyyy-MM
+        }
+
+        Map<String, java.util.Map<String, Object>> monthMap = new LinkedHashMap<>();
+        for (String m : monthLabels) {
+            Map<String, Object> init = new HashMap<>();
+            init.put("level1", 0);
+            init.put("level2", 0);
+            init.put("level3", 0);
+            init.put("level4", 0);
+            init.put("total", 0);
+            monthMap.put(m, init);
+        }
+
+        for (Map<String, Object> row : rows) {
+            String month = (String) row.get("month");
+            if (monthMap.containsKey(month)) {
+                Map<String, Object> entry = monthMap.get(month);
+                entry.put("level1", ((Number) row.get("level1")).intValue());
+                entry.put("level2", ((Number) row.get("level2")).intValue());
+                entry.put("level3", ((Number) row.get("level3")).intValue());
+                entry.put("level4", ((Number) row.get("level4")).intValue());
+                entry.put("total", ((Number) row.get("total")).intValue());
+            }
+        }
+
+        // 提取各序列
+        List<Integer> level1 = new ArrayList<>(months);
+        List<Integer> level2 = new ArrayList<>(months);
+        List<Integer> level3 = new ArrayList<>(months);
+        List<Integer> level4 = new ArrayList<>(months);
+        List<Integer> total = new ArrayList<>(months);
+
+        for (Map<String, Object> entry : monthMap.values()) {
+            level1.add((Integer) entry.get("level1"));
+            level2.add((Integer) entry.get("level2"));
+            level3.add((Integer) entry.get("level3"));
+            level4.add((Integer) entry.get("level4"));
+            total.add((Integer) entry.get("total"));
+        }
+
+        // 简单线性回归预测未来2个月 (基于 total 序列)
+        List<Integer> forecastTotal = linearForecast(total, 2);
+        List<Integer> forecastLevel1 = new ArrayList<>();
+        List<Integer> forecastLevel2 = new ArrayList<>();
+        List<Integer> forecastLevel3 = new ArrayList<>();
+        List<Integer> forecastLevel4 = new ArrayList<>();
+
+        // 按最后一个月各等级占比分摊预测值
+        int lastTotal = total.get(total.size() - 1);
+        if (lastTotal > 0) {
+            double r1 = (double) level1.get(level1.size() - 1) / lastTotal;
+            double r2 = (double) level2.get(level2.size() - 1) / lastTotal;
+            double r3 = (double) level3.get(level3.size() - 1) / lastTotal;
+            double r4 = (double) level4.get(level4.size() - 1) / lastTotal;
+            for (int ft : forecastTotal) {
+                forecastLevel1.add((int) Math.round(ft * r1));
+                forecastLevel2.add((int) Math.round(ft * r2));
+                forecastLevel3.add((int) Math.round(ft * r3));
+                forecastLevel4.add((int) Math.round(ft * r4));
+            }
+        } else {
+            for (int ignored : forecastTotal) {
+                forecastLevel1.add(0);
+                forecastLevel2.add(0);
+                forecastLevel3.add(0);
+                forecastLevel4.add(0);
+            }
+        }
+
+        // 预测月份标签
+        List<String> forecastMonths = new ArrayList<>();
+        for (int i = 1; i <= 2; i++) {
+            forecastMonths.add(now.plusMonths(i).toString());
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("months", monthLabels);
+        result.put("level1", level1);
+        result.put("level2", level2);
+        result.put("level3", level3);
+        result.put("level4", level4);
+        result.put("total", total);
+        result.put("forecastMonths", forecastMonths);
+        result.put("forecastLevel1", forecastLevel1);
+        result.put("forecastLevel2", forecastLevel2);
+        result.put("forecastLevel3", forecastLevel3);
+        result.put("forecastLevel4", forecastLevel4);
+        result.put("forecastTotal", forecastTotal);
+        return result;
+    }
+
+    /** 简单线性回归，预测未来 n 个点 */
+    private static List<Integer> linearForecast(List<Integer> values, int forecastCount) {
+        int n = values.size();
+        if (n < 2) {
+            List<Integer> result = new ArrayList<>();
+            int last = n > 0 ? values.get(n - 1) : 0;
+            for (int i = 0; i < forecastCount; i++) result.add(Math.max(0, last));
+            return result;
+        }
+        double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+        for (int i = 0; i < n; i++) {
+            double x = i;
+            double y = values.get(i);
+            sumX += x;
+            sumY += y;
+            sumXY += x * y;
+            sumXX += x * x;
+        }
+        double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        double intercept = (sumY - slope * sumX) / n;
+
+        List<Integer> result = new ArrayList<>();
+        for (int i = 0; i < forecastCount; i++) {
+            double predicted = intercept + slope * (n + i);
+            result.add(Math.max(0, (int) Math.round(predicted)));
+        }
+        return result;
     }
 }

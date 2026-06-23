@@ -39,10 +39,10 @@ public class DeviceExportVO implements Serializable {
     private String vendorName;
 
     @Excel(name = "经度", scale = 6)
-    private Double longitude;
+    private java.math.BigDecimal longitude;
 
     @Excel(name = "纬度", scale = 6)
-    private Double latitude;
+    private java.math.BigDecimal latitude;
 
     @Excel(name = "业务状态")
     private String statusName;

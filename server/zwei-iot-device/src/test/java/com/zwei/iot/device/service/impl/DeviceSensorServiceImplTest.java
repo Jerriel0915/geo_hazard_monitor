@@ -78,7 +78,7 @@ class DeviceSensorServiceImplTest {
         device.setId(10L);
         device.setCode("DEVICE001");
         when(deviceMapper.selectDeviceById(10L)).thenReturn(device);
-        when(sensorMapper.checkSensorCodeUnique("SENSOR001", 0L)).thenReturn(null);
+        when(sensorMapper.checkSensorCodeUnique(10L, "SENSOR001", 0L)).thenReturn(null);
 
         MonitorType monitorType = new MonitorType();
         monitorType.setId(4L);
@@ -117,7 +117,7 @@ class DeviceSensorServiceImplTest {
         device.setId(10L);
         device.setCode("DEVICE001");
         when(deviceMapper.selectDeviceById(10L)).thenReturn(device);
-        when(sensorMapper.checkSensorCodeUnique("SENSOR001", 0L)).thenReturn(null);
+        when(sensorMapper.checkSensorCodeUnique(10L, "SENSOR001", 0L)).thenReturn(null);
 
         MonitorType monitorType = new MonitorType();
         monitorType.setId(4L);
@@ -255,5 +255,75 @@ class DeviceSensorServiceImplTest {
         assertThrows(ServiceException.class,
                 () -> service.deleteSensorAttribute(10L, 301L));
         verify(attributeMapper, never()).deleteAttributeById(any());
+    }
+
+    @Test
+    @DisplayName("同设备内重复 sensorCode 应拒绝创建")
+    void insertSensor_shouldRejectDuplicateCodeWithinSameDevice() {
+        DeviceSensor sensor = new DeviceSensor();
+        sensor.setDeviceId(10L);
+        sensor.setSensorCode("SENSOR001");
+        sensor.setSensorName("重复传感器");
+        sensor.setMonitorTypeId(4L);
+        sensor.setStatus(1);
+        sensor.setCreateBy("admin");
+
+        SensorAttribute attr = new SensorAttribute();
+        attr.setAttrCode("water_level");
+        attr.setAttrName("水位");
+
+        Device device = new Device();
+        device.setId(10L);
+        device.setCode("DEVICE001");
+        when(deviceMapper.selectDeviceById(10L)).thenReturn(device);
+
+        DeviceSensor existing = new DeviceSensor();
+        existing.setId(999L);
+        when(sensorMapper.checkSensorCodeUnique(10L, "SENSOR001", 0L)).thenReturn(existing);
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.insertSensor(sensor, List.of(attr)));
+        assertTrue(ex.getMessage().contains("传感器编码已存在"));
+        verify(sensorMapper, never()).insertSensor(any());
+    }
+
+    @Test
+    @DisplayName("不同设备使用相同 sensorCode 应允许创建")
+    void insertSensor_shouldAllowSameCodeAcrossDifferentDevices() {
+        DeviceSensor sensor = new DeviceSensor();
+        sensor.setDeviceId(20L);
+        sensor.setSensorCode("SENSOR001");
+        sensor.setSensorName("另一设备的同名传感器");
+        sensor.setMonitorTypeId(4L);
+        sensor.setStatus(1);
+        sensor.setCreateBy("admin");
+
+        SensorAttribute attr = new SensorAttribute();
+        attr.setAttrCode("water_level");
+        attr.setAttrName("水位");
+
+        Device device = new Device();
+        device.setId(20L);
+        device.setCode("DEVICE002");
+        when(deviceMapper.selectDeviceById(20L)).thenReturn(device);
+        when(sensorMapper.checkSensorCodeUnique(20L, "SENSOR001", 0L)).thenReturn(null);
+
+        MonitorType monitorType = new MonitorType();
+        monitorType.setId(4L);
+        monitorType.setCode("JCLX004");
+        monitorType.setName("水位监测");
+        when(monitorTypeService.selectMonitorTypeById(4L)).thenReturn(monitorType);
+
+        Long result = service.insertSensor(sensor, List.of(attr));
+
+        assertEquals(sensor.getId(), result);
+        verify(sensorMapper).insertSensor(sensor);
+    }
+
+    @Test
+    @DisplayName("checkSensorCodeUnique 应按设备维度校验，不同设备相同编码返回 true")
+    void checkSensorCodeUnique_shouldReturnTrueForDifferentDeviceSameCode() {
+        when(sensorMapper.checkSensorCodeUnique(20L, "SENSOR001", null)).thenReturn(null);
+        assertTrue(service.checkSensorCodeUnique(20L, "SENSOR001", null));
     }
 }

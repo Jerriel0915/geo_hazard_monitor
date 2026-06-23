@@ -513,7 +513,7 @@ const addHazardPoints = () => {
           </div>
           <div class="hpv2-dash"></div>
           <div class="hpv2-row">
-            <div class="hpv2-cell"><span class="hpv2-label">坐标</span><span class="hpv2-val">${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}</span></div>
+            <div class="hpv2-cell"><span class="hpv2-label">坐标</span><span class="hpv2-val">${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}</span></div>
             <div class="hpv2-cell"><span class="hpv2-label">设备</span><span class="hpv2-val">${point.deviceCount} 台</span></div>
           </div>
           <div class="hpv2-dash"></div>

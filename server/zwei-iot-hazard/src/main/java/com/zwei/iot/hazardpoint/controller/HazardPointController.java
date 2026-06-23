@@ -346,6 +346,24 @@ public class HazardPointController extends BaseController
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /**
+     * 各隐患点设备监测率统计
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
+    @GetMapping("/monitor-rates")
+    public AjaxResult monitorRates(@RequestParam(defaultValue = "60") int windowMinutes) {
+        return AjaxResult.success("成功", hazardPointService.getMonitorRates(windowMinutes));
+    }
+
+    /**
+     * 地图总览: 所有活跃隐患点 + 设备列表 + 告警标记
+     */
+    @PreAuthorize("@ss.hasPermi('iot:hazard-point:list')")
+    @GetMapping("/map-overview")
+    public AjaxResult mapOverview() {
+        return AjaxResult.success("成功", hazardPointService.getMapOverview());
+    }
+
     private HazardPoint buildHazardPointFilter(HazardPointExportRequest request)
     {
         HazardPoint hazardPoint = new HazardPoint();

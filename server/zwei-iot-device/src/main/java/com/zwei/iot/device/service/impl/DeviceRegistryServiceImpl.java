@@ -214,7 +214,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         List<MonitorContent> contents = monitorContentService.selectMonitorContentAll(monitorType.getId());
         String sid = normalizeRequired(monitorTypeRequest.getSid(), "传感器编号不能为空");
         String sensorCodeSuffix = childSn == null ? sid : childSn + "_" + sid;
-        String sensorCode = buildUniqueSensorCode(device.getCode(), sensorCodeSuffix);
+        String sensorCode = buildUniqueSensorCode(device.getId(), device.getCode(), sensorCodeSuffix);
         String sensorName = childSn == null
                 ? deviceName + "-" + monitorType.getName()
                 : deviceName + "-" + monitorType.getName() + "(" + childSn + ")";
@@ -335,12 +335,12 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         return candidate;
     }
 
-    private String buildUniqueSensorCode(String deviceCode, String suffix) {
+    private String buildUniqueSensorCode(Long deviceId, String deviceCode, String suffix) {
         String normalizedSuffix = suffix.replaceAll("[^A-Za-z0-9_-]", "_");
         String base = deviceCode + "_" + normalizedSuffix;
         String candidate = base;
         int index = 1;
-        while (sensorMapper.selectSensorByCode(candidate) != null) {
+        while (sensorMapper.selectSensorByDeviceIdAndCode(deviceId, candidate) != null) {
             candidate = base + "_" + index++;
         }
         return candidate;

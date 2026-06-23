@@ -3,11 +3,10 @@
     <div class="header">
       <div class="header__left">
         <h2 class="header__title">日志管理</h2>
-        <span class="header__subtitle">操作日志、认证日志、运行日志与实时流监控</span>
+        <span class="header__subtitle">操作日志、认证日志、运行日志与实时日志</span>
       </div>
     </div>
 
-    <div class="dashboard-grid">
       <section class="main-panel">
         <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
           <el-tab-pane label="操作日志" name="operation">
@@ -202,101 +201,61 @@
               </div>
             </div>
           </el-tab-pane>
+
+          <el-tab-pane name="realtime">
+            <template #label>
+              <span>实时日志
+                <span class="realtime-dot" :style="{ background: sseStatusColor }"></span>
+              </span>
+            </template>
+            <div class="log-tab-content realtime-tab">
+              <div class="realtime-toolbar">
+                <div class="filter-pills">
+                  <button
+                    v-for="lv in levelOptions"
+                    :key="lv.value"
+                    class="filter-pill"
+                    :class="{ active: levelFilter.has(lv.value) }"
+                    :style="levelFilter.has(lv.value) ? { background: lv.color, borderColor: lv.color } : {}"
+                    @click="toggleLevel(lv.value)"
+                  >
+                    <span v-if="levelFilter.has(lv.value)" class="pill-check">&#10003;</span>
+                    {{ lv.label }}
+                  </button>
+                </div>
+                <div class="realtime-controls">
+                  <el-tag :type="sseStatusTagType" size="small" effect="dark">{{ sseStatusText }}</el-tag>
+                  <span class="line-count">{{ visibleLineCount }} 行</span>
+                  <el-switch v-model="stream.autoScroll.value" size="small" active-text="自动滚动" />
+                  <el-button size="small" text @click="stream.clear()">清空</el-button>
+                </div>
+              </div>
+              <LogTerminal
+                :lines="stream.lines.value"
+                :level-filter="levelFilter"
+                :auto-scroll="stream.autoScroll.value"
+              />
+            </div>
+          </el-tab-pane>
         </el-tabs>
       </section>
-
-      <aside class="stream-panel">
-        <div class="stream-card">
-          <div class="panel-head">
-            <div>
-              <div class="panel-title">实时日志流</div>
-              <div class="panel-desc">基于 SSE 订阅 `auth / runtime / operation` 三类实时日志。</div>
-            </div>
-            <el-tag :type="sseStatusTagType" effect="dark">{{ sseStatusText }}</el-tag>
-          </div>
-
-          <el-form label-position="top" class="stream-form">
-            <el-form-item label="订阅类型">
-              <el-checkbox-group v-model="sseTypes">
-                <el-checkbox label="operation">操作</el-checkbox>
-                <el-checkbox label="auth">认证</el-checkbox>
-                <el-checkbox label="runtime">运行</el-checkbox>
-              </el-checkbox-group>
-            </el-form-item>
-            <el-form-item label="订阅者标识">
-              <el-input v-model="subscriberKey" placeholder="例如 web-log-console" clearable/>
-            </el-form-item>
-          </el-form>
-
-          <div class="stream-meta">
-            <div class="meta-item">
-              <span>恢复起点</span>
-              <strong>{{ resumeEventId || '--' }}</strong>
-            </div>
-            <div class="meta-item">
-              <span>最后事件</span>
-              <strong>{{ lastEventId || '--' }}</strong>
-            </div>
-            <div class="meta-item">
-              <span>事件缓存</span>
-              <strong>{{ liveEvents.length }}</strong>
-            </div>
-          </div>
-
-          <div class="stream-actions">
-            <el-button type="primary" :loading="sseStatus === 'connecting' || sseStatus === 'reconnecting'"
-                       :disabled="isStreamAlive"
-                       @click="startStream">
-              开始订阅
-            </el-button>
-            <el-button :disabled="!isStreamAlive" @click="stopStream">停止订阅</el-button>
-            <el-button @click="clearLiveEvents">清空缓存</el-button>
-          </div>
-
-          <div class="stream-list">
-            <div v-if="!liveEvents.length" class="stream-empty">
-              暂无实时事件，建立连接后将展示实时日志与断线补发记录。
-            </div>
-            <div v-for="item in liveEvents" :key="`${item.eventId}-${item.event}-${item.timestamp}`"
-                 class="stream-item">
-              <div class="stream-item-head">
-                <div class="stream-item-tags">
-                  <el-tag size="small" :type="getStreamEventTag(item.event)">{{ item.event.toUpperCase() }}</el-tag>
-                  <el-tag v-if="item.subType" size="small" effect="plain" :type="getLiveSubtypeTag(item.logType)">
-                    {{ item.subType }}
-                  </el-tag>
-                  <el-tag v-else size="small" effect="plain">{{ item.logType }}</el-tag>
-                </div>
-                <span class="stream-time">{{ item.timestamp }}</span>
-              </div>
-              <div class="stream-title">{{ item.title }}</div>
-              <div class="stream-detail">{{ item.detail }}</div>
-              <div class="stream-id">eventId: {{ item.eventId }}</div>
-            </div>
-          </div>
-        </div>
-      </aside>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
-import {handleAuthFailure} from '@/utils/auth'
 import {
   getAuthEventTag,
   getBusinessTypeTag,
   getLevelTag,
-  getLiveSubtypeTag,
-  getRequestMethodTag,
-  getStreamEventTag
+  getRequestMethodTag
 } from '@/utils/logTags'
 import {useLogQuery} from './composables/useLogQuery'
+import {useConsoleStream} from './composables/useLogStream'
+import LogTerminal from './components/LogTerminal.vue'
 
-type TabKey = 'operation' | 'auth' | 'runtime'
-type StreamStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
-type SseType = 'operation' | 'auth' | 'runtime'
+type TabKey = 'operation' | 'auth' | 'runtime' | 'realtime'
 
 interface PageResult<T> {
   pageNum: number
@@ -358,20 +317,11 @@ interface RuntimeLogRecord {
   occurredAt: string
 }
 
-interface LiveEventItem {
-  event: string
-  logType: string
-  subType: string
-  eventId: string
-  title: string
-  detail: string
-  timestamp: string
-}
-
 const tabLabelMap: Record<TabKey, string> = {
   operation: '操作日志',
   auth: '认证日志',
-  runtime: '运行日志'
+  runtime: '运行日志',
+  realtime: '实时日志'
 }
 
 const authEventOptions = ['LOGIN_SUCCESS', 'LOGIN_FAIL', 'LOGOUT', 'UNAUTHORIZED', 'TOKEN_INVALID']
@@ -439,56 +389,62 @@ const {
   handlePageChange: handleRuntimePageChange
 } = runtimeQuery
 
-const sseTypes = ref<SseType[]>(['auth', 'runtime'])
-const subscriberKey = ref('web-log-console')
-const sseStatus = ref<StreamStatus>('disconnected')
-const resumeEventId = ref('')
-const lastEventId = ref('')
-const liveEvents = ref<LiveEventItem[]>([])
-
-let streamAbortController: AbortController | null = null
-let reconnectTimer: number | null = null
-let keepStreamAlive = false
-let refreshTimer: number | null = null
-let streamSessionId = 0
+// ── Console log stream composable ──
+const stream = useConsoleStream()
 
 const sseStatusText = computed(() => {
-  const map: Record<StreamStatus, string> = {
+  const map: Record<string, string> = {
     disconnected: '未连接',
     connecting: '连接中',
     connected: '已连接',
-    reconnecting: '重连中',
     error: '异常'
   }
-  return map[sseStatus.value]
+  return map[stream.status.value] || stream.status.value
 })
 
 const sseStatusTagType = computed(() => {
-  const map: Record<StreamStatus, '' | 'success' | 'warning' | 'danger' | 'info'> = {
+  const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
     disconnected: 'info',
     connecting: 'warning',
     connected: 'success',
-    reconnecting: 'warning',
     error: 'danger'
   }
-  return map[sseStatus.value]
+  return map[stream.status.value] || 'info'
 })
 
-const isStreamAlive = computed(() => ['connecting', 'connected', 'reconnecting'].includes(sseStatus.value))
-
-const requestHeaders = () => {
-  const token = localStorage.getItem('token')
-  return {
-    Authorization: token ? `Bearer ${token}` : ''
+const sseStatusColor = computed(() => {
+  const map: Record<string, string> = {
+    disconnected: '#909399',
+    connecting: '#E6A23C',
+    connected: '#67C23A',
+    error: '#F56C6C'
   }
+  return map[stream.status.value] || '#909399'
+})
+
+const levelFilter = ref<Set<string>>(new Set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL']))
+
+const levelOptions: { label: string; value: string; color: string }[] = [
+  { label: 'DEBUG', value: 'DEBUG', color: '#6e7681' },
+  { label: 'INFO', value: 'INFO', color: '#56d364' },
+  { label: 'WARN', value: 'WARN', color: '#e3b341' },
+  { label: 'ERROR', value: 'ERROR', color: '#f85149' },
+  { label: 'CRIT', value: 'CRITICAL', color: '#ff6b9d' },
+]
+
+const toggleLevel = (level: string) => {
+  const next = new Set(levelFilter.value)
+  if (next.has(level)) next.delete(level)
+  else next.add(level)
+  levelFilter.value = next
 }
 
-const buildTimeParams = (range: string[]) => ({
-  startTime: range?.length === 2 ? range[0] : undefined,
-  endTime: range?.length === 2 ? range[1] : undefined
+const visibleLineCount = computed(() => {
+  return stream.lines.value.filter((l) => levelFilter.value.has(l.level)).length
 })
 
 const refreshActiveTab = () => {
+  if (activeTab.value === 'realtime') return
   const q = activeTab.value === 'operation' ? opQuery : activeTab.value === 'auth' ? authQuery : runtimeQuery
   q.fetch()
 }
@@ -498,288 +454,31 @@ const handleTabChange = (tabName: string | number) => {
   refreshActiveTab()
 }
 
-// ========== SSE stream logic (unchanged) ==========
-
-const clearReconnectTimer = () => {
-  if (reconnectTimer !== null) {
-    window.clearTimeout(reconnectTimer)
-    reconnectTimer = null
+// auto start/stop SSE when switching to/from realtime tab
+watch(activeTab, (tab) => {
+  if (tab === 'realtime') {
+    stream.start()
+  } else {
+    stream.stop()
   }
-}
-
-const clearRefreshTimer = () => {
-  if (refreshTimer !== null) {
-    window.clearTimeout(refreshTimer)
-    refreshTimer = null
-  }
-}
-
-const stopStream = (manual = true) => {
-  if (manual) {
-    keepStreamAlive = false
-  }
-  clearReconnectTimer()
-  if (streamAbortController) {
-    streamAbortController.abort()
-    streamAbortController = null
-  }
-  if (manual) {
-    sseStatus.value = 'disconnected'
-  }
-}
-
-const scheduleReconnect = () => {
-  if (!keepStreamAlive) {
-    return
-  }
-  clearReconnectTimer()
-  sseStatus.value = 'reconnecting'
-  reconnectTimer = window.setTimeout(() => {
-    startStream(true)
-  }, 3000)
-}
-
-const createStreamUrl = () => {
-  const params = new URLSearchParams()
-  const types = sseTypes.value.length ? sseTypes.value.join(',') : 'auth,runtime'
-  params.set('types', types)
-  if (subscriberKey.value.trim()) {
-    params.set('subscriberKey', subscriberKey.value.trim())
-  }
-  return `/api/v1/logs/stream?${params.toString()}`
-}
-
-const pushLiveEvent = (event: string, eventId: string, payload: Record<string, any>) => {
-  const logType = String(payload.logType || event).toUpperCase()
-  const subType = resolveLiveSubtype(logType, payload)
-  const title = buildLiveTitle(event, payload)
-  const detail = buildLiveDetail(payload)
-  liveEvents.value = [
-    {
-      event,
-      logType,
-      subType,
-      eventId,
-      title,
-      detail,
-      timestamp: payload.occurredAt || new Date().toLocaleString()
-    },
-    ...liveEvents.value
-  ].slice(0, 16)
-}
-
-const buildLiveTitle = (event: string, payload: Record<string, any>) => {
-  if (event === 'ready') {
-    return 'SSE 连接建立成功'
-  }
-  if (payload.logType === 'AUTH') {
-    return `${payload.authEventType || 'AUTH'} · ${payload.username || '匿名用户'}`
-  }
-  if (payload.logType === 'OPERATION') {
-    return `${payload.title || '操作日志'} · ${payload.username || '未知用户'}`
-  }
-  if (payload.logType === 'RUNTIME') {
-    return `${payload.level || 'LOG'} · ${payload.loggerName || 'runtime'}`
-  }
-  return event
-}
-
-const buildLiveDetail = (payload: Record<string, any>) => {
-  if (payload.logType === 'AUTH') {
-    return payload.failureMessage || payload.requestUri || '--'
-  }
-  if (payload.logType === 'OPERATION') {
-    return `${payload.apiPath || '--'} / ${payload.requestMethod || '--'} / ${payload.execStatus || '--'}`
-  }
-  if (payload.logType === 'RUNTIME') {
-    return payload.messageDigest || payload.message || '--'
-  }
-  return JSON.stringify(payload)
-}
-
-const resolveLiveSubtype = (logType: string, payload: Record<string, any>) => {
-  if (logType === 'OPERATION') {
-    return String(payload.businessType || '')
-  }
-  if (logType === 'AUTH') {
-    return String(payload.authEventType || '')
-  }
-  if (logType === 'RUNTIME') {
-    return String(payload.level || '')
-  }
-  return ''
-}
-
-const scheduleTabRefresh = (payload: Record<string, any>) => {
-  const tabMap: Record<string, TabKey> = {
-    OPERATION: 'operation',
-    AUTH: 'auth',
-    RUNTIME: 'runtime'
-  }
-  const targetTab = tabMap[String(payload.logType || '').toUpperCase()]
-  if (!targetTab || targetTab !== activeTab.value) {
-    return
-  }
-  clearRefreshTimer()
-  refreshTimer = window.setTimeout(() => {
-    refreshActiveTab()
-  }, 800)
-}
-
-const parseEventBlock = (block: string) => {
-  const lines = block.split(/\r?\n/)
-  let event = 'message'
-  let id = ''
-  const dataLines: string[] = []
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd()
-    if (!line || line.startsWith(':')) {
-      continue
-    }
-    const index = line.indexOf(':')
-    const field = index >= 0 ? line.slice(0, index) : line
-    const value = index >= 0 ? line.slice(index + 1).trimStart() : ''
-    if (field === 'event') {
-      event = value
-    } else if (field === 'id') {
-      id = value
-    } else if (field === 'data') {
-      dataLines.push(value)
-    }
-  }
-  return {event, id, data: dataLines.join('\n')}
-}
-
-const processSseEvent = (parsedEvent: { event: string; id: string; data: string }) => {
-  if (!parsedEvent.data) {
-    return
-  }
-  if (parsedEvent.id) {
-    lastEventId.value = parsedEvent.id
-  }
-  let payload: Record<string, any> = {}
-  try {
-    payload = JSON.parse(parsedEvent.data)
-  } catch (error) {
-    return
-  }
-  if (parsedEvent.event === 'ready') {
-    resumeEventId.value = payload.resumeEventId ? String(payload.resumeEventId) : ''
-    sseStatus.value = 'connected'
-    return
-  }
-  pushLiveEvent(parsedEvent.event, parsedEvent.id || String(payload.eventId || ''), payload)
-  scheduleTabRefresh(payload)
-}
-
-const startStream = async (isReconnect = false) => {
-  if (!sseTypes.value.length) {
-    ElMessage.warning('请至少选择一种订阅类型')
-    return
-  }
-  if (!isReconnect && isStreamAlive.value) {
-    return
-  }
-  const token = localStorage.getItem('token')
-  if (!token) {
-    ElMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  const sessionId = ++streamSessionId
-  keepStreamAlive = false
-  clearReconnectTimer()
-  stopStream(false)
-  keepStreamAlive = true
-  streamAbortController = new AbortController()
-  sseStatus.value = isReconnect ? 'reconnecting' : 'connecting'
-
-  try {
-    const response = await fetch(createStreamUrl(), {
-      method: 'GET',
-      headers: {
-        Accept: 'text/event-stream',
-        Authorization: `Bearer ${token}`,
-        ...(lastEventId.value ? {'Last-Event-ID': lastEventId.value} : {})
-      },
-      signal: streamAbortController.signal
-    })
-
-    if (handleAuthFailure(undefined, response.status)) {
-      keepStreamAlive = false
-      streamAbortController = null
-      sseStatus.value = 'disconnected'
-      return
-    }
-
-    if (!response.ok || !response.body) {
-      throw new Error(`SSE连接失败: ${response.status}`)
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder('utf-8')
-    let buffer = ''
-
-    while (keepStreamAlive) {
-      const {value, done} = await reader.read()
-      if (done) {
-        break
-      }
-      buffer += decoder.decode(value, {stream: true})
-      const segments = buffer.split(/\r?\n\r?\n/)
-      buffer = segments.pop() || ''
-      for (const segment of segments) {
-        if (segment.trim()) {
-          processSseEvent(parseEventBlock(segment))
-        }
-      }
-    }
-
-    if (keepStreamAlive && sessionId === streamSessionId) {
-      scheduleReconnect()
-    }
-  } catch (error) {
-    if (!keepStreamAlive || sessionId !== streamSessionId) {
-      return
-    }
-    sseStatus.value = 'error'
-    if (!isReconnect) {
-      ElMessage.warning('实时日志流连接中断，正在尝试重连')
-    }
-    scheduleReconnect()
-  }
-}
-
-const clearLiveEvents = () => {
-  liveEvents.value = []
-}
+})
 
 onMounted(() => {
   refreshActiveTab()
-})
-
-onBeforeUnmount(() => {
-  stopStream()
-  clearRefreshTimer()
+  if (activeTab.value === 'realtime') {
+    stream.start()
+  }
 })
 </script>
 
 <style scoped>
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: 1fr;
-  gap: 12px;
-  flex: 1;
-  min-height: 0;
-}
-
 .main-panel {
   min-height: 0;
   overflow: hidden;
   background: #ffffff;
   border-radius: 22px;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+  flex: 1;
 }
 
 .log-tab-content {
@@ -792,145 +491,89 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
-.stream-panel {
-  min-height: 0;
+/* ── Realtime log tab ── */
+
+.realtime-tab {
+  gap: 0;
 }
 
-.stream-card {
-  height: 100%;
-  background: #ffffff;
-  border-radius: 22px;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-  padding: 22px 20px;
+.realtime-toolbar {
   display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.stream-card > .stream-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.panel-head {
-  display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.panel-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.panel-desc {
-  margin-top: 6px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: #64748b;
-}
-
-.stream-form {
-  margin-top: 18px;
-}
-
-.stream-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.meta-item {
-  padding: 12px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-}
-
-.meta-item span {
-  display: block;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.meta-item strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 13px;
-  color: #0f172a;
-  word-break: break-all;
-}
-
-.stream-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 16px;
+  padding: 8px 0 10px;
+  flex-shrink: 0;
   flex-wrap: wrap;
 }
 
-.stream-empty {
-  padding: 22px 16px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 18px;
-  text-align: center;
-  color: #94a3b8;
-  line-height: 1.7;
-}
-
-.stream-item {
-  padding: 14px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid #e2e8f0;
-}
-
-.stream-item-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-
-.stream-item-tags {
+.filter-pills {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.stream-time {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-.stream-title {
-  margin-top: 10px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.stream-detail {
-  margin-top: 8px;
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #d0d5dd;
+  background: #f9fafb;
+  color: #6b7280;
   font-size: 13px;
-  line-height: 1.6;
-  color: #475569;
-  word-break: break-word;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Fira Code', 'Consolas', monospace;
 }
 
-.stream-id {
-  margin-top: 10px;
+.filter-pill:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.filter-pill.active {
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.pill-check {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.realtime-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.line-count {
   font-size: 12px;
   color: #94a3b8;
-  word-break: break-all;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  min-width: 50px;
 }
+
+.console-label {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  color: #64748b;
+  letter-spacing: 1px;
+}
+
+.realtime-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Deep overrides ── */
 
 :deep(.el-tabs--border-card) {
   border: none;
@@ -957,17 +600,5 @@ onBeforeUnmount(() => {
 
 :deep(.el-tab-pane) {
   height: 100%;
-}
-
-@media (max-width: 1400px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 900px) {
-  .stream-meta {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

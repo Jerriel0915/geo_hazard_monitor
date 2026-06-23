@@ -30,14 +30,6 @@ public interface DeviceSensorMapper {
     DeviceSensor selectSensorById(Long id);
 
     /**
-     * 根据编码查询传感器
-     *
-     * @param sensorCode 传感器编码
-     * @return 传感器详情
-     */
-    DeviceSensor selectSensorByCode(String sensorCode);
-
-    /**
      * 根据设备ID和传感器编码查询传感器。
      *
      * @param deviceId   设备ID
@@ -87,13 +79,16 @@ public interface DeviceSensorMapper {
     List<DeviceSensor> selectSensorList(DeviceSensor sensor);
 
     /**
-     * 校验传感器编码是否唯一
+     * 校验传感器编码在指定设备内是否唯一
      *
+     * @param deviceId   设备ID
      * @param sensorCode 传感器编码
      * @param id         排除的传感器ID（更新时使用）
      * @return 传感器信息（null表示唯一）
      */
-    DeviceSensor checkSensorCodeUnique(@Param("sensorCode") String sensorCode, @Param("id") Long id);
+    DeviceSensor checkSensorCodeUnique(@Param("deviceId") Long deviceId,
+                                       @Param("sensorCode") String sensorCode,
+                                       @Param("id") Long id);
 
     /**
      * 统计设备下未删除的传感器数量。

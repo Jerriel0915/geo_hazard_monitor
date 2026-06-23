@@ -119,6 +119,7 @@ export const deleteDevice = (id: number) =>
 export interface DeviceCopyPayload {
   code: string
   name: string
+  copySensors?: boolean // 是否同时复制传感器，默认 true
 }
 
 export const copyDevice = (id: number, payload: DeviceCopyPayload) =>

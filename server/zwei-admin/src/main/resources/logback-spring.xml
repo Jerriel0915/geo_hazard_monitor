@@ -16,6 +16,7 @@
 
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
+            <charset>UTF-8</charset>
             <pattern>${log.pattern}</pattern>
         </encoder>
     </appender>
@@ -27,6 +28,7 @@
             <maxHistory>${log.history.days}</maxHistory>
         </rollingPolicy>
         <encoder>
+            <charset>UTF-8</charset>
             <pattern>${log.pattern}</pattern>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -43,6 +45,7 @@
             <maxHistory>${log.history.days}</maxHistory>
         </rollingPolicy>
         <encoder>
+            <charset>UTF-8</charset>
             <pattern>${log.pattern}</pattern>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -59,6 +62,19 @@
             <maxHistory>${log.history.days}</maxHistory>
         </rollingPolicy>
         <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${log.pattern}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="file_all" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/sys-all.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${log.path}/sys-all.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
             <pattern>${log.pattern}</pattern>
         </encoder>
     </appender>
@@ -72,6 +88,7 @@
         <appender-ref ref="console" />
         <appender-ref ref="file_info" />
         <appender-ref ref="file_error" />
+        <appender-ref ref="file_all" />
         <appender-ref ref="runtime-db" />
     </root>
 

@@ -65,12 +65,12 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
     }
 
     @Override
-    public void bindDevice(Long deviceId, Long hazardPointId, Double installLongitude, Double installLatitude, String operator) {
+    public void bindDevice(Long deviceId, Long hazardPointId, BigDecimal installLongitude, BigDecimal installLatitude, String operator) {
         DeviceHazardPoint bind = DeviceHazardPoint.builder()
                 .deviceId(deviceId)
                 .hazardPointId(hazardPointId)
-                .installLongitude(installLongitude != null ? BigDecimal.valueOf(installLongitude) : null)
-                .installLatitude(installLatitude != null ? BigDecimal.valueOf(installLatitude) : null)
+                .installLongitude(installLongitude)
+                .installLatitude(installLatitude)
                 .createBy(operator)
                 .build();
         deviceHazardPointMapper.insertOrUpdate(Collections.singletonList(bind));

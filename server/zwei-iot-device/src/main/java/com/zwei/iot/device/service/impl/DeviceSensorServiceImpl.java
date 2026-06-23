@@ -112,7 +112,7 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Transactional
     public Long insertSensor(DeviceSensor sensor, List<SensorAttribute> attrList) {
         Device device = requireDevice(sensor.getDeviceId());
-        if (!checkSensorCodeUnique(sensor.getSensorCode(), 0L)) {
+        if (!checkSensorCodeUnique(sensor.getDeviceId(), sensor.getSensorCode(), 0L)) {
             throw new ServiceException("传感器编码已存在");
         }
         fillDeviceFields(sensor, device);
@@ -208,11 +208,11 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     }
 
     /**
-     * 校验传感器编码是否唯一
+     * 校验传感器编码在指定设备内是否唯一
      */
     @Override
-    public boolean checkSensorCodeUnique(String sensorCode, Long id) {
-        DeviceSensor result = sensorMapper.checkSensorCodeUnique(sensorCode, id);
+    public boolean checkSensorCodeUnique(Long deviceId, String sensorCode, Long id) {
+        DeviceSensor result = sensorMapper.checkSensorCodeUnique(deviceId, sensorCode, id);
         return result == null;
     }
 
@@ -311,12 +311,6 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     public void updateLastReportTime(Long sensorId, String lastReportTime) {
         sensorMapper.updateLastReportTime(sensorId, lastReportTime);
-    }
-
-    @Override
-    public java.util.Optional<DeviceSensor> findBySensorCode(String sensorCode) {
-        DeviceSensor sensor = sensorMapper.selectSensorByCode(sensorCode);
-        return java.util.Optional.ofNullable(sensor);
     }
 
     @Override

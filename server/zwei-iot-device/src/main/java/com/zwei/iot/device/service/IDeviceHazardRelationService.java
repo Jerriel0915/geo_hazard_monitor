@@ -35,7 +35,7 @@ public interface IDeviceHazardRelationService {
      * @param installLatitude 安装纬度（可使用设备纬度）
      * @param operator 操作人
      */
-    void bindDevice(Long deviceId, Long hazardPointId, Double installLongitude, Double installLatitude, String operator);
+    void bindDevice(Long deviceId, Long hazardPointId, java.math.BigDecimal installLongitude, java.math.BigDecimal installLatitude, String operator);
 
     int countAllHazardPoints();
     List<Map<String, Object>> countHazardPointsByStatus();

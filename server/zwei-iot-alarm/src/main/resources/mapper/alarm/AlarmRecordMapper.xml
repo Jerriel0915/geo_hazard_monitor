@@ -240,6 +240,41 @@
           AND status IN (1, 2)
     </select>
 
+    <!-- ==================== 统计查询 ==================== -->
+
+    <select id="countPendingByLevel" resultType="java.util.Map">
+        SELECT alarm_level                           AS alarmLevel,
+               alarm_level_text                      AS alarmLevelText,
+               COUNT(*)                              AS cnt
+        FROM alarm_record
+        WHERE status IN (1, 2)
+        GROUP BY alarm_level, alarm_level_text
+        ORDER BY alarm_level
+    </select>
+
+    <select id="countPendingByHazardPointIds" resultType="java.util.Map">
+        SELECT DISTINCT hazard_point_id AS hazardPointId
+        FROM alarm_record
+        WHERE hazard_point_id IN
+        <foreach collection="ids" item="hpId" open="(" separator="," close=")">
+            #{hpId}
+        </foreach>
+        AND status IN (1, 2)
+    </select>
+
+    <select id="selectMonthlyLevelCounts" resultType="java.util.Map">
+        SELECT DATE_FORMAT(first_trigger_time, '%Y-%m')                AS month,
+               SUM(CASE WHEN alarm_level = 1 THEN 1 ELSE 0 END)       AS level1,
+               SUM(CASE WHEN alarm_level = 2 THEN 1 ELSE 0 END)       AS level2,
+               SUM(CASE WHEN alarm_level = 3 THEN 1 ELSE 0 END)       AS level3,
+               SUM(CASE WHEN alarm_level = 4 THEN 1 ELSE 0 END)       AS level4,
+               COUNT(*)                                                AS total
+        FROM alarm_record
+        WHERE first_trigger_time &gt;= DATE_SUB(NOW(), INTERVAL #{months} MONTH)
+        GROUP BY DATE_FORMAT(first_trigger_time, '%Y-%m')
+        ORDER BY month
+    </select>
+
     <!-- ==================== Report 跨模块查询 ==================== -->
 
     <select id="selectByHazardPointAndTime" resultMap="AlarmRecordResult">

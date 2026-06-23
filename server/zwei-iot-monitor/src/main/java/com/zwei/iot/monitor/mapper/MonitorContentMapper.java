@@ -42,14 +42,6 @@ public interface MonitorContentMapper {
     MonitorContent selectMonitorContentById(Long id);
 
     /**
-     * 根据编码查询监测内容
-     *
-     * @param code 监测内容编码
-     * @return 监测内容详情
-     */
-    MonitorContent selectMonitorContentByCode(String code);
-
-    /**
      * 新增监测内容
      *
      * @param monitorContent 监测内容信息
@@ -98,13 +90,16 @@ public interface MonitorContentMapper {
     int deleteMonitorContentByMonitorTypeIds(Long[] monitorTypeIds);
 
     /**
-     * 校验监测内容编码是否唯一
+     * 校验监测内容编码在指定监测类型内是否唯一
      *
-     * @param code 监测内容编码
-     * @param id   排除的监测内容ID（更新时使用）
+     * @param monitorTypeId 监测类型ID
+     * @param code          监测内容编码
+     * @param id            排除的监测内容ID（更新时使用）
      * @return 监测内容信息（null表示唯一）
      */
-    MonitorContent checkMonitorContentCodeUnique(@Param("code") String code, @Param("id") Long id);
+    MonitorContent checkMonitorContentCodeUnique(@Param("monitorTypeId") Long monitorTypeId,
+                                                  @Param("code") String code,
+                                                  @Param("id") Long id);
 
     /**
      * 查询指定监测类型下最大的 sort_order
