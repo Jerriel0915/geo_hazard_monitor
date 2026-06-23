@@ -612,3 +612,36 @@ html, body, #app {
 .el-input__wrapper {
   flex-grow: 0 !important;
 }
+
+/* ============================================
+ * 全局滚动条
+ * 6px 细条 + 悬停加深；为所有可滚动元素提供默认值
+ * 局部 ::-webkit-scrollbar 规则特异性更高，会自动覆盖此处
+ * ============================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
