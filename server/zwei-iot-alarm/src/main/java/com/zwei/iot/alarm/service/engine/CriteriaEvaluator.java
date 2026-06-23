@@ -96,6 +96,7 @@ public class CriteriaEvaluator {
 
         boolean isOr = "OR".equalsIgnoreCase(config.getLogicOperator());
         for (LevelCondition cond : conditions) {
+            // TODO 任务 5: 替换为按 cond.getValueType() 多态分派
             Object resolved = resolveSubjectValue(cond, subjectValues);
             Double value = resolved instanceof Number n ? n.doubleValue() : null;
             boolean condResult = evaluateCondition(cond, value);
@@ -133,6 +134,7 @@ public class CriteriaEvaluator {
 
         boolean isOr = "OR".equalsIgnoreCase(group.getLogicOperator());
         for (LevelCondition cond : conditions) {
+            // TODO 任务 5: 替换为按 cond.getValueType() 多态分派
             Object resolved = resolveSubjectValue(cond, subjectValues);
             Double value = resolved instanceof Number n ? n.doubleValue() : null;
             boolean condResult = evaluateCondition(cond, value);

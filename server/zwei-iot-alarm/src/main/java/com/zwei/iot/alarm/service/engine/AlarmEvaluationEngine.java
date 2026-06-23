@@ -54,6 +54,9 @@ public class AlarmEvaluationEngine {
     private static final Map<String, Integer> LEVEL_VALUES = Map.of(
             "red", 1, "orange", 2, "yellow", 3, "blue", 4);
 
+    /** bucket 4 device 维度遍历的 kind 集合，提取为常量避免热路径每次分配数组 */
+    private static final String[] DEVICE_DIMENSION_KINDS = {"current", "prev"};
+
     private final AlarmProperties properties;
     private final IAlarmRecordService alarmRecordService;
     private final IDeviceHazardRelationService hazardRelationService;
@@ -150,8 +153,9 @@ public class AlarmEvaluationEngine {
         DeviceBasicInfo dev = deviceQueryService.getBasicInfoById(event.getDeviceId());
         if (dev != null) {
             Integer online = dev.online() ? 1 : 0;
-            Instant lastReport = Instant.ofEpochMilli(dev.lastReportAt());
-            for (String kind : new String[]{"current", "prev"}) {
+            // DeviceBasicInfo.lastReportAt() 返回 epoch seconds (见 DeviceQueryServiceImpl.parseTimeToEpochSeconds)
+            Instant lastReport = Instant.ofEpochSecond(dev.lastReportAt());
+            for (String kind : DEVICE_DIMENSION_KINDS) {
                 subjectValues.put(prefix + kind + ".device.onlineStatus", online);
                 subjectValues.put(prefix + kind + ".device.lastReportTime", lastReport);
                 subjectValues.put(kind + ".device.onlineStatus", online);
