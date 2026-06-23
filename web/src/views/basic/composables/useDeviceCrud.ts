@@ -2,7 +2,6 @@ import {reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import {
-    copyDevice as copyDeviceApi,
     createDevice as createDeviceApi,
     deleteDevice as deleteDeviceApi,
     exportDevices,
@@ -42,6 +41,7 @@ export function useDeviceCrud() {
     const dialogTitle = ref('')
     const isEdit = ref(false)
     const isView = ref(false)
+    const isCopyMode = ref(false)
     const formRef = ref()
     const currentRow = ref<DeviceItem | null>(null)
 
@@ -171,6 +171,7 @@ export function useDeviceCrud() {
         dialogTitle.value = '新增设备';
         isEdit.value = false;
         isView.value = false
+        isCopyMode.value = false
         Object.assign(formData, {
             id: undefined,
             code: '',
@@ -195,6 +196,7 @@ export function useDeviceCrud() {
         dialogTitle.value = '编辑设备';
         isEdit.value = true;
         isView.value = false
+        isCopyMode.value = false
         Object.assign(formData, {
             id: row.id,
             code: row.code,
@@ -211,6 +213,46 @@ export function useDeviceCrud() {
             boundHazardPointId: row.boundHazardPointId ?? null,
             status: row.status,
             sensorList: []
+        })
+        dialogVisible.value = true
+    }
+
+    /** 计算复制后缀：原值末尾 _数字 递增，否则追加 _1 */
+    const computeCopySuffix = (original: string): string => {
+        const match = original.match(/^(.+)_(\d+)$/)
+        if (match) {
+            const base = match[1]
+            const num = parseInt(match[2]) + 1
+            return `${base}_${num}`
+        }
+        return `${original}_1`
+    }
+
+    /** 打开复制弹窗（复用新增/编辑弹窗，预填原设备全部字段） */
+    const openCopyDialog = (row: DeviceItem) => {
+        dialogTitle.value = '复制设备'
+        isEdit.value = false
+        isView.value = false
+        isCopyMode.value = true
+        currentRow.value = row // 记住源设备，handleSubmit 需要其 ID
+        const suggestedCode = computeCopySuffix(row.code || '')
+        const suggestedName = computeCopySuffix(row.name || '')
+        Object.assign(formData, {
+            id: undefined,
+            code: suggestedCode,
+            name: suggestedName,
+            sn: '',
+            deviceType: row.deviceType ?? 0,
+            networkType: row.networkType ?? 0,
+            protocolType: row.protocolType || 'MQTT',
+            vendorName: row.vendorName || '',
+            icon: row.icon || '',
+            iconPath: row.iconPath || '',
+            longitude: row.longitude ?? null,
+            latitude: row.latitude ?? null,
+            boundHazardPointId: row.boundHazardPointId ?? null,
+            status: row.status,
+            sensorList: [],
         })
         dialogVisible.value = true
     }
@@ -287,11 +329,39 @@ export function useDeviceCrud() {
         }
     }
 
-    const handleSubmit = () => {
+    // ── Draft state（新增/复制模式下缓存设备信息，待传感器配置完成后统一提交）──
+    const draftMode = ref<'add' | 'copy' | null>(null)
+    const draftSourceId = ref<number | null>(null)
+    const draftCopySensors = ref(false)
+
+    const clearDraft = () => {
+        draftMode.value = null
+        draftSourceId.value = null
+        draftCopySensors.value = false
+    }
+
+    const handleSubmit = (copySensors?: boolean) => {
         formRef.value.validate((valid: boolean) => {
-            if (valid && validateDeviceIdentity()) {
-                if (formData.id) updateDevice(); else createDevice()
+            if (!valid || !validateDeviceIdentity()) return
+
+            // 编辑模式：直接提交（保持现有逻辑）
+            if (isEdit.value) {
+                updateDevice()
+                return
             }
+
+            // 复制模式：缓存草稿，通知父组件进入传感器配置阶段
+            if (isCopyMode.value) {
+                draftSourceId.value = currentRow.value?.id ?? null
+                draftCopySensors.value = copySensors ?? true
+                draftMode.value = 'copy'
+                dialogVisible.value = false
+                return
+            }
+
+            // 新增模式：缓存草稿，通知父组件进入传感器配置阶段
+            draftMode.value = 'add'
+            dialogVisible.value = false
         })
     }
 
@@ -317,45 +387,6 @@ export function useDeviceCrud() {
             })
             .catch(() => {
             })
-    }
-
-    // ── Copy dialog ──
-    const copyDialogVisible = ref(false)
-    const copyFormRef = ref()
-    const copySubmitLoading = ref(false)
-    const copySourceRow = ref<DeviceItem | null>(null)
-    const copyFormData = reactive({code: '', name: ''})
-    const copyFormRules = {
-        code: [{required: true, message: '请输入设备编号', trigger: 'blur'}],
-        name: [{required: true, message: '请输入设备名称', trigger: 'blur'}],
-    }
-
-    const handleCopyOpen = (row: DeviceItem) => {
-        copySourceRow.value = row
-        // 默认值：原编号/名称 + 后缀
-        copyFormData.code = (row.code || '') + '_copy'
-        copyFormData.name = (row.name || '') + '_副本'
-        copyDialogVisible.value = true
-    }
-
-    const handleCopyConfirm = () => {
-        copyFormRef.value?.validate(async (valid: boolean) => {
-            if (!valid) return
-            copySubmitLoading.value = true
-            try {
-                await copyDeviceApi(Number(copySourceRow.value!.id), {
-                    code: copyFormData.code,
-                    name: copyFormData.name,
-                })
-                ElMessage.success('复制成功')
-                copyDialogVisible.value = false
-                await loadTableData()
-            } catch (error: any) {
-                showRequestErrorMessage(error, '复制设备失败')
-            } finally {
-                copySubmitLoading.value = false
-            }
-        })
     }
 
     const handleExport = async () => {
@@ -386,13 +417,13 @@ export function useDeviceCrud() {
     return {
         searchKeyword, searchStatus,
         loading, refreshing, submitLoading, tableData, currentPage, pageSize, total,
-        dialogVisible, dialogTitle, isEdit, isView, formRef, formData, formRules,
+        dialogVisible, dialogTitle, isEdit, isView, isCopyMode, formRef, formData, formRules,
         detailDialogVisible, detailPwdVisible, detailTab, currentRow,
         getStatusType, getStatusLabel, copyPwd, formatCoord, nowString,
         loadTableData, fetchDetail,
         handleSearch, handleReset, handleRefresh, handleSizeChange, handlePageChange,
-        handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleCopyOpen, handleCopyConfirm, handleExport,
-        handleMoreCommand, createDevice,
-        copyDialogVisible, copyFormRef, copyFormData, copyFormRules, copySubmitLoading,
+        handleAdd, handleEdit, handleView, handleSubmit, handleDelete, handleExport,
+        handleMoreCommand, createDevice, openCopyDialog,
+        draftMode, draftSourceId, draftCopySensors, clearDraft,
     }
 }

@@ -1,5 +1,8 @@
 package com.zwei.iot.report.render;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 import com.zwei.iot.report.datasource.ReportContext;
 import com.zwei.iot.report.domain.ReportType;
 
@@ -22,7 +25,7 @@ public final class ReportHtmlBuilder {
             + "<p style=\"margin:4px 0;\"><strong>报告周期：</strong>" + ctx.period().start() + " 至 " + ctx.period().end() + "</p>"
             + "<p style=\"margin:4px 0;\"><strong>隐患点：</strong>" + ctx.hazardPoint().code() + " " + ctx.hazardPoint().name() + "</p>"
             + (ctx.hazardPoint().longitude() != null
-                ? "<p style=\"margin:4px 0;\"><strong>隐患点位置：</strong>经度 " + ctx.hazardPoint().longitude() + ", 纬度 " + ctx.hazardPoint().latitude() + "</p>"
+                ? "<p style=\"margin:4px 0;\"><strong>隐患点位置：</strong>经度 " + ctx.hazardPoint().longitude().setScale(6, RoundingMode.HALF_UP) + ", 纬度 " + ctx.hazardPoint().latitude().setScale(6, RoundingMode.HALF_UP) + "</p>"
                 : "")
             + "<p style=\"margin:4px 0;\"><strong>生成时间：</strong>" + ctx.generatedAt() + "</p>"
             + "<div style=\"height:12px;\"></div>";

@@ -336,8 +336,8 @@
           <el-icon><MapLocation /></el-icon>
           <div class="map-location">{{ hazardPointLocation }}</div>
           <div class="map-coords">
-            <span>经度: {{ hazardPointData?.longitude ?? '-' }}°</span>
-            <span>纬度: {{ hazardPointData?.latitude ?? '-' }}°</span>
+            <span>经度: {{ hazardPointData?.longitude != null ? Number(hazardPointData.longitude).toFixed(6) : '-' }}°</span>
+            <span>纬度: {{ hazardPointData?.latitude != null ? Number(hazardPointData.latitude).toFixed(6) : '-' }}°</span>
           </div>
           <div class="map-marker">
             <div class="marker-pin"></div>
@@ -576,7 +576,7 @@ const showActions = computed(() => {
 const hazardPointLocation = computed(() => {
   const hp = hazardPointData.value
   if (!hp) return '暂无位置信息'
-  if (hp.longitude && hp.latitude) return `经度 ${hp.longitude}, 纬度 ${hp.latitude}`
+  if (hp.longitude && hp.latitude) return `经度 ${Number(hp.longitude).toFixed(6)}, 纬度 ${Number(hp.latitude).toFixed(6)}`
   return hp.address || '暂无位置信息'
 })
 

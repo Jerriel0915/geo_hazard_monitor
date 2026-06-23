@@ -235,7 +235,7 @@ const getStatusLabel = (status: number) => {
 
 const formatCoord = (lng?: number | null, lat?: number | null) => {
   if (lng == null || lat == null) return '未设置'
-  return `${lng}, ${lat}`
+  return `${lng.toFixed(6)}, ${lat.toFixed(6)}`
 }
 
 const copyPwd = (pwd: string) => {

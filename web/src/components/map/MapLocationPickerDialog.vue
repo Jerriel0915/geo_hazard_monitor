@@ -158,7 +158,7 @@ const boundHpPolygon = ref<LatLng[] | null>(null)
 // ── 只读展示 ──
 const decimalDisplay = computed(() => {
   if (!pickerLngLat.value) return '尚未选择坐标'
-  return `${pickerLngLat.value.lng}, ${pickerLngLat.value.lat}`
+  return `${pickerLngLat.value.lng.toFixed(6)}, ${pickerLngLat.value.lat.toFixed(6)}`
 })
 
 const dmsDisplay = computed(() => {

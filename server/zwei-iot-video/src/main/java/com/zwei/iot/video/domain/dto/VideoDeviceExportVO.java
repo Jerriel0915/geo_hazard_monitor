@@ -33,10 +33,10 @@ public class VideoDeviceExportVO implements Serializable {
     private String streamUrl;
 
     @Excel(name = "经度", scale = 6)
-    private Double longitude;
+    private java.math.BigDecimal longitude;
 
     @Excel(name = "纬度", scale = 6)
-    private Double latitude;
+    private java.math.BigDecimal latitude;
 
     @Excel(name = "状态")
     private String statusName;
