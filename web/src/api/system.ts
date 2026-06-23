@@ -154,29 +154,19 @@ const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
   return response.data
 }
 
-const mapMenuTypeToBackend = (type: number) => {
-  const map: Record<number, string> = {
-    0: 'M',
-    1: 'C',
-    2: 'F'
-  }
-  return map[type] ?? 'C'
-}
-
 const mapMenuPayload = (payload: MenuPayload) => ({
   parentId: payload.parentId,
-  menuName: payload.name,
-  routeName: payload.code,
+  name: payload.name,
+  code: payload.code,
   path: payload.path,
   component: payload.component,
   icon: payload.icon,
-  menuType: mapMenuTypeToBackend(payload.type),
-  visible: payload.visible === undefined ? undefined : String(payload.visible),
-  isCache: payload.isCache === undefined ? undefined : String(payload.isCache),
-  orderNum: payload.sortOrder,
+  type: payload.type,
+  visible: payload.visible,
+  isCache: payload.isCache,
+  sortOrder: payload.sortOrder,
   perms: payload.perms,
-  status: payload.status === undefined ? undefined : String(payload.status),
-  isFrame: '1'
+  status: payload.status
 })
 
 export const getOrganizationTree = (params?: Record<string, any>) =>
@@ -274,6 +264,16 @@ export const updateMenu = (id: number, payload: MenuPayload) =>
 
 export const deleteMenu = (id: number) =>
   unwrap<null>(request.delete(`/menus/${id}`))
+
+/** 批量重排菜单（el-tree 拖拽落盘用） */
+export interface MenuReorderItem {
+  menuId: number
+  parentId: number
+  orderNum: number
+}
+
+export const reorderMenus = (items: MenuReorderItem[]) =>
+  unwrap<number>(request.post('/menus/reorder', items))
 
 export interface PermissionCoverage {
   codePerms: string[]

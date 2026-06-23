@@ -3,6 +3,7 @@ package com.zwei.system.mapper;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import com.zwei.common.core.domain.entity.SysMenu;
+import com.zwei.common.core.domain.model.SysMenuReorderItem;
 
 /**
  * 菜单表 数据层
@@ -108,10 +109,19 @@ public interface SysMenuMapper
 
     /**
      * 保存菜单排序
-     * 
+     *
      * @param menu 菜单信息
      */
     public void updateMenuSort(SysMenu menu);
+
+    /**
+     * 批量重排菜单：单条 UPDATE 用 CASE WHEN 一次性更新多条记录的
+     * parent_id 与 order_num，对应前端 el-tree 拖拽落盘。
+     *
+     * @param items 重排项列表
+     * @return 受影响行数
+     */
+    public int batchReorderMenus(@Param("list") List<SysMenuReorderItem> items);
 
     /**
      * 删除菜单管理信息

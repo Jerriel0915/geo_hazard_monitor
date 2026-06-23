@@ -5,6 +5,7 @@ import com.zwei.common.constant.UserConstants;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysMenu;
+import com.zwei.common.core.domain.model.SysMenuReorderItem;
 import com.zwei.common.core.domain.model.SysMenuUpsertRequest;
 import com.zwei.common.core.domain.model.SysMenuResponse;
 import com.zwei.common.enums.BusinessType;
@@ -175,6 +176,23 @@ public class SysMenuController extends BaseController
         String[] orderNums = params.get("orderNums").split(",");
         menuService.updateMenuSort(menuIds, orderNums);
         return success();
+    }
+
+    /**
+     * 批量重排菜单：一次事务内同时更新多个菜单的 parentId 与 orderNum，
+     * 命中冲突（父不能是自己、菜单名 / 路径 / 路由名称冲突）整体回滚。
+     * 对应前端 el-tree 拖拽落盘。
+     */
+    @PreAuthorize("@ss.hasPermi('system:menu:edit')")
+    @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
+    @PostMapping("/reorder")
+    public AjaxResult reorder(@Validated @RequestBody List<SysMenuReorderItem> items)
+    {
+        if (items == null || items.isEmpty())
+        {
+            return error("重排项不能为空");
+        }
+        return toAjax(menuService.reorderMenus(items));
     }
 
     /**

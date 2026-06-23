@@ -324,6 +324,8 @@ import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import draggable from 'vuedraggable'
 import request from '@/utils/request'
+import {getMenuTree, type MenuItem} from '@/api/system'
+import {getMenuIconSvg, resolveRouteName} from '@/utils/menuIcon'
 
 
 /** 通知中心统一消息结构（公告 + 事件共用） */
@@ -534,159 +536,107 @@ const pwdForm = reactive({
 const activeMenu = ref('')
 const isAdmin = ref(false)
 
-const menuList = [
-  {
-    name: 'Dashboard',
-    label: '全息看板',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
-    children: [
-      { name: 'Comprehensive', label: '综合视图' },
-      { name: 'Alarm', label: '告警视图' },
-      { name: 'Operation', label: '运营视图' }
-    ]
-  },
-  {
-    name: 'Basic',
-    label: '基础管理',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
-    children: [
-      { name: 'HazardPoint', label: '隐患点管理' }
-    ]
-  },
-  {
-    name: 'Alarm',
-    label: '告警中心',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
-    children: [
-      {name: 'RealtimeAlarm', label: '待办告警'},
-      {name: 'AlarmNotification', label: '历史告警'},
-      {divider: true},
-      { name: 'AlarmCriteria', label: '告警判据' },
-      {name: 'AlarmDisposal', label: '综合告警'},
-      {name: 'AlgoLibrary', label: '算法管理'},
-      {divider: true},
-      {name: 'NotificationSetting', label: '通知设置'}
-    ]
-  },
-  {
-    name: 'Report',
-    label: '报告报表',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
-    children: [
-      { name: 'Report', label: '报告管理' },
-      { name: 'Query', label: '查询中心' },
-      { name: 'Analysis', label: '数据分析' },
-      { name: 'ShareStrategy', label: '共享策略' }
-    ]
-  },
-  {
-    name: 'IoT',
-    label: '物联网',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
-    children: [
-      { name: 'MonitorType', label: '监测类型' },
-      { name: 'Device', label: '设备管理' },
-      { name: 'VideoDevice', label: '视频设备' },
-      {name: 'DataParse', label: '数据解析'},
-      {name: 'ServiceStatus', label: '服务状态'}
-    ]
-  },
-  {
-    name: 'System',
-    label: '系统管理',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-    children: [
-      { name: 'Organization', label: '组织管理' },
-      { name: 'Identity', label: '身份管理' },
-      { name: 'Permission', label: '权限管理' },
-      { name: 'Log', label: '日志管理' },
-      { name: 'Settings', label: '系统设置' }
-    ]
-  }
-]
+// ========== 动态菜单 ==========
 
-// 根据角色过滤菜单：非管理员不展示"服务状态"
-const filteredMenuList = computed(() => {
-  if (isAdmin.value) return menuList
-  return menuList.map(menu => {
-    if (menu.name === 'IoT') {
-      return {
-        ...menu,
-        children: menu.children.filter(child => child.name !== 'ServiceStatus')
-      }
-    }
-    return menu
-  })
-})
-
-const menuRouteMap: Record<string, string> = {
-  Dashboard: '/dashboard',
-  Comprehensive: '/holo-board/comprehensive',
-  Alarm: '/holo-board/alarm',
-  Operation: '/holo-board/operation',
-  HazardPoint: '/basic/hazard-point',
-  MonitorType: '/basic/monitor-type',
-  Device: '/basic/device',
-  VideoDevice: '/basic/video-device',
-  RealtimeAlarm: '/alarm/realtime',
-  AlarmCriteria: '/alarm/criteria',
-  AlarmNotification: '/alarm/notification',
-  AlarmDisposal: '/alarm/disposal',
-  AlgoLibrary: '/alarm/algo-library',
-  NotificationSetting: '/alarm/notification-setting',
-  Report: '/report/report',
-  Query: '/report/query',
-  Analysis: '/report/analysis',
-  ShareStrategy: '/report/share-strategy',
-  Screen: '/report/screen',
-  AlarmEngine: '/iot/alarm-engine',
-  DataParse: '/iot/data-parse',
-  ServiceStatus: '/iot/service-status',
-  Organization: '/system/organization',
-  Identity: '/system/identity',
-  Permission: '/system/permission',
-  Log: '/system/log',
-  Settings: '/system/settings',
-  UserProfile: '/user/profile'
+/** 导航菜单项（模板渲染格式） */
+interface NavMenuItem {
+  name: string
+  label: string
+  icon: string
+  children?: NavMenuItem[]
+  routeName?: string
 }
 
-const menuLabelMap: Record<string, string> = {
-  Dashboard: '首页',
-  Comprehensive: '综合视图',
-  Alarm: '告警视图',
-  Operation: '运营视图',
-  HazardPoint: '隐患点管理',
-  MonitorType: '监测类型',
-  Device: '设备管理',
-  VideoDevice: '视频设备',
-  RealtimeAlarm: '待办告警',
-  AlarmCriteria: '告警判据',
-  AlarmNotification: '历史告警',
-  AlarmDisposal: '综合告警',
-  AlgoLibrary: '算法管理',
-  NotificationSetting: '通知设置',
-  Report: '报告管理',
-  Query: '查询中心',
-  Analysis: '数据分析',
-  ShareStrategy: '共享策略',
-  Screen: '运营大屏',
-  AlarmEngine: '告警引擎',
-  DataParse: '数据解析',
-  ServiceStatus: '服务状态',
-  Organization: '组织管理',
-  Identity: '身份管理',
-  Permission: '权限管理',
-  Log: '日志管理',
-  Settings: '系统设置',
-  UserProfile: '个人信息'
+/** 原始菜单树（API 返回） */
+const rawMenuTree = ref<MenuItem[]>([])
+/** 转换后的导航菜单列表 */
+const navMenuList = ref<NavMenuItem[]>([])
+/** routeName → label 快速查找表 */
+const routeLabelMap = ref<Record<string, string>>({})
+/** 有效的 routeName 集合（已注册的 vue-router 路由名） */
+const validRouteNames = ref<Set<string>>(new Set())
+
+/** 将 API MenuItem 树转换为 NavMenuItem 树 */
+function buildNavMenu(menus: MenuItem[]): NavMenuItem[] {
+  const result: NavMenuItem[] = []
+  for (const menu of menus) {
+    // 跳过按钮类型和隐藏的菜单
+    if (menu.type === 2) continue
+    if (menu.visible === 1 && menu.type === 0) {
+      // 隐藏的目录：仍然处理其子节点（子节点可能可见）
+      if (menu.children?.length) {
+        result.push(...buildNavMenu(menu.children))
+      }
+      continue
+    }
+    if (menu.visible === 1) continue
+
+    const routeName = resolveRouteName(menu.code, menu.name)
+    const item: NavMenuItem = {
+      name: routeName || String(menu.id),
+      label: menu.name,
+      icon: getMenuIconSvg(menu.icon),
+      routeName
+    }
+    // 注册 label
+    if (routeName) {
+      routeLabelMap.value[routeName] = menu.name
+    }
+    // 递归处理子节点
+    if (menu.children?.length) {
+      const children = buildNavMenu(menu.children)
+      if (children.length > 0) {
+        item.children = children
+      }
+    }
+    result.push(item)
+  }
+  return result
+}
+
+/** 递归收集所有有效路由名（有 routeName 的叶子节点） */
+function collectRouteNames(items: NavMenuItem[]) {
+  for (const item of items) {
+    if (item.routeName) {
+      validRouteNames.value.add(item.routeName)
+    }
+    if (item.children?.length) {
+      collectRouteNames(item.children)
+    }
+  }
+}
+
+/** 从 API 加载菜单树 */
+async function loadNavMenus() {
+  try {
+    const tree = await getMenuTree()
+    rawMenuTree.value = tree
+    routeLabelMap.value = {}
+    validRouteNames.value = new Set()
+    navMenuList.value = buildNavMenu(tree)
+    collectRouteNames(navMenuList.value)
+    // 确保首页标签始终存在
+    routeLabelMap.value['Dashboard'] = '首页'
+    validRouteNames.value.add('Dashboard')
+  } catch {
+    // 菜单加载失败时保留空列表
+    navMenuList.value = []
+  }
+}
+
+// 直接使用动态菜单（后端 getMenuTree 已按角色过滤）
+const filteredMenuList = computed(() => navMenuList.value)
+
+/** 根据 key（routeName）查找菜单 label */
+function findMenuLabel(key: string): string {
+  return routeLabelMap.value[key] || key
 }
 
 const handleMenuSelect = (key: string) => {
-  const route = menuRouteMap[key]
-  if (route) {
-    router.push(route)
+  if (validRouteNames.value.has(key)) {
+    router.push({ name: key })
     if (!tabs.value.find(tab => tab.name === key)) {
-      tabs.value.push({ name: key, label: menuLabelMap[key] })
+      tabs.value.push({ name: key, label: findMenuLabel(key) })
     }
     activeTab.value = key
     activeMenu.value = key
@@ -696,9 +646,8 @@ const handleMenuSelect = (key: string) => {
 const switchTab = (name: string) => {
   activeTab.value = name
   activeMenu.value = name === 'Dashboard' ? '' : name
-  const route = menuRouteMap[name]
-  if (route) {
-    router.push(route)
+  if (validRouteNames.value.has(name)) {
+    router.push({ name })
   }
 }
 
@@ -714,7 +663,9 @@ const closeTab = (name: string) => {
         const newTab = tabs.value[newIndex]
         activeTab.value = newTab.name
         activeMenu.value = newTab.name === 'Dashboard' ? '' : newTab.name
-        router.push(menuRouteMap[newTab.name])
+        if (validRouteNames.value.has(newTab.name)) {
+          router.push({ name: newTab.name })
+        }
       } else {
         activeMenu.value = ''
         router.push('/dashboard')
@@ -823,13 +774,13 @@ const isValidTab = (t: unknown): t is { name: string; label: string } => {
       && typeof t === 'object'
       && typeof (t as any).name === 'string'
       && typeof (t as any).label === 'string'
-      && typeof menuRouteMap[(t as any).name] === 'string' // 名称必须在路由表中
+      && validRouteNames.value.has((t as any).name) // 名称必须在有效路由中
 }
 
 /** 同步 tabs/activeTab/activeMenu 到当前路由 */
 const syncTabWithRoute = (routeName: string | null | undefined) => {
   if (!routeName) return
-  const label = menuLabelMap[routeName]
+  const label = routeLabelMap.value[routeName]
   if (!label) return // 路由未在 tabs 体系中（如 H5Disposal/SysNotice 等），不处理
   if (!tabs.value.find(t => t.name === routeName)) {
     tabs.value.push({name: routeName, label})
@@ -839,6 +790,9 @@ const syncTabWithRoute = (routeName: string | null | undefined) => {
 }
 
 onMounted(async () => {
+  // 0. 加载动态菜单（必须在 tabs 恢复前完成，因为 isValidTab/syncTabWithRoute 依赖它）
+  await loadNavMenus()
+
   // 1. 从 localStorage 恢复已打开的 tabs
   try {
     const raw = localStorage.getItem(TABS_STORAGE_KEY)
@@ -1191,6 +1145,7 @@ const goToDashboard = () => {
 .menu-icon {
   display: flex;
   align-items: center;
+  color: white;
 }
 
 .menu-icon :deep(svg) {
