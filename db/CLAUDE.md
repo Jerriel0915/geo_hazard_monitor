@@ -14,7 +14,7 @@
 | `api_20260525.md`             | 数据库相关 API 备忘                                     |
 | `CLAUDE.md`                   | 本文档                                              |
 
-> **当前未提供 `db/upgrade/` 升级目录**。如需增量升级，请创建 `db/upgrade/v{X.Y.Z}.sql` 并按编号排序。
+> **升级脚本目录**: `db/upgrade/`，按版本号递增执行（如 `v2.1-parser-module.sql`、`v2.9-sensor-code-device-unique.sql`）。
 
 ## 数据库基本信息
 
@@ -70,7 +70,7 @@
 | `device_online_event_log` | 设备上下线事件日志 | 8   | idx_device_time / idx_event_time                               | ONLINE/OFFLINE/HEARTBEAT |
 | `device_online_status`    | 设备在线状态    | 9   | device_id UNIQUE / idx_status / idx_last_report                | 实时在线/离线                  |
 | `device_registration_log` | 设备注册日志    | 12  | uk_device_register_request_id                                  | requestId 幂等             |
-| `device_sensor`           | 传感器表      | 16  | uk_device_sensor_code / uk_device_sensor_no(deviceId,sensorNo) | 全局唯一编码 + 设备内唯一主题编号       |
+| `device_sensor`           | 传感器表      | 16  | uk_device_sensor (device_id, sensor_code) / idx_device_sensor_device_id/type_id/status/del | 设备内唯一编码 (v2.9 从全局唯一改为设备内唯一) |
 | `device_status_log`       | 设备状态日志表   | 12  | idx_device_status_log_device_id/create_time                    | 报修/修复/停用/恢复历史            |
 | `sensor_attribute`        | 传感器属性表    | 14  | uk_sensor_attr_code(sensorId,attrCode)                         | 属性级字典                    |
 
@@ -303,6 +303,7 @@ LIMIT 10;
 ## 相关文件清单
 
 - `geo_hazard_monitor_v2.0.sql` (3099 行, mysqldump 输出)
+- `upgrade/v2.9-sensor-code-device-unique.sql` (传感器编号约束：全局唯一 → 设备内唯一)
 - `api_20260525.md` (数据库相关 API 备忘)
 - `CLAUDE.md` (本文档)
 
@@ -311,3 +312,4 @@ LIMIT 10;
 | 时间               | 变更                                                                 |
 |------------------|--------------------------------------------------------------------|
 | 2026-06-10 19:08 | 首次创建 db/CLAUDE.md (架构师增量扫描) — 提取 59 张表清单、按业务域分组、核心 E-R 关系图、初始化数据摘要 |
+| 2026-06-23 | **v2.9 升级**: `device_sensor.sensor_code` 唯一约束从全局唯一 `uk_device_sensor_code` 改为设备内唯一 `uk_device_sensor (device_id, sensor_code)`；下游 IoTDB 路径与告警引擎已使用 (deviceId, sensorCode) 复合键，无影响 |

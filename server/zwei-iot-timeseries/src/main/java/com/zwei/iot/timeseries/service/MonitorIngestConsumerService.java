@@ -5,6 +5,7 @@ import com.zwei.common.domain.ParsedMessage;
 import com.zwei.common.domain.PropertyValue;
 import com.zwei.common.event.MonitorDataIngestedEvent;
 import com.zwei.iot.device.domain.Device;
+import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceOnlineStatusService;
 import com.zwei.iot.device.service.IDeviceSensorService;
@@ -347,7 +348,7 @@ public class MonitorIngestConsumerService {
      */
     private List<StandardMeasurementPoint> adapt(ParsedMessage msg) {
         Long deviceId = resolveDeviceId(msg.deviceCode());
-        Long sensorId = resolveSensorId(msg.sensorCode());
+        Long sensorId = resolveSensorId(deviceId, msg.sensorCode());
         return msg.properties().stream()
                 .filter(p -> p.value() != null)
                 .map(p -> StandardMeasurementPoint.builder()
@@ -373,9 +374,9 @@ public class MonitorIngestConsumerService {
         return dev != null ? dev.getId() : -1L;
     }
 
-    private Long resolveSensorId(String sensorCode) {
-        return deviceSensorService.findBySensorCode(sensorCode)
-                .map(s -> s.getId()).orElse(-1L);
+    private Long resolveSensorId(Long deviceId, String sensorCode) {
+        DeviceSensor sensor = deviceSensorService.selectSensorByDeviceIdAndCode(deviceId, sensorCode);
+        return sensor != null ? sensor.getId() : -1L;
     }
 
     /**

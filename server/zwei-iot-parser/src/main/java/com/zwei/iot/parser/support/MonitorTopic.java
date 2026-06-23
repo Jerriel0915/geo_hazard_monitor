@@ -11,7 +11,7 @@ package com.zwei.iot.parser.support;
  * <ul>
  *   <li>{@code sourceType} — 来源类型，sys=通用协议，gb=国标协议</li>
  *   <li>{@code deviceCode} — 设备编号，对应 device 表 code 字段</li>
- *   <li>{@code sensorCode} — 传感器编码，全局唯一</li>
+ *   <li>{@code sensorCode} — 传感器编码，设备内唯一</li>
  * </ul>
  */
 public record MonitorTopic(String sourceType, String deviceCode, String sensorCode) {

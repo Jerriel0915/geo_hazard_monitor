@@ -56,22 +56,16 @@
         WHERE ds.id = #{id} AND ds.del_flag = 0
     </select>
 
-    <!-- 根据编码查询传感器 -->
-    <select id="selectSensorByCode" parameterType="String" resultMap="DeviceSensorResult">
-        <include refid="selectSensorVo"/>
-        WHERE ds.sensor_code = #{sensorCode} AND ds.del_flag = 0
-    </select>
-
     <!-- 根据设备ID和传感器编码查询传感器 -->
     <select id="selectSensorByDeviceIdAndCode" resultMap="DeviceSensorResult">
         <include refid="selectSensorVo"/>
         WHERE ds.device_id = #{deviceId} AND ds.sensor_code = #{sensorCode} AND ds.del_flag = 0
     </select>
 
-    <!-- 校验传感器编码是否唯一 -->
+    <!-- 校验传感器编码在设备内是否唯一 -->
     <select id="checkSensorCodeUnique" resultMap="DeviceSensorResult">
         <include refid="selectSensorVo"/>
-        WHERE ds.sensor_code = #{sensorCode} AND ds.del_flag = 0
+        WHERE ds.device_id = #{deviceId} AND ds.sensor_code = #{sensorCode} AND ds.del_flag = 0
         <if test="id != null">AND ds.id != #{id}</if>
         LIMIT 1
     </select>

@@ -291,7 +291,7 @@ public class DeviceServiceImpl implements IDeviceService {
         if (Boolean.TRUE.equals(request.getCopySensors())) {
             List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(id);
             for (DeviceSensor originalSensor : sensors) {
-                String newSensorCode = resolveCopySensorCode(originalSensor.getSensorCode());
+                String newSensorCode = resolveCopySensorCode(copy.getId(), originalSensor.getSensorCode());
                 DeviceSensor newSensor = DeviceSensor.builder()
                         .deviceId(copy.getId())
                         .deviceCode(copy.getCode())
@@ -422,7 +422,7 @@ public class DeviceServiceImpl implements IDeviceService {
     private static final Pattern NUMERIC_SUFFIX = Pattern.compile("^(.*)_(\\d{2})$");
 
     /**
-     * 为复制的传感器生成唯一编码。
+     * 为复制的传感器生成设备内唯一编码。
      *
      * <h3>规则</h3>
      * <ol>
@@ -432,18 +432,21 @@ public class DeviceServiceImpl implements IDeviceService {
      *   <li>仍冲突 → 逐步追加 _02、_03 直至唯一（上限 20 次）</li>
      *   <li>超过 varchar(100) 时截断原编码为后缀留空间</li>
      * </ol>
+     *
+     * @param deviceId 目标设备ID（复制目标设备，唯一性在该设备内校验）
+     * @param originalCode 原传感器编码
      */
-    private String resolveCopySensorCode(String originalCode) {
+    private String resolveCopySensorCode(Long deviceId, String originalCode) {
         // Step 1: 尝试递增已有数字后缀
         String primary = incrementOrAppend(originalCode);
         String candidate = truncateToFit(primary, SENSOR_CODE_MAX_LEN);
-        if (sensorMapper.checkSensorCodeUnique(candidate, null) == null) {
+        if (sensorMapper.checkSensorCodeUnique(deviceId, candidate, null) == null) {
             return candidate;
         }
 
         // Step 2: 冲突 — 从原编码重新追加 _01
         candidate = truncateToFit(originalCode + "_01", SENSOR_CODE_MAX_LEN);
-        if (sensorMapper.checkSensorCodeUnique(candidate, null) == null) {
+        if (sensorMapper.checkSensorCodeUnique(deviceId, candidate, null) == null) {
             return candidate;
         }
 
@@ -451,7 +454,7 @@ public class DeviceServiceImpl implements IDeviceService {
         for (int i = 2; i <= MAX_SUFFIX_RETRY; i++) {
             String suffix = String.format("_%02d", i);
             candidate = truncateToFit(originalCode + suffix, SENSOR_CODE_MAX_LEN);
-            if (sensorMapper.checkSensorCodeUnique(candidate, null) == null) {
+            if (sensorMapper.checkSensorCodeUnique(deviceId, candidate, null) == null) {
                 return candidate;
             }
         }

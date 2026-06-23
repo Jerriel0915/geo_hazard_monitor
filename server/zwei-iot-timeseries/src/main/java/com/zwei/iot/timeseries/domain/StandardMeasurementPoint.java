@@ -14,7 +14,7 @@ import java.io.Serializable;
  * <p>字段说明：</p>
  * <ul>
  *   <li>{@code deviceId} — 设备ID，对应 device 表主键</li>
- *   <li>{@code sensorCode} — 传感器编码，全局唯一</li>
+ *   <li>{@code sensorCode} — 传感器编码，设备内唯一</li>
  *   <li>{@code sensorId} — 传感器主键ID</li>
  *   <li>{@code attrCode} — 指标编码，如 value、temperature</li>
  *   <li>{@code attrName} — 指标中文名称</li>
