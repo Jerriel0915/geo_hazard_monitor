@@ -46,6 +46,33 @@ class RelativeTimeParserTest {
                 "got=" + result + " expected~=" + expected);
     }
 
+    @Test
+    void parseMultiOffset_positiveInheritance() {
+        Instant before = Instant.now();
+        Instant result = RelativeTimeParser.resolve("now+1d12h");
+        Instant expected = before.plus(1, ChronoUnit.DAYS).plus(12, ChronoUnit.HOURS);
+        assertTrue(Math.abs(result.getEpochSecond() - expected.getEpochSecond()) <= 2,
+                "now+1d12h 应为 +1 天 +12 小时（正号继承）");
+    }
+
+    @Test
+    void parseMultiOffset_signSwitch() {
+        Instant before = Instant.now();
+        Instant result = RelativeTimeParser.resolve("now-1d+12h");
+        Instant expected = before.minus(1, ChronoUnit.DAYS).plus(12, ChronoUnit.HOURS);
+        assertTrue(Math.abs(result.getEpochSecond() - expected.getEpochSecond()) <= 2,
+                "now-1d+12h 应为 -1 天 +12 小时（显式符号覆盖）");
+    }
+
+    @Test
+    void parseFirstSegmentImplicitSign_defaultsToMinus() {
+        Instant before = Instant.now();
+        Instant result = RelativeTimeParser.resolve("now5h");
+        Instant expected = before.minus(5, ChronoUnit.HOURS);
+        assertTrue(Math.abs(result.getEpochSecond() - expected.getEpochSecond()) <= 2,
+                "now5h 应等同于 now-5h（首段省略符号默认为 -）");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"", "5h", "now-5x", "now--5h", "now-5", "now-abc", "abc-5h"})
     void parseInvalid_throws(String expr) {

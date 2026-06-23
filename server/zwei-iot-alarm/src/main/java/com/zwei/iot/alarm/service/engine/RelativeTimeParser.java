@@ -9,14 +9,19 @@ import java.util.regex.Pattern;
 /**
  * 相对时间表达式解析器。
  *
- * <p>语法: {@code now} 或 {@code now([+-]\d+[smhd])}
+ * <p>语法: {@code now} 或 {@code now} 后跟 1 个或多个偏移段。
+ * 每段格式: {@code [+-]?\d+[smhd]}
+ * 第一段如果有符号则必须显式写出；后续段可省略符号，此时继承上一段的符号。
+ * 首段省略符号时默认为 {@code -}（减）。
  *
  * <p>示例:
  * <ul>
  *   <li>{@code now} → 当前时刻</li>
  *   <li>{@code now-5h} → 5 小时前</li>
  *   <li>{@code now+30m} → 30 分钟后</li>
- *   <li>{@code now-1d12h} → 1 天 12 小时前</li>
+ *   <li>{@code now-1d12h} → 1 天 12 小时前（12h 继承 - 号）</li>
+ *   <li>{@code now+1d12h} → 1 天 12 小时后（12h 继承 + 号）</li>
+ *   <li>{@code now-1d+12h} → 1 天前再过 12 小时（显式符号覆盖）</li>
  * </ul>
  *
  * <p>单位: s=秒 m=分 h=时 d=天
