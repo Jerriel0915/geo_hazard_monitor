@@ -167,7 +167,7 @@ import 'leaflet/dist/leaflet.css'
 import {type DashboardFullVO, getDashboardFull} from '@/api/monitor'
 import {getRealtimeAlarmPage} from '@/api/realtimeAlarm'
 import {getHazardPointPage} from '@/api/hazardPoint'
-import {TIANDITU_KEY as TK} from '@/composables/useLeafletMap'
+import {TIANDITU_KEY as TK, loadTiandituKey} from '@/composables/useLeafletMap'
 
 /* ========== 时钟 ========== */
 const dateStr = ref(''); const timeStr = ref(''); const weekDay = ref('')
@@ -390,8 +390,9 @@ async function loadAlarms(){
 let rt:any=null
 function resizeAll(){ m?.invalidateSize(); [eStatusPie,eDevBar,eSensorDonut,eRadar,eTrendLine,eAlarmLevel,eActiveTrend].forEach(c=>c?.resize()) }
 
-onMounted(()=>{
+onMounted(async ()=>{
   tick(); ct=setInterval(tick,1000)
+  await loadTiandituKey()
   initMap(); loadAll().then(()=>loadMarkers())
   rt=setInterval(loadAll,60000)
   window.addEventListener('resize',resizeAll)

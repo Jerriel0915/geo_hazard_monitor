@@ -226,7 +226,7 @@ import {
 import { getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmTrend, type AlarmTrendVO } from '@/api/alarm'
 import { getMonitorRates, getMapOverview, type HazardPointMapVO, type HazardPointMonitorRate } from '@/api/hazardPoint'
 
-import {TIANDITU_KEY} from '@/composables/useLeafletMap'
+import {TIANDITU_KEY, loadTiandituKey} from '@/composables/useLeafletMap'
 import ResourceSection from './components/ResourceSection.vue'
 import OnlineSection from './components/OnlineSection.vue'
 

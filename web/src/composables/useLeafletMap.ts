@@ -3,7 +3,20 @@ import 'leaflet/dist/leaflet.css'
 import {nextTick, onBeforeUnmount, ref, type Ref, shallowRef, type ShallowRef, watch} from 'vue'
 import type {LatLng} from '@/lib/boundaryCoords'
 
-export const TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
+export let TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
+
+/** 从 sys_config 加载天地图 API Key，失败时保留旧值 */
+export async function loadTiandituKey(): Promise<string> {
+  try {
+    const {default: request} = await import('@/utils/request')
+    const res: any = await request.get('/system/config/configKey/tianditu_key')
+    const val = res?.data ?? res?.msg ?? res
+    if (val && typeof val === 'string' && val.trim()) {
+      TIANDITU_KEY = val.trim()
+    }
+  } catch { /* 未配置时使用默认值 */ }
+  return TIANDITU_KEY
+}
 
 export function buildTiandituUrl(layer: string, style: string): string {
   return `https://t0.tianditu.gov.cn/${layer}/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${style}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${TIANDITU_KEY}`
