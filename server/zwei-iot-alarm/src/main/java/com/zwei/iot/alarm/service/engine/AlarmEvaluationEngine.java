@@ -380,7 +380,8 @@ public class AlarmEvaluationEngine {
         }
         String unit = cond.getUnit() != null && !cond.getUnit().isBlank() ? cond.getUnit() : "";
         String opText = operatorText(cond.getOperator());
-        Double threshold = cond.getThreshold();
+        Object thresholdRaw = cond.getThreshold();
+        Double threshold = thresholdRaw instanceof Number ? ((Number) thresholdRaw).doubleValue() : null;
         StringBuilder sb = new StringBuilder();
         sb.append(attrName).append("当前值 ").append(formatValue(currentValue));
         if (!unit.isEmpty()) sb.append(unit);

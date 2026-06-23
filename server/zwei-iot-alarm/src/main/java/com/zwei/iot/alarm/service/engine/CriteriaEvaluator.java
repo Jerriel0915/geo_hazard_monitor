@@ -212,7 +212,12 @@ public class CriteriaEvaluator {
                     value, cond != null ? cond.getOperator() : null, cond != null ? cond.getSubject() : null);
             return false;
         }
-        Double threshold = cond.getThreshold();
+        Object thresholdObj = cond.getThreshold();
+        if (!(thresholdObj instanceof Number)) {
+            log.debug("[Alarm][Criteria][Cond] threshold 非 Number 跳过 (临时兼容) subject={}", cond.getSubject());
+            return false;
+        }
+        Double threshold = ((Number) thresholdObj).doubleValue();
         if (threshold == null) {
             log.debug("[Alarm][Criteria][Cond] threshold=null 跳过 subject={} operator={}",
                     cond.getSubject(), cond.getOperator());
@@ -237,7 +242,13 @@ public class CriteriaEvaluator {
                     log.debug("[Alarm][Criteria][Cond] BETWEEN thresholdMax=null 跳过 subject={}", cond.getSubject());
                     return false;
                 }
-                return value >= threshold && value <= cond.getThresholdMax();
+                Object maxObj = cond.getThresholdMax();
+                if (!(maxObj instanceof Number)) {
+                    log.debug("[Alarm][Criteria][Cond] BETWEEN thresholdMax 非 Number 跳过 subject={}", cond.getSubject());
+                    return false;
+                }
+                double thresholdMax = ((Number) maxObj).doubleValue();
+                return value >= threshold && value <= thresholdMax;
             default:
                 log.debug("[Alarm][Criteria][Cond] 未知 operator 跳过 subject={} operator={}",
                         cond.getSubject(), cond.getOperator());

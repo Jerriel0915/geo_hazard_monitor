@@ -33,19 +33,31 @@ public class LevelCondition {
     private java.util.Map<String, Object> functionParams;
 
     /**
-     * 运算符: GT / GTE / LT / LTE / EQ / NEQ / BETWEEN
+     * 运算符: GT / GTE / LT / LTE / EQ / NEQ / BETWEEN / CONTAINS
      */
     private String operator;
 
     /**
-     * 阈值
+     * 数据类型: NUMBER / DATETIME / STRING / BOOLEAN
+     * <p>用于 CriteriaEvaluator 多态分派；为 null 时按 NUMBER 兼容老数据。
      */
-    private Double threshold;
+    private String valueType;
 
     /**
-     * 阈值上限（BETWEEN 时使用）
+     * 阈值 — 按 valueType 解释:
+     * <ul>
+     *   <li>NUMBER: Double</li>
+     *   <li>DATETIME: String (ISO-8601 或 "now-5h" 相对)</li>
+     *   <li>STRING: String</li>
+     *   <li>BOOLEAN: Integer (1/0)</li>
+     * </ul>
      */
-    private Double thresholdMax;
+    private Object threshold;
+
+    /**
+     * 阈值上限（BETWEEN 时使用） — NUMBER: Double；DATETIME: String
+     */
+    private Object thresholdMax;
 
     /**
      * 单位
@@ -93,20 +105,28 @@ public class LevelCondition {
         this.operator = operator;
     }
 
-    public Double getThreshold() {
+    public Object getThreshold() {
         return threshold;
     }
 
-    public void setThreshold(Double threshold) {
+    public void setThreshold(Object threshold) {
         this.threshold = threshold;
     }
 
-    public Double getThresholdMax() {
+    public Object getThresholdMax() {
         return thresholdMax;
     }
 
-    public void setThresholdMax(Double thresholdMax) {
+    public void setThresholdMax(Object thresholdMax) {
         this.thresholdMax = thresholdMax;
+    }
+
+    public String getValueType() {
+        return valueType;
+    }
+
+    public void setValueType(String valueType) {
+        this.valueType = valueType;
     }
 
     public String getUnit() {
