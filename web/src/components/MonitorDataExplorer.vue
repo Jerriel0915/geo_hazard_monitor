@@ -124,20 +124,37 @@
     <div v-show="mode === 'table'" class="mde-table-area">
       <el-table
         v-if="!loading"
-        :data="tableData"
+        :data="pagedTableData"
         border
         stripe
         size="small"
         :height="fillContainer ? '100%' : undefined"
         :max-height="fillContainer ? undefined : 400"
+        @sort-change="handleTableSortChange"
       >
-        <el-table-column prop="dataTime" label="时间" min-width="180" align="center" />
-        <el-table-column prop="deviceName" label="设备" width="150" align="center" />
-        <el-table-column prop="sensorName" label="传感器" width="120" align="center" />
-        <el-table-column prop="attrName" label="指标" width="100" align="center" />
-        <el-table-column prop="value" label="数值" width="100" align="center" />
-        <el-table-column prop="unit" label="单位" width="80" align="center" />
+        <el-table-column prop="dataTime" label="时间" min-width="170" align="center" sortable="custom" />
+        <el-table-column prop="deviceName" label="设备" width="140" align="center" sortable="custom" />
+        <el-table-column prop="sensorName" label="传感器" width="120" align="center" sortable="custom" />
+        <el-table-column prop="attrName" label="指标" width="100" align="center" sortable="custom" />
+        <el-table-column prop="unit" label="单位" width="80" align="center" sortable="custom">
+          <template #default="{ row }">
+            {{ row.unit || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="value" label="数值" width="120" align="center" sortable="custom" />
       </el-table>
+      <div v-if="!loading && tableData.length > 0" class="mde-table-pagination">
+        <el-pagination
+          v-model:current-page="tablePageNum"
+          v-model:page-size="tablePageSize"
+          :page-sizes="[20, 50, 100]"
+          :total="tableTotal"
+          layout="total, sizes, prev, pager, next, jumper"
+          size="small"
+          @size-change="handleTableSizeChange"
+          @current-change="handleTablePageChange"
+        />
+      </div>
       <div v-if="loading" class="mde-skeleton" />
     </div>
   </div>
@@ -229,6 +246,47 @@ const onExport = () => ElMessage.info('导出功能开发中')
 // 自动查询标记
 const autoQueried = ref(false)
 
+// 表格分页状态（前端分页：所有数据已在 tableData 中，仅分页展示）
+const tablePageNum = ref(1)
+const tablePageSize = ref(20)
+const tableTotal = ref(0)
+
+// 从 composable 获取的原始数据缓存
+const _allTableDataCache = ref<MonitorDataPageItem[]>([])
+
+// 当前页展示的数据（前端分页切片）
+const pagedTableData = computed(() => {
+  const start = (tablePageNum.value - 1) * tablePageSize.value
+  return _allTableDataCache.value.slice(start, start + tablePageSize.value)
+})
+
+// 前端排序
+const tableSortRef = ref<{ prop: string; order: 'ascending' | 'descending' | null }>({ prop: '', order: null })
+
+const sortedTableData = computed(() => {
+  const list = [..._allTableDataCache.value]
+  const { prop, order } = tableSortRef.value
+  if (!prop || !order) return list
+  list.sort((a: any, b: any) => {
+    const av = a[prop] ?? ''
+    const bv = b[prop] ?? ''
+    const cmp = typeof av === 'number' && typeof bv === 'number'
+      ? av - bv
+      : String(av).localeCompare(String(bv), 'zh-CN')
+    return order === 'ascending' ? cmp : -cmp
+  })
+  return list
+})
+
+const handleTableSortChange = ({ prop, order }: any) => {
+  tableSortRef.value = { prop: prop || '', order: order || null }
+}
+
+const handleTableSizeChange = () => {
+  tablePageNum.value = 1
+}
+const handleTablePageChange = () => {}
+
 const tryAutoQuery = () => {
   if (autoQueried.value) return
   autoQueried.value = true
@@ -261,6 +319,9 @@ watch(devices, async (list) => {
 mode.value = props.initialMode
 
 watch([chartSeries, tableData], () => {
+  _allTableDataCache.value = tableData.value
+  tableTotal.value = tableData.value.length
+  tablePageNum.value = 1
   emit('data-loaded', {
     series: chartSeries.value,
     list: tableData.value,
@@ -308,6 +369,17 @@ watch([chartSeries, tableData], () => {
   border-radius: 8px;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.mde-table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  background: #fafafa;
+  border-top: 1px solid #ebeef5;
+  margin-top: auto;
 }
 
 .mde-skeleton {
