@@ -1,5 +1,6 @@
 import {ref, shallowRef} from 'vue'
 import {getMonitorTypeDetail, type MonitorContentItem} from '@/api/monitorType'
+import {type ValueType, getValueType} from '@/utils/indicatorType'
 
 export interface IndicatorTreeNode {
   value: string
@@ -8,15 +9,22 @@ export interface IndicatorTreeNode {
   children?: IndicatorTreeNode[]
   disabled?: boolean
   unit?: string
-  meta?: { subjectType: string; valueKind?: string }
+  meta?: { subjectType: string; valueKind?: string; valueType?: ValueType }
 }
 
 export interface Condition {
   subject: string
   subjectType?: 'CONTENT' | 'DEVICE' | 'PACKET'
+  valueType?: ValueType
   operator: string
-  threshold: number
+  threshold: number | string | boolean
+  thresholdMax?: number | string
   unit?: string
+  /** DATETIME 编辑态字段（仅前端用，序列化时合并入 threshold 字符串） */
+  thresholdMode?: 'ABSOLUTE' | 'RELATIVE'
+  relDirection?: '+' | '-'
+  relValue?: number
+  relUnit?: 's' | 'm' | 'h' | 'd'
 }
 
 export interface ConditionGroup {
@@ -37,13 +45,14 @@ export interface LevelFormState {
  */
 function buildDimensionChildren(contents: MonitorContentItem[], valueKind: 'current' | 'prev' = 'current'): IndicatorTreeNode[] {
   const payloadChildren: IndicatorTreeNode[] = (contents || []).map(c => {
-    const shortLabel = `${c.name}${c.unit ? ` (${c.unit})` : ''}`
+    const vt = getValueType(c.indicatorType)
+    const shortLabel = c.unit ? `${c.name} (${c.unit})` : c.name
     return {
       value: `payload.${c.code}`,
       label: shortLabel,
       displayLabel: shortLabel,
       unit: c.unit || undefined,
-      meta: {subjectType: 'CONTENT' as const, valueKind},
+      meta: {subjectType: 'CONTENT' as const, valueKind, valueType: vt},
     }
   })
   return [
@@ -54,32 +63,36 @@ function buildDimensionChildren(contents: MonitorContentItem[], valueKind: 'curr
     {
       value: 'device', label: '设备基础信息', displayLabel: '设备基础信息', disabled: true,
       children: [
-        {value: 'device.onlineStatus', label: '在线状态', displayLabel: '在线状态', meta: {subjectType: 'DEVICE' as const, valueKind}},
-        {value: 'device.lastReportTime', label: '最后上报时间', displayLabel: '最后上报时间', meta: {subjectType: 'DEVICE' as const, valueKind}},
+        {value: 'device.onlineStatus', label: '在线状态', displayLabel: '在线状态',
+          meta: {subjectType: 'DEVICE' as const, valueKind, valueType: 'BOOLEAN'}},
+        {value: 'device.lastReportTime', label: '最后上报时间', displayLabel: '最后上报时间',
+          meta: {subjectType: 'DEVICE' as const, valueKind, valueType: 'DATETIME'}},
       ],
     },
     {
       value: 'packet', label: '数据包信息', displayLabel: '数据包信息', disabled: true,
       children: [
-        {value: 'packet.dataTime', label: '数据时间', displayLabel: '数据时间', meta: {subjectType: 'PACKET' as const, valueKind}},
+        {value: 'packet.dataTime', label: '数据时间', displayLabel: '数据时间',
+          meta: {subjectType: 'PACKET' as const, valueKind, valueType: 'DATETIME'}},
       ],
     },
   ]
 }
 
-/** 深拷贝节点树, 为所有 disabled=false 的节点 value 和 displayLabel 都加上前缀
- *  displayLabel 使用 n.displayLabel (而非 n.label) 作为基底, 保证多次 prefix 叠加不丢失
+/** 深拷贝节点树:
+ *  - 叶子节点 (disabled=false): value 加 valuePrefix, displayLabel 设为 labelPrefix + ownLabel (中文路径)
+ *  - 中间分组节点 (disabled=true): 保持自身 label 不变，递归处理子节点，labelPrefix 累加自身 label
  */
-function prefixDisplayLabels(nodes: IndicatorTreeNode[], prefix: string): IndicatorTreeNode[] {
+function prefixDisplayLabels(nodes: IndicatorTreeNode[], valuePrefix: string, labelPrefix: string): IndicatorTreeNode[] {
   return nodes.map(n => {
     const copy: IndicatorTreeNode = {...n}
+    const ownLabel = n.displayLabel || n.label
     if (!n.disabled) {
-      // 可选叶子 / 可选节点: value 和 displayLabel 都加前缀
-      copy.value = `${prefix}.${n.value}`
-      copy.displayLabel = `${prefix}.${n.displayLabel || n.label}`
+      copy.value = `${valuePrefix}.${n.value}`
+      copy.displayLabel = labelPrefix ? `${labelPrefix} / ${ownLabel}` : ownLabel
     } else if (n.children) {
-      // 分组节点: 保持自身 label, 递归处理子节点
-      copy.children = prefixDisplayLabels(n.children, prefix)
+      const newLabelPrefix = labelPrefix ? `${labelPrefix} / ${ownLabel}` : ownLabel
+      copy.children = prefixDisplayLabels(n.children, valuePrefix, newLabelPrefix)
     }
     return copy
   })
@@ -110,11 +123,11 @@ export function useIndicatorTree() {
       const tree: IndicatorTreeNode[] = [
         {
           value: 'current', label: '当前值', displayLabel: '当前值', disabled: true,
-          children: prefixDisplayLabels(buildDimensionChildren(contents, 'current'), 'current'),
+          children: prefixDisplayLabels(buildDimensionChildren(contents, 'current'), 'current', '当前值'),
         },
         {
           value: 'prev', label: '上一值', displayLabel: '上一值', disabled: true,
-          children: prefixDisplayLabels(buildDimensionChildren(contents, 'prev'), 'prev'),
+          children: prefixDisplayLabels(buildDimensionChildren(contents, 'prev'), 'prev', '上一值'),
         },
       ]
       setTree(tree)
@@ -146,20 +159,20 @@ export function useIndicatorTree() {
         children: [
           {
             value: 'current', label: '当前值', displayLabel: '当前值', disabled: true,
-            children: prefixDisplayLabels(buildDimensionChildren(contents, 'current'), 'current'),
+            children: prefixDisplayLabels(buildDimensionChildren(contents, 'current'), 'current', '当前值'),
           },
           {
             value: 'prev', label: '上一值', displayLabel: '上一值', disabled: true,
-            children: prefixDisplayLabels(buildDimensionChildren(contents, 'prev'), 'prev'),
+            children: prefixDisplayLabels(buildDimensionChildren(contents, 'prev'), 'prev', '上一值'),
           },
         ],
       } satisfies IndicatorTreeNode
     })
 
-    // 对每个 sensor 子树再次应用 prefixDisplayLabels, 加上 sensorCode 前缀
+    // 外层再以 sensorCode 为 valuePrefix、sensorName 为 labelPrefix 应用一次（叠加传感器名前缀）
     const prefixedTree = tree.map(sensorNode => ({
       ...sensorNode,
-      children: prefixDisplayLabels(sensorNode.children!, sensorNode.value),
+      children: prefixDisplayLabels(sensorNode.children!, sensorNode.value, sensorNode.label),
     }))
 
     setTree(prefixedTree)
