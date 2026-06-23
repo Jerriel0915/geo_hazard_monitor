@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 设备隐患点关联Mapper接口
@@ -107,4 +108,7 @@ public interface DeviceHazardPointMapper {
      * @return 设备摘要列表
      */
     List<DeviceBrief> selectDeviceBriefByHazardPoint(@Param("hazardPointId") Long hazardPointId);
+
+    /** 按隐患点统计设备监测率 (活跃设备数/总设备数) */
+    List<Map<String, Object>> selectMonitorRateByHazardPoint(@Param("windowMinutes") int windowMinutes);
 }

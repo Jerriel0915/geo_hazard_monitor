@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface AlarmRecordMapper {
@@ -56,6 +57,15 @@ public interface AlarmRecordMapper {
     int countByStatus(@Param("status") Integer status);
 
     int countByHazardPointId(@Param("hazardPointId") Long hazardPointId);
+
+    /** 按告警等级统计待处理告警数量 (status 1=待处理 2=处理中) */
+    List<Map<String, Object>> countPendingByLevel();
+
+    /** 按月+等级统计告警数量 (近N个月) */
+    List<Map<String, Object>> selectMonthlyLevelCounts(@Param("months") int months);
+
+    /** 批量查询隐患点是否有待处理告警 (返回有告警的 hpId 列表) */
+    List<Map<String, Object>> countPendingByHazardPointIds(@Param("ids") List<Long> hazardPointIds);
 
     /**
      * 更新告警等级 (再次触发且等级变化时调用)。

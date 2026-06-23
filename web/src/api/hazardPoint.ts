@@ -124,3 +124,44 @@ export function bindVideoDevicesToHazardPoint(hpId: string, data: {
 export function unbindVideoDevicesFromHazardPoint(hpId: string, videoDeviceIds: number[]) {
   return request.delete(`/hazard-points/${hpId}/unbind-video-devices`, { data: { videoDeviceIds } })
 }
+
+// ==================== 大屏/视图看板聚合接口 ====================
+
+/** 隐患点监测率 */
+export interface HazardPointMonitorRate {
+  hazardPointId: number
+  hazardPointName: string
+  totalDevices: number
+  activeDevices: number
+  monitorRate?: number
+}
+
+export function getMonitorRates(windowMinutes?: number) {
+  return request.get<HazardPointMonitorRate[]>('/hazard-points/monitor-rates', { params: { windowMinutes } })
+}
+
+/** 地图标记点 — 设备摘要 */
+export interface DeviceMapItem {
+  name: string
+  status: 'online' | 'offline' | 'warning'
+}
+
+/** 地图总览 — 隐患点 + 设备 + 告警 */
+export interface HazardPointMapVO {
+  id: number
+  name: string
+  code: string
+  type: string
+  description: string
+  longitude: number
+  latitude: number
+  status: number
+  hasAlarm: boolean
+  deviceCount: number
+  level: string
+  devices: DeviceMapItem[]
+}
+
+export function getMapOverview() {
+  return request.get<HazardPointMapVO[]>('/hazard-points/map-overview')
+}

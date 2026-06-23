@@ -16,6 +16,9 @@ public class DashboardOverviewVO {
     private MonitorTypeSummary monitorType;
     private VideoDeviceSummary videoDevice;
 
+    /** 累计监测数据点总数 (Redis 计数器) */
+    private long totalMonitorCount;
+
     @Data
     public static class DeviceSummary {
         private int total;

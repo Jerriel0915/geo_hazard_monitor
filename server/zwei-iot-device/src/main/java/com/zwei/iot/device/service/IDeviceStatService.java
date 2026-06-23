@@ -63,4 +63,7 @@ public interface IDeviceStatService {
 
     /** 传感器在线数（所属设备在线，即 device_online_status.status=1） */
     int countSensorsByDeviceOnline();
+
+    /** 累计监测数据点总数 (Redis 计数器) */
+    long countTotalMonitorDataPoints();
 }

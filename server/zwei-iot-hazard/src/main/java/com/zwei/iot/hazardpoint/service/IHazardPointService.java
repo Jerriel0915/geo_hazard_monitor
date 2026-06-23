@@ -3,6 +3,7 @@ package com.zwei.iot.hazardpoint.service;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 隐患点Service接口
@@ -92,4 +93,10 @@ public interface IHazardPointService
      * @return 结果
      */
     public int batchOperateHazardPoint(Long[] ids, String operation);
+
+    /** 各隐患点设备监测率统计 */
+    List<Map<String, Object>> getMonitorRates(int windowMinutes);
+
+    /** 地图总览: 所有活跃隐患点 + 设备列表 + 告警标记 */
+    List<Map<String, Object>> getMapOverview();
 }

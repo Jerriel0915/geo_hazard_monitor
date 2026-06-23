@@ -195,6 +195,8 @@ public class MonitorIngestConsumerService {
             // ── 阶段2: IoTDB 时序写入 ──
             // writePoints 内部惰性建表：首次写入自动创建 aligned timeseries + 质量码列
             iotdbTimeSeriesService.writePoints(List.of(point));
+            // 累计监测次数 (+1)
+            redisTemplate.opsForValue().increment("stats:total:monitor:count");
             // ── 阶段3: 运维指标回写 ──
             // 三个维度：device_online_status（实时在线状态）、device_sensor（传感器活跃率）、device（兼容保留）
             deviceOnlineStatusService.updateLastReportAt(point.deviceId());
@@ -251,6 +253,8 @@ public class MonitorIngestConsumerService {
                 return;
             }
             iotdbTimeSeriesService.writePoints(points);
+            // 累计监测次数 (+N)
+            redisTemplate.opsForValue().increment("stats:total:monitor:count", points.size());
             // Operational metrics callback
             for (StandardMeasurementPoint pt : points) {
                 deviceOnlineStatusService.updateLastReportAt(pt.deviceId());
