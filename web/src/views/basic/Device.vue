@@ -1,4 +1,3 @@
-<!--设备管理-->
 <template>
   <div class="page">
     <div class="header">
@@ -245,28 +244,21 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="安装位置">
-              <div class="install-location-wrap">
-                <el-input
-                    v-model="locationText"
-                    size="small"
-                    :disabled="isView"
-                    class="location-input"
-                    @blur="onLocationBlur"
-                />
-                <el-button
-                    size="small"
-                    :disabled="isView"
-                    class="map-pick-btn"
-                    @click="openMapPicker"
-                    title="在地图上获取坐标"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                    <circle cx="12" cy="10" r="3"/>
-                  </svg>
-                </el-button>
-              </div>
+              <el-input
+                v-model="locationText"
+                placeholder="经度,纬度（例如 104.063456, 30.671234）"
+                :disabled="isView"
+                @blur="onLocationBlur"
+              >
+                <template #suffix>
+                  <el-button link :disabled="isView" @click="openMapPicker" title="在地图上获取坐标" class="map-btn-inline">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  </el-button>
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -818,24 +810,8 @@ const sensorFormData = reactive<SensorFormModel>({
   attrList: []
 })
 
-// sensorCode 设备内唯一校验：失焦时实时检查是否已被本设备其他传感器占用
-const validateSensorCodeUnique = (_rule: any, value: string, callback: (err?: Error) => void) => {
-  if (sensorFormMode.value === 'edit') return callback()
-  const code = (value || '').trim()
-  if (!code) return callback()
-  const existingList = isDraftMode.value ? draftSensors.value : sensorTableData.value
-  const conflict = existingList.find((s: any) => s.sensorCode === code)
-  if (conflict) {
-    return callback(new Error(`传感器编号 ${code} 已被【${conflict.sensorName}】占用`))
-  }
-  callback()
-}
-
 const sensorFormRules = {
-  sensorCode: [
-    { required: true, message: '请输入传感器编号', trigger: 'blur' },
-    { validator: validateSensorCodeUnique, trigger: 'blur' },
-  ],
+  sensorCode: [{ required: true, message: '请输入传感器编号', trigger: 'blur' }],
   sensorName: [{ required: true, message: '请输入传感器名称', trigger: 'blur' }],
   monitorTypeId: [{ required: true, message: '请选择监测类型', trigger: 'change' }],
   status: [{required: true, message: '请选择状态', trigger: 'change'}],
@@ -1733,20 +1709,25 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-/* 安装位置 */
-.install-location-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
+/* 地图按钮在框内，无背景 */
+.map-btn-inline {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  color: #606266 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
-.install-location-wrap :deep(.el-input) {
-  width: 100%;
+.map-btn-inline:hover {
+  color: #1890ff !important;
+  background: transparent !important;
 }
 
-.map-pick-btn {
-  flex-shrink: 0;
+.map-btn-inline.is-disabled {
+  color: #c0c4cc !important;
+  cursor: not-allowed !important;
 }
 
 /* 地图坐标选择器 */
