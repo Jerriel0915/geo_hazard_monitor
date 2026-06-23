@@ -157,7 +157,8 @@
           <el-col :span="12">
             <el-form-item label="关联隐患点">
               <el-select
-                  v-model="formData.hazardPointId"
+                  v-model="formData.hazardPointIds"
+                  multiple
                   filterable
                   clearable
                   placeholder="请选择隐患点"
@@ -215,7 +216,7 @@
         :initial-point="mapInitialPoint"
         :hazard-point-list="hazardPointList"
         :show-hp-overlay="true"
-        :initial-hp-id="formData.hazardPointId"
+        :initial-hp-id="formData.hazardPointIds.length > 0 ? formData.hazardPointIds[0] : ''"
         @confirm="onMapConfirm"
     />
 
@@ -293,7 +294,7 @@ import {
   type VideoDeviceItem,
   type VideoDevicePageParams,
 } from '@/api/video'
-import { getHazardPointPage } from '@/api/hazardPoint'
+import { getHazardPointPage, bindVideoDevicesToHazardPoint, unbindVideoDevicesFromHazardPoint } from '@/api/hazardPoint'
 
 // ==================== 类型定义 ====================
 interface HazardPointItem {
@@ -354,8 +355,8 @@ const formData = reactive<{
   streamUrl: string
   longitude: number | null
   latitude: number | null
-  hazardPointId: string
-  originalHazardPointId: string
+  hazardPointIds: string[]
+  originalHazardPointIds: string[]
 }>({
   code: '',
   name: '',
@@ -365,8 +366,8 @@ const formData = reactive<{
   streamUrl: '',
   longitude: null,
   latitude: null,
-  hazardPointId: '',
-  originalHazardPointId: ''
+  hazardPointIds: [],
+  originalHazardPointIds: []
 })
 
 const mapInitialPoint = computed<LatLng | null>(() =>
@@ -394,7 +395,7 @@ const getProtocolType = (code: string) => {
 }
 
 const getHazardPointName = (id: string) => {
-  const hp = hazardPointList.value.find(item => item.id === id)
+  const hp = hazardPointList.value.find(item => String(item.id) === id)
   return hp ? hp.name : id
 }
 
@@ -481,8 +482,8 @@ const handleAdd = () => {
     streamUrl: '',
     longitude: null,
     latitude: null,
-    hazardPointId: '',
-    originalHazardPointId: ''
+    hazardPointIds: [],
+    originalHazardPointIds: []
   })
   locationText.value = ''
   dialogVisible.value = true
@@ -495,7 +496,12 @@ const handleEdit = async (row: VideoDeviceItem) => {
     const res = await getVideoDeviceDetail(row.id)
     if (res.code === 200 && res.data) {
       const detail = res.data
-      const initialHpId = detail.hazardPointIds ? detail.hazardPointIds.split(',').filter(Boolean)[0] || '' : ''
+      // 解析隐患点ID列表
+      let initialHpIds: string[] = []
+      if (detail.hazardPointIds) {
+        initialHpIds = detail.hazardPointIds.split(',').filter(Boolean)
+      }
+
       Object.assign(formData, {
         id: detail.id,
         code: detail.code,
@@ -506,8 +512,8 @@ const handleEdit = async (row: VideoDeviceItem) => {
         streamUrl: detail.streamUrl,
         longitude: detail.longitude ?? null,
         latitude: detail.latitude ?? null,
-        hazardPointId: initialHpId,
-        originalHazardPointId: initialHpId
+        hazardPointIds: initialHpIds,
+        originalHazardPointIds: [...initialHpIds]
       })
       syncFormToText()
     }
@@ -615,6 +621,8 @@ const handleSubmit = async () => {
           latitude: formData.latitude,
         })
         if (res.code === 200) {
+          // 同步隐患点关联
+          await syncHazardPointAssociations()
           ElMessage.success('修改成功')
           dialogVisible.value = false
           loadTableData()
@@ -634,6 +642,9 @@ const handleSubmit = async () => {
           status: 1
         })
         if (res.code === 200) {
+          const newVideoDeviceId = res.data
+          // 新增后绑定隐患点
+          await bindHazardPointsToVideoDevice(String(newVideoDeviceId))
           ElMessage.success('新增成功')
           dialogVisible.value = false
           loadTableData()
@@ -648,6 +659,50 @@ const handleSubmit = async () => {
       submitLoading.value = false
     }
   })
+}
+
+// 同步隐患点关联：比对变更前后的隐患点列表，执行绑定/解绑
+const syncHazardPointAssociations = async () => {
+  const oldIds = formData.originalHazardPointIds
+  const newIds = formData.hazardPointIds
+  const deviceId = Number(formData.id)
+
+  // 需要解绑的：旧列表有但新列表没有
+  const toUnbind = oldIds.filter(id => !newIds.includes(id))
+  for (const hpId of toUnbind) {
+    try {
+      await unbindVideoDevicesFromHazardPoint(hpId, [deviceId])
+    } catch (error) {
+      console.error(`解绑视频设备 ${deviceId} 与隐患点 ${hpId} 失败:`, error)
+    }
+  }
+
+  // 需要绑定的：新列表有但旧列表没有
+  const toBind = newIds.filter(id => !oldIds.includes(id))
+  for (const hpId of toBind) {
+    try {
+      await bindVideoDevicesToHazardPoint(hpId, {
+        videoDeviceIds: [deviceId]
+      })
+    } catch (error) {
+      console.error(`绑定视频设备 ${deviceId} 到隐患点 ${hpId} 失败:`, error)
+    }
+  }
+}
+
+// 新增时绑定隐患点到视频设备
+const bindHazardPointsToVideoDevice = async (videoDeviceId: string) => {
+  const newIds = formData.hazardPointIds
+  const deviceId = Number(videoDeviceId)
+  for (const hpId of newIds) {
+    try {
+      await bindVideoDevicesToHazardPoint(hpId, {
+        videoDeviceIds: [deviceId]
+      })
+    } catch (error) {
+      console.error(`绑定视频设备 ${videoDeviceId} 到隐患点 ${hpId} 失败:`, error)
+    }
+  }
 }
 
 const handleSelectVideoIcon = () => {

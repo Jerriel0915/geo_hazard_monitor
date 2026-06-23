@@ -106,3 +106,21 @@ export function bindDevicesToHazardPoint(hpId: string, data: {
 export function unbindDevicesFromHazardPoint(hpId: string, deviceIds: number[]) {
   return request.delete(`/hazard-points/${hpId}/unbind-devices`, { data: { deviceIds } })
 }
+
+// 获取隐患点已绑定的视频设备
+export function getBoundVideoDevices(hpId: string) {
+  return request.get(`/hazard-points/${hpId}/bound-video-devices`)
+}
+
+// 绑定视频设备到隐患点
+export function bindVideoDevicesToHazardPoint(hpId: string, data: {
+  videoDeviceIds: number[],
+  installPositions?: Array<{ videoDeviceId: number, installLongitude: number, installLatitude: number }>
+}) {
+  return request.post(`/hazard-points/${hpId}/bind-video-devices`, data)
+}
+
+// 从隐患点解绑视频设备
+export function unbindVideoDevicesFromHazardPoint(hpId: string, videoDeviceIds: number[]) {
+  return request.delete(`/hazard-points/${hpId}/unbind-video-devices`, { data: { videoDeviceIds } })
+}
