@@ -196,24 +196,24 @@
       </el-form>
       <template #footer>
         <el-button @click="infoDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveUserInfo">保存</el-button>
+        <el-button type="primary" :loading="infoSaving" @click="saveUserInfo">保存</el-button>
       </template>
     </el-dialog>
     <el-dialog title="修改密码" v-model="pwdDialogVisible" width="400px">
       <el-form :model="pwdForm" label-width="80px">
         <el-form-item label="原密码">
-          <el-input type="password" v-model="pwdForm.oldPwd" />
+          <el-input type="password" show-password v-model="pwdForm.oldPassword" />
         </el-form-item>
         <el-form-item label="新密码">
-          <el-input type="password" v-model="pwdForm.newPwd" />
+          <el-input type="password" show-password v-model="pwdForm.newPassword" />
         </el-form-item>
         <el-form-item label="确认密码">
-          <el-input type="password" v-model="pwdForm.confirmPwd" />
+          <el-input type="password" show-password v-model="pwdForm.confirmPassword" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="pwdDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="changePassword">确定</el-button>
+        <el-button type="primary" :loading="pwdChanging" @click="changePassword">确定</el-button>
       </template>
     </el-dialog>
 
@@ -353,8 +353,13 @@ import {
   type AlarmNotificationItem
 } from '@/api/alarmNotification'
 import {loadPermissions} from '@/utils/permission'
-import {getAuthInfo, getUserInfo} from '@/utils/userApi'
-import {ElNotification} from 'element-plus'
+import {
+  getAuthInfo,
+  getUserInfo,
+  updateUserInfo as updateUserProfile,
+  changePassword as changeUserPassword
+} from '@/utils/userApi'
+import {ElMessage, ElNotification} from 'element-plus'
 import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import draggable from 'vuedraggable'
@@ -592,19 +597,24 @@ const currentUser = reactive({
 })
 
 const userInfo = reactive({
-  username: 'admin',
-  realName: '管理员',
-  phone: '13800138000',
-  email: 'admin@example.com',
-  organization: '系统管理部',
+  id: 0,
+  username: '',
+  realName: '',
+  phone: '',
+  email: '',
+  sex: '',
+  organization: '',
   remark: ''
 })
 
 const pwdForm = reactive({
-  oldPwd: '',
-  newPwd: '',
-  confirmPwd: ''
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 })
+
+const pwdChanging = ref(false)
+const infoSaving = ref(false)
 
 const activeMenu = ref('')
 const isAdmin = ref(false)
@@ -761,10 +771,25 @@ const handleTabAction = (command: string) => {
   }
 }
 
-const handleUserCommand = (command: string) => {
+const handleUserCommand = async (command: string) => {
   if (command === 'info') {
-    router.push('/user/profile')
+    try {
+      const user = await getUserInfo()
+      userInfo.id = user.id
+      userInfo.username = user.username
+      userInfo.realName = user.realName
+      userInfo.phone = user.phone
+      userInfo.email = user.email
+      userInfo.sex = user.sex || ''
+      userInfo.organization = user.orgName || ''
+    } catch {
+      // 保留现有值
+    }
+    infoDialogVisible.value = true
   } else if (command === 'password') {
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
     pwdDialogVisible.value = true
   } else if (command === 'logout') {
     localStorage.removeItem('token')
@@ -772,14 +797,82 @@ const handleUserCommand = (command: string) => {
   }
 }
 
-const saveUserInfo = () => {
-  infoDialogVisible.value = false
-  alert('信息保存成功')
+const saveUserInfo = async () => {
+  if (!userInfo.realName?.trim()) {
+    ElMessage.warning('请输入真实姓名')
+    return
+  }
+  const phonePattern = /^1[3-9]\d{9}$/
+  if (userInfo.phone && !phonePattern.test(userInfo.phone)) {
+    ElMessage.warning('请输入正确的手机号码')
+    return
+  }
+  const emailPattern = /^[\w.-]+@[\w.-]+\.[A-Za-z]{2,}$/
+  if (userInfo.email && !emailPattern.test(userInfo.email)) {
+    ElMessage.warning('请输入正确的邮箱地址')
+    return
+  }
+
+  infoSaving.value = true
+  try {
+    await updateUserProfile(userInfo.id, {
+      realName: userInfo.realName,
+      phone: userInfo.phone,
+      email: userInfo.email,
+      sex: userInfo.sex
+    })
+    ElMessage.success('信息保存成功')
+    infoDialogVisible.value = false
+  } catch (error: any) {
+    ElMessage.error(error?.message || '保存失败，请重试')
+  } finally {
+    infoSaving.value = false
+  }
 }
 
-const changePassword = () => {
-  pwdDialogVisible.value = false
-  alert('密码修改成功')
+const changePassword = async () => {
+  if (!pwdForm.oldPassword) {
+    ElMessage.warning('请输入原密码')
+    return
+  }
+  if (!pwdForm.newPassword) {
+    ElMessage.warning('请输入新密码')
+    return
+  }
+  if (pwdForm.newPassword.length < 6 || pwdForm.newPassword.length > 20) {
+    ElMessage.warning('新密码长度需为 6-20 位')
+    return
+  }
+  if (pwdForm.newPassword === pwdForm.oldPassword) {
+    ElMessage.warning('新密码不能与原密码相同')
+    return
+  }
+  if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+    ElMessage.warning('两次输入的密码不一致')
+    return
+  }
+
+  pwdChanging.value = true
+  try {
+    await changeUserPassword({
+      oldPassword: pwdForm.oldPassword,
+      newPassword: pwdForm.newPassword
+    })
+    ElMessage.success('密码修改成功，请重新登录')
+    pwdDialogVisible.value = false
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
+    // 密码已变更，旧 token 失效，引导重新登录
+    setTimeout(() => {
+      localStorage.removeItem('token')
+      router.push('/login')
+    }, 1500)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '密码修改失败，请重试')
+  } finally {
+    pwdChanging.value = false
+  }
 }
 
 const toggleMessagePanel = () => {
