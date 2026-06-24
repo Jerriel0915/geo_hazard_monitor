@@ -22,3 +22,7 @@ SET an.source_type =
         ELSE 'threshold'
     END
 WHERE an.source_type = 'alarm';
+
+-- 2b. 兜底: source_id 为 NULL 或 alarm_record 已删除的遗留记录，无法 JOIN 判断类型，
+--     统一回填为 threshold (历史告警在拆分前均为阈值告警，综合告警为新特性)
+UPDATE alarm_notification SET source_type = 'threshold' WHERE source_type = 'alarm';

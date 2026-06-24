@@ -130,19 +130,41 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
         rd.setHasWildcardRole(false);
         rd.setHasWildcardDept(false);
         rd.setHasWildcardUser(false);
+        List<String> roleIds = new ArrayList<>();
+        List<String> deptIds = new ArrayList<>();
+        List<String> userIds = new ArrayList<>();
         for (AlarmDispatchRuleRecipient r : recips) {
+            String rid = r.getRecipientId();
             switch (r.getRecipientType()) {
                 case "ROLE" -> {
-                    if (WILDCARD.equals(r.getRecipientId())) rd.setHasWildcardRole(true);
+                    if (WILDCARD.equals(rid)) rd.setHasWildcardRole(true);
+                    else roleIds.add(rid);
                 }
                 case "DEPT" -> {
-                    if (WILDCARD.equals(r.getRecipientId())) rd.setHasWildcardDept(true);
+                    if (WILDCARD.equals(rid)) rd.setHasWildcardDept(true);
+                    else deptIds.add(rid);
                 }
                 case "USER" -> {
-                    if (WILDCARD.equals(r.getRecipientId())) rd.setHasWildcardUser(true);
+                    if (WILDCARD.equals(rid)) rd.setHasWildcardUser(true);
+                    else userIds.add(rid);
                 }
             }
         }
+        rd.setRoles(roleIds.stream().map(rid -> {
+            AlarmDispatchRuleDetailVO.RoleOption o = new AlarmDispatchRuleDetailVO.RoleOption();
+            o.setId(rid);
+            return o;
+        }).toList());
+        rd.setDepts(deptIds.stream().map(did -> {
+            AlarmDispatchRuleDetailVO.DeptOption o = new AlarmDispatchRuleDetailVO.DeptOption();
+            o.setId(did);
+            return o;
+        }).toList());
+        rd.setUsers(userIds.stream().map(uid -> {
+            AlarmDispatchRuleDetailVO.UserOption o = new AlarmDispatchRuleDetailVO.UserOption();
+            o.setId(uid);
+            return o;
+        }).toList());
         vo.setRecipients(rd);
 
         return vo;

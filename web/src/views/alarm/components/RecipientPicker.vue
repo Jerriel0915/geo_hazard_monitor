@@ -127,10 +127,15 @@ onMounted(async () => {
 watch(() => props.modelValue, (v) => {
   if (!v || internalUpdate) return
   if (v.roleIds?.includes('*')) { roleAll.value = true; localRoleIds.value = [] }
-  else localRoleIds.value = v.roleIds ? [...v.roleIds] : []
+  else { roleAll.value = false; localRoleIds.value = v.roleIds ? [...v.roleIds] : [] }
   if (v.deptIds?.includes('*')) { deptAll.value = true; localDeptIds.value = [] }
-  else localDeptIds.value = v.deptIds ? [...v.deptIds] : []
+  else { deptAll.value = false; localDeptIds.value = v.deptIds ? [...v.deptIds] : [] }
   localUserIds.value = v.userIds ? [...v.userIds] : []
+  // 同步部门树勾选状态（el-tree 内部状态不随 localDeptIds 自动更新）
+  nextTick(() => {
+    const keys = v.deptIds?.includes('*') ? [] : (v.deptIds || [])
+    deptTreeRef.value?.setCheckedKeys(keys)
+  })
 }, { immediate: true })
 
 // 部门树构造：根据 parentId 拼装层级树；无 parentId 视为根节点
