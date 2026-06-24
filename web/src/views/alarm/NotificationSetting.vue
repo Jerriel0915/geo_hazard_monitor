@@ -14,7 +14,8 @@
       <el-input v-model="queryParams.name" placeholder="规则名称" clearable
                 @keyup.enter="handleQuery" @clear="handleQuery" />
       <el-select v-model="queryParams.eventType" placeholder="事件类型" clearable @change="handleQuery">
-        <el-option label="告警事件" value="ALARM" />
+        <el-option label="阈值告警" value="THRESHOLD" />
+        <el-option label="综合告警" value="COMPREHENSIVE" />
         <el-option label="设备离线" value="OFFLINE" />
       </el-select>
       <el-select v-model="queryParams.isEnabled" placeholder="状态" clearable @change="handleQuery">
@@ -31,14 +32,14 @@
           <el-table-column label="名称" prop="name" min-width="160" />
           <el-table-column label="事件类型" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.eventType === 'ALARM' ? 'danger' : 'warning'" size="small">
-                {{ row.eventType === 'ALARM' ? '告警' : '设备离线' }}
+              <el-tag :type="row.eventType === 'OFFLINE' ? 'warning' : 'danger'" size="small">
+                {{ eventTypeLabel(row.eventType) }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="告警等级" width="200">
             <template #default="{ row }">
-              <template v-if="row.eventType === 'ALARM'">
+              <template v-if="row.eventType !== 'OFFLINE'">
                 <el-tag v-for="lv in row.alarmLevels" :key="lv" size="small"
                         :style="getAlarmLevelStyle(lv)" style="margin-right: 4px; border: none;">
                   {{ levelLabel(lv) }}
@@ -50,7 +51,7 @@
           </el-table-column>
           <el-table-column label="隐患点/设备" min-width="180">
             <template #default="{ row }">
-              <template v-if="row.eventType === 'ALARM'">
+              <template v-if="row.eventType !== 'OFFLINE'">
                 <el-tag v-if="row.hazardPointAll" size="small" type="warning">全部隐患点</el-tag>
                 <span v-else>{{ (row.hazardPointNames || []).join('、') || '-' }}</span>
               </template>
@@ -112,12 +113,13 @@
 
         <el-form-item label="事件类型" prop="eventType">
           <el-radio-group v-model="form.eventType" @change="onEventTypeChange">
-            <el-radio label="ALARM">告警事件</el-radio>
+            <el-radio label="THRESHOLD">阈值告警</el-radio>
+            <el-radio label="COMPREHENSIVE">综合告警</el-radio>
             <el-radio label="OFFLINE">设备离线</el-radio>
           </el-radio-group>
         </el-form-item>
 
-        <el-form-item label="告警等级" prop="alarmLevels" v-if="form.eventType === 'ALARM'">
+        <el-form-item label="告警等级" prop="alarmLevels" v-if="form.eventType !== 'OFFLINE'">
           <el-checkbox-group v-model="form.alarmLevels">
             <el-checkbox label="1">一级（警报）</el-checkbox>
             <el-checkbox label="2">二级（警戒）</el-checkbox>
@@ -126,7 +128,7 @@
           </el-checkbox-group>
         </el-form-item>
 
-        <el-form-item label="隐患点" prop="hazardPointIds" v-if="form.eventType === 'ALARM'">
+        <el-form-item label="隐患点" prop="hazardPointIds" v-if="form.eventType !== 'OFFLINE'">
           <el-select v-model="form.hazardPointIds" multiple filterable
                      placeholder="请选择（支持全部）" style="width: 100%;">
             <el-option label="全部隐患点" value="*" />
@@ -154,7 +156,7 @@
             <el-checkbox label="SMS">短信</el-checkbox>
             <el-checkbox label="EMAIL">邮件</el-checkbox>
           </el-checkbox-group>
-          <div class="form-help" v-if="form.eventType === 'ALARM'">系统消息必选（确保站内可达）</div>
+          <div class="form-help" v-if="form.eventType !== 'OFFLINE'">系统消息必选（确保站内可达）</div>
         </el-form-item>
 
         <el-form-item label="状态">
@@ -215,7 +217,7 @@ const formRef = ref<FormInstance>()
 interface FormState {
   id?: number
   name: string
-  eventType: 'ALARM' | 'OFFLINE'
+  eventType: 'THRESHOLD' | 'COMPREHENSIVE' | 'OFFLINE'
   alarmLevels: string[]
   channels: NotifyChannel[]
   hazardPointIds: string[]
@@ -227,7 +229,7 @@ interface FormState {
 
 const defaultForm = (): FormState => ({
   name: '',
-  eventType: 'ALARM',
+  eventType: 'THRESHOLD',
   alarmLevels: [],
   channels: ['SYSTEM'],
   hazardPointIds: [],
@@ -245,14 +247,14 @@ const rules: FormRules = {
   eventType: [{ required: true, message: '请选择事件类型', trigger: 'change' }],
   alarmLevels: [{
     validator: (_r, _v, cb) => {
-      if (form.eventType === 'ALARM' && form.alarmLevels.length === 0)
+      if (form.eventType !== 'OFFLINE' && form.alarmLevels.length === 0)
         cb(new Error('告警事件必须选择等级'))
       else cb()
     }, trigger: 'change'
   }],
   hazardPointIds: [{
     validator: (_r, _v, cb) => {
-      if (form.eventType === 'ALARM' && form.hazardPointIds.length === 0)
+      if (form.eventType !== 'OFFLINE' && form.hazardPointIds.length === 0)
         cb(new Error('请选择隐患点'))
       else cb()
     }, trigger: 'change'
@@ -359,9 +361,9 @@ async function handleSubmit() {
       id: form.id,
       name: form.name,
       eventType: form.eventType,
-      alarmLevels: form.eventType === 'ALARM' ? form.alarmLevels : undefined,
+      alarmLevels: form.eventType !== 'OFFLINE' ? form.alarmLevels : undefined,
       channels: form.channels,
-      hazardPointIds: form.eventType === 'ALARM' ? form.hazardPointIds : undefined,
+      hazardPointIds: form.eventType !== 'OFFLINE' ? form.hazardPointIds : undefined,
       deviceIds: form.eventType === 'OFFLINE' ? form.deviceIds : undefined,
       recipients: form.recipients,
       isEnabled: form.isEnabled,
@@ -396,11 +398,11 @@ async function handleToggleEnabled(row: AlarmDispatchRuleItemVO, v: boolean) {
 }
 
 function onEventTypeChange(v: string) {
-  if (v === 'ALARM') {
-    form.deviceIds = []
-  } else {
+  if (v === 'OFFLINE') {
     form.hazardPointIds = []
     form.alarmLevels = []
+  } else {
+    form.deviceIds = []
   }
 }
 
@@ -409,6 +411,13 @@ function resetForm() {
   formRef.value?.clearValidate()
 }
 
+function eventTypeLabel(et: string) {
+  return ({
+    THRESHOLD: '阈值告警',
+    COMPREHENSIVE: '综合告警',
+    OFFLINE: '设备离线'
+  } as Record<string, string>)[et] || et
+}
 function levelLabel(lv: string) {
   return ({
     '1': '一级（警报）',
