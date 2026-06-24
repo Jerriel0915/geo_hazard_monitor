@@ -69,7 +69,7 @@ class AlarmDispatchRuleServiceImplTest {
     private AlarmDispatchRuleCreateRequest buildAlarmReq() {
         AlarmDispatchRuleCreateRequest req = new AlarmDispatchRuleCreateRequest();
         req.setName("测试规则");
-        req.setEventType("ALARM");
+        req.setEventType("THRESHOLD");
         req.setAlarmLevels(Arrays.asList("3", "4"));
         req.setChannels(Arrays.asList("SYSTEM", "SMS"));
         req.setHazardPointIds(Arrays.asList("1", "2"));

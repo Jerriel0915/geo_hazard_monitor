@@ -247,8 +247,10 @@ public class AlarmDispatchRuleServiceImpl implements IAlarmDispatchRuleService {
     // ============= 私有辅助 =============
 
     private void saveRelations(Long ruleId, AlarmDispatchRuleCreateRequest req) {
-        // 隐患点（仅 ALARM）
-        if ("ALARM".equals(req.getEventType()) && req.getHazardPointIds() != null) {
+        // 隐患点（THRESHOLD / COMPREHENSIVE）
+        boolean isAlarmType = "THRESHOLD".equals(req.getEventType())
+            || "COMPREHENSIVE".equals(req.getEventType());
+        if (isAlarmType && req.getHazardPointIds() != null) {
             List<String> normalized = normalizeWildcard(req.getHazardPointIds());
             if (!normalized.isEmpty()) {
                 hpMapper.batchInsert(normalized.stream().map(hp -> {
