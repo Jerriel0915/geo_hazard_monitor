@@ -50,7 +50,7 @@ public class NotifyTemplateService {
             .sourceId(n.getSourceId())
             .alarmTitle(n.getTitle());
 
-        if (n.getSourceId() != null && "alarm".equalsIgnoreCase(n.getSourceType())) {
+        if (n.getSourceId() != null && isAlarmSourceType(n.getSourceType())) {
             try {
                 AlarmRecord record = alarmRecordService.selectById(n.getSourceId());
                 if (record != null) {
@@ -112,7 +112,7 @@ public class NotifyTemplateService {
         ctxTpl.setVariable("eventTime", ctx.getEventTime());
         ctxTpl.setVariable("linkUrl", buildLinkUrl(ctx));
         ctxTpl.setVariable("headerStyle",
-            "alarm".equalsIgnoreCase(ctx.getSourceType())
+            isAlarmSourceType(ctx.getSourceType())
                 ? "background:#f56c6c;color:#fff;"
                 : "background:#e6a23c;color:#fff;");
 
@@ -123,7 +123,7 @@ public class NotifyTemplateService {
         if (ctx.getSourceId() == null) {
             return null;
         }
-        if ("alarm".equalsIgnoreCase(ctx.getSourceType())) {
+        if (isAlarmSourceType(ctx.getSourceType())) {
             return "/alarm/realtime?alarmId=" + ctx.getSourceId();
         }
         return "/basic/device?deviceId=" + ctx.getSourceId();
@@ -131,5 +131,22 @@ public class NotifyTemplateService {
 
     private String defaultStr(String s, String defaultVal) {
         return (s == null || s.isEmpty()) ? defaultVal : s;
+    }
+
+    /**
+     * 判断 sourceType 是否为告警类（阈值/综合）。
+     *
+     * <p>告警类型拆分后 (ALARM → THRESHOLD/COMPREHENSIVE)，sourceType 取值为
+     * "threshold" / "comprehensive"；"alarm" 仅为迁移期兼容（迁移脚本执行后不再出现）。
+     * 三者均按告警路径渲染模板。</p>
+     */
+    private boolean isAlarmSourceType(String sourceType) {
+        if (sourceType == null) {
+            return false;
+        }
+        String s = sourceType.toLowerCase();
+        return "threshold".equals(s)
+            || "comprehensive".equals(s)
+            || "alarm".equals(s);
     }
 }

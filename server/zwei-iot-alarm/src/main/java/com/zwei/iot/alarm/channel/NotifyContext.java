@@ -13,7 +13,7 @@ import java.util.Date;
 @Data
 @Builder
 public class NotifyContext {
-    /** alarm / offline */
+    /** threshold / comprehensive / offline */
     private String sourceType;
     /** alarm_record.id 或 device.id */
     private Long sourceId;

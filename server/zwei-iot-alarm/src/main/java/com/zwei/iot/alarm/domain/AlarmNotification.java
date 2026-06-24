@@ -107,7 +107,7 @@ public class AlarmNotification implements Serializable {
      */
     private Date readTime;
     /**
-     * 来源类型: alarm / offline
+     * 来源类型: threshold / comprehensive / offline
      */
     private String sourceType;
     /**
