@@ -34,9 +34,9 @@
               <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="code" label="编号" width="130" align="center" />
-          <el-table-column prop="name" label="名称" min-width="160" align="center" />
-          <el-table-column prop="protocolCode" label="协议类型" width="120" align="center">
+          <el-table-column prop="code" label="编号" width="130" align="center" sortable />
+          <el-table-column prop="name" label="名称" min-width="160" align="center" sortable />
+          <el-table-column prop="protocolCode" label="协议类型" width="120" align="center" sortable>
             <template #default="{ row }">
               <el-tag v-if="row.protocolCode" :type="getProtocolType(row.protocolCode)" effect="plain">
                 {{ row.protocolCode }}
@@ -61,7 +61,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="安装时间" min-width="170" align="center">
+          <el-table-column prop="createTime" label="安装时间" min-width="170" align="center" sortable>
             <template #default="{ row }">
               <span v-if="row.createTime">{{ row.createTime }}</span>
               <span v-else class="empty-text">-</span>
