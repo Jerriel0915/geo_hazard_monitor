@@ -301,17 +301,52 @@
         </template>
       </div>
       <div class="message-panel-footer" v-if="currentTabHasMessages">
+        <span class="pager" v-if="currentTabTotalPages > 1">
+          <span class="pager-btn"
+                :class="{ disabled: currentPageRef.current <= 1 }"
+                @click="goPrevPage">‹</span>
+          <span class="pager-info">{{ currentPageRef.current }}/{{ currentTabTotalPages }}</span>
+          <span class="pager-btn"
+                :class="{ disabled: currentPageRef.current >= currentTabTotalPages }"
+                @click="goNextPage">›</span>
+        </span>
+        <span class="pager-placeholder" v-else></span>
         <el-button size="small" @click="markAllAsRead">全部标为已读</el-button>
       </div>
     </div>
     <div class="message-mask" v-if="messagePanelVisible" @click="messagePanelVisible = false"></div>
+
+    <!-- 公告详情弹框（点击公告后展示，替代独立路由） -->
+    <el-dialog
+      v-model="noticeDetailVisible"
+      :title="noticeDetail.noticeTitle || '公告详情'"
+      width="640px"
+      class="notice-detail-dialog"
+      align-center
+      append-to-body
+    >
+      <div v-loading="noticeDetailLoading" class="notice-detail-body">
+        <template v-if="noticeDetail.noticeId">
+          <div class="notice-detail-meta">
+            <el-tag size="small" :type="noticeDetail.noticeType === '1' ? 'info' : 'success'">
+              {{ noticeDetail.noticeType === '1' ? '系统' : '其他' }}
+            </el-tag>
+            <span class="meta-item">发布人：{{ noticeDetail.createBy || '-' }}</span>
+            <span class="meta-item">发布时间：{{ noticeDetail.createTime || '-' }}</span>
+          </div>
+          <el-divider />
+          <div v-html="sanitizeNoticeHtml(noticeDetail.noticeContent || '')" class="notice-detail-content"></div>
+        </template>
+        <el-empty v-else-if="!noticeDetailLoading" description="公告不存在或已被删除" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import {getTopNotices, markRead as markNoticeRead, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
+import {getTopNotices, getNoticeById, markRead as markNoticeRead, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
 import {
-  getRecentAlarmNotifications,
+  getAlarmNotificationPage,
   getAlarmNotificationUnreadCount,
   markAlarmNotificationRead,
   markAllAlarmNotificationsRead,
@@ -389,6 +424,9 @@ const noticeMessages = ref<NotifyMessage[]>([])
 const eventMessages = ref<NotifyMessage[]>([])
 const noticeUnreadCount = ref(0)
 const eventUnreadCount = ref(0)
+/** 分页状态：事件/公告各持一份，SSE 推送后回第 1 页 */
+const eventPage = reactive({ current: 1, size: 10, total: 0 })
+const noticePage = reactive({ current: 1, size: 10, total: 0 })
 let noticeEventSource: EventSource | null = null
 let alarmEventSource: EventSource | null = null
 
@@ -399,6 +437,11 @@ const unreadMessageCount = computed(() => noticeUnreadCount.value + eventUnreadC
 const currentTabHasMessages = computed(() =>
   notifyTab.value === 'event' ? eventMessages.value.length > 0 : noticeMessages.value.length > 0
 )
+
+/** 当前 Tab 的分页对象（事件或公告） */
+const currentPageRef = computed(() => notifyTab.value === 'event' ? eventPage : noticePage)
+/** 当前 Tab 的总页数（至少 1，避免 1/0 显示） */
+const currentTabTotalPages = computed(() => Math.max(1, Math.ceil(currentPageRef.value.total / currentPageRef.value.size)))
 
 function switchNotifyTab(tab: 'event' | 'notice') {
   notifyTab.value = tab
@@ -430,23 +473,44 @@ function toEventMessage(n: AlarmNotificationItem): NotifyMessage {
 
 async function fetchNoticeMessages() {
   try {
-    const res = await getTopNotices()
-    // 后端响应：{code,msg,data: SysNotice[], unreadCount, timestamp}
-    // data 直接是公告数组，unreadCount 在顶层
+    const res = await getTopNotices(noticePage.current, noticePage.size)
+    // 后端响应：{code,msg,data: SysNotice[], total, unreadCount, timestamp}
     noticeMessages.value = (res.data ?? []).map(toNoticeMessage)
+    noticePage.total = res.total ?? 0
     noticeUnreadCount.value = res.unreadCount ?? 0
   } catch { /* keep previous data */ }
 }
 
 async function fetchEventMessages() {
   try {
-    const [recentRes, unreadRes] = await Promise.all([
-      getRecentAlarmNotifications(20),
+    const [pageRes, unreadRes] = await Promise.all([
+      getAlarmNotificationPage(eventPage.current, eventPage.size),
       getAlarmNotificationUnreadCount()
     ])
-    eventMessages.value = (recentRes.data ?? []).map(toEventMessage)
+    eventMessages.value = (pageRes.data ?? []).map(toEventMessage)
+    eventPage.total = pageRes.total ?? 0
     eventUnreadCount.value = unreadRes.data?.unreadCount ?? 0
   } catch { /* keep previous data */ }
+}
+
+/** 重新加载当前 Tab（翻页或外部触发） */
+async function reloadCurrentTab() {
+  if (notifyTab.value === 'event') await fetchEventMessages()
+  else await fetchNoticeMessages()
+}
+
+/** 上一页：第 1 页禁用 */
+async function goPrevPage() {
+  if (currentPageRef.value.current <= 1) return
+  currentPageRef.value.current--
+  await reloadCurrentTab()
+}
+
+/** 下一页：超过总页数禁用 */
+async function goNextPage() {
+  if (currentPageRef.value.current >= currentTabTotalPages.value) return
+  currentPageRef.value.current++
+  await reloadCurrentTab()
 }
 
 function startNoticeSSE() {
@@ -465,9 +529,9 @@ function startNoticeSSE() {
         read: false,
         type: data.type === '1' ? 'system' : 'other'
       }
-      noticeMessages.value.unshift(msg)
-      if (noticeMessages.value.length > 20) noticeMessages.value.pop()
-      noticeUnreadCount.value++
+      // 新消息到达 → 回到第 1 页并重新拉取（包含未读数与列表）
+      noticePage.current = 1
+      fetchNoticeMessages()
     } catch { /* ignore malformed event */ }
   })
   noticeEventSource.onerror = () => {
@@ -492,6 +556,7 @@ function startAlarmSSE() {
         type: 'warning',
         duration: 5000
       })
+      eventPage.current = 1
       fetchEventMessages()
     } catch { /* ignore */ }
   })
@@ -505,6 +570,7 @@ function startAlarmSSE() {
         type: 'error',
         duration: 5000
       })
+      eventPage.current = 1
       fetchEventMessages()
     } catch { /* ignore */ }
   })
@@ -717,16 +783,47 @@ const openBigScreen = () => {
   window.open('/bigscreen/disaster', '_blank')
 }
 
+/** 公告详情弹框（替代独立路由，避免上下文切换） */
+const noticeDetailVisible = ref(false)
+const noticeDetailLoading = ref(false)
+const noticeDetail = ref<Partial<SysNotice>>({})
+
+/**
+ * 简单的 XSS 缓解措施（非完整净化器）。
+ * 已覆盖：<script>、<iframe>、<object>、<embed> 标签（含 void 变体）。
+ * 未覆盖：事件处理器属性、javascript: URI、<svg> 内嵌脚本、未闭合标签。
+ * 当前调用方为管理员后台创建的公告（可信输入）；接入 UGC 时需替换为 DOMPurify。
+ */
+function sanitizeNoticeHtml(html: string): string {
+  return (html ?? '')
+    .replace(/<script\b[^>]*>.*?<\/script>/gis, '')
+    .replace(/<(iframe|object|embed)\b[^>]*>.*?<\/\1>/gis, '')
+    .replace(/<(iframe|object|embed)\b[^>]*\/?>/gi, '')
+}
+
 const handleNoticeClick = async (msg: NotifyMessage) => {
-  if (!msg.read) {
-    try {
-      await markNoticeRead(msg.id)
-      msg.read = true
-      noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
-    } catch { /* ignore */ }
+  // 乐观更新已读状态（详情页加载后异步持久化到后端）
+  const wasUnread = !msg.read
+  if (wasUnread) {
+    msg.read = true
+    noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
   }
-  router.push(`/system/notice/detail/${msg.id}`)
   messagePanelVisible.value = false
+  noticeDetailVisible.value = true
+  noticeDetailLoading.value = true
+  noticeDetail.value = {}
+  try {
+    const res = await getNoticeById(msg.id)
+    noticeDetail.value = res.data ?? {}
+    // 异步标记已读（非阻塞，失败时乐观更新仍保留以避免 UI 抖动）
+    if (wasUnread) {
+      markNoticeRead(msg.id).catch(() => { /* ignore: 乐观更新已生效 */ })
+    }
+  } catch {
+    ElNotification({ title: '提示', message: '公告加载失败', type: 'warning', duration: 3000 })
+  } finally {
+    noticeDetailLoading.value = false
+  }
 }
 
 const handleEventClick = async (msg: NotifyMessage) => {
@@ -753,6 +850,8 @@ const markAllAsRead = async () => {
       // 全部已读 → 列表清空（后端查询也会过滤已读项）
       eventMessages.value = []
       eventUnreadCount.value = 0
+      eventPage.current = 1
+      eventPage.total = 0
     } catch { /* ignore */ }
   } else {
     const unreadIds = noticeMessages.value.filter(m => !m.read).map(m => m.id)
@@ -761,6 +860,8 @@ const markAllAsRead = async () => {
       await markAllNoticeRead(unreadIds.join(','))
       noticeMessages.value.forEach(m => { m.read = true })
       noticeUnreadCount.value = 0
+      noticePage.current = 1
+      noticePage.total = 0
     } catch { /* ignore */ }
   }
 }
@@ -1415,7 +1516,52 @@ const goToDashboard = () => {
   padding: 12px 20px;
   border-top: 1px solid #f0f0f0;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pager-placeholder {
+  /* 占位：当只有一页时保持 footer 两端对齐 */
+  display: inline-block;
+  width: 1px;
+}
+
+.pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #606266;
+  user-select: none;
+}
+
+.pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #303133;
+  font-size: 14px;
+  line-height: 1;
+  transition: background-color 0.15s;
+}
+
+.pager-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.pager-btn.disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pager-info {
+  min-width: 36px;
+  text-align: center;
 }
 
 .message-mask {
@@ -1426,6 +1572,36 @@ const goToDashboard = () => {
   bottom: 0;
   background: rgba(0, 0, 0, 0);
   z-index: 999;
+}
+
+.notice-detail-body {
+  min-height: 120px;
+}
+
+.notice-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.notice-detail-meta .meta-item {
+  white-space: nowrap;
+}
+
+.notice-detail-content {
+  color: #303133;
+  font-size: 14px;
+  line-height: 1.7;
+  /* 允许公告内联 HTML 中的图片自适应 */
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.notice-detail-content :deep(img) {
+  max-width: 100%;
+  height: auto;
 }
 
 .page-tabs {
