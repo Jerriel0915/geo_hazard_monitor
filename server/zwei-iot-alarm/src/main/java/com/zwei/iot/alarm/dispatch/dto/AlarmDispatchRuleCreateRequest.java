@@ -18,16 +18,16 @@ public class AlarmDispatchRuleCreateRequest {
     @NotBlank(message = "规则名称不能为空")
     private String name;
 
-    @NotBlank(message = "事件类型不能为空（ALARM/OFFLINE）")
+    @NotBlank(message = "事件类型不能为空（THRESHOLD/COMPREHENSIVE/OFFLINE）")
     private String eventType;
 
-    /** ALARM 必填；OFFLINE 时为 null */
+    /** THRESHOLD/COMPREHENSIVE 必填；OFFLINE 时为 null */
     private List<String> alarmLevels;
 
     @NotEmpty(message = "通知渠道不能为空")
     private List<String> channels;
 
-    /** ALARM 必填；元素可为 "*" */
+    /** THRESHOLD/COMPREHENSIVE 必填；元素可为 "*" */
     private List<String> hazardPointIds;
 
     /** OFFLINE 必填；元素可为 "*" */

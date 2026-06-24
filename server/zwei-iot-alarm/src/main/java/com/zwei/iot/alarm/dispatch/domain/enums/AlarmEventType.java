@@ -5,7 +5,8 @@ package com.zwei.iot.alarm.dispatch.domain.enums;
  */
 public enum AlarmEventType {
 
-    ALARM("ALARM", "告警事件"),
+    THRESHOLD("THRESHOLD", "阈值告警"),
+    COMPREHENSIVE("COMPREHENSIVE", "综合告警"),
     OFFLINE("OFFLINE", "设备离线");
 
     private final String code;

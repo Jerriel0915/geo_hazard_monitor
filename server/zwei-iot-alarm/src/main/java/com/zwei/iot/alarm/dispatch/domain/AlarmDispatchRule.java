@@ -19,7 +19,7 @@ public class AlarmDispatchRule extends BaseEntity {
 
     private Long id;
     private String name;
-    /** 事件类型: ALARM / OFFLINE */
+    /** 事件类型: THRESHOLD / COMPREHENSIVE / OFFLINE */
     private String eventType;
     /** 订阅告警等级（逗号分隔）: 1,2,3,4 */
     private String alarmLevels;
