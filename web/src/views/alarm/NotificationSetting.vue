@@ -29,22 +29,26 @@
     <div class="table-wrap">
       <div class="table-wrap__scroll">
         <el-table :data="pagedList" v-loading="loading" border stripe>
-          <el-table-column label="名称" prop="name" min-width="160" />
+          <el-table-column label="规则名称" prop="name" min-width="160" />
           <el-table-column label="事件类型" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.eventType === 'OFFLINE' ? 'warning' : 'danger'" size="small">
+              <el-tag :type="eventTypeTagType(row.eventType)" size="small">
                 {{ eventTypeLabel(row.eventType) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="告警等级" width="200">
+          <el-table-column label="告警等级" width="160" align="center">
             <template #default="{ row }">
               <template v-if="row.eventType !== 'OFFLINE'">
-                <el-tag v-for="lv in row.alarmLevels" :key="lv" size="small"
-                        :style="getAlarmLevelStyle(lv)" style="margin-right: 4px; border: none;">
-                  {{ levelLabel(lv) }}
-                </el-tag>
-                <span v-if="!row.alarmLevels || row.alarmLevels.length === 0" class="empty-text">-</span>
+                <div class="level-boxes">
+                  <div v-for="lv in [1, 2, 3, 4]" :key="lv"
+                       class="level-box"
+                       :class="{ 'level-box--off': !(row.alarmLevels || []).includes(String(lv)) }"
+                       :style="alarmLevelBoxStyle(lv, (row.alarmLevels || []).includes(String(lv)))"
+                       :title="levelLabel(String(lv))">
+                    {{ lv }}
+                  </div>
+                </div>
               </template>
               <span v-else class="empty-text">-</span>
             </template>
@@ -61,13 +65,13 @@
               </template>
             </template>
           </el-table-column>
-          <el-table-column label="接收人" min-width="160">
+          <el-table-column label="通知人员" min-width="160">
             <template #default="{ row }">
               <el-tag v-if="row.recipientAll" size="small" type="warning">全部</el-tag>
               <span v-else>{{ row.recipientSummary || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="渠道" min-width="150">
+          <el-table-column label="通知渠道" min-width="150">
             <template #default="{ row }">
               <el-tag v-for="ch in row.channels" :key="ch" size="small"
                       :type="channelTagType(ch)" style="margin-right: 4px;">
@@ -193,7 +197,7 @@ import {
 } from '@/api/alarmDispatch'
 import { getHazardPointPage } from '@/api/hazardPoint'
 import { getDevicePage } from '@/api/device'
-import { getAlarmLevelStyle } from '@/api/alarm'
+import { ALARM_LEVEL_COLORS } from '@/api/alarm'
 import RecipientPicker from './components/RecipientPicker.vue'
 
 const loading = ref(false)
@@ -419,6 +423,14 @@ function eventTypeLabel(et: string) {
   } as Record<string, string>)[et] || et
 }
 
+function eventTypeTagType(et: string) {
+  return ({
+    COMPREHENSIVE: 'danger',
+    THRESHOLD: 'warning',
+    OFFLINE: 'info'
+  } as Record<string, string>)[et] || 'info'
+}
+
 function levelLabel(lv: string) {
   return ({
     '1': '一级（警报）',
@@ -426,6 +438,13 @@ function levelLabel(lv: string) {
     '3': '三级（警示）',
     '4': '四级（注意）'
   } as Record<string, string>)[lv] || lv
+}
+
+function alarmLevelBoxStyle(lv: number, active: boolean) {
+  const c = ALARM_LEVEL_COLORS[lv] || { solid: '#909399', fg: '#fff' }
+  return active
+    ? { backgroundColor: c.solid, color: c.fg, borderColor: c.solid }
+    : { backgroundColor: 'transparent', color: '#c0c4cc', borderColor: '#dcdfe6' }
 }
 function channelLabel(ch: string) {
   return ({ SYSTEM: '系统', SMS: '短信', EMAIL: '邮件' } as Record<string, string>)[ch] || ch
@@ -449,5 +468,27 @@ onMounted(() => {
 
 .empty-text {
   color: #c0c4cc;
+}
+
+.level-boxes {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.level-box {
+  width: 26px;
+  height: 22px;
+  border: 1px solid;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+  cursor: default;
+  transition: opacity 0.2s;
+}
+
+.level-box--off {
+  opacity: 0.5;
 }
 </style>
