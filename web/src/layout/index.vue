@@ -486,7 +486,6 @@ function startNoticeSSE() {
     try {
       JSON.parse(event.data)
       noticePage.current = 1
-      noticeUnreadCount.value++
       fetchNoticeMessages()
     } catch { /* ignore malformed event */ }
   })
