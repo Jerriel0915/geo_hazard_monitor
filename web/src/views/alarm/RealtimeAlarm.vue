@@ -141,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, CircleClose, Download, Warning } from '@element-plus/icons-vue'
@@ -199,31 +199,39 @@ async function loadList() {
   pagination.total = res.total || 0
 }
 
+// 通知中心跳转携带 ?alarmId= 时，自动打开该告警详情
+async function openAlarmFromQuery() {
+  const alarmId = route.query.alarmId
+  if (!alarmId) return
+  const id = Number(alarmId)
+  // 清除 query，避免刷新后再次弹出；同时让 watch 在清除时不重复进入
+  router.replace({ path: route.path, query: {} })
+  if (Number.isNaN(id)) return
+  try {
+    // getAlarmRecordDetail 返回 AjaxResult 包裹 {code,msg,data}，需取 .data
+    const res: any = await getAlarmRecordDetail(id)
+    const detail = res?.data ?? res
+    if (detail && detail.id) {
+      currentRow.value = detail
+      detailDialogVisible.value = true
+    } else {
+      ElMessage.warning('该告警可能已被处置或删除，无法查看详情')
+    }
+  } catch {
+    // 告警可能已被处置/删除，或当前用户无权查看
+    ElMessage.warning('该告警可能已被处置或删除，无法查看详情')
+  }
+}
+
 onMounted(async () => {
   await loadList()
-  // 通知中心跳转携带 ?alarmId= 时，自动打开该告警详情
-  const alarmId = route.query.alarmId
-  if (alarmId) {
-    const id = Number(alarmId)
-    // 清除 query，避免刷新后再次弹出
-    router.replace({ path: route.path, query: {} })
-    if (!Number.isNaN(id)) {
-      try {
-        // getAlarmRecordDetail 返回 AjaxResult 包裹 {code,msg,data}，需取 .data
-        const res: any = await getAlarmRecordDetail(id)
-        const detail = res?.data ?? res
-        if (detail && detail.id) {
-          currentRow.value = detail
-          detailDialogVisible.value = true
-        } else {
-          ElMessage.warning('该告警可能已被处置或删除，无法查看详情')
-        }
-      } catch {
-        // 告警可能已被处置/删除，或当前用户无权查看
-        ElMessage.warning('该告警可能已被处置或删除，无法查看详情')
-      }
-    }
-  }
+  await openAlarmFromQuery()
+})
+
+// 当前已在 /alarm/realtime 时（组件复用，onMounted 不会再触发），
+// 监听 query 变化以响应消息中心的再次点击
+watch(() => route.query.alarmId, (val) => {
+  if (val) openAlarmFromQuery()
 })
 
 
