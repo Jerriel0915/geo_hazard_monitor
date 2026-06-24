@@ -72,28 +72,29 @@ public class AlarmStreamPublisher {
 
     /**
      * 监听告警触发事件，实时推送给所有订阅者。
+     * @deprecated 告警事件已由 {@link AlarmNotifier} 监听，不再需要此方法。
      */
-    @EventListener
-    public void onAlarmTriggered(AlarmTriggeredEvent event) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("alarmId", event.getAlarmId());
-        data.put("hazardPointId", event.getHazardPointId());
-        data.put("alarmLevel", event.getAlarmLevel());
-        data.put("alarmType", event.getAlarmType());
-        data.put("alarmMessage", event.getAlarmMessage());
+    // @EventListener
+    // public void onAlarmTriggered(AlarmTriggeredEvent event) {
+    //     Map<String, Object> data = new LinkedHashMap<>();
+    //     data.put("alarmId", event.getAlarmId());
+    //     data.put("hazardPointId", event.getHazardPointId());
+    //     data.put("alarmLevel", event.getAlarmLevel());
+    //     data.put("alarmType", event.getAlarmType());
+    //     data.put("alarmMessage", event.getAlarmMessage());
 
-        int sent = 0;
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name("alarm").data(data));
-                sent++;
-            } catch (IOException e) {
-                emitters.remove(emitter);
-                log.debug("告警SSE推送失败，移除订阅: {}", e.getMessage());
-            }
-        }
-        log.debug("告警SSE已推送: alarmId={}, 目标={}/{}", event.getAlarmId(), sent, emitters.size());
-    }
+    //     int sent = 0;
+    //     for (SseEmitter emitter : emitters) {
+    //         try {
+    //             emitter.send(SseEmitter.event().name("alarm").data(data));
+    //             sent++;
+    //         } catch (IOException e) {
+    //             emitters.remove(emitter);
+    //             log.debug("告警SSE推送失败，移除订阅: {}", e.getMessage());
+    //         }
+    //     }
+    //     log.debug("告警SSE已推送: alarmId={}, 目标={}/{}", event.getAlarmId(), sent, emitters.size());
+    // }
 
     /**
      * 向所有 SSE 订阅者广播一条事件（用于通知推送等）。
