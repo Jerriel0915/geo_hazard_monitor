@@ -27,11 +27,9 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -143,24 +141,16 @@ public class MonitorIngestConsumerService {
     @PreDestroy
     public void stop() throws InterruptedException {
         running = false;
-        // 停止接受新重试任务，排空并同步执行待重试任务后关闭，
-        // 确保已 ACK 但尚未重投的消息不会丢失
+        // 停止接受新任务，等待已调度的延迟重试任务到期执行完毕，
+        // 确保已 ACK 但尚未重投的消息不会因 shutdownNow 取消而丢失
+        // （DelayedWorkQueue.drainTo 只取已到期任务，无法覆盖延迟窗口内的任务，
+        //   故改用 awaitTermination 让延迟任务自然到期执行）
         retryScheduler.shutdown();
-        if (retryScheduler instanceof ScheduledThreadPoolExecutor stpe) {
-            List<Runnable> pending = new ArrayList<>();
-            stpe.getQueue().drainTo(pending);
-            if (!pending.isEmpty()) {
-                log.info("正在排空 {} 条待重试任务...", pending.size());
-                for (Runnable task : pending) {
-                    try {
-                        task.run();
-                    } catch (Exception e) {
-                        log.warn("重试任务排空执行失败", e);
-                    }
-                }
-                log.info("待重试任务排空完成");
-            }
-            stpe.shutdownNow();
+        int maxDelaySeconds = properties.getRetryDelaysSeconds().stream()
+                .max(Long::compare).orElse(30L).intValue() + 5;
+        if (!retryScheduler.awaitTermination(maxDelaySeconds, TimeUnit.SECONDS)) {
+            log.warn("重试线程池在 {}s 内未完成，强制关闭", maxDelaySeconds);
+            retryScheduler.shutdownNow();
         }
         executorService.shutdownNow();
         executorService.awaitTermination(5, TimeUnit.SECONDS);
