@@ -623,7 +623,8 @@ const menuList = [
       { name: 'Identity', label: '身份管理' },
       { name: 'Permission', label: '权限管理' },
       { name: 'Log', label: '日志管理' },
-      { name: 'Settings', label: '系统设置' }
+      { name: 'Settings', label: '系统设置' },
+      { name: 'SysNotice', label: '通知公告' }
     ]
   }
 ]
@@ -670,6 +671,7 @@ const menuRouteMap: Record<string, string> = {
   Permission: '/system/permission',
   Log: '/system/log',
   Settings: '/system/settings',
+  SysNotice: '/system/notice',
   UserProfile: '/user/profile'
 }
 
@@ -701,6 +703,7 @@ const menuLabelMap: Record<string, string> = {
   Permission: '权限管理',
   Log: '日志管理',
   Settings: '系统设置',
+  SysNotice: '通知公告',
   UserProfile: '个人信息'
 }
 
