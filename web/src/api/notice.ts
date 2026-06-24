@@ -46,8 +46,8 @@ export function getTopNotices(pageNum = 1, pageSize = 10): Promise<TopNoticeResp
   return request.get('/system/notice/listTop', { params: { pageNum, pageSize } })
 }
 
-/** 分页查询通知列表（管理后台） */
-export function getNoticeList(params: { pageNum?: number; pageSize?: number; noticeTitle?: string; noticeType?: string }): Promise<AjaxResult<{ rows: SysNotice[]; total: number }>> {
+/** 分页查询通知列表（管理后台）。后端返回 TableDataInfo，rows/total 在顶层 */
+export function getNoticeList(params: { pageNum?: number; pageSize?: number; noticeTitle?: string; noticeType?: string }): Promise<{ rows: SysNotice[]; total: number }> {
   return request.get('/system/notice/list', { params })
 }
 
@@ -81,7 +81,7 @@ export function markReadAll(ids: string): Promise<AjaxResult> {
   return request.post('/system/notice/markReadAll', null, { params: { ids } })
 }
 
-/** 已读用户列表 */
-export function getReadUsers(noticeId: number, searchValue?: string): Promise<AjaxResult<{ rows: ReadUser[]; total: number }>> {
+/** 已读用户列表。后端返回 TableDataInfo，rows/total 在顶层 */
+export function getReadUsers(noticeId: number, searchValue?: string): Promise<{ rows: ReadUser[]; total: number }> {
   return request.get('/system/notice/readUsers/list', { params: { noticeId, searchValue } })
 }

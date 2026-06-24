@@ -158,9 +158,8 @@ async function handleQuery() {
   loading.value = true
   try {
     const res = await getNoticeList(queryParams)
-    const data = res.data as any
-    noticeList.value = data.rows ?? []
-    total.value = data.total ?? 0
+    noticeList.value = res.rows ?? []
+    total.value = res.total ?? 0
   } catch {
     // ignore
   } finally {
@@ -233,8 +232,7 @@ async function handleReadUsers(row: SysNotice) {
   readUsersLoading.value = true
   try {
     const res = await getReadUsers(row.noticeId)
-    const data = res.data as any
-    readUsers.value = data.rows ?? []
+    readUsers.value = res.rows ?? []
   } catch {
     readUsers.value = []
   } finally {
