@@ -790,6 +790,10 @@ const openBigScreen = () => {
 }
 
 const handleNoticeClick = (msg: NotifyMessage) => {
+  if (!msg.read) {
+    msg.read = true
+    noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
+  }
   router.push(`/system/notice/detail/${msg.id}`)
   messagePanelVisible.value = false
 }

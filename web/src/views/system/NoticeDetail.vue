@@ -25,7 +25,7 @@
 <script setup lang="ts">
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getNoticeById, markRead, type SysNotice } from '@/api/notice'
 
@@ -34,14 +34,25 @@ const router = useRouter()
 const detail = ref<Partial<SysNotice>>({})
 const loading = ref(false)
 
-/** 简单 XSS 缓解：移除 <script>/<iframe>/<object>/<embed> 标签。
- *  公告仅 system:notice:add 权限的管理员可发布，信任端输入；
- *  此处做一层兜底过滤，避免意外粘贴恶意脚本。 */
+/**
+ * 简单的 XSS 缓解措施（非完整净化器）。
+ *
+ * 已知覆盖： <script>、<iframe>、<object>、<embed> 标签（含 void 变体）。
+ * 未覆盖（依赖输入可信）：
+ *   - 事件处理器属性（如 onerror、onload）
+ *   - javascript: URI（如 <a href="javascript:...">）
+ *   - <svg> 内嵌的脚本
+ *   - 未闭合的 <script> 标签
+ *
+ * 当前调用方（公告详情）的输入由管理员在后台创建，视为可信。
+ * 若未来接入用户生成内容（UGC），必须替换为 DOMPurify 等专业净化器。
+ */
 const sanitizedContent = computed(() => {
   const html = detail.value.noticeContent ?? ''
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<(iframe|object|embed)\b[^>]*>.*?<\/\1>/gis, '')
+    .replace(/<(iframe|object|embed)\b[^>]*\/?>/gi, '')
 })
 
 async function loadDetail() {
@@ -74,6 +85,8 @@ function goBack() {
 }
 
 onMounted(loadDetail)
+
+watch(() => route.params.id, () => loadDetail())
 </script>
 
 <style scoped>
