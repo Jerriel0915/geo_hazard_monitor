@@ -27,9 +27,11 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -141,7 +143,25 @@ public class MonitorIngestConsumerService {
     @PreDestroy
     public void stop() throws InterruptedException {
         running = false;
-        retryScheduler.shutdownNow();
+        // 停止接受新重试任务，排空并同步执行待重试任务后关闭，
+        // 确保已 ACK 但尚未重投的消息不会丢失
+        retryScheduler.shutdown();
+        if (retryScheduler instanceof ScheduledThreadPoolExecutor stpe) {
+            List<Runnable> pending = new ArrayList<>();
+            stpe.getQueue().drainTo(pending);
+            if (!pending.isEmpty()) {
+                log.info("正在排空 {} 条待重试任务...", pending.size());
+                for (Runnable task : pending) {
+                    try {
+                        task.run();
+                    } catch (Exception e) {
+                        log.warn("重试任务排空执行失败", e);
+                    }
+                }
+                log.info("待重试任务排空完成");
+            }
+            stpe.shutdownNow();
+        }
         executorService.shutdownNow();
         executorService.awaitTermination(5, TimeUnit.SECONDS);
     }

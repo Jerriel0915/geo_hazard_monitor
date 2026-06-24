@@ -8,13 +8,34 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
- * 告警通知异步执行器
+ * 告警异步执行器配置。
  *
- * 用于 {@code @Async("alarmNotifyExecutor")} 标注的通知分发方法，
- * 与 MQTT 数据接入、IoTDB 写入等核心线程池隔离，避免阻塞数据通道。
+ * <p>两个独立线程池：
+ * <ul>
+ *   <li>{@code alarmEvalExecutor} — 告警评估，单线程保证同设备事件有序、
+ *       避免并发 check-then-act 产生重复告警记录</li>
+ *   <li>{@code alarmNotifyExecutor} — 通知分发（短信/邮件/SYSTEM），
+ *       与评估线程隔离避免慢 IO 阻塞评估</li>
+ * </ul>
+ *
+ * <p>均使用 {@code CallerRunsPolicy}：队列满时由调用线程同步执行，避免丢任务。
  */
 @Configuration
 public class AlarmNotifyAsyncConfig {
+
+    @Bean("alarmEvalExecutor")
+    public Executor alarmEvalExecutor() {
+        ThreadPoolTaskExecutor exec = new ThreadPoolTaskExecutor();
+        exec.setCorePoolSize(1);
+        exec.setMaxPoolSize(1);
+        exec.setQueueCapacity(1000);
+        exec.setThreadNamePrefix("alarm-eval-");
+        exec.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        exec.setWaitForTasksToCompleteOnShutdown(true);
+        exec.setAwaitTerminationSeconds(60);
+        exec.initialize();
+        return exec;
+    }
 
     @Bean("alarmNotifyExecutor")
     public Executor alarmNotifyExecutor() {

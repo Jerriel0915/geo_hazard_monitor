@@ -91,7 +91,7 @@ public class AlarmEvaluationEngine {
         this.deviceQueryService = deviceQueryService;
     }
 
-    @Async("alarmNotifyExecutor")
+    @Async("alarmEvalExecutor")
     @EventListener
     public void onMonitorDataIngested(MonitorDataIngestedEvent event) {
         if (!properties.isEnabled()) {
