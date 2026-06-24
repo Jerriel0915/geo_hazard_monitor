@@ -21,6 +21,8 @@ export interface SysNotice {
 
 /** listTop 响应结构（后端将 unreadCount/timestamp 平铺到顶层，data 为公告数组） */
 export interface TopNoticeResponse extends AjaxResult<SysNotice[]> {
+  /** 分页总数 */
+  total: number
   /** 当前用户未读数（顶层平铺，非 data 内字段） */
   unreadCount: number
   /** 服务端时间戳 */
@@ -39,9 +41,9 @@ export interface ReadUser {
 
 // ===================== API 函数 =====================
 
-/** 获取首页顶部公告（最多5条，含已读状态与未读数） */
-export function getTopNotices(): Promise<TopNoticeResponse> {
-  return request.get('/system/notice/listTop')
+/** 获取首页顶部公告（分页，含已读状态与未读数）。返回 { data, total, unreadCount, timestamp } */
+export function getTopNotices(pageNum = 1, pageSize = 10): Promise<TopNoticeResponse> {
+  return request.get('/system/notice/listTop', { params: { pageNum, pageSize } })
 }
 
 /** 分页查询通知列表（管理后台） */
