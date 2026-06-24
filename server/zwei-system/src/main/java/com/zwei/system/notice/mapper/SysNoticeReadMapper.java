@@ -83,7 +83,9 @@ public interface SysNoticeReadMapper
                                                    @Param("limit") int limit);
 
     /**
-     * 当前用户可见的正常状态公告总数（用于分页 total）。
+     * 正常状态公告总数（用于分页 total）。
+     * <p>当前 SQL 不按 userId 过滤——正常公告对所有用户可见；
+     * 保留 userId 参数为将来按角色/部门过滤预留。</p>
      */
     int selectNoticeCountWithReadStatus(@Param("userId") Long userId);
 }

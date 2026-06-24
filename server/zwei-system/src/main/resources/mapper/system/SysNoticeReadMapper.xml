@@ -91,7 +91,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             n.notice_id    as noticeId,
             n.notice_title as noticeTitle,
             n.notice_type  as noticeType,
-            n.notice_content as noticeContent,
             n.status,
             n.create_by    as createBy,
             n.create_time  as createTime,
@@ -104,7 +103,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit #{offset}, #{limit}
     </select>
 
-    <!-- 当前用户可见公告总数 -->
+    <!-- 正常状态公告总数（当前不按 userId 过滤；参数保留为未来扩展预留） -->
     <select id="selectNoticeCountWithReadStatus" resultType="int">
         select count(*) from sys_notice n
         where n.status = '0'
