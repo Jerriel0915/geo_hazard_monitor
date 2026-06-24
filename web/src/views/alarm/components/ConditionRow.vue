@@ -61,68 +61,12 @@
     </template>
 
     <!-- DATETIME -->
-    <template v-else-if="valueType === 'DATETIME'">
-      <el-select
-          :model-value="condition.thresholdMode || 'ABSOLUTE'"
-          size="small"
-          class="cond-field mode-field"
-          @update:model-value="(v: string) => updateField('thresholdMode', v as 'ABSOLUTE'|'RELATIVE')"
-      >
-        <el-option label="绝对" value="ABSOLUTE"/>
-        <el-option label="相对" value="RELATIVE"/>
-      </el-select>
-      <el-date-picker
-          v-if="(condition.thresholdMode || 'ABSOLUTE') === 'ABSOLUTE' && condition.operator !== 'BETWEEN'"
-          :model-value="condition.threshold as string"
-          type="datetime"
-          size="small"
-          value-format="YYYY-MM-DDTHH:mm:ss"
-          class="cond-field threshold-field"
-          @update:model-value="(v: string) => updateField('threshold', v)"
-      />
-      <el-date-picker
-          v-else-if="(condition.thresholdMode || 'ABSOLUTE') === 'ABSOLUTE' && condition.operator === 'BETWEEN'"
-          :model-value="datetimeRange"
-          type="datetimerange"
-          size="small"
-          value-format="YYYY-MM-DDTHH:mm:ss"
-          class="cond-field threshold-range-field"
-          @update:model-value="onDatetimeRangeChange"
-      />
-      <!-- 相对模式 -->
-      <template v-else>
-        <span class="cond-now-label">当前时间</span>
-        <el-select
-            :model-value="condition.relDirection || '-'"
-            size="small"
-            class="cond-field rel-dir-field"
-            @update:model-value="(v: string) => updateField('relDirection', v as '+'|'-')"
-        >
-          <el-option label="-" value="-"/>
-          <el-option label="+" value="+"/>
-        </el-select>
-        <el-input-number
-            :model-value="condition.relValue || 0"
-            size="small"
-            :min="0"
-            :step="1"
-            controls-position="right"
-            class="cond-field rel-value-field"
-            @update:model-value="(v: number | null) => updateField('relValue', v ?? 0)"
-        />
-        <el-select
-            :model-value="condition.relUnit || 'h'"
-            size="small"
-            class="cond-field rel-unit-field"
-            @update:model-value="(v: string) => updateField('relUnit', v as 's'|'m'|'h'|'d')"
-        >
-          <el-option label="秒" value="s"/>
-          <el-option label="分" value="m"/>
-          <el-option label="时" value="h"/>
-          <el-option label="天" value="d"/>
-        </el-select>
-      </template>
-    </template>
+    <DateTimeConditionPicker
+        v-else-if="valueType === 'DATETIME'"
+        :condition="condition"
+        :range="condition.operator === 'BETWEEN'"
+        @update:condition="(c: Condition) => emit('update:condition', c)"
+    />
 
     <!-- STRING -->
     <el-input
@@ -168,6 +112,7 @@
 <script setup lang="ts">
 import {computed} from 'vue'
 import {Delete} from '@element-plus/icons-vue'
+import DateTimeConditionPicker from './DateTimeConditionPicker.vue'
 import type {IndicatorTreeNode, Condition} from '../composables/useIndicatorTree'
 import type {ValueType} from '@/utils/indicatorType'
 
@@ -231,21 +176,6 @@ const booleanFalseLabel = computed(() => {
   return s.endsWith('onlineStatus') ? '离线' : '否'
 })
 
-const datetimeRange = computed<[string, string] | null>(() => {
-  const a = props.condition.threshold as string
-  const b = props.condition.thresholdMax as string
-  return a && b ? [a, b] : null
-})
-
-function onDatetimeRangeChange(v: [string, string] | null) {
-  const updated: Condition = {
-    ...props.condition,
-    threshold: v?.[0] ?? '',
-    thresholdMax: v?.[1] ?? '',
-  }
-  emit('update:condition', updated)
-}
-
 function onSubjectChange(val: string) {
   const node = props.nodeMap.get(val)
   const vt = (node?.meta?.valueType as ValueType) || 'NUMBER'
@@ -266,46 +196,24 @@ function onSubjectChange(val: string) {
     relDirection: undefined,
     relValue: undefined,
     relUnit: undefined,
+    relDirectionMax: undefined,
+    relValueMax: undefined,
+    relUnitMax: undefined,
   }
   emit('update:condition', updated)
 }
 
 function updateField(field: string, value: any) {
   const updated: Condition = {...props.condition, [field]: value}
-  // 相对模式编辑时同步序列化 threshold 字符串
-  if (field === 'relDirection' || field === 'relValue' || field === 'relUnit') {
-    const dir = (updated.relDirection || '-') as '+' | '-'
-    const n = updated.relValue || 0
-    const unit = updated.relUnit || 'h'
-    updated.threshold = n > 0 ? `now${dir}${n}${unit}` : 'now'
-  }
-  // thresholdMode 切换时清理 stale 值或初始化相对模式字段
-  if (field === 'thresholdMode') {
-    if (value === 'ABSOLUTE') {
-      // 切回绝对模式：如果 threshold 是相对表达式则清空，否则保留用户之前输入的绝对时间
-      if (typeof updated.threshold === 'string' && updated.threshold.startsWith('now')) {
-        updated.threshold = ''
-      }
-      // 同时清空 thresholdMax 如果它也是相对表达式（BETWEEN 场景）
-      if (typeof updated.thresholdMax === 'string' && updated.thresholdMax.startsWith('now')) {
-        updated.thresholdMax = ''
-      }
-    } else if (value === 'RELATIVE') {
-      // 切到相对模式：初始化 rel 字段（如果未设置）
-      if (updated.relDirection === undefined) updated.relDirection = '-'
-      if (updated.relValue === undefined) updated.relValue = 0
-      if (updated.relUnit === undefined) updated.relUnit = 'h'
-      // 立即序列化 threshold
-      const dir = (updated.relDirection || '-') as '+' | '-'
-      const n = updated.relValue || 0
-      const unit = updated.relUnit || 'h'
-      updated.threshold = n > 0 ? `now${dir}${n}${unit}` : 'now'
-    }
-  }
   // 切换 operator 到 BETWEEN 时初始化 thresholdMax
   if (field === 'operator' && value === 'BETWEEN' && updated.thresholdMax === undefined) {
     if (updated.valueType === 'NUMBER') updated.thresholdMax = 0
-    else if (updated.valueType === 'DATETIME') updated.thresholdMax = ''
+    else if (updated.valueType === 'DATETIME') {
+      updated.thresholdMax = ''
+      updated.relDirectionMax = '-'
+      updated.relValueMax = 0
+      updated.relUnitMax = 'h'
+    }
   }
   emit('update:condition', updated)
 }
@@ -324,11 +232,6 @@ function updateField(field: string, value: any) {
 .subject-field { min-width: 200px; }
 .operator-field { width: 96px; }
 .threshold-field { width: 180px; }
-.threshold-range-field { width: 320px; }
-.mode-field { width: 72px; }
-.rel-dir-field { width: 56px; }
-.rel-value-field { width: 88px; }
-.rel-unit-field { width: 64px; }
 
 .cond-unit {
   font-size: 12px;
@@ -341,11 +244,5 @@ function updateField(field: string, value: any) {
   font-size: 13px;
   color: #606266;
   padding: 0 2px;
-}
-
-.cond-now-label {
-  font-size: 12px;
-  color: #909399;
-  white-space: nowrap;
 }
 </style>
