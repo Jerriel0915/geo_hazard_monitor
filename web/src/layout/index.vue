@@ -317,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import {getTopNotices, markRead as markNoticeRead, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
+import {getTopNotices, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
 import {
   getAlarmNotificationPage,
   getAlarmNotificationUnreadCount,
@@ -789,14 +789,7 @@ const openBigScreen = () => {
   window.open('/bigscreen/disaster', '_blank')
 }
 
-const handleNoticeClick = async (msg: NotifyMessage) => {
-  if (!msg.read) {
-    try {
-      await markNoticeRead(msg.id)
-      msg.read = true
-      noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
-    } catch { /* ignore */ }
-  }
+const handleNoticeClick = (msg: NotifyMessage) => {
   router.push(`/system/notice/detail/${msg.id}`)
   messagePanelVisible.value = false
 }
