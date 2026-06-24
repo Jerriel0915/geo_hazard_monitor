@@ -117,4 +117,26 @@
           AND read_time IS NULL
     </select>
 
+    <select id="selectUserUnreadPage" resultMap="AlarmNotificationResult">
+        SELECT id, source_type, source_id, title, content,
+               recipient_name, read_time, create_time, channel,
+               dispatch_rule_id, status
+        FROM alarm_notification
+        WHERE recipient_id = #{userId}
+          AND channel = 'SYSTEM'
+          AND source_type IN ('alarm', 'offline')
+          AND read_time IS NULL
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectUserUnreadTotal" resultType="int">
+        SELECT COUNT(1)
+        FROM alarm_notification
+        WHERE recipient_id = #{userId}
+          AND channel = 'SYSTEM'
+          AND source_type IN ('alarm', 'offline')
+          AND read_time IS NULL
+    </select>
+
 </mapper>

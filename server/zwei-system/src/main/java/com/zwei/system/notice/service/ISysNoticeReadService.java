@@ -60,4 +60,19 @@ public interface ISysNoticeReadService
      * @param noticeIds 公告ID数组
      */
     public void deleteByNoticeIds(Long[] noticeIds);
+
+    /**
+     * 分页查询当前用户可见的公告列表（带 isRead 标记）。
+     *
+     * @param userId   当前用户 ID
+     * @param pageNum  页码，从 1 开始
+     * @param pageSize 每页条数
+     * @return 公告列表
+     */
+    List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize);
+
+    /**
+     * 当前用户可见公告总数（用于分页 total）。
+     */
+    int selectNoticeCount();
 }

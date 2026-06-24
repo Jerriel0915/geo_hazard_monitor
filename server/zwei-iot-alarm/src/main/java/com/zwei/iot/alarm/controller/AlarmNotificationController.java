@@ -37,19 +37,33 @@ public class AlarmNotificationController extends BaseController {
     }
 
     /**
-     * 当前用户最近未读事件通知列表（默认 10 条，最多 100 条）。
-     * <p>已读事件不再返回，配合前端下拉面板实现"读后即焚"。</p>
+     * 当前用户未读事件通知列表（分页）。
+     * <p>已读事件不再返回。返回顶层包含 total 字段，便于前端分页控件计算总页数。</p>
+     * <p>向后兼容：若调用方传入 limit（旧契约），则映射为 pageSize=limit, pageNum=1。</p>
      */
     @GetMapping("/recent")
     @PreAuthorize("@ss.hasPermi('alarm:notification:list')")
-    public AjaxResult recent(@RequestParam(defaultValue = "10") int limit) {
+    public AjaxResult recent(@RequestParam(defaultValue = "1") int pageNum,
+                             @RequestParam(defaultValue = "10") int pageSize,
+                             @RequestParam(required = false) Integer limit) {
         Long userId = SecurityUtils.getUserId();
-        int safeLimit = Math.max(1, Math.min(limit, 100));
-        List<AlarmNotification> list = notificationService.selectUserRecent(userId, safeLimit);
+        // 向后兼容：旧调用方传 limit 时，退化为第 1 页取 limit 条
+        int safePage, safeSize;
+        if (limit != null) {
+            safePage = 1;
+            safeSize = Math.max(1, Math.min(limit, 100));
+        } else {
+            safePage = Math.max(1, pageNum);
+            safeSize = Math.max(1, Math.min(pageSize, 50));
+        }
+        List<AlarmNotification> list = notificationService.selectUserUnreadPage(userId, safePage, safeSize);
+        int total = notificationService.selectUserUnreadTotal(userId);
         List<AlarmNotificationItemVO> vos = list.stream()
             .map(this::toItemVO)
             .toList();
-        return AjaxResult.success(vos);
+        AjaxResult ajax = AjaxResult.success(vos);
+        ajax.put("total", total);
+        return ajax;
     }
 
     /**

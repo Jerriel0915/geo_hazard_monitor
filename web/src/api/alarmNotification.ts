@@ -33,10 +33,19 @@ export interface AlarmNotificationSummary {
   timestamp: number
 }
 
+/** 分页响应（事件 Tab）—— 后端 recent 接口返回顶层带 total */
+export interface AlarmNotificationPageResponse extends AjaxResult<AlarmNotificationItem[]> {
+  /** 分页总数 */
+  total: number
+}
+
 // ===================== API 函数 =====================
 
 /**
  * 查询当前用户最近事件通知（默认 10 条，事件 Tab 数据源）。
+ *
+ * @deprecated 改用 getAlarmNotificationPage（标准分页）。
+ * 仅保留向后兼容；默认 limit=10。
  */
 export function getRecentAlarmNotifications(limit = 10): Promise<AjaxResult<AlarmNotificationItem[]>> {
   return request.get('/alarm/notifications/recent', { params: { limit } })
@@ -61,4 +70,15 @@ export function markAlarmNotificationRead(id: number): Promise<AjaxResult> {
  */
 export function markAllAlarmNotificationsRead(): Promise<AjaxResult> {
   return request.post('/alarm/notifications/read-all')
+}
+
+/**
+ * 分页查询当前用户未读事件通知（替代 getRecentAlarmNotifications）。
+ * 返回 { data, total }。
+ */
+export function getAlarmNotificationPage(
+  pageNum = 1,
+  pageSize = 10
+): Promise<AlarmNotificationPageResponse> {
+  return request.get('/alarm/notifications/recent', { params: { pageNum, pageSize } })
 }

@@ -300,6 +300,15 @@
         </template>
       </div>
       <div class="message-panel-footer" v-if="currentTabHasMessages">
+        <div class="pager" v-if="currentTabTotalPages > 1">
+          <span class="pager-btn"
+                :class="{ disabled: currentPageRef.current <= 1 }"
+                @click="goPrevPage">‹</span>
+          <span class="pager-info">{{ currentPageRef.current }}/{{ currentTabTotalPages }}</span>
+          <span class="pager-btn"
+                :class="{ disabled: currentPageRef.current >= currentTabTotalPages }"
+                @click="goNextPage">›</span>
+        </div>
         <el-button size="small" @click="markAllAsRead">全部标为已读</el-button>
       </div>
     </div>
@@ -308,9 +317,9 @@
 </template>
 
 <script setup lang="ts">
-import {getTopNotices, markRead as markNoticeRead, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
+import {getTopNotices, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
 import {
-  getRecentAlarmNotifications,
+  getAlarmNotificationPage,
   getAlarmNotificationUnreadCount,
   markAlarmNotificationRead,
   markAllAlarmNotificationsRead,
@@ -380,6 +389,17 @@ const noticeMessages = ref<NotifyMessage[]>([])
 const eventMessages = ref<NotifyMessage[]>([])
 const noticeUnreadCount = ref(0)
 const eventUnreadCount = ref(0)
+const eventPage = reactive({ current: 1, size: 10, total: 0 })
+const noticePage = reactive({ current: 1, size: 10, total: 0 })
+
+/** 当前 Tab 对应的分页对象（便于模板与翻页函数统一引用） */
+const currentPageRef = computed(() => notifyTab.value === 'event' ? eventPage : noticePage)
+
+/** 当前 Tab 总页数（至少 1，避免空列表显示 1/0） */
+const currentTabTotalPages = computed(() => {
+  const p = currentPageRef.value
+  return Math.max(1, Math.ceil(p.total / p.size))
+})
 let noticeEventSource: EventSource | null = null
 let alarmEventSource: EventSource | null = null
 
@@ -421,23 +441,40 @@ function toEventMessage(n: AlarmNotificationItem): NotifyMessage {
 
 async function fetchNoticeMessages() {
   try {
-    const res = await getTopNotices()
-    // 后端响应：{code,msg,data: SysNotice[], unreadCount, timestamp}
-    // data 直接是公告数组，unreadCount 在顶层
+    const res = await getTopNotices(noticePage.current, noticePage.size)
     noticeMessages.value = (res.data ?? []).map(toNoticeMessage)
     noticeUnreadCount.value = res.unreadCount ?? 0
+    noticePage.total = res.total ?? 0
   } catch { /* keep previous data */ }
 }
 
 async function fetchEventMessages() {
   try {
-    const [recentRes, unreadRes] = await Promise.all([
-      getRecentAlarmNotifications(20),
+    const [pageRes, unreadRes] = await Promise.all([
+      getAlarmNotificationPage(eventPage.current, eventPage.size),
       getAlarmNotificationUnreadCount()
     ])
-    eventMessages.value = (recentRes.data ?? []).map(toEventMessage)
+    eventMessages.value = (pageRes.data ?? []).map(toEventMessage)
+    eventPage.total = pageRes.total ?? 0
     eventUnreadCount.value = unreadRes.data?.unreadCount ?? 0
   } catch { /* keep previous data */ }
+}
+
+function reloadCurrentTab() {
+  if (notifyTab.value === 'event') fetchEventMessages()
+  else fetchNoticeMessages()
+}
+
+function goPrevPage() {
+  if (currentPageRef.value.current <= 1) return
+  currentPageRef.value.current--
+  reloadCurrentTab()
+}
+
+function goNextPage() {
+  if (currentPageRef.value.current >= currentTabTotalPages.value) return
+  currentPageRef.value.current++
+  reloadCurrentTab()
 }
 
 function startNoticeSSE() {
@@ -447,18 +484,9 @@ function startNoticeSSE() {
   noticeEventSource = new EventSource(`/api/v1/system/notice/stream?token=${encodeURIComponent(token)}`)
   noticeEventSource.addEventListener('notice', (event) => {
     try {
-      const data = JSON.parse(event.data)
-      const msg: NotifyMessage = {
-        id: data.noticeId,
-        title: data.title,
-        content: data.content ?? '',
-        time: data.createTime ?? '',
-        read: false,
-        type: data.type === '1' ? 'system' : 'other'
-      }
-      noticeMessages.value.unshift(msg)
-      if (noticeMessages.value.length > 20) noticeMessages.value.pop()
-      noticeUnreadCount.value++
+      JSON.parse(event.data)
+      noticePage.current = 1
+      fetchNoticeMessages()
     } catch { /* ignore malformed event */ }
   })
   noticeEventSource.onerror = () => {
@@ -483,6 +511,7 @@ function startAlarmSSE() {
         type: 'warning',
         duration: 5000
       })
+      eventPage.current = 1
       fetchEventMessages()
     } catch { /* ignore */ }
   })
@@ -496,6 +525,7 @@ function startAlarmSSE() {
         type: 'error',
         duration: 5000
       })
+      eventPage.current = 1
       fetchEventMessages()
     } catch { /* ignore */ }
   })
@@ -593,7 +623,8 @@ const menuList = [
       { name: 'Identity', label: '身份管理' },
       { name: 'Permission', label: '权限管理' },
       { name: 'Log', label: '日志管理' },
-      { name: 'Settings', label: '系统设置' }
+      { name: 'Settings', label: '系统设置' },
+      { name: 'SysNotice', label: '通知公告' }
     ]
   }
 ]
@@ -640,6 +671,7 @@ const menuRouteMap: Record<string, string> = {
   Permission: '/system/permission',
   Log: '/system/log',
   Settings: '/system/settings',
+  SysNotice: '/system/notice',
   UserProfile: '/user/profile'
 }
 
@@ -671,6 +703,7 @@ const menuLabelMap: Record<string, string> = {
   Permission: '权限管理',
   Log: '日志管理',
   Settings: '系统设置',
+  SysNotice: '通知公告',
   UserProfile: '个人信息'
 }
 
@@ -759,13 +792,10 @@ const openBigScreen = () => {
   window.open('/bigscreen/disaster', '_blank')
 }
 
-const handleNoticeClick = async (msg: NotifyMessage) => {
+const handleNoticeClick = (msg: NotifyMessage) => {
   if (!msg.read) {
-    try {
-      await markNoticeRead(msg.id)
-      msg.read = true
-      noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
-    } catch { /* ignore */ }
+    msg.read = true
+    noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
   }
   router.push(`/system/notice/detail/${msg.id}`)
   messagePanelVisible.value = false
@@ -795,6 +825,8 @@ const markAllAsRead = async () => {
       // 全部已读 → 列表清空（后端查询也会过滤已读项）
       eventMessages.value = []
       eventUnreadCount.value = 0
+      eventPage.current = 1
+      eventPage.total = 0
     } catch { /* ignore */ }
   } else {
     const unreadIds = noticeMessages.value.filter(m => !m.read).map(m => m.id)
@@ -803,6 +835,8 @@ const markAllAsRead = async () => {
       await markAllNoticeRead(unreadIds.join(','))
       noticeMessages.value.forEach(m => { m.read = true })
       noticeUnreadCount.value = 0
+      noticePage.current = 1
+      noticePage.total = 0
     } catch { /* ignore */ }
   }
 }
@@ -1432,7 +1466,39 @@ const goToDashboard = () => {
   padding: 12px 20px;
   border-top: 1px solid #f0f0f0;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #606266;
+}
+.pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.pager-btn:hover:not(.disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+.pager-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pager-info {
+  min-width: 36px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .message-mask {

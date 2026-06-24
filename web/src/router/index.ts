@@ -61,6 +61,7 @@ const routes: RouteRecordRaw[] = [
       { path: '/system/log', name: 'Log', component: () => import('@/views/system/Log.vue') },
       { path: '/system/settings', name: 'Settings', component: () => import('@/views/system/Settings.vue') },
       { path: '/system/notice', name: 'SysNotice', component: () => import('@/views/system/SysNotice.vue') },
+      { path: '/system/notice/detail/:id', name: 'NoticeDetail', component: () => import('@/views/system/NoticeDetail.vue') },
       { path: '/user/profile', name: 'UserProfile', component: () => import('@/views/user/UserProfile.vue') }
     ]
   },

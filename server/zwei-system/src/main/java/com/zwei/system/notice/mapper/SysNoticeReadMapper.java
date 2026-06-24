@@ -73,4 +73,19 @@ public interface SysNoticeReadMapper
      * @return 结果
      */
     public int deleteByNoticeIds(@Param("noticeIds") Long[] noticeIds);
+
+    /**
+     * 分页查询当前用户的公告列表（带已读状态）。
+     * 公告状态为"正常"（status='0'），按 notice_id DESC 排序。
+     */
+    List<SysNotice> selectNoticePageWithReadStatus(@Param("userId") Long userId,
+                                                   @Param("offset") int offset,
+                                                   @Param("limit") int limit);
+
+    /**
+     * 正常状态公告总数（用于分页 total）。
+     * <p>当前 SQL 不按 userId 过滤——正常公告对所有用户可见；
+     * 保留 userId 参数为将来按角色/部门过滤预留。</p>
+     */
+    int selectNoticeCountWithReadStatus(@Param("userId") Long userId);
 }

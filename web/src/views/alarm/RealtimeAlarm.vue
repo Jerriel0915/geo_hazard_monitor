@@ -215,8 +215,13 @@ onMounted(async () => {
         if (detail && detail.id) {
           currentRow.value = detail
           detailDialogVisible.value = true
+        } else {
+          ElMessage.warning('该告警可能已被处置或删除，无法查看详情')
         }
-      } catch { /* 告警可能已不存在或无权查看，静默忽略 */ }
+      } catch {
+        // 告警可能已被处置/删除，或当前用户无权查看
+        ElMessage.warning('该告警可能已被处置或删除，无法查看详情')
+      }
     }
   }
 })

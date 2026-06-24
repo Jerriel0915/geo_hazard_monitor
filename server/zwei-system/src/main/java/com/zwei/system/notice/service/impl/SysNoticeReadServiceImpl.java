@@ -81,4 +81,19 @@ public class SysNoticeReadServiceImpl implements ISysNoticeReadService
     {
         noticeReadMapper.deleteByNoticeIds(noticeIds);
     }
+
+    @Override
+    public List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize)
+    {
+        int safePage = Math.max(1, pageNum);
+        int safeSize = Math.max(1, Math.min(pageSize, 50));
+        int offset = (safePage - 1) * safeSize;
+        return noticeReadMapper.selectNoticePageWithReadStatus(userId, offset, safeSize);
+    }
+
+    @Override
+    public int selectNoticeCount()
+    {
+        return noticeReadMapper.selectNoticeCountWithReadStatus(null);
+    }
 }

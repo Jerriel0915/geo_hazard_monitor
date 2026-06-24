@@ -85,4 +85,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by r.read_time desc
     </select>
 
+    <!-- 分页查询带已读状态的公告列表 -->
+    <select id="selectNoticePageWithReadStatus" resultType="SysNotice">
+        select
+            n.notice_id    as noticeId,
+            n.notice_title as noticeTitle,
+            n.notice_type  as noticeType,
+            n.status,
+            n.create_by    as createBy,
+            n.create_time  as createTime,
+            case when r.notice_id is not null then true else false end as isRead
+        from sys_notice n
+        left join sys_notice_read r
+            on r.notice_id = n.notice_id and r.user_id = #{userId}
+        where n.status = '0'
+        order by n.notice_id desc
+        limit #{offset}, #{limit}
+    </select>
+
+    <!-- 正常状态公告总数（当前不按 userId 过滤；参数保留为未来扩展预留） -->
+    <select id="selectNoticeCountWithReadStatus" resultType="int">
+        select count(*) from sys_notice n
+        where n.status = '0'
+    </select>
+
 </mapper>
