@@ -93,7 +93,7 @@
         WHERE id = #{id}
     </update>
 
-    <!-- 告警规则匹配：event_type=ALARM + 等级命中 + 隐患点匹配（含 '*' 通配） -->
+    <!-- 告警规则匹配：event_type=#{eventType} + 等级命中 + 隐患点匹配（含 '*' 通配） -->
     <select id="matchAlarmRules" resultMap="BaseResultMap">
         SELECT DISTINCT r.id, r.name, r.event_type, r.alarm_levels, r.channels,
                r.is_enabled, r.del_flag, r.create_by, r.create_time,
@@ -102,7 +102,7 @@
         LEFT JOIN alarm_dispatch_rule_hazard_point hp ON hp.rule_id = r.id
         WHERE r.del_flag = 0
           AND r.is_enabled = 1
-          AND r.event_type = 'ALARM'
+          AND r.event_type = #{eventType}
           AND FIND_IN_SET(#{alarmLevel}, r.alarm_levels)
           AND (
               hp.hazard_point_id = '*'

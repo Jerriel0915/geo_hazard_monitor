@@ -26,19 +26,19 @@ class AlarmRuleMatcherImplTest {
     void matchAlarmRules_should_return_rules_with_matching_level_and_hp() {
         AlarmDispatchRule r1 = new AlarmDispatchRule();
         r1.setId(1L);
-        when(ruleMapper.matchAlarmRules("2", "2"))
+        when(ruleMapper.matchAlarmRules("2", "2", "THRESHOLD"))
             .thenReturn(List.of(r1));
 
-        List<AlarmDispatchRule> result = matcher.matchAlarmRules(2L, "2");
+        List<AlarmDispatchRule> result = matcher.matchAlarmRules(2L, "2", "THRESHOLD");
         assertThat(result).hasSize(1);
     }
 
     @Test
     void matchAlarmRules_empty_when_no_match() {
-        when(ruleMapper.matchAlarmRules(anyString(), anyString()))
+        when(ruleMapper.matchAlarmRules(anyString(), anyString(), anyString()))
             .thenReturn(Collections.emptyList());
 
-        List<AlarmDispatchRule> result = matcher.matchAlarmRules(999L, "4");
+        List<AlarmDispatchRule> result = matcher.matchAlarmRules(999L, "4", "THRESHOLD");
         assertThat(result).isEmpty();
     }
 

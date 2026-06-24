@@ -81,22 +81,29 @@ public class AlarmNotifier {
     }
 
     private void dispatchForAlarm(AlarmTriggeredEvent event) {
+        String alarmType = StringUtils.defaultIfBlank(event.getAlarmType(), "THRESHOLD");
+
         List<AlarmDispatchRule> rules = ruleMatcher.matchAlarmRules(
             event.getHazardPointId(),
-            event.getAlarmLevel() == null ? null : String.valueOf(event.getAlarmLevel()));
+            event.getAlarmLevel() == null ? null : String.valueOf(event.getAlarmLevel()),
+            alarmType);
 
         if (rules == null || rules.isEmpty()) {
-            log.debug("无匹配告警规则 alarmId={}", event.getAlarmId());
+            log.debug("无匹配告警规则 alarmId={} type={}", event.getAlarmId(), alarmType);
             return;
         }
 
-        String title = "[告警] " + StringUtils.defaultString(event.getAlarmType(), "告警通知");
+        boolean isComprehensive = "COMPREHENSIVE".equals(alarmType);
+        String sourceType = isComprehensive ? "comprehensive" : "threshold";
+        String typeName = isComprehensive ? "综合告警" : "阈值告警";
+        String title = "[" + typeName + "] "
+            + StringUtils.defaultString(event.getAlarmMessage(), "告警通知");
         String content = String.format("等级:%s | %s",
             event.getAlarmLevel(),
             StringUtils.defaultString(event.getAlarmMessage(), "-"));
 
         Collection<AlarmNotification> notifications = buildAndDedup(
-            rules, "alarm", event.getAlarmId(), title, content);
+            rules, sourceType, event.getAlarmId(), title, content);
 
         dispatch(notifications);
     }

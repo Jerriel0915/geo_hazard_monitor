@@ -30,9 +30,10 @@ public interface AlarmDispatchRuleMapper {
     /** 启停切换 */
     int updateEnabled(@Param("id") Long id, @Param("isEnabled") Integer isEnabled);
 
-    /** 告警规则匹配：event_type=ALARM + 等级命中 + 隐患点匹配（含 '*'） */
+    /** 告警规则匹配：event_type=#{eventType} + 等级命中 + 隐患点匹配（含 '*'） */
     List<AlarmDispatchRule> matchAlarmRules(@Param("hazardPointIdStr") String hazardPointIdStr,
-                                             @Param("alarmLevel") String alarmLevel);
+                                             @Param("alarmLevel") String alarmLevel,
+                                             @Param("eventType") String eventType);
 
     /** 离线规则匹配：event_type=OFFLINE + 设备匹配（含 '*'） */
     List<AlarmDispatchRule> matchOfflineRules(@Param("deviceIdStr") String deviceIdStr);

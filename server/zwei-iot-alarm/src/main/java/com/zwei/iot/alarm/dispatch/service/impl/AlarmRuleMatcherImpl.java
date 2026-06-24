@@ -15,10 +15,11 @@ public class AlarmRuleMatcherImpl implements IAlarmRuleMatcher {
     private AlarmDispatchRuleMapper ruleMapper;
 
     @Override
-    public List<AlarmDispatchRule> matchAlarmRules(Long hazardPointId, String alarmLevel) {
+    public List<AlarmDispatchRule> matchAlarmRules(Long hazardPointId, String alarmLevel, String eventType) {
         return ruleMapper.matchAlarmRules(
             hazardPointId == null ? null : String.valueOf(hazardPointId),
-            alarmLevel);
+            alarmLevel,
+            eventType);
     }
 
     @Override

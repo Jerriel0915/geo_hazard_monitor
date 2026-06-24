@@ -61,7 +61,7 @@ class AlarmNotifierTest {
             900L, 1L, 4, "THRESHOLD", "测试告警", "首次告警");
 
         AlarmDispatchRule rule = buildRule(7L, "SYSTEM,SMS");
-        when(ruleMatcher.matchAlarmRules(1L, "4")).thenReturn(List.of(rule));
+        when(ruleMatcher.matchAlarmRules(1L, "4", "THRESHOLD")).thenReturn(List.of(rule));
         when(recipientResolver.resolveUserIds(7L))
             .thenReturn(new HashSet<>(Arrays.asList(10L, 20L)));
         when(userService.selectUserById(10L)).thenReturn(buildUser(10L, "0", "user10"));
@@ -81,7 +81,7 @@ class AlarmNotifierTest {
         AlarmTriggeredEvent event = new AlarmTriggeredEvent(
             901L, 2L, 3, "THRESHOLD", "无规则", "首次");
 
-        when(ruleMatcher.matchAlarmRules(2L, "3")).thenReturn(Collections.emptyList());
+        when(ruleMatcher.matchAlarmRules(2L, "3", "THRESHOLD")).thenReturn(Collections.emptyList());
 
         notifier.onAlarmTriggered(event);
 
@@ -95,7 +95,7 @@ class AlarmNotifierTest {
             902L, 3L, 4, "THRESHOLD", "停用用户", "首次");
 
         AlarmDispatchRule rule = buildRule(8L, "SYSTEM");
-        when(ruleMatcher.matchAlarmRules(3L, "4")).thenReturn(List.of(rule));
+        when(ruleMatcher.matchAlarmRules(3L, "4", "THRESHOLD")).thenReturn(List.of(rule));
         when(recipientResolver.resolveUserIds(8L)).thenReturn(new HashSet<>(List.of(99L)));
         when(userService.selectUserById(99L))
             .thenReturn(buildUser(99L, "1", "disabled-user"));  // status="1" 停用
@@ -114,7 +114,7 @@ class AlarmNotifierTest {
 
         AlarmDispatchRule ruleA = buildRule(11L, "SYSTEM");
         AlarmDispatchRule ruleB = buildRule(12L, "SYSTEM,SMS");
-        when(ruleMatcher.matchAlarmRules(4L, "4")).thenReturn(Arrays.asList(ruleA, ruleB));
+        when(ruleMatcher.matchAlarmRules(4L, "4", "THRESHOLD")).thenReturn(Arrays.asList(ruleA, ruleB));
         when(recipientResolver.resolveUserIds(11L)).thenReturn(new HashSet<>(List.of(50L)));
         when(recipientResolver.resolveUserIds(12L)).thenReturn(new HashSet<>(List.of(50L)));
         when(userService.selectUserById(50L)).thenReturn(buildUser(50L, "0", "user50"));
@@ -139,7 +139,7 @@ class AlarmNotifierTest {
             905L, 6L, 4, "THRESHOLD", "状态默认", "首次");
 
         AlarmDispatchRule rule = buildRule(14L, "SYSTEM,SMS,EMAIL");
-        when(ruleMatcher.matchAlarmRules(6L, "4")).thenReturn(List.of(rule));
+        when(ruleMatcher.matchAlarmRules(6L, "4", "THRESHOLD")).thenReturn(List.of(rule));
         when(recipientResolver.resolveUserIds(14L)).thenReturn(new HashSet<>(List.of(70L)));
         when(userService.selectUserById(70L)).thenReturn(buildUser(70L, "0", "user70"));
         when(notificationService.batchCreate(anyList())).thenReturn(3);
@@ -163,6 +163,33 @@ class AlarmNotifierTest {
         AlarmNotification emailNotif = saved.stream()
             .filter(n -> "EMAIL".equals(n.getChannel())).findFirst().orElseThrow();
         assertThat(emailNotif.getStatus()).isEqualTo(AlarmNotification.STATUS_PENDING);
+
+        // then — sourceType 派生正确
+        assertThat(saved).allMatch(n -> "threshold".equals(n.getSourceType()));
+        assertThat(saved.get(0).getTitle()).startsWith("[阈值告警]");
+    }
+
+    @Test
+    void onAlarmTriggered_comprehensive_uses_correct_sourceType_and_title() {
+        AlarmTriggeredEvent event = new AlarmTriggeredEvent(
+            906L, 7L, 4, "COMPREHENSIVE",
+            "小时雨量80mm+土壤含水率85%，泥石流风险极高", "综合策略命中");
+
+        AlarmDispatchRule rule = buildRule(15L, "SYSTEM");
+        when(ruleMatcher.matchAlarmRules(7L, "4", "COMPREHENSIVE")).thenReturn(List.of(rule));
+        when(recipientResolver.resolveUserIds(15L)).thenReturn(new HashSet<>(List.of(80L)));
+        when(userService.selectUserById(80L)).thenReturn(buildUser(80L, "0", "user80"));
+        when(notificationService.batchCreate(anyList())).thenReturn(1);
+
+        notifier.onAlarmTriggered(event);
+
+        ArgumentCaptor<List<AlarmNotification>> captor =
+            ArgumentCaptor.forClass(List.class);
+        verify(notificationService, times(1)).batchCreate(captor.capture());
+        AlarmNotification saved = captor.getValue().get(0);
+        assertThat(saved.getSourceType()).isEqualTo("comprehensive");
+        assertThat(saved.getTitle()).startsWith("[综合告警]");
+        assertThat(saved.getSourceId()).isEqualTo(906L);
     }
 
     // ============= 离线事件 =============
@@ -198,7 +225,7 @@ class AlarmNotifierTest {
             904L, 5L, 4, "THRESHOLD", "重放", "首次");
 
         AlarmDispatchRule rule = buildRule(13L, "SYSTEM");
-        when(ruleMatcher.matchAlarmRules(5L, "4")).thenReturn(List.of(rule));
+        when(ruleMatcher.matchAlarmRules(5L, "4", "THRESHOLD")).thenReturn(List.of(rule));
         when(recipientResolver.resolveUserIds(13L)).thenReturn(new HashSet<>(List.of(60L)));
         when(userService.selectUserById(60L)).thenReturn(buildUser(60L, "0", "user60"));
         when(notificationService.batchCreate(anyList()))
