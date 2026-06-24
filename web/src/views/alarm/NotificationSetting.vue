@@ -248,7 +248,7 @@ const rules: FormRules = {
   alarmLevels: [{
     validator: (_r, _v, cb) => {
       if (form.eventType !== 'OFFLINE' && form.alarmLevels.length === 0)
-        cb(new Error('告警事件必须选择等级'))
+        cb(new Error('请选择告警等级'))
       else cb()
     }, trigger: 'change'
   }],
@@ -418,6 +418,7 @@ function eventTypeLabel(et: string) {
     OFFLINE: '设备离线'
   } as Record<string, string>)[et] || et
 }
+
 function levelLabel(lv: string) {
   return ({
     '1': '一级（警报）',
