@@ -39,10 +39,11 @@
           value-format="YYYY-MM-DD"
       />
       <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
-        <el-option label="一级" :value="1" />
-        <el-option label="二级" :value="2" />
-        <el-option label="三级" :value="3" />
-        <el-option label="四级" :value="4" />
+        <el-option v-for="lv in [1,2,3,4]" :key="lv" :label="getAlarmLevelConfig(lv).text" :value="lv">
+          <el-tag :style="getAlarmLevelConfig(lv).style" style="border: none; margin-right: 6px;">
+            {{ getAlarmLevelConfig(lv).text }}
+          </el-tag>
+        </el-option>
       </el-select>
       <el-select v-model="queryParams.alarmType" placeholder="告警类型" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
         <el-option label="阈值告警" value="THRESHOLD" />

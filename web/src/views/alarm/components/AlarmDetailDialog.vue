@@ -45,7 +45,9 @@
               <div class="hd-icon level" :style="levelIconStyle"><WarnTriangleFilled /></div>
               <div class="hd-text">
                 <span class="hd-label">告警等级</span>
-                <span class="hd-val lv" :style="levelBadgeStyle">{{ alarmLevelRange }}</span>
+                <el-tag :style="getAlarmLevelStyle(data.alarmLevel)" style="border: none; width: fit-content;">
+                  {{ alarmLevelRange }}
+                </el-tag>
               </div>
             </div>
             <div class="hd-item">
@@ -129,7 +131,9 @@
                   <el-table-column prop="triggerTime" label="告警时间" width="180" />
                   <el-table-column prop="alarmLevel" label="告警等级" width="100">
                     <template #default="{ row }">
-                      <el-tag size="small" :style="getAlarmLevelStyle(row.alarmLevel)">{{ getAlarmLevelText(row.alarmLevel) }}</el-tag>
+                      <el-tag size="small" :style="getAlarmLevelStyle(row.alarmLevel)" style="border: none;">
+                        {{ getAlarmLevelText(row.alarmLevel) }}
+                      </el-tag>
                     </template>
                   </el-table-column>
                   <el-table-column prop="alarmMessage" label="描述" min-width="220" show-overflow-tooltip />
@@ -364,11 +368,11 @@ const alarmLevelRange = computed(() => {
 })
 
 // 告警等级颜色（严格遵循 一级红/二级橙/三级黄/四级蓝）
-const levelColors = computed(() => ALARM_LEVEL_COLORS[Number(props.data?.alarmLevel)] || { solid: '#909399', light: '#f4f4f5', dark: '#909399', fg: '#fff' })
 // 头部图标：light 背景 + dark 字色
-const levelIconStyle = computed(() => ({ backgroundColor: levelColors.value.light, color: levelColors.value.dark }))
-// 头部等级 tag：solid 背景 + fg 字色
-const levelBadgeStyle = computed(() => ({ backgroundColor: levelColors.value.solid, color: levelColors.value.fg }))
+const levelIconStyle = computed(() => {
+  const c = ALARM_LEVEL_COLORS[Number(props.data?.alarmLevel)] || { light: '#f4f4f5', dark: '#909399' }
+  return { backgroundColor: c.light, color: c.dark }
+})
 
 // 告警记录过滤
 const filteredAlarmRecords = computed(() => {
@@ -704,7 +708,7 @@ const formatDuration = (startTime: string) => {
 
 const getAlarmLevelText = (level: number | string | undefined) => {
   const n = Number(level)
-  return ({ 1: '一级', 2: '二级', 3: '三级', 4: '四级' } as Record<number, string>)[n] || String(level)
+  return ({ 1: '一级（警报）', 2: '二级（警戒）', 3: '三级（警示）', 4: '四级（注意）' } as Record<number, string>)[n] || String(level)
 }
 const getAlarmTypeText = (type: string) =>
   ({ THRESHOLD: '阈值预警', COMPREHENSIVE: '综合预警' } as Record<string, string>)[type] || type
