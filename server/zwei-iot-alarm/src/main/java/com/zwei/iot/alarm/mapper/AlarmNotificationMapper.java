@@ -2,6 +2,7 @@ package com.zwei.iot.alarm.mapper;
 
 import com.zwei.iot.alarm.domain.AlarmNotification;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -42,6 +43,20 @@ public interface AlarmNotificationMapper {
     /**
      * 统计指定用户+渠道的未读通知数
      */
-    int selectUnreadCount(@org.apache.ibatis.annotations.Param("userId") Long userId,
-                          @org.apache.ibatis.annotations.Param("channel") String channel);
+    int selectUnreadCount(@Param("userId") Long userId,
+                          @Param("channel") String channel);
+
+    /**
+     * 分页查询当前用户未读事件通知（SYSTEM 渠道，source_type IN alarm/offline）。
+     */
+    List<AlarmNotification> selectUserUnreadPage(@Param("userId") Long userId,
+                                                  @Param("offset") int offset,
+                                                  @Param("limit") int limit);
+
+    /**
+     * 当前用户未读事件通知总数（用于分页 total）。
+     * 与现有 selectUnreadCount(userId, "SYSTEM") 相比多了 source_type 过滤，
+     * 保持与 selectUserUnreadPage 的过滤条件完全一致，确保 total 与列表条数匹配。
+     */
+    int selectUserUnreadTotal(@Param("userId") Long userId);
 }

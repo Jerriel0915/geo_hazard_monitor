@@ -72,4 +72,18 @@ public interface IAlarmNotificationService {
      * @return 未读数
      */
     int selectUnreadCount(Long userId, String channel);
+
+    /**
+     * 分页查询当前用户未读事件通知（仅 SYSTEM 渠道，alarm/offline 类型）。
+     *
+     * @param userId   用户 ID
+     * @param pageNum  页码（从 1 开始）
+     * @param pageSize 每页条数
+     */
+    List<AlarmNotification> selectUserUnreadPage(Long userId, int pageNum, int pageSize);
+
+    /**
+     * 当前用户未读事件通知总数（仅 SYSTEM 渠道，alarm/offline 类型）。
+     */
+    int selectUserUnreadTotal(Long userId);
 }
