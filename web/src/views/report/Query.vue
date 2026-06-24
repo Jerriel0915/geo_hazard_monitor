@@ -69,6 +69,7 @@
     </div>
 
     <div class="table-wrap">
+      
       <div class="table-wrap__scroll">
         <el-table
             :data="tableData"
