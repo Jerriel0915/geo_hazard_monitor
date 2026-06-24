@@ -11,9 +11,11 @@
         :style="{width: subjectWidth}"
         :render-after-expand="false"
         node-key="value"
-        :props="{ children: 'children', label: 'label', value: 'value', disabled: 'disabled' }"
+        :props="{ children: 'children', label: 'displayLabel', value: 'value', disabled: 'disabled' }"
         @update:model-value="onSubjectChange"
-    />
+    >
+      <template #default="{ data }">{{ data.label }}</template>
+    </el-tree-select>
 
     <el-select
         :model-value="condition.operator"
@@ -216,7 +218,7 @@ const valueType = computed<ValueType>(() => currentNode.value?.meta?.valueType |
 const currentOperators = computed(() => OPERATOR_SETS[valueType.value] || OPERATOR_SETS.NUMBER)
 
 const subjectWidth = computed(() => {
-  const label = currentNode.value?.label || ''
+  const label = currentNode.value?.displayLabel || ''
   return `${Math.max(200, Math.min(500, label.length * 14 + 40))}px`
 })
 
