@@ -33,7 +33,7 @@
                 :initial-value="parsedBoundary"
                 :initial-center="previewCenter"
                 :bound-devices="boundDevices"
-                height="300px"
+                height="450px"
             />
           </div>
 
@@ -313,4 +313,19 @@ watch(() => dialogVisible.value, (val) => {
   min-height: 0;
   overflow: auto;
 }
+</style>
+
+<style>
+/* ========== 隐患点悬浮窗 V2（全局样式，Leaflet popup 动态渲染） ========== */
+.hpv2-card{padding:0}
+.hpv2-header{padding:8px 12px 6px}
+.hpv2-title{font-size:13px;font-weight:700;color:#1677ff}
+.hpv2-dash{margin:0 12px;border-bottom:1px dashed rgba(0,0,0,.18)}
+.hpv2-body{padding:4px 12px 8px}
+.hpv2-row{display:flex;padding:4px 0}
+.hpv2-cell{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.hpv2-cell:not(:last-child){padding-right:12px}
+.hpv2-cell.full{flex-direction:row;align-items:center;justify-content:space-between}
+.hpv2-label{font-size:11px;color:#9ca3af;white-space:nowrap}
+.hpv2-val{font-size:12px;color:#374151;font-weight:500}
 </style>

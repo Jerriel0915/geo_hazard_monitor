@@ -96,8 +96,8 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="clientId" label="Client ID" min-width="160" align="center"/>
-          <el-table-column prop="clientIp" label="IP" width="140" align="center"/>
+          <el-table-column prop="clientId" label="客户端ID（Client ID）" min-width="160" align="center"/>
+          <el-table-column prop="clientIp" label="IP地址（IP）" width="140" align="center"/>
           <el-table-column prop="reason" label="原因" min-width="120" align="center"/>
         </el-table>
         <div v-if="onlineLogs.length === 0" class="mde-empty">

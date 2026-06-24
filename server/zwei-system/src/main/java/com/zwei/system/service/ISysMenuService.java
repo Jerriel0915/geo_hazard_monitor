@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Set;
 import com.zwei.common.core.domain.TreeSelect;
 import com.zwei.common.core.domain.entity.SysMenu;
+import com.zwei.common.core.domain.model.SysMenuReorderItem;
 import com.zwei.system.domain.vo.RouterVo;
 
 /**
@@ -128,11 +129,21 @@ public interface ISysMenuService
 
     /**
      * 保存菜单排序
-     * 
+     *
      * @param menuIds 菜单ID
      * @param orderNums 排序ID
      */
     public void updateMenuSort(String[] menuIds, String[] orderNums);
+
+    /**
+     * 批量重排菜单（前端 el-tree 拖拽使用）：一次事务内同时更新
+     * 多个菜单的 parentId 与 orderNum，并校验 path / 路由名称 / 菜单名称
+     * 的唯一性，命中冲突整体回滚。
+     *
+     * @param items 重排项列表
+     * @return 受影响行数
+     */
+    public int reorderMenus(List<SysMenuReorderItem> items);
 
     /**
      * 删除菜单管理信息

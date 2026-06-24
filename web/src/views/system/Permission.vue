@@ -90,56 +90,65 @@
       <el-tab-pane label="菜单管理" name="menu">
         <div class="perm-tab-content">
           <div class="search">
-            <span></span>
             <el-button @click="loadMenus">刷新</el-button>
             <el-button type="primary" @click="handleAddMenu">新增菜单</el-button>
           </div>
 
           <div class="table-wrap">
-            <div class="table-wrap__scroll">
-              <el-table
+            <div class="menu-tree" v-loading="menuLoading || menuSaving">
+              <div class="menu-tree__header">
+                <div class="menu-tree__cell menu-tree__cell--name">菜单名称</div>
+                <div class="menu-tree__cell menu-tree__cell--code">菜单编码</div>
+                <div class="menu-tree__cell menu-tree__cell--path">路由路径</div>
+                <div class="menu-tree__cell menu-tree__cell--type">类型</div>
+                <div class="menu-tree__cell menu-tree__cell--visible">显示</div>
+                <div class="menu-tree__cell menu-tree__cell--sort">排序</div>
+                <div class="menu-tree__cell menu-tree__cell--action">操作</div>
+              </div>
+              <el-tree
+                ref="menuTreeRef"
                 :data="menuList"
-                border
-                stripe
-                row-key="id"
+                node-key="id"
+                :draggable="!menuSaving"
+                :allow-drop="allowMenuDrop"
+                @node-drop="handleNodeDrop"
                 default-expand-all
-                v-loading="menuLoading"
-                :tree-props="{ children: 'children' }"
+                :props="{ label: 'name', children: 'children' }"
+                :expand-on-click-node="false"
+                empty-text="暂无菜单"
+                class="menu-tree__body"
               >
-                <el-table-column prop="name" label="菜单名称" min-width="180" />
-                <el-table-column prop="code" label="菜单编码" min-width="160" />
-                <el-table-column prop="path" label="路由路径" min-width="200" show-overflow-tooltip />
-                <el-table-column prop="type" label="类型" width="90" align="center">
-                  <template #default="{ row }">
-                    <el-tag size="small" :type="getMenuTypeTag(row.type)">{{ getMenuTypeLabel(row.type) }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="visible" label="显示状态" width="90" align="center">
-                  <template #default="{ row }">
-                    <el-tag size="small" :type="row.visible === 0 ? 'success' : 'info'">
-                      {{ row.visible === 0 ? '显示' : '隐藏' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
-                <el-table-column prop="perms" label="权限标识" min-width="220" show-overflow-tooltip />
-                <el-table-column label="覆盖状态" width="90" align="center">
-                  <template #default="{ row }">
-                    <el-tag v-if="row.perms" size="small" :type="isPermMissingFromDb(row.perms) ? 'warning' : 'success'">
-                      {{ isPermMissingFromDb(row.perms) ? '仅代码' : '已注册' }}
-                    </el-tag>
-                    <span v-else>-</span>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="150" fixed="right">
-                  <template #default="{ row }">
-                    <div class="op-cell">
-                      <el-button type="primary" text size="small" @click="handleEditMenu(row)">编辑</el-button>
-                      <el-button v-if="row.id !== 1" type="danger" text size="small" @click="handleDeleteMenu(row)">删除</el-button>
+                <template #default="{ node, data }">
+                  <div class="menu-tree__row">
+                    <div class="menu-tree__cell menu-tree__cell--name" :title="data.name">
+                      <el-icon v-if="data.icon" class="menu-icon"><component :is="data.icon" /></el-icon>
+                      <span class="menu-tree__name-text">{{ data.name }}</span>
                     </div>
-                  </template>
-                </el-table-column>
-              </el-table>
+                    <div class="menu-tree__cell menu-tree__cell--code" :title="data.code || ''">{{ data.code || '-' }}</div>
+                    <div class="menu-tree__cell menu-tree__cell--path" :title="data.path || ''">{{ data.path || '-' }}</div>
+                    <div class="menu-tree__cell menu-tree__cell--type">
+                      <el-tag size="small" :type="getMenuTypeTag(data.type)">{{ getMenuTypeLabel(data.type) }}</el-tag>
+                    </div>
+                    <div class="menu-tree__cell menu-tree__cell--visible">
+                      <el-tag size="small" :type="data.visible === 0 ? 'success' : 'info'">
+                        {{ data.visible === 0 ? '显示' : '隐藏' }}
+                      </el-tag>
+                    </div>
+                    <div class="menu-tree__cell menu-tree__cell--sort">{{ data.sortOrder ?? 0 }}</div>
+                    <div class="menu-tree__cell menu-tree__cell--action">
+                      <el-button type="primary" text size="small" @click="handleEditMenu(data)">编辑</el-button>
+                      <el-button
+                        type="danger"
+                        text
+                        size="small"
+                        :disabled="hasChildren(data)"
+                        :title="hasChildren(data) ? '请先删除子菜单' : ''"
+                        @click="handleDeleteMenu(data)"
+                      >删除</el-button>
+                    </div>
+                  </div>
+                </template>
+              </el-tree>
             </div>
           </div>
         </div>
@@ -234,9 +243,6 @@
         </el-tabs>
       </div>
       <template #footer>
-        <el-button v-if="coverage?.missingInDb.length" type="warning" @click="handleBatchRegister" :loading="registerLoading">
-          注册缺失权限 ({{ coverage.missingInDb.length }})
-        </el-button>
         <el-button @click="permDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handlePermSubmit" :loading="permSubmitLoading">保存</el-button>
       </template>
@@ -260,46 +266,65 @@
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="菜单类型" prop="type">
-          <el-select v-model="menuFormData.type" placeholder="请选择菜单类型" style="width: 100%">
-            <el-option label="目录" :value="0" />
-            <el-option label="菜单" :value="1" />
-            <el-option label="按钮" :value="2" />
-          </el-select>
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="菜单类型" prop="type">
+              <el-select v-model="menuFormData.type" placeholder="请选择" style="width: 100%">
+                <el-option label="目录" :value="0" />
+                <el-option label="菜单" :value="1" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="排序" prop="sortOrder">
+              <el-input-number v-model="menuFormData.sortOrder" :min="0" :max="999" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="菜单名称" prop="name">
-          <el-input v-model="menuFormData.name" placeholder="请输入菜单名称" maxlength="50" />
+          <el-input v-model="menuFormData.name" placeholder="请输入菜单名称" maxlength="50" style="width: 100%" />
         </el-form-item>
         <el-form-item label="菜单编码" prop="code">
-          <el-input v-model="menuFormData.code" placeholder="请输入菜单编码" maxlength="100" />
+          <el-input v-model="menuFormData.code" placeholder="路由名称，与前端路由 name 一致，如 Device" maxlength="100" style="width: 100%" />
         </el-form-item>
-        <el-form-item v-if="menuFormData.type !== 2" label="路由路径" prop="path">
-          <el-input v-model="menuFormData.path" placeholder="请输入路由路径" maxlength="200" />
+        <el-form-item label="路由路径" prop="path">
+          <el-input v-model="menuFormData.path" placeholder="如 basic/device" maxlength="200" style="width: 100%" />
         </el-form-item>
         <el-form-item v-if="menuFormData.type === 1" label="组件路径" prop="component">
-          <el-input v-model="menuFormData.component" placeholder="请输入组件路径" maxlength="255" />
+          <el-input v-model="menuFormData.component" placeholder="如 basic/Device" maxlength="255" style="width: 100%" />
         </el-form-item>
-        <el-form-item v-if="menuFormData.type === 2" label="权限标识" prop="perms">
-          <el-input v-model="menuFormData.perms" placeholder="如 system:user:add" maxlength="100" />
+        <el-form-item label="菜单图标" prop="icon">
+          <div class="icon-picker">
+            <el-select v-model="menuFormData.icon" placeholder="请选择图标" clearable filterable style="flex: 1">
+              <el-option v-for="ic in availableIcons" :key="ic" :label="(iconLabelMap[ic] || ic) + ' ' + ic" :value="ic">
+                <span class="icon-option">
+                  <span class="icon-option__svg" v-html="getMenuIconSvg(ic)"></span>
+                  <span>{{ iconLabelMap[ic] || ic }}</span>
+                  <span class="icon-option__id">{{ ic }}</span>
+                </span>
+              </el-option>
+            </el-select>
+            <span v-if="menuFormData.icon" class="icon-preview" v-html="getMenuIconSvg(menuFormData.icon)"></span>
+          </div>
         </el-form-item>
-        <el-form-item v-if="menuFormData.type !== 2" label="菜单图标" prop="icon">
-          <el-input v-model="menuFormData.icon" placeholder="请输入图标名称" maxlength="100" />
-        </el-form-item>
-        <el-form-item label="显示状态" prop="visible">
-          <el-radio-group v-model="menuFormData.visible">
-            <el-radio :label="0">显示</el-radio>
-            <el-radio :label="1">隐藏</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="menuFormData.type === 1" label="缓存" prop="isCache">
-          <el-radio-group v-model="menuFormData.isCache">
-            <el-radio :label="0">缓存</el-radio>
-            <el-radio :label="1">不缓存</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="menuFormData.sortOrder" :min="0" :max="999" controls-position="right" />
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="显示状态" prop="visible">
+              <el-radio-group v-model="menuFormData.visible">
+                <el-radio :label="0">显示</el-radio>
+                <el-radio :label="1">隐藏</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item v-if="menuFormData.type === 1" label="缓存" prop="isCache">
+              <el-radio-group v-model="menuFormData.isCache">
+                <el-radio :label="0">缓存</el-radio>
+                <el-radio :label="1">不缓存</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="menuDialogVisible = false">取消</el-button>
@@ -310,30 +335,30 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, reactive, ref} from 'vue'
+import {computed, nextTick, onMounted, reactive, ref} from 'vue'
 import type {FormInstance, FormRules} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {
-  batchRegisterPermissions,
   createMenu,
   createRole,
   deleteMenu,
   deleteRole,
   getMenuDetail,
   getMenuTree,
-  getPermissionCoverage,
   getRoleDeptTree,
   getRoleDetail,
   getRolePage,
   type MenuItem,
-  type PermissionCoverage,
+  type MenuReorderItem,
   type RoleItem,
+  reorderMenus,
   saveRoleDataScope,
   toggleRoleStatus,
   type TreeOption,
   updateMenu,
   updateRole
 } from '@/api/system'
+import { availableIcons, iconLabelMap, getMenuIconSvg } from '@/utils/menuIcon'
 
 const activeTab = ref('role')
 const permActiveTab = ref('menu')
@@ -544,12 +569,7 @@ const permDeptTreeRef = ref<any>()
 
 const collectTreeKeys = (treeRef: any) => {
   if (!treeRef) return []
-  return Array.from(
-    new Set<number>([
-      ...((treeRef.getCheckedKeys?.(false) || []) as number[]),
-      ...((treeRef.getHalfCheckedKeys?.() || []) as number[])
-    ])
-  )
+  return ((treeRef.getCheckedKeys?.(false) || []) as number[])
 }
 
 const handleConfigPermission = async (row: RoleItem) => {
@@ -569,22 +589,6 @@ const handleConfigPermission = async (row: RoleItem) => {
   permDialogVisible.value = true
 }
 
-const registerLoading = ref(false)
-
-const handleBatchRegister = async () => {
-  if (!coverage.value?.missingInDb.length) return
-  registerLoading.value = true
-  try {
-    const res = await batchRegisterPermissions(coverage.value.missingInDb)
-    ElMessage.success(res.data ?? res.msg ?? '注册成功')
-    await loadMenus()
-  } catch {
-    ElMessage.error('注册失败')
-  } finally {
-    registerLoading.value = false
-  }
-}
-
 const handlePermSubmit = async () => {
   if (!currentRole.value || !permRoleDetail.value) return
   permSubmitLoading.value = true
@@ -599,49 +603,237 @@ const handlePermSubmit = async () => {
       status: permRoleDetail.value.status,
       menuIds
     })
-    await saveRoleDataScope(currentRole.value.id, {
-      dataScope: permDataScope.value,
-      deptIds
-    })
+    try {
+      await saveRoleDataScope(currentRole.value.id, {
+        dataScope: permDataScope.value,
+        deptIds
+      })
+    } catch {
+      ElMessage.warning('菜单权限已保存，但数据权限保存失败，请重试')
+      return
+    }
     permDialogVisible.value = false
     ElMessage.success('权限配置保存成功')
     await loadRoles()
+  } catch {
+    ElMessage.error('权限配置保存失败')
   } finally {
     permSubmitLoading.value = false
   }
 }
 
 const menuLoading = ref(false)
+const menuSaving = ref(false)
 const menuList = ref<MenuItem[]>([])
-const coverage = ref<PermissionCoverage | null>(null)
+const menuTreeRef = ref<any>(null)
+
+/** 递归过滤菜单树，仅保留目录(M=0)和菜单(C=1)类型 */
+function filterMenuTree(menus: MenuItem[]): MenuItem[] {
+  return menus
+    .filter(item => item.type !== 2)
+    .map(item => ({
+      ...item,
+      children: item.children?.length ? filterMenuTree(item.children) : []
+    }))
+}
+
+const hasChildren = (row: MenuItem) =>
+  Array.isArray(row.children) && row.children.length > 0
 
 const loadMenus = async () => {
   menuLoading.value = true
   try {
-    const [tree, cov] = await Promise.all([getMenuTree(), getPermissionCoverage()])
-
-    console.log('菜单列表数据:', tree)
-    console.log('菜单名称列表:', tree.map(item => item.name))
-    // 递归输出所有层级的菜单名称
-    const printMenuNames = (menus: any[], level = 0) => {
-      menus.forEach(menu => {
-        console.log(`${'  '.repeat(level)}- ${menu.name}`)
-        if (menu.children?.length) {
-          printMenuNames(menu.children, level + 1)
-        }
-      })
-    }
-    printMenuNames(tree)
-
-    menuList.value = tree
-    coverage.value = cov
+    const raw = await getMenuTree()
+    menuList.value = filterMenuTree(raw)
   } finally {
     menuLoading.value = false
+    await nextTick()
+    menuTreeRef.value?.expandAll?.(true)
   }
 }
 
-const isPermMissingFromDb = (perms?: string) =>
-  perms && coverage.value ? coverage.value.missingInDb.includes(perms) : false
+/** 从树中按 id 找到并移除该节点，返回被移除的节点引用 */
+const findAndRemove = (list: MenuItem[], id: number): MenuItem | null => {
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].id === id) {
+      return list.splice(i, 1)[0] ?? null
+    }
+    const children = list[i].children
+    if (children?.length) {
+      const found = findAndRemove(children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** 取得某 parentId 下的子节点数组（root 时返回整个顶层列表） */
+const findChildrenOf = (list: MenuItem[], parentId: number): MenuItem[] | null => {
+  if (parentId === 0) return list
+  for (const item of list) {
+    if (item.id === parentId) return item.children ?? []
+    const children = item.children
+    if (children?.length) {
+      const found = findChildrenOf(children, parentId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/**
+ * 在目标兄弟列表里找与 dragging 冲突的菜单（path 或 code 相同）
+ * 对应后端 SysMenuServiceImpl.checkRouteConfigUnique 的两条规则：
+ *   - path 同 parentId 唯一
+ *   - code 全局唯一
+ */
+const findMenuConflict = (dragging: MenuItem, siblings: MenuItem[]): MenuItem | null =>
+  siblings.find(s =>
+    s.id !== dragging.id && (
+      (s.path && dragging.path && s.path === dragging.path) ||
+      (s.code && dragging.code && s.code === dragging.code)
+    )
+  ) ?? null
+
+const describeConflict = (dragging: MenuItem, conflict: MenuItem): { field: string; value: string } => {
+  if (conflict.path && dragging.path && conflict.path === dragging.path) {
+    return { field: '路径', value: conflict.path }
+  }
+  return { field: '路由编码', value: conflict.code ?? '' }
+}
+
+/** 拖动前置校验：① 防成环；② 防 path/code 冲突 */
+const allowMenuDrop = (draggingNode: any, dropNode: any, type: 'prev' | 'inner' | 'next') => {
+  // 1) 防成环：不能把节点拖入自己的后代
+  if (type === 'inner') {
+    let cur = dropNode.parent
+    while (cur) {
+      if (cur.data?.id === draggingNode.data?.id) return false
+      cur = cur.parent
+    }
+  }
+
+  // 2) 防冲突：确定"目标位置的兄弟列表"和"目标位置名"
+  const dragging = draggingNode.data as MenuItem
+  let targetSiblings: MenuItem[]
+  let targetLabel: string
+  if (type === 'inner') {
+    const drop = dropNode.data as MenuItem
+    targetSiblings = drop.children ?? []
+    targetLabel = drop.name
+  } else {
+    const parentNode = dropNode.parent
+    if (parentNode) {
+      targetSiblings = parentNode.data.children ?? []
+      targetLabel = parentNode.data.name
+    } else {
+      targetSiblings = menuList.value
+      targetLabel = '顶级'
+    }
+  }
+
+  const conflict = findMenuConflict(dragging, targetSiblings)
+  if (conflict) {
+    const { field, value } = describeConflict(dragging, conflict)
+    ElMessage.warning(
+      `目标"${targetLabel}"下已存在${field}为"${value}"的菜单"${conflict.name}"，无法移动`
+    )
+    return false
+  }
+  return true
+}
+
+const handleNodeDrop = async (
+  draggingNode: any,
+  dropNode: any,
+  dropType: 'before' | 'after' | 'inner'
+) => {
+  menuSaving.value = true
+  try {
+    const dragging = draggingNode.data as MenuItem
+    const drop = dropNode.data as MenuItem
+    const newParentId = dropType === 'inner' ? drop.id : drop.parentId
+    const oldParentId = dragging.parentId
+
+    // 1) 本地先 splice 到新位置，给用户即时反馈
+    const removed = findAndRemove(menuList.value, dragging.id)
+    if (!removed) return
+
+    let newSiblingList: MenuItem[]
+    let newIndex: number
+    if (dropType === 'inner') {
+      if (!drop.children) drop.children = []
+      drop.children.push(removed)
+      newSiblingList = drop.children
+      newIndex = newSiblingList.length - 1
+    } else {
+      const siblings = findChildrenOf(menuList.value, newParentId) ?? []
+      const dropIndex = siblings.findIndex(s => s.id === drop.id)
+      newIndex = dropType === 'before' ? dropIndex : dropIndex + 1
+      siblings.splice(newIndex, 0, removed)
+      newSiblingList = siblings
+    }
+    removed.parentId = newParentId
+
+    // 2) 防御兜底：allow-drop 漏判时，这里再查一次（命中即回滚）
+    const conflict = findMenuConflict(removed, newSiblingList)
+    if (conflict) {
+      const { field, value } = describeConflict(removed, conflict)
+      const parentName = dropType === 'inner'
+        ? drop.name
+        : (drop.parentId === 0 ? '顶级' : '当前层级')
+      ElMessage.error(
+        `目标"${parentName}"下已存在${field}为"${value}"的菜单"${conflict.name}"，移动已撤销`
+      )
+      return
+    }
+
+    // 3) 收集更新：只对 parentId 或 sortOrder 真正变化的节点发请求
+    //    → 解决"同父内调位置"时频繁 N 次 PUT 的问题
+    const updates: Array<{ menu: MenuItem; parentId: number; sortOrder: number }> = []
+    if (oldParentId !== newParentId || (removed.sortOrder ?? 0) !== newIndex) {
+      updates.push({ menu: removed, parentId: newParentId, sortOrder: newIndex })
+    }
+    newSiblingList.forEach((s, idx) => {
+      if (s.id !== removed.id && (s.sortOrder ?? 0) !== idx) {
+        updates.push({ menu: s, parentId: newParentId, sortOrder: idx })
+      }
+    })
+    if (oldParentId !== newParentId) {
+      const oldSiblings = findChildrenOf(menuList.value, oldParentId) ?? []
+      oldSiblings.forEach((s, idx) => {
+        if ((s.sortOrder ?? 0) !== idx) {
+          updates.push({ menu: s, parentId: oldParentId, sortOrder: idx })
+        }
+      })
+    }
+
+    if (updates.length === 0) return
+
+    // 4) 一次调用：后端单条 SQL 批量更新 + 事务内唯一性校验
+    //    sortOrder (前端) → orderNum (后端) 字段名映射在请求边界完成
+    const items: MenuReorderItem[] = updates.map(u => ({
+      menuId: u.menu.id,
+      parentId: u.parentId,
+      orderNum: u.sortOrder
+    }))
+    await reorderMenus(items)
+    ElMessage.success(`排序已保存（${items.length} 项）`)
+  } catch (e) {
+    const msg = (e as Error)?.message ?? '未知错误'
+    if (msg.includes('路由名称或地址已存在')) {
+      ElMessage.error('排序保存失败：目标位置存在路径或路由编码冲突')
+    } else {
+      ElMessage.error('排序保存失败：' + msg)
+    }
+  } finally {
+    try {
+      await loadMenus()
+    } finally {
+      menuSaving.value = false
+    }
+  }
+}
 
 const menuParentOptions = computed(() => [
   {
@@ -688,21 +880,12 @@ const validateComponent = (_rule: any, value: string, callback: (error?: Error) 
   callback()
 }
 
-const validatePerms = (_rule: any, value: string, callback: (error?: Error) => void) => {
-  if (menuFormData.type === 2 && !value) {
-    callback(new Error('请输入权限标识'))
-    return
-  }
-  callback()
-}
-
 const menuFormRules: FormRules = {
   parentId: [{ required: true, message: '请选择上级菜单', trigger: 'change' }],
   type: [{ required: true, message: '请选择菜单类型', trigger: 'change' }],
   name: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
   path: [{ validator: validatePath, trigger: 'blur' }],
   component: [{ validator: validateComponent, trigger: 'blur' }],
-  perms: [{ validator: validatePerms, trigger: 'blur' }],
   sortOrder: [{ required: true, message: '请输入排序', trigger: 'change' }]
 }
 
@@ -760,8 +943,9 @@ const handleDeleteMenu = async (row: MenuItem) => {
     type: 'warning'
   })
   await deleteMenu(row.id)
-  ElMessage.success('删除成功')
+  ElMessage.success('删除成功，页面即将刷新...')
   await loadMenus()
+  setTimeout(() => { window.location.reload() }, 600)
 }
 
 const handleMenuSubmit = async () => {
@@ -773,25 +957,25 @@ const handleMenuSubmit = async () => {
       parentId: menuFormData.parentId,
       name: menuFormData.name,
       code: menuFormData.code || undefined,
-      path: menuFormData.type === 2 ? undefined : menuFormData.path,
+      path: menuFormData.path,
       component: menuFormData.type === 1 ? menuFormData.component : undefined,
-      icon: menuFormData.type === 2 ? undefined : menuFormData.icon || undefined,
+      icon: menuFormData.icon || undefined,
       type: menuFormData.type,
       visible: menuFormData.visible,
       isCache: menuFormData.type === 1 ? menuFormData.isCache : undefined,
       sortOrder: menuFormData.sortOrder,
-      perms: menuFormData.type === 2 ? menuFormData.perms : menuFormData.perms || undefined,
       status: menuFormData.status
     }
     if (isEditMenu.value && menuFormData.id) {
       await updateMenu(menuFormData.id, payload)
-      ElMessage.success('修改成功')
+      ElMessage.success('修改成功，页面即将刷新...')
     } else {
       await createMenu(payload)
-      ElMessage.success('新增成功')
+      ElMessage.success('新增成功，页面即将刷新...')
     }
     menuDialogVisible.value = false
     await loadMenus()
+    setTimeout(() => { window.location.reload() }, 600)
   } finally {
     menuSubmitLoading.value = false
   }
@@ -829,6 +1013,103 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
+/* ---------- 菜单管理：可拖动树 ---------- */
+.menu-tree {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+}
+
+.menu-tree__header,
+.menu-tree__row {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1.2fr)
+    minmax(120px, 0.8fr)
+    minmax(180px, 1fr)
+    80px
+    80px
+    60px
+    150px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+.menu-tree__header {
+  height: 44px;
+  background: #fafbfc;
+  border-bottom: 1px solid #ebeef5;
+  font-weight: 600;
+  font-size: 13px;
+  color: #606266;
+  padding-left: 40px; /* 留出 el-tree 展开图标区域，与内容对齐 */
+  flex-shrink: 0;
+}
+
+.menu-tree__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.menu-tree__body :deep(.el-tree-node__content) {
+  height: 48px;
+  padding: 0 16px 0 0;
+  border-bottom: 1px solid #f2f3f5;
+  transition: background 0.15s;
+}
+
+.menu-tree__body :deep(.el-tree-node__content:hover) {
+  background: #f5f7fa;
+}
+
+.menu-tree__body :deep(.el-tree-node.is-drop-inner > .el-tree-node__content) {
+  background: #ecf5ff;
+  outline: 2px dashed #409eff;
+  outline-offset: -2px;
+}
+
+.menu-tree__body :deep(.el-tree-node.is-dragging > .el-tree-node__content) {
+  opacity: 0.5;
+}
+
+.menu-tree__row {
+  width: 100%;
+  height: 48px;
+  font-size: 13px;
+  color: #303133;
+  cursor: grab;
+  user-select: none;
+}
+
+.menu-tree__row:active {
+  cursor: grabbing;
+}
+
+.menu-tree__cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-tree__name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-icon {
+  color: #409eff;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
 .perm-config {
   min-height: 420px;
 }
@@ -844,5 +1125,55 @@ onMounted(async () => {
 .super-admin-tag {
   color: #909399;
   font-size: 13px;
+}
+
+.icon-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.icon-preview {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid #dcdfe6;
+  background: #fff;
+  color: #409eff;
+}
+
+.icon-preview :deep(svg) {
+  width: 20px;
+  height: 20px;
+}
+
+/* 图标下拉选项：左侧 SVG 预览 + 中文名 + 英文 ID */
+.icon-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-option__svg {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: #409eff;
+}
+
+.icon-option__svg :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-option__id {
+  margin-left: auto;
+  color: #909399;
+  font-size: 11px;
 }
 </style>

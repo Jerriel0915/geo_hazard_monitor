@@ -18,6 +18,7 @@ import com.zwei.common.constant.UserConstants;
 import com.zwei.common.core.domain.TreeSelect;
 import com.zwei.common.core.domain.entity.SysMenu;
 import com.zwei.common.core.domain.entity.SysRole;
+import com.zwei.common.core.domain.model.SysMenuReorderItem;
 import com.zwei.common.core.text.Convert;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.common.utils.SecurityUtils;
@@ -326,7 +327,7 @@ public class SysMenuServiceImpl implements ISysMenuService
 
     /**
      * 保存菜单排序
-     * 
+     *
      * @param menuIds 菜单ID
      * @param orderNums 排序ID
      */
@@ -348,6 +349,67 @@ public class SysMenuServiceImpl implements ISysMenuService
         {
             throw new ServiceException("保存排序异常，请联系管理员");
         }
+    }
+
+    /**
+     * 批量重排菜单：单条 UPDATE 一次性更新多条 parentId + orderNum。
+     *
+     * <p>前置校验：父不能是自己、目标菜单必须存在。
+     * 后置校验：重排后用数据库当前态校验菜单名 / 路径 / 路由名称 唯一性
+     * （与 {@link #checkMenuNameUnique} / {@link #checkRouteConfigUnique} 一致），
+     * 命中冲突整体回滚。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int reorderMenus(List<SysMenuReorderItem> items)
+    {
+        if (items == null || items.isEmpty())
+        {
+            return 0;
+        }
+
+        // 1) 前置校验：父不能是自己、菜单必须存在
+        for (SysMenuReorderItem item : items)
+        {
+            if (item.getMenuId() == null || item.getParentId() == null || item.getOrderNum() == null)
+            {
+                throw new ServiceException("重排项 menuId/parentId/orderNum 均不能为空");
+            }
+            if (item.getMenuId().equals(item.getParentId()))
+            {
+                throw new ServiceException("菜单" + item.getMenuId() + "的上级不能是自己");
+            }
+            if (menuMapper.selectMenuById(item.getMenuId()) == null)
+            {
+                throw new ServiceException("菜单不存在: id=" + item.getMenuId());
+            }
+        }
+
+        // 2) 单条 SQL 批量更新 parentId + orderNum
+        int rows = menuMapper.batchReorderMenus(items);
+        if (rows <= 0)
+        {
+            throw new ServiceException("重排未生效，请重试");
+        }
+
+        // 3) 后置校验：用最新库内态校验唯一性
+        for (SysMenuReorderItem item : items)
+        {
+            SysMenu current = menuMapper.selectMenuById(item.getMenuId());
+            if (current == null)
+            {
+                continue;
+            }
+            if (!checkMenuNameUnique(current))
+            {
+                throw new ServiceException("重排失败：菜单'" + current.getMenuName() + "'同级下名称已存在");
+            }
+            if (!checkRouteConfigUnique(current))
+            {
+                throw new ServiceException("重排失败：菜单'" + current.getMenuName() + "'路径或路由名称已存在");
+            }
+        }
+        return rows;
     }
 
     /**
@@ -406,12 +468,12 @@ public class SysMenuServiceImpl implements ISysMenuService
                     log.warn("[同级路由冲突] 同级下已存在相同路由路径 '{}'，冲突菜单：{}", dbPath, sysMenu.getMenuName());
                     return UserConstants.NOT_UNIQUE;
                 }
-                else if (StringUtils.equalsAnyIgnoreCase(path, dbPath) && parentId.longValue() == MENU_ROOT_ID)
+                else if (StringUtils.equalsAnyIgnoreCase(path, dbPath) && parentId.longValue() == MENU_ROOT_ID && dbParentId.longValue() == MENU_ROOT_ID)
                 {
                     log.warn("[根目录路由冲突] 根目录下路由 '{}' 必须唯一，已被菜单 '{}' 占用", path, sysMenu.getMenuName());
                     return UserConstants.NOT_UNIQUE;
                 }
-                else if (StringUtils.equalsAnyIgnoreCase(routeName, dbRouteName))
+                else if (StringUtils.isNotEmpty(menu.getRouteName()) && StringUtils.equalsAnyIgnoreCase(routeName, dbRouteName))
                 {
                     log.warn("[路由名称冲突] 路由名称 '{}' 需全局唯一，已被菜单 '{}' 使用", routeName, sysMenu.getMenuName());
                     return UserConstants.NOT_UNIQUE;

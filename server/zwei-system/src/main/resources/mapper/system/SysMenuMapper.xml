@@ -208,6 +208,27 @@
 	    update sys_menu set order_num = #{orderNum} where menu_id = #{menuId}
 	</update>
 
+	<update id="batchReorderMenus" parameterType="java.util.List">
+		update sys_menu
+		<set>
+			parent_id = CASE menu_id
+			<foreach collection="list" item="item">
+				WHEN #{item.menuId} THEN #{item.parentId}
+			</foreach>
+			END,
+			order_num = CASE menu_id
+			<foreach collection="list" item="item">
+				WHEN #{item.menuId} THEN #{item.orderNum}
+			</foreach>
+			END,
+			update_time = sysdate()
+		</set>
+		where menu_id in
+		<foreach collection="list" item="item" open="(" separator="," close=")">
+			#{item.menuId}
+		</foreach>
+	</update>
+
 	<delete id="deleteMenuById" parameterType="Long">
 	    delete from sys_menu where menu_id = #{menuId}
 	</delete>

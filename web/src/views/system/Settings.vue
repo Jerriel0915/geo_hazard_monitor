@@ -91,6 +91,35 @@
                       style="width: 400px"
                   />
                 </template>
+                <template v-else-if="param.type === 'logo'">
+                  <div class="logo-setting">
+                    <el-input
+                        v-model="paramsFormData[param.code]"
+                        :placeholder="param.placeholder"
+                        :maxlength="param.maxLength"
+                        style="width: 360px"
+                    />
+                    <el-upload
+                        class="logo-upload-btn"
+                        :auto-upload="true"
+                        :show-file-list="false"
+                        :before-upload="(f: any) => beforeLogoUpload(f)"
+                        :http-request="(opts: any) => handleLogoUpload(opts, param.code)"
+                        accept="image/*"
+                    >
+                      <el-button type="primary" size="small" :loading="logoUploading">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align: middle; margin-right: 4px;">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        上传
+                      </el-button>
+                    </el-upload>
+                    <div class="logo-preview" v-if="paramsFormData[param.code]">
+                      <span class="logo-preview-label">预览：</span>
+                      <img :src="paramsFormData[param.code]" class="logo-preview-img" @error="(e: any) => { e.target.style.display = 'none' }" />
+                    </div>
+                  </div>
+                </template>
                 <template v-else-if="param.type === 'geojson'">
                   <div class="geojson-editor">
                     <div class="geojson-actions">
@@ -235,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onMounted, reactive, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref} from 'vue'
 import type {FormInstance, UploadFile} from 'element-plus'
 import {ElMessage} from 'element-plus'
 import {getFocusArea, getLogCleanupConfig, saveFocusArea, updateLogCleanupConfig} from '@/api/system'
@@ -246,7 +275,7 @@ import 'leaflet/dist/leaflet.css'
 interface ParamItem {
   code: string
   name: string
-  type: 'string' | 'number' | 'select' | 'switch' | 'textarea' | 'geojson' | 'password'
+  type: 'string' | 'number' | 'select' | 'switch' | 'textarea' | 'geojson' | 'password' | 'logo'
   category: string
   value: any
   placeholder?: string
@@ -259,6 +288,7 @@ interface ParamItem {
 }
 
 const saveLoading = ref(false)
+const logoUploading = ref(false)
 const currentCategory = ref('basic')
 
 // 系统参数
@@ -272,9 +302,10 @@ const paramCategories = [
 
 const paramList = ref<ParamItem[]>([
   { code: 'sys_name', name: '系统名称', type: 'string', category: 'basic', value: '地质灾害监测预警系统', placeholder: '请输入系统名称', maxLength: 50, remark: '系统显示名称' },
-  { code: 'sys_logo', name: '系统Logo', type: 'string', category: 'basic', value: '', placeholder: '请输入Logo地址', maxLength: 200, remark: '系统Logo图片地址' },
+  { code: 'sys_logo', name: '系统Logo', type: 'logo', category: 'basic', value: '', placeholder: '输入Logo图片地址或点击上传', maxLength: 500, remark: '支持粘贴URL或上传图片文件' },
   { code: 'sys_copyright', name: '版权信息', type: 'string', category: 'basic', value: '© 2024 地质灾害监测预警系统', placeholder: '请输入版权信息', maxLength: 100, remark: '页面底部版权信息' },
   { code: 'single_hazard_entry', name: '单一隐患点直接进入', type: 'switch', category: 'basic', value: false, remark: '只有一个隐患点时是否直接进入详情页' },
+  { code: 'tianditu_key', name: '天地图 API Key', type: 'string', category: 'basic', value: '8dda07d4649c77efd0537a0ff0a1df13', placeholder: '请输入天地图 API Key', maxLength: 64, remark: '天地图瓦片服务访问密钥，注册地址: https://console.tianditu.gov.cn' },
   { code: 'sys_focus_area', name: '系统关注范围区域', type: 'geojson', category: 'basic', value: null, remark: '系统在地图上关注的地理范围，支持GeoJSON格式' },
 
   { code: 'log_keep_days', name: '日志保留时长(天)', type: 'number', category: 'data', value: 365, min: 90, max: 3650, step: 30, remark: '系统日志保留天数' },
@@ -559,16 +590,90 @@ const cleanupMapDraw = () => {
   }
 }
 
+/** 防止点击跳转时 observer 回调覆盖当前高亮 */
+let scrollLock = false
+
 const scrollToCategory = (key: string) => {
   currentCategory.value = key
+  scrollLock = true
   nextTick(() => {
     const el = document.getElementById(`category-${key}`)
     el?.scrollIntoView({behavior: 'smooth', block: 'start'})
+    setTimeout(() => { scrollLock = false }, 600)
   })
+}
+
+/** 用 IntersectionObserver 监听各分区，滚动时自动高亮左侧目录 */
+let sectionObserver: IntersectionObserver | null = null
+
+function setupScrollSpy() {
+  const container = document.querySelector('.params-main')
+  if (!container) return
+  sectionObserver?.disconnect()
+
+  const categories = paramCategories
+    .map(c => ({ key: c.key, el: document.getElementById(`category-${c.key}`) }))
+    .filter(c => c.el !== null)
+    .map(c => ({ key: c.key, el: c.el! }))
+
+  if (categories.length === 0) return
+
+  // 找到第一个可见分区 — 取 intersectionRatio 最大的
+  const visibleMap = new Map<string, number>()
+  sectionObserver = new IntersectionObserver((entries) => {
+    if (scrollLock) return
+    for (const entry of entries) {
+      const key = entry.target.id.replace('category-', '')
+      visibleMap.set(key, entry.intersectionRatio)
+    }
+    // 找到可见比例最高的分区
+    let bestKey = currentCategory.value
+    let bestRatio = 0
+    for (const [key, ratio] of visibleMap) {
+      if (ratio > bestRatio) {
+        bestRatio = ratio
+        bestKey = key
+      }
+    }
+    if (bestRatio > 0) {
+      currentCategory.value = bestKey
+    }
+  }, {
+    root: container,
+    threshold: [0, 0.1, 0.3, 0.5, 0.7, 1]
+  })
+
+  for (const c of categories) {
+    sectionObserver.observe(c.el)
+  }
 }
 
 const getParamsByCategory = (category: string) => {
   return paramList.value.filter(p => p.category === category)
+}
+
+/** 通过 configKey API 加载/保存的参数 code 列表（排除有独立 API 的项） */
+const configKeyParams = computed(() =>
+  paramList.value
+    .filter(p => p.code !== 'sys_focus_area') // 独立 getFocusArea/saveFocusArea
+    .filter(p => p.code !== 'auto_cleanup' && p.code !== 'log_keep_days' && p.code !== 'cleanup_time') // 独立 log cleanup API
+    .map(p => p.code)
+)
+
+/** 将后端返回值写入 paramsFormData */
+function applyConfigValue(code: string, raw: any) {
+  const item = paramList.value.find(p => p.code === code)
+  if (!item) return
+  if (item.type === 'switch') {
+    paramsFormData[code] = raw === true || raw === 'true' || raw === 'Y' || raw === 1 || raw === '1'
+  } else if (item.type === 'number') {
+    const n = Number(raw)
+    paramsFormData[code] = Number.isNaN(n) ? item.value : n
+  } else if (item.type === 'geojson') {
+    // GeoJSON 类型暂不通过 configKey 处理，走独立 API
+  } else {
+    paramsFormData[code] = raw != null ? String(raw) : item.value
+  }
 }
 
 // 页面加载时从后端拉取配置
@@ -592,46 +697,44 @@ onMounted(async () => {
     }
   } catch { /* 未配置 */
   }
-  // 加载通知配置（notify 分类下的所有 code 从 sys_config 读取）
-  const notifyCodes = paramList.value
-      .filter(p => p.category === 'notify')
-      .map(p => p.code)
-  const results = await Promise.allSettled(
-      notifyCodes.map(code => request.get<any>(`/system/config/configKey/${code}`))
-  )
-  results.forEach((r, idx) => {
-    if (r.status !== 'fulfilled') return // 配置项缺失，保留默认值
-    const raw: any = (r.value as any)?.data ?? (r.value as any)?.msg
-    if (raw == null || raw === '') return
-    const code = notifyCodes[idx]
-    const item = paramList.value.find(p => p.code === code)
-    if (!item) return
-    if (item.type === 'switch') {
-      paramsFormData[code] = raw === true || raw === 'true' || raw === 'Y' || raw === 1 || raw === '1'
-    } else if (item.type === 'number') {
-      const n = Number(raw)
-      paramsFormData[code] = Number.isNaN(n) ? item.value : n
-    } else {
-      paramsFormData[code] = String(raw)
-    }
-  })
+  // 所有参数统一从 sys_config 表读取（排除有独立 API 的项）
+  const codes = configKeyParams.value
+  if (codes.length > 0) {
+    const results = await Promise.allSettled(
+        codes.map(code => request.get<any>(`/system/config/configKey/${code}`))
+    )
+    results.forEach((r, idx) => {
+      if (r.status !== 'fulfilled') return
+      const raw: any = (r.value as any)?.data ?? (r.value as any)?.msg
+      if (raw == null || raw === '') return
+      applyConfigValue(codes[idx], raw)
+    })
+  }
+  nextTick(() => setupScrollSpy())
+})
+
+onUnmounted(() => {
+  sectionObserver?.disconnect()
+  sectionObserver = null
 })
 
 const handleSaveParams = async () => {
   saveLoading.value = true
   try {
+    // 1. 日志清理配置（独立 API）
     await updateLogCleanupConfig({
       enabled: paramsFormData['auto_cleanup'],
       retentionDays: paramsFormData['log_keep_days'],
       cron: paramsFormData['cleanup_time']
     })
+    // 2. 关注区域（独立 API）
     if (geoJsonData.value) {
       await saveFocusArea(geoJsonData.value)
     }
-    // 保存通知配置（notify 分类写入 sys_config）
-    const notifyItems = paramList.value.filter(p => p.category === 'notify')
+    // 3. 所有其他参数统一写入 sys_config 表
+    const items = paramList.value.filter(p => configKeyParams.value.includes(p.code))
     await Promise.all(
-        notifyItems
+        items
             .filter(item => {
               // password 字段留空时跳过保存，避免覆盖已存在的密钥
               if (item.type === 'password' && !paramsFormData[item.code]) return false
@@ -649,6 +752,67 @@ const handleSaveParams = async () => {
     ElMessage.error('保存失败，请稍后重试')
   } finally {
     saveLoading.value = false
+  }
+}
+
+/** Logo 上传前校验（文件大小 + 图片尺寸） */
+const LOGO_MAX_SIZE_MB = 2
+const LOGO_MAX_WIDTH = 500
+const LOGO_MAX_HEIGHT = 200
+
+const beforeLogoUpload = (file: File): Promise<boolean> => {
+  const isImage = file.type.startsWith('image/')
+  if (!isImage) {
+    ElMessage.error('仅支持图片格式')
+    return Promise.resolve(false)
+  }
+  const isLtSize = file.size / 1024 / 1024 < LOGO_MAX_SIZE_MB
+  if (!isLtSize) {
+    ElMessage.error(`图片大小不能超过 ${LOGO_MAX_SIZE_MB}MB`)
+    return Promise.resolve(false)
+  }
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        if (img.width > LOGO_MAX_WIDTH || img.height > LOGO_MAX_HEIGHT) {
+          ElMessage.error(`图片尺寸不能超过 ${LOGO_MAX_WIDTH}×${LOGO_MAX_HEIGHT}px，当前 ${img.width}×${img.height}px`)
+          resolve(false)
+        } else {
+          resolve(true)
+        }
+      }
+      img.onerror = () => {
+        ElMessage.error('无法读取图片尺寸')
+        resolve(false)
+      }
+      img.src = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+/** Logo 上传到 /common/upload */
+const handleLogoUpload = async (options: any, code: string) => {
+  logoUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', options.file)
+    const res: any = await request.post('/common/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    const url = res?.url || res?.data?.url || ''
+    if (url) {
+      paramsFormData[code] = url
+      ElMessage.success('Logo 上传成功')
+    } else {
+      ElMessage.error('上传失败，未获取到文件地址')
+    }
+  } catch {
+    ElMessage.error('上传失败，请稍后重试')
+  } finally {
+    logoUploading.value = false
   }
 }
 
@@ -742,7 +906,8 @@ const handleResetParams = () => {
 }
 
 .settings-page {
-  height: calc(100% + 1px);
+  height: 100%;
+  overflow: hidden;
 }
 
 .params-actions {
@@ -831,5 +996,42 @@ const handleResetParams = () => {
 .feature-types {
   color: #606266;
   font-size: 13px;
+}
+
+/* Logo 设置 */
+.logo-setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.logo-upload-btn {
+  flex-shrink: 0;
+}
+
+.logo-preview {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.logo-preview-label {
+  color: #909399;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.logo-preview-img {
+  max-height: 40px;
+  max-width: 200px;
+  object-fit: contain;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  padding: 2px;
+  background: #fff;
 }
 </style>

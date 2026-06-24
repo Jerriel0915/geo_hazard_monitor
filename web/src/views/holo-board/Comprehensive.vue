@@ -175,14 +175,7 @@
           <span class="section-title">告警态势</span>
         </div>
         <div class="alarm-summary">
-          <div class="alarm-summary-item">
-            <div class="summary-badge pending">待办告警</div>
-            <div class="summary-count">{{ alarmStats.pendingCount }}</div>
-          </div>
-          <div class="alarm-summary-item">
-            <div class="summary-badge history">历史告警</div>
-            <div class="summary-count">{{ alarmStats.historyCount }}</div>
-          </div>
+          <span class="alarm-summary-text">待办 <strong class="alarm-num-pending">{{ alarmStats.pendingCount }}</strong> / 历史 <strong class="alarm-num-history">{{ alarmStats.historyCount }}</strong></span>
         </div>
         <div class="alarm-level-stats">
           <div class="level-stat" v-for="level in alarmStats.levelStats" :key="level.name">
@@ -195,7 +188,7 @@
           <div class="list-header">
             <span class="list-title">实时告警事件</span>
           </div>
-          <div class="alarm-list">
+          <div class="alarm-list" :style="{ maxHeight: '200px', overflowY: 'auto' }">
             <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
               <div class="alarm-level-dot" :class="alarm.level"></div>
               <div class="alarm-content">
@@ -226,7 +219,7 @@ import {
 import { getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmTrend, type AlarmTrendVO } from '@/api/alarm'
 import { getMonitorRates, getMapOverview, type HazardPointMapVO, type HazardPointMonitorRate } from '@/api/hazardPoint'
 
-import {TIANDITU_KEY} from '@/composables/useLeafletMap'
+import {TIANDITU_KEY, loadTiandituKey} from '@/composables/useLeafletMap'
 import ResourceSection from './components/ResourceSection.vue'
 import OnlineSection from './components/OnlineSection.vue'
 
@@ -726,7 +719,7 @@ const initHazardTrendChart = () => {
       type: 'value',
       name: '新增隐患点',
       nameTextStyle: { color: '#6b7280', fontSize: 12 },
-      axisLine: { show: false },
+      axisLine: { show: true, lineStyle: { color: '#c0c4cc' } },
       axisTick: { show: false },
       axisLabel: { color: '#6b7280', fontSize: 12 },
       splitLine: { lineStyle: { color: '#f3f4f6' } }
@@ -736,10 +729,9 @@ const initHazardTrendChart = () => {
         name: '新增隐患点',
         type: 'line',
         smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
+        symbol: 'none',
         lineStyle: { width: 3, color: '#6366f1' },
-        itemStyle: { color: '#6366f1', borderColor: '#fff', borderWidth: 2 },
+        itemStyle: { color: '#6366f1' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'rgba(99, 102, 241, 0.3)' },
@@ -811,7 +803,8 @@ const initAlarmTrendChart = () => {
         fontSize: 12
       },
       axisLine: {
-        show: false
+        show: true,
+        lineStyle: { color: '#c0c4cc' }
       },
       axisTick: {
         show: false
@@ -831,6 +824,7 @@ const initAlarmTrendChart = () => {
         name: '一级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#ef4444',
         data: [...alarmTrendData.value.level1, null, null]
       },
@@ -838,6 +832,7 @@ const initAlarmTrendChart = () => {
         name: '二级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#f97316',
         data: [...alarmTrendData.value.level2, null, null]
       },
@@ -845,6 +840,7 @@ const initAlarmTrendChart = () => {
         name: '三级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#eab308',
         data: [...alarmTrendData.value.level3, null, null]
       },
@@ -852,6 +848,7 @@ const initAlarmTrendChart = () => {
         name: '四级告警',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#22c55e',
         data: [...alarmTrendData.value.level4, null, null]
       },
@@ -859,6 +856,7 @@ const initAlarmTrendChart = () => {
         name: '合计',
         type: 'line',
         smooth: true,
+        symbol: 'none',
         color: '#3b82f6',
         lineStyle: {
           width: 3
@@ -874,8 +872,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level1[alarmTrendData.value.level1.length - 1], ...alarmTrendData.value.forecastLevel1]
       },
       {
@@ -887,8 +884,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level2[alarmTrendData.value.level2.length - 1], ...alarmTrendData.value.forecastLevel2]
       },
       {
@@ -900,8 +896,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level3[alarmTrendData.value.level3.length - 1], ...alarmTrendData.value.forecastLevel3]
       },
       {
@@ -913,8 +908,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.level4[alarmTrendData.value.level4.length - 1], ...alarmTrendData.value.forecastLevel4]
       },
       {
@@ -926,8 +920,7 @@ const initAlarmTrendChart = () => {
           width: 2,
           type: 'dashed'
         },
-        symbol: 'diamond',
-        symbolSize: 6,
+        symbol: 'none',
         data: [...Array(alarmTrendData.value.months.length - 1).fill(null), alarmTrendData.value.total[alarmTrendData.value.total.length - 1], ...alarmTrendData.value.forecastTotal]
       }
     ]
@@ -1043,6 +1036,7 @@ const trendAreaPath = computed(() => {
   display: flex;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
   position: relative;
 }
@@ -1054,6 +1048,9 @@ const trendAreaPath = computed(() => {
   overflow-y: auto;
   background: rgba(255, 255, 255, 0.6);
   box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .right-panel {
@@ -1141,8 +1138,10 @@ const trendAreaPath = computed(() => {
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 12px;
   padding: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
   box-shadow: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 /* 系统健康度卡片 — 统一毛玻璃风格 */
@@ -1153,7 +1152,7 @@ const trendAreaPath = computed(() => {
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   padding: 16px 18px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   flex-shrink: 0;
   box-sizing: border-box;
   transition: box-shadow 0.2s, border-color 0.2s;
@@ -1220,13 +1219,13 @@ const trendAreaPath = computed(() => {
 .health-content {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 
 .health-ring-container {
   position: relative;
-  width: 110px;
-  height: 110px;
+  width: 90px;
+  height: 90px;
   margin: 0 auto;
 }
 
@@ -1268,29 +1267,29 @@ const trendAreaPath = computed(() => {
 }
 
 .ring-score {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: #1d2129;
   font-family: var(--font-display, inherit);
 }
 
 .ring-label {
-  font-size: 10px;
+  font-size: 9px;
   color: #86909c;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .health-bars {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .health-bar-item {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 6px 10px;
+  gap: 3px;
+  padding: 2px 8px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1316,19 +1315,19 @@ const trendAreaPath = computed(() => {
 }
 
 .bar-name {
-  font-size: 12px;
+  font-size: 11px;
   color: #4e5969;
   font-weight: 500;
 }
 
 .bar-value {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   font-family: var(--font-display, inherit);
 }
 
 .bar-track {
-  height: 4px;
+  height: 3px;
   background: rgba(0, 0, 0, 0.06);
   border-radius: 2px;
   overflow: hidden;
@@ -2207,53 +2206,42 @@ const trendAreaPath = computed(() => {
 
 .alarm-summary {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
 }
 
-.alarm-summary-item {
-  flex: 1;
-  text-align: center;
-  padding: 12px;
-  background: rgba(245, 34, 45, 0.06);
-  border-radius: 8px;
-}
-
-.summary-badge {
+.alarm-summary-text {
   font-size: 14px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  display: inline-block;
-}
-
-.summary-badge.pending {
-  background: rgba(245, 34, 45, 0.15);
-  color: #dc2626;
-}
-
-.summary-badge.history {
-  background: rgba(0, 0, 0, 0.06);
   color: #6b7280;
 }
 
-.summary-count {
-  font-size: 32px;
+.alarm-num-pending {
+  color: #dc2626;
+  font-size: 16px;
   font-weight: 700;
-  color: #1f2937;
+}
+
+.alarm-num-history {
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .alarm-level-stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .level-stat {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .level-dot {
@@ -2283,8 +2271,7 @@ const trendAreaPath = computed(() => {
 }
 
 .level-name {
-  flex: 1;
-  font-size: 14px;
+  font-size: 13px;
   color: #4b5563;
 }
 
@@ -2296,7 +2283,7 @@ const trendAreaPath = computed(() => {
 
 .alarm-list-section {
   border-top: 1px solid rgba(79, 172, 254, 0.2);
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .list-header {
@@ -2312,13 +2299,13 @@ const trendAreaPath = computed(() => {
 .alarm-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .alarm-item {
   display: flex;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 8px;
   background: rgba(0, 0, 0, 0.04);
   border-radius: 8px;
   cursor: pointer;

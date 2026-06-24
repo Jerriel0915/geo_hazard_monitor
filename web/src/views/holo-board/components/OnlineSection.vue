@@ -13,18 +13,6 @@
         <div class="online-label">台设备在线</div>
       </div>
     </div>
-    <div class="online-chart">
-      <div class="chart-title">分类型在线统计</div>
-      <div class="type-bars">
-        <div v-for="type in stats.typeStats" :key="type.name" class="type-bar-item">
-          <div class="bar-label">{{ type.name }}</div>
-          <div class="bar-container">
-            <div class="bar-fill" :style="{ width: (type.online / type.total * 100) + '%' }"></div>
-          </div>
-          <div class="bar-count">{{ type.online }}/{{ type.total }}</div>
-        </div>
-      </div>
-    </div>
     <div class="online-trend">
       <div class="trend-header"><span class="trend-title">历史在线趋势</span><span class="trend-subtitle">最近7天</span>
       </div>
@@ -166,56 +154,6 @@ const areaPath = computed(() => {
 .online-label {
   font-size: 14px;
   color: #6b7280;
-}
-
-.online-chart {
-  margin-bottom: 16px;
-}
-
-.chart-title {
-  font-size: 14px;
-  color: #4b5563;
-  margin-bottom: 12px;
-}
-
-.type-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.type-bar-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.bar-label {
-  width: 50px;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.bar-container {
-  flex: 1;
-  height: 12px;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #52c41a, #4facfe);
-  border-radius: 6px;
-  transition: width 0.5s ease;
-}
-
-.bar-count {
-  width: 50px;
-  font-size: 14px;
-  color: #374151;
-  text-align: right;
 }
 
 .online-trend {

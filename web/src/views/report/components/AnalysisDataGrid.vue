@@ -213,10 +213,43 @@ const loadGridCellChart = async (idx: number) => {
     gridChartInstances.set(idx, chart)
 
     chart.setOption({
-      grid: { left: 50, right: 15, top: 15, bottom: 30 },
-      xAxis: { type: 'category', data: data.times, axisLabel: { fontSize: 10, rotate: 30 } },
-      yAxis: { type: 'value', name: cell.unit, axisLabel: { fontSize: 10 }, nameTextStyle: { fontSize: 10 } },
-      series: [{ type: 'line', data: data.values, symbolSize: 2, lineStyle: { width: 1.5 } }],
+      grid: { left: 60, right: 25, top: 25, bottom: 40 },
+      xAxis: {
+        type: 'category',
+        name: '时间',
+        nameLocation: 'end',
+        nameGap: 10,
+        nameTextStyle: { fontSize: 10, color: '#909399' },
+        data: data.times,
+        axisLabel: {
+          fontSize: 9,
+          rotate: 30,
+          interval: Math.max(1, Math.floor((data.times || []).length / 6)),
+          formatter: (val: string) => {
+            const t = val.replace('T', ' ')
+            const parts = t.split(/[\s-:]/)
+            if (parts.length >= 5) {
+              return `${Number(parts[1])}月${Number(parts[2])}日 ${parts[3]}:${parts[4]}`
+            }
+            return t.slice(5, 16)
+          },
+        },
+      },
+      yAxis: {
+        type: 'value',
+        name: cell.attrName && cell.unit ? `${cell.attrName}(${cell.unit})` : (cell.unit || '监测值'),
+        axisLabel: { fontSize: 10 },
+        nameTextStyle: { fontSize: 10, color: '#606266' },
+        axisLine: { show: true, lineStyle: { color: '#c0c4cc' } },
+        splitLine: { show: true, lineStyle: { type: 'dashed', color: '#e8e8e8' } },
+      },
+      series: [{
+        type: 'line',
+        data: data.values,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { width: 1.5 },
+      }],
       tooltip: { trigger: 'axis' },
       dataZoom: [{ type: 'inside' }],
     })
