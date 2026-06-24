@@ -83,18 +83,27 @@ public class SysNoticeController extends BaseController
     }
 
     /**
-     * 首页顶部公告列表（返回全部正常公告，带当前用户已读标记，最多5条）
+     * 首页顶部公告（通知中心面板用），支持分页。
+     * 返回结构：{ code, msg, data: SysNotice[], total, unreadCount, timestamp }
      */
     @GetMapping("/listTop")
     @ResponseBody
-    public AjaxResult listTop()
+    public AjaxResult listTop(@RequestParam(defaultValue = "1") int pageNum,
+                              @RequestParam(defaultValue = "10") int pageSize)
     {
         Long userId = getUserId();
-        List<SysNotice> list = noticeReadService.selectNoticeListWithReadStatus(userId, 5);
-        long unreadCount = list.stream().filter(n -> !n.getIsRead()).count();
-        AjaxResult result = AjaxResult.success(list);
-        result.put("unreadCount", unreadCount);
-        return result;
+        int safePage = Math.max(1, pageNum);
+        int safeSize = Math.max(1, Math.min(pageSize, 50));
+
+        List<SysNotice> list = noticeReadService.selectNoticePage(userId, safePage, safeSize);
+        int total = noticeReadService.selectNoticeCount();
+        int unreadCount = noticeReadService.selectUnreadCount(userId);
+
+        AjaxResult ajax = AjaxResult.success(list);
+        ajax.put("total", total);
+        ajax.put("unreadCount", unreadCount);
+        ajax.put("timestamp", System.currentTimeMillis());
+        return ajax;
     }
 
     /**
