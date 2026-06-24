@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-export type AlarmEventType = 'ALARM' | 'OFFLINE'
+export type AlarmEventType = 'THRESHOLD' | 'COMPREHENSIVE' | 'OFFLINE'
 export type AlarmRecipientType = 'ROLE' | 'DEPT' | 'USER'
 export type NotifyChannel = 'SYSTEM' | 'SMS' | 'EMAIL'
 
