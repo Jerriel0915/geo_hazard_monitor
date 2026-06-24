@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -51,7 +52,8 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  *
  * <h3>线程模型</h3>
- * 消费线程为单线程 daemon（monitor-ingest-consumer），通过 {@code volatile running} 控制启停。
+ * 消费线程为单线程 daemon（monitor-ingest-consumer），重试由独立调度线程（monitor-ingest-retry）
+ * 异步延迟重投，消费线程永不阻塞。通过 {@code volatile running} 控制启停。
  * 应用关闭时 {@code @PreDestroy} 触发优雅停止：设置 running=false → shutdownNow → awaitTermination(5s)。
  */
 @Slf4j
@@ -67,6 +69,7 @@ public class MonitorIngestConsumerService {
     private final ApplicationEventPublisher eventPublisher;
     private final LastMessageStore lastMessageStore;
     private final ExecutorService executorService;
+    private final ScheduledExecutorService retryScheduler;
     private volatile boolean running = true;
 
     /**
@@ -104,6 +107,11 @@ public class MonitorIngestConsumerService {
             thread.setDaemon(true);
             return thread;
         });
+        this.retryScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "monitor-ingest-retry");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     /**
@@ -133,6 +141,7 @@ public class MonitorIngestConsumerService {
     @PreDestroy
     public void stop() throws InterruptedException {
         running = false;
+        retryScheduler.shutdownNow();
         executorService.shutdownNow();
         executorService.awaitTermination(5, TimeUnit.SECONDS);
     }
@@ -242,11 +251,12 @@ public class MonitorIngestConsumerService {
                 return;
             }
             long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
-            sleep(delaySeconds);
-            // 重试次数 +1 后重新入队，等待下一轮消费
-            record.getValue().put("retryCount", String.valueOf(retryCount + 1));
-            redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            int nextRetry = retryCount + 1;
             ack(record);
+            retryScheduler.schedule(() -> {
+                record.getValue().put("retryCount", String.valueOf(nextRetry));
+                redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            }, delaySeconds, TimeUnit.SECONDS);
         }
     }
 
@@ -309,10 +319,12 @@ public class MonitorIngestConsumerService {
                 return;
             }
             long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
-            sleep(delaySeconds);
-            record.getValue().put("retryCount", String.valueOf(retryCount + 1));
-            redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            int nextRetry = retryCount + 1;
             ack(record);
+            retryScheduler.schedule(() -> {
+                record.getValue().put("retryCount", String.valueOf(nextRetry));
+                redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            }, delaySeconds, TimeUnit.SECONDS);
         }
     }
 
