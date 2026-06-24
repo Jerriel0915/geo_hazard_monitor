@@ -4,6 +4,9 @@
 -- 执行前请备份这两张表
 -- =====================================================
 
+-- 0. 扩展 event_type 列长度 (varchar(10) → varchar(20))，容纳 COMPREHENSIVE (14 字符)
+ALTER TABLE alarm_dispatch_rule MODIFY COLUMN event_type varchar(20) NOT NULL COMMENT '事件类型: THRESHOLD=阈值告警 / COMPREHENSIVE=综合告警 / OFFLINE=设备离线';
+
 -- 1. 分发规则: 原 ALARM → THRESHOLD
 --    用户表述"原告警事件改为阈值告警"
 UPDATE alarm_dispatch_rule
