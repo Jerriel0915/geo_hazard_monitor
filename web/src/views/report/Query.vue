@@ -81,9 +81,9 @@
           <el-table-column prop="sensorName" label="传感器" width="180" align="center" />
           <el-table-column label="监测数据" min-width="300" align="center">
             <template #default="{ row }">
-              <div v-for="item in row.dataList" :key="item.attrCode" class="monitor-data-item">
-                {{ item.attrName }}: {{ item.value }} {{ item.unit }}
-              </div>
+              <span class="monitor-data-item">
+                {{ row.dataList.map((d: any) => `${d.attrName}: ${d.value} ${d.unit}`).join('; ') }}
+              </span>
             </template>
           </el-table-column>
         </el-table>
@@ -265,24 +265,31 @@ const handleQuery = async () => {
 
   loading.value = true
   try {
-    const params: MonitorDataPageQuery = {
+    const baseParams: MonitorDataPageQuery = {
       hazardPointId: selectedHazardPointId.value,
       deviceId: selectedDeviceId.value,
       pageNum: currentPage.value,
       pageSize: pageSize.value
     }
-    if (selectedAttrCodes.value.length > 0) {
-      params.attrCode = selectedAttrCodes.value[0]
-    }
     if (timeRange.value) {
-      params.startTime = timeRange.value[0]
-      params.endTime = timeRange.value[1]
+      baseParams.startTime = timeRange.value[0]
+      baseParams.endTime = timeRange.value[1]
     }
 
-    const res = await getMonitorDataPage(params)
-    const transformedData = transformMonitorData(res.rows || [])
+    const attrCodes = selectedAttrCodes.value.length > 0 ? selectedAttrCodes.value : ['']
+
+    // 逐个属性查询，合并所有结果
+    const allRows: MonitorDataPageItem[] = []
+    let mergedTotal = 0
+    for (const attrCode of attrCodes) {
+      const res = await getMonitorDataPage({ ...baseParams, attrCode: attrCode || undefined })
+      allRows.push(...(res.rows || []))
+      mergedTotal = Math.max(mergedTotal, res.total || 0)
+    }
+
+    const transformedData = transformMonitorData(allRows)
     tableData.value = transformedData
-    total.value = res.total || 0
+    total.value = mergedTotal
   } catch (error) {
     showRequestErrorMessage(error, '查询失败')
   } finally {
@@ -329,28 +336,29 @@ const handleExportCsv = async () => {
     return
   }
 
-  // 拉取全部数据（分页循环）
+  // 拉取全部数据（分页循环，多选属性时分别请求合并）
   const allRows: MonitorDataPageItem[] = []
   const fetchPageSize = 500
   const totalPages = Math.ceil(total.value / fetchPageSize)
+  const attrCodes = selectedAttrCodes.value.length > 0 ? selectedAttrCodes.value : ['']
   loading.value = true
   try {
     for (let p = 1; p <= totalPages; p++) {
-      const params: MonitorDataPageQuery = {
-        hazardPointId: selectedHazardPointId.value,
-        deviceId: selectedDeviceId.value,
-        pageNum: p,
-        pageSize: fetchPageSize
+      for (const attrCode of attrCodes) {
+        const params: MonitorDataPageQuery = {
+          hazardPointId: selectedHazardPointId.value,
+          deviceId: selectedDeviceId.value,
+          pageNum: p,
+          pageSize: fetchPageSize,
+          attrCode: attrCode || undefined
+        }
+        if (timeRange.value) {
+          params.startTime = timeRange.value[0]
+          params.endTime = timeRange.value[1]
+        }
+        const res = await getMonitorDataPage(params)
+        allRows.push(...(res.rows || []))
       }
-      if (selectedAttrCodes.value.length > 0) {
-        params.attrCode = selectedAttrCodes.value[0]
-      }
-      if (timeRange.value) {
-        params.startTime = timeRange.value[0]
-        params.endTime = timeRange.value[1]
-      }
-      const res = await getMonitorDataPage(params)
-      allRows.push(...(res.rows || []))
     }
   } catch (error) {
     showRequestErrorMessage(error, '导出数据拉取失败')
@@ -394,7 +402,6 @@ onMounted(() => {
 .monitor-data-item {
   line-height: 1.8;
   font-size: 13px;
-  padding: 2px 0;
 }
 
 .table-wrap {
@@ -413,20 +420,5 @@ onMounted(() => {
 
 :deep(.el-table__body-wrapper) {
   overflow-x: auto;
-}
-
-/* 监测数据属性分割线 */
-.monitor-data-item {
-  border-bottom: 1px dashed #e8e8e8;
-  padding: 6px 0;
-}
-
-.monitor-data-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.monitor-data-item:first-child {
-  padding-top: 0;
 }
 </style>

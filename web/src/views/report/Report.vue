@@ -316,12 +316,6 @@ const handlePrint = () => {
   const pad = (n: number) => String(n).padStart(2, '0')
   const bjTime = `${now.getFullYear()}年${pad(now.getMonth() + 1)}月${pad(now.getDate())}日 ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 
-  const typeMap: Record<string, string> = { weekly: '周报', monthly: '月报', quarterly: '季报' }
-  const reportType = typeMap[r?.type ?? 'weekly'] ?? '周报'
-  const hazardPointName = r?.hazardPointName || '-'
-  const period = r ? `${r.periodStart} ~ ${r.periodEnd}` : '-'
-  const createTime = formatBjTime(r?.createTime || '')
-
   const iframe = document.createElement('iframe')
   iframe.id = '__print_frame'
   iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;'
@@ -346,15 +340,6 @@ const handlePrint = () => {
   }
   .print-header__title { font-size: 13px; font-weight: 600; color: #333; }
   .print-header__time { font-size: 12px; color: #666; }
-  .print-meta {
-    margin-bottom: 14px; padding: 10px 14px;
-    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
-    font-size: 14px; line-height: 2;
-  }
-  .print-meta table { width: 100%; border-collapse: collapse; }
-  .print-meta td { padding: 2px 8px; font-size: 14px; border: none !important; background: transparent !important; }
-  .print-meta td.label { color: #6b7280; width: 1%; white-space: nowrap; text-align: right; }
-  .print-meta td.value { color: #1f2937; font-weight: 500; }
   .print-footer {
     text-align: center; font-size: 11px; color: #999;
     padding: 6mm 0 4mm 0; margin-top: 20px;
@@ -380,18 +365,6 @@ const handlePrint = () => {
 <div class="print-header">
   <span class="print-header__title">${title}</span>
   <span class="print-header__time">${bjTime}</span>
-</div>
-<div class="print-meta">
-  <table>
-    <tr>
-      <td class="label">报告类型：</td><td class="value">${reportType}</td>
-      <td class="label">生成时间：</td><td class="value">${createTime}</td>
-    </tr>
-    <tr>
-      <td class="label">隐患点：</td><td class="value">${hazardPointName}</td>
-      <td class="label">报告周期：</td><td class="value">${period}</td>
-    </tr>
-  </table>
 </div>
 <div class="print-body">${contentHtml}</div>
 <div class="print-footer">第 <span class="page-number"></span> 页</div>
