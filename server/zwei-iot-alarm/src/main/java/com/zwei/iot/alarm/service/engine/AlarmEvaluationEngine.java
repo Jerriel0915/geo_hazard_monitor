@@ -5,6 +5,7 @@ import com.zwei.common.domain.PropertyValue;
 import com.zwei.common.event.AlarmTriggeredEvent;
 import com.zwei.common.event.MonitorDataIngestedEvent;
 import com.zwei.iot.alarm.config.AlarmProperties;
+import org.springframework.scheduling.annotation.Async;
 import com.zwei.iot.alarm.domain.AlarmConstants;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
 import com.zwei.iot.alarm.domain.AlarmRecord;
@@ -90,6 +91,7 @@ public class AlarmEvaluationEngine {
         this.deviceQueryService = deviceQueryService;
     }
 
+    @Async("alarmNotifyExecutor")
     @EventListener
     public void onMonitorDataIngested(MonitorDataIngestedEvent event) {
         if (!properties.isEnabled()) {
