@@ -25,6 +25,10 @@ export interface Condition {
   relDirection?: '+' | '-'
   relValue?: number
   relUnit?: 's' | 'm' | 'h' | 'd'
+  /** DATETIME 范围终点相对模式字段（仅前端编辑用，序列化时合并入 thresholdMax） */
+  relDirectionMax?: '+' | '-'
+  relValueMax?: number
+  relUnitMax?: 's' | 'm' | 'h' | 'd'
 }
 
 export interface ConditionGroup {

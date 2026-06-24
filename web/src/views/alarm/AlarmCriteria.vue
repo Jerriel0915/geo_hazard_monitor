@@ -211,37 +211,60 @@ function resetLevelForm() {
   }
 }
 
-/** DATETIME 反序列化: 从 threshold 字符串拆分出 rel* 编辑态字段 */
+/** DATETIME 反序列化: 从 threshold/thresholdMax 字符串拆分出 rel/relMax 编辑态字段 */
 function hydrateCondition(c: Condition): Condition {
   if (c.valueType !== 'DATETIME' || !c.threshold) return c
-  const t = String(c.threshold)
-  if (t.startsWith('now')) {
+
+  const parseRelative = (t: string) => {
+    if (!t || !t.startsWith('now')) return null
     const match = /^now([+-])(\d+)([smhd])$/.exec(t)
     if (match) {
       return {
-        ...c,
-        thresholdMode: 'RELATIVE',
-        relDirection: match[1] as '+' | '-',
-        relValue: Number(match[2]),
-        relUnit: match[3] as 's' | 'm' | 'h' | 'd',
+        direction: match[1] as '+' | '-',
+        value: Number(match[2]),
+        unit: match[3] as 's' | 'm' | 'h' | 'd',
       }
     }
-    return {...c, thresholdMode: 'RELATIVE', relDirection: '-', relValue: 0, relUnit: 'h'}
+    return { direction: '-' as const, value: 0, unit: 'h' as const }
   }
-  return {...c, thresholdMode: 'ABSOLUTE'}
+
+  const t = String(c.threshold)
+  const tMax = c.thresholdMax != null ? String(c.thresholdMax) : ''
+  const relStart = parseRelative(t)
+  const relEnd = parseRelative(tMax)
+
+  if (!relStart && !relEnd) {
+    return { ...c, thresholdMode: 'ABSOLUTE' }
+  }
+
+  return {
+    ...c,
+    thresholdMode: 'RELATIVE',
+    relDirection: relStart?.direction,
+    relValue: relStart?.value,
+    relUnit: relStart?.unit,
+    relDirectionMax: relEnd?.direction,
+    relValueMax: relEnd?.value,
+    relUnitMax: relEnd?.unit,
+  }
 }
 
-/** DATETIME 序列化: 将 rel* 编辑态字段合并回 threshold 字符串，剔除编辑态字段 */
+/** DATETIME 序列化: 将 rel/relMax 编辑态字段合并回 threshold/thresholdMax 字符串，剔除编辑态字段 */
 function serializeCondition(c: Condition): Condition {
   if (c.valueType === 'DATETIME' && c.thresholdMode === 'RELATIVE') {
-    const dir = c.relDirection || '-'
-    const n = c.relValue || 0
-    const unit = c.relUnit || 'h'
-    const {thresholdMode, relDirection, relValue, relUnit, ...rest} = c
-    return {...rest, threshold: n > 0 ? `now${dir}${n}${unit}` : 'now'}
+    const serRel = (dir: string, n: number, unit: string) => n > 0 ? `now${dir}${n}${unit}` : 'now'
+    const {thresholdMode, relDirection, relValue, relUnit, relDirectionMax, relValueMax, relUnitMax, ...rest} = c
+    const result: Condition = {
+      ...rest,
+      threshold: serRel(relDirection || '-', relValue || 0, relUnit || 'h'),
+    }
+    if (c.operator === 'BETWEEN') {
+      result.thresholdMax = serRel(relDirectionMax || '-', relValueMax || 0, relUnitMax || 'h')
+    }
+    return result
   }
-  // strip edit-only fields
-  const {thresholdMode, relDirection, relValue, relUnit, ...rest} = c
+  // ABSOLUTE 或非 DATETIME: 剥离所有编辑态字段
+  const {thresholdMode, relDirection, relValue, relUnit, relDirectionMax, relValueMax, relUnitMax, ...rest} = c
   return rest
 }
 
