@@ -91,3 +91,4 @@ A: 前端用 `EventSource` 自带重连机制; 服务端应记录活跃连接, �
 | 时间               | 变更                          |
 |------------------|-----------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描) |
+| 2026-06-25 10:00 | SSE 订阅泄漏修复: LogStreamPublisher 新增 25s 心跳 (复用 failSubscription) + LogStreamPublisherTest 扩展心跳覆盖 |

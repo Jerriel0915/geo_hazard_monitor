@@ -269,3 +269,4 @@ A: 检查链路：分发规则是否启用、收件人是否包含当前用户�
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描)                                                                                                                                  |
 | 2026-06-10 19:08 | 增量补扫: 修正路径 `engine/` → `service/engine/`、`strategy/` → `service/engine/`、`notify/` → `service/notify/`; 新增核心实现类索引、Redis Key 模式、Groovy 沙箱、Engine/Service 完整清单 |
 | 2026-06-18 01:45 | 通知中心 v1 上线: AlarmNotificationController (用户视角 4 接口) + publishToUser SSE 按 userId 路由 + 23 case 测试矩阵 + sys_config 11 参数配置；详见 `docs/通知中心使用手册.md` |
+| 2026-06-25 10:00 | SSE 订阅泄漏修复: AlarmStreamPublisher 新增 25s 心跳 + 统一 removeEmitter 回调 (消除 userEmitters 双重注册) |

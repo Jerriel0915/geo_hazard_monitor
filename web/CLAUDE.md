@@ -218,3 +218,4 @@ A: 检查: 1) `EventSource` URL; 2) 后端是否启用 SSE (`@RestController` + 
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描) |
 | 2026-06-18 01:45 | 通知中心 v1: alarmNotification API + layout 双 Tab + Settings 通知配置分类 + 路由 query 兼容 |
 | 2026-06-24 18:00 | 通知中心 v2: 双 Tab 分页 UI（事件 ‹n/m› 公告 ‹n/m›）+ NoticeDetail.vue 独立详情页 + 系统管理菜单暴露 SysNotice + 告警跳转失败提示 |
+| 2026-06-25 10:00 | SSE 订阅泄漏修复: layout/index.vue SSE 重连定时器生命周期管理 + stopped 标志防止卸载后孤立订阅 |

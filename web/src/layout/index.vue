@@ -429,6 +429,9 @@ const eventPage = reactive({ current: 1, size: 10, total: 0 })
 const noticePage = reactive({ current: 1, size: 10, total: 0 })
 let noticeEventSource: EventSource | null = null
 let alarmEventSource: EventSource | null = null
+let noticeReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let alarmReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let sseStopped = false
 
 /** 顶部铃铛角标总数 */
 const unreadMessageCount = computed(() => noticeUnreadCount.value + eventUnreadCount.value)
@@ -514,6 +517,7 @@ async function goNextPage() {
 }
 
 function startNoticeSSE() {
+  if (sseStopped) return
   if (noticeEventSource) noticeEventSource.close()
   const token = localStorage.getItem('token')
   if (!token) return
@@ -536,12 +540,14 @@ function startNoticeSSE() {
   })
   noticeEventSource.onerror = () => {
     noticeEventSource?.close()
-    setTimeout(startNoticeSSE, 3000)
+    if (noticeReconnectTimer) clearTimeout(noticeReconnectTimer)
+    noticeReconnectTimer = setTimeout(startNoticeSSE, 3000)
   }
 }
 
 /** 告警 SSE：监听 alarm-notify 单点事件 + alarm 全量广播 */
 function startAlarmSSE() {
+  if (sseStopped) return
   if (alarmEventSource) alarmEventSource.close()
   const token = localStorage.getItem('token')
   if (!token) return
@@ -576,7 +582,8 @@ function startAlarmSSE() {
   })
   alarmEventSource.onerror = () => {
     alarmEventSource?.close()
-    setTimeout(startAlarmSSE, 3000)
+    if (alarmReconnectTimer) clearTimeout(alarmReconnectTimer)
+    alarmReconnectTimer = setTimeout(startAlarmSSE, 3000)
   }
 }
 
@@ -955,6 +962,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  sseStopped = true
   if (noticeEventSource) {
     noticeEventSource.close()
     noticeEventSource = null
@@ -962,6 +970,14 @@ onUnmounted(() => {
   if (alarmEventSource) {
     alarmEventSource.close()
     alarmEventSource = null
+  }
+  if (noticeReconnectTimer) {
+    clearTimeout(noticeReconnectTimer)
+    noticeReconnectTimer = null
+  }
+  if (alarmReconnectTimer) {
+    clearTimeout(alarmReconnectTimer)
+    alarmReconnectTimer = null
   }
 })
 

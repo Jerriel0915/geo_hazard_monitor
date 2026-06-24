@@ -97,3 +97,4 @@ A: 检查: 1) 目标类是否在 `zwei-admin` 的 `@SpringBootApplication` 扫�
 | 时间               | 变更                          |
 |------------------|-----------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描) |
+| 2026-06-25 10:00 | SSE 订阅泄漏修复: ThreadPoolConfig 新增 ThreadPoolTaskScheduler Bean (poolSize=4) 防止 @Scheduled 心跳饥饿 |
