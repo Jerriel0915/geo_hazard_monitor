@@ -103,7 +103,7 @@
         FROM alarm_notification
         WHERE recipient_id = #{userId}
           AND channel = 'SYSTEM'
-          AND source_type IN ('alarm', 'offline')
+          AND source_type IN ('threshold', 'comprehensive', 'offline')
           AND read_time IS NULL
         ORDER BY create_time DESC
         LIMIT #{limit}
@@ -124,7 +124,7 @@
         FROM alarm_notification
         WHERE recipient_id = #{userId}
           AND channel = 'SYSTEM'
-          AND source_type IN ('alarm', 'offline')
+          AND source_type IN ('threshold', 'comprehensive', 'offline')
           AND read_time IS NULL
         ORDER BY create_time DESC
         LIMIT #{offset}, #{limit}
@@ -135,7 +135,7 @@
         FROM alarm_notification
         WHERE recipient_id = #{userId}
           AND channel = 'SYSTEM'
-          AND source_type IN ('alarm', 'offline')
+          AND source_type IN ('threshold', 'comprehensive', 'offline')
           AND read_time IS NULL
     </select>
 
