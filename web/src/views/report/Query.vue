@@ -346,20 +346,20 @@ const handleExportCsv = async () => {
   try {
     for (let p = 1; p <= totalPages; p++) {
       for (const attrCode of attrCodes) {
-        const params: MonitorDataPageQuery = {
-          hazardPointId: selectedHazardPointId.value,
-          deviceId: selectedDeviceId.value,
-          pageNum: p,
+      const params: MonitorDataPageQuery = {
+        hazardPointId: selectedHazardPointId.value,
+        deviceId: selectedDeviceId.value,
+        pageNum: p,
           pageSize: fetchPageSize,
           attrCode: attrCode || undefined
-        }
-        if (timeRange.value) {
-          params.startTime = timeRange.value[0]
-          params.endTime = timeRange.value[1]
-        }
-        const res = await getMonitorDataPage(params)
-        allRows.push(...(res.rows || []))
       }
+      if (timeRange.value) {
+        params.startTime = timeRange.value[0]
+        params.endTime = timeRange.value[1]
+      }
+      const res = await getMonitorDataPage(params)
+      allRows.push(...(res.rows || []))
+    }
     }
   } catch (error) {
     showRequestErrorMessage(error, '导出数据拉取失败')
@@ -403,6 +403,7 @@ onMounted(() => {
 .monitor-data-item {
   line-height: 1.8;
   font-size: 13px;
+  padding: 2px 0;
 }
 
 .table-wrap {
@@ -421,5 +422,20 @@ onMounted(() => {
 
 :deep(.el-table__body-wrapper) {
   overflow-x: auto;
+}
+
+/* 监测数据属性分割线 */
+.monitor-data-item {
+  border-bottom: 1px dashed #e8e8e8;
+  padding: 6px 0;
+}
+
+.monitor-data-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.monitor-data-item:first-child {
+  padding-top: 0;
 }
 </style>
