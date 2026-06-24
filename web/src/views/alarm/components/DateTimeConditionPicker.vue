@@ -192,9 +192,10 @@ function serializeRelative(dir: string, val: number, unit: string): string {
   return val > 0 ? `now${dir}${val}${unit}` : 'now'
 }
 
-function onModeChange(m: string) {
-  const updated: Condition = {...props.condition, thresholdMode: m as 'ABSOLUTE' | 'RELATIVE'}
-  if (m === 'ABSOLUTE') {
+function onModeChange(m: string | number | boolean) {
+  const mode = m === 'ABSOLUTE' || m === 'RELATIVE' ? m : 'ABSOLUTE'
+  const updated: Condition = {...props.condition, thresholdMode: mode}
+  if (mode === 'ABSOLUTE') {
     if (typeof updated.threshold === 'string' && updated.threshold.startsWith('now')) {
       updated.threshold = ''
     }
@@ -216,7 +217,7 @@ function onModeChange(m: string) {
   emit('update:condition', updated)
 }
 
-function updateRelField(field: string, value: any) {
+function updateRelField(field: 'relDirection' | 'relValue' | 'relUnit' | 'relDirectionMax' | 'relValueMax' | 'relUnitMax', value: string | number) {
   const updated: Condition = {...props.condition, [field]: value}
   if (field === 'relDirection' || field === 'relValue' || field === 'relUnit') {
     const dir = updated.relDirection || '-'
