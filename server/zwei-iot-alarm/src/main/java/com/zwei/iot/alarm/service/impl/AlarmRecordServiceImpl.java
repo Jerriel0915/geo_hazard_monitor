@@ -10,6 +10,7 @@ import com.zwei.iot.alarm.mapper.AlarmRecordMapper;
 import com.zwei.iot.alarm.mapper.AlarmRecordTriggerDetailMapper;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -60,6 +61,7 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public AlarmRecord createOrUpdateAlarm(AlarmRecord record) {
         // 去重: 同一源(criteria/strategy)+隐患点下是否已有非终态告警
         AlarmRecord existing = null;
@@ -164,6 +166,7 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int dispose(Long id, Integer newStatus, String description, String attachments,
                        String remarks, String operator) {
         AlarmRecord record = alarmRecordMapper.selectRecordById(id);
@@ -209,6 +212,7 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int batchDispose(Long[] ids, Integer status, String description, String attachments,
                             String remarks, String resolvedBy) {
         if (ids == null || ids.length == 0) {
