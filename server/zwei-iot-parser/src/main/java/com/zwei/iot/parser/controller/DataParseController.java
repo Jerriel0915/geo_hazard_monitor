@@ -29,7 +29,7 @@ public class DataParseController extends BaseController {
     @Resource
     private GroovyScriptEngine scriptEngine;
 
-    @PreAuthorize("monitor:parser:list")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:list')")
     @GetMapping("/page")
     public TableDataInfo list(DataParseStrategyQueryDTO query) {
         startPage();
@@ -37,46 +37,46 @@ public class DataParseController extends BaseController {
         return getDataTable(list);
     }
 
-    @PreAuthorize("monitor:parser:list")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:list')")
     @GetMapping("/{id}")
     public AjaxResult getDetail(@PathVariable Long id) {
         return AjaxResult.success(strategyService.getById(id));
     }
 
-    @PreAuthorize("monitor:parser:edit")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:edit')")
     @PostMapping
     public AjaxResult create(@RequestBody DataParseStrategyDTO dto) {
         return AjaxResult.success(strategyService.create(dto));
     }
 
-    @PreAuthorize("monitor:parser:edit")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:edit')")
     @PutMapping
     public AjaxResult update(@RequestBody DataParseStrategyDTO dto) {
         strategyService.update(dto);
         return AjaxResult.success();
     }
 
-    @PreAuthorize("monitor:parser:edit")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:edit')")
     @DeleteMapping("/{id}")
     public AjaxResult delete(@PathVariable Long id) {
         strategyService.delete(id);
         return AjaxResult.success();
     }
 
-    @PreAuthorize("monitor:parser:edit")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:edit')")
     @PutMapping("/{id}/status")
     public AjaxResult toggleStatus(@PathVariable Long id, @RequestParam Integer status) {
         strategyService.toggleStatus(id, status);
         return AjaxResult.success();
     }
 
-    @PreAuthorize("monitor:parser:edit")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:edit')")
     @PostMapping("/{id}/copy")
     public AjaxResult copy(@PathVariable Long id) {
         return AjaxResult.success(strategyService.copy(id));
     }
 
-    @PreAuthorize("monitor:parser:test")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:test')")
     @PostMapping("/test")
     public AjaxResult testScript(@RequestBody DataParseTestRequest request) {
         Map<String, Object> result = scriptEngine.testScript(
@@ -84,7 +84,7 @@ public class DataParseController extends BaseController {
         return AjaxResult.success(result);
     }
 
-    @PreAuthorize("monitor:parser:list")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:list')")
     @GetMapping("/{id}/logs")
     public TableDataInfo getLogs(@PathVariable Long id,
                                   @RequestParam(required = false) String logLevel,
@@ -95,7 +95,7 @@ public class DataParseController extends BaseController {
         return getDataTable(logs);
     }
 
-    @PreAuthorize("monitor:parser:edit")
+    @PreAuthorize("@ss.hasPermi('monitor:parser:edit')")
     @DeleteMapping("/{id}/logs")
     public AjaxResult clearLogs(@PathVariable Long id) {
         logService.clearByStrategyId(id);
