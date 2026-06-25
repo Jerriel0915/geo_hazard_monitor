@@ -18,8 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -140,6 +142,15 @@ public class MonitorIngestConsumerService {
     }
 
     /**
+     * 在 Spring 上下文关闭前（早于 Bean 销毁阶段）停止消费循环，
+     * 避免 Redis 连接先于本服务关闭导致消费线程在阻塞读取时抛异常。
+     */
+    @EventListener(ContextClosedEvent.class)
+    public void onShutdown() {
+        running = false;
+    }
+
+    /**
      * 停止消费线程并等待资源释放。
      *
      * @throws InterruptedException 当等待线程池停止时被中断
@@ -198,6 +209,10 @@ public class MonitorIngestConsumerService {
             } catch (Exception e) {
                 if (!running) {
                     log.debug("消费线程已停止");
+                    break;
+                }
+                if (isShutdownCause(e)) {
+                    log.debug("消费线程因连接关闭停止");
                     break;
                 }
                 log.error("消费监测数据流失败", e);
@@ -752,5 +767,26 @@ public class MonitorIngestConsumerService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * 判断异常是否为 shutdown 时 Redis 连接关闭所致，
+     * 避免在优雅停机时输出 ERROR 日志。
+     */
+    private boolean isShutdownCause(Exception e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof RedisSystemException) {
+                return true;
+            }
+            String msg = cause.getMessage();
+            if (msg != null && (msg.contains("Connection closed")
+                    || msg.contains("connection reset")
+                    || msg.contains("connection was closed"))) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }
