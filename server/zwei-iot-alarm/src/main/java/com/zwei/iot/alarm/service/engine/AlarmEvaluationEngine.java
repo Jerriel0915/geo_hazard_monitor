@@ -202,8 +202,8 @@ public class AlarmEvaluationEngine {
                         event.getDeviceId(), event.getSensorCode(), subjectValues.keySet());
             }
         } catch (Exception e) {
-            log.debug("[Alarm][Skip] 传感器元数据查询失败 deviceId={} sensorCode={} err={}",
-                    event.getDeviceId(), event.getSensorCode(), e.getMessage());
+            log.warn("[Alarm][Skip] 传感器元数据查询失败 deviceId={} sensorCode={}",
+                    event.getDeviceId(), event.getSensorCode(), e);
             return;
         }
 
@@ -282,10 +282,15 @@ public class AlarmEvaluationEngine {
         List<Candidate> candidates = new ArrayList<>();
 
         for (AlarmCriteria criteria : criteriaList) {
-            Long effectiveHpId = criteria.getHazardPointId();
-            if (effectiveHpId == null && !hazardPointIds.isEmpty()) effectiveHpId = hazardPointIds.get(0);
-            if (effectiveHpId == null) {
-                log.debug("[Alarm][Eval] 判据无 effectiveHpId 跳过 criteriaId={} name={}",
+            // 判据绑定具体隐患点时仅评估该点，否则遍历所有关联隐患点（监测类型兜底判据场景）
+            List<Long> hpIdsToEvaluate;
+            if (criteria.getHazardPointId() != null) {
+                hpIdsToEvaluate = List.of(criteria.getHazardPointId());
+            } else {
+                hpIdsToEvaluate = hazardPointIds;
+            }
+            if (hpIdsToEvaluate.isEmpty()) {
+                log.debug("[Alarm][Eval] 判据无可用隐患点 跳过 criteriaId={} name={}",
                         criteria.getId(), criteria.getName());
                 continue;
             }
@@ -298,39 +303,42 @@ public class AlarmEvaluationEngine {
             }
             int persistCount  = criteria.getPersistCount()  != null ? criteria.getPersistCount()  : 1;
             int silencePeriod = criteria.getSilencePeriod() != null ? criteria.getSilencePeriod() : 0;
-            log.debug("[Alarm][Eval] 判据配置 criteriaId={} name={} effectiveHpId={} persistCount={} silencePeriod={} levels={}",
-                    criteria.getId(), criteria.getName(), effectiveHpId, persistCount, silencePeriod, configMap.keySet());
 
-            // 逐等级独立评估：满足累加，未满足仅重置当前等级
-            for (Map.Entry<String, LevelConfig> entry : configMap.entrySet()) {
-                int level = LEVEL_VALUES.getOrDefault(entry.getKey(), 0);
-                if (level <= 0) {
-                    log.debug("[Alarm][Eval] 未知 level key 跳过 criteriaId={} levelKey={}",
-                            criteria.getId(), entry.getKey());
-                    continue;
-                }
+            for (Long effectiveHpId : hpIdsToEvaluate) {
+                log.debug("[Alarm][Eval] 判据配置 criteriaId={} name={} effectiveHpId={} persistCount={} silencePeriod={} levels={}",
+                        criteria.getId(), criteria.getName(), effectiveHpId, persistCount, silencePeriod, configMap.keySet());
 
-                // 等级独立 persistCount/silencePeriod（前端 groups 格式），回退到 criterion 级别
-                LevelConfig lc = entry.getValue();
-                int effPersistCount  = lc.getPersistCount()  != null ? lc.getPersistCount()  : persistCount;
-                int effSilencePeriod = lc.getSilencePeriod() != null ? lc.getSilencePeriod() : silencePeriod;
+                // 逐等级独立评估：满足累加，未满足仅重置当前等级
+                for (Map.Entry<String, LevelConfig> entry : configMap.entrySet()) {
+                    int level = LEVEL_VALUES.getOrDefault(entry.getKey(), 0);
+                    if (level <= 0) {
+                        log.debug("[Alarm][Eval] 未知 level key 跳过 criteriaId={} levelKey={}",
+                                criteria.getId(), entry.getKey());
+                        continue;
+                    }
 
-                boolean satisfied = criteriaEvaluator.evaluateLevel(lc, subjectValues);
-                if (!satisfied) {
-                    log.debug("[Alarm][Eval] 等级未满足 criteriaId={} level={}({}) subjects={}",
+                    // 等级独立 persistCount/silencePeriod（前端 groups 格式），回退到 criterion 级别
+                    LevelConfig lc = entry.getValue();
+                    int effPersistCount  = lc.getPersistCount()  != null ? lc.getPersistCount()  : persistCount;
+                    int effSilencePeriod = lc.getSilencePeriod() != null ? lc.getSilencePeriod() : silencePeriod;
+
+                    boolean satisfied = criteriaEvaluator.evaluateLevel(lc, subjectValues);
+                    if (!satisfied) {
+                        log.debug("[Alarm][Eval] 等级未满足 criteriaId={} level={}({}) subjects={}",
+                                criteria.getId(), level, entry.getKey(), subjectValues.keySet());
+                        dedupService.clearPreTrigger(criteria.getId(), effectiveHpId, level);
+                        continue;
+                    }
+                    log.debug("[Alarm][Eval] 等级已满足 criteriaId={} level={}({}) subjects={}",
                             criteria.getId(), level, entry.getKey(), subjectValues.keySet());
-                    dedupService.clearPreTrigger(criteria.getId(), effectiveHpId, level);
-                    continue;
-                }
-                log.debug("[Alarm][Eval] 等级已满足 criteriaId={} level={}({}) subjects={}",
-                        criteria.getId(), level, entry.getKey(), subjectValues.keySet());
 
-                if (dedupService.shouldTriggerAlarm(criteria.getId(), effectiveHpId, level,
-                                                    effPersistCount, effSilencePeriod)) {
-                    candidates.add(new Candidate(criteria, level, effectiveHpId, entry.getKey(), lc));
-                } else {
-                    log.debug("[Alarm][Eval] 去重拦截未触发 criteriaId={} level={}({}) persistCount={} silencePeriod={}",
-                            criteria.getId(), level, entry.getKey(), effPersistCount, effSilencePeriod);
+                    if (dedupService.shouldTriggerAlarm(criteria.getId(), effectiveHpId, level,
+                                                        effPersistCount, effSilencePeriod)) {
+                        candidates.add(new Candidate(criteria, level, effectiveHpId, entry.getKey(), lc));
+                    } else {
+                        log.debug("[Alarm][Eval] 去重拦截未触发 criteriaId={} level={}({}) persistCount={} silencePeriod={}",
+                                criteria.getId(), level, entry.getKey(), effPersistCount, effSilencePeriod);
+                    }
                 }
             }
         }
