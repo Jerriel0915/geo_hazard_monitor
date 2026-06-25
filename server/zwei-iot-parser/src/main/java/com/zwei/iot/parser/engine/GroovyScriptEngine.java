@@ -133,6 +133,9 @@ public class GroovyScriptEngine {
      * <p>典型用法: 调用方传入 {@code Map.of("cache", cacheOps, "sensor", sensorQuery)},
      * 脚本里以 {@code cache.getInt('k')} / {@code sensor.query(...)} 形式访问。
      *
+     * <p><b>注意</b>: {@code extraBindings} 在 {@code builtin} 之后注入, 若 key 与 {@code builtin}
+     * 冲突将以 extraBindings 为准 (调用方负责避免冲突)。
+     *
      * <p>失败永远返回空 Map, 不抛异常 (主链路数据接入可用性优先)。
      *
      * @param scriptCode    ComputedScriptAssembler.assemble() 产物

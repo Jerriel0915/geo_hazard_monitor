@@ -138,4 +138,19 @@ class GroovyScriptEngineComputedTest {
         Map<String, Object> out = engine.executeComputed(script, Map.of(), Map.of());
         assertThat(out.get("ok")).isEqualTo(Boolean.TRUE);
     }
+
+    @Test
+    @DisplayName("4 参重载: extraBindings=null 不抛 NPE, 行为与 3 参一致")
+    void extraBindingsNullSafe() {
+        String script = """
+            def compute(curData, prevData) {
+                def out = new LinkedHashMap<String, Object>()
+                out.put('ok', true)
+                return out
+            }
+        """;
+        // 显式传 null — 验证 null guard 工作
+        Map<String, Object> out = engine.executeComputed(script, Map.of(), null, null);
+        assertThat(out.get("ok")).isEqualTo(Boolean.TRUE);
+    }
 }
