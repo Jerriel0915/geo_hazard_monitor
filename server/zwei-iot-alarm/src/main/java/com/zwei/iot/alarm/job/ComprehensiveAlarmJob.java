@@ -109,18 +109,18 @@ public class ComprehensiveAlarmJob {
             return;
         }
 
-        // 检查静默期 (复用去重服务)
-        boolean shouldTrigger = dedupService.shouldTriggerAlarm(
-                strategy.getId(), /* as criteriaId surrogate for dedup */
-                hazardPointIds.get(0), alarmLevel, 1,
-                strategy.getSilenceMinutes() != null ? strategy.getSilenceMinutes() : 0);
-        if (!shouldTrigger) {
-            updateResult(strategy.getId(), "NO_ALARM");
-            return;
-        }
+        int silenceMinutes = strategy.getSilenceMinutes() != null ? strategy.getSilenceMinutes() : 0;
+        int triggeredCount = 0;
 
-        // 为每个隐患点创建告警
+        // 为每个隐患点独立去重并创建告警
         for (Long hpId : hazardPointIds) {
+            boolean shouldTrigger = dedupService.shouldTriggerAlarm(
+                    strategy.getId(), /* as criteriaId surrogate for dedup */
+                    hpId, alarmLevel, 1, silenceMinutes);
+            if (!shouldTrigger) {
+                continue;
+            }
+
             AlarmRecord record = AlarmRecord.builder()
                     .hazardPointId(hpId)
                     .alarmLevel(alarmLevel)
@@ -134,12 +134,18 @@ public class ComprehensiveAlarmJob {
                     .build();
 
             AlarmRecord saved = alarmRecordService.createOrUpdateAlarm(record);
+            triggeredCount++;
 
             // 发布告警事件
             eventPublisher.publishEvent(new AlarmTriggeredEvent(
                     saved.getId(), saved.getHazardPointId(),
                     saved.getAlarmLevel(), saved.getAlarmType(), saved.getAlarmMessage(),
                     saved.getTriggerReason()));
+        }
+
+        if (triggeredCount == 0) {
+            updateResult(strategy.getId(), "NO_ALARM");
+            return;
         }
 
         updateResult(strategy.getId(), "SUCCESS");
