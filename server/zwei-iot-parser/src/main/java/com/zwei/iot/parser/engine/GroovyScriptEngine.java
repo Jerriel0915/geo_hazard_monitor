@@ -111,28 +111,49 @@ public class GroovyScriptEngine {
     }
 
     /**
-     * 执行合并后的计算属性脚本。
+     * 执行合并后的计算属性脚本 (3 参向后兼容版本)。
+     *
+     * <p>委托到 4 参重载, extraBindings 传空 Map。
+     *
+     * @see #executeComputed(String, Map, Map, Map)
+     */
+    public Map<String, Object> executeComputed(String scriptCode,
+                                                Map<String, Object> curData,
+                                                Map<String, Object> prevData) {
+        return executeComputed(scriptCode, curData, prevData, Map.of());
+    }
+
+    /**
+     * 执行合并后的计算属性脚本, 支持通过 extraBindings 注入额外变量到 Groovy Binding。
      *
      * <p>与 {@link #execute} 共享沙箱配置 ({@link #createSecureConfig()}) 和 executor,
      * 但调用约定不同: 脚本必须定义 {@code compute(curData, prevData)} 主入口,
      * 返回 {@code Map<String, Object>}(attrCode -> value)。
      *
-     * <p>失败永远返回空 Map, 不抛异常(主链路数据接入可用性优先)。
+     * <p>典型用法: 调用方传入 {@code Map.of("cache", cacheOps, "sensor", sensorQuery)},
+     * 脚本里以 {@code cache.getInt('k')} / {@code sensor.query(...)} 形式访问。
      *
-     * @param scriptCode ComputedScriptAssembler.assemble() 产物
-     * @param curData    当前精简消息 Map (含 deviceCode/sensorCode/dataTime/properties)
-     * @param prevData   上一条精简消息 Map, 首次上报时为 null
+     * <p>失败永远返回空 Map, 不抛异常 (主链路数据接入可用性优先)。
+     *
+     * @param scriptCode    ComputedScriptAssembler.assemble() 产物
+     * @param curData       当前精简消息 Map
+     * @param prevData      上一条精简消息 Map, 首次上报时为 null
+     * @param extraBindings 额外 Binding 变量 (可为 null / 空)
      * @return 计算结果 Map; 失败时为空 Map
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> executeComputed(String scriptCode,
                                                 Map<String, Object> curData,
-                                                Map<String, Object> prevData) {
+                                                Map<String, Object> prevData,
+                                                Map<String, Object> extraBindings) {
         Future<Map<String, Object>> future = executor.submit(() -> {
             try {
                 GroovyShell shell = new GroovyShell(createSecureConfig());
                 Binding binding = new Binding();
                 binding.setVariable("builtin", builtInFunctions);
+                if (extraBindings != null) {
+                    extraBindings.forEach(binding::setVariable);
+                }
                 Script script = shell.parse(scriptCode);
                 script.setBinding(binding);
                 Object result = script.invokeMethod(

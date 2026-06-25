@@ -100,4 +100,42 @@ class GroovyScriptEngineComputedTest {
         Map<String, Object> out = engine.executeComputed(script, Map.of(), Map.of());
         assertThat(out).isEmpty();
     }
+
+    @Test
+    @DisplayName("4 参重载: extraBindings 进入 Binding, 脚本可调实例方法")
+    void extraBindingsInjected() {
+        String script = """
+            def compute(curData, prevData) {
+                def out = new LinkedHashMap<String, Object>()
+                out.put('doubled', counter.doubleIt(21))
+                return out
+            }
+        """;
+
+        // counter 是一个普通 Java 对象, 验证实例方法被脚本调用
+        Map<String, Object> bindings = new LinkedHashMap<>();
+        bindings.put("counter", new Object() {
+            @SuppressWarnings("unused")
+            public int doubleIt(int x) { return x * 2; }
+        });
+
+        Map<String, Object> out = engine.executeComputed(script, Map.of(), null, bindings);
+
+        assertThat(out).hasSize(1);
+        assertThat(out.get("doubled")).isEqualTo(42);
+    }
+
+    @Test
+    @DisplayName("3 参重载仍工作: 委托到 4 参 + 空 Map (回归)")
+    void threeArgStillWorks() {
+        String script = """
+            def compute(curData, prevData) {
+                def out = new LinkedHashMap<String, Object>()
+                out.put('ok', true)
+                return out
+            }
+        """;
+        Map<String, Object> out = engine.executeComputed(script, Map.of(), Map.of());
+        assertThat(out.get("ok")).isEqualTo(Boolean.TRUE);
+    }
 }
