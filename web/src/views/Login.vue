@@ -411,19 +411,23 @@ const login = async () => {
     }
     localStorage.setItem('token', res.data.data.token)
 
-    const userRes = await axios.get('/api/v1/auth/getInfo', {
+    // getInfo 与路由跳转并行：getInfo 不阻塞跳转，Layout 加载时会自行调用 getAuthInfo/getUserInfo
+    axios.get('/api/v1/auth/getInfo', {
       headers: { Authorization: `Bearer ${res.data.data.token}` }
+    }).then(userRes => {
+      const user = userRes.data.data?.user
+      if (user) {
+        localStorage.setItem('userInfo', JSON.stringify({
+          id: user.userId,
+          username: user.username,
+          realName: user.nickName,
+          orgId: user.deptId,
+          orgName: user.deptName
+        }))
+      }
+    }).catch(() => {
+      // getInfo 失败不阻塞登录流程，Layout 加载时会自行重试
     })
-    const user = userRes.data.data?.user
-    if (user) {
-      localStorage.setItem('userInfo', JSON.stringify({
-        id: user.userId,
-        username: user.username,
-        realName: user.nickName,
-        orgId: user.deptId,
-        orgName: user.deptName
-      }))
-    }
 
     ElMessage.success('登录成功')
     // 支持 H5 等场景：未登录访问被路由守卫拦截到登录页时，登录后跳回原地址（如 /h5/disposal/:id）
