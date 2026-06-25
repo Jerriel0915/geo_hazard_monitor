@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,9 +80,7 @@ public class ComputedAttributeEvaluator {
             String script = assembler.assemble(attrs);
 
             // 6. 执行 — 注入 cache/sensor wrapper 到 Groovy 脚本
-            Map<String, Object> tools = new HashMap<>();
-            tools.put("cache", cacheOps);
-            tools.put("sensor", scriptSensorQuery);
+            Map<String, Object> tools = Map.of("cache", cacheOps, "sensor", scriptSensorQuery);
             Map<String, Object> results = scriptEngine.executeComputed(script, curData, prevData, tools);
 
             // 7. 转 PropertyValue (null 值跳过)
