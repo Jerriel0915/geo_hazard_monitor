@@ -646,7 +646,18 @@ const paginatedFeedbackList = computed(() => {
 const switchTab = (tab: string) => {
   activeTab.value = tab
   if (tab === 'monitor') {
-    nextTick(() => initChart())
+    nextTick(() => {
+      if (!chartInstance) {
+        initChart()
+      } else {
+        updateChart()
+        chartInstance?.resize()
+      }
+    })
+  } else {
+    // 离开监测数据 tab 时销毁图表，释放 Canvas 内存
+    chartInstance?.dispose()
+    chartInstance = null
   }
 }
 
@@ -961,8 +972,10 @@ const loadAll = async () => {
     // 加载监测曲线
     await loadChartData()
 
-    // 初始化图表
-    nextTick(() => initChart())
+    // 仅当前 tab 是监测数据时才初始化图表，避免不必要开销
+    if (activeTab.value === 'monitor') {
+      nextTick(() => initChart())
+    }
   } catch (e: any) {
     console.error('加载告警详情失败:', e)
     loadError.value = e?.message || '加载失败，请重试'
@@ -1117,6 +1130,15 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   chartInstance?.dispose()
+  chartInstance = null
+  // 清理大数据引用，释放 JS 内存，防止反复打开处置页面后浏览器卡顿/崩溃
+  alarmData.value = null
+  hazardPointData.value = null
+  triggerDetails.value = []
+  notifyRecords.value = []
+  actionLogs.value = []
+  chartSeriesData.value = []
+  timelineData.value = []
 })
 </script>
 
