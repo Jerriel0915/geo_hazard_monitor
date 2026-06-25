@@ -54,7 +54,7 @@ public class LogStreamPublisher {
             }
         } catch (Exception ex) {
             if (!isDisconnectedClientException(ex)) {
-                throw rethrowSendException(ex);
+                log.error("日志SSE ready发送非预期异常，移除订阅", ex);
             }
             failSubscription(subscription, ex);
             return emitter;
@@ -72,7 +72,7 @@ public class LogStreamPublisher {
                 sendRecord(subscription, record, record.getLogType().name().toLowerCase());
             } catch (Exception ex) {
                 if (!isDisconnectedClientException(ex)) {
-                    throw rethrowSendException(ex);
+                    log.error("日志SSE推送非预期异常，移除订阅", ex);
                 }
                 failSubscription(subscription, ex);
             }
@@ -125,12 +125,6 @@ public class LogStreamPublisher {
         return ex instanceof IOException
             || ex instanceof IllegalStateException
             || ex instanceof AsyncRequestNotUsableException;
-    }
-
-    private RuntimeException rethrowSendException(Exception ex) {
-        return ex instanceof RuntimeException runtimeException
-            ? runtimeException
-            : new IllegalStateException("Failed to publish SSE event", ex);
     }
 
     private void removeSubscription(LogSubscription subscription) {

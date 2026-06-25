@@ -8,7 +8,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +43,7 @@ public class NoticeStreamPublisher {
             ready.put("type", "ready");
             ready.put("message", "connected");
             emitter.send(SseEmitter.event().name("ready").data(ready));
-        } catch (IOException e) {
+        } catch (Exception e) {
             emitters.remove(emitter);
             log.debug("SSE ready 事件发送失败，移除订阅: {}", e.getMessage());
         }
@@ -69,7 +68,7 @@ public class NoticeStreamPublisher {
             try {
                 emitter.send(SseEmitter.event().name("notice").data(data));
                 sent++;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 emitters.remove(emitter);
                 log.debug("SSE通知推送失败，移除订阅: {}", e.getMessage());
             }

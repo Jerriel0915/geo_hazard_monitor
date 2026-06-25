@@ -6,7 +6,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,7 +104,7 @@ public class AlarmStreamPublisher {
             try {
                 emitter.send(SseEmitter.event().name(eventName).data(data));
                 sent++;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 removeEmitter(emitter);
                 log.debug("SSE 事件 [{}] 推送失败，移除订阅: {}", eventName, e.getMessage());
             }
@@ -137,7 +136,7 @@ public class AlarmStreamPublisher {
             try {
                 emitter.send(SseEmitter.event().name(eventType).data(data));
                 sent++;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 removeEmitter(emitter);
                 log.debug("用户 {} SSE 推送失败，移除订阅: {}", userId, e.getMessage());
             }
@@ -187,7 +186,7 @@ public class AlarmStreamPublisher {
             ready.put("type", "ready");
             ready.put("message", "connected");
             emitter.send(SseEmitter.event().name("ready").data(ready));
-        } catch (IOException e) {
+        } catch (Exception e) {
             removeEmitter(emitter);
             log.debug("告警SSE ready事件发送失败: {}", e.getMessage());
         }
