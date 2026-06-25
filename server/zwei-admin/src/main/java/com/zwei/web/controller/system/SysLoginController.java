@@ -1,5 +1,7 @@
 package com.zwei.web.controller.system;
 
+import com.zwei.common.annotation.RateLimiter;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.constant.Constants;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysMenu;
@@ -7,6 +9,7 @@ import com.zwei.common.core.domain.entity.SysUser;
 import com.zwei.common.core.domain.model.LoginBody;
 import com.zwei.common.core.domain.model.LoginUser;
 import com.zwei.common.core.text.Convert;
+import com.zwei.common.enums.LimitType;
 import com.zwei.common.utils.DateUtils;
 import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.StringUtils;
@@ -46,10 +49,12 @@ public class SysLoginController
 
     /**
      * 登录方法
-     * 
+     *
      * @param loginBody 登录信息
      * @return 结果
      */
+    @RepeatSubmit
+    @RateLimiter(time = 60, count = 5, limitType = LimitType.IP)
     @PostMapping("/login")
     public AjaxResult login(@RequestBody LoginBody loginBody)
     {

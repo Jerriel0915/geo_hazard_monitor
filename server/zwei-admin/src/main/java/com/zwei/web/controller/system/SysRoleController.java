@@ -2,6 +2,7 @@ package com.zwei.web.controller.system;
 
 import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysRole;
@@ -106,6 +107,7 @@ public class SysRoleController extends BaseController
     /**
      * 新增角色
      */
+    @RepeatSubmit
     @PreAuthorize("@ss.hasPermi('system:role:add')")
     @Log(title = "角色管理", businessType = BusinessType.INSERT)
     @PostMapping

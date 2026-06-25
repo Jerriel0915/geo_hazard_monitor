@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.controller;
 
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.TableDataInfo;
@@ -41,6 +42,7 @@ public class AlarmStrategyController extends BaseController {
         return success(strategyService.selectById(id));
     }
 
+    @RepeatSubmit
     @PostMapping
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:create')")
     public AjaxResult create(@Validated @RequestBody StrategyCreateRequest request) {

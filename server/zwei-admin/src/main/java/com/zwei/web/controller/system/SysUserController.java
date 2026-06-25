@@ -2,6 +2,7 @@ package com.zwei.web.controller.system;
 
 import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysDept;
@@ -128,6 +129,7 @@ public class SysUserController extends BaseController
     /**
      * 新增用户
      */
+    @RepeatSubmit
     @PreAuthorize("@ss.hasPermi('system:user:add')")
     @Log(title = "用户管理", businessType = BusinessType.INSERT)
     @PostMapping
