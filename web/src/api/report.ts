@@ -187,6 +187,8 @@ export interface GridChartItem {
   title?: string
   hazardPointId?: number
   deviceId?: number
+  sensorId?: number
+  sensorName?: string
   attrCode?: string
   attrName?: string
   unit?: string
