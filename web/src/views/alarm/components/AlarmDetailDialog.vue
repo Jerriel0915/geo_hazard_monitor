@@ -109,9 +109,9 @@
 
               <div class="data-tabs">
                 <div class="tab" :class="{ active: activeTab === 'monitor' }" @click="switchToMonitorTab">监测数据</div>
-                <div class="tab" :class="{ active: activeTab === 'alarm' }" @click="activeTab = 'alarm'">告警记录</div>
-                <div class="tab" :class="{ active: activeTab === 'notify' }" @click="activeTab = 'notify'">通知记录</div>
-                <div class="tab" :class="{ active: activeTab === 'disposal' }" @click="activeTab = 'disposal'">处置记录</div>
+                <div class="tab" :class="{ active: activeTab === 'alarm' }" @click="leaveMonitorTab(); activeTab = 'alarm'">告警记录</div>
+                <div class="tab" :class="{ active: activeTab === 'notify' }" @click="leaveMonitorTab(); activeTab = 'notify'">通知记录</div>
+                <div class="tab" :class="{ active: activeTab === 'disposal' }" @click="leaveMonitorTab(); activeTab = 'disposal'">处置记录</div>
               </div>
 
               <!-- 监测数据 -->
@@ -405,6 +405,12 @@ const switchToMonitorTab = () => {
   })
 }
 
+// 离开 monitor tab 时销毁图表以释放 Canvas 内存
+const leaveMonitorTab = () => {
+  chartInstance?.dispose()
+  chartInstance = null
+}
+
 // 弹窗打开时并发拉取；图表初始化推迟到 @opened 后再尝试，避免容器尺寸为 0
 const dialogOpened = ref(false)
 const dataReady = ref(false)
@@ -429,8 +435,19 @@ watch(() => props.modelValue, async (val) => {
     dialogOpened.value = false
     dataReady.value = false
     h5QrcodeDataUrl.value = ''
+    // 弹窗关闭时立即清理大数据引用和图表实例，释放内存
+    chartInstance?.dispose()
+    chartInstance = null
+    detail.value = null
+    triggerDetails.value = []
+    disposalRecords.value = []
+    notifyRecords.value = []
+    chartSeriesData.value = []
+    timelineData.value = []
     return
   }
+
+  // ... (rest of the watch body)
   if (!props.data?.id) return
   activeTab.value = 'monitor'
   alarmRecordSearch.value = { description: '', timeRange: [] }
@@ -694,7 +711,18 @@ const updateChart = () => {
 const handleResize = () => { chartInstance?.resize() }
 
 onMounted(() => { window.addEventListener('resize', handleResize) })
-onUnmounted(() => { window.removeEventListener('resize', handleResize); chartInstance?.dispose() })
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  chartInstance?.dispose()
+  chartInstance = null
+  // 清理数据引用
+  detail.value = null
+  triggerDetails.value = []
+  disposalRecords.value = []
+  notifyRecords.value = []
+  chartSeriesData.value = []
+  timelineData.value = []
+})
 
 // ---------- 工具函数 ----------
 const formatDuration = (startTime: string) => {
