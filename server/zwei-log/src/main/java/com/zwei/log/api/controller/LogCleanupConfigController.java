@@ -3,7 +3,7 @@ package com.zwei.log.api.controller;
 import com.zwei.common.constant.CacheConstants;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.redis.RedisCache;
-import com.zwei.log.infrastructure.persistence.mysql.LogConfigMapper;
+import com.zwei.log.api.service.ILogConfigService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,11 +24,11 @@ public class LogCleanupConfigController {
     private static final String KEY_CRON = "log.cleanup.cron";
 
     private final RedisCache redisCache;
-    private final LogConfigMapper logConfigMapper;
+    private final ILogConfigService logConfigService;
 
-    public LogCleanupConfigController(RedisCache redisCache, LogConfigMapper logConfigMapper) {
+    public LogCleanupConfigController(RedisCache redisCache, ILogConfigService logConfigService) {
         this.redisCache = redisCache;
-        this.logConfigMapper = logConfigMapper;
+        this.logConfigService = logConfigService;
     }
 
     @PreAuthorize("@ss.hasPermi('system:config:query')")
@@ -50,17 +50,17 @@ public class LogCleanupConfigController {
         if (body.containsKey("enabled")) {
             String val = String.valueOf(body.get("enabled"));
             redisCache.setCacheObject(CacheConstants.SYS_CONFIG_KEY + KEY_ENABLED, val);
-            logConfigMapper.upsertConfig(KEY_ENABLED, val, "是否启用日志定时清理任务");
+            logConfigService.upsertConfig(KEY_ENABLED, val, "是否启用日志定时清理任务");
         }
         if (body.containsKey("retentionDays")) {
             String val = String.valueOf(body.get("retentionDays"));
             redisCache.setCacheObject(CacheConstants.SYS_CONFIG_KEY + KEY_RETENTION, val);
-            logConfigMapper.upsertConfig(KEY_RETENTION, val, "日志保留天数");
+            logConfigService.upsertConfig(KEY_RETENTION, val, "日志保留天数");
         }
         if (body.containsKey("cron")) {
             String val = String.valueOf(body.get("cron"));
             redisCache.setCacheObject(CacheConstants.SYS_CONFIG_KEY + KEY_CRON, val);
-            logConfigMapper.upsertConfig(KEY_CRON, val, "清理执行 cron 表达式");
+            logConfigService.upsertConfig(KEY_CRON, val, "清理执行 cron 表达式");
         }
         return AjaxResult.success("配置已更新");
     }

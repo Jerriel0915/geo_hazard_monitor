@@ -11,7 +11,7 @@ import com.zwei.iot.device.domain.DeviceOnlineEventLog;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.DeviceStatusLog;
 import com.zwei.iot.device.domain.dto.*;
-import com.zwei.iot.device.mapper.DeviceOnlineEventLogMapper;
+import com.zwei.iot.device.service.IDeviceOnlineEventLogService;
 import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.device.service.IDeviceStatusLogService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,14 +44,14 @@ import java.util.Map;
 public class DeviceController extends BaseController {
     private final IDeviceService deviceService;
     private final IDeviceStatusLogService deviceStatusLogService;
-    private final DeviceOnlineEventLogMapper onlineEventLogMapper;
+    private final IDeviceOnlineEventLogService onlineEventLogService;
 
     @Autowired
     public DeviceController(IDeviceService deviceService, IDeviceStatusLogService deviceStatusLogService,
-                            DeviceOnlineEventLogMapper onlineEventLogMapper) {
+                            IDeviceOnlineEventLogService onlineEventLogService) {
         this.deviceService = deviceService;
         this.deviceStatusLogService = deviceStatusLogService;
-        this.onlineEventLogMapper = onlineEventLogMapper;
+        this.onlineEventLogService = onlineEventLogService;
     }
 
     /**
@@ -283,7 +283,7 @@ public class DeviceController extends BaseController {
     @PreAuthorize("@ss.hasPermi('basic:device:query')")
     @GetMapping("/{id}/online-logs")
     public AjaxResult onlineLogs(@PathVariable Long id) {
-        List<DeviceOnlineEventLog> logs = onlineEventLogMapper.selectByDeviceId(id, 50);
+        List<DeviceOnlineEventLog> logs = onlineEventLogService.selectByDeviceId(id, 50);
         return AjaxResult.success("成功", logs);
     }
 

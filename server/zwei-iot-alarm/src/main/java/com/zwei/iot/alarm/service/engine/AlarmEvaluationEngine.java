@@ -22,7 +22,7 @@ import com.zwei.iot.device.service.IDeviceSensorQueryService;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import com.zwei.iot.monitor.domain.MonitorContent;
-import com.zwei.iot.monitor.mapper.MonitorContentMapper;
+import com.zwei.iot.monitor.service.IMonitorContentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -67,7 +67,7 @@ public class AlarmEvaluationEngine {
     private final AlarmDedupService dedupService;
     private final CriteriaCacheService criteriaCache;
     private final ApplicationEventPublisher eventPublisher;
-    private final MonitorContentMapper monitorContentMapper;
+    private final IMonitorContentService monitorContentService;
     private final IDeviceQueryService deviceQueryService;
 
     public AlarmEvaluationEngine(AlarmProperties properties, IAlarmRecordService alarmRecordService,
@@ -76,7 +76,7 @@ public class AlarmEvaluationEngine {
                                  IHazardPointService hazardPointService, CriteriaEvaluator criteriaEvaluator,
                                  AlarmDedupService dedupService, CriteriaCacheService criteriaCache,
                                  ApplicationEventPublisher eventPublisher,
-                                 MonitorContentMapper monitorContentMapper,
+                                 IMonitorContentService monitorContentService,
                                  IDeviceQueryService deviceQueryService) {
         this.properties = properties;
         this.alarmRecordService = alarmRecordService;
@@ -87,7 +87,7 @@ public class AlarmEvaluationEngine {
         this.dedupService = dedupService;
         this.criteriaCache = criteriaCache;
         this.eventPublisher = eventPublisher;
-        this.monitorContentMapper = monitorContentMapper;
+        this.monitorContentService = monitorContentService;
         this.deviceQueryService = deviceQueryService;
     }
 
@@ -245,7 +245,7 @@ public class AlarmEvaluationEngine {
      */
     private Long resolveMonitorTypeId(Long contentId) {
         try {
-            MonitorContent mc = monitorContentMapper.selectMonitorContentById(contentId);
+            MonitorContent mc = monitorContentService.selectMonitorContentById(contentId);
             if (mc == null) {
                 log.debug("[Alarm][Skip] monitor_content 记录不存在 contentId={}", contentId);
                 return null;
