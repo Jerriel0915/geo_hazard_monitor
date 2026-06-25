@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -65,6 +66,11 @@ public class DeviceSensor extends BaseEntity {
     private String monitorTypeName;
 
     /**
+     * 埋深(米)，地面为0点，向下为正，向上为负
+     */
+    private BigDecimal burialDepth;
+
+    /**
      * 状态: 0-禁用, 1-启用
      */
     private Integer status;
@@ -90,6 +96,7 @@ public class DeviceSensor extends BaseEntity {
                 ", monitorTypeId=" + monitorTypeId +
                 ", monitorTypeCode='" + monitorTypeCode + '\'' +
                 ", monitorTypeName='" + monitorTypeName + '\'' +
+                ", burialDepth=" + burialDepth +
                 ", status=" + status +
                 ", delFlag=" + delFlag +
                 '}';

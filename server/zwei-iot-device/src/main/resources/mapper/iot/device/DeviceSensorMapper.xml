@@ -14,6 +14,7 @@
         <result property="monitorTypeId" column="monitor_type_id"/>
         <result property="monitorTypeCode" column="monitor_type_code"/>
         <result property="monitorTypeName" column="monitor_type_name"/>
+        <result property="burialDepth" column="burial_depth"/>
         <result property="status" column="status"/>
         <result property="delFlag" column="del_flag"/>
         <result property="createBy" column="create_by"/>
@@ -32,6 +33,7 @@
                ds.monitor_type_id,
                ds.monitor_type_code,
                ds.monitor_type_name,
+               ds.burial_depth,
                ds.status,
                ds.del_flag,
                ds.create_by,
@@ -91,6 +93,7 @@
         <if test="monitorTypeId != null">monitor_type_id,</if>
         <if test="monitorTypeCode != null">monitor_type_code,</if>
         <if test="monitorTypeName != null">monitor_type_name,</if>
+        <if test="burialDepth != null">burial_depth,</if>
         <if test="status != null">status,</if>
         <if test="createBy != null and createBy != ''">create_by,</if>
         create_time
@@ -102,6 +105,7 @@
         <if test="monitorTypeId != null">#{monitorTypeId},</if>
         <if test="monitorTypeCode != null">#{monitorTypeCode},</if>
         <if test="monitorTypeName != null">#{monitorTypeName},</if>
+        <if test="burialDepth != null">#{burialDepth},</if>
         <if test="status != null">#{status},</if>
         <if test="createBy != null and createBy != ''">#{createBy},</if>
         SYSDATE()
@@ -119,6 +123,7 @@
             <if test="monitorTypeId != null">monitor_type_id = #{monitorTypeId},</if>
             <if test="monitorTypeCode != null">monitor_type_code = #{monitorTypeCode},</if>
             <if test="monitorTypeName != null">monitor_type_name = #{monitorTypeName},</if>
+            <if test="burialDepth != null">burial_depth = #{burialDepth},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             update_time = SYSDATE()

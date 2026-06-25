@@ -60,7 +60,13 @@
           </el-table-column>
           <el-table-column prop="sensorCode" label="传感器编号" width="150" align="center"/>
           <el-table-column prop="sensorName" label="传感器名称" width="150" align="center"/>
-          <el-table-column prop="monitorTypeName" label="监测类型" width="150" align="center"/>
+          <el-table-column prop="monitorTypeName" label="监测类型" width="120" align="center"/>
+          <el-table-column label="埋深(米)" width="90" align="center">
+            <template #default="{ row }">
+              <span v-if="row.burialDepth != null">{{ row.burialDepth }}</span>
+              <span v-else class="empty-text">-</span>
+            </template>
+          </el-table-column>
           <el-table-column label="属性配置" min-width="250" align="center">
             <template #default="{ row }">
               <div v-for="attr in row.attrList" :key="attr.attrCode" class="attr-item">

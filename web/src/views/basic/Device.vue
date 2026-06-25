@@ -378,7 +378,13 @@
       <el-table :data="isDraftMode ? draftSensors : sensorTableData" border size="small" v-loading="sensorLoading">
         <el-table-column prop="sensorCode" label="传感器编号" width="120" align="center" />
         <el-table-column prop="sensorName" label="传感器名称" width="130" align="center" />
-        <el-table-column prop="monitorTypeName" label="监测类型" width="160" align="center" />
+        <el-table-column prop="monitorTypeName" label="监测类型" width="130" align="center" />
+        <el-table-column label="埋深(米)" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.burialDepth != null">{{ row.burialDepth }}</span>
+            <span v-else class="empty-text">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
@@ -460,6 +466,21 @@
                 <el-option label="启用" :value="1" />
                 <el-option label="禁用" :value="0" />
               </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="埋深(米)" prop="burialDepth">
+              <el-input-number
+                  v-model="sensorFormData.burialDepth"
+                  :precision="2"
+                  :min="-9999"
+                  :max="9999"
+                  controls-position="right"
+                  placeholder="地面为0，向下为正"
+                  style="width: 100%"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -605,6 +626,7 @@ interface SensorFormModel {
   sensorName: string
   monitorTypeId: number | null
   monitorTypeName: string
+  burialDepth: number | null
   status: number
   attrList: SensorAttrItem[]
 }
@@ -675,6 +697,7 @@ interface SensorDraftItem {
   sensorName: string
   monitorTypeId: number | null
   monitorTypeName: string
+  burialDepth: number | null
   status: number
   attrList: SensorAttrItem[]
 }
@@ -805,6 +828,7 @@ const sensorFormData = reactive<SensorFormModel>({
   sensorName: '',
   monitorTypeId: null,
   monitorTypeName: '',
+  burialDepth: null,
   status: 1,
   attrList: []
 })
@@ -1069,6 +1093,7 @@ const resetSensorForm = () => {
     sensorName: '',
     monitorTypeId: null,
     monitorTypeName: '',
+    burialDepth: null,
     status: 1,
     attrList: []
   })
@@ -1159,6 +1184,7 @@ const handleEditSensor = async (row: SensorItem | SensorDraftItem) => {
         sensorName: draft.sensorName,
         monitorTypeId: draft.monitorTypeId,
         monitorTypeName: draft.monitorTypeName || '',
+        burialDepth: draft.burialDepth ?? null,
         status: draft.status,
         attrList: draft.attrList.map(a => ({ ...a })),
       })
@@ -1175,6 +1201,7 @@ const handleEditSensor = async (row: SensorItem | SensorDraftItem) => {
       sensorName: detail.sensorName,
       monitorTypeId: detail.monitorTypeId,
       monitorTypeName: detail.monitorTypeName || '',
+      burialDepth: detail.burialDepth ?? null,
       status: detail.status,
       attrList: (detail.attrList || []).map((attr) => ({
         id: attr.id,
@@ -1296,6 +1323,7 @@ const buildSensorPayload = () => ({
   sensorCode: sensorFormData.sensorCode.trim(),
   sensorName: sensorFormData.sensorName.trim(),
   monitorTypeId: Number(sensorFormData.monitorTypeId),
+  burialDepth: sensorFormData.burialDepth ?? undefined,
   status: sensorFormData.status,
   attrList: sensorFormData.attrList.map((attr) => ({
     id: attr.id,
@@ -1337,6 +1365,7 @@ const handleSensorSubmit = () => {
             sensorName: payload.sensorName,
             monitorTypeId: sensorFormData.monitorTypeId,
             monitorTypeName: sensorFormData.monitorTypeName,
+            burialDepth: sensorFormData.burialDepth ?? null,
             status: sensorFormData.status,
             attrList: sensorFormData.attrList.map(a => ({ ...a })),
           })
@@ -1351,6 +1380,7 @@ const handleSensorSubmit = () => {
               sensorName: payload.sensorName,
               monitorTypeId: sensorFormData.monitorTypeId!,
               monitorTypeName: sensorFormData.monitorTypeName,
+              burialDepth: sensorFormData.burialDepth ?? null,
               status: sensorFormData.status,
               attrList: sensorFormData.attrList.map(a => ({ ...a })),
             }
@@ -1368,6 +1398,7 @@ const handleSensorSubmit = () => {
       } else if (sensorFormData.id) {
         await updateSensor(sensorFormData.id, {
           sensorName: payload.sensorName,
+          burialDepth: payload.burialDepth,
           status: payload.status,
           attrList: payload.attrList
         })
@@ -1429,6 +1460,7 @@ const commitDraft = async () => {
         sensorCode: s.sensorCode.trim(),
         sensorName: s.sensorName.trim(),
         monitorTypeId: Number(s.monitorTypeId),
+        burialDepth: s.burialDepth ?? undefined,
         status: s.status,
         attrList: s.attrList.map(a => ({
           attrCode: a.attrCode.trim(),
@@ -1508,6 +1540,7 @@ watch(draftMode, async (mode) => {
         sensorName: s.sensorName,
         monitorTypeId: s.monitorTypeId,
         monitorTypeName: s.monitorTypeName || '',
+        burialDepth: s.burialDepth ?? null,
         status: s.status,
         attrList: (s.attrList || []).map((a: any) => ({
           attrCode: a.attrCode,
