@@ -44,6 +44,9 @@ public class MonitorDataController {
     /**
      * 分页查询隐患点下的历史监测数据。
      *
+     * <p>支持两种分页模式：传 {@code cursor}（上一页最后一行时间戳）走 keyset 游标路径；
+     * 传 {@code pageNum} 走传统 offset 路径（多测点时有合并行数上限守护）。</p>
+     *
      * @param hazardPointId 隐患点ID
      * @param deviceId      设备ID，可选
      * @param sensorId      传感器ID，可选
@@ -52,6 +55,7 @@ public class MonitorDataController {
      * @param endTime       结束时间，可选
      * @param pageNum       页码
      * @param pageSize      每页条数
+     * @param cursor        游标时间戳（毫秒），上一页最后一行时间，可选
      * @return 分页监测数据结果
      */
     @PreAuthorize("@ss.hasPermi('basic:device:query')")
@@ -64,9 +68,10 @@ public class MonitorDataController {
                            @RequestParam(required = false) String startTime,
                            @RequestParam(required = false) String endTime,
                            @RequestParam(defaultValue = "1") int pageNum,
-                           @RequestParam(defaultValue = "10") int pageSize) {
+                           @RequestParam(defaultValue = "10") int pageSize,
+                           @RequestParam(required = false) Long cursor) {
         return AjaxResult.success("成功", monitorDataQueryService.page(
-                hazardPointId, deviceId, sensorId, attrCode, valueType, startTime, endTime, pageNum, pageSize
+                hazardPointId, deviceId, sensorId, attrCode, valueType, startTime, endTime, pageNum, pageSize, cursor
         ));
     }
 

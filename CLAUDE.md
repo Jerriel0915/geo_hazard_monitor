@@ -25,6 +25,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 2026-06-25 10:00 | **SSE 订阅泄漏修复**: 3 个发布器 25s 心跳 + Nginx 90s 超时 + 前端重连定时器管理 | AlarmStreamPublisher/NoticeStreamPublisher/LogStreamPublisher 新增 @Scheduled heartbeat()；Nginx proxy_read_timeout 60s→90s；layout/index.vue 重连定时器跟踪 + stopped 标志 + onUnmounted 清理；ThreadPoolConfig 新增 TaskScheduler Bean (poolSize=4)；新增 NoticeStreamPublisherTest (3 case) + 扩展 AlarmStreamPublisherTest (2 case)/LogStreamPublisherTest (1 case) |
 | 2026-06-14 17:30 | 增强 iot-timeseries 查询能力 | 7 domain + 2 service + 1 controller + IotdbTimeSeriesService 新增 6 方法,ExpressionSpec DSL + 数值范围 + 完整度/趋势 |
 | 2026-06-10 19:08 | 模块索引表追加 `db` 行                                                                                                            | MySQL 8.0 全量脚本 + 升级                                                                                                                                                                       |
+| 2026-06-26 11:00 | **P0 图表自动降采样**: MonitorDataQueryService.chart() 自动决策 + IotdbTimeSeriesService 新增 2 查询方法 + MonitorQueryProperties 配置 | 区间估算点数>2000 自动切 GROUP BY 桶(AVG); raw 路径 LIMIT 4000 兜底防 OOM; ChartDataVO 加 sampled/downsampleInterval/pointCount; 前端 ChartData 接口同步; 109 模块测试通过 + 18 模块编译成功; 设计文档 docs/superpowers/specs/2026-06-26-query-performance-optimization-design.md |
+| 2026-06-26 14:30 | **P1 多测点 keyset 游标分页 + offset 上限守护**: MonitorDataQueryService.page() keyset cursor 支持 + IotdbTimeSeriesService.queryRangeCursor + MonitorQueryProperties.maxMergeRows | 多测点传 cursor 走游标路径(内存 O(measurements×pageSize)); offset 路径加 maxMergeRows=5000 上限守护; Controller 加 cursor 参; 前端 MonitorDataPageQuery 加 cursor; 新增 8 test cases; 116 模块测试通过 |
 
 ## Project Overview
 

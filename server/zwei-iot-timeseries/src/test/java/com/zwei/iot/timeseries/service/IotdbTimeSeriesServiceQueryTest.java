@@ -326,4 +326,85 @@ class IotdbTimeSeriesServiceQueryTest {
         assertThat(vo.trendDirection()).isEqualTo("unknown");
         assertThat(vo.slopePerMs()).isNull();
     }
+
+    // ==================== P0: 降采样查询方法 ====================
+
+    @Test
+    @DisplayName("queryRangeWithLimit — SQL 含 LIMIT 子句,返回行数受限")
+    void queryRangeWithLimit_sqlContainsLimit() throws Exception {
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getLong("Time")).thenReturn(1700000000000L);
+        when(resultSet.getObject("root.zwei.d1.srain_01.rainfall")).thenReturn(12.5);
+        when(resultSet.getObject("root.zwei.d1.srain_01.quality")).thenReturn(0);
+
+        List<IotdbQueryRow> rows = service.queryRangeWithLimit(
+                1L, "rain_01", "rainfall", 1700000000000L, 1800000000000L, 4000);
+
+        assertThat(rows).hasSize(1);
+        verify(statement).executeQuery(argThat((String sql) ->
+                sql.contains("LIMIT 4000") && sql.contains("time >= 1700000000000")
+                        && sql.contains("time < 1800000000000")
+        ));
+    }
+
+    @Test
+    @DisplayName("queryRangeDownsampled — SQL 含 GROUP BY + AVG + 指定 interval")
+    void queryRangeDownsampled_sqlContainsGroupBy() throws Exception {
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getLong("Time")).thenReturn(1700000000000L);
+        when(resultSet.getObject("AVG(root.zwei.d1.srain_01.rainfall)")).thenReturn(12.5);
+        when(resultSet.getObject("AVG(root.zwei.d1.srain_01.quality)")).thenReturn(0);
+
+        List<IotdbQueryRow> rows = service.queryRangeDownsampled(
+                1L, "rain_01", "rainfall", 1700000000000L, 1800000000000L, "10m");
+
+        assertThat(rows).hasSize(1);
+        verify(statement).executeQuery(argThat((String sql) ->
+                sql.contains("AVG(rainfall)") && sql.contains("AVG(quality)")
+                        && sql.contains("GROUP BY ([1700000000000, 1800000000000), 10m)")
+        ));
+    }
+
+    // ==================== P1: 游标分页查询方法 ====================
+
+    @Test
+    @DisplayName("queryRangeCursor — SQL 含 time < cursor + ORDER BY TIME DESC LIMIT")
+    void queryRangeCursor_withCursor_producesCorrectSql() throws Exception {
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getLong("Time")).thenReturn(1699999990000L);
+        when(resultSet.getObject("root.zwei.d1.srain_01.rainfall")).thenReturn(10.0);
+        when(resultSet.getObject("root.zwei.d1.srain_01.quality")).thenReturn(0);
+
+        List<IotdbQueryRow> rows = service.queryRangeCursor(
+                1L, "rain_01", "rainfall",
+                1700000000000L, 1800000000000L, 1700005000000L, 20);
+
+        assertThat(rows).hasSize(1);
+        verify(statement).executeQuery(argThat((String sql) ->
+                sql.contains("time >= 1700000000000") && sql.contains("time < 1800000000000")
+                        && sql.contains("time < 1700005000000")
+                        && sql.contains("ORDER BY TIME DESC LIMIT 20")
+        ));
+    }
+
+    @Test
+    @DisplayName("queryRangeCursor — cursor 为 null 时不含 cursor 条件")
+    void queryRangeCursor_nullCursor_omitsCursorCondition() throws Exception {
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getLong("Time")).thenReturn(1699999990000L);
+        when(resultSet.getObject("root.zwei.d1.srain_01.rainfall")).thenReturn(10.0);
+        when(resultSet.getObject("root.zwei.d1.srain_01.quality")).thenReturn(0);
+
+        List<IotdbQueryRow> rows = service.queryRangeCursor(
+                1L, "rain_01", "rainfall",
+                1700000000000L, null, null, 20);
+
+        assertThat(rows).hasSize(1);
+        verify(statement).executeQuery(argThat((String sql) ->
+                sql.contains("time >= 1700000000000")
+                        && !sql.contains("time < 1800000000000")
+                        && !sql.contains("time < 1700005000000")
+                        && sql.contains("ORDER BY TIME DESC LIMIT 20")
+        ));
+    }
 }

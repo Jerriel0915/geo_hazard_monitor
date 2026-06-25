@@ -28,6 +28,9 @@ export interface ChartData {
     maxValue: number | null
     minValue: number | null
     avgValue: number | null
+    sampled?: boolean
+    downsampleInterval?: string
+    pointCount?: number
 }
 
 export interface MonitorDataPageItem {
@@ -56,6 +59,7 @@ export interface MonitorDataPageQuery {
     endTime?: string
     pageNum?: number
     pageSize?: number
+    cursor?: number
 }
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
