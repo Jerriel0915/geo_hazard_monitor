@@ -298,20 +298,19 @@ public class MonitorIngestConsumerService {
             iotdbTimeSeriesService.writePoints(points);
             // 累计监测次数 (+N)
             redisTemplate.opsForValue().increment("stats:total:monitor:count", points.size());
-            // Operational metrics callback
-            for (StandardMeasurementPoint pt : points) {
-                deviceOnlineStatusService.updateLastReportAt(pt.deviceId());
-                if (pt.sensorId() != null) {
-                    String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                            .format(new java.util.Date(pt.dataTime()));
-                    deviceSensorService.updateLastReportTime(pt.sensorId(), now);
-                }
-                deviceMapper.updateDevice(Device.builder()
-                        .id(pt.deviceId())
-                        .lastReportTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                                .format(new java.util.Date(pt.dataTime())))
-                        .build());
+            // Operational metrics — 按 deviceId/sensorId 去重，避免同一报文多属性时写放大
+            Long metricsDeviceId = points.get(0).deviceId();
+            Long metricsSensorId = points.get(0).sensorId();
+            String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    .format(new java.util.Date(points.get(0).dataTime()));
+            deviceOnlineStatusService.updateLastReportAt(metricsDeviceId);
+            if (metricsSensorId != null) {
+                deviceSensorService.updateLastReportTime(metricsSensorId, now);
             }
+            deviceMapper.updateDevice(Device.builder()
+                    .id(metricsDeviceId)
+                    .lastReportTime(now)
+                    .build());
             log.info("ParsedMessage ingested: deviceCode={} sensorCode={} properties={}",
                     parsed.deviceCode(), parsed.sensorCode(), points.size());
             // ── prev snapshot: get 必须在 put 之前, 此时 store 里是上一条 ──
