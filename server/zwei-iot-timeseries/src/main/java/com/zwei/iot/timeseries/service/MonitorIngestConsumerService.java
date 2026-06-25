@@ -20,6 +20,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.connection.stream.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * 监测数据异步消费者 — Redis Stream → IoTDB 落库。
@@ -72,6 +74,9 @@ public class MonitorIngestConsumerService {
     private final ExecutorService executorService;
     private final ScheduledExecutorService retryScheduler;
     private volatile boolean running = true;
+
+    /** 本地监测计数累加器，避免每条消息都做 Redis INCR */
+    private final LongAdder monitorCountAdder = new LongAdder();
 
     /**
      * 构造监测数据流消费者。
@@ -155,6 +160,19 @@ public class MonitorIngestConsumerService {
         }
         executorService.shutdownNow();
         executorService.awaitTermination(5, TimeUnit.SECONDS);
+        // 最后将本地未刷入的计数写入 Redis
+        flushMonitorCount();
+    }
+
+    /**
+     * 每分钟将本地 LongAdder 累加值批量回写 Redis，避免每条消息都做 INCR。
+     */
+    @Scheduled(fixedDelay = 60_000)
+    void flushMonitorCount() {
+        long count = monitorCountAdder.sumThenReset();
+        if (count > 0) {
+            redisTemplate.opsForValue().increment("stats:total:monitor:count", count);
+        }
     }
 
     /**
@@ -225,7 +243,7 @@ public class MonitorIngestConsumerService {
             // writePoints 内部惰性建表：首次写入自动创建 aligned timeseries + 质量码列
             iotdbTimeSeriesService.writePoints(List.of(point));
             // 累计监测次数 (+1)
-            redisTemplate.opsForValue().increment("stats:total:monitor:count");
+            monitorCountAdder.increment();
             // ── 阶段3: 运维指标回写 ──
             // 三个维度：device_online_status（实时在线状态）、device_sensor（传感器活跃率）、device（兼容保留）
             deviceOnlineStatusService.updateLastReportAt(point.deviceId());
@@ -297,7 +315,7 @@ public class MonitorIngestConsumerService {
             points = nonDuplicatePoints;
             iotdbTimeSeriesService.writePoints(points);
             // 累计监测次数 (+N)
-            redisTemplate.opsForValue().increment("stats:total:monitor:count", points.size());
+            monitorCountAdder.add(points.size());
             // Operational metrics — 按 deviceId/sensorId 去重，避免同一报文多属性时写放大
             Long metricsDeviceId = points.get(0).deviceId();
             Long metricsSensorId = points.get(0).sensorId();

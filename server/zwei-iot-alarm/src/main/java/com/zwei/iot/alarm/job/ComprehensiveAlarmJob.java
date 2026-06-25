@@ -9,6 +9,7 @@ import com.zwei.iot.alarm.mapper.AlarmStrategyMapper;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import com.zwei.iot.alarm.service.engine.AlarmDedupService;
 import com.zwei.iot.alarm.service.engine.GroovyScriptExecutor;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -18,6 +19,10 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 综合告警策略周期触发任务。
@@ -31,6 +36,9 @@ import java.util.*;
 public class ComprehensiveAlarmJob {
 
     private static final Logger log = LoggerFactory.getLogger(ComprehensiveAlarmJob.class);
+
+    /** 策略并发执行线程池 — 互不相关的策略并行执行，避免串行耗时累积超过调度间隔 */
+    private final ExecutorService strategyExecutor = Executors.newFixedThreadPool(4);
 
     private final AlarmStrategyMapper strategyMapper;
     private final AlarmStrategyHazardPointMapper bindingMapper;
@@ -63,13 +71,36 @@ public class ComprehensiveAlarmJob {
             return;
         }
 
+        CountDownLatch latch = new CountDownLatch(strategies.size());
         for (AlarmStrategy strategy : strategies) {
-            try {
-                executeStrategy(strategy);
-            } catch (Exception e) {
-                log.error("综合策略执行失败 strategyId={} name={}", strategy.getId(), strategy.getName(), e);
-                updateResult(strategy.getId(), "FAIL");
+            strategyExecutor.execute(() -> {
+                try {
+                    executeStrategy(strategy);
+                } catch (Exception e) {
+                    log.error("综合策略执行失败 strategyId={} name={}", strategy.getId(), strategy.getName(), e);
+                    updateResult(strategy.getId(), "FAIL");
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+        try {
+            latch.await(45, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @PreDestroy
+    void shutdown() {
+        strategyExecutor.shutdown();
+        try {
+            if (!strategyExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                strategyExecutor.shutdownNow();
             }
+        } catch (InterruptedException e) {
+            strategyExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 

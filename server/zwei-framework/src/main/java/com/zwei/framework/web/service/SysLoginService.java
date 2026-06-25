@@ -129,7 +129,7 @@ public class SysLoginService
                 throw new CaptchaExpireException();
             }
             redisCache.deleteObject(verifyKey);
-            if (!code.equalsIgnoreCase(captcha))
+            if (StringUtils.isEmpty(code) || !code.equalsIgnoreCase(captcha))
             {
                 publishLoginFailure(username, MessageUtils.message("user.jcaptcha.error"));
                 throw new CaptchaException();

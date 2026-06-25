@@ -68,23 +68,29 @@ public class MqttServerMessageListener {
         // 避免 Long → String → Long 的往返转换及 NumberFormatException 风险。
         String clientId = context.getBsId();
         if (StringUtils.isBlank(clientId)) {
-            log.warn("监测消息缺少客户端标识，跳过。topic={}", topic);
+            log.warn("监测消息缺少客户端标识，跳过。topic={}", sanitize(topic));
             return;
         }
         Optional<MqttDeviceSession> session = sessionRegistry.getByClientId(clientId);
         if (session.isEmpty()) {
-            log.warn("监测消息未找到已认证会话，跳过。topic={}, clientId={}", topic, clientId);
+            log.warn("监测消息未找到已认证会话，跳过。topic={}, clientId={}", sanitize(topic), sanitize(clientId));
             return;
         }
         Long deviceId = session.get().deviceId();
         String username = session.get().authUsername();
-        log.debug("收到监测主题消息 clientNode={}, topic={}", clientNode, topic);
+        log.debug("收到监测主题消息 clientNode={}, topic={}", sanitize(String.valueOf(clientNode)), sanitize(topic));
         try {
             eventPublisher.publishEvent(new MqttMessageReceivedEvent(
                     clientId, username, topic, message, System.currentTimeMillis()));
             monitorIngestFacade.ingest(topic, message, deviceId);
         } catch (Exception e) {
-            log.error("监测消息处理失败。topic={}, deviceId={}, clientId={}", topic, deviceId, clientId, e);
+            log.error("监测消息处理失败。topic={}, deviceId={}, clientId={}", sanitize(topic), deviceId, sanitize(clientId), e);
         }
+    }
+
+    /** 转义日志参数中的控制字符（\r\n\t 等），防止日志注入伪造日志行 */
+    private static String sanitize(String s) {
+        if (s == null) return null;
+        return s.replaceAll("[\r\n\t]", "?");
     }
 }
