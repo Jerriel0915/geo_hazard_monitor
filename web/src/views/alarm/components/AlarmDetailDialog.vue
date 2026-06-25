@@ -127,7 +127,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetAlarmRecords">重置</el-button>
                 </div>
-                <el-table :data="filteredAlarmRecords" border stripe size="small" :height="308" empty-text="暂无告警记录">
+                <el-table :data="filteredAlarmRecords" border stripe size="small" :max-height="400" empty-text="暂无告警记录">
                   <el-table-column prop="triggerTime" label="告警时间" width="180" />
                   <el-table-column prop="alarmLevel" label="告警等级" width="100">
                     <template #default="{ row }">
@@ -148,7 +148,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetNotifyRecords">重置</el-button>
                 </div>
-                <el-table :data="filteredNotifyRecords" border stripe size="small" :height="308" empty-text="暂无通知记录">
+                <el-table :data="filteredNotifyRecords" border stripe size="small" :max-height="400" empty-text="暂无通知记录">
                   <el-table-column prop="createTime" label="通知时间" width="180" />
                   <el-table-column prop="channel" label="渠道" width="90">
                     <template #default="{ row }">
@@ -167,7 +167,7 @@
 
               <!-- 处置记录 (API: getActionLogs 过滤 FEEDBACK/DISPOSE_*) -->
               <div v-show="activeTab === 'disposal'" class="tab-content">
-                <el-table :data="disposalRecords" border stripe size="small" :height="350" empty-text="暂无处置记录">
+                <el-table :data="disposalRecords" border stripe size="small" :max-height="400" empty-text="暂无处置记录">
                   <el-table-column prop="createTime" label="处置时间" width="180" />
                   <el-table-column prop="operator" label="处置人员" width="120" />
                   <el-table-column prop="description" label="描述" min-width="220" show-overflow-tooltip />
@@ -976,7 +976,9 @@ const handleClose = () => { emit('update:modelValue', false) }
 }
 .data-tabs .tab.active { color: #409eff; border-bottom-color: #409eff; font-weight: 600; }
 .tab-content {
-  height: 380px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
