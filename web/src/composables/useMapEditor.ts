@@ -324,15 +324,23 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     const map = leaflet.map.value
     if (!map) return
 
-    // polygon
+    // polygon — view mode uses lighter style to reduce visual weight
     if (polygon.value.length >= 3) {
       const latlngs: L.LatLngExpression[] = polygon.value.map(p => [p.lat, p.lng])
+      const isEdit = mode.value === 'edit'
       if (polygonLayer.value) {
         polygonLayer.value.setLatLngs(latlngs)
+        polygonLayer.value.setStyle({
+          fillOpacity: isEdit ? 0.12 : 0.06,
+          weight: isEdit ? 2 : 1.5,
+          dashArray: isEdit ? '4 2' : ''
+        })
       } else {
         polygonLayer.value = L.polygon(latlngs, {
-          color: '#1890ff', fillColor: '#1890ff', fillOpacity: 0.15, weight: 2,
-          dashArray: mode.value === 'edit' ? '4 2' : undefined
+          color: '#1890ff', fillColor: '#1890ff',
+          fillOpacity: isEdit ? 0.12 : 0.06,
+          weight: isEdit ? 2 : 1.5,
+          dashArray: isEdit ? '4 2' : undefined
         }).addTo(map)
       }
     } else if (polygonLayer.value) {
@@ -340,37 +348,45 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
       polygonLayer.value = null
     }
 
-    // vertex markers — incremental update so we don't kill the one being dragged
-    // 1. Remove excess markers (when polygon shrinks)
-    while (vertexMarkers.value.length > polygon.value.length) {
-      const m = vertexMarkers.value.pop()!
-      m.remove()
-    }
-    // 2. For each polygon vertex, ensure a marker exists at the right position
-    vertexMarkers.value = polygon.value.map((p, i) => {
-      const isSelected = selectedId.value?.kind === 'polygon-vertex' && selectedId.value.index === i
-      return ensureDraggableVertex(map, {
-        position: p,
-        existing: vertexMarkers.value[i],
-        isDragging: i === draggingVertexIndex.value,
-        iconHtml: vertexHtml(isSelected, mode.value === 'edit'),
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-        iconClass: 'vertex-marker',
-        onDragStart: () => {
-          draggingVertexIndex.value = i
-        },
-        onDrag: pos => moveVertex({kind: 'polygon-vertex', index: i}, pos),
-        onDragEnd: () => {
-          draggingVertexIndex.value = null
-        },
-        onClick: () => {
-          if (mode.value === 'edit') select({kind: 'polygon-vertex', index: i})
-        },
-        canMove: () => mode.value === 'edit' && canEdit.value,
-        snapBackTo: () => polygon.value[i]
+    // vertex markers — only render in edit mode for a cleaner view;
+    // in view mode the polygon outline alone is sufficient
+    if (mode.value === 'edit') {
+      // incremental update so we don't kill the one being dragged
+      // 1. Remove excess markers (when polygon shrinks)
+      while (vertexMarkers.value.length > polygon.value.length) {
+        const m = vertexMarkers.value.pop()!
+        m.remove()
+      }
+      // 2. For each polygon vertex, ensure a marker exists at the right position
+      vertexMarkers.value = polygon.value.map((p, i) => {
+        const isSelected = selectedId.value?.kind === 'polygon-vertex' && selectedId.value.index === i
+        return ensureDraggableVertex(map, {
+          position: p,
+          existing: vertexMarkers.value[i],
+          isDragging: i === draggingVertexIndex.value,
+          iconHtml: vertexHtml(isSelected, mode.value === 'edit'),
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+          iconClass: 'vertex-marker',
+          onDragStart: () => {
+            draggingVertexIndex.value = i
+          },
+          onDrag: pos => moveVertex({kind: 'polygon-vertex', index: i}, pos),
+          onDragEnd: () => {
+            draggingVertexIndex.value = null
+          },
+          onClick: () => {
+            if (mode.value === 'edit') select({kind: 'polygon-vertex', index: i})
+          },
+          canMove: () => mode.value === 'edit' && canEdit.value,
+          snapBackTo: () => polygon.value[i]
+        })
       })
-    })
+    } else {
+      // View mode: remove all vertex markers for a clean polygon outline
+      vertexMarkers.value.forEach(m => m.remove())
+      vertexMarkers.value = []
+    }
 
     // strike line + endpoint markers
     if (strikeLine.value) {

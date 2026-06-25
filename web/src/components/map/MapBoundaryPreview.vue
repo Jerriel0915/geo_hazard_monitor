@@ -7,7 +7,7 @@
 <script setup lang="ts">
 /**
  * 只读地图预览组件 — 直接照搬编辑器的渲染样式, 在地图上完整显示:
- *   - 多边形蓝色描边 + 绿色小圆点顶点标记（无序号, 缩小尺寸）
+ *   - 多边形蓝色描边（轻量填充, 不显示顶点标记）
  *   - 走向红色虚线 + 红色编号端点标记
  *   - 辅助线橙色虚线 + 橙色小方形点标记（缩小以突出线本身）
  *   - 中心点蓝色小星形
@@ -47,11 +47,7 @@ const leaflet = useLeafletMap({
   zoom: 14
 })
 
-/** 多边形顶点图标 (与 useMapEditor 中 vertexHtml 保持一致) */
-function vertexHtml(): string {
-  return `<div style="background:#67C23A;width:10px;height:10px;border-radius:50%;border:1.5px solid #fff;"></div>`
-}
-
+/** 走向端点图标 */
 const STRIKE_ENDPOINT_HTML = (idx: number) =>
     `<div style="background:#f56c6c;color:#fff;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:1.5px solid #fff;">${idx + 1}</div>`
 
@@ -89,23 +85,11 @@ function renderBoundary(map: L.Map) {
     L.polygon(bc.polygon.map(p => [p.lat, p.lng] as L.LatLngTuple), {
       color: '#1890ff',
       fillColor: '#1890ff',
-      fillOpacity: 0.10,
-      weight: 2
+      fillOpacity: 0.06,
+      weight: 1.5
     }).addTo(lg).bindPopup(
         `<div style="font-size:12px"><b>监测范围</b><br>顶点数: ${bc.polygon.length}</div>`
     )
-
-    // 绿色顶点
-    bc.polygon.forEach((p) => {
-      L.marker([p.lat, p.lng], {
-        icon: L.divIcon({
-          className: 'preview-vertex-marker',
-          html: vertexHtml(),
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
-        })
-      }).addTo(lg)
-    })
   }
 
   // === 走向线 ===

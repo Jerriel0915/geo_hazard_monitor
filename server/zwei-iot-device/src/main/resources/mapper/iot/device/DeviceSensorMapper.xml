@@ -17,6 +17,7 @@
         <result property="burialDepth" column="burial_depth"/>
         <result property="status" column="status"/>
         <result property="delFlag" column="del_flag"/>
+        <result property="iconPath" column="monitor_type_icon"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
         <result property="updateBy" column="update_by"/>
@@ -39,8 +40,10 @@
                ds.create_by,
                ds.create_time,
                ds.update_by,
-               ds.update_time
+               ds.update_time,
+               mt.icon AS monitor_type_icon
         FROM device_sensor ds
+        LEFT JOIN monitor_type mt ON ds.monitor_type_id = mt.id
     </sql>
 
     <!-- ==================== 查询操作 ==================== -->

@@ -81,6 +81,12 @@ public class DeviceSensor extends BaseEntity {
     private Integer delFlag;
 
     /**
+     * 监测类型图标路径 (来自 monitor_type.icon, 非持久化字段, 仅查询时 JOIN 填充)
+     * <p>供前端 getSensorIconPath() 解析, 缺失时前端按 monitorTypeName 兜底。</p>
+     */
+    private String iconPath;
+
+    /**
      * 属性列表（查询详情时返回）
      */
     private List<SensorAttribute> attrList;
@@ -99,6 +105,7 @@ public class DeviceSensor extends BaseEntity {
                 ", burialDepth=" + burialDepth +
                 ", status=" + status +
                 ", delFlag=" + delFlag +
+                ", iconPath='" + iconPath + '\'' +
                 '}';
     }
 }
