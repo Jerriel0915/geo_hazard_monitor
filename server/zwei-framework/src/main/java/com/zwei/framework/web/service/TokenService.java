@@ -248,12 +248,21 @@ public class TokenService
         {
             token = token.replace(Constants.TOKEN_PREFIX, "");
         }
-        // EventSource SSE 连接无法携带自定义请求头，前端通过 ?token=xxx 查询参数传递
-        if (StringUtils.isEmpty(token))
+        // EventSource SSE 连接无法携带自定义请求头，仅在 SSE 请求时允许 ?token=xxx 查询参数回退
+        if (StringUtils.isEmpty(token) && isSseRequest(request))
         {
             token = request.getParameter("token");
         }
         return token;
+    }
+
+    /**
+     * 判断是否为 SSE（Server-Sent Events）请求。
+     * 浏览器 EventSource API 始终发送 Accept: text/event-stream 请求头。
+     */
+    private boolean isSseRequest(HttpServletRequest request) {
+        String accept = request.getHeader("Accept");
+        return StringUtils.isNotEmpty(accept) && accept.contains("text/event-stream");
     }
 
     private String getTokenKey(String uuid)
