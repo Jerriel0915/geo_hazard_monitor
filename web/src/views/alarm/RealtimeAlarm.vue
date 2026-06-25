@@ -1,4 +1,4 @@
-<!--代办告警 -->
+<!--待办告警 -->
 <template>
   <div class="page">
     <div class="header">
@@ -33,10 +33,11 @@
       <el-date-picker
           v-model="queryParams.alarmTimeRange"
           type="daterange"
-          range-separator=""
+          range-separator="至"
           start-placeholder="告警时间:开始"
           end-placeholder="告警时间:结束"
-          value-format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
       />
       <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple collapse-tags collapse-tags-tooltip class="search__select">
         <el-option v-for="lv in [1,2,3,4]" :key="lv" :label="getAlarmLevelConfig(lv).text" :value="lv">
@@ -163,10 +164,25 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-// 查询参数（已移除人员名称）
+// 获取默认时间范围：最近7天
+const getDefaultTimeRange = (): [string, string] => {
+  const end = new Date()
+  const start = new Date()
+  start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+  const format = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day} 00:00:00`
+  }
+  const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
+  return [format(start), endStr]
+}
+
+// 查询参数
 const queryParams = reactive({
   hazardPointName: '',
-  alarmTimeRange: [] as string[],
+  alarmTimeRange: getDefaultTimeRange() as string[],
   alarmLevel: [] as number[],
   alarmType: [] as string[],
   status: [] as number[],
@@ -249,7 +265,7 @@ const getStatusText = (status: number | string) => {
 const handleQuery = () => { pagination.currentPage = 1; loadList() }
 const handleReset = () => {
   queryParams.hazardPointName = ''
-  queryParams.alarmTimeRange = []
+  queryParams.alarmTimeRange = getDefaultTimeRange()
   queryParams.alarmLevel = []
   queryParams.alarmType = []
   queryParams.status = []

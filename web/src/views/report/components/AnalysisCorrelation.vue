@@ -271,6 +271,15 @@ const confirmAddSensor = () => {
   const attr = attrs.find((a) => a.code === addSensorForm.attrCode)
   if (!device || !attr) return
 
+  // 去重：同一 deviceId + attrCode 组合不允许重复添加
+  const exists = selectedSensors.value.some(
+    (s) => s.deviceId === device.id && s.attrCode === addSensorForm.attrCode
+  )
+  if (exists) {
+    ElMessage.warning('该传感器属性已添加，请勿重复添加')
+    return
+  }
+
   const hp = hazardPointOptions.value.find((h) => h.id === addSensorForm.hazardPointId)
   const id = `${device.id}_${addSensorForm.attrCode}_${Date.now()}`
   const colorIndex = selectedSensors.value.length % COLORS.length
