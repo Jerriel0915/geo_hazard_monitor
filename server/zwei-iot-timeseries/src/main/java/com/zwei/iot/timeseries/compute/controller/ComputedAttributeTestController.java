@@ -6,6 +6,8 @@ import com.zwei.iot.parser.engine.GroovyScriptEngine;
 import com.zwei.iot.timeseries.compute.ComputedAttribute;
 import com.zwei.iot.timeseries.compute.ComputedAttributeRegistry;
 import com.zwei.iot.timeseries.compute.ComputedScriptAssembler;
+import com.zwei.iot.timeseries.compute.ScriptCacheOps;
+import com.zwei.iot.timeseries.compute.ScriptSensorQuery;
 import com.zwei.iot.timeseries.compute.dto.CalcScriptTestRequest;
 import com.zwei.iot.timeseries.compute.dto.CalcScriptTestResult;
 import jakarta.validation.Valid;
@@ -34,14 +36,20 @@ public class ComputedAttributeTestController extends BaseController {
     private final ComputedAttributeRegistry registry;
     private final ComputedScriptAssembler assembler;
     private final GroovyScriptEngine scriptEngine;
+    private final ScriptCacheOps cacheOps;
+    private final ScriptSensorQuery scriptSensorQuery;
 
     @Autowired
     public ComputedAttributeTestController(ComputedAttributeRegistry registry,
                                            ComputedScriptAssembler assembler,
-                                           GroovyScriptEngine scriptEngine) {
+                                           GroovyScriptEngine scriptEngine,
+                                           ScriptCacheOps cacheOps,
+                                           ScriptSensorQuery scriptSensorQuery) {
         this.registry = registry;
         this.assembler = assembler;
         this.scriptEngine = scriptEngine;
+        this.cacheOps = cacheOps;
+        this.scriptSensorQuery = scriptSensorQuery;
     }
 
     @PreAuthorize("@ss.hasPermi('basic:monitorContent:test')")
@@ -76,7 +84,8 @@ public class ComputedAttributeTestController extends BaseController {
         Map<String, Object> prevData = request.getPrevData();
 
         long start = System.currentTimeMillis();
-        Map<String, Object> result = scriptEngine.executeComputed(script, curData, prevData);
+        Map<String, Object> tools = Map.of("cache", cacheOps, "sensor", scriptSensorQuery);
+        Map<String, Object> result = scriptEngine.executeComputed(script, curData, prevData, tools);
         long elapsed = System.currentTimeMillis() - start;
 
         // 4. 检查是否有执行异常
