@@ -13,6 +13,8 @@ import com.zwei.iot.timeseries.compute.ComputedAttributeEvaluator;
 import com.zwei.iot.timeseries.compute.ComputedAttributeRegistry;
 import com.zwei.iot.timeseries.compute.ComputedScriptAssembler;
 import com.zwei.iot.timeseries.compute.LastMessageStore;
+import com.zwei.iot.timeseries.compute.ScriptCacheOps;
+import com.zwei.iot.timeseries.compute.ScriptSensorQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -73,7 +75,8 @@ class ComputedAttributeIngestTest {
                         .attributes(List.of()).build());
 
         evaluator = new ComputedAttributeEvaluator(
-                sensorQuery, registry, assembler, lastMessageStore, scriptEngine);
+                sensorQuery, registry, assembler, lastMessageStore, scriptEngine,
+                new ScriptCacheOps(), new ScriptSensorQuery());
     }
 
     private IMonitorContentService mockMonitorContentService() {

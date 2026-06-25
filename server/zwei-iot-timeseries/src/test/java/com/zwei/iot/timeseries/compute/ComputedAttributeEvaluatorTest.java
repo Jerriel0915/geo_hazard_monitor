@@ -26,6 +26,8 @@ class ComputedAttributeEvaluatorTest {
     private ComputedScriptAssembler assembler;
     private LastMessageStore lastMessageStore;
     private GroovyScriptEngine scriptEngine;
+    private ScriptCacheOps cacheOps;
+    private ScriptSensorQuery scriptSensorQuery;
     private ComputedAttributeEvaluator evaluator;
 
     @BeforeEach
@@ -35,9 +37,12 @@ class ComputedAttributeEvaluatorTest {
         assembler = new ComputedScriptAssembler();
         lastMessageStore = mock(LastMessageStore.class);
         scriptEngine = mock(GroovyScriptEngine.class);
+        cacheOps = mock(ScriptCacheOps.class);
+        scriptSensorQuery = mock(ScriptSensorQuery.class);
 
         evaluator = new ComputedAttributeEvaluator(
-                sensorQuery, registry, assembler, lastMessageStore, scriptEngine);
+                sensorQuery, registry, assembler, lastMessageStore, scriptEngine,
+                cacheOps, scriptSensorQuery);
     }
 
     private ParsedMessage msg(double value) {
@@ -86,7 +91,7 @@ class ComputedAttributeEvaluatorTest {
                 new ComputedAttribute(1L, 100L, "velocity", "速率", "mm/s",
                         "return curData.properties.displacement * 2", 1)));
         when(lastMessageStore.get(1L, "S1")).thenReturn(null);
-        when(scriptEngine.executeComputed(anyString(), any(), isNull()))
+        when(scriptEngine.executeComputed(anyString(), any(), isNull(), any()))
                 .thenReturn(Map.of("velocity", 24.0));
 
         List<PropertyValue> out = evaluator.evaluate(1L, "S1", msg(12.0));
@@ -104,7 +109,7 @@ class ComputedAttributeEvaluatorTest {
                 new ComputedAttribute(1L, 100L, "velocity", "速率", "mm/s",
                         "return 1/0", 1)));
         when(lastMessageStore.get(1L, "S1")).thenReturn(null);
-        when(scriptEngine.executeComputed(anyString(), any(), any()))
+        when(scriptEngine.executeComputed(anyString(), any(), any(), any()))
                 .thenReturn(Map.of());
 
         List<PropertyValue> out = evaluator.evaluate(1L, "S1", msg(12.0));
@@ -131,7 +136,7 @@ class ComputedAttributeEvaluatorTest {
                 new ComputedAttribute(2L, 100L, "bad", "坏", "",
                         "return 'not a number'", 2)));
         when(lastMessageStore.get(1L, "S1")).thenReturn(null);
-        when(scriptEngine.executeComputed(anyString(), any(), isNull()))
+        when(scriptEngine.executeComputed(anyString(), any(), isNull(), any()))
                 .thenReturn(Map.of("good", 1.0, "bad", "not a number"));
 
         List<PropertyValue> out = evaluator.evaluate(1L, "S1", msg(12.0));
@@ -151,7 +156,7 @@ class ComputedAttributeEvaluatorTest {
                 new ComputedAttribute(1L, 100L, "a", "A", "", "return 1", 1),
                 new ComputedAttribute(2L, 100L, "b", "B", "", "return 2", 2)));
         when(lastMessageStore.get(1L, "S1")).thenReturn(null);
-        when(scriptEngine.executeComputed(anyString(), any(), isNull()))
+        when(scriptEngine.executeComputed(anyString(), any(), isNull(), any()))
                 .thenReturn(Map.of("a", 1.0));  // b 缺失(脚本内异常)
 
         List<PropertyValue> out = evaluator.evaluate(1L, "S1", msg(12.0));
@@ -170,7 +175,7 @@ class ComputedAttributeEvaluatorTest {
                 new ComputedAttribute(1L, 100L, "delta", "差分", "",
                         "return curData.properties.displacement - prevData.properties.displacement", 1)));
         when(lastMessageStore.get(1L, "S1")).thenReturn(prevSnap);
-        when(scriptEngine.executeComputed(anyString(), any(), any()))
+        when(scriptEngine.executeComputed(anyString(), any(), any(), any()))
                 .thenReturn(Map.of("delta", 2.0));
 
         List<PropertyValue> out = evaluator.evaluate(1L, "S1", msg(12.0));

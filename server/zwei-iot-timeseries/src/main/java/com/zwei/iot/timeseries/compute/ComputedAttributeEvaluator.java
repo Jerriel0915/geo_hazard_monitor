@@ -35,17 +35,23 @@ public class ComputedAttributeEvaluator {
     private final ComputedScriptAssembler assembler;
     private final LastMessageStore lastMessageStore;
     private final GroovyScriptEngine scriptEngine;
+    private final ScriptCacheOps cacheOps;
+    private final ScriptSensorQuery scriptSensorQuery;
 
     public ComputedAttributeEvaluator(IDeviceSensorQueryService sensorQuery,
                                        ComputedAttributeRegistry registry,
                                        ComputedScriptAssembler assembler,
                                        LastMessageStore lastMessageStore,
-                                       GroovyScriptEngine scriptEngine) {
+                                       GroovyScriptEngine scriptEngine,
+                                       ScriptCacheOps cacheOps,
+                                       ScriptSensorQuery scriptSensorQuery) {
         this.sensorQuery = sensorQuery;
         this.registry = registry;
         this.assembler = assembler;
         this.lastMessageStore = lastMessageStore;
         this.scriptEngine = scriptEngine;
+        this.cacheOps = cacheOps;
+        this.scriptSensorQuery = scriptSensorQuery;
     }
 
     /**
@@ -74,8 +80,11 @@ public class ComputedAttributeEvaluator {
             // 5. 拼装脚本
             String script = assembler.assemble(attrs);
 
-            // 6. 执行
-            Map<String, Object> results = scriptEngine.executeComputed(script, curData, prevData);
+            // 6. 执行 — 注入 cache/sensor wrapper 到 Groovy 脚本
+            Map<String, Object> tools = new HashMap<>();
+            tools.put("cache", cacheOps);
+            tools.put("sensor", scriptSensorQuery);
+            Map<String, Object> results = scriptEngine.executeComputed(script, curData, prevData, tools);
 
             // 7. 转 PropertyValue (null 值跳过)
             List<PropertyValue> computed = new ArrayList<>();
