@@ -9,6 +9,7 @@ import com.zwei.iot.alarm.mapper.AlarmCriteriaMapper;
 import com.zwei.iot.alarm.service.IAlarmCriteriaService;
 import com.zwei.iot.alarm.service.engine.CriteriaCacheService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -54,6 +55,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int insert(AlarmCriteria criteria) {
         if (!checkCriteriaUnique(criteria.getName(), criteria.getHazardPointId(), 0L)) {
             throw new ServiceException("新增失败，该隐患点下已存在同名判据");
@@ -69,6 +71,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int update(AlarmCriteria criteria) {
         if (!checkCriteriaUnique(criteria.getName(), criteria.getHazardPointId(), criteria.getId())) {
             throw new ServiceException("修改失败，该隐患点下已存在同名判据");
@@ -86,6 +89,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int delete(Long id) {
         AlarmCriteria old = criteriaMapper.selectCriteriaById(id);
         if (old == null) return 0;

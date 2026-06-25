@@ -9,6 +9,7 @@ import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -65,6 +66,7 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void bindDevice(Long deviceId, Long hazardPointId, BigDecimal installLongitude, BigDecimal installLatitude, String operator) {
         DeviceHazardPoint bind = DeviceHazardPoint.builder()
                 .deviceId(deviceId)
