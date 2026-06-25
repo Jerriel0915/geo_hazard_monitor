@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Redis Stream 缓冲写入服务。
@@ -33,8 +34,12 @@ import java.util.Map;
 public class MonitorIngestStreamService {
     private static final Logger log = LoggerFactory.getLogger(MonitorIngestStreamService.class);
 
+    /** 每 N 条入队消息触发一次 XTRIM，避免每条消息都发 Redis 命令 */
+    private static final int TRIM_INTERVAL = 100;
+
     private final RedisTemplate<Object, Object> redisTemplate;
     private final MonitorIngestProperties properties;
+    private final AtomicInteger enqueueCounter = new AtomicInteger(0);
 
     /**
      * 构造 Stream 写入服务。
@@ -61,7 +66,7 @@ public class MonitorIngestStreamService {
             body.put("retryCount", "0");
             redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), body));
         }
-        trimStream(properties.getStreamKey());
+        trimStreamThrottled(properties.getStreamKey(), points.size());
     }
 
     /**
@@ -88,7 +93,7 @@ public class MonitorIngestStreamService {
         body.put("payloadType", "PARSED_MESSAGE");
         body.put("retryCount", "0");
         redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), body));
-        trimStream(properties.getStreamKey());
+        trimStreamThrottled(properties.getStreamKey(), 1);
     }
 
     /**
@@ -107,14 +112,20 @@ public class MonitorIngestStreamService {
     }
 
     /**
-     * 裁剪 Stream 至配置的最大长度（近似值），防止无界增长导致 Redis OOM。
-     * <p>使用 XTRIM MAXLEN ~ 近似修剪，Redis 在流长度超过阈值时才执行实际删除。
+     * 每 N 条消息触发一次 XTRIM，避免每条消息都发 Redis 命令。
+     * <p>使用 XTRIM MAXLEN ~ 近似修剪，Redis 仅在流长度超过阈值时才执行实际删除。
      */
-    private void trimStream(String streamKey) {
+    private void trimStreamThrottled(String streamKey, int addCount) {
         long maxLen = properties.getMaxStreamLen();
         if (maxLen <= 0) {
             return;
         }
+        int count = enqueueCounter.addAndGet(addCount);
+        if (count < TRIM_INTERVAL) {
+            return;
+        }
+        // 重置计数器（可能有并发竞态，但偶尔多一次 XTRIM 无副作用）
+        enqueueCounter.set(0);
         try {
             redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
                 connection.execute("XTRIM",
