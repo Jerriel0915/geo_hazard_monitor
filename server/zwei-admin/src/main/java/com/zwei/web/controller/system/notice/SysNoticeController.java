@@ -1,6 +1,7 @@
 package com.zwei.web.controller.system.notice;
 
 import com.zwei.common.annotation.Log;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.TableDataInfo;
@@ -55,6 +56,7 @@ public class SysNoticeController extends BaseController
     /**
      * 新增通知公告
      */
+    @RepeatSubmit
     @PreAuthorize("@ss.hasPermi('system:notice:add')")
     @Log(title = "通知公告", businessType = BusinessType.INSERT)
     @PostMapping
@@ -63,6 +65,7 @@ public class SysNoticeController extends BaseController
         if (!noticeService.checkNoticeTitleUnique(notice.getNoticeTitle(), null)) {
             return error("新增失败，公告标题已存在");
         }
+        notice.setNoticeId(null); // 防止 mass-assignment: 客户端不应指定 ID
         notice.setCreateBy(getUsername());
         return toAjax(noticeService.insertNotice(notice));
     }

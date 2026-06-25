@@ -4,11 +4,14 @@ import com.alibaba.fastjson2.JSON;
 import com.zwei.common.domain.ParsedMessage;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,8 @@ import java.util.Map;
  */
 @Service
 public class MonitorIngestStreamService {
+    private static final Logger log = LoggerFactory.getLogger(MonitorIngestStreamService.class);
+
     private final RedisTemplate<Object, Object> redisTemplate;
     private final MonitorIngestProperties properties;
 
@@ -56,6 +61,7 @@ public class MonitorIngestStreamService {
             body.put("retryCount", "0");
             redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), body));
         }
+        trimStream(properties.getStreamKey());
     }
 
     /**
@@ -82,6 +88,7 @@ public class MonitorIngestStreamService {
         body.put("payloadType", "PARSED_MESSAGE");
         body.put("retryCount", "0");
         redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), body));
+        trimStream(properties.getStreamKey());
     }
 
     /**
@@ -97,5 +104,28 @@ public class MonitorIngestStreamService {
         body.put("rawPayload", rawPayload);
         body.put("reason", reason);
         redisTemplate.opsForStream().add(MapRecord.create(properties.getDeadLetterStreamKey(), body));
+    }
+
+    /**
+     * 裁剪 Stream 至配置的最大长度（近似值），防止无界增长导致 Redis OOM。
+     * <p>使用 XTRIM MAXLEN ~ 近似修剪，Redis 在流长度超过阈值时才执行实际删除。
+     */
+    private void trimStream(String streamKey) {
+        long maxLen = properties.getMaxStreamLen();
+        if (maxLen <= 0) {
+            return;
+        }
+        try {
+            redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+                connection.execute("XTRIM",
+                        streamKey.getBytes(StandardCharsets.UTF_8),
+                        "MAXLEN".getBytes(StandardCharsets.UTF_8),
+                        "~".getBytes(StandardCharsets.UTF_8),
+                        String.valueOf(maxLen).getBytes(StandardCharsets.UTF_8));
+                return null;
+            });
+        } catch (Exception e) {
+            log.warn("Stream XTRIM 失败 streamKey={} maxLen={}", streamKey, maxLen, e);
+        }
     }
 }

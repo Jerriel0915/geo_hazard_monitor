@@ -24,6 +24,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -282,11 +283,18 @@ public class MonitorIngestConsumerService {
                 ack(record);
                 return;
             }
-            // Idempotent dedup -- use first point's payloadHash
-            if (isDuplicate(points.get(0))) {
+            // Idempotent dedup — 逐 point 去重，避免首属性命中导致其他属性被整批跳过
+            List<StandardMeasurementPoint> nonDuplicatePoints = new ArrayList<>();
+            for (StandardMeasurementPoint pt : points) {
+                if (!isDuplicate(pt)) {
+                    nonDuplicatePoints.add(pt);
+                }
+            }
+            if (nonDuplicatePoints.isEmpty()) {
                 ack(record);
                 return;
             }
+            points = nonDuplicatePoints;
             iotdbTimeSeriesService.writePoints(points);
             // 累计监测次数 (+N)
             redisTemplate.opsForValue().increment("stats:total:monitor:count", points.size());

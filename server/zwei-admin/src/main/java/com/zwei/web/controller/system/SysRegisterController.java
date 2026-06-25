@@ -4,9 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import com.zwei.common.annotation.RateLimiter;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.model.RegisterBody;
+import com.zwei.common.enums.LimitType;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.framework.web.service.SysRegisterService;
 import com.zwei.system.service.ISysConfigService;
@@ -25,6 +28,8 @@ public class SysRegisterController extends BaseController
     @Autowired
     private ISysConfigService configService;
 
+    @RepeatSubmit
+    @RateLimiter(time = 60, count = 3, limitType = LimitType.IP)
     @PostMapping("/register")
     public AjaxResult register(@RequestBody RegisterBody user)
     {

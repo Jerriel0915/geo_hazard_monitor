@@ -2,6 +2,7 @@ package com.zwei.web.controller.system;
 
 import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysDept;
@@ -11,6 +12,7 @@ import com.zwei.common.core.domain.model.BatchIdRequest;
 import com.zwei.common.core.domain.model.SysUserPasswordRequest;
 import com.zwei.common.core.domain.model.SysUserQueryRequest;
 import com.zwei.common.core.domain.model.SysUserResponse;
+import com.zwei.common.core.domain.model.SysUserStatusRequest;
 import com.zwei.common.core.domain.model.SysUserUpsertRequest;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
@@ -127,6 +129,7 @@ public class SysUserController extends BaseController
     /**
      * 新增用户
      */
+    @RepeatSubmit
     @PreAuthorize("@ss.hasPermi('system:user:add')")
     @Log(title = "用户管理", businessType = BusinessType.INSERT)
     @PostMapping
@@ -262,10 +265,15 @@ public class SysUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:user:edit')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/changeStatus")
-    public AjaxResult changeStatus(@RequestBody SysUser user)
+    public AjaxResult changeStatus(@Validated @RequestBody SysUserStatusRequest request)
     {
+        Long userId = request.getUserId();
+        String status = request.getStatus();
+        SysUser user = new SysUser();
+        user.setUserId(userId);
+        user.setStatus(status);
         userService.checkUserAllowed(user);
-        userService.checkUserDataScope(user.getUserId());
+        userService.checkUserDataScope(userId);
         user.setUpdateBy(getUsername());
         return toAjax(userService.updateUserStatus(user));
     }

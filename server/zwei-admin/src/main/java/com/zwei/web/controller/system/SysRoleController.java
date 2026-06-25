@@ -2,6 +2,7 @@ package com.zwei.web.controller.system;
 
 import com.github.pagehelper.PageInfo;
 import com.zwei.common.annotation.Log;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.domain.entity.SysRole;
@@ -9,6 +10,7 @@ import com.zwei.common.core.domain.entity.SysUser;
 import com.zwei.common.core.domain.model.BatchIdRequest;
 import com.zwei.common.core.domain.model.SysRoleQueryRequest;
 import com.zwei.common.core.domain.model.SysRoleResponse;
+import com.zwei.common.core.domain.model.SysRoleStatusRequest;
 import com.zwei.common.core.domain.model.SysRoleUpsertRequest;
 import com.zwei.common.core.page.PageDomain;
 import com.zwei.common.core.page.TableSupport;
@@ -105,6 +107,7 @@ public class SysRoleController extends BaseController
     /**
      * 新增角色
      */
+    @RepeatSubmit
     @PreAuthorize("@ss.hasPermi('system:role:add')")
     @Log(title = "角色管理", businessType = BusinessType.INSERT)
     @PostMapping
@@ -197,9 +200,13 @@ public class SysRoleController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:role:edit')")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}/dataScope")
-    public AjaxResult dataScope(@PathVariable Long id, @RequestBody SysRole role)
+    public AjaxResult dataScope(@PathVariable Long id, @Validated @RequestBody SysRoleUpsertRequest request)
     {
+        SysRole role = new SysRole();
         role.setRoleId(id);
+        role.setDataScope(request.getDataScope() == null ? null : String.valueOf(request.getDataScope()));
+        role.setDeptIds(request.getDeptIds() == null ? null : request.getDeptIds().toArray(new Long[0]));
+        role.setMenuIds(request.getMenuIds() == null ? null : request.getMenuIds().toArray(new Long[0]));
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(id);
         return toAjax(roleService.authDataScope(role));
@@ -211,9 +218,11 @@ public class SysRoleController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:role:edit')")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}/status")
-    public AjaxResult changeStatus(@PathVariable Long id, @RequestBody SysRole role)
+    public AjaxResult changeStatus(@PathVariable Long id, @Validated @RequestBody SysRoleStatusRequest request)
     {
+        SysRole role = new SysRole();
         role.setRoleId(id);
+        role.setStatus(request.getStatus());
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(id);
         role.setUpdateBy(getUsername());

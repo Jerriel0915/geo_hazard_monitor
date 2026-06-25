@@ -11,6 +11,7 @@ import com.zwei.iot.alarm.domain.dto.BatchDisposeRequest;
 import com.zwei.iot.alarm.service.IAlarmNotificationService;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -57,7 +58,7 @@ public class AlarmRecordController extends BaseController {
 
     @PutMapping("/{id}/dispose")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:dispose')")
-    public AjaxResult dispose(@PathVariable Long id, @RequestBody AlarmRecordDisposeRequest request) {
+    public AjaxResult dispose(@PathVariable Long id, @Validated @RequestBody AlarmRecordDisposeRequest request) {
         return toAjax(alarmRecordService.dispose(
                 id,
                 request.getStatus(),
@@ -69,7 +70,7 @@ public class AlarmRecordController extends BaseController {
 
     @PostMapping("/batch")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:batch')")
-    public AjaxResult batchDispose(@RequestBody BatchDisposeRequest request) {
+    public AjaxResult batchDispose(@Validated @RequestBody BatchDisposeRequest request) {
         return toAjax(alarmRecordService.batchDispose(
                 request.getIds().toArray(new Long[0]),
                 request.getStatus(),
