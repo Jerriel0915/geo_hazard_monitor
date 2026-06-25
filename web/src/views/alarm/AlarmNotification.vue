@@ -119,7 +119,7 @@ import {onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {Download, View} from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
-import {getHistoryAlarms, getAlarmLevelConfig, getAlarmTypeTagType, getAlarmTypeText} from '@/api/alarm'
+import {getHistoryAlarms, getAlarmLevelConfig, getAlarmTypeTagType, getAlarmTypeText, type AlarmRecordItem} from '@/api/alarm'
 
 // 获取默认时间范围：最近7天
 const getDefaultTimeRange = (): [string, string] => {
@@ -156,13 +156,13 @@ const pagination = reactive({
 })
 
 // 表格数据
-const tableData = ref<any[]>([])
+const tableData = ref<AlarmRecordItem[]>([])
 
 // 弹窗
 const detailDialogVisible = ref(false)
 
 // 当前行
-const currentRow = ref<any>(null)
+const currentRow = ref<AlarmRecordItem | null>(null)
 
 const loading = ref(false)
 
@@ -234,13 +234,13 @@ const handleReset = () => {
 }
 
 // 行点击 - 查看详情
-const handleRowClick = (row: any) => {
+const handleRowClick = (row: AlarmRecordItem) => {
   currentRow.value = row
   detailDialogVisible.value = true
 }
 
 // 查看详情
-const handleView = (row: any) => {
+const handleView = (row: AlarmRecordItem) => {
   currentRow.value = row
   detailDialogVisible.value = true
 }

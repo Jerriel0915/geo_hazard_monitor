@@ -302,8 +302,8 @@ async function handleSubmit() {
     }
     dialogVisible.value = false
     loadData()
-  } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '操作失败')
   } finally {
     submitting.value = false
   }

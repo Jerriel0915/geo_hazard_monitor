@@ -188,7 +188,7 @@ function parse(data) {
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 interface Props {
@@ -217,6 +217,14 @@ const formRef = ref()
 const testDialogVisible = ref(false)
 const testData = ref('')
 const testResult = ref('')
+
+// setTimeout 清理
+const formTimers: ReturnType<typeof setTimeout>[] = []
+
+onUnmounted(() => {
+  formTimers.forEach(id => clearTimeout(id))
+  formTimers.length = 0
+})
 
 // 表单数据
 const formData = reactive({
@@ -344,7 +352,7 @@ const handleRunTest = () => {
   }
 
   testRunning.value = true
-  setTimeout(() => {
+  const t1 = setTimeout(() => {
     try {
       const data = JSON.parse(testData.value)
       testResult.value = JSON.stringify({
@@ -367,6 +375,7 @@ const handleRunTest = () => {
     }
     testRunning.value = false
   }, 1000)
+  formTimers.push(t1)
 }
 
 // 提交表单
@@ -375,13 +384,14 @@ const handleSubmit = () => {
     if (!valid) return
 
     submitLoading.value = true
-    setTimeout(() => {
+    const t2 = setTimeout(() => {
       const submitData = { ...formData }
       emit('submit', submitData)
       dialogVisible.value = false
       submitLoading.value = false
       ElMessage.success(props.mode === 'add' ? '新增成功' : '保存成功')
     }, 500)
+    formTimers.push(t2)
   })
 }
 </script>

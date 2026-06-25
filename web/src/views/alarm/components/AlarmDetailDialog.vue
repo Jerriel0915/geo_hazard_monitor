@@ -284,15 +284,15 @@ const FLOW_CHART_BY_LEVEL: Record<number, string> = {
 
 const props = defineProps<{
   modelValue: boolean
-  data: Record<string, any> | null
+  data: AlarmRecordItem | null
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'submit', payload: { description?: string; attachments?: string; remarks?: string }): void
-  (e: 'false-alarm', data: any): void
-  (e: 'close-alarm', data: any): void
-  (e: 'notify', data: any): void
+  (e: 'false-alarm', data: AlarmRecordItem): void
+  (e: 'close-alarm', data: AlarmRecordItem): void
+  (e: 'notify', data: AlarmRecordItem): void
 }>()
 
 const activeTab = ref('monitor')

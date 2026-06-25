@@ -375,7 +375,7 @@ async function loadHazardPointTree() {
   try {
     const groups: any = await getHazardPointGroups()
     const gList = groups?.data || groups?.rows || groups || []
-    const hps: any = await getHazardPointPage({pageNum: 1, pageSize: 1000})
+    const hps: any = await getHazardPointPage({pageNum: 1, pageSize: 500})
     const hpList = hps?.data?.rows || hps?.rows || hps || []
     hazardPointTree.value = gList.map((g: any) => ({
       id: 'g_' + g.id, name: g.name, isGroup: true,
@@ -394,7 +394,7 @@ async function loadMonitorContents(typeId: number) {
 
 async function loadAllCriteria() {
   try {
-    const res: any = await getCriteriaList({pageSize: 1000})
+    const res: any = await getCriteriaList({pageSize: 500})
     allCriteria.value = res?.rows || res?.data?.rows || []
   } catch { allCriteria.value = [] }
 }
@@ -479,8 +479,8 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
       else selectedHpCriteriaId.value = null
       resetLevelForm()
       await loadAllCriteria()
-    } catch (e: any) {
-      ElMessage.error(e?.message || '删除失败')
+    } catch (e: unknown) {
+      ElMessage.error(e instanceof Error ? e.message : '删除失败')
     } finally { saving.value = false }
     return
   }
@@ -506,8 +506,8 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
       else selectedHpCriteriaId.value = newId
       ElMessage.success('判据已创建')
       await loadAllCriteria()
-    } catch (e: any) {
-      ElMessage.error(e?.message || '创建失败')
+    } catch (e: unknown) {
+      ElMessage.error(e instanceof Error ? e.message : '创建失败')
     } finally { saving.value = false }
     return
   }
@@ -527,8 +527,8 @@ async function handleSaveForm(context: 'monitor' | 'hazard') {
     await updateCriteria(existing!.id, payload)
     ElMessage.success('判据已保存')
     await loadAllCriteria()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '保存失败')
   } finally { saving.value = false }
 }
 
@@ -540,8 +540,8 @@ async function handleToggle(c: AlarmCriteriaItem) {
     await apiToggleCriteria(c.id, c.isEnabled === 1 ? 0 : 1)
     ElMessage.success(c.isEnabled === 1 ? '已停用' : '已启用')
     await loadAllCriteria()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '操作失败')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '操作失败')
   }
 }
 

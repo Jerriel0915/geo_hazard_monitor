@@ -284,6 +284,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
+import { ElMessage } from 'element-plus'
 import {hasPermission} from '@/utils/permission'
 import {
   getMqttClientDetail,
@@ -469,11 +470,11 @@ const handleBatchKick = async () => {
   try {
     const res = await kickMqttClients(selectedClientIds.value)
     const data = res.data
-    alert(`批量踢出完成：成功 ${data?.success ?? selectedClientIds.value.length}，失败 ${data?.fail ?? 0}`)
+    ElMessage.success(`批量踢出完成：成功 ${data?.success ?? selectedClientIds.value.length}，失败 ${data?.fail ?? 0}`)
     selectedClientIds.value = []
     fetchClients()
   } catch {
-    alert('批量踢出失败')
+    ElMessage.error('批量踢出失败')
   }
 }
 
@@ -483,7 +484,7 @@ const handleKickClient = async (client: MqttClientItem) => {
     selectedClientIds.value = selectedClientIds.value.filter(id => id !== client.clientId)
     fetchClients()
   } catch {
-    alert('踢出失败，请确认 MQTT HTTP API 已启用且客户端在线')
+    ElMessage.error('踢出失败，请确认 MQTT HTTP API 已启用且客户端在线')
   }
 }
 
