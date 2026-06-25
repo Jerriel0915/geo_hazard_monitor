@@ -2,7 +2,6 @@ package com.zwei.iot.device.service.impl;
 
 import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.domain.DeviceAuthLog;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.domain.dto.DeviceCopyRequest;
@@ -16,7 +15,6 @@ import com.zwei.iot.device.service.*;
 import com.zwei.iot.device.service.IDeviceHazardRelationService.HazardPointRef;
 import com.zwei.iot.device.support.DeviceAuthAccountGenerator;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +49,6 @@ import java.util.regex.Pattern;
 public class DeviceServiceImpl implements IDeviceService {
     private static final String REGISTER_SOURCE_MANUAL = "MANUAL";
     private static final int AUTH_STATUS_ENABLED = 1;
-    private static final int AUTH_STATUS_DISABLED = 2;
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final DeviceMapper deviceMapper;
@@ -59,32 +56,29 @@ public class DeviceServiceImpl implements IDeviceService {
     private final SensorAttributeMapper attributeMapper;
     private final IDeviceHazardRelationService hazardRelationService;
     private final DeviceAuthAccountGenerator accountGenerator;
-    private final DeviceAuthLogService deviceAuthLogService;
-    private final ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider;
-    private final IDeviceStatusLogService deviceStatusLogService;
     private final IProductTslService productTslService;
     private final ProductMapper productMapper;
+    private final DeviceAuthService deviceAuthService;
+    private final DeviceMaintenanceService deviceMaintenanceService;
 
     @Autowired
     public DeviceServiceImpl(DeviceMapper deviceMapper, DeviceSensorMapper sensorMapper,
                              SensorAttributeMapper attributeMapper,
                              IDeviceHazardRelationService hazardRelationService,
                              DeviceAuthAccountGenerator accountGenerator,
-                             DeviceAuthLogService deviceAuthLogService,
-                             ObjectProvider<IDeviceSessionService> deviceSessionServiceProvider,
-                             IDeviceStatusLogService deviceStatusLogService,
                              IProductTslService productTslService,
-                             ProductMapper productMapper) {
+                             ProductMapper productMapper,
+                             DeviceAuthService deviceAuthService,
+                             DeviceMaintenanceService deviceMaintenanceService) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
         this.hazardRelationService = hazardRelationService;
         this.accountGenerator = accountGenerator;
-        this.deviceAuthLogService = deviceAuthLogService;
-        this.deviceSessionServiceProvider = deviceSessionServiceProvider;
-        this.deviceStatusLogService = deviceStatusLogService;
         this.productTslService = productTslService;
         this.productMapper = productMapper;
+        this.deviceAuthService = deviceAuthService;
+        this.deviceMaintenanceService = deviceMaintenanceService;
     }
 
     /**
@@ -348,58 +342,23 @@ public class DeviceServiceImpl implements IDeviceService {
         return loadDeviceSensors(deviceId);
     }
 
+    // ── 认证账号管理 → 委托 DeviceAuthService ──
+
     @Override
     public Device getDeviceAuthAccount(Long deviceId, String operator, String clientIp) {
-        Device device = requireDevice(deviceId);
-        saveAuthAuditLog(device, operator, clientIp, true, "WEB_VIEW_ACCOUNT");
-        return device;
+        return deviceAuthService.getDeviceAuthAccount(deviceId, operator, clientIp);
     }
 
     @Override
     @Transactional
     public Device resetDeviceAuthPassword(Long deviceId, String operator, String resetReason, Boolean forceOffline, String clientIp) {
-        Device current = requireDevice(deviceId);
-        String password = accountGenerator.generatePassword();
-        Device update = new Device();
-        update.setId(deviceId);
-        update.setAuthPassword(password);
-        update.setUpdateBy(operator);
-        deviceMapper.updateDevice(update);
-        Device latest = requireDevice(deviceId);
-        latest.setAuthUsername(current.getAuthUsername());
-        latest.setLastAuthTime(current.getLastAuthTime());
-        latest.setLastAuthIp(current.getLastAuthIp());
-        latest.setAuthPassword(password);
-        saveAuthAuditLog(latest, operator, clientIp, true, buildResetPasswordDetail(resetReason, forceOffline));
-        if (Boolean.TRUE.equals(forceOffline)) {
-            IDeviceSessionService sessionService = deviceSessionServiceProvider.getIfAvailable();
-            if (sessionService != null) {
-                boolean disconnected = sessionService.disconnectDevice(deviceId);
-                log.info("密码重置后强制断连 deviceId={}, result={}", deviceId, disconnected);
-            } else {
-                log.warn("IDeviceSessionService 不可用，跳过 MQTT 断连 deviceId={}", deviceId);
-            }
-        }
-        return latest;
+        return deviceAuthService.resetDeviceAuthPassword(deviceId, operator, resetReason, forceOffline, clientIp);
     }
 
     @Override
     @Transactional
     public Device changeDeviceAuthStatus(Long deviceId, Integer authStatus, String operator, String reason, String clientIp) {
-        Device current = requireDevice(deviceId);
-        validateAuthStatus(authStatus);
-        if (Objects.equals(current.getAuthStatus(), authStatus)) {
-            saveAuthAuditLog(current, operator, clientIp, true, buildAuthStatusDetail(authStatus, reason, true));
-            return current;
-        }
-        Device update = new Device();
-        update.setId(deviceId);
-        update.setAuthStatus(authStatus);
-        update.setUpdateBy(operator);
-        deviceMapper.updateDevice(update);
-        Device latest = requireDevice(deviceId);
-        saveAuthAuditLog(latest, operator, clientIp, true, buildAuthStatusDetail(authStatus, reason, false));
-        return latest;
+        return deviceAuthService.changeDeviceAuthStatus(deviceId, authStatus, operator, reason, clientIp);
     }
 
     private void deleteSensorAttributesByDeviceId(Long deviceId) {
@@ -546,114 +505,14 @@ public class DeviceServiceImpl implements IDeviceService {
         return normalized == null ? "MQTT" : normalized.toUpperCase();
     }
 
-    private void validateAuthStatus(Integer authStatus) {
-        if (!Objects.equals(authStatus, AUTH_STATUS_ENABLED) && !Objects.equals(authStatus, AUTH_STATUS_DISABLED)) {
-            throw new ServiceException("账号状态非法");
-        }
-    }
-
-    private void saveAuthAuditLog(Device device, String operator, String clientIp, boolean success, String detail) {
-        if (device == null || device.getId() == null || device.getAuthUsername() == null) {
-            return;
-        }
-        DeviceAuthLog log = new DeviceAuthLog();
-        log.setDeviceId(device.getId());
-        log.setAuthUsername(device.getAuthUsername());
-        log.setAuthResult(success ? 1 : 0);
-        log.setClientId(limitLength(normalizeOptional(operator), 128));
-        log.setClientIp(limitLength(normalizeOptional(clientIp), 64));
-        log.setFailureReason(limitLength(detail, 255));
-        deviceAuthLogService.save(log);
-    }
-
-    private String buildResetPasswordDetail(String resetReason, Boolean forceOffline) {
-        StringBuilder builder = new StringBuilder("WEB_RESET_PASSWORD");
-        if (resetReason != null && !resetReason.isBlank()) {
-            builder.append("|reason=").append(resetReason.trim());
-        }
-        if (forceOffline != null) {
-            builder.append("|forceOffline=").append(forceOffline);
-        }
-        return builder.toString();
-    }
-
-    private String buildAuthStatusDetail(Integer authStatus, String reason, boolean unchanged) {
-        StringBuilder builder = new StringBuilder("WEB_CHANGE_AUTH_STATUS");
-        builder.append("|target=").append(authStatus);
-        if (unchanged) {
-            builder.append("|unchanged=true");
-        }
-        if (reason != null && !reason.isBlank()) {
-            builder.append("|reason=").append(reason.trim());
-        }
-        return builder.toString();
-    }
-
-    private String limitLength(String value, int maxLength) {
-        if (value == null || value.length() <= maxLength) {
-            return value;
-        }
-        return value.substring(0, maxLength);
-    }
+    // ── 设备维保状态机 → 委托 DeviceMaintenanceService ──
 
     @Override
     @Transactional
     public String maintenanceDevice(Long deviceId, Integer operationType, String operatorName, String operatorPhone,
                                     String operationDate, String description, String createBy) {
-        Device device = requireDevice(deviceId);
-        int oldStatus = device.getStatus() != null ? device.getStatus() : 1;
-
-        // ── 状态转换校验 ──
-        int newStatus = resolveAndValidateStatusTransition(operationType, oldStatus);
-
-        String statusText = switch (operationType) {
-            case 1 -> "报修";
-            case 2 -> "修复";
-            case 3 -> "停用";
-            case 4 -> "启用";
-            default -> throw new ServiceException("不支持的操作类型: " + operationType);
-        };
-
-        // ── 更新设备状态 ──
-        Device update = new Device();
-        update.setId(deviceId);
-        update.setStatus(newStatus);
-        update.setUpdateBy(createBy);
-        deviceMapper.updateDevice(update);
-
-        // ── 写入运维日志 ──
-        deviceStatusLogService.saveMaintenanceLog(deviceId, device.getCode(), oldStatus, newStatus,
-                statusText, operatorName, operatorPhone, operationDate, description, createBy);
-
-        log.info("设备维修操作完成 deviceId={}, operation={}, {}→{}, operator={}",
-                deviceId, statusText, oldStatus, newStatus, createBy);
-        return statusText;
-    }
-
-    /**
-     * 解析操作类型并校验状态转换合法性。
-     */
-    private int resolveAndValidateStatusTransition(int operationType, int oldStatus) {
-        int newStatus = switch (operationType) {
-            case 1 -> { // 报修：仅允许从 正常(1) 转入 维修(2)
-                if (oldStatus != 1) throw new ServiceException("仅正常状态的设备可以报修");
-                yield 2;
-            }
-            case 2 -> { // 修复：仅允许从 维修(2) 转入 正常(1)
-                if (oldStatus != 2) throw new ServiceException("仅维修状态的设备可以修复");
-                yield 1;
-            }
-            case 3 -> { // 停用：允许从 正常(1) 或 维修(2) 转入 停用(3)
-                if (oldStatus != 1 && oldStatus != 2) throw new ServiceException("仅正常或维修状态的设备可以停用");
-                yield 3;
-            }
-            case 4 -> { // 恢复：仅允许从 停用(3) 转入 正常(1)
-                if (oldStatus != 3) throw new ServiceException("仅停用状态的设备可以恢复");
-                yield 1;
-            }
-            default -> throw new ServiceException("不支持的操作类型: " + operationType);
-        };
-        return newStatus;
+        return deviceMaintenanceService.maintenanceDevice(deviceId, operationType, operatorName, operatorPhone,
+                operationDate, description, createBy);
     }
 
     private String nowString() {
