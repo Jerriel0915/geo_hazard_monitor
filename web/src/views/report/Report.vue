@@ -27,7 +27,15 @@
         <el-option label="已生成" :value="2" />
         <el-option label="生成失败" :value="3" />
       </el-select>
-      <el-date-picker v-model="searchDateRange" type="daterange" start-placeholder="周期起始" end-placeholder="周期截止" value-format="YYYY-MM-DD" />
+      <el-date-picker
+        v-model="searchDateRange"
+        type="daterange"
+        range-separator="至"
+        start-placeholder="周期起始"
+        end-placeholder="周期截止"
+        value-format="YYYY-MM-DD HH:mm:ss"
+        :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+      />
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
     </div>
@@ -253,7 +261,6 @@ const sortedTableData = computed(() => {
   return rows.sort((a: any, b: any) => {
     const va = a[prop] ?? ''
     const vb = b[prop] ?? ''
-    // 时间字符串可以直接用 localeCompare 比较
     return order === 'ascending' 
       ? String(va).localeCompare(String(vb)) 
       : String(vb).localeCompare(String(va))
@@ -268,14 +275,18 @@ const handleSortChange = ({ prop, order }: { prop: string; order: 'ascending' | 
 const loadList = async () => {
   loading.value = true
   try {
-    const result = await getReportPage({
-      pageNum: currentPage.value, pageSize: pageSize.value,
+    const params: ReportPageParams = {
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
       keyword: searchKeyword.value || undefined,
       type: (searchType.value as ReportType) || undefined,
       status: searchStatus.value,
-      periodStart: searchDateRange.value?.[0] || undefined,
-      periodEnd: searchDateRange.value?.[1] || undefined,
-    })
+    }
+    if (searchDateRange.value?.length === 2) {
+      params.periodStart = searchDateRange.value[0]
+      params.periodEnd = searchDateRange.value[1]
+    }
+    const result = await getReportPage(params)
     tableData.value = result.rows; total.value = result.total
   } catch (error: any) { showRequestErrorMessage(error, '加载报告数据失败') }
   finally { loading.value = false }
@@ -283,8 +294,12 @@ const loadList = async () => {
 
 const handleSearch = () => { currentPage.value = 1; loadList() }
 const handleReset = () => {
-  searchKeyword.value = ''; searchType.value = ''; searchStatus.value = undefined
-  searchDateRange.value = null; currentPage.value = 1; loadList()
+  searchKeyword.value = ''
+  searchType.value = ''
+  searchStatus.value = undefined
+  searchDateRange.value = null
+  currentPage.value = 1
+  loadList()
 }
 
 const handleView = async (row: ReportItem) => {
