@@ -437,6 +437,11 @@ let alarmEventSource: EventSource | null = null
 let noticeReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let alarmReconnectTimer: ReturnType<typeof setTimeout> | null = null
 let sseStopped = false
+let noticeRetryCount = 0
+let alarmRetryCount = 0
+const MAX_SSE_RETRIES = 10
+const SSE_BASE_DELAY = 3000
+const SSE_MAX_DELAY = 30000
 
 /** 顶部铃铛角标总数 */
 const unreadMessageCount = computed(() => noticeUnreadCount.value + eventUnreadCount.value)
@@ -545,9 +550,16 @@ function startNoticeSSE() {
   })
   noticeEventSource.onerror = () => {
     noticeEventSource?.close()
+    if (sseStopped) return
+    if (noticeEventSource?.readyState === EventSource.CLOSED) {
+      noticeRetryCount++
+      if (noticeRetryCount > MAX_SSE_RETRIES) return
+    }
     if (noticeReconnectTimer) clearTimeout(noticeReconnectTimer)
-    noticeReconnectTimer = setTimeout(startNoticeSSE, 3000)
+    const delay = Math.min(SSE_BASE_DELAY * Math.pow(2, Math.max(0, noticeRetryCount - 1)), SSE_MAX_DELAY)
+    noticeReconnectTimer = setTimeout(startNoticeSSE, delay)
   }
+  noticeEventSource.addEventListener('open', () => { noticeRetryCount = 0 })
 }
 
 /** 告警 SSE：监听 alarm-notify 单点事件 + alarm 全量广播 */
@@ -587,9 +599,16 @@ function startAlarmSSE() {
   })
   alarmEventSource.onerror = () => {
     alarmEventSource?.close()
+    if (sseStopped) return
+    if (alarmEventSource?.readyState === EventSource.CLOSED) {
+      alarmRetryCount++
+      if (alarmRetryCount > MAX_SSE_RETRIES) return
+    }
     if (alarmReconnectTimer) clearTimeout(alarmReconnectTimer)
-    alarmReconnectTimer = setTimeout(startAlarmSSE, 3000)
+    const delay = Math.min(SSE_BASE_DELAY * Math.pow(2, Math.max(0, alarmRetryCount - 1)), SSE_MAX_DELAY)
+    alarmReconnectTimer = setTimeout(startAlarmSSE, delay)
   }
+  alarmEventSource.addEventListener('open', () => { alarmRetryCount = 0 })
 }
 
 const currentUser = reactive({
@@ -889,16 +908,21 @@ const noticeDetailLoading = ref(false)
 const noticeDetail = ref<Partial<SysNotice>>({})
 
 /**
- * 简单的 XSS 缓解措施（非完整净化器）。
- * 已覆盖：<script>、<iframe>、<object>、<embed> 标签（含 void 变体）。
- * 未覆盖：事件处理器属性、javascript: URI、<svg> 内嵌脚本、未闭合标签。
- * 当前调用方为管理员后台创建的公告（可信输入）；接入 UGC 时需替换为 DOMPurify。
+ * XSS 净化 — 移除常见攻击向量。
+ * 覆盖：script/iframe/object/embed/svg/style/meta/link 标签、事件处理器属性、javascript: URI。
+ * 注：完整净化应使用 DOMPurify，当前用于管理员后台公告（半可信输入）。
  */
 function sanitizeNoticeHtml(html: string): string {
-  return (html ?? '')
-    .replace(/<script\b[^>]*>.*?<\/script>/gis, '')
-    .replace(/<(iframe|object|embed)\b[^>]*>.*?<\/\1>/gis, '')
-    .replace(/<(iframe|object|embed)\b[^>]*\/?>/gi, '')
+  let s = html ?? ''
+  // 完整标签（含内容）
+  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*>.*?<\/\1>/gis, '')
+  // 自闭合/空标签
+  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*\/?>/gi, '')
+  // 事件处理器属性 on*= (onclick, onerror, onload...)
+  s = s.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+  // javascript: URI 在 href/src/action 属性中
+  s = s.replace(/(?:href|src|action)\s*=\s*(?:"[^"]*javascript:[^"]*"|'[^']*javascript:[^']*')/gi, '')
+  return s
 }
 
 const handleNoticeClick = async (msg: NotifyMessage) => {

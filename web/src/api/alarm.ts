@@ -1,5 +1,5 @@
 import request from '@/utils/request';
-import type { PageResult } from './system';
+import type { AjaxResult, PageResult } from './system';
 
 // ==================== 类型定义 ====================
 
@@ -344,7 +344,7 @@ export const getHistoryAlarms = (params: AlarmRecordPageParams) =>
 
 /** 告警详情 */
 export const getAlarmRecordDetail = (id: number) =>
-    request.get<AlarmRecordItem>(`/alarm/records/${id}`)
+    request.get<AjaxResult<AlarmRecordItem>>(`/alarm/records/${id}`)
 
 /** 处置告警 (状态流转) */
 export const disposeAlarm = (id: number, payload: AlarmDisposePayload) =>
@@ -356,11 +356,11 @@ export const batchDisposeAlarms = (payload: AlarmBatchDisposePayload) =>
 
 /** 告警触发明细列表 */
 export const getTriggerDetails = (id: number) =>
-    request.get<AlarmRecordTriggerDetail[]>(`/alarm/records/${id}/trigger-details`)
+    request.get<AjaxResult<AlarmRecordTriggerDetail[]>>(`/alarm/records/${id}/trigger-details`)
 
 /** 告警动作日志列表（处置记录 + 时间线） */
 export const getActionLogs = (id: number) =>
-    request.get<AlarmRecordActionLog[]>(`/alarm/records/${id}/action-logs`)
+    request.get<AjaxResult<AlarmRecordActionLog[]>>(`/alarm/records/${id}/action-logs`)
 
 /** 告警通知记录 (alarm_notification 表) */
 export interface AlarmNotificationItem {
@@ -381,7 +381,7 @@ export interface AlarmNotificationItem {
 
 /** 通知记录列表 */
 export const getAlarmNotifications = (id: number) =>
-    request.get<AlarmNotificationItem[]>(`/alarm/records/${id}/notifications`)
+    request.get<AjaxResult<AlarmNotificationItem[]>>(`/alarm/records/${id}/notifications`)
 
 // ==================== 告警统计 API ====================
 

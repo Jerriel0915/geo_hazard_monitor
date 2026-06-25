@@ -939,14 +939,13 @@ const loadAll = async () => {
       getActionLogs(id),
       getAlarmNotifications(id),
     ])
-    const detailData: any = (d as any).data ?? d
-    alarmData.value = detailData ?? null
-    triggerDetails.value = (t as any).data ?? t ?? []
-    const rawLogs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
-    notifyRecords.value = (n as any).data ?? n ?? []
+    alarmData.value = d.data ?? null
+    triggerDetails.value = t.data ?? []
+    const rawLogs: AlarmRecordActionLog[] = l.data ?? []
+    notifyRecords.value = n.data ?? []
 
     // 在 action_log 头部插入"当前状态"节点
-    const isEnded = [3, 4].includes(Number(detailData?.status))
+    const isEnded = [3, 4].includes(Number(alarmData.value?.status))
     const currentLog = {
       id: 0,
       alarmRecordId: id,
@@ -960,9 +959,9 @@ const loadAll = async () => {
     timelineData.value = buildTimeline([currentLog, ...rawLogs])
 
     // 拉取隐患点详情
-    if (detailData?.hazardPointId) {
+    if (alarmData.value?.hazardPointId) {
       try {
-        const hpRes: any = await getHazardPointDetail(String(detailData.hazardPointId))
+        const hpRes: any = await getHazardPointDetail(String(alarmData.value.hazardPointId))
         hazardPointData.value = hpRes?.data ?? hpRes ?? null
       } catch {
         hazardPointData.value = null

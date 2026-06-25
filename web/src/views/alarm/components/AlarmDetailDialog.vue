@@ -466,11 +466,10 @@ watch(() => props.modelValue, async (val) => {
       getActionLogs(id),
       getAlarmNotifications(id),
     ])
-    const detailData = (d as any).data ?? d
-    detail.value = detailData ?? null
-    triggerDetails.value = (t as any).data ?? t ?? []
-    const rawLogs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
-    notifyRecords.value = (n as any).data ?? n ?? []
+    detail.value = d.data ?? null
+    triggerDetails.value = t.data ?? []
+    const rawLogs: AlarmRecordActionLog[] = l.data ?? []
+    notifyRecords.value = n.data ?? []
     // 在 action_log 头部插入"当前状态"元素，作为时间线的当前节点（无时间/描述，仅动作类型）
     // 已销警(3)/误报(4) → ENDED 灰色"结束"；待处理(1)/处理中(2) → CURRENT 蓝色"当前"
     const isEnded = [3, 4].includes(Number(props.data?.status))
