@@ -220,6 +220,7 @@ public class DeviceServiceImpl implements IDeviceService {
      * 删除设备（逻辑删除）
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deleteDeviceById(Long id) {
         List<Long> hazardPointIds = hazardRelationService.getHazardPointIdsByDeviceIds(List.of(id));
         deleteSensorAttributesByDeviceId(id);
@@ -235,6 +236,7 @@ public class DeviceServiceImpl implements IDeviceService {
      * 批量删除设备（逻辑删除）
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deleteDeviceByIds(Long[] ids) {
         List<Long> deviceIds = new ArrayList<>(List.of(ids));
         List<Long> hazardPointIds = hazardRelationService.getHazardPointIdsByDeviceIds(deviceIds);
