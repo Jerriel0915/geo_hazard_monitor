@@ -63,6 +63,7 @@ public class SysNoticeController extends BaseController
         if (!noticeService.checkNoticeTitleUnique(notice.getNoticeTitle(), null)) {
             return error("新增失败，公告标题已存在");
         }
+        notice.setNoticeId(null); // 防止 mass-assignment: 客户端不应指定 ID
         notice.setCreateBy(getUsername());
         return toAjax(noticeService.insertNotice(notice));
     }
