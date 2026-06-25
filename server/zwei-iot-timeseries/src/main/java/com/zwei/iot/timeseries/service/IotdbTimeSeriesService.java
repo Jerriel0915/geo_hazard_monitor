@@ -140,8 +140,8 @@ public class IotdbTimeSeriesService {
         String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
             if (!resultSet.next()) {
                 return null;
             }
@@ -191,8 +191,8 @@ public class IotdbTimeSeriesService {
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             while (resultSet.next()) {
                 Double value = safeGetDouble(resultSet, attrCol);
                 Integer quality = safeGetInteger(resultSet, qualityCol);
@@ -255,8 +255,8 @@ public class IotdbTimeSeriesService {
         String attrCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
         String qualityCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality") + ")";
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             while (resultSet.next()) {
                 Double value = safeGetDouble(resultSet, attrCol);
                 Integer quality = safeGetInteger(resultSet, qualityCol);
@@ -308,8 +308,8 @@ public class IotdbTimeSeriesService {
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             while (resultSet.next()) {
                 Double value = safeGetDouble(resultSet, attrCol);
                 Integer quality = safeGetInteger(resultSet, qualityCol);
@@ -354,8 +354,8 @@ public class IotdbTimeSeriesService {
         }
         String countCol = "COUNT(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             if (resultSet.next()) {
                 return resultSet.getLong(countCol);
             }
@@ -443,8 +443,8 @@ public class IotdbTimeSeriesService {
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(sql.toString())) {
             while (rs.next()) {
                 Double v = safeGetDouble(rs, attrCol);
                 if (v == null) continue;
@@ -517,8 +517,8 @@ public class IotdbTimeSeriesService {
 
         List<AggregationResultVO> results = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(sql.toString())) {
             while (rs.next()) {
                 Map<String, Double> metrics = new LinkedHashMap<>();
                 for (String alias : aliases) {
@@ -596,8 +596,8 @@ public class IotdbTimeSeriesService {
         String countCol = "COUNT(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
         long actualPoints = 0;
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(sql.toString())) {
             if (rs.next()) {
                 actualPoints = rs.getLong(countCol);
             }
@@ -685,10 +685,11 @@ public class IotdbTimeSeriesService {
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
             statement.setQueryTimeout(properties.getQueryTimeoutSeconds());
-            ResultSet rs = statement.executeQuery("SHOW DATABASES");
-            while (rs.next()) {
-                if (properties.getDatabase().equals(rs.getString(1))) {
-                    return true;
+            try (ResultSet rs = statement.executeQuery("SHOW DATABASES")) {
+                while (rs.next()) {
+                    if (properties.getDatabase().equals(rs.getString(1))) {
+                        return true;
+                    }
                 }
             }
             return false;
