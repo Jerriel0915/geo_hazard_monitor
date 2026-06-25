@@ -37,6 +37,9 @@ public class AlarmStreamPublisher {
     /** 按 userId 索引的订阅映射（同一用户可多端订阅） */
     private final Map<Long, List<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
+    /** 反向索引：emitter → userId，避免 removeEmitter 遍历所有 userEmitters.values() */
+    private final Map<SseEmitter, Long> emitterUserId = new ConcurrentHashMap<>();
+
     private static final long SSE_TIMEOUT_MS = 300_000L;
     private static final long HEARTBEAT_INTERVAL_MS = 25_000L;
 
@@ -61,6 +64,7 @@ public class AlarmStreamPublisher {
         SseEmitter emitter = subscribe();
         if (userId != null) {
             userEmitters.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
+            emitterUserId.put(emitter, userId);
             log.debug("告警SSE订阅绑定 userId={}", userId);
         }
         return emitter;
@@ -170,14 +174,21 @@ public class AlarmStreamPublisher {
     // ============= private =============
 
     /**
-     * 统一移除 emitter（同时从全量广播列表和所有 userId 绑定列表中移除）。
+     * 统一移除 emitter（同时从全量广播列表和 userId 绑定列表中移除）。
+     * <p>使用反向索引 emitterUserId 实现 O(1) 查找，避免遍历所有 userEmitters.values()。
      */
     private void removeEmitter(SseEmitter emitter) {
         emitters.remove(emitter);
-        for (List<SseEmitter> list : userEmitters.values()) {
-            list.remove(emitter);
+        Long userId = emitterUserId.remove(emitter);
+        if (userId != null) {
+            List<SseEmitter> list = userEmitters.get(userId);
+            if (list != null) {
+                list.remove(emitter);
+                if (list.isEmpty()) {
+                    userEmitters.remove(userId);
+                }
+            }
         }
-        userEmitters.values().removeIf(List::isEmpty);
     }
 
     private void sendReady(SseEmitter emitter) {

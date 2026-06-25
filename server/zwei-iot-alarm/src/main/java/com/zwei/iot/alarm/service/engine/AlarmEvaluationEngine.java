@@ -499,7 +499,10 @@ public class AlarmEvaluationEngine {
         try {
             HazardPoint hp = hazardPointService.selectHazardPointById(id);
             return hp != null ? hp.getName() : null;
-        } catch (Exception e) { return null; }
+        } catch (Exception e) {
+            log.warn("查询隐患点名失败 hpId={}", id, e);
+            return null;
+        }
     }
 
     /** 候选告警（判据 + 等级 + 实际隐患点 ID + 等级 key + 等级配置） */

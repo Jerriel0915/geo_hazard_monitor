@@ -7,6 +7,7 @@ import com.zwei.iot.alarm.domain.AlarmCriteriaLog;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaLogMapper;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaMapper;
 import com.zwei.iot.alarm.service.IAlarmCriteriaService;
+import com.zwei.iot.alarm.service.engine.AlarmDedupService;
 import com.zwei.iot.alarm.service.engine.CriteriaCacheService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,13 +26,16 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     private final AlarmCriteriaMapper criteriaMapper;
     private final AlarmCriteriaLogMapper criteriaLogMapper;
     private final CriteriaCacheService cacheService;
+    private final AlarmDedupService dedupService;
 
     public AlarmCriteriaServiceImpl(AlarmCriteriaMapper criteriaMapper,
                                     AlarmCriteriaLogMapper criteriaLogMapper,
-                                    CriteriaCacheService cacheService) {
+                                    CriteriaCacheService cacheService,
+                                    AlarmDedupService dedupService) {
         this.criteriaMapper = criteriaMapper;
         this.criteriaLogMapper = criteriaLogMapper;
         this.cacheService = cacheService;
+        this.dedupService = dedupService;
     }
 
     @Override
@@ -98,6 +102,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
             recordLog(id, (old.getVersion() != null ? old.getVersion() : 1) + 1, "DELETE",
                     JSON.toJSONString(old), null);
             cacheService.refresh();
+            dedupService.clearAllPreTriggers(id, old.getHazardPointId());
         }
         return rows;
     }
@@ -106,7 +111,15 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     public int toggle(Long id, Integer isEnabled) {
         AlarmCriteria update = AlarmCriteria.builder().id(id).isEnabled(isEnabled).updateTime(new Date()).build();
         int rows = criteriaMapper.updateCriteria(update);
-        if (rows > 0) cacheService.refresh();
+        if (rows > 0) {
+            cacheService.refresh();
+            if (isEnabled != null && isEnabled == 0) {
+                AlarmCriteria old = criteriaMapper.selectCriteriaById(id);
+                if (old != null) {
+                    dedupService.clearAllPreTriggers(id, old.getHazardPointId());
+                }
+            }
+        }
         return rows;
     }
 
