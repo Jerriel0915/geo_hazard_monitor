@@ -12,7 +12,18 @@ export default defineConfig({
   plugins: [
     vue(),
     // Element Plus 按需自动导入（JS 组件 tree-shake；CSS 由 main.ts 统一引入以避免内部子组件路径解析问题）
-    AutoImport({resolvers: [ElementPlusResolver()]}),
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+      // 全局自动导入 Element Plus 命令式 API
+      imports: [{
+        'element-plus': [
+          'ElMessage',
+          'ElMessageBox',
+          'ElNotification',
+          'ElLoading',
+        ],
+      }],
+    }),
     Components({resolvers: [ElementPlusResolver({importStyle: false})]}),
     // 构建时预压缩 — Nginx gzip_static 直接命中
     compression({

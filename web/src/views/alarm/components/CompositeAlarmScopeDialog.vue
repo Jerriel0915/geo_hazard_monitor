@@ -41,10 +41,10 @@ const getHazardPointOptions = async (): Promise<HazardPointOption[]> => {
 }
 const getCompositeAlarmScopes = async (alarmId: number): Promise<HazardPointOption[]> => {
   const ids = await getStrategyScope(alarmId) as number[]
-  return (Array.isArray(ids) ? ids : []).map((hpId) => ({ id: hpId, alarmId, hazardPointId: hpId }))
+  return (Array.isArray(ids) ? ids : []).map((hpId) => ({ id: hpId, name: '', hazardPointId: hpId }))
 }
 const updateCompositeAlarmScopes = async (alarmId: number, hpIds: number[]) =>
-  updateStrategy(alarmId, { hazardPointIds: hpIds } as Record<string, unknown>)
+  updateStrategy(alarmId, { hazardPointIds: hpIds } as Parameters<typeof updateStrategy>[1])
 
 const props = defineProps<{
   visible: boolean
@@ -66,7 +66,7 @@ watch(() => props.visible, async (val) => {
     try {
       const [points, scopes] = await Promise.all([getHazardPointOptions(), getCompositeAlarmScopes(props.alarmId)])
       hazardPoints.value = points
-      selectedIds.value = scopes.map(s => s.hazardPointId)
+      selectedIds.value = scopes.map(s => s.hazardPointId).filter((id): id is number => id != null) as number[]
     } finally {
       loading.value = false
     }

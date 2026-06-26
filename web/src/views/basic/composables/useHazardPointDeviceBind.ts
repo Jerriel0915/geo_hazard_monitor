@@ -189,7 +189,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                     installLongitude: item.installLongitude ?? null,
                     installLatitude: item.installLatitude ?? null,
                     status: item.deviceStatus ?? null,
-                    sensors: item.sensors || [],
+                    sensors: (item.sensors || []).map((s) => ({ id: String(s.id), name: s.name, iconPath: s.iconPath })),
                 }))
             } else {
                 opts.boundDevices.value = []

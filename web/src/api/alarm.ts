@@ -336,7 +336,7 @@ export interface AlarmDispatchRuleCreatePayload {
 
 /** 待办告警列表 (status IN 1,2) */
 export const getPendingAlarms = (params: AlarmRecordPageParams) =>
-    request.get<PageResult<AlarmRecordItem>>('/alarm/records/pending', {params})
+    request.get<AjaxResult<PageResult<AlarmRecordItem>>>('/alarm/records/pending', {params})
 
 /** 历史告警列表 (status IN 3,4) */
 export const getHistoryAlarms = (params: AlarmRecordPageParams) =>
@@ -509,5 +509,6 @@ export interface HazardPointOption {
   id: number
   name: string
   parentId?: number
+  hazardPointId?: number
   children?: HazardPointOption[]
 }

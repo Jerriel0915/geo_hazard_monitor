@@ -99,6 +99,7 @@ export interface HazardPointGroupRaw {
   description: string
   sortOrder: number
   status: number
+  count: number
 }
 
 export function createHazardPointGroup(data: GroupPayload): Promise<AjaxResult<HazardPointGroupRaw>> {

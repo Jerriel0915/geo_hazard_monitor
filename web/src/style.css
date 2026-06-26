@@ -9,8 +9,12 @@ html, body, #app {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* Element Plus 主题变量 */
+/* ============================================
+ * 设计 Token 变量
+ * 优先使用 var(--el-*) 引用，兼容 Element Plus 主题覆盖
+ * ============================================ */
 :root {
+  /* ── Primary（项目主色: Arco Design 蓝 #1890ff） ── */
   --el-color-primary: #1890ff;
   --el-color-primary-light-1: #3da3ff;
   --el-color-primary-light-2: #63b5ff;
@@ -22,6 +26,34 @@ html, body, #app {
   --el-color-primary-light-8: #f5fbff;
   --el-color-primary-light-9: #fafdff;
   --el-color-primary-dark-2: #1282d9;
+
+  /* ── Semantic（对齐 Element Plus 语义色） ── */
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+  --el-color-info: #909399;
+
+  /* ── Text ── */
+  --el-text-color-primary: #303133;
+  --el-text-color-regular: #606266;
+  --el-text-color-secondary: #909399;
+  --el-text-color-placeholder: #c0c4cc;
+
+  /* ── Border / Background ── */
+  --el-border-color-base: #dcdfe6;
+  --el-border-color-light: #e4e7ed;
+  --el-border-color-lighter: #ebeef5;
+  --el-border-color-extra-light: #f2f6fc;
+  --el-bg-color-page: #f5f7fa;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+
+  /* ── Spacing ── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
 }
 
 .el-menu {
@@ -644,4 +676,47 @@ html, body, #app {
 
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* ============================================
+ * 全局空状态 / 骨架屏 / 加载态
+ * ============================================ */
+
+/* 统一空状态（表格无数据时使用 <template #empty> 或独立展示） */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+}
+.empty-state .el-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  color: var(--el-border-color-base);
+}
+
+/* 骨架屏通用样式 */
+.skeleton-block {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 表格行骨架 */
+.skeleton-table-row {
+  display: grid;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.skeleton-table-row .skeleton-block {
+  height: 16px;
 }

@@ -111,12 +111,13 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     }
     try {
       const res = await getBoundDevices(String(hpId))
-      const list = (res as Record<string, unknown>).data || res || []
-      devices.value = (Array.isArray(list) ? list : []).map((d: Record<string, unknown>) => ({
-        deviceId: d.deviceId,
-        deviceName: d.deviceName,
-        deviceCode: d.deviceCode,
-        sensors: d.sensors || [],
+      const rawList = (res as Record<string, unknown>).data || res
+      const list = (Array.isArray(rawList) ? rawList : []) as Array<Record<string, unknown>>
+      devices.value = list.map((d) => ({
+        deviceId: (d.deviceId ?? d.id ?? 0) as number,
+        deviceName: (d.deviceName ?? '') as string,
+        deviceCode: (d.deviceCode ?? '') as string,
+        sensors: (Array.isArray(d.sensors) ? d.sensors : []) as BoundDeviceItem['sensors'],
       }))
     } catch {
       devices.value = []
@@ -264,25 +265,26 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
           for (const [code, rows] of Object.entries(dataMap)) {
               for (const r of [...rows].reverse()) flatRows.push({attrCode: code, row: r})
           }
-          tableData.value = flatRows.map(({ attrCode: code, row: r }) => {
+          const raw = flatRows.map(({ attrCode: code, row: r }) => {
             const attrDef = sensor.attrList?.find((a) => a.attrCode === code)
             const attrDisplayName = attrDef?.attrName || code
             return {
               hazardPointId: 0,
               hazardPointName: '',
-              dataTime: formatChartLabel(r.dataTime ?? r.time),
+              dataTime: formatChartLabel((r as Record<string, unknown>).dataTime ?? (r as Record<string, unknown>).time),
               deviceId,
               deviceName: '',
               sensorId: sensor.id ?? 0,
               sensorName: sensor.sensorName,
               attrCode: code,
               attrName: attrDisplayName,
-              value: r.value,
+              value: (r as Record<string, unknown>).value,
               unit: attrDef?.unit || '',
-              quality: r.quality,
-              qualityText: r.quality === 0 || r.quality == null ? '正常' : '异常',
+              quality: (r as Record<string, unknown>).quality,
+              qualityText: (r as Record<string, unknown>).quality === 0 || (r as Record<string, unknown>).quality == null ? '正常' : '异常',
             }
           })
+          tableData.value = raw as typeof tableData.value
           ElMessage.success(`加载 ${tableData.value.length} 条数据`)
         }
       } catch (error) {

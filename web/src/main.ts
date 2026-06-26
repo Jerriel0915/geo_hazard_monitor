@@ -7,5 +7,19 @@ import router from './router'
 import 'element-plus/theme-chalk/index.css'
 
 const app = createApp(App)
+
+// 全局 Vue 错误边界 — 组件渲染异常不白屏，降级展示错误信息
+app.config.errorHandler = (err, _instance, info) => {
+  console.error('[Vue Error]', err, `\n  component: ${info}`)
+  // 生产环境可上报到监控平台（Sentry / 自定义日志）
+  // if (import.meta.env.PROD) reportError(err, info)
+}
+
+// 未捕获的 Promise  rejection（非 axios 拦截器已处理的）
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Unhandled Promise]', event.reason)
+  event.preventDefault()
+})
+
 app.use(router)
 app.mount('#app')

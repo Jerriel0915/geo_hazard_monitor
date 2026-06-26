@@ -310,7 +310,7 @@ const getHazardPointName = (id: string) => {
 const loadHazardPointList = async () => {
   try {
     const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 })
-    hazardPointList.value = res.data?.rows || []
+    hazardPointList.value = (res.data?.rows || []) as unknown as HazardPointItem[]
   } catch {
     hazardPointList.value = [
       { id: '1', name: '龙潭寺滑坡点' }, { id: '2', name: '大坝监测点' },

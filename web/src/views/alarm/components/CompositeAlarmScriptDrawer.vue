@@ -103,8 +103,8 @@ import { JavascriptGenerator, Order } from 'blockly/javascript'
 import 'blockly/blocks'
 
 // 本地封装，避免依赖 deprecated compositeAlarm 模块
-const updateScriptCode = async (id: number, scriptContent: string) =>
-  updateStrategy(id, { scriptContent } as Record<string, unknown>)
+const updateScriptCode = async (id: number, scriptContent: string, _scriptXml?: string) =>
+  updateStrategy(id, { scriptContent } as Parameters<typeof updateStrategy>[1])
 const testCompositeAlarm = async (_id: number) => null
 
 // ==================== Blockly 自定义块定义 ====================

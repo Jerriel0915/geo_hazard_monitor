@@ -261,7 +261,7 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
                     }
                 } catch (error) {
                     console.error('删除失败:', error)
-                    const status = error?.response?.status
+                    const status = (error as { response?: { status?: number } })?.response?.status
                     showRequestErrorMessage(error, '删除失败')
                     if (status === 404) loadGroupList()
                 }
