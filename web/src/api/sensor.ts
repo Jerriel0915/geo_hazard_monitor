@@ -21,6 +21,7 @@ export interface SensorItem {
   monitorTypeId: number
   monitorTypeCode?: string
   monitorTypeName?: string
+  burialDepth?: number | null
   status: number
   attrList: SensorAttrItem[]
   createTime?: string
@@ -31,12 +32,14 @@ export interface SensorCreatePayload {
   sensorCode: string
   sensorName: string
   monitorTypeId: number
+  burialDepth?: number | null
   status: number
   attrList: SensorAttrItem[]
 }
 
 export interface SensorUpdatePayload {
   sensorName: string
+  burialDepth?: number | null
   status: number
   attrList: SensorAttrItem[]
 }

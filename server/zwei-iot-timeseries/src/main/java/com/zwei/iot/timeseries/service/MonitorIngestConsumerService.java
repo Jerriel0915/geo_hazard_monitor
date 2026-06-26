@@ -18,18 +18,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.RedisSystemException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * 监测数据异步消费者 — Redis Stream → IoTDB 落库。
@@ -51,7 +57,8 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  *
  * <h3>线程模型</h3>
- * 消费线程为单线程 daemon（monitor-ingest-consumer），通过 {@code volatile running} 控制启停。
+ * 消费线程为单线程 daemon（monitor-ingest-consumer），重试由独立调度线程（monitor-ingest-retry）
+ * 异步延迟重投，消费线程永不阻塞。通过 {@code volatile running} 控制启停。
  * 应用关闭时 {@code @PreDestroy} 触发优雅停止：设置 running=false → shutdownNow → awaitTermination(5s)。
  */
 @Slf4j
@@ -67,7 +74,11 @@ public class MonitorIngestConsumerService {
     private final ApplicationEventPublisher eventPublisher;
     private final LastMessageStore lastMessageStore;
     private final ExecutorService executorService;
+    private final ScheduledExecutorService retryScheduler;
     private volatile boolean running = true;
+
+    /** 本地监测计数累加器，避免每条消息都做 Redis INCR */
+    private final LongAdder monitorCountAdder = new LongAdder();
 
     /**
      * 构造监测数据流消费者。
@@ -104,6 +115,11 @@ public class MonitorIngestConsumerService {
             thread.setDaemon(true);
             return thread;
         });
+        this.retryScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "monitor-ingest-retry");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     /**
@@ -119,9 +135,19 @@ public class MonitorIngestConsumerService {
             return;
         }
         initConsumerGroup();
+        recoverStalePending();
         executorService.submit(this::consume);
         log.info("监测数据消费已启动。stream={}, group={}, consumer={}",
                 properties.getStreamKey(), properties.getConsumerGroup(), properties.getConsumerName());
+    }
+
+    /**
+     * 在 Spring 上下文关闭前（早于 Bean 销毁阶段）停止消费循环，
+     * 避免 Redis 连接先于本服务关闭导致消费线程在阻塞读取时抛异常。
+     */
+    @EventListener(ContextClosedEvent.class)
+    public void onShutdown() {
+        running = false;
     }
 
     /**
@@ -132,8 +158,32 @@ public class MonitorIngestConsumerService {
     @PreDestroy
     public void stop() throws InterruptedException {
         running = false;
+        // 停止接受新任务，等待已调度的延迟重试任务到期执行完毕，
+        // 确保已 ACK 但尚未重投的消息不会因 shutdownNow 取消而丢失
+        // （DelayedWorkQueue.drainTo 只取已到期任务，无法覆盖延迟窗口内的任务，
+        //   故改用 awaitTermination 让延迟任务自然到期执行）
+        retryScheduler.shutdown();
+        int maxDelaySeconds = properties.getRetryDelaysSeconds().stream()
+                .max(Long::compare).orElse(30L).intValue() + 5;
+        if (!retryScheduler.awaitTermination(maxDelaySeconds, TimeUnit.SECONDS)) {
+            log.warn("重试线程池在 {}s 内未完成，强制关闭", maxDelaySeconds);
+            retryScheduler.shutdownNow();
+        }
         executorService.shutdownNow();
         executorService.awaitTermination(5, TimeUnit.SECONDS);
+        // 最后将本地未刷入的计数写入 Redis
+        flushMonitorCount();
+    }
+
+    /**
+     * 每分钟将本地 LongAdder 累加值批量回写 Redis，避免每条消息都做 INCR。
+     */
+    @Scheduled(fixedDelay = 60_000)
+    void flushMonitorCount() {
+        long count = monitorCountAdder.sumThenReset();
+        if (count > 0) {
+            redisTemplate.opsForValue().increment("stats:total:monitor:count", count);
+        }
     }
 
     /**
@@ -159,6 +209,10 @@ public class MonitorIngestConsumerService {
             } catch (Exception e) {
                 if (!running) {
                     log.debug("消费线程已停止");
+                    break;
+                }
+                if (isShutdownCause(e)) {
+                    log.debug("消费线程因连接关闭停止");
                     break;
                 }
                 log.error("消费监测数据流失败", e);
@@ -190,8 +244,9 @@ public class MonitorIngestConsumerService {
             return;
         }
 
-        StandardMeasurementPoint point = JSON.parseObject(payload, StandardMeasurementPoint.class);
+        StandardMeasurementPoint point = null;
         try {
+            point = JSON.parseObject(payload, StandardMeasurementPoint.class);
             // ── 阶段1: 幂等去重 ──
             // 去重键 = device_id:sensor_code:attr_code:data_time:payload_hash
             // 利用 Redis SETNX 原子操作保证 TTL 窗口内同一条数据只落库一次
@@ -203,7 +258,7 @@ public class MonitorIngestConsumerService {
             // writePoints 内部惰性建表：首次写入自动创建 aligned timeseries + 质量码列
             iotdbTimeSeriesService.writePoints(List.of(point));
             // 累计监测次数 (+1)
-            redisTemplate.opsForValue().increment("stats:total:monitor:count");
+            monitorCountAdder.increment();
             // ── 阶段3: 运维指标回写 ──
             // 三个维度：device_online_status（实时在线状态）、device_sensor（传感器活跃率）、device（兼容保留）
             deviceOnlineStatusService.updateLastReportAt(point.deviceId());
@@ -231,16 +286,21 @@ public class MonitorIngestConsumerService {
             // ── 阶段4: 退避重试 / 死信 ──
             // 三段退避（默认 3s/9s/27s），超限进入死信队列供人工排查
             if (retryCount >= properties.getRetryDelaysSeconds().size()) {
-                streamService.enqueueDeadLetter(point, e.getMessage());
+                if (point != null) {
+                    streamService.enqueueDeadLetter(point, e.getMessage());
+                } else {
+                    streamService.enqueueDeadLetter("parse-error", payload, e.getMessage());
+                }
                 ack(record);
                 return;
             }
             long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
-            sleep(delaySeconds);
-            // 重试次数 +1 后重新入队，等待下一轮消费
-            record.getValue().put("retryCount", String.valueOf(retryCount + 1));
-            redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            int nextRetry = retryCount + 1;
             ack(record);
+            retryScheduler.schedule(() -> {
+                record.getValue().put("retryCount", String.valueOf(nextRetry));
+                redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            }, delaySeconds, TimeUnit.SECONDS);
         }
     }
 
@@ -248,36 +308,42 @@ public class MonitorIngestConsumerService {
      * Handle ParsedMessage-type records -- adapt to StandardMeasurementPoint then write to IoTDB.
      */
     private void processParsedMessage(MapRecord<Object, Object, Object> record, String payload, int retryCount) {
-        ParsedMessage parsed =
-                JSON.parseObject(payload, ParsedMessage.class);
+        ParsedMessage parsed = null;
         try {
+            parsed = JSON.parseObject(payload, ParsedMessage.class);
             List<StandardMeasurementPoint> points = adapt(parsed);
             if (points.isEmpty()) {
                 ack(record);
                 return;
             }
-            // Idempotent dedup -- use first point's payloadHash
-            if (isDuplicate(points.get(0))) {
+            // Idempotent dedup — 逐 point 去重，避免首属性命中导致其他属性被整批跳过
+            List<StandardMeasurementPoint> nonDuplicatePoints = new ArrayList<>();
+            for (StandardMeasurementPoint pt : points) {
+                if (!isDuplicate(pt)) {
+                    nonDuplicatePoints.add(pt);
+                }
+            }
+            if (nonDuplicatePoints.isEmpty()) {
                 ack(record);
                 return;
             }
+            points = nonDuplicatePoints;
             iotdbTimeSeriesService.writePoints(points);
             // 累计监测次数 (+N)
-            redisTemplate.opsForValue().increment("stats:total:monitor:count", points.size());
-            // Operational metrics callback
-            for (StandardMeasurementPoint pt : points) {
-                deviceOnlineStatusService.updateLastReportAt(pt.deviceId());
-                if (pt.sensorId() != null) {
-                    String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                            .format(new java.util.Date(pt.dataTime()));
-                    deviceSensorService.updateLastReportTime(pt.sensorId(), now);
-                }
-                deviceMapper.updateDevice(Device.builder()
-                        .id(pt.deviceId())
-                        .lastReportTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                                .format(new java.util.Date(pt.dataTime())))
-                        .build());
+            monitorCountAdder.add(points.size());
+            // Operational metrics — 按 deviceId/sensorId 去重，避免同一报文多属性时写放大
+            Long metricsDeviceId = points.get(0).deviceId();
+            Long metricsSensorId = points.get(0).sensorId();
+            String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    .format(new java.util.Date(points.get(0).dataTime()));
+            deviceOnlineStatusService.updateLastReportAt(metricsDeviceId);
+            if (metricsSensorId != null) {
+                deviceSensorService.updateLastReportTime(metricsSensorId, now);
             }
+            deviceMapper.updateDevice(Device.builder()
+                    .id(metricsDeviceId)
+                    .lastReportTime(now)
+                    .build());
             log.info("ParsedMessage ingested: deviceCode={} sensorCode={} properties={}",
                     parsed.deviceCode(), parsed.sensorCode(), points.size());
             // ── prev snapshot: get 必须在 put 之前, 此时 store 里是上一条 ──
@@ -297,15 +363,18 @@ public class MonitorIngestConsumerService {
             ack(record);
         } catch (Exception e) {
             if (retryCount >= properties.getRetryDelaysSeconds().size()) {
-                streamService.enqueueDeadLetter(parsed.deviceCode(), payload, e.getMessage());
+                String deviceCode = parsed != null ? parsed.deviceCode() : safeExtractDeviceCode(payload);
+                streamService.enqueueDeadLetter(deviceCode, payload, e.getMessage());
                 ack(record);
                 return;
             }
             long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
-            sleep(delaySeconds);
-            record.getValue().put("retryCount", String.valueOf(retryCount + 1));
-            redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            int nextRetry = retryCount + 1;
             ack(record);
+            retryScheduler.schedule(() -> {
+                record.getValue().put("retryCount", String.valueOf(nextRetry));
+                redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+            }, delaySeconds, TimeUnit.SECONDS);
         }
     }
 
@@ -482,6 +551,212 @@ public class MonitorIngestConsumerService {
     }
 
     /**
+     * 从原始 payload JSON 中安全提取 deviceCode，解析失败返回 "unknown"。
+     */
+    private String safeExtractDeviceCode(String payload) {
+        try {
+            String code = JSON.parseObject(payload).getString("deviceCode");
+            return code != null ? code : "unknown";
+        } catch (Exception e) {
+            log.warn("deviceCode 解析失败, payload={}",
+                    payload.substring(0, Math.min(200, payload.length())), e);
+            return "unknown";
+        }
+    }
+
+    /**
+     * 启动时回收 PEL 中超时未确认的消息（用于崩溃恢复与坏 payload 修复后的残留清理）。
+     * <p>
+     * 使用 XAUTOCLAIM 回收空闲超过 {@code pelRecoverIdleMs} 的待确认消息，
+     * XAUTOCLAIM 序列化不兼容时降级为 XPENDING + XCLAIM（两者均需 Redis 6.2+）。
+     */
+    @SuppressWarnings("unchecked")
+    private void recoverStalePending() {
+        try {
+            long minIdleMs = properties.getPelRecoverIdleMs();
+            Long recovered = redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Long>) connection -> {
+                long claimed = 0;
+                String startId = "0-0";
+                while (true) {
+                    // XAUTOCLAIM <key> <group> <consumer> <min-idle-ms> <start-id> COUNT <count>
+                    Object reply = connection.execute("XAUTOCLAIM",
+                            serialize(properties.getStreamKey()),
+                            serialize(properties.getConsumerGroup()),
+                            serialize(properties.getConsumerName()),
+                            String.valueOf(minIdleMs).getBytes(),
+                            serialize(startId),
+                            serialize("COUNT"),
+                            serialize("100"));
+                    // XAUTOCLAIM 返回: [nextStartId, [ [id, [k,v,...]], ... ]]
+                    Object parsed = parseRedisReply(reply);
+                    if (!(parsed instanceof List) || ((List<?>) parsed).isEmpty()) break;
+                    List<Object> result = (List<Object>) parsed;
+                    // 第一个元素是 next start-id
+                    Object nextStart = result.get(0);
+                    startId = nextStart instanceof byte[] ? new String((byte[]) nextStart) : "0-0";
+                    // 第二个元素是被回收的消息列表
+                    if (result.size() < 2) break;
+                    Object entriesObj = result.get(1);
+                    if (!(entriesObj instanceof List)) break;
+                    List<Object> entries = (List<Object>) entriesObj;
+                    if (entries.isEmpty()) break;
+                    for (Object entryObj : entries) {
+                        try {
+                            if (!(entryObj instanceof List)) continue;
+                            List<Object> entry = (List<Object>) entryObj;
+                            if (entry.size() < 2) continue;
+                            Object idObj = entry.get(0);
+                            Object fieldsObj = entry.get(1);
+                            if (!(idObj instanceof byte[]) || !(fieldsObj instanceof List)) continue;
+                            byte[] recordIdBytes = (byte[]) idObj;
+                            List<Object> fields = (List<Object>) fieldsObj;
+                            // 将回收的消息重新写入 Stream — 回收的消息已被转移给当前 consumer，
+                            // 但 Spring Data Redis 的 StreamOperations.read() 不会自动读到已
+                            // claimed 的消息（因为它们已被标记为 delivered），因此直接重新入队
+                            Map<String, String> body = new LinkedHashMap<>();
+                            for (int i = 0; i + 1 < fields.size(); i += 2) {
+                                body.put(new String((byte[]) fields.get(i)),
+                                         fields.get(i + 1) != null ? new String((byte[]) fields.get(i + 1)) : "");
+                            }
+                            // 重置 retryCount = 0 给回收的消息一次全新的处理机会
+                            body.put("retryCount", "0");
+                            String recIdStr = new String(recordIdBytes);
+                            // 先重新入队，再清理旧消息：若入队失败，旧消息仍在 PEL 中，
+                            // 下次回收会再次尝试（幂等去重兜底重复消费），避免消息永久丢失
+                            redisTemplate.opsForStream().add(
+                                    MapRecord.create(properties.getStreamKey(), body));
+                            connection.execute("XACK",
+                                    serialize(properties.getStreamKey()),
+                                    serialize(properties.getConsumerGroup()),
+                                    recordIdBytes);
+                            connection.execute("XDEL",
+                                    serialize(properties.getStreamKey()),
+                                    recordIdBytes);
+                            String payloadPreview = body.getOrDefault("payload", "");
+                            log.info("PEL 回收: 重新入队 recordId={} payloadPreview={}",
+                                    recIdStr, payloadPreview.substring(0, Math.min(80, payloadPreview.length())));
+                            claimed++;
+                        } catch (Exception e) {
+                            // 单条消息处理失败（add/XACK/XDEL）不中断整批回收，
+                            // 旧消息仍留在 PEL，下次回收周期会重试
+                            log.warn("PEL 回收: 单条消息处理失败，跳过", e);
+                        }
+                    }
+                    // 如果返回的条目数 < COUNT，说明已处理完所有待回收消息
+                    if (entries.size() < 100) break;
+                }
+                return claimed;
+            });
+            if (recovered != null && recovered > 0) {
+                log.info("PEL 回收完成: 共回收 {} 条待确认消息", recovered);
+            }
+        } catch (Exception e) {
+            // XAUTOCLAIM 命令不可用或响应结构异常，降级使用 XPENDING + XCLAIM
+            log.debug("XAUTOCLAIM 不可用 ({}), 降级使用 XPENDING + XCLAIM",
+                    e.getClass().getSimpleName(), e);
+            recoverStalePendingLegacy();
+        }
+    }
+
+    /**
+     * 降级 PEL 回收方案：XPENDING 查询 + XCLAIM 逐条认领。
+     * 用于 XAUTOCLAIM 原生命令序列化不兼容的场景（需 Redis 6.2+，项目实际使用 Redis 7）。
+     */
+    @SuppressWarnings("unchecked")
+    private void recoverStalePendingLegacy() {
+        try {
+            long minIdleMs = properties.getPelRecoverIdleMs();
+            redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+                // XPENDING <key> <group> IDLE <min-idle-ms> - + <count>
+                Object reply = connection.execute("XPENDING",
+                        serialize(properties.getStreamKey()),
+                        serialize(properties.getConsumerGroup()),
+                        serialize("IDLE"),
+                        String.valueOf(minIdleMs).getBytes(),
+                        serialize("-"),
+                        serialize("+"),
+                        serialize("100"));
+                List<List<Object>> pendingEntries = (List<List<Object>>) parseRedisReply(reply);
+                if (!(pendingEntries instanceof List) || pendingEntries.isEmpty()) return null;
+
+                int claimed = 0;
+                for (List<Object> entry : pendingEntries) {
+                    try {
+                        if (entry == null || entry.isEmpty()) continue;
+                        Object idObj = entry.get(0);
+                        if (!(idObj instanceof byte[])) continue;
+                        byte[] recordIdBytes = (byte[]) idObj;
+                        // XCLAIM <key> <group> <consumer> <min-idle-ms> <id> [id ...]
+                        Object claimReply = connection.execute("XCLAIM",
+                                serialize(properties.getStreamKey()),
+                                serialize(properties.getConsumerGroup()),
+                                serialize(properties.getConsumerName()),
+                                String.valueOf(minIdleMs).getBytes(),
+                                recordIdBytes);
+                        Object parsed = parseRedisReply(claimReply);
+                        if (!(parsed instanceof List)) continue;
+                        List<Object> claimedEntries = (List<Object>) parsed;
+                        for (Object ceObj : claimedEntries) {
+                            if (!(ceObj instanceof List)) continue;
+                            List<Object> ce = (List<Object>) ceObj;
+                            if (ce.size() < 2) continue;
+                            Object ceIdObj = ce.get(0);
+                            Object fieldsObj = ce.get(1);
+                            if (!(ceIdObj instanceof byte[]) || !(fieldsObj instanceof List)) continue;
+                            List<Object> fields = (List<Object>) fieldsObj;
+                            Map<String, String> body = new LinkedHashMap<>();
+                            for (int i = 0; i + 1 < fields.size(); i += 2) {
+                                body.put(new String((byte[]) fields.get(i)),
+                                         fields.get(i + 1) != null ? new String((byte[]) fields.get(i + 1)) : "");
+                            }
+                            body.put("retryCount", "0");
+                            // 先重新入队，再清理旧消息（同 recoverStalePending，避免入队失败丢消息）
+                            redisTemplate.opsForStream().add(
+                                    MapRecord.create(properties.getStreamKey(), body));
+                            connection.execute("XACK",
+                                    serialize(properties.getStreamKey()),
+                                    serialize(properties.getConsumerGroup()),
+                                    (byte[]) ceIdObj);
+                            connection.execute("XDEL",
+                                    serialize(properties.getStreamKey()),
+                                    (byte[]) ceIdObj);
+                            claimed++;
+                        }
+                    } catch (Exception e) {
+                        // 单条消息处理失败不中断整批 legacy 回收，旧消息仍留 PEL 待下次重试
+                        log.warn("PEL 回收(legacy): 单条消息处理失败，跳过", e);
+                    }
+                }
+                if (claimed > 0) {
+                    log.info("PEL 回收(legacy)完成: 共回收 {} 条待确认消息", claimed);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            log.warn("PEL legacy 回收失败", e);
+        }
+    }
+
+    private byte[] serialize(String str) {
+        return str.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 将原生 Redis 回复递归转换为 Java 对象（List / byte[] / null）。
+     * 处理嵌套 List（来自 XAUTOCLAIM / XPENDING 返回）中的 byte[]。
+     */
+    private static Object parseRedisReply(Object reply) {
+        if (reply instanceof List<?> list) {
+            java.util.List<Object> result = new java.util.ArrayList<>(list.size());
+            for (Object item : list) {
+                result.add(parseRedisReply(item));
+            }
+            return result;
+        }
+        return reply;
+    }
+
+    /**
      * 按配置延迟当前线程，用于简单退避重试。
      *
      * @param delaySeconds 延迟秒数
@@ -492,5 +767,26 @@ public class MonitorIngestConsumerService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * 判断异常是否为 shutdown 时 Redis 连接关闭所致，
+     * 避免在优雅停机时输出 ERROR 日志。
+     */
+    private boolean isShutdownCause(Exception e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof RedisSystemException) {
+                return true;
+            }
+            String msg = cause.getMessage();
+            if (msg != null && (msg.contains("Connection closed")
+                    || msg.contains("connection reset")
+                    || msg.contains("connection was closed"))) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }

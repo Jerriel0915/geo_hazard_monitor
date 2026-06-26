@@ -28,6 +28,9 @@ export interface ChartData {
     maxValue: number | null
     minValue: number | null
     avgValue: number | null
+    sampled?: boolean
+    downsampleInterval?: string
+    pointCount?: number
 }
 
 export interface MonitorDataPageItem {
@@ -56,6 +59,7 @@ export interface MonitorDataPageQuery {
     endTime?: string
     pageNum?: number
     pageSize?: number
+    cursor?: number
 }
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {
@@ -74,7 +78,7 @@ export const getLatestData = (hazardPointId: number) =>
 export const getMonitorDataPage = (params: MonitorDataPageQuery) =>
     unwrap<PageResult<MonitorDataPageItem>>(request.get('/monitor-data/page', {params}))
 
-/** 查询监测指标的图表（曲线）数据（支持多测点多序列） */
+/** 查询监测指标的图表（曲线）数据（支持多测点多序列 + 主动降采样） */
 export const getChartData = (params: {
     hazardPointId: number
     deviceId?: number
@@ -83,6 +87,7 @@ export const getChartData = (params: {
     valueType?: string
     startTime: string
     endTime: string
+    granularity?: string
 }) =>
     unwrap<ChartData[]>(request.get('/monitor-data/chart', {params}))
 

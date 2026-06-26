@@ -48,9 +48,12 @@ public class PageDomain
         return pageSize;
     }
 
+    /** 分页最大条数上限，防止 pageSize过大 拉全表导致 OOM */
+    public static final int MAX_PAGE_SIZE = 500;
+
     public void setPageSize(Integer pageSize)
     {
-        this.pageSize = pageSize;
+        this.pageSize = pageSize != null ? Math.min(pageSize, MAX_PAGE_SIZE) : null;
     }
 
     public String getOrderByColumn()

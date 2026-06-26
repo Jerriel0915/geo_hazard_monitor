@@ -116,7 +116,7 @@
 import { getBoundDevices, getHazardPointDetail, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
 import { getDashboardFull } from '@/api/monitor'
 import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
-import { getRealtimeAlarmPage, type AlarmRecordItem } from '@/api/realtimeAlarm'
+import { getPendingAlarms, type AlarmRecordItem } from '@/api/alarm'
 import { getFocusArea } from '@/api/system'
 import { buildTiandituUrl } from '@/composables/useLeafletMap'
 import { deserialize, type BoundaryCoords } from '@/lib/boundaryCoords'
@@ -1182,7 +1182,7 @@ const loadDashboardData = async () => {
   try {
     const [fullRes, alarmRes] = await Promise.all([
       getDashboardFull(),
-      getRealtimeAlarmPage({ pageNum: 1, pageSize: 50 })
+      getPendingAlarms({ pageNum: 1, pageSize: 50 })
     ])
 
     // ---- HealthWidget ----

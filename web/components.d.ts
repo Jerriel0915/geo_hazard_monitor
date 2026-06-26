@@ -11,10 +11,10 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    EChartsWrapper: typeof import('./src/components/EChartsWrapper.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']
-    ElCard: typeof import('element-plus/es')['ElCard']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
     ElCheckboxGroup: typeof import('element-plus/es')['ElCheckboxGroup']
     ElCol: typeof import('element-plus/es')['ElCol']
@@ -58,6 +58,7 @@ declare module 'vue' {
     ElTree: typeof import('element-plus/es')['ElTree']
     ElTreeSelect: typeof import('element-plus/es')['ElTreeSelect']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    EmptyState: typeof import('./src/components/EmptyState.vue')['default']
     FeedBack: typeof import('./src/components/FeedBack.vue')['default']
     FeedbackDialog: typeof import('./src/components/FeedbackDialog.vue')['default']
     IconFont: typeof import('./src/components/IconFont.vue')['default']
@@ -70,6 +71,7 @@ declare module 'vue' {
     Notify: typeof import('./src/components/Notify.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    TablePagination: typeof import('./src/components/TablePagination.vue')['default']
     TableSortHeader: typeof import('./src/components/TableSortHeader.vue')['default']
     VideoPlayer: typeof import('./src/components/VideoPlayer.vue')['default']
   }

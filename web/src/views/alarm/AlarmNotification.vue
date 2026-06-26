@@ -19,10 +19,11 @@
       <el-date-picker
         v-model="queryParams.alarmTimeRange"
         type="daterange"
-        range-separator=""
+        range-separator="至"
         start-placeholder="告警时间:开始"
         end-placeholder="告警时间:结束"
-        value-format="YYYY-MM-DD"
+        value-format="YYYY-MM-DD HH:mm:ss"
+        :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
       />
       <el-select v-model="queryParams.alarmLevel" placeholder="告警等级" clearable multiple collapse-tags collapse-tags-tooltip>
         <el-option v-for="lv in [1,2,3,4]" :key="lv" :label="getAlarmLevelConfig(lv).text" :value="lv">
@@ -118,13 +119,28 @@ import {onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {Download, View} from '@element-plus/icons-vue'
 import AlarmDetailDialog from './components/AlarmDetailDialog.vue'
-import {getHistoryAlarms, getAlarmLevelConfig, getAlarmTypeTagType, getAlarmTypeText} from '@/api/alarm'
+import {getHistoryAlarms, getAlarmLevelConfig, getAlarmTypeTagType, getAlarmTypeText, type AlarmRecordItem} from '@/api/alarm'
+
+// 获取默认时间范围：最近7天
+const getDefaultTimeRange = (): [string, string] => {
+  const end = new Date()
+  const start = new Date()
+  start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+  const format = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day} 00:00:00`
+  }
+  const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
+  return [format(start), endStr]
+}
 
 // 查询参数
 const queryParams = reactive({
   hazardPointName: '',
   personName: '',
-  alarmTimeRange: [] as string[],
+  alarmTimeRange: getDefaultTimeRange() as string[],
   alarmCountMin: null as number | null,
   alarmCountMax: null as number | null,
   alarmLevel: [] as string[],
@@ -140,13 +156,13 @@ const pagination = reactive({
 })
 
 // 表格数据
-const tableData = ref<any[]>([])
+const tableData = ref<AlarmRecordItem[]>([])
 
 // 弹窗
 const detailDialogVisible = ref(false)
 
 // 当前行
-const currentRow = ref<any>(null)
+const currentRow = ref<AlarmRecordItem | null>(null)
 
 const loading = ref(false)
 
@@ -173,8 +189,6 @@ const fetchData = async () => {
     loading.value = false
   }
 }
-
-// 原始 mock 数据 — 已替换为 API
 
 // 初始化
 onMounted(() => {
@@ -209,7 +223,7 @@ const handleQuery = () => {
 const handleReset = () => {
   queryParams.hazardPointName = ''
   queryParams.personName = ''
-  queryParams.alarmTimeRange = []
+  queryParams.alarmTimeRange = getDefaultTimeRange()
   queryParams.alarmCountMin = null
   queryParams.alarmCountMax = null
   queryParams.alarmLevel = []
@@ -220,13 +234,13 @@ const handleReset = () => {
 }
 
 // 行点击 - 查看详情
-const handleRowClick = (row: any) => {
+const handleRowClick = (row: AlarmRecordItem) => {
   currentRow.value = row
   detailDialogVisible.value = true
 }
 
 // 查看详情
-const handleView = (row: any) => {
+const handleView = (row: AlarmRecordItem) => {
   currentRow.value = row
   detailDialogVisible.value = true
 }

@@ -2,6 +2,7 @@ package com.zwei.log.application.service;
 
 import java.util.Date;
 import java.util.List;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.log.api.dto.AuthLogQuery;
@@ -47,18 +48,21 @@ public class LogCenterService {
         this.runtimeLogMapper = runtimeLogMapper;
     }
 
+    @Async("threadPoolTaskExecutor")
     public void publishOperation(LogOperationRecord record) {
         prepare(record);
         logStorageRouter.route(record);
         logStreamPublisher.publish(record);
     }
 
+    @Async("threadPoolTaskExecutor")
     public void publishAuth(LogAuthRecord record) {
         prepare(record);
         logStorageRouter.route(record);
         logStreamPublisher.publish(record);
     }
 
+    @Async("threadPoolTaskExecutor")
     public void publishRuntime(LogRuntimeRecord record) {
         prepare(record);
         if (StringUtils.isEmpty(record.getMessageDigest()) && StringUtils.isNotEmpty(record.getMessage())) {

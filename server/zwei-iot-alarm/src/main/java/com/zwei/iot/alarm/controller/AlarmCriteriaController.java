@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.controller;
 
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.TableDataInfo;
@@ -8,6 +9,7 @@ import com.zwei.iot.alarm.domain.AlarmCriteriaLog;
 import com.zwei.iot.alarm.domain.dto.CriteriaCreateRequest;
 import com.zwei.iot.alarm.service.IAlarmCriteriaService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,9 +43,10 @@ public class AlarmCriteriaController extends BaseController {
         return success(criteriaService.selectById(id));
     }
 
+    @RepeatSubmit
     @PostMapping
     @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:create')")
-    public AjaxResult create(@RequestBody CriteriaCreateRequest request) {
+    public AjaxResult create(@Validated @RequestBody CriteriaCreateRequest request) {
         if (!criteriaService.checkCriteriaUnique(request.getName(), request.getHazardPointId(), 0L)) {
             return error("新增失败，该隐患点下已存在同名判据");
         }
@@ -65,7 +68,7 @@ public class AlarmCriteriaController extends BaseController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPermi('iot:alarm-criteria:update')")
-    public AjaxResult update(@PathVariable Long id, @RequestBody CriteriaCreateRequest request) {
+    public AjaxResult update(@PathVariable Long id, @Validated @RequestBody CriteriaCreateRequest request) {
         if (!criteriaService.checkCriteriaUnique(request.getName(), request.getHazardPointId(), id)) {
             return error("修改失败，该隐患点下已存在同名判据");
         }

@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.controller;
 
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.TableDataInfo;
@@ -7,6 +8,7 @@ import com.zwei.iot.alarm.domain.AlarmStrategy;
 import com.zwei.iot.alarm.domain.dto.StrategyCreateRequest;
 import com.zwei.iot.alarm.service.IAlarmStrategyService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,9 +42,10 @@ public class AlarmStrategyController extends BaseController {
         return success(strategyService.selectById(id));
     }
 
+    @RepeatSubmit
     @PostMapping
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:create')")
-    public AjaxResult create(@RequestBody StrategyCreateRequest request) {
+    public AjaxResult create(@Validated @RequestBody StrategyCreateRequest request) {
         if (!strategyService.checkStrategyNameUnique(request.getName(), 0L)) {
             return error("新增失败，策略名称已存在");
         }
@@ -65,7 +68,7 @@ public class AlarmStrategyController extends BaseController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:update')")
-    public AjaxResult update(@PathVariable Long id, @RequestBody StrategyCreateRequest request) {
+    public AjaxResult update(@PathVariable Long id, @Validated @RequestBody StrategyCreateRequest request) {
         if (!strategyService.checkStrategyNameUnique(request.getName(), id)) {
             return error("修改失败，策略名称已存在");
         }

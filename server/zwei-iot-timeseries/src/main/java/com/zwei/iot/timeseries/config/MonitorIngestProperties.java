@@ -45,4 +45,8 @@ public class MonitorIngestProperties {
     private int pollBatchSize = 20;
     private long pollBlockMs = 2000;
     private List<Long> retryDelaysSeconds = new ArrayList<>(List.of(5L, 30L, 120L));
+    /** PEL 回收最小空闲时间（毫秒），默认 5 分钟。超过此时间未被确认的消息将被重新入队。 */
+    private long pelRecoverIdleMs = 300_000L;
+    /** Stream 最大长度（近似值），超出时自动裁剪旧消息。0 表示不裁剪。 */
+    private long maxStreamLen = 100_000L;
 }

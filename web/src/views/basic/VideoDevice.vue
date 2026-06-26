@@ -93,7 +93,7 @@
     </div>
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px" :close-on-click-modal="false" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" :close-on-click-modal="false" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-row :gutter="20">
           <el-col :span="12">
@@ -170,7 +170,7 @@
     />
 
     <!-- 视频图标选择弹窗 -->
-    <el-dialog v-model="videoIconDialogVisible" title="选择视频设备图标" width="500px">
+    <el-dialog v-model="videoIconDialogVisible" title="选择视频设备图标" width="480px">
       <div class="icon-grid">
         <div v-for="item in videoIconList" :key="item.code" class="icon-item" @click="handleVideoIconSelect(item)">
           <img :src="item.path" class="icon-select-img" :alt="item.name" />
@@ -183,7 +183,7 @@
     </el-dialog>
 
     <!-- 视频播放弹窗 -->
-    <el-dialog v-model="playDialogVisible" title="视频播放" width="900px" :close-on-click-modal="false" destroy-on-close class="video-play-dialog">
+    <el-dialog v-model="playDialogVisible" title="视频播放" width="960px" :close-on-click-modal="false" destroy-on-close class="video-play-dialog">
       <div class="video-container">
         <div class="video-wrapper" ref="videoWrapper">
           <video ref="videoRef" :src="playUrl" controls class="video-player" @loadedmetadata="onVideoLoaded" @error="onVideoError" />
@@ -310,7 +310,7 @@ const getHazardPointName = (id: string) => {
 const loadHazardPointList = async () => {
   try {
     const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 })
-    hazardPointList.value = res.data?.rows || []
+    hazardPointList.value = (res.data?.rows || []) as unknown as HazardPointItem[]
   } catch {
     hazardPointList.value = [
       { id: '1', name: '龙潭寺滑坡点' }, { id: '2', name: '大坝监测点' },

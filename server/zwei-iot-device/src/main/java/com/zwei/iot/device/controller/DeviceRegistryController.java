@@ -1,7 +1,10 @@
 package com.zwei.iot.device.controller;
 
 import com.zwei.common.annotation.Anonymous;
+import com.zwei.common.annotation.RateLimiter;
+import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.core.domain.AjaxResult;
+import com.zwei.common.enums.LimitType;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.device.domain.dto.DeviceRegisterRequest;
 import com.zwei.iot.device.domain.vo.DeviceRegistryResult;
@@ -27,6 +30,8 @@ public class DeviceRegistryController {
     }
 
     @Anonymous
+    @RepeatSubmit
+    @RateLimiter(time = 60, count = 10, limitType = LimitType.IP)
     @PostMapping("/register")
     public AjaxResult register(@Valid @RequestBody DeviceRegisterRequest request) {
         try {

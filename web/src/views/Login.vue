@@ -306,7 +306,7 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios'
+import request from '@/utils/request'
 import {ElMessage} from 'element-plus'
 import {onMounted, onUnmounted, reactive, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
@@ -338,14 +338,14 @@ let smsTimer: ReturnType<typeof setInterval> | null = null
 //向后端获取验证码
 const getCaptcha = async () => {
   try {
-    const res = await axios.get('/api/v1/auth/captcha')
-    if (res.data?.code && res.data.code !== 200) {
-      ElMessage.error(res.data.msg || '获取验证码失败')
+    const res: any = await request.get('/auth/captcha')
+    if (res.code && res.code !== 200) {
+      ElMessage.error(res.msg || '获取验证码失败')
       return
     }
-    captchaKey = res.data.data.captchaKey
-    captchaImage.value = 'data:image/png;base64,' + res.data.data.captchaImage
-    captchaEnabled.value = res.data.data.captchaEnabled
+    captchaKey = res.data.captchaKey
+    captchaImage.value = 'data:image/png;base64,' + res.data.captchaImage
+    captchaEnabled.value = res.data.captchaEnabled
     loginForm.captcha = ''
   } catch (err: any) {
     console.error('获取验证码失败:', err)
@@ -362,9 +362,9 @@ const sendSms = async () => {
   if (smsCooldown.value > 0) return
 
   try {
-    const res = await axios.post('/api/v1/auth/sms', {phone: loginForm.phone})
-    if (res.data?.code && res.data.code !== 200) {
-      ElMessage.error(res.data.msg || '发送失败')
+    const res: any = await request.post('/auth/sms', {phone: loginForm.phone})
+    if (res.code && res.code !== 200) {
+      ElMessage.error(res.msg || '发送失败')
       return
     }
     ElMessage.success('短信验证码已发送')
@@ -403,27 +403,29 @@ const login = async () => {
       loginData.smsCode = loginForm.smsCode
     }
 
-    const res = await axios.post('/api/v1/auth/login', loginData)
-    if (res.data?.code && res.data.code !== 200) {
-      ElMessage.error(res.data.msg || '登录失败')
+    const res: any = await request.post('/auth/login', loginData)
+    if (res.code && res.code !== 200) {
+      ElMessage.error(res.msg || '登录失败')
       if (captchaEnabled.value) getCaptcha()
       return
     }
-    localStorage.setItem('token', res.data.data.token)
+    localStorage.setItem('token', res.data.token)
 
-    const userRes = await axios.get('/api/v1/auth/getInfo', {
-      headers: { Authorization: `Bearer ${res.data.data.token}` }
+    // getInfo 与路由跳转并行：getInfo 不阻塞跳转，Layout 加载时会自行调用 getAuthInfo/getUserInfo
+    request.get<{code: number; data: {user: Record<string, unknown>}}>('/auth/getInfo').then(userRes => {
+      const user = userRes.data?.user
+      if (user) {
+        localStorage.setItem('userInfo', JSON.stringify({
+          id: user.userId,
+          username: user.username,
+          realName: user.nickName,
+          orgId: user.deptId,
+          orgName: user.deptName
+        }))
+      }
+    }).catch(() => {
+      // getInfo 失败不阻塞登录流程，Layout 加载时会自行重试
     })
-    const user = userRes.data.data?.user
-    if (user) {
-      localStorage.setItem('userInfo', JSON.stringify({
-        id: user.userId,
-        username: user.username,
-        realName: user.nickName,
-        orgId: user.deptId,
-        orgName: user.deptName
-      }))
-    }
 
     ElMessage.success('登录成功')
     // 支持 H5 等场景：未登录访问被路由守卫拦截到登录页时，登录后跳回原地址（如 /h5/disposal/:id）

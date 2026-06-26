@@ -217,3 +217,4 @@ A: `IotdbTimeSeriesService` 写入成功后由 `MonitorIngestConsumerService` �
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描)                                                                                        |
 | 2026-06-10 19:08 | 增量补扫: 修正路径 `ingest/` → `service/`，`query/` → 实际为 `MonitorDataQueryService`；新增核心实现类索引、Redis Key 模式、四阶段处理流程、三段退避重试说明 |
 | 2026-06-14 | 新增查询能力增强: ExpressionSpec DSL + 数值范围 + 完整度/趋势 — 详见 specs/2026-06-14-timeseries-query-enhancement-design |
+| 2026-06-25 | PEL 泄漏修复: parseObject 移入 try 块 (解析失败→死信+ACK) + 启动时 XAUTOCLAIM 兜底回收超时 PEL (含 XPENDING+XCLAIM 降级) + MonitorIngestProperties 新增 pelRecoverIdleMs 配置 |

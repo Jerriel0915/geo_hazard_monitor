@@ -202,6 +202,18 @@ public class MqttDeviceAuthService {
      */
     public boolean hasPublishPermission(ChannelContext context, String clientId, String topic, MqttQoS qoS, boolean retain) {
         String normalizedClientId = normalizeClientId(null, clientId);
+        if (retain) {
+            return mqttExceptionReporter.rejectWithWarn(new MqttBusinessException.PermissionDenied(
+                    mqttExceptionReporter.context(normalizedClientId, topic, qoS).build(),
+                    "不允许发布保留消息"
+            ));
+        }
+        if (qoS != null && qoS.value() > 1) {
+            return mqttExceptionReporter.rejectWithWarn(new MqttBusinessException.PermissionDenied(
+                    mqttExceptionReporter.context(normalizedClientId, topic, qoS).build(),
+                    "QoS 等级不允许超过 1"
+            ));
+        }
         PublishTarget publishTarget = parsePublishTarget(topic);
         if (publishTarget == null) {
             return mqttExceptionReporter.rejectWithWarn(new MqttBusinessException.InvalidTopic(

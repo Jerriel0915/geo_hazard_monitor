@@ -1,5 +1,7 @@
 package com.zwei.iot.alarm.domain.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 /**
@@ -21,10 +23,17 @@ public class CriteriaCreateRequest {
     /**
      * 四级告警条件配置 JSON: {"blue":{...},"yellow":{...},"orange":{...},"red":{...}}
      */
+    @NotBlank(message = "告警条件配置不能为空")
     private String levelConfig;
 
+    @Min(value = 1, message = "触发持续次数最小为1")
     private Integer persistCount;
+
+    @Min(value = 0, message = "静默周期不能为负数")
     private Integer silencePeriod;
+
+    @Min(value = 0, message = "启用状态只能为0或1")
+    @Max(value = 1, message = "启用状态只能为0或1")
     private Integer isEnabled;
 
     // ── Getters / Setters ──

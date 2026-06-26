@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -42,6 +43,18 @@ public class ThreadPoolConfig
         // 线程池对拒绝任务(无线程可用)的处理策略
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         return executor;
+    }
+
+    /**
+     * @Scheduled 定时任务调度器（poolSize ≥ 2，防止长耗时 CRON 任务导致心跳饥饿）。
+     */
+    @Bean(name = "taskScheduler")
+    public ThreadPoolTaskScheduler taskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(4);
+        scheduler.setThreadNamePrefix("scheduled-");
+        scheduler.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        return scheduler;
     }
 
     /**

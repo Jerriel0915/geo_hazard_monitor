@@ -163,6 +163,11 @@ public class Device extends BaseEntity {
      */
     private String boundHazardPointName;
 
+    /**
+     * 隐患点ID（查询参数，用于筛选绑定到指定隐患点的设备）
+     */
+    private Long hazardPointId;
+
     @Override
     public String toString() {
         return "Device{" +

@@ -305,6 +305,6 @@ export const updateLogCleanupConfig = (data: Partial<LogCleanupConfig>) =>
 export const getFocusArea = () =>
     request.get<any>('/system/config/configKey/sys_focus_area')
 
-/** 保存系统关注区域 GeoJSON */
-export const saveFocusArea = (geoJson: object) =>
-    request.put('/system/config/configKey/sys_focus_area', {configValue: JSON.stringify(geoJson)})
+/** 保存系统关注区域 GeoJSON（传 null 清除） */
+export const saveFocusArea = (geoJson: object | null) =>
+    request.put('/system/config/configKey/sys_focus_area', {configValue: geoJson ? JSON.stringify(geoJson) : 'null'})

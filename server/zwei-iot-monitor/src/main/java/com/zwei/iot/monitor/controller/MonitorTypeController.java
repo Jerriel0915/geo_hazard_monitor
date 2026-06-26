@@ -183,6 +183,7 @@ public class MonitorTypeController extends BaseController {
         MonitorType update = new MonitorType();
         update.setId(id);
         update.setStatus(status);
+        update.setUpdateBy(getUsername());
         int rows = monitorTypeService.updateMonitorType(update);
         String action = status == 0 ? "停用" : "启用";
         return rows > 0 ? AjaxResult.success(action + "成功") : error(action + "失败");

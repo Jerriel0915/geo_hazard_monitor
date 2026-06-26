@@ -64,9 +64,10 @@ public class MonitorIngestFacade {
         DataParseStrategy strategy = metadataService.resolveStrategy(
                 parsedTopic.sourceType(), deviceId);
         if (strategy == null) {
-            log.error("No matching parse strategy found: sourceType={}, deviceId={}, topic={}",
-                    parsedTopic.sourceType(), deviceId, topic);
-            return; // silent discard, MQTT won't ack
+            String payloadStr = new String(message, StandardCharsets.UTF_8);
+            streamService.enqueueDeadLetter(topic, payloadStr,
+                    "No matching parse strategy: sourceType=" + parsedTopic.sourceType() + ", deviceId=" + deviceId);
+            return;
         }
 
         // 3. Execute Groovy script

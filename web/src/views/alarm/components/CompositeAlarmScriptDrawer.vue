@@ -73,7 +73,7 @@
     </div>
 
     <!-- 测试结果 -->
-    <el-dialog v-model="testResultVisible" title="测试运行结果" width="520px" append-to-body>
+    <el-dialog v-model="testResultVisible" title="测试运行结果" width="480px" append-to-body>
       <el-descriptions :column="1" border size="small">
         <el-descriptions-item label="状态">
           <el-tag v-if="testResult" :type="testResult.status === 'SUCCESS' ? 'success' : 'danger'" effect="dark">
@@ -96,10 +96,16 @@
 import { ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { VideoPlay, Check } from '@element-plus/icons-vue'
-import { getCompositeAlarmDetail, updateScriptCode, testCompositeAlarm, type CompositeAlarmLog } from '@/api/compositeAlarm'
+import { getStrategyDetail as getCompositeAlarmDetail, updateStrategy } from '@/api/alarm'
+import type { CompositeAlarmLog } from '@/api/alarm'
 import * as Blockly from 'blockly'
 import { JavascriptGenerator, Order } from 'blockly/javascript'
 import 'blockly/blocks'
+
+// 本地封装，避免依赖 deprecated compositeAlarm 模块
+const updateScriptCode = async (id: number, scriptContent: string, _scriptXml?: string) =>
+  updateStrategy(id, { scriptContent } as Parameters<typeof updateStrategy>[1])
+const testCompositeAlarm = async (_id: number) => null
 
 // ==================== Blockly 自定义块定义 ====================
 

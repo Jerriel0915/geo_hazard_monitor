@@ -11,6 +11,10 @@
         <result column="script_code" property="scriptCode"/>
         <result column="is_preset" property="isPreset"/>
         <result column="last_run_time" property="lastRunTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="update_time" property="updateTime"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -36,19 +40,33 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO iot_data_parse_strategy (name, source_type, description, status, app_scope, script_code, is_preset)
-        VALUES (#{name}, #{sourceType}, #{description}, #{status}, #{appScope}, #{scriptCode}, IFNULL(#{isPreset}, 0))
+        INSERT INTO iot_data_parse_strategy (name, source_type, description, status, app_scope, script_code, is_preset
+            <if test="createBy != null">, create_by</if>
+            <if test="createTime != null">, create_time</if>
+            <if test="updateBy != null">, update_by</if>
+            <if test="updateTime != null">, update_time</if>
+        ) VALUES (#{name}, #{sourceType}, #{description}, #{status}, #{appScope}, #{scriptCode}, IFNULL(#{isPreset}, 0)
+            <if test="createBy != null">, #{createBy}</if>
+            <if test="createTime != null">, #{createTime}</if>
+            <if test="updateBy != null">, #{updateBy}</if>
+            <if test="updateTime != null">, #{updateTime}</if>
+        )
     </insert>
 
     <update id="updateById">
         UPDATE iot_data_parse_strategy
         SET name = #{name}, source_type = #{sourceType}, description = #{description},
             status = #{status}, app_scope = #{appScope}, script_code = #{scriptCode}
+            <if test="updateBy != null">, update_by = #{updateBy}</if>
+            <if test="updateTime != null">, update_time = #{updateTime}</if>
         WHERE id = #{id}
     </update>
 
     <update id="deleteById">
-        UPDATE iot_data_parse_strategy SET del_flag = 1 WHERE id = #{id}
+        UPDATE iot_data_parse_strategy SET del_flag = 1
+            <if test="updateBy != null">, update_by = #{updateBy}</if>
+            <if test="updateTime != null">, update_time = #{updateTime}</if>
+        WHERE id = #{id}
     </update>
 
     <update id="updateLastRunTime">

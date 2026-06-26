@@ -1,5 +1,7 @@
 package com.zwei.iot.alarm.domain.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -13,6 +15,8 @@ public class AlarmRecordDisposeRequest {
      * 新状态: 2=处理中 3=已销警 4=误报
      */
     @NotNull(message = "处置状态不能为空")
+    @Min(value = 2, message = "处置状态只能为2/3/4")
+    @Max(value = 4, message = "处置状态只能为2/3/4")
     private Integer status;
 
     /**

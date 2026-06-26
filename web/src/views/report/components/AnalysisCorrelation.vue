@@ -81,7 +81,7 @@
     </div>
 
     <!-- Add Sensor Dialog -->
-    <el-dialog v-model="addSensorDialogVisible" title="添加传感器" width="500px" destroy-on-close>
+    <el-dialog v-model="addSensorDialogVisible" title="添加传感器" width="480px" destroy-on-close>
       <el-form label-width="80px">
         <el-form-item label="隐患点">
           <el-select
@@ -271,6 +271,15 @@ const confirmAddSensor = () => {
   const attr = attrs.find((a) => a.code === addSensorForm.attrCode)
   if (!device || !attr) return
 
+  // 去重：同一 deviceId + attrCode 组合不允许重复添加
+  const exists = selectedSensors.value.some(
+    (s) => s.deviceId === device.id && s.attrCode === addSensorForm.attrCode
+  )
+  if (exists) {
+    ElMessage.warning('该传感器属性已添加，请勿重复添加')
+    return
+  }
+
   const hp = hazardPointOptions.value.find((h) => h.id === addSensorForm.hazardPointId)
   const id = `${device.id}_${addSensorForm.attrCode}_${Date.now()}`
   const colorIndex = selectedSensors.value.length % COLORS.length
@@ -316,7 +325,13 @@ const generateCorrelationChart = async () => {
         startTime,
         endTime,
       })
-      allSeriesData.push({ sensor, chartData: data })
+      if (data) allSeriesData.push({ sensor, chartData: data })
+    }
+
+    if (allSeriesData.length === 0) {
+      ElMessage.warning('所选传感器在当前时间范围内无可用数据')
+      chartLoading.value = false
+      return
     }
 
     const container = correlationChartRef.value

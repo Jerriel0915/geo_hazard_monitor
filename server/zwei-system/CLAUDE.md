@@ -116,3 +116,4 @@ A: 在 Service 中 `applicationEventPublisher.publishEvent(new NoticeCreatedEven
 |------------------|--------------------------------------------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描)                                  |
 | 2026-06-10 19:08 | 增量补扫: 新增通知公告核心实现类索引、sys_organization 与 sys_notify_* 表补充到数据模型 |
+| 2026-06-25 10:00 | SSE 订阅泄漏修复: NoticeStreamPublisher 新增 25s 心跳 + 新增 NoticeStreamPublisherTest (3 case) |

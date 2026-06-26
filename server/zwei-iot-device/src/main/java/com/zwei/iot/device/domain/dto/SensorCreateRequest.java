@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -34,6 +35,12 @@ public class SensorCreateRequest implements Serializable {
     @Min(value = 0, message = "状态值不合法")
     @Max(value = 1, message = "状态值不合法")
     private Integer status;
+
+    /**
+     * 埋深(米)，地面为0点，向下为正，向上为负
+     */
+    @Digits(integer = 8, fraction = 2, message = "埋深最多支持8位整数和2位小数")
+    private BigDecimal burialDepth;
 
     @Valid
     @NotEmpty(message = "属性列表不能为空")

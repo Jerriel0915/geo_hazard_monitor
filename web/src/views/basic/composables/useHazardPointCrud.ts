@@ -9,6 +9,8 @@ import {
     getHazardPointPage,
     pauseHazardPoint,
     updateHazardPoint,
+    type HazardPointExportPayload,
+    type HazardPointRaw,
 } from '@/api/hazardPoint'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import {type BoundaryCoords, deserialize, serialize} from '@/lib/boundaryCoords'
@@ -43,7 +45,7 @@ export interface HazardPointItem {
 
 const round6 = (n: number): number => Math.round(n * 1e6) / 1e6
 
-const normalizeHazardPoint = (item: any): HazardPointItem => ({
+const normalizeHazardPoint = (item: HazardPointRaw): HazardPointItem => ({
     id: String(item.id),
     code: item.code || '',
     name: item.name || '',
@@ -179,7 +181,7 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
     }
 
     const buildQueryParams = () => {
-        const params: Record<string, any> = {
+        const params: Record<string, string | number | undefined> = {
             pageNum: currentPage.value,
             pageSize: pageSize.value,
         }
@@ -230,10 +232,10 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
     const loadTableData = async () => {
         loading.value = true
         try {
-            const response: any = await getHazardPointPage(buildQueryParams())
+            const response = await getHazardPointPage(buildQueryParams())
             if (response.code === 200) {
                 const data = response.data
-                tableData.value = data.rows.map((item: any) => normalizeHazardPoint(item))
+                tableData.value = data.rows.map((item) => normalizeHazardPoint(item))
                 total.value = data.total
             } else {
                 ElMessage.error(response.msg || '获取数据失败')
@@ -246,7 +248,7 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
     }
 
     const fetchDetail = async (id: string): Promise<HazardPointItem> => {
-        const response: any = await getHazardPointDetail(id)
+        const response = await getHazardPointDetail(id)
         if (response.code !== 200) throw new Error(response.msg || '获取详情失败')
         return normalizeHazardPoint(response.data)
     }
@@ -322,13 +324,10 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
             if (!valid) return
             loading.value = true
             try {
-                let res: any
                 const payload = buildPayload()
-                if (isEdit.value && currentRow.value?.id) {
-                    res = await updateHazardPoint(currentRow.value.id, payload)
-                } else {
-                    res = await createHazardPoint(payload)
-                }
+                const res = isEdit.value && currentRow.value?.id
+                    ? await updateHazardPoint(currentRow.value.id, payload)
+                    : await createHazardPoint(payload)
                 if (res.code === 200) {
                     ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
                     dialogVisible.value = false
@@ -337,7 +336,7 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
                 } else {
                     ElMessage.error(res.msg || '操作失败')
                 }
-            } catch (error: any) {
+            } catch (error) {
                 showRequestErrorMessage(error, '提交失败')
             } finally {
                 loading.value = false
@@ -379,14 +378,14 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
                 type: pause ? 'warning' : 'info',
             })
             loading.value = true
-            const res: any = await pauseHazardPoint(row.id, pause)
+            const res = await pauseHazardPoint(row.id, pause)
             if (res.code === 200) {
                 ElMessage.success(`${actionText}成功`)
                 loadTableData()
             } else {
                 ElMessage.error(res.msg || `${actionText}失败`)
             }
-        } catch (error: any) {
+        } catch (error) {
             if (error === 'cancel' || error === 'close') return
             showRequestErrorMessage(error, `${actionText}失败`)
         } finally {
@@ -402,14 +401,14 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
                 type: 'warning',
             })
             loading.value = true
-            const res: any = await completeHazardPoint(row.id)
+            const res = await completeHazardPoint(row.id)
             if (res.code === 200) {
                 ElMessage.success('完结成功')
                 loadTableData()
             } else {
                 ElMessage.error(res.msg || '完结失败')
             }
-        } catch (error: any) {
+        } catch (error) {
             if (error === 'cancel' || error === 'close') return
             showRequestErrorMessage(error, '完结失败')
         } finally {
@@ -435,14 +434,14 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
                 cancelButtonText: '取消',
                 type: 'warning',
             })
-            const res: any = await batchOperateHazardPoints(ids, 'pause')
+            const res = await batchOperateHazardPoints(ids, 'pause')
             if (res.code === 200) {
                 ElMessage.success('批量停测成功')
                 loadTableData()
             } else {
                 ElMessage.error(res.msg || '批量停测失败')
             }
-        } catch (error: any) {
+        } catch (error) {
             if (error === 'cancel' || error === 'close') return
             showRequestErrorMessage(error, '批量停测失败')
         }
@@ -457,14 +456,14 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
                 cancelButtonText: '取消',
                 type: 'info',
             })
-            const res: any = await batchOperateHazardPoints(ids, 'resume')
+            const res = await batchOperateHazardPoints(ids, 'resume')
             if (res.code === 200) {
                 ElMessage.success('批量恢复成功')
                 loadTableData()
             } else {
                 ElMessage.error(res.msg || '批量恢复失败')
             }
-        } catch (error: any) {
+        } catch (error) {
             if (error === 'cancel' || error === 'close') return
             showRequestErrorMessage(error, '批量恢复失败')
         }
@@ -479,14 +478,14 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
                 cancelButtonText: '取消',
                 type: 'warning',
             })
-            const res: any = await batchOperateHazardPoints(ids, 'complete')
+            const res = await batchOperateHazardPoints(ids, 'complete')
             if (res.code === 200) {
                 ElMessage.success('批量完结成功')
                 loadTableData()
             } else {
                 ElMessage.error(res.msg || '批量完结失败')
             }
-        } catch (error: any) {
+        } catch (error) {
             if (error === 'cancel' || error === 'close') return
             showRequestErrorMessage(error, '批量完结失败')
         }
@@ -495,16 +494,16 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
     // ── Export ──
     const handleExport = async () => {
         try {
-            const exportPayload: Record<string, any> = {}
+            const exportPayload: HazardPointExportPayload = {}
             const selectedIds = selectedRows.value.map((row) => parseInt(row.id))
             if (selectedIds.length > 0) {
                 exportPayload.ids = selectedIds
             } else {
                 const params = buildQueryParams()
-                exportPayload.code = params.code
-                exportPayload.name = params.name
-                exportPayload.groupId = params.groupId
-                exportPayload.status = params.status
+                exportPayload.code = params.code as string | undefined
+                exportPayload.name = params.name as string | undefined
+                exportPayload.groupId = params.groupId as number | undefined
+                exportPayload.status = params.status as number | undefined
             }
             const response = await exportHazardPoints(exportPayload)
             const contentType = String(response.headers['content-type'] || '')
@@ -516,7 +515,7 @@ export function useHazardPointCrud(opts: UseHazardPointCrudOptions) {
             const fileName = getExportFileName(response.headers['content-disposition'])
             downloadBlobFile(response.data, fileName)
             ElMessage.success(selectedIds.length > 0 ? '已按选中隐患点导出' : '已按当前筛选条件导出')
-        } catch (error: any) {
+        } catch (error) {
             showRequestErrorMessage(error, '导出失败')
         }
     }

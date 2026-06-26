@@ -51,7 +51,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { getCompositeAlarmLogs, type CompositeAlarmLog } from '@/api/compositeAlarm'
+import type { CompositeAlarmLog } from '@/api/alarm'
+
+// 后端暂未实现策略执行日志接口，返回空结果兜底
+const getCompositeAlarmLogs = async (_id: number, _params: Record<string, unknown>) => ({ rows: [] as CompositeAlarmLog[], total: 0 })
 
 const props = defineProps<{
   visible: boolean

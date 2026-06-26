@@ -57,11 +57,12 @@
 
       <el-date-picker
           v-model="timeRange"
-          type="datetimerange"
-          range-separator=""
+          type="daterange"
+          range-separator="至"
           start-placeholder="开始时间"
           end-placeholder="结束时间"
           value-format="YYYY-MM-DD HH:mm:ss"
+          :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
       />
 
       <el-button type="primary" @click="handleQuery">查询</el-button>
@@ -131,6 +132,21 @@ interface DeviceOption {
   name: string
 }
 
+// 获取默认时间范围：最近7天
+const getDefaultTimeRange = (): [string, string] => {
+  const end = new Date()
+  const start = new Date()
+  start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+  const format = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day} 00:00:00`
+  }
+  const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
+  return [format(start), endStr]
+}
+
 // 状态
 const loading = ref(false)
 const tableData = ref<any[]>([])
@@ -143,11 +159,11 @@ const hazardPointOptions = ref<HazardPointOption[]>([])
 const deviceOptions = ref<DeviceOption[]>([])
 const deviceAttrsMap = ref<Map<number, DeviceAttr[]>>(new Map())
 
-// 选中的筛选条件
+// 选中的筛选条件 - 默认最近7天
 const selectedHazardPointId = ref<number | ''>('')
 const selectedDeviceId = ref<number | ''>('')
 const selectedAttrCodes = ref<string[]>([])
-const timeRange = ref<[string, string] | null>(null)
+const timeRange = ref<[string, string] | null>(getDefaultTimeRange())
 
 // 可选的监测属性
 const availableAttrs = computed(() => {
@@ -306,6 +322,8 @@ const onHazardPointChange = async () => {
   deviceAttrsMap.value.clear()
   tableData.value = []
   total.value = 0
+  // 重置时保留默认时间范围
+  timeRange.value = getDefaultTimeRange()
   await loadDeviceOptions()
 }
 
@@ -313,7 +331,7 @@ const handleReset = () => {
   selectedHazardPointId.value = ''
   selectedDeviceId.value = ''
   selectedAttrCodes.value = []
-  timeRange.value = null
+  timeRange.value = getDefaultTimeRange()
   currentPage.value = 1
   tableData.value = []
   total.value = 0

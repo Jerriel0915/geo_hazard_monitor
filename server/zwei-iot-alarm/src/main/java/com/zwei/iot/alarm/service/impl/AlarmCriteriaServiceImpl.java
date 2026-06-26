@@ -2,13 +2,16 @@ package com.zwei.iot.alarm.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.zwei.common.exception.ServiceException;
+import com.zwei.common.utils.SecurityUtils;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
 import com.zwei.iot.alarm.domain.AlarmCriteriaLog;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaLogMapper;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaMapper;
 import com.zwei.iot.alarm.service.IAlarmCriteriaService;
+import com.zwei.iot.alarm.service.engine.AlarmDedupService;
 import com.zwei.iot.alarm.service.engine.CriteriaCacheService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -24,13 +27,16 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     private final AlarmCriteriaMapper criteriaMapper;
     private final AlarmCriteriaLogMapper criteriaLogMapper;
     private final CriteriaCacheService cacheService;
+    private final AlarmDedupService dedupService;
 
     public AlarmCriteriaServiceImpl(AlarmCriteriaMapper criteriaMapper,
                                     AlarmCriteriaLogMapper criteriaLogMapper,
-                                    CriteriaCacheService cacheService) {
+                                    CriteriaCacheService cacheService,
+                                    AlarmDedupService dedupService) {
         this.criteriaMapper = criteriaMapper;
         this.criteriaLogMapper = criteriaLogMapper;
         this.cacheService = cacheService;
+        this.dedupService = dedupService;
     }
 
     @Override
@@ -54,6 +60,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int insert(AlarmCriteria criteria) {
         if (!checkCriteriaUnique(criteria.getName(), criteria.getHazardPointId(), 0L)) {
             throw new ServiceException("新增失败，该隐患点下已存在同名判据");
@@ -69,6 +76,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int update(AlarmCriteria criteria) {
         if (!checkCriteriaUnique(criteria.getName(), criteria.getHazardPointId(), criteria.getId())) {
             throw new ServiceException("修改失败，该隐患点下已存在同名判据");
@@ -86,6 +94,7 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int delete(Long id) {
         AlarmCriteria old = criteriaMapper.selectCriteriaById(id);
         if (old == null) return 0;
@@ -94,15 +103,25 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
             recordLog(id, (old.getVersion() != null ? old.getVersion() : 1) + 1, "DELETE",
                     JSON.toJSONString(old), null);
             cacheService.refresh();
+            dedupService.clearAllPreTriggers(id, old.getHazardPointId());
         }
         return rows;
     }
 
     @Override
     public int toggle(Long id, Integer isEnabled) {
-        AlarmCriteria update = AlarmCriteria.builder().id(id).isEnabled(isEnabled).updateTime(new Date()).build();
+        AlarmCriteria update = AlarmCriteria.builder().id(id).isEnabled(isEnabled)
+                .updateBy(SecurityUtils.getUsername()).updateTime(new Date()).build();
         int rows = criteriaMapper.updateCriteria(update);
-        if (rows > 0) cacheService.refresh();
+        if (rows > 0) {
+            cacheService.refresh();
+            if (isEnabled != null && isEnabled == 0) {
+                AlarmCriteria old = criteriaMapper.selectCriteriaById(id);
+                if (old != null) {
+                    dedupService.clearAllPreTriggers(id, old.getHazardPointId());
+                }
+            }
+        }
         return rows;
     }
 

@@ -21,11 +21,12 @@
                 </el-select>
                 <el-date-picker
                     v-model="opSearchForm.timeRange"
-                    type="datetimerange"
-                    range-separator=""
-                    start-placeholder="开始"
-                    end-placeholder="结束"
+                    type="daterange"
+                    range-separator="至"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
                     value-format="YYYY-MM-DD HH:mm:ss"
+                    :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
                 />
                 <el-button type="primary" @click="handleOperationSearch">查询</el-button>
                 <el-button @click="handleOperationReset">重置</el-button>
@@ -94,11 +95,13 @@
                 </el-select>
                 <el-date-picker
                     v-model="authSearchForm.timeRange"
-                    type="datetimerange"
-                    range-separator=""
-                    start-placeholder="认证时间:开始"
-                    end-placeholder="认证时间:结束"
+                    type="daterange"
+                    range-separator="至"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
                     value-format="YYYY-MM-DD HH:mm:ss"
+                    :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+                    :shortcuts="shortcuts"
                 />
                 <el-button type="primary" @click="handleAuthSearch">查询</el-button>
                 <el-button @click="handleAuthReset">重置</el-button>
@@ -159,11 +162,13 @@
                 <el-input v-model="runtimeSearchForm.keyword" placeholder="日志内容关键词" clearable />
                 <el-date-picker
                     v-model="runtimeSearchForm.timeRange"
-                    type="datetimerange"
-                    range-separator=""
-                    start-placeholder="发生时间:开始"
-                    end-placeholder="发生时间:结束"
+                    type="daterange"
+                    range-separator="至"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
                     value-format="YYYY-MM-DD HH:mm:ss"
+                    :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+                    :shortcuts="shortcuts"
                 />
                 <el-button type="primary" @click="handleRuntimeSearch">查询</el-button>
                 <el-button @click="handleRuntimeReset">重置</el-button>
@@ -326,6 +331,43 @@ const tabLabelMap: Record<TabKey, string> = {
 
 const authEventOptions = ['LOGIN_SUCCESS', 'LOGIN_FAIL', 'LOGOUT', 'UNAUTHORIZED', 'TOKEN_INVALID']
 
+// 快捷选项：最近7天
+const shortcuts = [
+  {
+    text: '最近7天',
+    value: () => {
+      const end = new Date()
+      const start = new Date()
+      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+      return [start, end]
+    }
+  },
+  {
+    text: '最近30天',
+    value: () => {
+      const end = new Date()
+      const start = new Date()
+      start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
+      return [start, end]
+    }
+  }
+]
+
+// 获取默认时间范围：最近7天
+const getDefaultTimeRange = (): [string, string] => {
+  const end = new Date()
+  const start = new Date()
+  start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+  const format = (d: Date) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day} 00:00:00`
+  }
+  const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
+  return [format(start), endStr]
+}
+
 const activeTab = ref<TabKey>('operation')
 
 // ── Tab queries (operation / auth / runtime) ──
@@ -336,8 +378,8 @@ const opQuery = useLogQuery<{
   execStatus: string;
   timeRange: string[]
 }, OperationLogRecord>({
-  endpoint: '/api/v1/logs/operations/page',
-  initialForm: {username: '', title: '', apiPath: '', execStatus: '', timeRange: []}
+  endpoint: '/logs/operations/page',
+  initialForm: {username: '', title: '', apiPath: '', execStatus: '', timeRange: getDefaultTimeRange()}
 })
 const authQuery = useLogQuery<{
   username: string;
@@ -345,8 +387,8 @@ const authQuery = useLogQuery<{
   resultStatus: string;
   timeRange: string[]
 }, AuthLogRecord>({
-  endpoint: '/api/v1/logs/auth/page',
-  initialForm: {username: '', authEventType: '', resultStatus: '', timeRange: []}
+  endpoint: '/logs/auth/page',
+  initialForm: {username: '', authEventType: '', resultStatus: '', timeRange: getDefaultTimeRange()}
 })
 const runtimeQuery = useLogQuery<{
   level: string;
@@ -354,8 +396,8 @@ const runtimeQuery = useLogQuery<{
   keyword: string;
   timeRange: string[]
 }, RuntimeLogRecord>({
-  endpoint: '/api/v1/logs/runtime/page',
-  initialForm: {level: '', loggerName: '', keyword: '', timeRange: []}
+  endpoint: '/logs/runtime/page',
+  initialForm: {level: '', loggerName: '', keyword: '', timeRange: getDefaultTimeRange()}
 })
 
 const {
@@ -600,5 +642,39 @@ onMounted(() => {
 
 :deep(.el-tab-pane) {
   height: 100%;
+}
+
+/* 搜索框样式 */
+.search {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.search .el-input,
+.search .el-select,
+.search .el-date-editor {
+  width: 200px;
+}
+
+.table-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.table-wrap__scroll {
+  flex: 1;
+  overflow: auto;
+}
+
+.table-wrap__pagination {
+  flex-shrink: 0;
+  padding: 12px 0 4px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

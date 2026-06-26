@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -65,6 +66,11 @@ public class DeviceSensor extends BaseEntity {
     private String monitorTypeName;
 
     /**
+     * 埋深(米)，地面为0点，向下为正，向上为负
+     */
+    private BigDecimal burialDepth;
+
+    /**
      * 状态: 0-禁用, 1-启用
      */
     private Integer status;
@@ -73,6 +79,12 @@ public class DeviceSensor extends BaseEntity {
      * 删除标记: 0-正常, 1-删除
      */
     private Integer delFlag;
+
+    /**
+     * 监测类型图标路径 (来自 monitor_type.icon, 非持久化字段, 仅查询时 JOIN 填充)
+     * <p>供前端 getSensorIconPath() 解析, 缺失时前端按 monitorTypeName 兜底。</p>
+     */
+    private String iconPath;
 
     /**
      * 属性列表（查询详情时返回）
@@ -90,8 +102,10 @@ public class DeviceSensor extends BaseEntity {
                 ", monitorTypeId=" + monitorTypeId +
                 ", monitorTypeCode='" + monitorTypeCode + '\'' +
                 ", monitorTypeName='" + monitorTypeName + '\'' +
+                ", burialDepth=" + burialDepth +
                 ", status=" + status +
                 ", delFlag=" + delFlag +
+                ", iconPath='" + iconPath + '\'' +
                 '}';
     }
 }

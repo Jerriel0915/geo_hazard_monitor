@@ -103,6 +103,21 @@ public class AlarmDedupService {
         redisTemplate.delete(buildPreTriggerKey(criteriaId, hazardPointId, alarmLevel));
     }
 
+    /**
+     * 清除判据下所有预触发计数和最近触发时间（判据删除/禁用时调用）。
+     * <p>覆盖 4 个等级（red/orange/yellow/blue）的 pre-trigger key + 1 个 last-trigger key。
+     *
+     * @param criteriaId    判据ID
+     * @param hazardPointId 隐患点ID（NULL 时跳过，监测类型兜底判据无固定 hpId）
+     */
+    public void clearAllPreTriggers(Long criteriaId, Long hazardPointId) {
+        if (criteriaId == null || hazardPointId == null) return;
+        for (int level : new int[]{1, 2, 3, 4}) {
+            redisTemplate.delete(buildPreTriggerKey(criteriaId, hazardPointId, level));
+        }
+        redisTemplate.delete(buildLastTriggerKey(criteriaId, hazardPointId));
+    }
+
     private boolean isInSilencePeriod(String lastKey, int silencePeriod) {
         if (silencePeriod <= 0) {
             return false;

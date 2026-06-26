@@ -69,4 +69,26 @@ class AlarmStreamPublisherTest {
             publisher.publish("alarm", Map.of("alarmId", 1L)));
         assertThat(publisher.getActiveCount()).isEqualTo(2);
     }
+
+    @Test
+    void heartbeat_removesEmitterThatThrowsIOException() {
+        SseEmitter emitter = publisher.subscribe();
+        assertThat(publisher.getActiveCount()).isEqualTo(1);
+        // 手动 complete emitter 模拟断开，后续 send 会抛 IOException
+        emitter.complete();
+        publisher.heartbeat();
+        assertThat(publisher.getActiveCount()).isEqualTo(0);
+    }
+
+    @Test
+    void heartbeat_removesUserBoundEmitterAndCleansUserEmitters() {
+        SseEmitter emitter = publisher.subscribe(42L);
+        assertThat(publisher.getActiveCount()).isEqualTo(1);
+        emitter.complete();
+        publisher.heartbeat();
+        assertThat(publisher.getActiveCount()).isEqualTo(0);
+        // userEmitters 也应被清空，通过 publishToUser 不抛异常间接验证
+        assertThatNoException().isThrownBy(() ->
+            publisher.publishToUser(42L, "alarm-notify", Map.of("title", "x")));
+    }
 }

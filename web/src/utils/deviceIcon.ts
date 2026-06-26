@@ -13,8 +13,6 @@
  * （地图专用版附加 {@code _map} 段：{@code /jc-icon/{color}/{baseName}_{color}_map.png}）</p>
  */
 
-import {MonitorContentIconEnum} from '@/constants/monitorIcons'
-
 export type IconColor = 'green' | 'gray' | 'red' | 'repair'
 
 /**
@@ -118,9 +116,12 @@ export function getDeviceIconPathGreen(device: {
 }
 
 /**
- * 传感器图标：优先使用 sensor.icon 字段，其次根据 monitorTypeCode 反查图标枚举，
- * 最后兜底为 device_green.png。
- * green 目录下无独立的 vidio_green.png，因此将前缀 vidio 纠正为 vidio1。
+ * 传感器图标：优先使用 sensor.icon 字段，其次 monitor_type.icon (iconPath),
+ * 最后按 monitorTypeName 关键词匹配兜底。
+ * <p>所有兜底图标文件已验证存在于 jc-icon/green/ 目录。</p>
+ *
+ * @param sensor 传感器对象 (含 icon / iconPath / monitorTypeName / monitorTypeCode)
+ * @returns 图标 URL; 无法推导时返回空字符串 (调用方显示占位符)
  */
 export function getSensorIconPath(sensor: {
     sensorCode?: string
@@ -130,27 +131,51 @@ export function getSensorIconPath(sensor: {
     icon?: string | null
     iconPath?: string | null
 }): string {
-    // 直接有 icon
+    // 1. 直接有 icon 基名
     if (sensor.icon && sensor.icon.trim()) {
         return `/jc-icon/green/${sensor.icon.trim()}_green.png`
     }
-    // 从 iconPath 解析
+    // 2. 从 iconPath 解析 (后端 JOIN monitor_type 返回的 icon 列)
     if (sensor.iconPath && sensor.iconPath.startsWith('/jc-icon/')) {
         const baseName = resolveIconBaseName({ iconPath: sensor.iconPath })
         const corrected = correctVideoBaseName(baseName)
         return `/jc-icon/green/${corrected}_green.png`
     }
-    // 根据 monitorTypeCode 反查 MonitorContentIconEnum
-    if (sensor.monitorTypeCode) {
-        const code = sensor.monitorTypeCode.toUpperCase()
-        const enumEntries = Object.values(MonitorContentIconEnum)
-        const found = enumEntries.find(e => e.code === code)
-        if (found) {
-            return `/jc-icon/green/${found.icon}_green.png`
+    // 3. 按 monitorTypeName 关键词匹配 (最可靠的兜底, 覆盖种子数据 JCLX001-008)
+    if (sensor.monitorTypeName) {
+        const name = sensor.monitorTypeName
+        const match = MONITOR_TYPE_NAME_ICON_MAP.find(([kw]) => name.includes(kw))
+        if (match) {
+            return `/jc-icon/green/${match[1]}_green.png`
         }
     }
     return ''
 }
+
+/**
+ * 监测类型名称关键词 → 图标基名映射表。
+ * <p>用于 getSensorIconPath() 兜底分支。所有图标文件已验证存在于 jc-icon/green/。</p>
+ * <p>排列顺序: 高特异性关键词在前 (如 "含水率" 优先于 "水", "泥水位" 优先于 "水位")。</p>
+ */
+const MONITOR_TYPE_NAME_ICON_MAP: ReadonlyArray<readonly [string, string]> = [
+    ['泥水位', 'nw'],     // 泥水位 (必须在水水位之前)
+    ['含水率', 'th'],     // 土体含水率
+    ['孔隙水压力', 'ky'],  // 孔隙水压力
+    ['渗透压力', 'sy'],    // 渗透压力
+    ['土压力', 'tl'],      // 土压力
+    ['雨量', 'jy'],        // 降雨量
+    ['位移', 'bsw'],       // 表面水平位移
+    ['沉降', 'bc'],        // 表面沉降
+    ['裂缝', 'lf'],        // 裂缝
+    ['倾', 'qj'],          // 倾角
+    ['温度', 'wd'],        // 温度 (含水率后匹配)
+    ['水位', 'dw'],        // 地下水水位
+    ['加速度', 'jsd'],     // 加速度
+    ['声光', 'sg'],        // 声光
+    ['视频', 'sp'],        // 视频
+    ['GNSS', 'gnss'],      // 表面位移（GNSS）
+    ['断线', 'dx'],        // 断线
+] as const
 
 /**
  * 地图专用图标：返回 _map 后缀的 jc-icon 路径。

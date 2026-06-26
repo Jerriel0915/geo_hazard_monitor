@@ -109,9 +109,9 @@
 
               <div class="data-tabs">
                 <div class="tab" :class="{ active: activeTab === 'monitor' }" @click="switchToMonitorTab">监测数据</div>
-                <div class="tab" :class="{ active: activeTab === 'alarm' }" @click="activeTab = 'alarm'">告警记录</div>
-                <div class="tab" :class="{ active: activeTab === 'notify' }" @click="activeTab = 'notify'">通知记录</div>
-                <div class="tab" :class="{ active: activeTab === 'disposal' }" @click="activeTab = 'disposal'">处置记录</div>
+                <div class="tab" :class="{ active: activeTab === 'alarm' }" @click="leaveMonitorTab(); activeTab = 'alarm'">告警记录</div>
+                <div class="tab" :class="{ active: activeTab === 'notify' }" @click="leaveMonitorTab(); activeTab = 'notify'">通知记录</div>
+                <div class="tab" :class="{ active: activeTab === 'disposal' }" @click="leaveMonitorTab(); activeTab = 'disposal'">处置记录</div>
               </div>
 
               <!-- 监测数据 -->
@@ -127,7 +127,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetAlarmRecords">重置</el-button>
                 </div>
-                <el-table :data="filteredAlarmRecords" border stripe size="small" :height="308" empty-text="暂无告警记录">
+                <el-table :data="filteredAlarmRecords" border stripe size="small" :max-height="400" empty-text="暂无告警记录">
                   <el-table-column prop="triggerTime" label="告警时间" width="180" />
                   <el-table-column prop="alarmLevel" label="告警等级" width="100">
                     <template #default="{ row }">
@@ -148,7 +148,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetNotifyRecords">重置</el-button>
                 </div>
-                <el-table :data="filteredNotifyRecords" border stripe size="small" :height="308" empty-text="暂无通知记录">
+                <el-table :data="filteredNotifyRecords" border stripe size="small" :max-height="400" empty-text="暂无通知记录">
                   <el-table-column prop="createTime" label="通知时间" width="180" />
                   <el-table-column prop="channel" label="渠道" width="90">
                     <template #default="{ row }">
@@ -167,7 +167,7 @@
 
               <!-- 处置记录 (API: getActionLogs 过滤 FEEDBACK/DISPOSE_*) -->
               <div v-show="activeTab === 'disposal'" class="tab-content">
-                <el-table :data="disposalRecords" border stripe size="small" :height="350" empty-text="暂无处置记录">
+                <el-table :data="disposalRecords" border stripe size="small" :max-height="400" empty-text="暂无处置记录">
                   <el-table-column prop="createTime" label="处置时间" width="180" />
                   <el-table-column prop="operator" label="处置人员" width="120" />
                   <el-table-column prop="description" label="描述" min-width="220" show-overflow-tooltip />
@@ -284,15 +284,15 @@ const FLOW_CHART_BY_LEVEL: Record<number, string> = {
 
 const props = defineProps<{
   modelValue: boolean
-  data: Record<string, any> | null
+  data: AlarmRecordItem | null
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'submit', payload: { description?: string; attachments?: string; remarks?: string }): void
-  (e: 'false-alarm', data: any): void
-  (e: 'close-alarm', data: any): void
-  (e: 'notify', data: any): void
+  (e: 'false-alarm', data: AlarmRecordItem): void
+  (e: 'close-alarm', data: AlarmRecordItem): void
+  (e: 'notify', data: AlarmRecordItem): void
 }>()
 
 const activeTab = ref('monitor')
@@ -405,6 +405,12 @@ const switchToMonitorTab = () => {
   })
 }
 
+// 离开 monitor tab 时销毁图表以释放 Canvas 内存
+const leaveMonitorTab = () => {
+  chartInstance?.dispose()
+  chartInstance = null
+}
+
 // 弹窗打开时并发拉取；图表初始化推迟到 @opened 后再尝试，避免容器尺寸为 0
 const dialogOpened = ref(false)
 const dataReady = ref(false)
@@ -429,8 +435,19 @@ watch(() => props.modelValue, async (val) => {
     dialogOpened.value = false
     dataReady.value = false
     h5QrcodeDataUrl.value = ''
+    // 弹窗关闭时立即清理大数据引用和图表实例，释放内存
+    chartInstance?.dispose()
+    chartInstance = null
+    detail.value = null
+    triggerDetails.value = []
+    disposalRecords.value = []
+    notifyRecords.value = []
+    chartSeriesData.value = []
+    timelineData.value = []
     return
   }
+
+  // ... (rest of the watch body)
   if (!props.data?.id) return
   activeTab.value = 'monitor'
   alarmRecordSearch.value = { description: '', timeRange: [] }
@@ -449,11 +466,10 @@ watch(() => props.modelValue, async (val) => {
       getActionLogs(id),
       getAlarmNotifications(id),
     ])
-    const detailData = (d as any).data ?? d
-    detail.value = detailData ?? null
-    triggerDetails.value = (t as any).data ?? t ?? []
-    const rawLogs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
-    notifyRecords.value = (n as any).data ?? n ?? []
+    detail.value = d.data ?? null
+    triggerDetails.value = t.data ?? []
+    const rawLogs: AlarmRecordActionLog[] = l.data ?? []
+    notifyRecords.value = n.data ?? []
     // 在 action_log 头部插入"当前状态"元素，作为时间线的当前节点（无时间/描述，仅动作类型）
     // 已销警(3)/误报(4) → ENDED 灰色"结束"；待处理(1)/处理中(2) → CURRENT 蓝色"当前"
     const isEnded = [3, 4].includes(Number(props.data?.status))
@@ -694,7 +710,18 @@ const updateChart = () => {
 const handleResize = () => { chartInstance?.resize() }
 
 onMounted(() => { window.addEventListener('resize', handleResize) })
-onUnmounted(() => { window.removeEventListener('resize', handleResize); chartInstance?.dispose() })
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  chartInstance?.dispose()
+  chartInstance = null
+  // 清理数据引用
+  detail.value = null
+  triggerDetails.value = []
+  disposalRecords.value = []
+  notifyRecords.value = []
+  chartSeriesData.value = []
+  timelineData.value = []
+})
 
 // ---------- 工具函数 ----------
 const formatDuration = (startTime: string) => {
@@ -759,8 +786,8 @@ const handleNotifySubmit = (data: any) => {
   emit('notify', data)
 }
 
-const handleFalseAlarm = () => { emit('false-alarm', props.data) }
-const handleCloseAlarm = () => { emit('close-alarm', props.data) }
+const handleFalseAlarm = () => { if (props.data) emit('false-alarm', props.data) }
+const handleCloseAlarm = () => { if (props.data) emit('close-alarm', props.data) }
 const handleClose = () => { emit('update:modelValue', false) }
 </script>
 
@@ -948,7 +975,9 @@ const handleClose = () => { emit('update:modelValue', false) }
 }
 .data-tabs .tab.active { color: #409eff; border-bottom-color: #409eff; font-weight: 600; }
 .tab-content {
-  height: 380px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }

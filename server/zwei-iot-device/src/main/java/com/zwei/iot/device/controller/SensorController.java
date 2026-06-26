@@ -142,6 +142,7 @@ public class SensorController extends BaseController {
         sensor.setSensorName(request.getSensorName().trim());
         sensor.setMonitorTypeId(request.getMonitorTypeId());
         sensor.setStatus(request.getStatus());
+        sensor.setBurialDepth(request.getBurialDepth());
         return sensor;
     }
 
@@ -150,6 +151,7 @@ public class SensorController extends BaseController {
         sensor.setId(id);
         sensor.setSensorName(request.getSensorName().trim());
         sensor.setStatus(request.getStatus());
+        sensor.setBurialDepth(request.getBurialDepth());
         return sensor;
     }
 

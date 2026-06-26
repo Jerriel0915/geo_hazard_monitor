@@ -129,7 +129,7 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="editingItem ? '编辑策略' : '新增策略'" width="720px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="editingItem ? '编辑策略' : '新增策略'" width="800px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
         <el-row :gutter="20">
           <el-col :span="12">
@@ -453,9 +453,9 @@ async function handleSubmit() {
       description: formData.description,
       method: formData.method,
       address: formData.address,
-      topic: formData.topic || undefined,
-      username: formData.username || undefined,
-      password: formData.password || undefined,
+      topic: formData.topic,
+      username: formData.username,
+      password: formData.password,
       params: formData.params,
       scopeType: formData.scopeType,
       scopeIds: formData.scopeIds,
@@ -556,7 +556,7 @@ async function loadScopeOptions() {
       res = (hazardRes.data?.rows || []).map((item: any) => ({ id: item.id, name: item.name }))
     } else if (type === 'DEVICE') {
       const deviceRes = await import('@/api/device').then(m => m.getDevicePage({ pageNum: 1, pageSize: 1000 }))
-      res = (deviceRes.data?.rows || []).map((item: any) => ({ id: item.id, name: item.name }))
+      res = ((deviceRes as any).rows || []).map((item: any) => ({ id: item.id, name: item.name }))
     }
     scopeOptions.value = res
   } catch {

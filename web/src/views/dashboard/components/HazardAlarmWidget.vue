@@ -103,7 +103,7 @@
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
 import {Bell, Close, Warning} from '@element-plus/icons-vue'
-import {type AlarmRecordItem, getRealtimeAlarmByHazardPoint} from '@/api/realtimeAlarm'
+import {getPendingAlarms, type AlarmRecordItem} from '@/api/alarm'
 
 const props = defineProps<{
   hazardPointId: number | null
@@ -160,10 +160,10 @@ const fetchAlarms = async () => {
   }
   loading.value = true
   try {
-    const res = await getRealtimeAlarmByHazardPoint(String(props.hazardPointId))
-    if (res.code === 200 && res.data) {
-      alarmList.value = (res.data as AlarmRecordItem[])
-          .sort((a, b) => new Date(b.lastTriggerTime).getTime() - new Date(a.lastTriggerTime).getTime())
+    const res = await getPendingAlarms({ pageNum: 1, pageSize: 50, hazardPointId: Number(props.hazardPointId) })
+    if (res.code === 200 && res.data?.rows) {
+      alarmList.value = (res.data.rows as AlarmRecordItem[])
+          .sort((a: AlarmRecordItem, b: AlarmRecordItem) => new Date(b.lastTriggerTime).getTime() - new Date(a.lastTriggerTime).getTime())
     }
   } catch {
     alarmList.value = []

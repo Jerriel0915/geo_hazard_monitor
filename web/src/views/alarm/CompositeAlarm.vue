@@ -179,13 +179,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Plus, Search, Edit, Delete, Document, MapLocation, Setting, QuestionFilled } from '@element-plus/icons-vue'
 import {
-  getCompositeAlarmPage,
-  createCompositeAlarm,
-  updateCompositeAlarm,
-  deleteCompositeAlarm,
-  changeCompositeAlarmStatus,
-  type CompositeAlarmItem
-} from '@/api/compositeAlarm'
+  getStrategyList as getCompositeAlarmPage,
+  createStrategy as createCompositeAlarm,
+  updateStrategy as updateCompositeAlarm,
+  deleteStrategy as deleteCompositeAlarm,
+  toggleStrategy,
+  type AlarmStrategyItem as CompositeAlarmItem
+} from '@/api/alarm'
 import CompositeAlarmLogDrawer from './components/CompositeAlarmLogDrawer.vue'
 import CompositeAlarmScopeDialog from './components/CompositeAlarmScopeDialog.vue'
 import CompositeAlarmScriptDrawer from './components/CompositeAlarmScriptDrawer.vue'
@@ -302,8 +302,8 @@ async function handleSubmit() {
     }
     dialogVisible.value = false
     loadData()
-  } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '操作失败')
   } finally {
     submitting.value = false
   }
@@ -319,11 +319,10 @@ async function handleDelete(item: CompositeAlarmItem) {
 }
 
 async function handleToggleStatus(item: CompositeAlarmItem, enabled: boolean) {
-  const newStatus = enabled ? 'ENABLED' : 'DISABLED' as const
   const action = enabled ? '启用' : '停用'
   try {
     await ElMessageBox.confirm(`确定${action}策略「${item.name}」？`, `${action}确认`, { type: 'warning' })
-    await changeCompositeAlarmStatus(item.id, newStatus)
+    await toggleStrategy(item.id, enabled ? 1 : 0)
     ElMessage.success(`${action}成功`)
     loadData()
   } catch { /* cancelled */ }

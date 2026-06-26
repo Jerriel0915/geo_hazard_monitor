@@ -5,6 +5,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -20,6 +23,9 @@ import com.zwei.log.infrastructure.config.LogModuleProperties;
  */
 @Component
 public class LogStreamPublisher {
+
+    private static final Logger log = LoggerFactory.getLogger(LogStreamPublisher.class);
+    private static final long HEARTBEAT_INTERVAL_MS = 25_000L;
 
     private final List<LogSubscription> subscriptions = new CopyOnWriteArrayList<>();
     private final LogModuleProperties properties;
@@ -48,7 +54,7 @@ public class LogStreamPublisher {
             }
         } catch (Exception ex) {
             if (!isDisconnectedClientException(ex)) {
-                throw rethrowSendException(ex);
+                log.error("日志SSE ready发送非预期异常，移除订阅", ex);
             }
             failSubscription(subscription, ex);
             return emitter;
@@ -66,9 +72,29 @@ public class LogStreamPublisher {
                 sendRecord(subscription, record, record.getLogType().name().toLowerCase());
             } catch (Exception ex) {
                 if (!isDisconnectedClientException(ex)) {
-                    throw rethrowSendException(ex);
+                    log.error("日志SSE推送非预期异常，移除订阅", ex);
                 }
                 failSubscription(subscription, ex);
+            }
+        }
+    }
+
+    /**
+     * 定时心跳：每 25s 向所有订阅 emitter 发送保活注释，防止 Nginx 60s 空闲超时断开连接；
+     * 发送失败时复用 failSubscription 移除已断开的订阅。
+     */
+    @Scheduled(fixedDelay = HEARTBEAT_INTERVAL_MS)
+    public void heartbeat() {
+        for (LogSubscription subscription : subscriptions) {
+            try {
+                subscription.getEmitter().send(SseEmitter.event().comment("keep-alive"));
+            } catch (Exception ex) {
+                if (isDisconnectedClientException(ex)) {
+                    log.debug("日志SSE心跳发送失败，移除订阅: {}", ex.getMessage());
+                    failSubscription(subscription, ex);
+                } else {
+                    log.warn("日志SSE心跳非预期异常", ex);
+                }
             }
         }
     }
@@ -99,12 +125,6 @@ public class LogStreamPublisher {
         return ex instanceof IOException
             || ex instanceof IllegalStateException
             || ex instanceof AsyncRequestNotUsableException;
-    }
-
-    private RuntimeException rethrowSendException(Exception ex) {
-        return ex instanceof RuntimeException runtimeException
-            ? runtimeException
-            : new IllegalStateException("Failed to publish SSE event", ex);
     }
 
     private void removeSubscription(LogSubscription subscription) {

@@ -13,6 +13,7 @@ export interface MonitorContentItem {
   rangeMax?: number | null
   fieldType?: 'inherent' | 'computed'
   calcScript?: string
+  sortOrder?: number
   /** 数据类型 (前端从 indicator_type 派生，后端不持久化) */
   valueType?: 'NUMBER' | 'DATETIME' | 'STRING' | 'BOOLEAN'
 }
@@ -67,6 +68,7 @@ export interface MonitorContentCreatePayload {
   rangeMax?: number | null
   fieldType?: 'inherent' | 'computed'
   calcScript?: string
+  sortOrder?: number
 }
 
 export interface MonitorContentUpdatePayload {
@@ -76,6 +78,7 @@ export interface MonitorContentUpdatePayload {
   rangeMin?: number | null
   rangeMax?: number | null
   calcScript?: string
+  sortOrder?: number
 }
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {

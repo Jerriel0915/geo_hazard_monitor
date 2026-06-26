@@ -98,8 +98,11 @@
       </div>
     </header>
     <div class="page-tabs">
-      <div class="tabs-scroll-btn" @click="scrollTabs('left')">
-        <span>‹</span>
+      <div v-show="tabsOverflow" class="tabs-scroll-btn" @click="scrollTabs('left')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
       </div>
       <div class="tabs-container" ref="tabsContainerRef">
         <!-- 首页：锁定首位，不可拖动也不可关闭 -->
@@ -143,8 +146,11 @@
           </template>
         </draggable>
       </div>
-      <div class="tabs-scroll-btn" @click="scrollTabs('right')">
-        <span>›</span>
+      <div v-show="tabsOverflow" class="tabs-scroll-btn" @click="scrollTabs('right')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
       </div>
       <div class="tabs-actions">
         <el-dropdown @command="handleTabAction">
@@ -168,7 +174,7 @@
         </transition>
       </router-view>
     </main>
-    <el-dialog title="基本信息" v-model="infoDialogVisible" width="450px">
+    <el-dialog title="基本信息" v-model="infoDialogVisible" width="480px">
       <el-form :model="userInfo" label-width="100px">
         <el-form-item label="用户名">
           <el-input v-model="userInfo.username" disabled />
@@ -196,24 +202,24 @@
       </el-form>
       <template #footer>
         <el-button @click="infoDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveUserInfo">保存</el-button>
+        <el-button type="primary" :loading="infoSaving" @click="saveUserInfo">保存</el-button>
       </template>
     </el-dialog>
-    <el-dialog title="修改密码" v-model="pwdDialogVisible" width="400px">
+    <el-dialog title="修改密码" v-model="pwdDialogVisible" width="480px">
       <el-form :model="pwdForm" label-width="80px">
         <el-form-item label="原密码">
-          <el-input type="password" v-model="pwdForm.oldPwd" />
+          <el-input type="password" show-password v-model="pwdForm.oldPassword" />
         </el-form-item>
         <el-form-item label="新密码">
-          <el-input type="password" v-model="pwdForm.newPwd" />
+          <el-input type="password" show-password v-model="pwdForm.newPassword" />
         </el-form-item>
         <el-form-item label="确认密码">
-          <el-input type="password" v-model="pwdForm.confirmPwd" />
+          <el-input type="password" show-password v-model="pwdForm.confirmPassword" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="pwdDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="changePassword">确定</el-button>
+        <el-button type="primary" :loading="pwdChanging" @click="changePassword">确定</el-button>
       </template>
     </el-dialog>
 
@@ -353,9 +359,14 @@ import {
   type AlarmNotificationItem
 } from '@/api/alarmNotification'
 import {loadPermissions} from '@/utils/permission'
-import {getAuthInfo, getUserInfo} from '@/utils/userApi'
-import {ElNotification} from 'element-plus'
-import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {
+  getAuthInfo,
+  getUserInfo,
+  updateUserInfo as updateUserProfile,
+  changePassword as changeUserPassword
+} from '@/utils/userApi'
+import {ElMessage, ElNotification} from 'element-plus'
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import draggable from 'vuedraggable'
 import request from '@/utils/request'
@@ -395,6 +406,13 @@ const dismissBrowserTip = () => {
 const router = useRouter()
 const route = useRoute()
 const tabsContainerRef = ref<HTMLElement | null>(null)
+const tabsOverflow = ref(false)
+let tabsResizeObserver: ResizeObserver | null = null
+
+const checkTabsOverflow = () => {
+  const el = tabsContainerRef.value
+  tabsOverflow.value = el ? el.scrollWidth > el.clientWidth : false
+}
 const tabs = ref<Array<{ name: string; label: string }>>([])
 const activeTab = ref('Dashboard')
 
@@ -429,6 +447,14 @@ const eventPage = reactive({ current: 1, size: 10, total: 0 })
 const noticePage = reactive({ current: 1, size: 10, total: 0 })
 let noticeEventSource: EventSource | null = null
 let alarmEventSource: EventSource | null = null
+let noticeReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let alarmReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let sseStopped = false
+let noticeRetryCount = 0
+let alarmRetryCount = 0
+const MAX_SSE_RETRIES = 10
+const SSE_BASE_DELAY = 3000
+const SSE_MAX_DELAY = 30000
 
 /** 顶部铃铛角标总数 */
 const unreadMessageCount = computed(() => noticeUnreadCount.value + eventUnreadCount.value)
@@ -514,6 +540,7 @@ async function goNextPage() {
 }
 
 function startNoticeSSE() {
+  if (sseStopped) return
   if (noticeEventSource) noticeEventSource.close()
   const token = localStorage.getItem('token')
   if (!token) return
@@ -536,12 +563,21 @@ function startNoticeSSE() {
   })
   noticeEventSource.onerror = () => {
     noticeEventSource?.close()
-    setTimeout(startNoticeSSE, 3000)
+    if (sseStopped) return
+    if (noticeEventSource?.readyState === EventSource.CLOSED) {
+      noticeRetryCount++
+      if (noticeRetryCount > MAX_SSE_RETRIES) return
+    }
+    if (noticeReconnectTimer) clearTimeout(noticeReconnectTimer)
+    const delay = Math.min(SSE_BASE_DELAY * Math.pow(2, Math.max(0, noticeRetryCount - 1)), SSE_MAX_DELAY)
+    noticeReconnectTimer = setTimeout(startNoticeSSE, delay)
   }
+  noticeEventSource.addEventListener('open', () => { noticeRetryCount = 0 })
 }
 
 /** 告警 SSE：监听 alarm-notify 单点事件 + alarm 全量广播 */
 function startAlarmSSE() {
+  if (sseStopped) return
   if (alarmEventSource) alarmEventSource.close()
   const token = localStorage.getItem('token')
   if (!token) return
@@ -576,8 +612,16 @@ function startAlarmSSE() {
   })
   alarmEventSource.onerror = () => {
     alarmEventSource?.close()
-    setTimeout(startAlarmSSE, 3000)
+    if (sseStopped) return
+    if (alarmEventSource?.readyState === EventSource.CLOSED) {
+      alarmRetryCount++
+      if (alarmRetryCount > MAX_SSE_RETRIES) return
+    }
+    if (alarmReconnectTimer) clearTimeout(alarmReconnectTimer)
+    const delay = Math.min(SSE_BASE_DELAY * Math.pow(2, Math.max(0, alarmRetryCount - 1)), SSE_MAX_DELAY)
+    alarmReconnectTimer = setTimeout(startAlarmSSE, delay)
   }
+  alarmEventSource.addEventListener('open', () => { alarmRetryCount = 0 })
 }
 
 const currentUser = reactive({
@@ -585,19 +629,24 @@ const currentUser = reactive({
 })
 
 const userInfo = reactive({
-  username: 'admin',
-  realName: '管理员',
-  phone: '13800138000',
-  email: 'admin@example.com',
-  organization: '系统管理部',
+  id: 0,
+  username: '',
+  realName: '',
+  phone: '',
+  email: '',
+  sex: '',
+  organization: '',
   remark: ''
 })
 
 const pwdForm = reactive({
-  oldPwd: '',
-  newPwd: '',
-  confirmPwd: ''
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 })
+
+const pwdChanging = ref(false)
+const infoSaving = ref(false)
 
 const activeMenu = ref('')
 const isAdmin = ref(false)
@@ -754,10 +803,13 @@ const handleTabAction = (command: string) => {
   }
 }
 
-const handleUserCommand = (command: string) => {
+const handleUserCommand = async (command: string) => {
   if (command === 'info') {
     router.push('/user/profile')
   } else if (command === 'password') {
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
     pwdDialogVisible.value = true
   } else if (command === 'logout') {
     localStorage.removeItem('token')
@@ -765,14 +817,82 @@ const handleUserCommand = (command: string) => {
   }
 }
 
-const saveUserInfo = () => {
-  infoDialogVisible.value = false
-  alert('信息保存成功')
+const saveUserInfo = async () => {
+  if (!userInfo.realName?.trim()) {
+    ElMessage.warning('请输入真实姓名')
+    return
+  }
+  const phonePattern = /^1[3-9]\d{9}$/
+  if (userInfo.phone && !phonePattern.test(userInfo.phone)) {
+    ElMessage.warning('请输入正确的手机号码')
+    return
+  }
+  const emailPattern = /^[\w.-]+@[\w.-]+\.[A-Za-z]{2,}$/
+  if (userInfo.email && !emailPattern.test(userInfo.email)) {
+    ElMessage.warning('请输入正确的邮箱地址')
+    return
+  }
+
+  infoSaving.value = true
+  try {
+    await updateUserProfile(userInfo.id, {
+      realName: userInfo.realName,
+      phone: userInfo.phone,
+      email: userInfo.email,
+      sex: userInfo.sex
+    })
+    ElMessage.success('信息保存成功')
+    infoDialogVisible.value = false
+  } catch (error: any) {
+    ElMessage.error(error?.message || '保存失败，请重试')
+  } finally {
+    infoSaving.value = false
+  }
 }
 
-const changePassword = () => {
-  pwdDialogVisible.value = false
-  alert('密码修改成功')
+const changePassword = async () => {
+  if (!pwdForm.oldPassword) {
+    ElMessage.warning('请输入原密码')
+    return
+  }
+  if (!pwdForm.newPassword) {
+    ElMessage.warning('请输入新密码')
+    return
+  }
+  if (pwdForm.newPassword.length < 6 || pwdForm.newPassword.length > 20) {
+    ElMessage.warning('新密码长度需为 6-20 位')
+    return
+  }
+  if (pwdForm.newPassword === pwdForm.oldPassword) {
+    ElMessage.warning('新密码不能与原密码相同')
+    return
+  }
+  if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+    ElMessage.warning('两次输入的密码不一致')
+    return
+  }
+
+  pwdChanging.value = true
+  try {
+    await changeUserPassword({
+      oldPassword: pwdForm.oldPassword,
+      newPassword: pwdForm.newPassword
+    })
+    ElMessage.success('密码修改成功，请重新登录')
+    pwdDialogVisible.value = false
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdForm.confirmPassword = ''
+    // 密码已变更，旧 token 失效，引导重新登录
+    setTimeout(() => {
+      localStorage.removeItem('token')
+      router.push('/login')
+    }, 1500)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '密码修改失败，请重试')
+  } finally {
+    pwdChanging.value = false
+  }
 }
 
 const toggleMessagePanel = () => {
@@ -789,16 +909,21 @@ const noticeDetailLoading = ref(false)
 const noticeDetail = ref<Partial<SysNotice>>({})
 
 /**
- * 简单的 XSS 缓解措施（非完整净化器）。
- * 已覆盖：<script>、<iframe>、<object>、<embed> 标签（含 void 变体）。
- * 未覆盖：事件处理器属性、javascript: URI、<svg> 内嵌脚本、未闭合标签。
- * 当前调用方为管理员后台创建的公告（可信输入）；接入 UGC 时需替换为 DOMPurify。
+ * XSS 净化 — 移除常见攻击向量。
+ * 覆盖：script/iframe/object/embed/svg/style/meta/link 标签、事件处理器属性、javascript: URI。
+ * 注：完整净化应使用 DOMPurify，当前用于管理员后台公告（半可信输入）。
  */
 function sanitizeNoticeHtml(html: string): string {
-  return (html ?? '')
-    .replace(/<script\b[^>]*>.*?<\/script>/gis, '')
-    .replace(/<(iframe|object|embed)\b[^>]*>.*?<\/\1>/gis, '')
-    .replace(/<(iframe|object|embed)\b[^>]*\/?>/gi, '')
+  let s = html ?? ''
+  // 完整标签（含内容）
+  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*>.*?<\/\1>/gis, '')
+  // 自闭合/空标签
+  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*\/?>/gi, '')
+  // 事件处理器属性 on*= (onclick, onerror, onload...)
+  s = s.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+  // javascript: URI 在 href/src/action 属性中
+  s = s.replace(/(?:href|src|action)\s*=\s*(?:"[^"]*javascript:[^"]*"|'[^']*javascript:[^']*')/gi, '')
+  return s
 }
 
 const handleNoticeClick = async (msg: NotifyMessage) => {
@@ -952,9 +1077,21 @@ onMounted(async () => {
     const c = (copyrightRes as any)?.data ?? (copyrightRes as any)?.msg
     if (c && typeof c === 'string' && c.trim()) systemCopyright.value = c.trim()
   } catch { /* 未配置时使用默认值 */ }
+
+  // 4. 页签溢出检测 — 自动显示/隐藏左右滚动按钮
+  if (tabsContainerRef.value) {
+    tabsResizeObserver = new ResizeObserver(checkTabsOverflow)
+    tabsResizeObserver.observe(tabsContainerRef.value)
+    checkTabsOverflow()
+  }
 })
 
 onUnmounted(() => {
+  if (tabsResizeObserver) {
+    tabsResizeObserver.disconnect()
+    tabsResizeObserver = null
+  }
+  sseStopped = true
   if (noticeEventSource) {
     noticeEventSource.close()
     noticeEventSource = null
@@ -963,6 +1100,14 @@ onUnmounted(() => {
     alarmEventSource.close()
     alarmEventSource = null
   }
+  if (noticeReconnectTimer) {
+    clearTimeout(noticeReconnectTimer)
+    noticeReconnectTimer = null
+  }
+  if (alarmReconnectTimer) {
+    clearTimeout(alarmReconnectTimer)
+    alarmReconnectTimer = null
+  }
 })
 
 // 路由变化时同步 tabs/activeTab/activeMenu（支持浏览器前进后退、菜单外的 router.push）
@@ -970,12 +1115,13 @@ watch(() => route.name, (name) => {
   if (name) syncTabWithRoute(String(name))
 })
 
-// tabs 变化时持久化到 localStorage
+// tabs 变化时持久化到 localStorage，并重新检测溢出（nextTick 等 DOM 更新后）
 watch(tabs, (val) => {
   try {
     localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(val))
   } catch { /* 配额超限等异常忽略 */
   }
+  nextTick(checkTabsOverflow)
 }, {deep: true})
 
 const scrollTabs = (direction: 'left' | 'right') => {

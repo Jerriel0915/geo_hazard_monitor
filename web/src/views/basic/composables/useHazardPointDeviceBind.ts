@@ -49,7 +49,7 @@ export interface TreeNode {
     bindCount?: number
     children?: TreeNode[]
 
-    [key: string]: any
+    [key: string]: unknown
 }
 
 // ---------------------------------------------------------------------------
@@ -99,12 +99,12 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
     const initialBoundDeviceIds = ref<Set<number>>(new Set())
 
     // ── Filter ──
-    const filterLeftNode = (value: string, data: any) => {
+    const filterLeftNode = (value: string, data: TreeNode) => {
         if (!value) return true
         return data.label.toLowerCase().includes(value.toLowerCase())
     }
 
-    const filterRightNode = (value: string, data: any) => {
+    const filterRightNode = (value: string, data: TreeNode) => {
         if (!value) return true
         return data.label.toLowerCase().includes(value.toLowerCase())
     }
@@ -117,7 +117,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
     const isRightNodeChecked = (data: TreeNode): boolean =>
         !data.disabled && selectedRightKeys.value.has(data.key)
 
-    const toggleLeftNode = (data: TreeNode, checked: any): void => {
+    const toggleLeftNode = (data: TreeNode, checked: boolean): void => {
         if (data.disabled) return
         const next = new Set(selectedLeftKeys.value)
         if (checked) next.add(data.key)
@@ -125,7 +125,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         selectedLeftKeys.value = next
     }
 
-    const toggleRightNode = (data: TreeNode, checked: any): void => {
+    const toggleRightNode = (data: TreeNode, checked: boolean): void => {
         if (data.disabled) return
         const next = new Set(selectedRightKeys.value)
         if (checked) next.add(data.key)
@@ -137,13 +137,12 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
     const loadUnboundDevices = async (keyword?: string) => {
         if (!opts.currentRow.value) return []
         try {
-            const response: any = await getUnboundDevices(opts.currentRow.value.id, keyword)
+            type UnboundDeviceItem = { id: number; label: string; bindCount: number; status: number; onlineStatus: number; icon: string; iconPath: string; children?: { id: number; label: string; iconPath: string; status: number }[] }
+            const response = await getUnboundDevices(opts.currentRow.value.id, keyword)
             if (response.code === 200) {
-                // 前端兜底：过滤已绑定到其他隐患点的设备（bindCount > 0）
-                // 后端应彻底修复：SQL 排除所有已绑定设备，而非仅当前 HP
-                return response.data
-                    .filter((item: any) => !item.bindCount || item.bindCount === 0)
-                    .map((item: any) => ({
+                return (response.data as UnboundDeviceItem[])
+                    .filter((item) => !item.bindCount || item.bindCount === 0)
+                    .map((item) => ({
                     id: String(item.id),
                     key: `dev_${item.id}`,
                     label: item.label,
@@ -152,7 +151,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                     onlineStatus: item.onlineStatus,
                     iconPath: getDeviceIconPath({icon: item.icon, iconPath: item.iconPath, status: item.status, onlineStatus: item.onlineStatus}),
                     children:
-                        item.children?.map((child: any) => ({
+                        item.children?.map((child) => ({
                             id: String(child.id),
                             key: `sen_${item.id}_${child.id}`,
                             label: child.label,
@@ -175,9 +174,10 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
 
     const initBoundDevices = async (hazardPointId: string) => {
         try {
-            const response: any = await getBoundDevices(hazardPointId)
+            type BoundDeviceRaw = { deviceId?: number; id?: number; deviceCode: string; deviceName: string; bindTime: string; deviceStatus: number; onlineStatus: number; icon: string; iconPath: string; installLongitude?: number; installLatitude?: number; sensors: { id: number; name: string; iconPath: string }[] }
+            const response = await getBoundDevices(hazardPointId)
             if (response.code === 200) {
-                opts.boundDevices.value = response.data.map((item: any) => ({
+                opts.boundDevices.value = (response.data as BoundDeviceRaw[]).map((item) => ({
                     deviceId: String(item.deviceId || item.id),
                     deviceCode: item.deviceCode,
                     deviceName: item.deviceName,
@@ -189,7 +189,7 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
                     installLongitude: item.installLongitude ?? null,
                     installLatitude: item.installLatitude ?? null,
                     status: item.deviceStatus ?? null,
-                    sensors: item.sensors || [],
+                    sensors: (item.sensors || []).map((s) => ({ id: String(s.id), name: s.name, iconPath: s.iconPath })),
                 }))
             } else {
                 opts.boundDevices.value = []
@@ -331,14 +331,14 @@ export function useHazardPointDeviceBind(opts: UseHazardPointDeviceBindOptions) 
         bindLoading.value = true
         try {
             if (toUnbind.length > 0) {
-                const unbindResp: any = await unbindDevicesFromHazardPoint(opts.currentRow.value.id, toUnbind)
+                const unbindResp = await unbindDevicesFromHazardPoint(opts.currentRow.value.id, toUnbind)
                 if (unbindResp.code !== 200) {
                     ElMessage.error(unbindResp.msg || '解绑失败')
                     return
                 }
             }
             if (toBind.length > 0) {
-                const bindResp: any = await bindDevicesToHazardPoint(opts.currentRow.value.id, {deviceIds: toBind})
+                const bindResp = await bindDevicesToHazardPoint(opts.currentRow.value.id, {deviceIds: toBind})
                 if (bindResp.code !== 200) {
                     ElMessage.error(bindResp.msg || '绑定失败')
                     return

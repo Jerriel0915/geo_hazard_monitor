@@ -23,6 +23,14 @@
         <el-option label="维修" :value="2" />
         <el-option label="停用" :value="3" />
       </el-select>
+      <el-select v-model="searchHazardPointId" placeholder="关联隐患点" clearable filterable>
+        <el-option
+            v-for="hp in hazardPointList"
+            :key="hp.id"
+            :label="hp.name"
+            :value="Number(hp.id)"
+        />
+      </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
     </div>
@@ -69,18 +77,11 @@
               <span>{{ row.sn || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
+          <el-table-column label="关联隐患点" min-width="130" align="center">
             <template #default="{ row }">
-              <el-tooltip
-                  v-if="row.authUsername"
-                  :content="`查看 ${row.name} 的接入账号`"
-                  placement="top"
-              >
-                <span class="link-cell" @click="handleOpenAccountFromList(row)">
-                  <el-icon class="link-icon"><User/></el-icon>
-                  <span>{{ row.authUsername }}</span>
-                </span>
-              </el-tooltip>
+              <span v-if="row.boundHazardPointName" class="link-cell">
+                <span>{{ row.boundHazardPointName }}</span>
+              </span>
               <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
@@ -313,7 +314,7 @@
     </el-dialog>
 
     <!-- 维修状态弹窗 -->
-    <el-dialog v-model="maintenanceDialogVisible" title="维修状态操作" width="520px" :close-on-click-modal="false"
+    <el-dialog v-model="maintenanceDialogVisible" title="维修状态操作" width="480px" :close-on-click-modal="false"
                destroy-on-close>
       <el-form ref="maintenanceFormRef" :model="maintenanceForm" :rules="maintenanceFormRules" label-width="80px">
         <el-form-item label="设备">{{ maintenanceDeviceName }}</el-form-item>
@@ -378,7 +379,13 @@
       <el-table :data="isDraftMode ? draftSensors : sensorTableData" border size="small" v-loading="sensorLoading">
         <el-table-column prop="sensorCode" label="传感器编号" width="120" align="center" />
         <el-table-column prop="sensorName" label="传感器名称" width="130" align="center" />
-        <el-table-column prop="monitorTypeName" label="监测类型" width="160" align="center" />
+        <el-table-column prop="monitorTypeName" label="监测类型" width="130" align="center" />
+        <el-table-column label="埋深(米)" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.burialDepth != null">{{ row.burialDepth }}</span>
+            <span v-else class="empty-text">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" effect="plain">
@@ -463,6 +470,21 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="埋深(米)" prop="burialDepth">
+              <el-input-number
+                  v-model="sensorFormData.burialDepth"
+                  :precision="2"
+                  :min="-9999"
+                  :max="9999"
+                  controls-position="right"
+                  placeholder="地面为0，向下为正"
+                  style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
 
         <el-divider content-position="left">
           <span class="divider-title">属性配置</span>
@@ -510,7 +532,7 @@
     </el-dialog>
 
     <!-- 设备图标选择弹窗 -->
-    <el-dialog v-model="deviceIconDialogVisible" title="选择设备图标" width="750px">
+    <el-dialog v-model="deviceIconDialogVisible" title="选择设备图标" width="800px">
       <div class="icon-grid">
         <div
             v-for="item in deviceIconList"
@@ -546,7 +568,7 @@
 import {computed, onMounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {Cpu, User, Plus} from '@element-plus/icons-vue'
+import {Cpu, Plus} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import DeviceDetail from './components/DeviceDetail.vue'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
@@ -570,7 +592,7 @@ import {getDeviceIconPathGreen} from '@/utils/deviceIcon'
 import {type DeviceItem, useDeviceCrud} from './composables/useDeviceCrud'
 
 const {
-  searchKeyword, searchStatus,
+  searchKeyword, searchStatus, searchHazardPointId,
   loading, submitLoading, tableData, currentPage, pageSize, total,
   dialogVisible, dialogTitle, isEdit, isView, isCopyMode, formRef, formData, formRules,
   detailDialogVisible, currentRow,
@@ -605,6 +627,7 @@ interface SensorFormModel {
   sensorName: string
   monitorTypeId: number | null
   monitorTypeName: string
+  burialDepth: number | null
   status: number
   attrList: SensorAttrItem[]
 }
@@ -675,6 +698,7 @@ interface SensorDraftItem {
   sensorName: string
   monitorTypeId: number | null
   monitorTypeName: string
+  burialDepth: number | null
   status: number
   attrList: SensorAttrItem[]
 }
@@ -805,6 +829,7 @@ const sensorFormData = reactive<SensorFormModel>({
   sensorName: '',
   monitorTypeId: null,
   monitorTypeName: '',
+  burialDepth: null,
   status: 1,
   attrList: []
 })
@@ -1038,12 +1063,6 @@ const handleOpenSensorsFromList = async (row: DeviceItem) => {
   await handleConfigSensors(row)
 }
 
-// 列表行内“接入账号”单元格快捷入口：直接打开该设备的账号弹窗
-const handleOpenAccountFromList = async (row: DeviceItem) => {
-  if (!row.id) return
-  await handleViewAuth(row)
-}
-
 // 列表行内“设备状态”单元格快捷入口：直接打开该设备的运维弹窗
 const handleOpenMaintenanceFromList = (row: DeviceItem) => {
   if (!row.id) return
@@ -1069,6 +1088,7 @@ const resetSensorForm = () => {
     sensorName: '',
     monitorTypeId: null,
     monitorTypeName: '',
+    burialDepth: null,
     status: 1,
     attrList: []
   })
@@ -1159,6 +1179,7 @@ const handleEditSensor = async (row: SensorItem | SensorDraftItem) => {
         sensorName: draft.sensorName,
         monitorTypeId: draft.monitorTypeId,
         monitorTypeName: draft.monitorTypeName || '',
+        burialDepth: draft.burialDepth ?? null,
         status: draft.status,
         attrList: draft.attrList.map(a => ({ ...a })),
       })
@@ -1175,6 +1196,7 @@ const handleEditSensor = async (row: SensorItem | SensorDraftItem) => {
       sensorName: detail.sensorName,
       monitorTypeId: detail.monitorTypeId,
       monitorTypeName: detail.monitorTypeName || '',
+      burialDepth: detail.burialDepth ?? null,
       status: detail.status,
       attrList: (detail.attrList || []).map((attr) => ({
         id: attr.id,
@@ -1296,6 +1318,7 @@ const buildSensorPayload = () => ({
   sensorCode: sensorFormData.sensorCode.trim(),
   sensorName: sensorFormData.sensorName.trim(),
   monitorTypeId: Number(sensorFormData.monitorTypeId),
+  burialDepth: sensorFormData.burialDepth ?? undefined,
   status: sensorFormData.status,
   attrList: sensorFormData.attrList.map((attr) => ({
     id: attr.id,
@@ -1337,6 +1360,7 @@ const handleSensorSubmit = () => {
             sensorName: payload.sensorName,
             monitorTypeId: sensorFormData.monitorTypeId,
             monitorTypeName: sensorFormData.monitorTypeName,
+            burialDepth: sensorFormData.burialDepth ?? null,
             status: sensorFormData.status,
             attrList: sensorFormData.attrList.map(a => ({ ...a })),
           })
@@ -1351,6 +1375,7 @@ const handleSensorSubmit = () => {
               sensorName: payload.sensorName,
               monitorTypeId: sensorFormData.monitorTypeId!,
               monitorTypeName: sensorFormData.monitorTypeName,
+              burialDepth: sensorFormData.burialDepth ?? null,
               status: sensorFormData.status,
               attrList: sensorFormData.attrList.map(a => ({ ...a })),
             }
@@ -1368,6 +1393,7 @@ const handleSensorSubmit = () => {
       } else if (sensorFormData.id) {
         await updateSensor(sensorFormData.id, {
           sensorName: payload.sensorName,
+          burialDepth: payload.burialDepth,
           status: payload.status,
           attrList: payload.attrList
         })
@@ -1429,6 +1455,7 @@ const commitDraft = async () => {
         sensorCode: s.sensorCode.trim(),
         sensorName: s.sensorName.trim(),
         monitorTypeId: Number(s.monitorTypeId),
+        burialDepth: s.burialDepth ?? undefined,
         status: s.status,
         attrList: s.attrList.map(a => ({
           attrCode: a.attrCode.trim(),
@@ -1508,6 +1535,7 @@ watch(draftMode, async (mode) => {
         sensorName: s.sensorName,
         monitorTypeId: s.monitorTypeId,
         monitorTypeName: s.monitorTypeName || '',
+        burialDepth: s.burialDepth ?? null,
         status: s.status,
         attrList: (s.attrList || []).map((a: any) => ({
           attrCode: a.attrCode,

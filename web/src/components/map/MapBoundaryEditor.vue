@@ -114,19 +114,46 @@ function renderDeviceLayer(devices: BoundDevice[]) {
     deviceLayer.value = L.layerGroup().addTo(map)
   }
   deviceLayer.value.clearLayers()
+  const devicePoints: L.LatLngTuple[] = []
   devices.forEach(d => {
     if (d.installLongitude == null || d.installLatitude == null) return
+    devicePoints.push([d.installLatitude, d.installLongitude])
     const icon = L.icon({
       iconUrl: getDeviceMapIconPath(d),
       iconSize: [28, 32],
       iconAnchor: [14, 16]
     })
-    const marker = L.marker([d.installLatitude, d.installLongitude], {icon, interactive: true})
+    const marker = L.marker([d.installLatitude, d.installLongitude], {
+      icon,
+      interactive: true,
+      zIndexOffset: 500
+    })
     marker.bindPopup(
-        `<div style="font-size:12px;line-height:1.6"><b>${d.deviceName}</b><br>编号: ${d.deviceCode}<br>坐标: ${d.installLongitude!.toFixed(6)}, ${d.installLatitude!.toFixed(6)}</div>`
+        `<div class="hpv2-card">
+          <div class="hpv2-header"><span class="hpv2-title">${d.deviceName}</span></div>
+          <div class="hpv2-dash"></div>
+          <div class="hpv2-body">
+            <div class="hpv2-row single">
+              <div class="hpv2-cell full"><span class="hpv2-label">编号</span><span class="hpv2-val">${d.deviceCode}</span></div>
+            </div>
+            <div class="hpv2-dash"></div>
+            <div class="hpv2-row single">
+              <div class="hpv2-cell full"><span class="hpv2-label">坐标</span><span class="hpv2-val">${d.installLongitude!.toFixed(6)}, ${d.installLatitude!.toFixed(6)}</span></div>
+            </div>
+          </div>
+        </div>`
     )
     deviceLayer.value!.addLayer(marker)
   })
+
+  // 非编辑态下自适应视野, 确保设备点位和多边形都可见
+  if (editor.mode.value !== 'edit' && devicePoints.length > 0) {
+    const polygonPts = editor.polygon.value.map(p => [p.lat, p.lng] as L.LatLngTuple)
+    const allPoints = [...devicePoints, ...polygonPts]
+    if (allPoints.length > 1) {
+      map.fitBounds(L.latLngBounds(allPoints), {padding: [40, 40], maxZoom: 17})
+    }
+  }
 }
 
 // 设备列表或地图就绪时增量重渲
@@ -138,13 +165,6 @@ watch(
     },
     {immediate: true, deep: true}
 )
-
-// 取消/重置时同步清理设备图层 (避免脏数据)
-watch(() => props.initialValue, () => {
-  if (props.boundDevices.length > 0) {
-    renderDeviceLayer(props.boundDevices)
-  }
-})
 
 // 重新打开 dialog 时, 父组件会传新的 initialValue, 这里重新同步到内部 state
 watch(() => props.initialValue, (v) => {

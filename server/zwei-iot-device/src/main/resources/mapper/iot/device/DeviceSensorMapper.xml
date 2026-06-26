@@ -14,8 +14,10 @@
         <result property="monitorTypeId" column="monitor_type_id"/>
         <result property="monitorTypeCode" column="monitor_type_code"/>
         <result property="monitorTypeName" column="monitor_type_name"/>
+        <result property="burialDepth" column="burial_depth"/>
         <result property="status" column="status"/>
         <result property="delFlag" column="del_flag"/>
+        <result property="iconPath" column="monitor_type_icon"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
         <result property="updateBy" column="update_by"/>
@@ -32,13 +34,16 @@
                ds.monitor_type_id,
                ds.monitor_type_code,
                ds.monitor_type_name,
+               ds.burial_depth,
                ds.status,
                ds.del_flag,
                ds.create_by,
                ds.create_time,
                ds.update_by,
-               ds.update_time
+               ds.update_time,
+               mt.icon AS monitor_type_icon
         FROM device_sensor ds
+        LEFT JOIN monitor_type mt ON ds.monitor_type_id = mt.id
     </sql>
 
     <!-- ==================== 查询操作 ==================== -->
@@ -91,6 +96,7 @@
         <if test="monitorTypeId != null">monitor_type_id,</if>
         <if test="monitorTypeCode != null">monitor_type_code,</if>
         <if test="monitorTypeName != null">monitor_type_name,</if>
+        <if test="burialDepth != null">burial_depth,</if>
         <if test="status != null">status,</if>
         <if test="createBy != null and createBy != ''">create_by,</if>
         create_time
@@ -102,6 +108,7 @@
         <if test="monitorTypeId != null">#{monitorTypeId},</if>
         <if test="monitorTypeCode != null">#{monitorTypeCode},</if>
         <if test="monitorTypeName != null">#{monitorTypeName},</if>
+        <if test="burialDepth != null">#{burialDepth},</if>
         <if test="status != null">#{status},</if>
         <if test="createBy != null and createBy != ''">#{createBy},</if>
         SYSDATE()
@@ -119,6 +126,7 @@
             <if test="monitorTypeId != null">monitor_type_id = #{monitorTypeId},</if>
             <if test="monitorTypeCode != null">monitor_type_code = #{monitorTypeCode},</if>
             <if test="monitorTypeName != null">monitor_type_name = #{monitorTypeName},</if>
+            <if test="burialDepth != null">burial_depth = #{burialDepth},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             update_time = SYSDATE()

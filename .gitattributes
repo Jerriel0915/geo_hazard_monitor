@@ -1,0 +1,23 @@
+# 行尾规范: 跨平台一致性 + 避免 Windows 上 autocrlf 引起的 stat-cache 假 modified
+# 详见: https://git-scm.com/docs/gitattributes
+* text=auto eol=lf
+
+# 锁文件用平台原生行尾 (package-lock.json 等由 npm 自动生成)
+package-lock.json text=- eol=lf
+
+# 二进制文件明确标记, 避免 Git 误判为 text 后触发行尾转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.svg binary
+*.pdf binary
+*.zip binary
+*.jar binary
+*.war binary
+*.class binary
+*.so binary
+*.dll binary
+*.exe binary

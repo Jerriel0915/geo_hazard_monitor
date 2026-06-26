@@ -7,6 +7,7 @@ import com.zwei.system.mapper.SysDictDataMapper;
 import com.zwei.system.service.ISysDictDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -64,6 +65,7 @@ public class SysDictDataServiceImpl implements ISysDictDataService
      * @param dictCodes 需要删除的字典数据ID
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDictDataByIds(Long[] dictCodes)
     {
         for (Long dictCode : dictCodes)

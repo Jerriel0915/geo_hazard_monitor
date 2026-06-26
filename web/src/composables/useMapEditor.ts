@@ -93,7 +93,7 @@ function ensureDraggableVertex(
       draggable: true
     }).addTo(map)
     m.on('dragstart', () => opts.onDragStart())
-    m.on('drag', (e: any) => {
+    m.on('drag', (e: L.LeafletEvent) => {
       if (!opts.canMove()) {
         const sb = opts.snapBackTo()
         e.target.setLatLng([sb.lat, sb.lng])
@@ -103,7 +103,7 @@ function ensureDraggableVertex(
       opts.onDrag({lat: ll.lat, lng: ll.lng})
     })
     m.on('dragend', () => opts.onDragEnd())
-    m.on('click', (e: any) => {
+    m.on('click', (e: L.LeafletEvent) => {
       L.DomEvent.stopPropagation(e)
       opts.onClick()
     })
@@ -324,15 +324,23 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
     const map = leaflet.map.value
     if (!map) return
 
-    // polygon
+    // polygon — view mode uses lighter style to reduce visual weight
     if (polygon.value.length >= 3) {
       const latlngs: L.LatLngExpression[] = polygon.value.map(p => [p.lat, p.lng])
+      const isEdit = mode.value === 'edit'
       if (polygonLayer.value) {
         polygonLayer.value.setLatLngs(latlngs)
+        polygonLayer.value.setStyle({
+          fillOpacity: isEdit ? 0.12 : 0.06,
+          weight: isEdit ? 2 : 1.5,
+          dashArray: isEdit ? '4 2' : ''
+        })
       } else {
         polygonLayer.value = L.polygon(latlngs, {
-          color: '#1890ff', fillColor: '#1890ff', fillOpacity: 0.15, weight: 2,
-          dashArray: mode.value === 'edit' ? '4 2' : undefined
+          color: '#1890ff', fillColor: '#1890ff',
+          fillOpacity: isEdit ? 0.12 : 0.06,
+          weight: isEdit ? 2 : 1.5,
+          dashArray: isEdit ? '4 2' : undefined
         }).addTo(map)
       }
     } else if (polygonLayer.value) {
@@ -340,37 +348,45 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
       polygonLayer.value = null
     }
 
-    // vertex markers — incremental update so we don't kill the one being dragged
-    // 1. Remove excess markers (when polygon shrinks)
-    while (vertexMarkers.value.length > polygon.value.length) {
-      const m = vertexMarkers.value.pop()!
-      m.remove()
-    }
-    // 2. For each polygon vertex, ensure a marker exists at the right position
-    vertexMarkers.value = polygon.value.map((p, i) => {
-      const isSelected = selectedId.value?.kind === 'polygon-vertex' && selectedId.value.index === i
-      return ensureDraggableVertex(map, {
-        position: p,
-        existing: vertexMarkers.value[i],
-        isDragging: i === draggingVertexIndex.value,
-        iconHtml: vertexHtml(isSelected, mode.value === 'edit'),
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-        iconClass: 'vertex-marker',
-        onDragStart: () => {
-          draggingVertexIndex.value = i
-        },
-        onDrag: pos => moveVertex({kind: 'polygon-vertex', index: i}, pos),
-        onDragEnd: () => {
-          draggingVertexIndex.value = null
-        },
-        onClick: () => {
-          if (mode.value === 'edit') select({kind: 'polygon-vertex', index: i})
-        },
-        canMove: () => mode.value === 'edit' && canEdit.value,
-        snapBackTo: () => polygon.value[i]
+    // vertex markers — only render in edit mode for a cleaner view;
+    // in view mode the polygon outline alone is sufficient
+    if (mode.value === 'edit') {
+      // incremental update so we don't kill the one being dragged
+      // 1. Remove excess markers (when polygon shrinks)
+      while (vertexMarkers.value.length > polygon.value.length) {
+        const m = vertexMarkers.value.pop()!
+        m.remove()
+      }
+      // 2. For each polygon vertex, ensure a marker exists at the right position
+      vertexMarkers.value = polygon.value.map((p, i) => {
+        const isSelected = selectedId.value?.kind === 'polygon-vertex' && selectedId.value.index === i
+        return ensureDraggableVertex(map, {
+          position: p,
+          existing: vertexMarkers.value[i],
+          isDragging: i === draggingVertexIndex.value,
+          iconHtml: vertexHtml(isSelected, mode.value === 'edit'),
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+          iconClass: 'vertex-marker',
+          onDragStart: () => {
+            draggingVertexIndex.value = i
+          },
+          onDrag: pos => moveVertex({kind: 'polygon-vertex', index: i}, pos),
+          onDragEnd: () => {
+            draggingVertexIndex.value = null
+          },
+          onClick: () => {
+            if (mode.value === 'edit') select({kind: 'polygon-vertex', index: i})
+          },
+          canMove: () => mode.value === 'edit' && canEdit.value,
+          snapBackTo: () => polygon.value[i]
+        })
       })
-    })
+    } else {
+      // View mode: remove all vertex markers for a clean polygon outline
+      vertexMarkers.value.forEach(m => m.remove())
+      vertexMarkers.value = []
+    }
 
     // strike line + endpoint markers
     if (strikeLine.value) {
@@ -497,7 +513,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
           draggable: true
         }).addTo(map)
         centerMarker.value.on('dragstart', () => { draggingCenter.value = true })
-        centerMarker.value.on('drag', (e: any) => {
+        centerMarker.value.on('drag', (e: L.LeafletEvent) => {
           if (mode.value !== 'edit' || !canEdit.value) {
             e.target.setLatLng([center.value!.lat, center.value!.lng])
             return
@@ -506,7 +522,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
           moveCenter({ lat: ll.lat, lng: ll.lng })
         })
         centerMarker.value.on('dragend', () => { draggingCenter.value = false })
-        centerMarker.value.on('click', (e: any) => L.DomEvent.stopPropagation(e))
+        centerMarker.value.on('click', (e: L.LeafletEvent) => L.DomEvent.stopPropagation(e))
       }
     } else if (!center.value && centerMarker.value) {
       centerMarker.value.remove()
@@ -530,7 +546,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
             draggable: !options.readonly
           }).addTo(map)
           pointMarker.value.on('dragstart', () => { draggingPoint.value = true })
-          pointMarker.value.on('dragend', (e: any) => {
+          pointMarker.value.on('dragend', (e: L.LeafletEvent) => {
             draggingPoint.value = false
             const ll = e.target.getLatLng()
             localPoint.value = { lat: ll.lat, lng: ll.lng }

@@ -158,7 +158,7 @@
                 <div
                   class="table-row"
                   v-for="(item, index) in paginatedAlarmList"
-                  :key="index"
+                  :key="item.id ?? index"
                 >
                   <div class="row-header">
                     <span class="row-time">{{ item.triggerTime }}</span>
@@ -206,7 +206,7 @@
                 <div
                   class="table-row notify-row"
                   v-for="(item, index) in paginatedNotifyList"
-                  :key="index"
+                  :key="item.id ?? index"
                 >
                   <div class="row-header">
                     <span class="row-time">{{ item.createTime }}</span>
@@ -258,7 +258,7 @@
                 <div
                   class="table-row feedback-row"
                   v-for="(item, index) in paginatedFeedbackList"
-                  :key="index"
+                  :key="item.id ?? index"
                 >
                   <div class="row-header">
                     <span class="row-time">{{ item.createTime }}</span>
@@ -298,7 +298,7 @@
         </div>
         <div class="card-body">
           <div class="timeline" v-if="timelineData.length > 0">
-            <div class="timeline-item" v-for="(item, index) in visibleTimeline" :key="index">
+            <div class="timeline-item" v-for="(item, index) in visibleTimeline" :key="item.label + '-' + item.time + '-' + item.operator + '-' + index">
               <div class="timeline-dot" :class="item.type"></div>
               <div class="timeline-line" v-if="index < visibleTimeline.length - 1"></div>
               <div class="timeline-content">
@@ -376,8 +376,8 @@
           <div class="form-label">反馈文件</div>
           <div class="upload-area">
             <div 
-              v-for="(file, index) in feedbackForm.files" 
-              :key="index" 
+              v-for="(file, index) in feedbackForm.files"
+              :key="file.name + '-' + file.size + '-' + file.lastModified + '-' + index"
               class="uploaded-file"
             >
               <div class="file-icon" :class="getFileClass(file)">
@@ -646,7 +646,18 @@ const paginatedFeedbackList = computed(() => {
 const switchTab = (tab: string) => {
   activeTab.value = tab
   if (tab === 'monitor') {
-    nextTick(() => initChart())
+    nextTick(() => {
+      if (!chartInstance) {
+        initChart()
+      } else {
+        updateChart()
+        chartInstance?.resize()
+      }
+    })
+  } else {
+    // 离开监测数据 tab 时销毁图表，释放 Canvas 内存
+    chartInstance?.dispose()
+    chartInstance = null
   }
 }
 
@@ -928,14 +939,13 @@ const loadAll = async () => {
       getActionLogs(id),
       getAlarmNotifications(id),
     ])
-    const detailData: any = (d as any).data ?? d
-    alarmData.value = detailData ?? null
-    triggerDetails.value = (t as any).data ?? t ?? []
-    const rawLogs: AlarmRecordActionLog[] = (l as any).data ?? l ?? []
-    notifyRecords.value = (n as any).data ?? n ?? []
+    alarmData.value = d.data ?? null
+    triggerDetails.value = t.data ?? []
+    const rawLogs: AlarmRecordActionLog[] = l.data ?? []
+    notifyRecords.value = n.data ?? []
 
     // 在 action_log 头部插入"当前状态"节点
-    const isEnded = [3, 4].includes(Number(detailData?.status))
+    const isEnded = [3, 4].includes(Number(alarmData.value?.status))
     const currentLog = {
       id: 0,
       alarmRecordId: id,
@@ -949,9 +959,9 @@ const loadAll = async () => {
     timelineData.value = buildTimeline([currentLog, ...rawLogs])
 
     // 拉取隐患点详情
-    if (detailData?.hazardPointId) {
+    if (alarmData.value?.hazardPointId) {
       try {
-        const hpRes: any = await getHazardPointDetail(String(detailData.hazardPointId))
+        const hpRes: any = await getHazardPointDetail(String(alarmData.value.hazardPointId))
         hazardPointData.value = hpRes?.data ?? hpRes ?? null
       } catch {
         hazardPointData.value = null
@@ -961,11 +971,13 @@ const loadAll = async () => {
     // 加载监测曲线
     await loadChartData()
 
-    // 初始化图表
-    nextTick(() => initChart())
-  } catch (e: any) {
+    // 仅当前 tab 是监测数据时才初始化图表，避免不必要开销
+    if (activeTab.value === 'monitor') {
+      nextTick(() => initChart())
+    }
+  } catch (e: unknown) {
     console.error('加载告警详情失败:', e)
-    loadError.value = e?.message || '加载失败，请重试'
+    loadError.value = e instanceof Error ? e.message : '加载失败，请重试'
     alarmData.value = null
   } finally {
     loading.value = false
@@ -1056,8 +1068,8 @@ const handleSubmitFeedback = async () => {
     ElMessage.success('反馈提交成功')
     feedbackDialogVisible.value = false
     await loadAll()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '反馈提交失败')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '反馈提交失败')
   } finally {
     feedbackSubmitting.value = false
   }
@@ -1070,9 +1082,9 @@ const handleFalseAlarm = async () => {
     await disposeAlarm(alarmData.value.id, { status: 4 })
     ElMessage.success('已标记为误报')
     await loadAll()
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e !== 'cancel' && e !== 'close') {
-      ElMessage.error(e?.message || '标记误报失败')
+      ElMessage.error(e instanceof Error ? e.message : '标记误报失败')
     }
   }
 }
@@ -1084,9 +1096,9 @@ const handleCloseAlarm = async () => {
     await disposeAlarm(alarmData.value.id, { status: 3 })
     ElMessage.success('消警成功')
     await loadAll()
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e !== 'cancel' && e !== 'close') {
-      ElMessage.error(e?.message || '销警失败')
+      ElMessage.error(e instanceof Error ? e.message : '销警失败')
     }
   }
 }
@@ -1101,7 +1113,7 @@ const handleNavigate = () => {
   const name = alarmData.value?.hazardPointName || '目的地'
   if (lat && lng) {
     // 尝试唤醒地图 APP（高德/百度通用 scheme）
-    window.open(`https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(name)}&mode=car`, '_blank')
+    window.open(`https://uri.amap.com/navigation?to=${encodeURIComponent(String(lng))},${encodeURIComponent(String(lat))},${encodeURIComponent(name)}&mode=car`, '_blank')
   } else {
     ElMessage.info(`正在打开导航到 ${name}`)
   }
@@ -1117,6 +1129,15 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   chartInstance?.dispose()
+  chartInstance = null
+  // 清理大数据引用，释放 JS 内存，防止反复打开处置页面后浏览器卡顿/崩溃
+  alarmData.value = null
+  hazardPointData.value = null
+  triggerDetails.value = []
+  notifyRecords.value = []
+  actionLogs.value = []
+  chartSeriesData.value = []
+  timelineData.value = []
 })
 </script>
 

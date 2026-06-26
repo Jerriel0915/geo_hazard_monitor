@@ -244,11 +244,12 @@ public class SysDeptServiceImpl implements ISysDeptService
 
     /**
      * 修改保存部门信息
-     * 
+     *
      * @param dept 部门信息
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int updateDept(SysDept dept)
     {
         SysDept oldDept = deptMapper.selectDeptById(dept.getDeptId());

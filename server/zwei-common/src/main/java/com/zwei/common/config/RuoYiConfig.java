@@ -1,14 +1,15 @@
 package com.zwei.common.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 /**
- * 读取项目相关配置
- * 
+ * 读取项目相关配置。
+ *
+ * <p>通过 {@code @EnableConfigurationProperties(RuoYiConfig.class)} 在启动类注册为 Bean，
+ * 不再依赖 {@code @Component} 扫描。</p>
+ *
  * @author zwei
  */
-@Component
 @ConfigurationProperties(prefix = "zwei")
 public class RuoYiConfig
 {

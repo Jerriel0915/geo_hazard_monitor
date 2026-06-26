@@ -4,14 +4,18 @@ import com.alibaba.fastjson2.JSON;
 import com.zwei.common.domain.ParsedMessage;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Redis Stream 缓冲写入服务。
@@ -28,8 +32,14 @@ import java.util.Map;
  */
 @Service
 public class MonitorIngestStreamService {
+    private static final Logger log = LoggerFactory.getLogger(MonitorIngestStreamService.class);
+
+    /** 每 N 条入队消息触发一次 XTRIM，避免每条消息都发 Redis 命令 */
+    private static final int TRIM_INTERVAL = 100;
+
     private final RedisTemplate<Object, Object> redisTemplate;
     private final MonitorIngestProperties properties;
+    private final AtomicInteger enqueueCounter = new AtomicInteger(0);
 
     /**
      * 构造 Stream 写入服务。
@@ -56,6 +66,7 @@ public class MonitorIngestStreamService {
             body.put("retryCount", "0");
             redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), body));
         }
+        trimStreamThrottled(properties.getStreamKey(), points.size());
     }
 
     /**
@@ -82,6 +93,7 @@ public class MonitorIngestStreamService {
         body.put("payloadType", "PARSED_MESSAGE");
         body.put("retryCount", "0");
         redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), body));
+        trimStreamThrottled(properties.getStreamKey(), 1);
     }
 
     /**
@@ -97,5 +109,34 @@ public class MonitorIngestStreamService {
         body.put("rawPayload", rawPayload);
         body.put("reason", reason);
         redisTemplate.opsForStream().add(MapRecord.create(properties.getDeadLetterStreamKey(), body));
+    }
+
+    /**
+     * 每 N 条消息触发一次 XTRIM，避免每条消息都发 Redis 命令。
+     * <p>使用 XTRIM MAXLEN ~ 近似修剪，Redis 仅在流长度超过阈值时才执行实际删除。
+     */
+    private void trimStreamThrottled(String streamKey, int addCount) {
+        long maxLen = properties.getMaxStreamLen();
+        if (maxLen <= 0) {
+            return;
+        }
+        int count = enqueueCounter.addAndGet(addCount);
+        if (count < TRIM_INTERVAL) {
+            return;
+        }
+        // 重置计数器（可能有并发竞态，但偶尔多一次 XTRIM 无副作用）
+        enqueueCounter.set(0);
+        try {
+            redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+                connection.execute("XTRIM",
+                        streamKey.getBytes(StandardCharsets.UTF_8),
+                        "MAXLEN".getBytes(StandardCharsets.UTF_8),
+                        "~".getBytes(StandardCharsets.UTF_8),
+                        String.valueOf(maxLen).getBytes(StandardCharsets.UTF_8));
+                return null;
+            });
+        } catch (Exception e) {
+            log.warn("Stream XTRIM 失败 streamKey={} maxLen={}", streamKey, maxLen, e);
+        }
     }
 }

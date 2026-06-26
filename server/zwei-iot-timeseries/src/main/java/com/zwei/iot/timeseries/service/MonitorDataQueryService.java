@@ -3,6 +3,8 @@ package com.zwei.iot.timeseries.service;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.common.utils.DateUtils;
 import com.zwei.common.utils.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.service.IDeviceSensorService;
@@ -10,6 +12,7 @@ import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
 import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
+import com.zwei.iot.timeseries.config.MonitorQueryProperties;
 import com.zwei.iot.timeseries.domain.ChartDataVO;
 import com.zwei.iot.timeseries.domain.IotdbQueryRow;
 import com.zwei.iot.timeseries.domain.MonitorDataVO;
@@ -23,13 +26,16 @@ import java.util.*;
  * 监测数据查询服务。
  * <p>
  * IoTDB 查询聚合服务，将隐患点、设备、传感器元数据与时序查询结果组装为接口返回结构。
+ * 图表查询支持自动降采样：当区间估算点数超过阈值时自动切 GROUP BY 桶，避免全量物化导致 OOM。
  */
 @Service
 public class MonitorDataQueryService {
+    private static final Logger log = LoggerFactory.getLogger(MonitorDataQueryService.class);
     private final DeviceHazardPointMapper deviceHazardPointMapper;
     private final HazardPointMapper hazardPointMapper;
     private final IDeviceSensorService deviceSensorService;
     private final IotdbTimeSeriesService iotdbTimeSeriesService;
+    private final MonitorQueryProperties queryProperties;
 
     /**
      * 构造监测数据查询服务。
@@ -38,16 +44,19 @@ public class MonitorDataQueryService {
      * @param hazardPointMapper       隐患点 Mapper
      * @param deviceSensorService     设备传感器服务
      * @param iotdbTimeSeriesService  IoTDB 时序服务
+     * @param queryProperties         查询性能配置（降采样阈值等）
      */
     @Autowired
     public MonitorDataQueryService(DeviceHazardPointMapper deviceHazardPointMapper,
                                    HazardPointMapper hazardPointMapper,
                                    IDeviceSensorService deviceSensorService,
-                                   IotdbTimeSeriesService iotdbTimeSeriesService) {
+                                   IotdbTimeSeriesService iotdbTimeSeriesService,
+                                   MonitorQueryProperties queryProperties) {
         this.deviceHazardPointMapper = deviceHazardPointMapper;
         this.hazardPointMapper = hazardPointMapper;
         this.deviceSensorService = deviceSensorService;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
+        this.queryProperties = queryProperties;
     }
 
     /**
@@ -77,15 +86,25 @@ public class MonitorDataQueryService {
     /**
      * 分页查询隐患点下的历史监测数据。
      *
+     * <p>支持两种分页模式：</p>
+     * <ul>
+     *   <li><b>游标模式</b>：传 {@code cursor}（上一页最后一行时间戳）时走 keyset 游标路径，
+     *       每个测点取 pageSize 行合并，内存 O(measurements × pageSize)</li>
+     *   <li><b>页码模式</b>：传 {@code pageNum} 时保留 offset 路径但加合并行数上限守护，
+     *       超出 maxMergeRows 时抛异常提示使用游标分页</li>
+     * </ul>
+     *
      * @param hazardPointId 隐患点ID
      * @param deviceId      设备ID，可空
      * @param sensorId      传感器ID，可空
      * @param attrCode      属性编码，可空
+     * @param valueType     值类型，可空（当前未在分页查询中使用）
      * @param startTime     开始时间，可空
      * @param endTime       结束时间，可空
      * @param pageNum       页码
      * @param pageSize      每页条数
-     * @return 分页结果对象
+     * @param cursor        游标时间戳（毫秒），上一页最后一行时间，可空
+     * @return 分页结果对象，游标模式时额外包含 {@code cursor} 字段
      * @throws ServiceException 当隐患点ID为空或查询失败时抛出
      */
     public Map<String, Object> page(Long hazardPointId,
@@ -96,9 +115,9 @@ public class MonitorDataQueryService {
                                     String startTime,
                                     String endTime,
                                     int pageNum,
-                                    int pageSize) {
+                                    int pageSize,
+                                    Long cursor) {
         String hazardPointName = resolveHazardPointName(hazardPointId);
-        ValueType vt = ValueType.fromCode(valueType);
         Long startMillis = toMillis(startTime);
         Long endMillis = toMillis(endTime);
         int safePageNum = Math.max(pageNum, 1);
@@ -106,44 +125,119 @@ public class MonitorDataQueryService {
         List<ResolvedMeasurement> measurements = resolveMeasurements(hazardPointName, hazardPointId, deviceId, sensorId, attrCode);
         List<MonitorDataVO> rows;
         long total;
+        Long nextCursor = null;
         if (measurements.size() == 1) {
             // 单测点：IoTDB 直接分页
             ResolvedMeasurement m = measurements.get(0);
-            int offset = (safePageNum - 1) * safePageSize;
-            rows = new ArrayList<>();
-            for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
-                    m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, safePageSize, offset)) {
-                if (r.value() != null) {
-                    rows.add(buildRow(m, r));
-                }
-            }
-            total = iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis);
-        } else {
-            // 多测点：每个测点查询 limit = pageNum * pageSize，合并排序后截取
-            int perMeasurementLimit = safePageNum * safePageSize;
-            total = 0;
-            List<MonitorDataVO> allRows = new ArrayList<>();
-            for (ResolvedMeasurement m : measurements) {
-                total += iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis);
-                for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
-                        m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, perMeasurementLimit, 0)) {
+            if (cursor != null) {
+                rows = new ArrayList<>();
+                for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangeCursor(
+                        m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, cursor, safePageSize)) {
                     if (r.value() != null) {
-                        allRows.add(buildRow(m, r));
+                        rows.add(buildRow(m, r));
+                        nextCursor = r.time();
+                    }
+                }
+            } else {
+                int offset = (safePageNum - 1) * safePageSize;
+                rows = new ArrayList<>();
+                for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
+                        m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, safePageSize, offset)) {
+                    if (r.value() != null) {
+                        rows.add(buildRow(m, r));
                     }
                 }
             }
-            allRows.sort(Comparator.comparing(MonitorDataVO::dataTime, Comparator.reverseOrder()));
-            int fromIndex = Math.min((safePageNum - 1) * safePageSize, allRows.size());
-            int toIndex = Math.min(fromIndex + safePageSize, allRows.size());
-            rows = allRows.subList(fromIndex, toIndex);
+            total = iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis);
+        } else if (cursor != null) {
+            PageRows pr = pageMultiCursor(measurements, startMillis, endMillis, safePageSize, cursor);
+            rows = pr.rows;
+            nextCursor = pr.nextCursor;
+            total = pr.total;
+        } else {
+            PageRows pr = pageMultiOffset(measurements, startMillis, endMillis, safePageNum, safePageSize);
+            rows = pr.rows;
+            total = pr.total;
         }
         Map<String, Object> data = new HashMap<>();
         data.put("total", total);
         data.put("rows", rows);
         data.put("pageNum", safePageNum);
         data.put("pageSize", safePageSize);
+        if (nextCursor != null) {
+            data.put("cursor", nextCursor);
+        }
         return data;
     }
+
+    /**
+     * 多测点 keyset 游标分页：每个测点取 pageSize 行，合并排序后取前 pageSize。
+     *
+     * @return 分页结果（rows + cursor + total），内存 O(measurements × pageSize)
+     */
+    private PageRows pageMultiCursor(List<ResolvedMeasurement> measurements,
+                                      Long startMillis, Long endMillis,
+                                      int safePageSize, Long cursor) {
+        record CursorRow(ResolvedMeasurement measurement, IotdbQueryRow row) implements Comparable<CursorRow> {
+            @Override
+            public int compareTo(CursorRow o) {
+                return Long.compare(o.row.time(), this.row.time()); // 降序
+            }
+        }
+        List<CursorRow> rawRows = new ArrayList<>(measurements.size() * safePageSize);
+        for (ResolvedMeasurement m : measurements) {
+            for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangeCursor(
+                    m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, cursor, safePageSize)) {
+                if (r.value() != null) {
+                    rawRows.add(new CursorRow(m, r));
+                }
+            }
+        }
+        rawRows.sort(null); // 使用 CursorRow.compareTo 自然排序（降序）
+        int toIndex = Math.min(safePageSize, rawRows.size());
+        List<MonitorDataVO> rows = new ArrayList<>(toIndex);
+        for (CursorRow cr : rawRows.subList(0, toIndex)) {
+            rows.add(buildRow(cr.measurement(), cr.row()));
+        }
+        Long nextCursor = rows.isEmpty() ? null : rawRows.get(toIndex - 1).row().time();
+        long total = 0;
+        for (ResolvedMeasurement m : measurements) {
+            total += iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis);
+        }
+        return new PageRows(rows, total, nextCursor);
+    }
+
+    /**
+     * 多测点 offset 分页：保留旧行为但加合并行数上限守护。
+     *
+     * @throws ServiceException 当 pageNum × pageSize 超过 maxMergeRows 时抛出
+     */
+    private PageRows pageMultiOffset(List<ResolvedMeasurement> measurements,
+                                      Long startMillis, Long endMillis,
+                                      int safePageNum, int safePageSize) {
+        int perMeasurementLimit = safePageNum * safePageSize;
+        if (perMeasurementLimit > queryProperties.getMaxMergeRows()) {
+            throw new ServiceException("查询结果过多，请缩小筛选范围或使用游标分页");
+        }
+        long total = 0;
+        List<MonitorDataVO> allRows = new ArrayList<>();
+        for (ResolvedMeasurement m : measurements) {
+            total += iotdbTimeSeriesService.countRange(m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis);
+            for (IotdbQueryRow r : iotdbTimeSeriesService.queryRangePaged(
+                    m.deviceId(), m.sensorCode(), m.attrCode(), startMillis, endMillis, perMeasurementLimit, 0)) {
+                if (r.value() != null) {
+                    allRows.add(buildRow(m, r));
+                }
+            }
+        }
+        allRows.sort(Comparator.comparing(MonitorDataVO::dataTime, Comparator.reverseOrder()));
+        int fromIndex = Math.min((safePageNum - 1) * safePageSize, allRows.size());
+        int toIndex = Math.min(fromIndex + safePageSize, allRows.size());
+        return new PageRows(allRows.subList(fromIndex, toIndex), total, null);
+    }
+
+    /** 分页查询的内部结果封装。 */
+    private record PageRows(List<MonitorDataVO> rows, long total, Long nextCursor) {}
 
     /**
      * 查询单个监测指标的图表数据与统计值。
@@ -163,7 +257,8 @@ public class MonitorDataQueryService {
                                     String attrCode,
                                     String valueType,
                                     String startTime,
-                                    String endTime) {
+                                    String endTime,
+                                    String granularity) {
         String hazardPointName = resolveHazardPointName(hazardPointId);
         List<ResolvedMeasurement> measurements = resolveMeasurements(hazardPointName, hazardPointId, deviceId, sensorId, attrCode);
         if (measurements.isEmpty()) {
@@ -172,16 +267,68 @@ public class MonitorDataQueryService {
         ValueType vt = ValueType.fromCode(valueType);
         Long startMillis = toMillis(startTime);
         Long endMillis = toMillis(endTime);
+        long rangeMs = (startMillis != null && endMillis != null) ? (endMillis - startMillis) : 0L;
+        boolean userAggregated = vt.isAggregated();
+        boolean needDownsample = false;
+        String downsampleInterval = null;
+        // 用户主动指定降采样粒度
+        boolean userDownsample = granularity != null && !"auto".equals(granularity);
+        if (userDownsample) {
+            if ("raw".equals(granularity)) {
+                needDownsample = false;
+            } else {
+                needDownsample = true;
+                downsampleInterval = granularity;
+            }
+        } else if (!userAggregated && rangeMs > 0) {
+            long estimatedPoints = (long) (rangeMs / 1000.0 * queryProperties.getDownsampleEstimateHz());
+            if (estimatedPoints > queryProperties.getMaxChartPoints()) {
+                needDownsample = true;
+                downsampleInterval = queryProperties.computeDownsampleInterval(rangeMs, queryProperties.getMaxChartPoints());
+            }
+        }
         List<ChartDataVO> series = new ArrayList<>();
         for (ResolvedMeasurement measurement : measurements) {
-            List<IotdbQueryRow> rows = iotdbTimeSeriesService.queryRange(
-                    measurement.deviceId(),
-                    measurement.sensorCode(),
-                    measurement.attrCode(),
-                    startMillis,
-                    endMillis,
-                    vt
-            );
+            List<IotdbQueryRow> rows;
+            boolean sampled = false;
+            String intervalUsed = null;
+            if (userAggregated) {
+                rows = iotdbTimeSeriesService.queryRange(
+                        measurement.deviceId(),
+                        measurement.sensorCode(),
+                        measurement.attrCode(),
+                        startMillis,
+                        endMillis,
+                        vt
+                );
+            } else if (needDownsample) {
+                rows = iotdbTimeSeriesService.queryRangeDownsampled(
+                        measurement.deviceId(),
+                        measurement.sensorCode(),
+                        measurement.attrCode(),
+                        startMillis,
+                        endMillis,
+                        downsampleInterval
+                );
+                sampled = true;
+                intervalUsed = downsampleInterval;
+            } else if (rangeMs > 3_600_000L && queryProperties.getSliceCount() > 1) {
+                rows = queryRangeBySlices(
+                        measurement.deviceId(),
+                        measurement.sensorCode(),
+                        measurement.attrCode(),
+                        startMillis, endMillis,
+                        queryProperties.getSliceCount()
+                );
+            } else {
+                rows = iotdbTimeSeriesService.queryRangeWithLimit(
+                        measurement.deviceId(),
+                        measurement.sensorCode(),
+                        measurement.attrCode(),
+                        startMillis, endMillis,
+                        queryProperties.getRawLimitCap()
+                );
+            }
             List<String> labels = new ArrayList<>();
             List<Double> values = new ArrayList<>();
             double max = Double.NEGATIVE_INFINITY;
@@ -209,10 +356,36 @@ public class MonitorDataQueryService {
                     measurement.attrName(),
                     values.isEmpty() ? null : max,
                     values.isEmpty() ? null : min,
-                    values.isEmpty() ? null : sum / values.size()
+                    values.isEmpty() ? null : sum / values.size(),
+                    sampled,
+                    intervalUsed,
+                    values.size()
             ));
         }
         return series;
+    }
+
+    /**
+     * 时间区间均分查询：将时间范围均分为 N 份，每份独立查询后合并。
+     * <p>避免大数据量时单次查询 OOM，同时保证各片时间区间不重叠（无重复数据）。</p>
+     */
+    private List<IotdbQueryRow> queryRangeBySlices(
+            long deviceId, String sensorCode, String attrCode,
+            long startMs, long endMs, int slices) {
+        long sliceMs = (endMs - startMs) / slices;
+        List<IotdbQueryRow> allRows = new ArrayList<>();
+        for (int i = 0; i < slices; i++) {
+            long s = startMs + i * sliceMs;
+            long e = (i == slices - 1) ? endMs : s + sliceMs;
+            List<IotdbQueryRow> sliceRows = iotdbTimeSeriesService.queryRangeWithLimit(
+                    deviceId, sensorCode, attrCode, s, e, queryProperties.getRawLimitCap());
+            if (sliceRows != null) {
+                allRows.addAll(sliceRows);
+            }
+        }
+        log.debug("时间切片查询: deviceId={}, range={}ms, slices={}, merged={} rows",
+                deviceId, endMs - startMs, slices, allRows.size());
+        return allRows;
     }
 
     /**

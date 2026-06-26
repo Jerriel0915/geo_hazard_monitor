@@ -12,7 +12,18 @@ export default defineConfig({
   plugins: [
     vue(),
     // Element Plus 按需自动导入（JS 组件 tree-shake；CSS 由 main.ts 统一引入以避免内部子组件路径解析问题）
-    AutoImport({resolvers: [ElementPlusResolver()]}),
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+      // 全局自动导入 Element Plus 命令式 API
+      imports: [{
+        'element-plus': [
+          'ElMessage',
+          'ElMessageBox',
+          'ElNotification',
+          'ElLoading',
+        ],
+      }],
+    }),
     Components({resolvers: [ElementPlusResolver({importStyle: false})]}),
     // 构建时预压缩 — Nginx gzip_static 直接命中
     compression({
@@ -56,7 +67,6 @@ export default defineConfig({
           if (id.includes('three')) return 'vendor-three'
           if (id.includes('echarts-gl')) return 'vendor-echarts-gl'
           if (id.includes('echarts')) return 'vendor-echarts'
-          if (id.includes('apexcharts')) return 'vendor-apexcharts'
           if (id.includes('blockly')) return 'vendor-blockly'
           if (id.includes('leaflet')) return 'vendor-leaflet'
           if (id.includes('jspdf') || id.includes('html2canvas')) return 'vendor-pdf'
@@ -74,7 +84,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://124.221.142.86',
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
       },
     },

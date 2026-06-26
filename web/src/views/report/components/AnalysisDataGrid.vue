@@ -44,7 +44,7 @@
     </div>
 
     <!-- Grid Config Dialog -->
-    <el-dialog v-model="gridConfigDialogVisible" title="配置图表" width="450px" destroy-on-close>
+    <el-dialog v-model="gridConfigDialogVisible" title="配置图表" width="480px" destroy-on-close>
       <el-form label-width="80px">
         <el-form-item label="隐患点">
           <el-select
@@ -64,6 +64,16 @@
               style="width: 100%"
           >
             <el-option v-for="d in gridFilteredDevices" :key="d.id" :label="d.name" :value="d.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="传感器">
+          <el-select
+              v-model="gridConfigForm.sensorId"
+              placeholder="选择传感器（可选）"
+              clearable
+              style="width: 100%"
+          >
+            <el-option v-for="s in gridDialogSensors" :key="s.id" :label="s.sensorName" :value="s.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="属性">
@@ -100,6 +110,8 @@ import {
   type GridChartItem,
   type HazardPointOption,
 } from '@/api/report'
+import type { SensorItem } from '@/api/sensor'
+import { getDeviceSensors } from '@/api/sensor'
 
 const emit = defineEmits<{
   (e: 'back'): void
@@ -115,8 +127,9 @@ const gridChartInstances = new Map<number, echarts.ECharts>()
 
 const gridConfigDialogVisible = ref(false)
 const gridConfigTargetIdx = ref(0)
-const gridConfigForm = reactive({ hazardPointId: '' as number | '', deviceId: '' as number | '', attrCode: '' })
+const gridConfigForm = reactive({ hazardPointId: '' as number | '', deviceId: '' as number | '', sensorId: '' as number | '', attrCode: '' })
 const gridDialogDevices = ref<DeviceOption[]>([])
+const gridDialogSensors = ref<SensorItem[]>([])
 
 const gridFilteredDevices = computed(() => {
   return gridDialogDevices.value.filter(
@@ -125,6 +138,15 @@ const gridFilteredDevices = computed(() => {
 })
 
 const gridAvailableAttrs = computed(() => {
+  // 如果已选择设备，根据设备的 deviceType 过滤属性
+  if (gridConfigForm.deviceId) {
+    const device = gridDialogDevices.value.find((d) => d.id === gridConfigForm.deviceId)
+    if (device) {
+      const dt = deviceTypeOptions.value.find((dt) => dt.value === device.deviceType)
+      if (dt) return dt.attrs
+    }
+  }
+  // 未选择设备时展示全部属性
   const allAttrs: { code: string; name: string; unit: string }[] = []
   deviceTypeOptions.value.forEach((dt) => allAttrs.push(...dt.attrs))
   return allAttrs
@@ -146,19 +168,32 @@ const openGridConfig = (idx: number) => {
   gridConfigTargetIdx.value = idx
   gridConfigForm.hazardPointId = ''
   gridConfigForm.deviceId = ''
+  gridConfigForm.sensorId = ''
   gridConfigForm.attrCode = ''
+  gridDialogSensors.value = []
   gridConfigDialogVisible.value = true
 }
 
 const onGridConfigHpChange = async () => {
   gridConfigForm.deviceId = ''
+  gridConfigForm.sensorId = ''
   gridConfigForm.attrCode = ''
+  gridDialogSensors.value = []
   const devices = await getDeviceOptions({ hazardPointId: gridConfigForm.hazardPointId || undefined })
   gridDialogDevices.value = devices
 }
 
-const onGridConfigDeviceChange = () => {
+const onGridConfigDeviceChange = async () => {
+  gridConfigForm.sensorId = ''
   gridConfigForm.attrCode = ''
+  gridDialogSensors.value = []
+  if (gridConfigForm.deviceId) {
+    try {
+      gridDialogSensors.value = await getDeviceSensors(gridConfigForm.deviceId as number)
+    } catch {
+      gridDialogSensors.value = []
+    }
+  }
 }
 
 const confirmGridConfig = async () => {
@@ -167,6 +202,8 @@ const confirmGridConfig = async () => {
   const attr = dt?.attrs.find((a) => a.code === gridConfigForm.attrCode)
   if (!device || !attr) return
 
+  const sensor = gridDialogSensors.value.find((s) => s.id === gridConfigForm.sensorId)
+
   const idx = gridConfigTargetIdx.value
   gridCells.value[idx] = {
     index: idx,
@@ -174,6 +211,8 @@ const confirmGridConfig = async () => {
     title: `${device.name}-${attr.name}`,
     hazardPointId: device.boundHazardPointId,
     deviceId: device.id,
+    sensorId: sensor?.id,
+    sensorName: sensor?.sensorName,
     attrCode: gridConfigForm.attrCode,
     attrName: attr.name,
     unit: attr.unit,
@@ -202,6 +241,7 @@ const loadGridCellChart = async (idx: number) => {
       startTime,
       endTime,
     })
+    if (!data) return
 
     const existing = gridChartInstances.get(idx)
     if (existing) {
@@ -212,13 +252,15 @@ const loadGridCellChart = async (idx: number) => {
     const chart = echarts.init(el)
     gridChartInstances.set(idx, chart)
 
+    const isRainfall = /^rainfall/.test(cell.attrCode)
+
     chart.setOption({
       grid: { left: 60, right: 25, top: 25, bottom: 40 },
       xAxis: {
         type: 'category',
         name: '时间',
         nameLocation: 'end',
-        nameGap: 10,
+        nameGap: 2,
         nameTextStyle: { fontSize: 10, color: '#909399' },
         data: data.times,
         axisLabel: {
@@ -238,12 +280,21 @@ const loadGridCellChart = async (idx: number) => {
       yAxis: {
         type: 'value',
         name: cell.attrName && cell.unit ? `${cell.attrName}(${cell.unit})` : (cell.unit || '监测值'),
+        nameGap: 2,
         axisLabel: { fontSize: 10 },
         nameTextStyle: { fontSize: 10, color: '#606266' },
         axisLine: { show: true, lineStyle: { color: '#c0c4cc' } },
         splitLine: { show: true, lineStyle: { type: 'dashed', color: '#e8e8e8' } },
       },
-      series: [{
+      series: [isRainfall ? {
+        type: 'bar',
+        data: data.values,
+        barWidth: '60%',
+        itemStyle: {
+          color: '#67c23a',
+          borderRadius: [2, 2, 0, 0],
+        },
+      } : {
         type: 'line',
         data: data.values,
         smooth: true,

@@ -140,8 +140,8 @@ public class IotdbTimeSeriesService {
         String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
             if (!resultSet.next()) {
                 return null;
             }
@@ -191,8 +191,8 @@ public class IotdbTimeSeriesService {
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             while (resultSet.next()) {
                 Double value = safeGetDouble(resultSet, attrCol);
                 Integer quality = safeGetInteger(resultSet, qualityCol);
@@ -255,8 +255,8 @@ public class IotdbTimeSeriesService {
         String attrCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
         String qualityCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality") + ")";
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             while (resultSet.next()) {
                 Double value = safeGetDouble(resultSet, attrCol);
                 Integer quality = safeGetInteger(resultSet, qualityCol);
@@ -272,6 +272,122 @@ public class IotdbTimeSeriesService {
             return rows;
         } catch (SQLException e) {
             throw new ServiceException("查询 IoTDB 聚合序列失败").setDetailMessage(e.getMessage());
+        }
+    }
+
+    /**
+     * 查询指定时间范围内的指标序列（带行数上限,用于图表 raw 路径兜底）。
+     *
+     * <p>与 {@link #queryRange(Long, String, String, Long, Long)} 相同,但在 SQL 末尾追加
+     * {@code ORDER BY TIME ASC LIMIT {limit}},防止单次查询物化过多行导致 OOM。</p>
+     *
+     * @param deviceId  设备ID
+     * @param sensorCode  传感器编号
+     * @param attrCode  指标编码
+     * @param startTime 开始时间,毫秒时间戳,可空
+     * @param endTime   结束时间,毫秒时间戳,可空
+     * @param limit     返回条数上限
+     * @return 区间内的时序结果集合(按时间升序,最多 limit 条)
+     * @throws ServiceException 当查询失败时抛出
+     */
+    public List<IotdbQueryRow> queryRangeWithLimit(Long deviceId, String sensorCode, String attrCode,
+                                                    Long startTime, Long endTime, int limit) {
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
+        StringBuilder sql = new StringBuilder("SELECT ")
+                .append(attrCode)
+                .append(", quality FROM ")
+                .append(pathResolver.buildSensorPath(deviceId, sensorCode));
+        if (startTime != null || endTime != null) {
+            sql.append(" WHERE ");
+            if (startTime != null) {
+                sql.append("time >= ").append(startTime);
+            }
+            if (startTime != null && endTime != null) {
+                sql.append(" AND ");
+            }
+            if (endTime != null) {
+                sql.append("time < ").append(endTime);
+            }
+        }
+        sql.append(" ORDER BY TIME ASC LIMIT ").append(limit);
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
+        List<IotdbQueryRow> rows = new ArrayList<>();
+        try (Connection connection = jdbcClient.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
+            while (resultSet.next()) {
+                Double value = safeGetDouble(resultSet, attrCol);
+                Integer quality = safeGetInteger(resultSet, qualityCol);
+                if (value == null) {
+                    continue;
+                }
+                rows.add(IotdbQueryRow.builder()
+                        .time(resultSet.getLong("Time"))
+                        .value(value)
+                        .quality(quality)
+                        .build());
+            }
+            return rows;
+        } catch (SQLException e) {
+            throw new ServiceException("查询 IoTDB 时间序列失败(带LIMIT)").setDetailMessage(e.getMessage());
+        }
+    }
+
+    /**
+     * 查询指定时间范围内的指标序列（按动态 interval 降采样,使用 AVG 聚合）。
+     *
+     * <p>用于图表自动降采样路径:当区间估算点数超过阈值时,调用此方法按 IoTDB
+     * {@code GROUP BY ([start, end), interval)} 降采样,避免全量物化原始点。</p>
+     *
+     * @param deviceId  设备ID
+     * @param sensorCode  传感器编号
+     * @param attrCode  指标编码
+     * @param startTime 开始时间,毫秒时间戳
+     * @param endTime   结束时间,毫秒时间戳
+     * @param interval  IoTDB GROUP BY 间隔字符串(如 "1m"、"6h"、"1d")
+     * @return 降采样后的时序结果集合
+     * @throws ServiceException 当查询失败时抛出
+     */
+    public List<IotdbQueryRow> queryRangeDownsampled(Long deviceId, String sensorCode, String attrCode,
+                                                      Long startTime, Long endTime, String interval) {
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
+        String sensorPath = pathResolver.buildSensorPath(deviceId, sensorCode);
+        String aggFunc = "AVG";
+        StringBuilder sql = new StringBuilder("SELECT ")
+                .append(aggFunc).append("(").append(attrCode).append("), ")
+                .append(aggFunc).append("(quality) FROM ")
+                .append(sensorPath);
+        long start = startTime != null ? startTime : 0L;
+        long end = endTime != null ? endTime : System.currentTimeMillis();
+        sql.append(" WHERE time >= ").append(start)
+                .append(" AND time < ").append(end);
+        sql.append(" GROUP BY ([")
+                .append(start).append(", ").append(end)
+                .append("), ").append(interval).append(")");
+        String attrCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
+        String qualityCol = aggFunc + "(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality") + ")";
+        List<IotdbQueryRow> rows = new ArrayList<>();
+        try (Connection connection = jdbcClient.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
+            while (resultSet.next()) {
+                Double value = safeGetDouble(resultSet, attrCol);
+                Integer quality = safeGetInteger(resultSet, qualityCol);
+                if (value == null) {
+                    continue;
+                }
+                rows.add(IotdbQueryRow.builder()
+                        .time(resultSet.getLong("Time"))
+                        .value(value)
+                        .quality(quality)
+                        .build());
+            }
+            return rows;
+        } catch (SQLException e) {
+            throw new ServiceException("查询 IoTDB 降采样序列失败").setDetailMessage(e.getMessage());
         }
     }
 
@@ -308,8 +424,8 @@ public class IotdbTimeSeriesService {
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             while (resultSet.next()) {
                 Double value = safeGetDouble(resultSet, attrCol);
                 Integer quality = safeGetInteger(resultSet, qualityCol);
@@ -325,6 +441,69 @@ public class IotdbTimeSeriesService {
             return rows;
         } catch (SQLException e) {
             throw new ServiceException("查询 IoTDB 分页序列失败").setDetailMessage(e.getMessage());
+        }
+    }
+
+    /**
+     * 游标分页查询指定时间范围内的指标序列，使用 WHERE time &lt; cursor ORDER BY TIME DESC LIMIT。
+     *
+     * <p>用于多测点合并场景的 keyset 游标分页，每次只取 pageSize 行，内存有界。
+     * 返回结果按时间降序排列，调用方取最后一行的时间戳作为下一页的 cursor。</p>
+     *
+     * @param deviceId   设备ID
+     * @param sensorCode 传感器编号
+     * @param attrCode   指标编码
+     * @param startTime  开始时间，毫秒时间戳，可空
+     * @param endTime    结束时间，毫秒时间戳，可空
+     * @param cursor     游标时间戳（毫秒），上一页最后一行的 time，可空
+     * @param limit      返回条数上限
+     * @return 区间内的时序结果集合，按时间降序
+     */
+    public List<IotdbQueryRow> queryRangeCursor(Long deviceId, String sensorCode, String attrCode,
+                                                 Long startTime, Long endTime, Long cursor, int limit) {
+        if (startTime == null && endTime == null && cursor == null) {
+            throw new IllegalArgumentException("queryRangeCursor requires at least one of startTime, endTime, or cursor");
+        }
+        ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
+        ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
+        StringBuilder sql = new StringBuilder("SELECT ")
+                .append(attrCode)
+                .append(", quality FROM ")
+                .append(pathResolver.buildSensorPath(deviceId, sensorCode))
+                .append(" WHERE ");
+        List<String> conditions = new ArrayList<>();
+        if (startTime != null) {
+            conditions.add("time >= " + startTime);
+        }
+        if (endTime != null) {
+            conditions.add("time < " + endTime);
+        }
+        if (cursor != null) {
+            conditions.add("time < " + cursor);
+        }
+        sql.append(String.join(" AND ", conditions));
+        sql.append(" ORDER BY TIME DESC LIMIT ").append(limit);
+        String attrCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
+        String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
+        List<IotdbQueryRow> rows = new ArrayList<>();
+        try (Connection connection = jdbcClient.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
+            while (resultSet.next()) {
+                Double value = safeGetDouble(resultSet, attrCol);
+                Integer quality = safeGetInteger(resultSet, qualityCol);
+                if (value == null) {
+                    continue;
+                }
+                rows.add(IotdbQueryRow.builder()
+                        .time(resultSet.getLong("Time"))
+                        .value(value)
+                        .quality(quality)
+                        .build());
+            }
+            return rows;
+        } catch (SQLException e) {
+            throw new ServiceException("查询 IoTDB 游标分页序列失败").setDetailMessage(e.getMessage());
         }
     }
 
@@ -354,8 +533,8 @@ public class IotdbTimeSeriesService {
         }
         String countCol = "COUNT(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql.toString())) {
             if (resultSet.next()) {
                 return resultSet.getLong(countCol);
             }
@@ -443,8 +622,8 @@ public class IotdbTimeSeriesService {
         String qualityCol = pathResolver.buildMeasurementPath(deviceId, sensorCode, "quality");
         List<IotdbQueryRow> rows = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(sql.toString())) {
             while (rs.next()) {
                 Double v = safeGetDouble(rs, attrCol);
                 if (v == null) continue;
@@ -517,8 +696,8 @@ public class IotdbTimeSeriesService {
 
         List<AggregationResultVO> results = new ArrayList<>();
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(sql.toString())) {
             while (rs.next()) {
                 Map<String, Double> metrics = new LinkedHashMap<>();
                 for (String alias : aliases) {
@@ -596,8 +775,8 @@ public class IotdbTimeSeriesService {
         String countCol = "COUNT(" + pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode) + ")";
         long actualPoints = 0;
         try (Connection connection = jdbcClient.getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql.toString());
+             Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery(sql.toString())) {
             if (rs.next()) {
                 actualPoints = rs.getLong(countCol);
             }
@@ -685,10 +864,11 @@ public class IotdbTimeSeriesService {
         try (Connection connection = jdbcClient.getConnection();
              Statement statement = connection.createStatement()) {
             statement.setQueryTimeout(properties.getQueryTimeoutSeconds());
-            ResultSet rs = statement.executeQuery("SHOW DATABASES");
-            while (rs.next()) {
-                if (properties.getDatabase().equals(rs.getString(1))) {
-                    return true;
+            try (ResultSet rs = statement.executeQuery("SHOW DATABASES")) {
+                while (rs.next()) {
+                    if (properties.getDatabase().equals(rs.getString(1))) {
+                        return true;
+                    }
                 }
             }
             return false;

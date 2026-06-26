@@ -4,10 +4,10 @@ import com.zwei.common.event.NoticeCreatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +27,7 @@ public class NoticeStreamPublisher {
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
     private static final long SSE_TIMEOUT_MS = 300_000L;
+    private static final long HEARTBEAT_INTERVAL_MS = 25_000L;
 
     /**
      * 订阅通知 SSE 流。
@@ -42,7 +43,7 @@ public class NoticeStreamPublisher {
             ready.put("type", "ready");
             ready.put("message", "connected");
             emitter.send(SseEmitter.event().name("ready").data(ready));
-        } catch (IOException e) {
+        } catch (Exception e) {
             emitters.remove(emitter);
             log.debug("SSE ready 事件发送失败，移除订阅: {}", e.getMessage());
         }
@@ -67,7 +68,7 @@ public class NoticeStreamPublisher {
             try {
                 emitter.send(SseEmitter.event().name("notice").data(data));
                 sent++;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 emitters.remove(emitter);
                 log.debug("SSE通知推送失败，移除订阅: {}", e.getMessage());
             }
@@ -77,6 +78,22 @@ public class NoticeStreamPublisher {
 
     private String stripHtml(String html) {
         return html.replaceAll("<[^>]*>", "").replaceAll("\\s+", " ").trim();
+    }
+
+    /**
+     * 定时心跳：每 25s 向所有 emitter 发送保活注释，防止 Nginx 60s 空闲超时断开连接；
+     * 发送失败时移除已断开的 emitter。
+     */
+    @Scheduled(fixedDelay = HEARTBEAT_INTERVAL_MS)
+    public void heartbeat() {
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().comment("keep-alive"));
+            } catch (Exception e) {
+                emitters.remove(emitter);
+                log.debug("通知SSE心跳发送失败，移除订阅: {}", e.getMessage());
+            }
+        }
     }
 
     /** 当前活跃订阅数 */

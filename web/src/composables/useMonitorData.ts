@@ -1,5 +1,5 @@
 // web/src/composables/useMonitorData.ts
-import {type MaybeRef, reactive, ref, toValue, watch} from 'vue'
+import {type MaybeRef, computed, reactive, ref, toValue, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import {
   type ChartData,
@@ -66,6 +66,10 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   const loading = ref(false)
   const mode = ref<'chart' | 'table'>('chart')
 
+  // ── 降采样控制 ──
+  const downsampleEnabled = ref(true)
+  const downsampleGranularity = ref('auto')
+
   // ── 筛选状态 ──
   const filter = reactive({
     deviceId: '' as string | number,
@@ -73,6 +77,16 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     attrCode: '',
     valueType: 'current',
     timeRange: null as [string, string] | null,
+  })
+
+  // ── 降采样信息（仅在后端确实降采样时才展示）──
+  const downsampleInfo = computed(() => {
+    const sampled = chartSeries.value.find((s) => s.sampled && s.downsampleInterval)
+    if (!sampled || !sampled.pointCount) return null
+    return {
+      interval: sampled.downsampleInterval!,
+      pointCount: sampled.pointCount,
+    }
   })
 
   // ── 缓存 ──
@@ -110,13 +124,14 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       return
     }
     try {
-      const res: any = await getBoundDevices(String(hpId))
-      const list = res.data || res || []
-      devices.value = (Array.isArray(list) ? list : []).map((d: any) => ({
-        deviceId: d.deviceId,
-        deviceName: d.deviceName,
-        deviceCode: d.deviceCode,
-        sensors: d.sensors || [],
+      const res = await getBoundDevices(String(hpId))
+      const rawList = (res as Record<string, unknown>).data || res
+      const list = (Array.isArray(rawList) ? rawList : []) as Array<Record<string, unknown>>
+      devices.value = list.map((d) => ({
+        deviceId: (d.deviceId ?? d.id ?? 0) as number,
+        deviceName: (d.deviceName ?? '') as string,
+        deviceCode: (d.deviceCode ?? '') as string,
+        sensors: (Array.isArray(d.sensors) ? d.sensors : []) as BoundDeviceItem['sensors'],
       }))
     } catch {
       devices.value = []
@@ -148,8 +163,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         filter.sensorId = firstSensor.id
         selectSensor(firstSensor.id)
       }
-    } catch (error: any) {
-      if (error?.name !== 'AbortError' && error?.code !== 'ERR_CANCELED') {
+    } catch (error) {
+      if ((error as { name?: string; code?: string })?.name !== 'AbortError' && (error as { code?: string })?.code !== 'ERR_CANCELED') {
         showRequestErrorMessage(error, '获取传感器列表失败')
       }
     }
@@ -241,7 +256,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
                 sum += r.value
               }
             }
-            const attrDef = sensor.attrList?.find((a: any) => a.attrCode === attrCode)
+            const attrDef = sensor.attrList?.find((a) => a.attrCode === attrCode)
             const attrDisplayName = attrDef?.attrName || attrCode
             seriesList.push({
               seriesName: attrDisplayName,
@@ -260,29 +275,30 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         } else {
           // 表格模式：扁平化所有 attrCode 的数据行（保留 attrCode 归属）
             // 后端 ORDER BY TIME DESC，表格也按正序排列（时间由旧到新）
-          const flatRows: Array<{ attrCode: string; row: any }> = []
+          const flatRows: Array<{ attrCode: string; row: Record<string, unknown> }> = []
           for (const [code, rows] of Object.entries(dataMap)) {
               for (const r of [...rows].reverse()) flatRows.push({attrCode: code, row: r})
           }
-          tableData.value = flatRows.map(({ attrCode: code, row: r }) => {
-            const attrDef = sensor.attrList?.find((a: any) => a.attrCode === code)
+          const raw = flatRows.map(({ attrCode: code, row: r }) => {
+            const attrDef = sensor.attrList?.find((a) => a.attrCode === code)
             const attrDisplayName = attrDef?.attrName || code
             return {
               hazardPointId: 0,
               hazardPointName: '',
-              dataTime: formatChartLabel(r.dataTime ?? r.time),
+              dataTime: formatChartLabel((r as Record<string, unknown>).dataTime ?? (r as Record<string, unknown>).time),
               deviceId,
               deviceName: '',
               sensorId: sensor.id ?? 0,
               sensorName: sensor.sensorName,
               attrCode: code,
               attrName: attrDisplayName,
-              value: r.value,
+              value: (r as Record<string, unknown>).value,
               unit: attrDef?.unit || '',
-              quality: r.quality,
-              qualityText: r.quality === 0 || r.quality == null ? '正常' : '异常',
+              quality: (r as Record<string, unknown>).quality,
+              qualityText: (r as Record<string, unknown>).quality === 0 || (r as Record<string, unknown>).quality == null ? '正常' : '异常',
             }
           })
+          tableData.value = raw as typeof tableData.value
           ElMessage.success(`加载 ${tableData.value.length} 条数据`)
         }
       } catch (error) {
@@ -307,6 +323,10 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       ;[startTime, endTime] = defaultTimeRange()
     }
 
+    const granularity = downsampleEnabled.value
+      ? (downsampleGranularity.value === 'auto' ? undefined : downsampleGranularity.value)
+      : 'raw'
+
     const baseParams = {
       hazardPointId: hpId,
       deviceId: filter.deviceId ? Number(filter.deviceId) : undefined,
@@ -315,6 +335,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       valueType: filter.valueType || undefined,
       startTime,
       endTime,
+      granularity,
     }
 
     loading.value = true
@@ -370,151 +391,108 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     tableData.value = []
   }
 
- // ── 构建图表配置 ──
-const buildChartOptions = (seriesData: ChartData[]) => {
-  if (seriesData.length === 0) return { series: [] }
-  
-  const allLabels = new Set<string>()
-  for (const s of seriesData) for (const l of s.labels) allLabels.add(l)
-  const xCategories = Array.from(allLabels).sort()
+  // ── 构建 ECharts 配置 ──
+  const buildChartOptions = (seriesData: ChartData[]): Record<string, unknown> => {
+    if (seriesData.length === 0) return {}
 
-  // 获取单位（从第一个 series 取）
-  const unit = seriesData[0]?.unit || ''
-  const hasUnit = unit && unit.length > 0
+    const allLabels = new Set<string>()
+    for (const s of seriesData) for (const l of s.labels) allLabels.add(l)
+    const xCategories = Array.from(allLabels).sort()
 
-  // 横轴标签格式化：根据标签长度智能简化
-  const formatXLabel = (label: string) => {
-    const match = label.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/)
-    if (match) {
-      const [, year, month, day, hour, minute] = match
-      const today = new Date()
-      const labelDate = new Date(Number(year), Number(month) - 1, Number(day))
-      const isToday = labelDate.toDateString() === today.toDateString()
-      if (isToday) {
-        return `${hour}:${minute}`
-      }
-      const daysDiff = (today.getTime() - labelDate.getTime()) / (1000 * 60 * 60 * 24)
-      if (daysDiff <= 7) {
+    const unit = seriesData[0]?.unit || ''
+    const hasUnit = unit && unit.length > 0
+
+    const formatXLabel = (label: string) => {
+      const match = label.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/)
+      if (match) {
+        const [, , month, day, hour, minute] = match
         return `${month}-${day} ${hour}:${minute}`
       }
-      return `${month}-${day}`
+      if (label.length <= 8) return label
+      return label.length > 12 ? label.substring(0, 10) + '\u2026' : label
     }
-    if (label.length <= 8) return label
-    return label.length > 12 ? label.substring(0, 10) + '…' : label
-  }
 
-  return {
-    series: seriesData.map((s) => {
-      // 🔥 关键修复：使用 categories 时，data 只传 y 值数组
-      const data = xCategories.map(cat => {
-        const idx = s.labels.indexOf(cat)
-        return idx !== -1 ? s.values[idx] : null
-      })
-      return { name: s.seriesName, data }
-    }),
-    chart: {
-      type: 'area' as const,
-      height: '100%',
-      parentHeightOffset: 0,
-      fontFamily: 'inherit',
-      defaultLocale: 'zh-cn',
-      locales: [{
-        name: 'zh-cn',
-        options: {
-          months: ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'],
-          shortMonths: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
-          days: ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'],
-          shortDays: ['周日','周一','周二','周三','周四','周五','周六'],
-          toolbar: { download: '下载 SVG', selection: '选择', selectionZoom: '区域缩放', zoomIn: '放大', zoomOut: '缩小', pan: '平移', reset: '重置' }
-        }
-      }],
-      toolbar: {
-        tools: {
-          download: true, selection: true, zoom: true,
-          zoomin: true, zoomout: true, pan: true, reset: true,
-        },
-      },
-      zoom: { enabled: true, type: 'x' as const },
-      animations: { enabled: true, easing: 'easeinout' as const, speed: 800 },
-    },
-    colors: CHART_COLORS,
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth' as const, width: 2 },
-    fill: {
-      type: 'gradient',
-      gradient: { shadeIntensity: 1, opacityFrom: 0.2, opacityTo: 0.02, stops: [0, 100] },
-    },
-    markers: { size: 0, hover: { size: 5 } },
-    grid: {
-      borderColor: '#e7e7e7',
-      strokeDashArray: 4,
-      padding: { top: 10, right: 10, bottom: 5, left: 10 },
-    },
-    legend: {
-      position: 'top' as const,
-      horizontalAlign: 'center' as const,
-      fontSize: '13px',
-      fontWeight: 500,
-      markers: { width: 12, height: 12, radius: 6, offsetX: -4 },
-      itemMargin: { horizontal: 16, vertical: 4 },
-      offsetY: -4,
-    },
-    xaxis: {
-      type: 'category' as const,
-      categories: xCategories.map(cat => formatXLabel(cat)), // 🔥 显示简化后的标签
-      // ✨ 横轴标题
-      title: {
-        text: '时间',
-        style: {
-          fontSize: '13px',
-          fontWeight: 600,
-          color: '#374151',
-        },
-      },
-      labels: {
-        rotate: -30,
-        hideOverlappingLabels: true,
-        style: { fontSize: '11px', colors: '#6b7280' },
-      },
-      tickAmount: Math.min(xCategories.length, 10),
-      tooltip: { enabled: false },
-    },
-    yaxis: {
-      // ✨ 纵轴标题（带单位）
-      title: {
-        text: hasUnit ? `数值 (${unit})` : '数值',
-        style: {
-          fontSize: '13px',
-          fontWeight: 600,
-          color: '#374151',
-        },
-      },
-      labels: {
-        // ✨ 纵轴标签（带单位）
-        formatter: (val: number) => {
-          if (val == null) return ''
-          const formatted = Number(val.toFixed(2)).toString()
-          return hasUnit ? `${formatted} ${unit}` : formatted
-        },
-        style: { fontSize: '11px', colors: '#6b7280' },
-      },
-    },
-    tooltip: {
-      shared: true,
-      intersect: false,
-      x: {
-        formatter: (value: string) => value,
-      },
-      y: {
-        formatter: (value: number) => {
+    return {
+      color: CHART_COLORS,
+      tooltip: {
+        trigger: 'axis' as const,
+        valueFormatter: (value: unknown) => {
           if (value == null) return ''
-          const formatted = Number(value.toFixed(2)).toString()
-          return hasUnit ? `${formatted} ${unit}` : formatted
+          const n = Number(Number(value).toFixed(2))
+          return hasUnit ? `${n} ${unit}` : String(n)
         },
       },
-    },
+      legend: {
+        top: 0,
+        left: 'center',
+        textStyle: { fontSize: 13, fontWeight: 500 },
+        itemWidth: 12,
+        itemHeight: 12,
+        itemGap: 16,
+      },
+      grid: {
+        borderColor: '#e7e7e7',
+        top: 50,
+        right: 20,
+        bottom: 60,
+        left: 20,
+      },
+      xAxis: {
+        type: 'category' as const,
+        data: xCategories.map(formatXLabel),
+        name: '时间',
+        nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#374151' },
+        axisLabel: { rotate: 30, fontSize: 11, color: '#6b7280', hideOverlap: true },
+        axisLine: { lineStyle: { color: '#d9d9d9' } },
+      },
+      yAxis: {
+        type: 'value' as const,
+        name: hasUnit ? `数值 (${unit})` : '数值',
+        nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#374151' },
+        axisLabel: {
+          fontSize: 11,
+          color: '#6b7280',
+          formatter: (val: number) => (val != null ? Number(val.toFixed(2)).toString() : ''),
+        },
+        splitLine: { lineStyle: { type: 'dashed', color: '#e8e8e8' } },
+      },
+      dataZoom: [
+        { type: 'inside', xAxisIndex: 0 },
+        { type: 'slider', xAxisIndex: 0, bottom: 10, height: 20 },
+      ],
+      toolbox: {
+        feature: {
+          dataZoom: { yAxisIndex: 'none' },
+          restore: {},
+          saveAsImage: { pixelRatio: 2 },
+        },
+        right: 10,
+      },
+      series: seriesData.map((s) => ({
+        name: s.seriesName,
+        type: 'line' as const,
+        data: xCategories.map((cat) => {
+          const idx = s.labels.indexOf(cat)
+          return idx !== -1 ? s.values[idx] : null
+        }),
+        smooth: true,
+        symbol: 'none' as const,
+        sampling: 'lttb' as const,
+        large: true as const,
+        largeThreshold: 2000,
+        progressive: 400,
+        areaStyle: {
+          color: {
+            type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(59,130,246,0.2)' },
+              { offset: 1, color: 'rgba(59,130,246,0.01)' },
+            ],
+          },
+        },
+      })),
+    }
   }
-}
 
   // ── 监听 hazardPointId 变化自动加载 ──
   watch(() => toValue(opts.hazardPointId), () => {
@@ -532,6 +510,9 @@ const buildChartOptions = (seriesData: ChartData[]) => {
     tableData,
     loading,
     mode,
+    downsampleInfo,
+    downsampleEnabled,
+    downsampleGranularity,
     // 筛选
     filter,
     // 方法

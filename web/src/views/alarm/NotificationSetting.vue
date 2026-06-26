@@ -109,7 +109,7 @@
     </div>
 
     <!-- 规则弹窗 -->
-    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="720px" @close="resetForm">
+    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="800px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="规则名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入规则名称" maxlength="50" show-word-limit />

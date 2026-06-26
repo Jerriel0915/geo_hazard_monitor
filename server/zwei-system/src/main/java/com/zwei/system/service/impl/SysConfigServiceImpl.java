@@ -14,6 +14,7 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.system.domain.SysConfig;
 import com.zwei.system.mapper.SysConfigMapper;
 import com.zwei.system.service.ISysConfigService;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 参数配置 服务层实现
@@ -107,11 +108,12 @@ public class SysConfigServiceImpl implements ISysConfigService
 
     /**
      * 新增参数配置
-     * 
+     *
      * @param config 参数配置信息
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int insertConfig(SysConfig config)
     {
         int row = configMapper.insertConfig(config);
@@ -124,11 +126,12 @@ public class SysConfigServiceImpl implements ISysConfigService
 
     /**
      * 修改参数配置
-     * 
+     *
      * @param config 参数配置信息
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int updateConfig(SysConfig config)
     {
         SysConfig temp = configMapper.selectConfigById(config.getConfigId());
@@ -147,10 +150,11 @@ public class SysConfigServiceImpl implements ISysConfigService
 
     /**
      * 批量删除参数信息
-     * 
+     *
      * @param configIds 需要删除的参数ID
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteConfigByIds(Long[] configIds)
     {
         for (Long configId : configIds)

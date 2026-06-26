@@ -1,7 +1,9 @@
 package com.zwei;
 
+import com.zwei.common.config.RuoYiConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -11,6 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author zwei
  */
 @EnableScheduling
+@EnableConfigurationProperties(RuoYiConfig.class)
 @SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
 public class RuoYiApplication
 {

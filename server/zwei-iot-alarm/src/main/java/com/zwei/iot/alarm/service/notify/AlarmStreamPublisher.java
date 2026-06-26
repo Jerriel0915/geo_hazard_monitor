@@ -1,13 +1,11 @@
 package com.zwei.iot.alarm.service.notify;
 
-import com.zwei.common.event.AlarmTriggeredEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +37,11 @@ public class AlarmStreamPublisher {
     /** 按 userId 索引的订阅映射（同一用户可多端订阅） */
     private final Map<Long, List<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
 
+    /** 反向索引：emitter → userId，避免 removeEmitter 遍历所有 userEmitters.values() */
+    private final Map<SseEmitter, Long> emitterUserId = new ConcurrentHashMap<>();
+
     private static final long SSE_TIMEOUT_MS = 300_000L;
+    private static final long HEARTBEAT_INTERVAL_MS = 25_000L;
 
     /**
      * 订阅告警 SSE 流（未绑定 userId，仅参与全量广播）。
@@ -47,9 +49,9 @@ public class AlarmStreamPublisher {
     public SseEmitter subscribe() {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         emitters.add(emitter);
-        emitter.onCompletion(() -> emitters.remove(emitter));
-        emitter.onTimeout(() -> emitters.remove(emitter));
-        emitter.onError(e -> emitters.remove(emitter));
+        emitter.onCompletion(() -> removeEmitter(emitter));
+        emitter.onTimeout(() -> removeEmitter(emitter));
+        emitter.onError(e -> removeEmitter(emitter));
         sendReady(emitter);
         log.debug("告警SSE订阅已建立（匿名），当前订阅数: {}", emitters.size());
         return emitter;
@@ -62,9 +64,7 @@ public class AlarmStreamPublisher {
         SseEmitter emitter = subscribe();
         if (userId != null) {
             userEmitters.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
-            emitter.onCompletion(() -> removeUserEmitter(userId, emitter));
-            emitter.onTimeout(() -> removeUserEmitter(userId, emitter));
-            emitter.onError(e -> removeUserEmitter(userId, emitter));
+            emitterUserId.put(emitter, userId);
             log.debug("告警SSE订阅绑定 userId={}", userId);
         }
         return emitter;
@@ -108,8 +108,8 @@ public class AlarmStreamPublisher {
             try {
                 emitter.send(SseEmitter.event().name(eventName).data(data));
                 sent++;
-            } catch (IOException e) {
-                emitters.remove(emitter);
+            } catch (Exception e) {
+                removeEmitter(emitter);
                 log.debug("SSE 事件 [{}] 推送失败，移除订阅: {}", eventName, e.getMessage());
             }
         }
@@ -140,8 +140,8 @@ public class AlarmStreamPublisher {
             try {
                 emitter.send(SseEmitter.event().name(eventType).data(data));
                 sent++;
-            } catch (IOException e) {
-                removeUserEmitter(userId, emitter);
+            } catch (Exception e) {
+                removeEmitter(emitter);
                 log.debug("用户 {} SSE 推送失败，移除订阅: {}", userId, e.getMessage());
             }
         }
@@ -155,7 +155,41 @@ public class AlarmStreamPublisher {
         return emitters.size();
     }
 
+    /**
+     * 定时心跳：每 25s 向所有 emitter 发送保活注释，防止 Nginx 60s 空闲超时断开连接；
+     * 发送失败时移除已断开的 emitter。
+     */
+    @Scheduled(fixedDelay = HEARTBEAT_INTERVAL_MS)
+    public void heartbeat() {
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().comment("keep-alive"));
+            } catch (Exception e) {
+                removeEmitter(emitter);
+                log.debug("告警SSE心跳发送失败，移除订阅: {}", e.getMessage());
+            }
+        }
+    }
+
     // ============= private =============
+
+    /**
+     * 统一移除 emitter（同时从全量广播列表和 userId 绑定列表中移除）。
+     * <p>使用反向索引 emitterUserId 实现 O(1) 查找，避免遍历所有 userEmitters.values()。
+     */
+    private void removeEmitter(SseEmitter emitter) {
+        emitters.remove(emitter);
+        Long userId = emitterUserId.remove(emitter);
+        if (userId != null) {
+            List<SseEmitter> list = userEmitters.get(userId);
+            if (list != null) {
+                list.remove(emitter);
+                if (list.isEmpty()) {
+                    userEmitters.remove(userId);
+                }
+            }
+        }
+    }
 
     private void sendReady(SseEmitter emitter) {
         try {
@@ -163,19 +197,9 @@ public class AlarmStreamPublisher {
             ready.put("type", "ready");
             ready.put("message", "connected");
             emitter.send(SseEmitter.event().name("ready").data(ready));
-        } catch (IOException e) {
-            emitters.remove(emitter);
+        } catch (Exception e) {
+            removeEmitter(emitter);
             log.debug("告警SSE ready事件发送失败: {}", e.getMessage());
-        }
-    }
-
-    private void removeUserEmitter(Long userId, SseEmitter emitter) {
-        List<SseEmitter> list = userEmitters.get(userId);
-        if (list != null) {
-            list.remove(emitter);
-            if (list.isEmpty()) {
-                userEmitters.remove(userId);
-            }
         }
     }
 }

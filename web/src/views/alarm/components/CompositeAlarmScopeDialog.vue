@@ -1,5 +1,5 @@
 <template>
-  <el-dialog :model-value="visible" title="应用范围" width="540px" destroy-on-close @close="emit('update:visible', false)">
+  <el-dialog :model-value="visible" title="应用范围" width="480px" destroy-on-close @close="emit('update:visible', false)">
     <template #header>
       <div>
         <h3 style="margin: 0; font-size: 16px;">应用范围</h3>
@@ -30,7 +30,21 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getHazardPointOptions, getCompositeAlarmScopes, updateCompositeAlarmScopes, type HazardPointOption } from '@/api/compositeAlarm'
+import { getStrategyScope, updateStrategy } from '@/api/alarm'
+import { getHazardPointPage, type HazardPointRaw } from '@/api/hazardPoint'
+import type { HazardPointOption } from '@/api/alarm'
+
+// 本地封装，避免依赖 deprecated compositeAlarm 模块
+const getHazardPointOptions = async (): Promise<HazardPointOption[]> => {
+  const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 }) as Record<string, unknown>
+  return (res?.rows as HazardPointRaw[] || []).map((hp) => ({ id: hp.id, name: hp.name }))
+}
+const getCompositeAlarmScopes = async (alarmId: number): Promise<HazardPointOption[]> => {
+  const ids = await getStrategyScope(alarmId) as number[]
+  return (Array.isArray(ids) ? ids : []).map((hpId) => ({ id: hpId, name: '', hazardPointId: hpId }))
+}
+const updateCompositeAlarmScopes = async (alarmId: number, hpIds: number[]) =>
+  updateStrategy(alarmId, { hazardPointIds: hpIds } as Parameters<typeof updateStrategy>[1])
 
 const props = defineProps<{
   visible: boolean
@@ -52,7 +66,7 @@ watch(() => props.visible, async (val) => {
     try {
       const [points, scopes] = await Promise.all([getHazardPointOptions(), getCompositeAlarmScopes(props.alarmId)])
       hazardPoints.value = points
-      selectedIds.value = scopes.map(s => s.hazardPointId)
+      selectedIds.value = scopes.map(s => s.hazardPointId).filter((id): id is number => id != null) as number[]
     } finally {
       loading.value = false
     }

@@ -9,8 +9,12 @@ html, body, #app {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* Element Plus 主题变量 */
+/* ============================================
+ * 设计 Token 变量
+ * 优先使用 var(--el-*) 引用，兼容 Element Plus 主题覆盖
+ * ============================================ */
 :root {
+  /* ── Primary（项目主色: Arco Design 蓝 #1890ff） ── */
   --el-color-primary: #1890ff;
   --el-color-primary-light-1: #3da3ff;
   --el-color-primary-light-2: #63b5ff;
@@ -22,6 +26,34 @@ html, body, #app {
   --el-color-primary-light-8: #f5fbff;
   --el-color-primary-light-9: #fafdff;
   --el-color-primary-dark-2: #1282d9;
+
+  /* ── Semantic（对齐 Element Plus 语义色） ── */
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+  --el-color-info: #909399;
+
+  /* ── Text ── */
+  --el-text-color-primary: #303133;
+  --el-text-color-regular: #606266;
+  --el-text-color-secondary: #909399;
+  --el-text-color-placeholder: #c0c4cc;
+
+  /* ── Border / Background ── */
+  --el-border-color-base: #dcdfe6;
+  --el-border-color-light: #e4e7ed;
+  --el-border-color-lighter: #ebeef5;
+  --el-border-color-extra-light: #f2f6fc;
+  --el-bg-color-page: #f5f7fa;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+
+  /* ── Spacing ── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
 }
 
 .el-menu {
@@ -644,4 +676,140 @@ html, body, #app {
 
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* ============================================
+ * 全局空状态 / 骨架屏 / 加载态
+ * ============================================ */
+
+/* 统一空状态（表格无数据时使用 <template #empty> 或独立展示） */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+}
+.empty-state .el-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  color: var(--el-border-color-base);
+}
+
+/* 骨架屏通用样式 */
+.skeleton-block {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 表格行骨架 */
+.skeleton-table-row {
+  display: grid;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.skeleton-table-row .skeleton-block {
+  height: 16px;
+}
+
+/* ============================================
+ * 响应式断点
+ * 基准: 桌面 ≥1200px | 平板 ≥768px | 手机 <768px
+ * ============================================ */
+
+/* ── 平板 (≤1200px) ── */
+@media (max-width: 1200px) {
+  /* 搜索栏换行 */
+  .search {
+    flex-wrap: wrap;
+  }
+  .search > :not(.el-button) {
+    min-width: 160px;
+  }
+
+  /* 弹窗不超出屏幕 */
+  .el-dialog {
+    width: 90% !important;
+    max-width: 800px;
+  }
+
+  /* 表格容器横向滚动 */
+  .table-wrap__scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 页面内边距缩减 */
+  .page {
+    padding: 16px;
+  }
+}
+
+/* ── 小屏 (≤768px) ── */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 12px;
+  }
+
+  /* 搜索栏全宽堆叠 */
+  .search {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .search > * {
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .search .el-date-editor {
+    width: 100% !important;
+  }
+
+  /* 弹窗铺满 */
+  .el-dialog {
+    width: 95% !important;
+    max-width: 100%;
+    margin-top: 5vh !important;
+  }
+
+  /* 操作按钮换行 */
+  .op-cell {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* 分页组件紧凑 */
+  .el-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
+  }
+}
+
+/* ── 打印样式 ── */
+@media print {
+  .header, .page-tabs, .search, .el-pagination, .op-cell, .header-nav {
+    display: none !important;
+  }
+  .main-content {
+    padding: 0 !important;
+  }
+  .page {
+    padding: 0 !important;
+  }
+  .table-wrap__scroll {
+    overflow: visible !important;
+  }
 }

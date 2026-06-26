@@ -11,6 +11,14 @@
       </div>
     </div>
 
+    <el-alert
+      title="此功能正在开发中，当前为演示数据"
+      type="warning"
+      show-icon
+      :closable="false"
+      style="margin-bottom: 16px;"
+    />
+
     <div class="search">
       <el-input
           v-model="searchKeyword"
@@ -239,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { MoreFilled } from '@element-plus/icons-vue'
 import DataParseDetail from './components/DataPasrseDetail.vue'
@@ -403,10 +411,24 @@ const disabledDate = (time: Date) => {
   return time.getTime() > Date.now()
 }
 
+// ============ 定时器追踪 ============
+const timers: ReturnType<typeof setTimeout>[] = []
+
+function setTimeoutTracked(fn: () => void, delay: number): ReturnType<typeof setTimeout> {
+  const id = setTimeout(fn, delay)
+  timers.push(id)
+  return id
+}
+
+function clearAllTimers() {
+  timers.forEach(id => clearTimeout(id))
+  timers.length = 0
+}
+
 // ============ 列表操作方法 ============
 const loadData = () => {
   loading.value = true
-  setTimeout(() => {
+  setTimeoutTracked(() => {
     total.value = filteredList.value.length
     loading.value = false
   }, 300)
@@ -426,7 +448,7 @@ const handleReset = () => {
 
 const handleRefresh = () => {
   refreshing.value = true
-  setTimeout(() => {
+  setTimeoutTracked(() => {
     loadData()
     refreshing.value = false
   }, 500)
@@ -604,7 +626,7 @@ const handleRunTest = () => {
   }
 
   testRunning.value = true
-  setTimeout(() => {
+  setTimeoutTracked(() => {
     try {
       const data = JSON.parse(testData.value)
       testResult.value = JSON.stringify({
@@ -632,6 +654,10 @@ const handleRunTest = () => {
 // ============ 生命周期 ============
 onMounted(() => {
   loadData()
+})
+
+onUnmounted(() => {
+  clearAllTimers()
 })
 </script>
 
