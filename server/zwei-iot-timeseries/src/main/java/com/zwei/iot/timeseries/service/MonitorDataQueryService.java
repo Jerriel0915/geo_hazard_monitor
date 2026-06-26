@@ -254,7 +254,8 @@ public class MonitorDataQueryService {
                                     String attrCode,
                                     String valueType,
                                     String startTime,
-                                    String endTime) {
+                                    String endTime,
+                                    String granularity) {
         String hazardPointName = resolveHazardPointName(hazardPointId);
         List<ResolvedMeasurement> measurements = resolveMeasurements(hazardPointName, hazardPointId, deviceId, sensorId, attrCode);
         if (measurements.isEmpty()) {
@@ -267,7 +268,16 @@ public class MonitorDataQueryService {
         boolean userAggregated = vt.isAggregated();
         boolean needDownsample = false;
         String downsampleInterval = null;
-        if (!userAggregated && rangeMs > 0) {
+        // 用户主动指定降采样粒度
+        boolean userDownsample = granularity != null && !"auto".equals(granularity);
+        if (userDownsample) {
+            if ("raw".equals(granularity)) {
+                needDownsample = false;
+            } else {
+                needDownsample = true;
+                downsampleInterval = granularity;
+            }
+        } else if (!userAggregated && rangeMs > 0) {
             long estimatedPoints = (long) (rangeMs / 1000.0 * queryProperties.getDownsampleEstimateHz());
             if (estimatedPoints > queryProperties.getMaxChartPoints()) {
                 needDownsample = true;

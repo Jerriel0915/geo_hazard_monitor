@@ -1,17 +1,31 @@
 <template>
-  <div class="echarts-wrapper" :class="{ 'echarts-wrapper--fullscreen': isFullscreen }" :style="{ height: isFullscreen ? '100vh' : height }">
-    <button v-if="showFullscreen" class="echarts-wrapper__fullscreen-btn" :title="isFullscreen ? '退出全屏 (ESC)' : '全屏展示'" @click="toggleFullscreen">
-      <el-icon :size="16">
-        <FullScreen v-if="!isFullscreen" />
-        <Close v-else />
-      </el-icon>
+  <div class="echarts-wrapper" :style="{ height: height }">
+    <button
+      v-if="showFullscreen && !isFullscreen"
+      class="echarts-wrapper__fullscreen-btn"
+      title="全屏展示"
+      @click="enterFullscreen"
+    >
+      <el-icon :size="16"><FullScreen /></el-icon>
     </button>
-    <div ref="chartRef" class="echarts-wrapper__chart" :style="{ height: isFullscreen ? 'calc(100vh - 40px)' : '100%' }" />
+    <div ref="chartRef" class="echarts-wrapper__chart" :style="{ height: '100%' }" />
   </div>
+
+  <Teleport to="body" v-if="isFullscreen">
+    <div class="echarts-fs-overlay" @click.self="exitFullscreen">
+      <div class="echarts-fs-header">
+        <span class="echarts-fs-title">监测数据图表</span>
+        <button class="echarts-fs-close-btn" title="退出全屏 (ESC)" @click="exitFullscreen">
+          <el-icon :size="20"><Close /></el-icon>
+        </button>
+      </div>
+      <div ref="fsChartRef" class="echarts-fs-body" />
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { FullScreen, Close } from '@element-plus/icons-vue'
 import type { EChartsOption } from 'echarts'
 import echarts from '@/utils/echarts'
@@ -32,31 +46,42 @@ const emit = defineEmits<{
 }>()
 
 const chartRef = ref<HTMLElement>()
+const fsChartRef = ref<HTMLElement>()
 const isFullscreen = ref(false)
 let instance: ReturnType<typeof echarts.init> | null = null
+let fsInstance: ReturnType<typeof echarts.init> | null = null
 let resizeObserver: ResizeObserver | null = null
+let fsResizeObserver: ResizeObserver | null = null
 
-function toggleFullscreen() {
-  isFullscreen.value = !isFullscreen.value
-  if (isFullscreen.value) {
-    document.addEventListener('keydown', onEscKey)
-  } else {
-    document.removeEventListener('keydown', onEscKey)
-  }
-  // ECharts 在动画完成后 resize
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => instance?.resize())
+function enterFullscreen() {
+  isFullscreen.value = true
+  document.addEventListener('keydown', onEscKey)
+  document.body.style.overflow = 'hidden'
+
+  nextTick(() => {
+    if (!fsChartRef.value) return
+    fsInstance = echarts.init(fsChartRef.value, props.theme)
+    if (instance) {
+      fsInstance.setOption(instance.getOption(), { notMerge: true })
+    }
+    fsResizeObserver = new ResizeObserver(() => fsInstance?.resize())
+    fsResizeObserver.observe(fsChartRef.value)
   })
 }
 
+function exitFullscreen() {
+  isFullscreen.value = false
+  document.removeEventListener('keydown', onEscKey)
+  document.body.style.overflow = ''
+
+  fsResizeObserver?.disconnect()
+  fsResizeObserver = null
+  fsInstance?.dispose()
+  fsInstance = null
+}
+
 function onEscKey(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
-    isFullscreen.value = false
-    document.removeEventListener('keydown', onEscKey)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => instance?.resize())
-    })
-  }
+  if (e.key === 'Escape') exitFullscreen()
 }
 
 function safeInit() {
@@ -69,9 +94,7 @@ function safeInit() {
   instance.setOption(props.option, { notMerge: true })
   emit('chart-ready', instance)
 
-  resizeObserver = new ResizeObserver(() => {
-    instance?.resize()
-  })
+  resizeObserver = new ResizeObserver(() => instance?.resize())
   resizeObserver.observe(chartRef.value)
 }
 
@@ -100,6 +123,9 @@ watch(() => props.loading, (val) => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onEscKey)
+  document.body.style.overflow = ''
+  fsResizeObserver?.disconnect()
+  fsInstance?.dispose()
   dispose()
 })
 </script>
@@ -118,7 +144,7 @@ onBeforeUnmount(() => {
 .echarts-wrapper__fullscreen-btn {
   position: absolute;
   top: 6px;
-  right: 36px;
+  right: 8px;
   z-index: 10;
   display: flex;
   align-items: center;
@@ -138,18 +164,62 @@ onBeforeUnmount(() => {
   color: #409eff;
   background: #ecf5ff;
 }
+</style>
 
-.echarts-wrapper--fullscreen {
+<style>
+/* 全屏覆盖层 (unscoped：Teleport 到 body 后不受 scoped 约束) */
+.echarts-fs-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  background: #fff;
-  padding: 16px 24px 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
 }
 
-.echarts-wrapper--fullscreen .echarts-wrapper__fullscreen-btn {
-  top: 16px;
-  right: 24px;
+.echarts-fs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.echarts-fs-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.echarts-fs-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  color: #606266;
+  transition: all 0.2s;
+}
+
+.echarts-fs-close-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.echarts-fs-body {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 16px 24px 24px;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
 }
 </style>

@@ -84,6 +84,7 @@ public class MonitorDataController {
      * @param attrCode      属性编码，可选
      * @param startTime     开始时间
      * @param endTime       结束时间
+     * @param granularity   降采样粒度（null=自动），可选值：auto,raw,1m,5m,10m,30m,1h,6h
      * @return 图表监测数据结果
      */
     @PreAuthorize("@ss.hasPermi('basic:device:query')")
@@ -94,9 +95,10 @@ public class MonitorDataController {
                             @RequestParam(required = false) String attrCode,
                             @RequestParam(required = false) String valueType,
                             @RequestParam String startTime,
-                            @RequestParam String endTime) {
+                            @RequestParam String endTime,
+                            @RequestParam(required = false) String granularity) {
         return AjaxResult.success("成功", monitorDataQueryService.chart(
-                hazardPointId, deviceId, sensorId, attrCode, valueType, startTime, endTime
+                hazardPointId, deviceId, sensorId, attrCode, valueType, startTime, endTime, granularity
         ));
     }
 }

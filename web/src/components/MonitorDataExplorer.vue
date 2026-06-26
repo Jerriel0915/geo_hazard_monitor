@@ -73,6 +73,32 @@
         style="width: 360px"
       />
 
+      <el-popover placement="bottom" :width="220" trigger="click">
+        <template #reference>
+          <el-button size="default" :type="downsampleEnabled ? 'primary' : 'default'" plain>
+            降采样<el-icon class="el-icon--right"><CaretBottom /></el-icon>
+          </el-button>
+        </template>
+        <div class="mde-downsample-popover">
+          <div class="mde-downsample-row">
+            <span>启用降采样</span>
+            <el-switch v-model="downsampleEnabled" size="small" />
+          </div>
+          <div class="mde-downsample-row" v-if="downsampleEnabled">
+            <span>粒度</span>
+            <el-select v-model="downsampleGranularity" size="small" style="width: 100px">
+              <el-option label="自动" value="auto" />
+              <el-option label="1分钟" value="1m" />
+              <el-option label="5分钟" value="5m" />
+              <el-option label="10分钟" value="10m" />
+              <el-option label="30分钟" value="30m" />
+              <el-option label="1小时" value="1h" />
+              <el-option label="6小时" value="6h" />
+            </el-select>
+          </div>
+        </div>
+      </el-popover>
+
       <el-button type="primary" :loading="loading" @click="query">查询</el-button>
       <el-button @click="reset">重置</el-button>
 
@@ -167,7 +193,7 @@
 import type { ChartData, MonitorDataPageItem } from '@/api/monitorData'
 import { useMonitorData } from '@/composables/useMonitorData'
 import { ElMessage } from 'element-plus'
-import { Grid, TrendCharts } from '@element-plus/icons-vue'
+import { CaretBottom, Grid, TrendCharts } from '@element-plus/icons-vue'
 import { computed, ref, watch } from 'vue'
 import EChartsWrapper from '@/components/EChartsWrapper.vue'
 
@@ -216,6 +242,8 @@ const {
   loading,
   mode,
   downsampleInfo,
+  downsampleEnabled,
+  downsampleGranularity,
   filter,
   selectDevice,
   selectSensor,
@@ -436,5 +464,19 @@ watch([chartSeries, tableData], () => {
 .monitor-data-explorer.mde-fill .mde-skeleton,
 .monitor-data-explorer.mde-fill .mde-empty {
   height: 100%;
+}
+
+.mde-downsample-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mde-downsample-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #303133;
 }
 </style>

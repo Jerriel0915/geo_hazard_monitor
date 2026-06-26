@@ -66,6 +66,10 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   const loading = ref(false)
   const mode = ref<'chart' | 'table'>('chart')
 
+  // ── 降采样控制 ──
+  const downsampleEnabled = ref(true)
+  const downsampleGranularity = ref('auto')
+
   // ── 筛选状态 ──
   const filter = reactive({
     deviceId: '' as string | number,
@@ -75,13 +79,13 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     timeRange: null as [string, string] | null,
   })
 
-  // ── 降采样信息 ──
+  // ── 降采样信息（仅在后端确实降采样时才展示）──
   const downsampleInfo = computed(() => {
-    const sampled = chartSeries.value.find((s) => s.sampled)
-    if (!sampled) return null
+    const sampled = chartSeries.value.find((s) => s.sampled && s.downsampleInterval)
+    if (!sampled || !sampled.pointCount) return null
     return {
-      interval: sampled.downsampleInterval || '',
-      pointCount: sampled.pointCount ?? 0,
+      interval: sampled.downsampleInterval!,
+      pointCount: sampled.pointCount,
     }
   })
 
@@ -319,6 +323,10 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       ;[startTime, endTime] = defaultTimeRange()
     }
 
+    const granularity = downsampleEnabled.value
+      ? (downsampleGranularity.value === 'auto' ? undefined : downsampleGranularity.value)
+      : 'raw'
+
     const baseParams = {
       hazardPointId: hpId,
       deviceId: filter.deviceId ? Number(filter.deviceId) : undefined,
@@ -327,6 +335,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       valueType: filter.valueType || undefined,
       startTime,
       endTime,
+      granularity,
     }
 
     loading.value = true
@@ -502,6 +511,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     loading,
     mode,
     downsampleInfo,
+    downsampleEnabled,
+    downsampleGranularity,
     // 筛选
     filter,
     // 方法
