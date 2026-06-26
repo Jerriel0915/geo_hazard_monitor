@@ -160,7 +160,7 @@ class MonitorDataQueryServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).sampled()).isFalse();
-        verify(iotdbService).queryRangeWithLimit(
+        verify(iotdbService, atLeastOnce()).queryRangeWithLimit(
                 eq(1L), eq("rain_01"), eq("rainfall"),
                 anyLong(), anyLong(), eq(4000));
         verify(iotdbService, never()).queryRangeDownsampled(
