@@ -90,7 +90,7 @@ class MonitorDataQueryServiceTest {
     void chart_smallRange_rawWithLimit() {
         List<ChartDataVO> result = service.chart(
                 1L, null, null, "rainfall",
-                null, "2024-01-01 00:00:00", "2024-01-01 00:01:00");
+                null, "2024-01-01 00:00:00", "2024-01-01 00:01:00", null);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).sampled()).isFalse();
@@ -107,7 +107,7 @@ class MonitorDataQueryServiceTest {
     void chart_largeRange_autoDownsample() {
         List<ChartDataVO> result = service.chart(
                 1L, null, null, "rainfall",
-                null, "2023-01-01 00:00:00", "2024-01-01 00:00:00");
+                null, "2023-01-01 00:00:00", "2024-01-01 00:00:00", null);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).sampled()).isTrue();
@@ -124,7 +124,7 @@ class MonitorDataQueryServiceTest {
     void chart_explicitAggregated_respectsUserChoice() {
         List<ChartDataVO> result = service.chart(
                 1L, null, null, "rainfall",
-                "hour", "2023-01-01 00:00:00", "2024-01-01 00:00:00");
+                "hour", "2023-01-01 00:00:00", "2024-01-01 00:00:00", null);
 
         assertThat(result).hasSize(1);
         verify(iotdbService).queryRange(
@@ -134,6 +134,37 @@ class MonitorDataQueryServiceTest {
                 any(), anyString(), anyString(), any(), any(), anyString());
         verify(iotdbService, never()).queryRangeWithLimit(
                 any(), anyString(), anyString(), any(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("granularity=5m → 强制指定粒度降采样")
+    void chart_userDownsample_forceGranularity() {
+        List<ChartDataVO> result = service.chart(
+                1L, null, null, "rainfall",
+                null, "2024-01-01 00:00:00", "2024-01-01 00:01:00", "5m");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).sampled()).isTrue();
+        assertThat(result.get(0).downsampleInterval()).isEqualTo("5m");
+        verify(iotdbService).queryRangeDownsampled(
+                eq(1L), eq("rain_01"), eq("rainfall"),
+                anyLong(), anyLong(), eq("5m"));
+    }
+
+    @Test
+    @DisplayName("granularity=raw → 禁用降采样,强制 raw 路径")
+    void chart_userDownsample_raw_disablesDownsample() {
+        List<ChartDataVO> result = service.chart(
+                1L, null, null, "rainfall",
+                null, "2023-01-01 00:00:00", "2024-01-01 00:00:00", "raw");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).sampled()).isFalse();
+        verify(iotdbService).queryRangeWithLimit(
+                eq(1L), eq("rain_01"), eq("rainfall"),
+                anyLong(), anyLong(), eq(4000));
+        verify(iotdbService, never()).queryRangeDownsampled(
+                any(), anyString(), anyString(), any(), any(), anyString());
     }
 
     // ==================== P1: page() 多测点分页 ====================
