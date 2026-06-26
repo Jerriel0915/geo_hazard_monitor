@@ -312,27 +312,14 @@ public class MonitorDataQueryService {
                 );
                 sampled = true;
                 intervalUsed = downsampleInterval;
-            } else if (rangeMs > 0) {
-                long estimated = (long) (rangeMs / 1000.0 * queryProperties.getDownsampleEstimateHz());
-                int wouldBeSlices = (int) Math.ceil((double) estimated / queryProperties.getMaxPointsPerSlice());
-                if (estimated > queryProperties.getMaxAutoSlicePoints()
-                        && wouldBeSlices <= queryProperties.getMaxSlices()) {
-                    rows = queryRangeBySlices(
-                            measurement.deviceId(),
-                            measurement.sensorCode(),
-                            measurement.attrCode(),
-                            startMillis, endMillis,
-                            estimated
-                    );
-                } else {
-                    rows = iotdbTimeSeriesService.queryRangeWithLimit(
-                            measurement.deviceId(),
-                            measurement.sensorCode(),
-                            measurement.attrCode(),
-                            startMillis, endMillis,
-                            queryProperties.getRawLimitCap()
-                    );
-                }
+            } else if (rangeMs > 3_600_000L && queryProperties.getSliceCount() > 1) {
+                rows = queryRangeBySlices(
+                        measurement.deviceId(),
+                        measurement.sensorCode(),
+                        measurement.attrCode(),
+                        startMillis, endMillis,
+                        queryProperties.getSliceCount()
+                );
             } else {
                 rows = iotdbTimeSeriesService.queryRangeWithLimit(
                         measurement.deviceId(),
@@ -379,38 +366,25 @@ public class MonitorDataQueryService {
     }
 
     /**
-     * 大数据量自动时间切片查询：将时间范围切分为多个子区间，每个子区间独立查询后合并。
-     * <p>避免单次查询返回海量数据导致 OOM。切片粒度由 {@code maxPointsPerSlice} 控制。</p>
-     *
-     * @param deviceId   设备ID
-     * @param sensorCode 传感器编码
-     * @param attrCode   属性编码
-     * @param startMs    开始时间毫秒
-     * @param endMs      结束时间毫秒
-     * @param estimated  估算总点数
-     * @return 合并后的查询结果（自然时间升序，因为切片按时间递增顺序查询）
+     * 时间区间均分查询：将时间范围均分为 N 份，每份独立查询后合并。
+     * <p>避免大数据量时单次查询 OOM，同时保证各片时间区间不重叠（无重复数据）。</p>
      */
     private List<IotdbQueryRow> queryRangeBySlices(
             long deviceId, String sensorCode, String attrCode,
-            long startMs, long endMs, long estimated) {
-        long rangeMs = endMs - startMs;
-        int slices = Math.max(2, (int) Math.ceil((double) estimated / queryProperties.getMaxPointsPerSlice()));
-        long sliceMs = rangeMs / slices;
-        // 最小切片粒度不低于 10 秒，避免无限切片
-        if (sliceMs < 10_000L) {
-            sliceMs = 10_000L;
-        }
+            long startMs, long endMs, int slices) {
+        long sliceMs = (endMs - startMs) / slices;
         List<IotdbQueryRow> allRows = new ArrayList<>();
-        for (long s = startMs; s < endMs; s += sliceMs) {
-            long e = Math.min(s + sliceMs, endMs);
+        for (int i = 0; i < slices; i++) {
+            long s = startMs + i * sliceMs;
+            long e = (i == slices - 1) ? endMs : s + sliceMs;
             List<IotdbQueryRow> sliceRows = iotdbTimeSeriesService.queryRangeWithLimit(
                     deviceId, sensorCode, attrCode, s, e, queryProperties.getRawLimitCap());
             if (sliceRows != null) {
                 allRows.addAll(sliceRows);
             }
         }
-        log.debug("时间切片查询: deviceId={}, range={}ms, estimated={}, slices={}, merged={} rows",
-                deviceId, rangeMs, estimated, (int) Math.ceil((double) rangeMs / sliceMs), allRows.size());
+        log.debug("时间切片查询: deviceId={}, range={}ms, slices={}, merged={} rows",
+                deviceId, endMs - startMs, slices, allRows.size());
         return allRows;
     }
 

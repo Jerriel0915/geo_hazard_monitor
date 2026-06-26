@@ -18,8 +18,7 @@ import org.springframework.stereotype.Component;
  *   <li>{@code rawLimitCap} — raw 查询路径的硬 LIMIT 上限，默认 4000，防止 OOM</li>
  *   <li>{@code downsampleFunc} — 降采样聚合函数，默认 AVG（保趋势，地质累计指标适用）</li>
  *   <li>{@code maxMergeRows} — 多测点分页合并行数上限，默认 5000，防止深翻页内存放大</li>
- *   <li>{@code maxAutoSlicePoints} — 触发自动时间切片的总估算点数阈值，默认 20000</li>
- *   <li>{@code maxPointsPerSlice} — 每个时间片的目标点数（切片粒度据此计算），默认 5000</li>
+ *   <li>{@code sliceCount} — 时间区间均分份数，默认 1（不启用）。设为 3 则 30d 自动切为 3×10d 查询</li>
  * </ul>
  */
 @Setter
@@ -32,9 +31,8 @@ public class MonitorQueryProperties {
     private int rawLimitCap = 4000;
     private String downsampleFunc = "AVG";
     private int maxMergeRows = 5000;
-    private int maxAutoSlicePoints = 20000;
-    private int maxPointsPerSlice = 5000;
-    private int maxSlices = 20;
+    /** 时间切片份数：raw 查询时自动将时间范围均分为 N 份，每份独立查询。如 3=30d切3×10d */
+    private int sliceCount = 3;
 
     /**
      * 根据时间范围和目标点数计算合适的降采样间隔（对齐到 IoTDB 可识别的粒度）。
