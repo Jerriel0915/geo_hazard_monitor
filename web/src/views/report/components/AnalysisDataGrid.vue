@@ -241,6 +241,7 @@ const loadGridCellChart = async (idx: number) => {
       startTime,
       endTime,
     })
+    if (!data) return
 
     const existing = gridChartInstances.get(idx)
     if (existing) {

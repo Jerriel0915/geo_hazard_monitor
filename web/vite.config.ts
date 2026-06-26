@@ -67,7 +67,6 @@ export default defineConfig({
           if (id.includes('three')) return 'vendor-three'
           if (id.includes('echarts-gl')) return 'vendor-echarts-gl'
           if (id.includes('echarts')) return 'vendor-echarts'
-          if (id.includes('apexcharts')) return 'vendor-apexcharts'
           if (id.includes('blockly')) return 'vendor-blockly'
           if (id.includes('leaflet')) return 'vendor-leaflet'
           if (id.includes('jspdf') || id.includes('html2canvas')) return 'vendor-pdf'

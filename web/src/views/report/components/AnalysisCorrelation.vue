@@ -325,7 +325,13 @@ const generateCorrelationChart = async () => {
         startTime,
         endTime,
       })
-      allSeriesData.push({ sensor, chartData: data })
+      if (data) allSeriesData.push({ sensor, chartData: data })
+    }
+
+    if (allSeriesData.length === 0) {
+      ElMessage.warning('所选传感器在当前时间范围内无可用数据')
+      chartLoading.value = false
+      return
     }
 
     const container = correlationChartRef.value

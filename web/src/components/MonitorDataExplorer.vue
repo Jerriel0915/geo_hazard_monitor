@@ -108,12 +108,11 @@
     <!-- 图表视图 -->
     <div v-show="mode === 'chart'" class="mde-chart-area">
       <div v-if="loading" class="mde-skeleton" />
-      <VueApexCharts
+      <EChartsWrapper
         v-else-if="chartSeries.length > 0"
-        type="area"
-        :height="fillContainer ? '100%' : '400'"
-        :options="chartOptions"
-        :series="chartOptions.series"
+        :option="chartOptions"
+        :height="fillContainer ? '100%' : '400px'"
+        :loading="loading"
       />
       <div v-else class="mde-empty">
         <span>暂无数据，请选择条件后点击查询</span>
@@ -165,9 +164,8 @@ import type { ChartData, MonitorDataPageItem } from '@/api/monitorData'
 import { useMonitorData } from '@/composables/useMonitorData'
 import { ElMessage } from 'element-plus'
 import { Grid, TrendCharts } from '@element-plus/icons-vue'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
-
-const VueApexCharts = defineAsyncComponent(() => import('vue3-apexcharts'))
+import { computed, ref, watch } from 'vue'
+import EChartsWrapper from '@/components/EChartsWrapper.vue'
 
 const props = withDefaults(defineProps<{
   hazardPointId?: number | null

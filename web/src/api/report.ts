@@ -1,6 +1,7 @@
 import request from '@/utils/request'
 import type { PageResult } from './system'
 import { getHazardPointPage } from './hazardPoint'
+import { getSensorRange } from './monitorData'
 
 // ====== 报告管理 API (真实接口) ======
 
@@ -362,55 +363,33 @@ function getMockQueryData(params: MonitorQueryParams): PageResult<Record<string,
   return { rows, total: totalRows, pageNum, pageSize }
 }
 
-/** Generate mock chart data (100 points over 7 days) */
-function getMockChartData(
+/** Parse data from real sensor/range API into ChartDataItem */
+async function fetchRealChartData(
   deviceId: number,
   attrCode: string,
   startTime: string,
-  _endTime: string
-): ChartDataItem {
-  const rng = seededRandom(deviceId * 31 + attrCode.charCodeAt(0) * 17 + startTime.charCodeAt(5) * 3)
+  endTime: string
+): Promise<ChartDataItem | null> {
+  try {
+    const dataMap: Record<string, { dataTime: string; value: number }[]> = await getSensorRange({
+      deviceId,
+      sensorCode: '1',
+      attrCode,
+      startTime,
+      endTime,
+    }) as any
 
-  // Parse startTime safely — replace space with 'T' for ISO 8601 compatibility
-  const start = new Date(startTime.replace(' ', 'T'))
-  const times: string[] = []
-  const values: number[] = []
+    const rows = dataMap[attrCode] || Object.values(dataMap)[0]
+    if (!rows || rows.length === 0) return null
 
-  // 100 points over 7 days
-  const totalMinutes = 7 * 24 * 60
-  const interval = totalMinutes / 100
-
-  for (let i = 0; i < 100; i++) {
-    const t = new Date(start.getTime() + i * interval * 60 * 1000)
-    times.push(formatDateTime(t))
-
-    let val: number
-    switch (attrCode) {
-      case 'disp_x':
-      case 'disp_y':
-      case 'disp_z':
-        val = toFixed(randRange(rng, 0.1, 5.0), 2)
-        break
-      case 'rainfall':
-        val = toFixed(randRange(rng, 0, 50), 1)
-        break
-      case 'rainfall_daily':
-        val = toFixed(randRange(rng, 0, 80), 1)
-        break
-      case 'tilt_x':
-      case 'tilt_y':
-        val = toFixed(randRange(rng, -2.0, 2.0), 3)
-        break
-      case 'earth_pressure':
-        val = toFixed(randRange(rng, 10, 120), 2)
-        break
-      default:
-        val = toFixed(randRange(rng, 0, 100), 2)
+    const sorted = [...rows].reverse()
+    return {
+      times: sorted.map((r: any) => r.dataTime ?? r.time ?? ''),
+      values: sorted.map((r: any) => r.value),
     }
-    values.push(val)
+  } catch {
+    return null
   }
-
-  return { times, values }
 }
 
 // ---------------------------------------------------------------------------
@@ -449,26 +428,26 @@ export async function getMonitorQueryData(
   return getMockQueryData(params)
 }
 
-/** Fetch chart data for a single device+attribute (mock) */
+/** Fetch chart data for a single device+attribute (real API) */
 export async function getChartData(params: {
   deviceId: number
   attrCode: string
   startTime: string
   endTime: string
-}): Promise<ChartDataItem> {
-  return getMockChartData(params.deviceId, params.attrCode, params.startTime, params.endTime)
+}): Promise<ChartDataItem | null> {
+  return fetchRealChartData(params.deviceId, params.attrCode, params.startTime, params.endTime)
 }
 
-/** Fetch chart data for multiple grid items (mock) */
+/** Fetch chart data for multiple grid items (real API) */
 export async function getGridChartData(
   items: GridChartItem[],
   startTime: string,
   endTime: string
-): Promise<Map<number, ChartDataItem>> {
-  const result = new Map<number, ChartDataItem>()
+): Promise<Map<number, ChartDataItem | null>> {
+  const result = new Map<number, ChartDataItem | null>()
   for (const item of items) {
     if (item.deviceId && item.attrCode) {
-      result.set(item.index, getMockChartData(item.deviceId, item.attrCode, startTime, endTime))
+      result.set(item.index, await fetchRealChartData(item.deviceId, item.attrCode, startTime, endTime))
     }
   }
   return result
