@@ -17,14 +17,13 @@ import type { CalcScriptTestResult } from '@/api/monitorType'
  *
  * 3. mountPanel 默认传入 { result: null, testing: false } — 避免未传 props 时的 Vue warn。
  */
-function mountPanel(options: Parameters<typeof mount>[1] = {}) {
-  const { props: userProps, ...rest } = options
-  const defaultProps = { result: null, testing: false }
+function mountPanel(options: { props?: Record<string, unknown>; global?: Record<string, unknown> } = {}) {
+  const { props: userProps, global: userGlobal, ...rest } = options
   return mount(TestPanel, {
     ...rest,
-    props: { ...defaultProps, ...userProps },
+    props: { result: null, testing: false, ...userProps },
     global: {
-      ...(options.global || {}),
+      ...(userGlobal || {}),
       plugins: [ElementPlus]
     }
   })
