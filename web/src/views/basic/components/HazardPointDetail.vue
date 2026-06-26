@@ -33,6 +33,7 @@
                 :initial-value="parsedBoundary"
                 :initial-center="previewCenter"
                 :video-devices="boundVideoDevices"
+                :devices="boundDevices"
                 height="450px"
             />
           </div>

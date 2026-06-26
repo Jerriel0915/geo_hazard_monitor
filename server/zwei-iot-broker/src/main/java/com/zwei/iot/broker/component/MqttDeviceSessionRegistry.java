@@ -3,8 +3,11 @@ package com.zwei.iot.broker.component;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -85,6 +88,15 @@ public class MqttDeviceSessionRegistry {
      */
     public Optional<MqttDeviceSession> getByDeviceId(Long deviceId) {
         return Optional.ofNullable(deviceSessions.get(deviceId));
+    }
+
+    /**
+     * 获取当前所有活跃连接的设备 ID 集合（不可变快照）。
+     *
+     * @return 已连接设备 ID 集合；无连接时为空集
+     */
+    public Set<Long> getConnectedDeviceIds() {
+        return Collections.unmodifiableSet(new HashSet<>(deviceSessions.keySet()));
     }
 
     /**

@@ -127,7 +127,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetAlarmRecords">重置</el-button>
                 </div>
-                <el-table :data="filteredAlarmRecords" border stripe size="small" :max-height="400" empty-text="暂无告警记录">
+                <el-table :data="pagedAlarmRecords" border stripe size="small" :max-height="340" empty-text="暂无告警记录">
                   <el-table-column prop="triggerTime" label="告警时间" width="180" />
                   <el-table-column prop="alarmLevel" label="告警等级" width="100">
                     <template #default="{ row }">
@@ -138,6 +138,16 @@
                   </el-table-column>
                   <el-table-column prop="alarmMessage" label="描述" min-width="220" show-overflow-tooltip />
                 </el-table>
+                <el-pagination
+                  v-if="filteredAlarmRecords.length > alarmRecordPageSize"
+                  v-model:current-page="alarmRecordPageNum"
+                  v-model:page-size="alarmRecordPageSize"
+                  :page-sizes="[10, 20, 50]"
+                  :total="filteredAlarmRecords.length"
+                  layout="total, sizes, prev, pager, next"
+                  size="small"
+                  class="tab-pagination"
+                />
               </div>
 
               <!-- 通知记录 (NOTIFY 动作日志) -->
@@ -148,7 +158,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetNotifyRecords">重置</el-button>
                 </div>
-                <el-table :data="filteredNotifyRecords" border stripe size="small" :max-height="400" empty-text="暂无通知记录">
+                <el-table :data="pagedNotifyRecords" border stripe size="small" :max-height="340" empty-text="暂无通知记录">
                   <el-table-column prop="createTime" label="通知时间" width="180" />
                   <el-table-column prop="channel" label="渠道" width="90">
                     <template #default="{ row }">
@@ -163,15 +173,35 @@
                     </template>
                   </el-table-column>
                 </el-table>
+                <el-pagination
+                  v-if="filteredNotifyRecords.length > notifyRecordPageSize"
+                  v-model:current-page="notifyRecordPageNum"
+                  v-model:page-size="notifyRecordPageSize"
+                  :page-sizes="[10, 20, 50]"
+                  :total="filteredNotifyRecords.length"
+                  layout="total, sizes, prev, pager, next"
+                  size="small"
+                  class="tab-pagination"
+                />
               </div>
 
               <!-- 处置记录 (API: getActionLogs 过滤 FEEDBACK/DISPOSE_*) -->
               <div v-show="activeTab === 'disposal'" class="tab-content">
-                <el-table :data="disposalRecords" border stripe size="small" :max-height="400" empty-text="暂无处置记录">
+                <el-table :data="pagedDisposalRecords" border stripe size="small" :max-height="340" empty-text="暂无处置记录">
                   <el-table-column prop="createTime" label="处置时间" width="180" />
                   <el-table-column prop="operator" label="处置人员" width="120" />
                   <el-table-column prop="description" label="描述" min-width="220" show-overflow-tooltip />
                 </el-table>
+                <el-pagination
+                  v-if="disposalRecords.length > disposalRecordPageSize"
+                  v-model:current-page="disposalRecordPageNum"
+                  v-model:page-size="disposalRecordPageSize"
+                  :page-sizes="[10, 20, 50]"
+                  :total="disposalRecords.length"
+                  layout="total, sizes, prev, pager, next"
+                  size="small"
+                  class="tab-pagination"
+                />
               </div>
             </div>
 
@@ -390,6 +420,33 @@ const filteredAlarmRecords = computed(() => {
 
 const resetAlarmRecords = () => { alarmRecordSearch.value = { description: '', timeRange: [] } }
 
+// ── 告警记录分页 ──
+const alarmRecordPageNum = ref(1)
+const alarmRecordPageSize = ref(20)
+const pagedAlarmRecords = computed(() => {
+  const start = (alarmRecordPageNum.value - 1) * alarmRecordPageSize.value
+  return filteredAlarmRecords.value.slice(start, start + alarmRecordPageSize.value)
+})
+// 搜索条件变更时重置到第一页
+watch([() => alarmRecordSearch.value.description, () => alarmRecordSearch.value.timeRange], () => { alarmRecordPageNum.value = 1 })
+
+// ── 通知记录分页 ──
+const notifyRecordPageNum = ref(1)
+const notifyRecordPageSize = ref(20)
+const pagedNotifyRecords = computed(() => {
+  const start = (notifyRecordPageNum.value - 1) * notifyRecordPageSize.value
+  return filteredNotifyRecords.value.slice(start, start + notifyRecordPageSize.value)
+})
+watch([() => notifyRecordSearch.value.account, () => notifyRecordSearch.value.timeRange], () => { notifyRecordPageNum.value = 1 })
+
+// ── 处置记录分页 ──
+const disposalRecordPageNum = ref(1)
+const disposalRecordPageSize = ref(20)
+const pagedDisposalRecords = computed(() => {
+  const start = (disposalRecordPageNum.value - 1) * disposalRecordPageSize.value
+  return disposalRecords.value.slice(start, start + disposalRecordPageSize.value)
+})
+
 const switchToAlarmTab = () => { activeTab.value = 'alarm' }
 
 // 切换到监测数据 tab：确保图表已初始化，并 resize 以适应可见尺寸
@@ -567,7 +624,7 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 const fmtDateTime = (d: Date) =>
   `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
 
-/** 加载监测曲线数据：首次告警时间前3天 ~ 当天24点 */
+/** 加载监测曲线数据：首次告警时间前3天 ~ 当天24点，严格原始数据 */
 const loadChartData = async () => {
   const rec = detail.value || (props.data as any)
   if (!rec) return
@@ -601,24 +658,35 @@ const loadChartData = async () => {
   }
 }
 
-/** 将触发明细时间匹配到图表 x 轴最近的数据点索引 */
+/** 将触发明细时间匹配到图表 x 轴最近的数据点索引（二分 + Set 去重，O(n log m)） */
 const findAlarmIndices = (labels: string[]): number[] => {
-  const indices: number[] = []
+  if (!labels.length) return []
+
+  // 预解析 labels 时间戳（正序数据，时间单调增）
+  const labelTimestamps = labels.map(l => new Date(l.replace(/-/g, '/')).getTime())
+
+  const idxSet = new Set<number>()
   for (const td of triggerDetails.value) {
     if (!td.triggerTime) continue
     const triggerTs = new Date(td.triggerTime.replace(/-/g, '/')).getTime()
     if (isNaN(triggerTs)) continue
-    let bestIdx = -1
-    let bestDiff = Infinity
-    labels.forEach((label, idx) => {
-      const labelTs = new Date(label.replace(/-/g, '/')).getTime()
-      if (isNaN(labelTs)) return
-      const diff = Math.abs(labelTs - triggerTs)
-      if (diff < bestDiff) { bestDiff = diff; bestIdx = idx }
-    })
-    if (bestIdx >= 0 && !indices.includes(bestIdx)) indices.push(bestIdx)
+
+    // 二分查找最近点
+    let lo = 0, hi = labelTimestamps.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (labelTimestamps[mid] < triggerTs) lo = mid + 1
+      else hi = mid
+    }
+    let best = lo
+    if (lo > 0 && Math.abs(labelTimestamps[lo - 1] - triggerTs) < Math.abs(labelTimestamps[lo] - triggerTs)) {
+      best = lo - 1
+    }
+    idxSet.add(best)
   }
-  return indices
+
+  // 转换为数组并升序排列
+  return Array.from(idxSet).sort((a, b) => a - b)
 }
 
 const initChart = () => {
@@ -642,6 +710,11 @@ const updateChart = () => {
   const labels = main.labels || []
   const alarmIndices = findAlarmIndices(labels)
 
+  const isLarge = (main.values || []).length > 500
+
+  // 告警点索引集（转 Set 以 O(1) 查找，避免大数组 .includes 扫描）
+  const alarmIdxSet = new Set(alarmIndices)
+
   chartInstance.setOption({
     title: { text: main.seriesName || main.attrName || '监测数据', left: 'left', textStyle: { fontSize: 13, color: '#606266' } },
     tooltip: {
@@ -649,7 +722,7 @@ const updateChart = () => {
       formatter: (params: any) => {
         const p = params[0]
         if (!p) return ''
-        const isAlarm = alarmIndices.includes(p.dataIndex)
+        const isAlarm = alarmIdxSet.has(p.dataIndex)
         return `<div style="padding:8px"><div style="font-weight:bold;margin-bottom:4px">${p.name}</div><div>${main.seriesName || main.attrName}: <span style="color:${isAlarm ? '#f56c6c' : '#409eff'}">${p.value}${main.unit || ''}</span></div>${isAlarm ? '<div style="color:#f56c6c;margin-top:4px">⚠️ 告警触发点</div>' : ''}</div>`
       }
     },
@@ -665,6 +738,8 @@ const updateChart = () => {
         fontSize: 10,
         color: '#666',
         interval: Math.max(1, Math.floor((labels || []).length / 8)),
+        showMaxLabel: labels.length <= 2000,
+        showMinLabel: labels.length <= 2000,
         formatter: (val: string) => {
           const t = val.replace('T', ' ')
           const parts = t.split(/[\s-:]/)
@@ -687,12 +762,22 @@ const updateChart = () => {
       name: main.seriesName || main.attrName,
       type: 'line',
       data: main.values,
-      smooth: true, symbol: 'circle',
-      symbolSize: (_v: number, params: any) => alarmIndices.includes(params.dataIndex) ? 10 : 5,
-      itemStyle: { color: (params: any) => alarmIndices.includes(params.dataIndex) ? '#f56c6c' : '#409eff' },
+      // 大数据量性能优化
+      large: isLarge,
+      largeThreshold: 500,
+      sampling: isLarge ? 'lttb' : undefined,
+      progressive: isLarge ? 400 : 0,
+      progressiveThreshold: 500,
+      // 常规样式
+      smooth: !isLarge,        // 大数据时关闭平滑以减少计算
+      symbol: isLarge ? 'none' : 'circle',
+      symbolSize: isLarge ? 4 : ((_v: number, params: any) => alarmIdxSet.has(params.dataIndex) ? 10 : 5),
+      itemStyle: {
+        color: (params: any) => alarmIdxSet.has(params.dataIndex) ? '#f56c6c' : '#409eff',
+      },
       lineStyle: { width: 2, color: '#409eff' },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(64,158,255,.3)' }, { offset: 1, color: 'rgba(64,158,255,.05)' }]) },
-      markPoint: {
+      areaStyle: isLarge ? undefined : { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(64,158,255,.3)' }, { offset: 1, color: 'rgba(64,158,255,.05)' }]) },
+      markPoint: alarmIndices.length > 0 ? {
         data: alarmIndices.map((idx, i) => ({
           name: `告警点${i + 1}`,
           coord: [idx, main.values[idx]],
@@ -701,16 +786,21 @@ const updateChart = () => {
           symbol: 'pin', symbolSize: 40,
           label: { show: true, formatter: '⚠️', fontSize: 14 }
         }))
-      }
+      } : undefined,
     }],
     dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', show: true, start: 0, end: 100, height: 20, bottom: 0 }]
-  }, true)
+  }, true)  // notMerge: 全量替换，避免大数据量下增量 diff 开销
 }
 
-const handleResize = () => { chartInstance?.resize() }
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+const handleResize = () => {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => { chartInstance?.resize() }, 100)
+}
 
 onMounted(() => { window.addEventListener('resize', handleResize) })
 onUnmounted(() => {
+  if (resizeTimer) clearTimeout(resizeTimer)
   window.removeEventListener('resize', handleResize)
   chartInstance?.dispose()
   chartInstance = null
@@ -989,6 +1079,11 @@ const handleClose = () => { emit('update:modelValue', false) }
 .tab-search { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
 .tab-sch-inp { width: 180px; }
 .tab-sch-date { width: 240px; }
+
+.tab-pagination {
+  margin-top: 8px;
+  flex-shrink: 0;
+}
 
 /* 表头恢复正常样式（不加粗、字号 12px），覆盖全局 .table-wrap 内的偏粗表头 */
 :deep(.el-table th.el-table__cell) {

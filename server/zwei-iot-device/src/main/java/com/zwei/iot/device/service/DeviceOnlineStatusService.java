@@ -7,11 +7,13 @@ import com.zwei.iot.device.domain.DeviceOnlineStatus;
 import com.zwei.iot.device.mapper.DeviceOnlineStatusMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * 设备在线状态服务。
@@ -30,6 +32,21 @@ public class DeviceOnlineStatusService {
     @Autowired
     public DeviceOnlineStatusService(DeviceOnlineStatusMapper mapper) {
         this.mapper = mapper;
+    }
+
+    /**
+     * 启动恢复: 异常关闭后 MQTT broker 无留存连接，将所有在线状态重置为离线。
+     * <p>
+     * 监听 {@link ApplicationReadyEvent}（在所有 Bean 初始化、MQTT broker 启动完毕后触发），
+     * 确保设备在启动期间重连成功后不会被误重置为离线。
+     */
+    @EventListener
+    public void onApplicationReady(ApplicationReadyEvent event) {
+        String now = LocalDateTime.now().format(DT_FMT);
+        int affected = mapper.resetAllOnlineToOffline(now);
+        if (affected > 0) {
+            log.info("启动恢复: 已将 {} 台设备在线状态重置为离线", affected);
+        }
     }
 
     /**
@@ -74,6 +91,25 @@ public class DeviceOnlineStatusService {
      */
     public DeviceOnlineStatus getByDeviceId(Long deviceId) {
         return mapper.selectByDeviceId(deviceId);
+    }
+
+    /**
+     * 对账: 根据 MQTT broker 实际在线设备列表，将不在其中的设备标记为离线。
+     *
+     * @param connectedDeviceIds 当前实际在线的设备 ID 列表（来自 MqttDeviceSessionRegistry）
+     */
+    public void reconcileOffline(List<Long> connectedDeviceIds) {
+        String now = LocalDateTime.now().format(DT_FMT);
+        int affected;
+        if (connectedDeviceIds == null || connectedDeviceIds.isEmpty()) {
+            affected = mapper.resetAllOnlineToOffline(now);
+        } else {
+            affected = mapper.markOfflineExcept(now, connectedDeviceIds);
+        }
+        if (affected > 0) {
+            log.info("设备在线对账: 已将 {} 台设备标记为离线 (当前实际在线 {} 台)",
+                    affected, connectedDeviceIds == null ? 0 : connectedDeviceIds.size());
+        }
     }
 
     private void insertLog(Long deviceId, String eventType, String clientId, String clientIp, String reason) {

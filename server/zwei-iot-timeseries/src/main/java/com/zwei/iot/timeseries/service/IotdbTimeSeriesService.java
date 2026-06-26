@@ -336,10 +336,10 @@ public class IotdbTimeSeriesService {
     }
 
     /**
-     * 查询指定时间范围内的指标序列（按动态 interval 降采样,使用 AVG 聚合）。
+     * 降采样查询（抽稀策略）：按指定 interval 对时间范围分桶，每桶返回最后一条实际测量值。
      *
-     * <p>用于图表自动降采样路径:当区间估算点数超过阈值时,调用此方法按 IoTDB
-     * {@code GROUP BY ([start, end), interval)} 降采样,避免全量物化原始点。</p>
+     * <p>与 AVG 不同，{@code LAST_VALUE} 取桶内最近端点的原始数据点作为代表值，
+     * 避免平均值抹平地质灾害监测中的关键极值信号（如位移突跳、水位骤升等）。</p>
      *
      * @param deviceId  设备ID
      * @param sensorCode  传感器编号
@@ -347,7 +347,7 @@ public class IotdbTimeSeriesService {
      * @param startTime 开始时间,毫秒时间戳
      * @param endTime   结束时间,毫秒时间戳
      * @param interval  IoTDB GROUP BY 间隔字符串(如 "1m"、"6h"、"1d")
-     * @return 降采样后的时序结果集合
+     * @return 抽稀后的时序结果集合
      * @throws ServiceException 当查询失败时抛出
      */
     public List<IotdbQueryRow> queryRangeDownsampled(Long deviceId, String sensorCode, String attrCode,
@@ -355,7 +355,7 @@ public class IotdbTimeSeriesService {
         ensureMeasurement(attrCode, deviceId, sensorCode, "DOUBLE", "GORILLA");
         ensureMeasurement("quality", deviceId, sensorCode, "INT32", "RLE");
         String sensorPath = pathResolver.buildSensorPath(deviceId, sensorCode);
-        String aggFunc = "AVG";
+        String aggFunc = "LAST_VALUE";
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(aggFunc).append("(").append(attrCode).append("), ")
                 .append(aggFunc).append("(quality) FROM ")

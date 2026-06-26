@@ -103,11 +103,11 @@ class MonitorDataQueryServiceTest {
     }
 
     @Test
-    @DisplayName("大范围(1年,默认valueType) → 自动降采样,sampled=true")
+    @DisplayName("大范围 + granularity=auto → 自动降采样,sampled=true")
     void chart_largeRange_autoDownsample() {
         List<ChartDataVO> result = service.chart(
                 1L, null, null, "rainfall",
-                null, "2023-01-01 00:00:00", "2024-01-01 00:00:00", null);
+                null, "2023-01-01 00:00:00", "2024-01-01 00:00:00", "auto");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).sampled()).isTrue();
@@ -117,6 +117,20 @@ class MonitorDataQueryServiceTest {
                 anyLong(), anyLong(), anyString());
         verify(iotdbService, never()).queryRangeWithLimit(
                 any(), anyString(), anyString(), any(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("大范围 + granularity=null → raw 数据，不自动降采样")
+    void chart_largeRange_nullGranularity_usesRaw() {
+        List<ChartDataVO> result = service.chart(
+                1L, null, null, "rainfall",
+                null, "2023-01-01 00:00:00", "2024-01-01 00:00:00", null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).sampled()).isFalse();
+        assertThat(result.get(0).downsampleInterval()).isNull();
+        verify(iotdbService, never()).queryRangeDownsampled(
+                any(), anyString(), anyString(), any(), any(), anyString());
     }
 
     @Test

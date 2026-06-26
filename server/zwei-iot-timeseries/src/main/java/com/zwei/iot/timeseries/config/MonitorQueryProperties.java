@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  *   <li>{@code maxChartPoints} — 图表最大返回点数阈值，默认 2000。区间估算点数超过此值时自动降采样</li>
  *   <li>{@code downsampleEstimateHz} — 点数估算频率（点/秒），默认 1.0（保守值，即 1Hz）</li>
  *   <li>{@code rawLimitCap} — raw 查询路径的硬 LIMIT 上限，默认 4000，防止 OOM</li>
- *   <li>{@code downsampleFunc} — 降采样聚合函数，默认 AVG（保趋势，地质累计指标适用）</li>
+ *   <li>{@code downsampleFunc} — 降采样聚合函数，默认 LAST_VALUE（抽稀策略，保留实际测量值，避免均值抹平极端信号）</li>
  *   <li>{@code maxMergeRows} — 多测点分页合并行数上限，默认 5000，防止深翻页内存放大</li>
  *   <li>{@code sliceCount} — 时间区间均分份数，默认 1（不启用）。设为 3 则 30d 自动切为 3×10d 查询</li>
  * </ul>
@@ -29,7 +29,7 @@ public class MonitorQueryProperties {
     private int maxChartPoints = 2000;
     private double downsampleEstimateHz = 1.0;
     private int rawLimitCap = 4000;
-    private String downsampleFunc = "AVG";
+    private String downsampleFunc = "LAST_VALUE";
     private int maxMergeRows = 5000;
     /** 时间切片份数：raw 查询时自动将时间范围均分为 N 份，每份独立查询。如 3=30d切3×10d */
     private int sliceCount = 3;
