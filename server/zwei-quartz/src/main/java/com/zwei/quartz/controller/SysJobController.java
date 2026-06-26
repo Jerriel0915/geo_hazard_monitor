@@ -165,6 +165,7 @@ public class SysJobController extends BaseController
         }
         SysJob newJob = jobService.selectJobById(job.getJobId());
         newJob.setStatus(job.getStatus());
+        newJob.setUpdateBy(getUsername());
         return toAjax(jobService.changeStatus(newJob));
     }
 

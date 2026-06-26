@@ -25,6 +25,7 @@ import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.util.ClassUtils;
 import com.zwei.common.utils.StringUtils;
+import com.zwei.framework.plugin.AuditFieldInterceptor;
 
 /**
  * Mybatis支持*匹配扫描包
@@ -118,6 +119,11 @@ public class MyBatisConfig
     }
 
     @Bean
+    public AuditFieldInterceptor auditFieldInterceptor() {
+        return new AuditFieldInterceptor();
+    }
+
+    @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception
     {
         String typeAliasesPackage = env.getProperty("mybatis.typeAliasesPackage");
@@ -131,6 +137,7 @@ public class MyBatisConfig
         sessionFactory.setTypeAliasesPackage(typeAliasesPackage);
         sessionFactory.setMapperLocations(resolveMapperLocations(StringUtils.split(mapperLocations, ",")));
         sessionFactory.setConfigLocation(new DefaultResourceLoader().getResource(configLocation));
+        sessionFactory.setPlugins(auditFieldInterceptor());
         return sessionFactory.getObject();
     }
 }

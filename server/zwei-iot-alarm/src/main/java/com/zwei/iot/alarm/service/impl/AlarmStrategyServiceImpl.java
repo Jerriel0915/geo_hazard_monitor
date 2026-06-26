@@ -6,6 +6,7 @@ import com.zwei.iot.alarm.domain.AlarmStrategyHazardPoint;
 import com.zwei.iot.alarm.mapper.AlarmStrategyHazardPointMapper;
 import com.zwei.iot.alarm.mapper.AlarmStrategyMapper;
 import com.zwei.iot.alarm.service.IAlarmStrategyService;
+import com.zwei.common.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,7 +78,8 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     @Override
     public int toggle(Long id, Integer isEnabled) {
         AlarmStrategy update = AlarmStrategy.builder()
-                .id(id).isEnabled(isEnabled).updateTime(new Date()).build();
+                .id(id).isEnabled(isEnabled)
+                .updateBy(SecurityUtils.getUsername()).updateTime(new Date()).build();
         return strategyMapper.updateStrategy(update);
     }
 

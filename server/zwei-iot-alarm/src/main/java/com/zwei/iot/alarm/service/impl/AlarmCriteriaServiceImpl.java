@@ -2,6 +2,7 @@ package com.zwei.iot.alarm.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.zwei.common.exception.ServiceException;
+import com.zwei.common.utils.SecurityUtils;
 import com.zwei.iot.alarm.domain.AlarmCriteria;
 import com.zwei.iot.alarm.domain.AlarmCriteriaLog;
 import com.zwei.iot.alarm.mapper.AlarmCriteriaLogMapper;
@@ -109,7 +110,8 @@ public class AlarmCriteriaServiceImpl implements IAlarmCriteriaService {
 
     @Override
     public int toggle(Long id, Integer isEnabled) {
-        AlarmCriteria update = AlarmCriteria.builder().id(id).isEnabled(isEnabled).updateTime(new Date()).build();
+        AlarmCriteria update = AlarmCriteria.builder().id(id).isEnabled(isEnabled)
+                .updateBy(SecurityUtils.getUsername()).updateTime(new Date()).build();
         int rows = criteriaMapper.updateCriteria(update);
         if (rows > 0) {
             cacheService.refresh();

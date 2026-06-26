@@ -207,6 +207,7 @@ public class SysRoleController extends BaseController
         role.setDataScope(request.getDataScope() == null ? null : String.valueOf(request.getDataScope()));
         role.setDeptIds(request.getDeptIds() == null ? null : request.getDeptIds().toArray(new Long[0]));
         role.setMenuIds(request.getMenuIds() == null ? null : request.getMenuIds().toArray(new Long[0]));
+        role.setUpdateBy(getUsername());
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(id);
         return toAjax(roleService.authDataScope(role));
