@@ -5,7 +5,9 @@ import {
     deleteHazardPointGroup,
     getHazardPointGroups,
     updateHazardPointGroup,
+    type HazardPointGroupRaw,
 } from '@/api/hazardPoint'
+import type {FormItemRule} from 'element-plus'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 
 // ---------------------------------------------------------------------------
@@ -53,7 +55,7 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
         sortOrder: 0,
     })
 
-    const validateGroupName = (_rule: any, value: string, callback: any) => {
+    const validateGroupName = (_rule: FormItemRule, value: string, callback: (error?: Error) => void) => {
         if (!value) {
             callback();
             return
@@ -99,9 +101,9 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
     const loadGroupList = async () => {
         loadingGroups.value = true
         try {
-            const response: any = await getHazardPointGroups()
+            const response = await getHazardPointGroups()
             if (response.code === 200) {
-                const groups = response.data.map((item: any) => ({
+                const groups = response.data.map((item: HazardPointGroupRaw) => ({
                     id: String(item.id),
                     name: item.name,
                     code: item.code,
@@ -193,7 +195,7 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
     // ── Select-dropdown wrappers ──
     const handleAddGroupFromSelect = () => handleAddGroup()
 
-    const handleEditGroupFromSelect = (option: any) => {
+    const handleEditGroupFromSelect = (option: { id: string }) => {
         const group = groupList.value.find((g) => g.id === option.id)
         if (!group || group.id === 'all' || group.id === '1') {
             ElMessage.warning('该分组不允许修改')
@@ -210,7 +212,7 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
         groupDialogVisible.value = true
     }
 
-    const handleDeleteGroupFromSelect = (option: any) => {
+    const handleDeleteGroupFromSelect = (option: { id: string }) => {
         const group = groupList.value.find((g) => g.id === option.id)
         if (group) handleDeleteGroup(group)
     }
@@ -250,14 +252,14 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
         })
             .then(async () => {
                 try {
-                    const res: any = await deleteHazardPointGroup(group.id)
+                const res = await deleteHazardPointGroup(group.id)
                     if (res.code === 200) {
                         ElMessage.success('删除成功')
                         loadGroupList()
                     } else {
                         ElMessage.error(res.msg || '删除失败')
                     }
-                } catch (error: any) {
+                } catch (error) {
                     console.error('删除失败:', error)
                     const status = error?.response?.status
                     showRequestErrorMessage(error, '删除失败')
@@ -273,23 +275,20 @@ export function useHazardPointGroups(opts: UseHazardPointGroupsOptions) {
         groupFormRef.value.validate(async (valid: boolean) => {
             if (!valid) return
             try {
-                let res: any
-                if (isEditGroup.value) {
-                    res = await updateHazardPointGroup(groupFormData.id, {
+                const res = isEditGroup.value
+                    ? await updateHazardPointGroup(groupFormData.id, {
                         name: groupFormData.name,
                         description: groupFormData.description,
                         sortOrder: groupFormData.sortOrder,
                         status: 1,
                     })
-                } else {
-                    res = await createHazardPointGroup({
+                    : await createHazardPointGroup({
                         code: `G${Date.now()}`,
                         name: groupFormData.name,
                         description: groupFormData.description,
                         sortOrder: groupFormData.sortOrder,
                         status: 1,
                     })
-                }
                 if (res.code === 200) {
                     ElMessage.success(isEditGroup.value ? '修改成功' : '新增成功')
                     groupDialogVisible.value = false

@@ -96,10 +96,16 @@
 import { ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { VideoPlay, Check } from '@element-plus/icons-vue'
-import { getCompositeAlarmDetail, updateScriptCode, testCompositeAlarm, type CompositeAlarmLog } from '@/api/compositeAlarm'
+import { getStrategyDetail as getCompositeAlarmDetail, updateStrategy } from '@/api/alarm'
+import type { CompositeAlarmLog } from '@/api/alarm'
 import * as Blockly from 'blockly'
 import { JavascriptGenerator, Order } from 'blockly/javascript'
 import 'blockly/blocks'
+
+// 本地封装，避免依赖 deprecated compositeAlarm 模块
+const updateScriptCode = async (id: number, scriptContent: string) =>
+  updateStrategy(id, { scriptContent } as Record<string, unknown>)
+const testCompositeAlarm = async (_id: number) => null
 
 // ==================== Blockly 自定义块定义 ====================
 

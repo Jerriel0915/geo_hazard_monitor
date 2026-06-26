@@ -588,10 +588,6 @@ const handleFeedbackSubmit = async (data: { content: string; files: File[] }) =>
 
 // 添加通知提交处理
 const handleNotifySubmit = (data: { content: string; channels: { sms: boolean; email: boolean; system: boolean }; personnel: string }) => {
-  console.log('消息内容:', data.content)
-  console.log('通知渠道:', data.channels)
-  console.log('通知人员:', data.personnel)
-
   // 构建渠道显示文本
   const channels = []
   if (data.channels.sms) channels.push('短信')

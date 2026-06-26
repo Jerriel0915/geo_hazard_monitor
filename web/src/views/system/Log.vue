@@ -378,7 +378,7 @@ const opQuery = useLogQuery<{
   execStatus: string;
   timeRange: string[]
 }, OperationLogRecord>({
-  endpoint: '/api/v1/logs/operations/page',
+  endpoint: '/logs/operations/page',
   initialForm: {username: '', title: '', apiPath: '', execStatus: '', timeRange: getDefaultTimeRange()}
 })
 const authQuery = useLogQuery<{
@@ -387,7 +387,7 @@ const authQuery = useLogQuery<{
   resultStatus: string;
   timeRange: string[]
 }, AuthLogRecord>({
-  endpoint: '/api/v1/logs/auth/page',
+  endpoint: '/logs/auth/page',
   initialForm: {username: '', authEventType: '', resultStatus: '', timeRange: getDefaultTimeRange()}
 })
 const runtimeQuery = useLogQuery<{
@@ -396,7 +396,7 @@ const runtimeQuery = useLogQuery<{
   keyword: string;
   timeRange: string[]
 }, RuntimeLogRecord>({
-  endpoint: '/api/v1/logs/runtime/page',
+  endpoint: '/logs/runtime/page',
   initialForm: {level: '', loggerName: '', keyword: '', timeRange: getDefaultTimeRange()}
 })
 

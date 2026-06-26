@@ -165,7 +165,7 @@ import echarts from '@/utils/echarts'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {type DashboardFullVO, getDashboardFull} from '@/api/monitor'
-import {getRealtimeAlarmPage} from '@/api/realtimeAlarm'
+import {getPendingAlarms} from '@/api/alarm'
 import {getHazardPointPage} from '@/api/hazardPoint'
 import {TIANDITU_KEY as TK, loadTiandituKey} from '@/composables/useLeafletMap'
 
@@ -375,7 +375,7 @@ async function loadAll(){
 
 async function loadAlarms(){
   try{
-    const r: any = await getRealtimeAlarmPage({pageNum:1,pageSize:50})
+    const r: any = await getPendingAlarms({pageNum:1,pageSize:50})
     if(r && r.rows){
       const rows:any[]=r.rows||[]
       const cnt:Record<string,number>={critical:0,major:0,minor:0,info:0}

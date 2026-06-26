@@ -1,6 +1,6 @@
-import axios from 'axios'
 import {ElMessage} from 'element-plus'
 import {reactive, ref, type Ref} from 'vue'
+import request from '@/utils/request'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 
 // ---------------------------------------------------------------------------
@@ -38,11 +38,6 @@ export interface LogQueryReturn<T extends Record<string, any>, R> {
 // Composable
 // ---------------------------------------------------------------------------
 
-function requestHeaders() {
-    const token = localStorage.getItem('token')
-    return {Authorization: token ? `Bearer ${token}` : ''}
-}
-
 function buildTimeParams(range: string[]) {
     return {
         startTime: range?.length === 2 ? range[0] : undefined,
@@ -76,7 +71,7 @@ export function useLogQuery<T extends Record<string, any>, R>(
                 },
                 {},
             )
-            const response = await axios.get<{
+            const response = await request.get<{
                 code: number;
                 msg: string;
                 data: { rows: R[]; total: number }
@@ -88,13 +83,12 @@ export function useLogQuery<T extends Record<string, any>, R>(
                     ...buildTimeParams((searchForm as any).timeRange || []),
                     ...(opts.extraParams?.() || {}),
                 },
-                headers: requestHeaders(),
             })
-            if (response.data.code === 200) {
-                records.value = response.data.data.rows || []
-                pagination.total = response.data.data.total || 0
+            if (response.code === 200) {
+                records.value = response.data?.rows || []
+                pagination.total = response.data?.total || 0
             } else {
-                ElMessage.error(response.data.msg || '获取日志失败')
+                ElMessage.error(response.msg || '获取日志失败')
             }
         } catch (error) {
             showRequestErrorMessage(error, '获取日志失败')

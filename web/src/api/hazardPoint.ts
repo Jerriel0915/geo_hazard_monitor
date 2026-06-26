@@ -1,3 +1,4 @@
+import type {AjaxResult, PageResult} from './system'
 import request from '@/utils/request'
 
 export interface HazardPointListParams {
@@ -7,6 +8,25 @@ export interface HazardPointListParams {
   name?: string
   groupId?: number
   status?: number
+}
+
+export interface HazardPointRaw {
+  id: number
+  code: string
+  name: string
+  groupId?: number
+  groupName: string
+  status: number
+  statusName?: string
+  longitude?: number
+  latitude?: number
+  boundaryCoords?: string
+  description?: string
+  deviceCount: number
+  createTime?: string
+  createBy?: string
+  updateBy?: string
+  updateTime?: string
 }
 
 export interface HazardPointPayload {
@@ -36,31 +56,31 @@ export interface GroupPayload {
   status: number
 }
 
-export function getHazardPointPage(params: HazardPointListParams) {
+export function getHazardPointPage(params: HazardPointListParams): Promise<AjaxResult<PageResult<HazardPointRaw>>> {
   return request.get('/hazard-points/page', { params })
 }
 
-export function getHazardPointDetail(id: string) {
+export function getHazardPointDetail(id: string): Promise<AjaxResult<HazardPointRaw>> {
   return request.get(`/hazard-points/${id}`)
 }
 
-export function createHazardPoint(data: HazardPointPayload) {
+export function createHazardPoint(data: HazardPointPayload): Promise<AjaxResult<HazardPointRaw>> {
   return request.post('/hazard-points', data)
 }
 
-export function updateHazardPoint(id: string, data: HazardPointPayload) {
+export function updateHazardPoint(id: string, data: HazardPointPayload): Promise<AjaxResult<HazardPointRaw>> {
   return request.put(`/hazard-points/${id}`, data)
 }
 
-export function pauseHazardPoint(id: string, pause: boolean) {
+export function pauseHazardPoint(id: string, pause: boolean): Promise<AjaxResult<null>> {
   return request.put(`/hazard-points/${id}/pause`, { pause })
 }
 
-export function completeHazardPoint(id: string) {
+export function completeHazardPoint(id: string): Promise<AjaxResult<null>> {
   return request.put(`/hazard-points/${id}/complete`, {})
 }
 
-export function batchOperateHazardPoints(ids: number[], operation: 'pause' | 'resume' | 'complete') {
+export function batchOperateHazardPoints(ids: number[], operation: 'pause' | 'resume' | 'complete'): Promise<AjaxResult<null>> {
   return request.put('/hazard-points/batch/operate', { ids, operation })
 }
 
@@ -68,19 +88,28 @@ export function exportHazardPoints(data: HazardPointExportPayload) {
   return request.raw.post('/hazard-points/export', data, { responseType: 'blob' })
 }
 
-export function getHazardPointGroups() {
+export function getHazardPointGroups(): Promise<AjaxResult<HazardPointGroupRaw[]>> {
   return request.get('/hazard-point-groups')
 }
 
-export function createHazardPointGroup(data: GroupPayload) {
+export interface HazardPointGroupRaw {
+  id: number
+  code: string
+  name: string
+  description: string
+  sortOrder: number
+  status: number
+}
+
+export function createHazardPointGroup(data: GroupPayload): Promise<AjaxResult<HazardPointGroupRaw>> {
   return request.post('/hazard-point-groups', data)
 }
 
-export function updateHazardPointGroup(id: string, data: Omit<GroupPayload, 'code'>) {
+export function updateHazardPointGroup(id: string, data: Omit<GroupPayload, 'code'>): Promise<AjaxResult<HazardPointGroupRaw>> {
   return request.put(`/hazard-point-groups/${id}`, data)
 }
 
-export function deleteHazardPointGroup(id: string) {
+export function deleteHazardPointGroup(id: string): Promise<AjaxResult<null>> {
   return request.delete(`/hazard-point-groups/${id}`)
 }
 

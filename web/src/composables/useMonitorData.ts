@@ -110,9 +110,9 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       return
     }
     try {
-      const res: any = await getBoundDevices(String(hpId))
-      const list = res.data || res || []
-      devices.value = (Array.isArray(list) ? list : []).map((d: any) => ({
+      const res = await getBoundDevices(String(hpId))
+      const list = (res as Record<string, unknown>).data || res || []
+      devices.value = (Array.isArray(list) ? list : []).map((d: Record<string, unknown>) => ({
         deviceId: d.deviceId,
         deviceName: d.deviceName,
         deviceCode: d.deviceCode,
@@ -148,8 +148,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         filter.sensorId = firstSensor.id
         selectSensor(firstSensor.id)
       }
-    } catch (error: any) {
-      if (error?.name !== 'AbortError' && error?.code !== 'ERR_CANCELED') {
+    } catch (error) {
+      if ((error as { name?: string; code?: string })?.name !== 'AbortError' && (error as { code?: string })?.code !== 'ERR_CANCELED') {
         showRequestErrorMessage(error, '获取传感器列表失败')
       }
     }
@@ -241,7 +241,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
                 sum += r.value
               }
             }
-            const attrDef = sensor.attrList?.find((a: any) => a.attrCode === attrCode)
+            const attrDef = sensor.attrList?.find((a) => a.attrCode === attrCode)
             const attrDisplayName = attrDef?.attrName || attrCode
             seriesList.push({
               seriesName: attrDisplayName,
@@ -260,12 +260,12 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         } else {
           // 表格模式：扁平化所有 attrCode 的数据行（保留 attrCode 归属）
             // 后端 ORDER BY TIME DESC，表格也按正序排列（时间由旧到新）
-          const flatRows: Array<{ attrCode: string; row: any }> = []
+          const flatRows: Array<{ attrCode: string; row: Record<string, unknown> }> = []
           for (const [code, rows] of Object.entries(dataMap)) {
               for (const r of [...rows].reverse()) flatRows.push({attrCode: code, row: r})
           }
           tableData.value = flatRows.map(({ attrCode: code, row: r }) => {
-            const attrDef = sensor.attrList?.find((a: any) => a.attrCode === code)
+            const attrDef = sensor.attrList?.find((a) => a.attrCode === code)
             const attrDisplayName = attrDef?.attrName || code
             return {
               hazardPointId: 0,

@@ -11,6 +11,7 @@ import {
     getDevicePage,
     updateDevice as updateDeviceApi,
 } from '@/api/device'
+import {type SensorItem} from '@/api/sensor'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,7 +60,7 @@ export function useDeviceCrud() {
         longitude: number | null
         latitude: number | null
         status: number
-        sensorList: any[]
+        sensorList: SensorItem[]
         boundHazardPointId: number | null
     }>({
         code: '',
@@ -294,7 +295,7 @@ export function useDeviceCrud() {
             dialogVisible.value = false;
             await loadTableData()
             return result
-        } catch (error: any) {
+        } catch (error) {
             showRequestErrorMessage(error, '新增设备失败');
             return null
         } finally {
@@ -322,7 +323,7 @@ export function useDeviceCrud() {
             ElMessage.success('修改成功');
             dialogVisible.value = false;
             await loadTableData()
-        } catch (error: any) {
+        } catch (error) {
             showRequestErrorMessage(error, '修改设备失败')
         } finally {
             submitLoading.value = false
@@ -404,7 +405,7 @@ export function useDeviceCrud() {
             a.click()
             URL.revokeObjectURL(url)
             ElMessage.success('导出成功')
-        } catch (error: any) {
+        } catch (error) {
             showRequestErrorMessage(error, '导出失败')
         }
     }

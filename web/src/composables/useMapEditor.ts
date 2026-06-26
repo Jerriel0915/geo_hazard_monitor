@@ -93,7 +93,7 @@ function ensureDraggableVertex(
       draggable: true
     }).addTo(map)
     m.on('dragstart', () => opts.onDragStart())
-    m.on('drag', (e: any) => {
+    m.on('drag', (e: L.LeafletEvent) => {
       if (!opts.canMove()) {
         const sb = opts.snapBackTo()
         e.target.setLatLng([sb.lat, sb.lng])
@@ -103,7 +103,7 @@ function ensureDraggableVertex(
       opts.onDrag({lat: ll.lat, lng: ll.lng})
     })
     m.on('dragend', () => opts.onDragEnd())
-    m.on('click', (e: any) => {
+    m.on('click', (e: L.LeafletEvent) => {
       L.DomEvent.stopPropagation(e)
       opts.onClick()
     })
@@ -513,7 +513,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
           draggable: true
         }).addTo(map)
         centerMarker.value.on('dragstart', () => { draggingCenter.value = true })
-        centerMarker.value.on('drag', (e: any) => {
+        centerMarker.value.on('drag', (e: L.LeafletEvent) => {
           if (mode.value !== 'edit' || !canEdit.value) {
             e.target.setLatLng([center.value!.lat, center.value!.lng])
             return
@@ -522,7 +522,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
           moveCenter({ lat: ll.lat, lng: ll.lng })
         })
         centerMarker.value.on('dragend', () => { draggingCenter.value = false })
-        centerMarker.value.on('click', (e: any) => L.DomEvent.stopPropagation(e))
+        centerMarker.value.on('click', (e: L.LeafletEvent) => L.DomEvent.stopPropagation(e))
       }
     } else if (!center.value && centerMarker.value) {
       centerMarker.value.remove()
@@ -546,7 +546,7 @@ export function useMapEditor(options: UseMapEditorOptions): UseMapEditorReturn {
             draggable: !options.readonly
           }).addTo(map)
           pointMarker.value.on('dragstart', () => { draggingPoint.value = true })
-          pointMarker.value.on('dragend', (e: any) => {
+          pointMarker.value.on('dragend', (e: L.LeafletEvent) => {
             draggingPoint.value = false
             const ll = e.target.getLatLng()
             localPoint.value = { lat: ll.lat, lng: ll.lng }

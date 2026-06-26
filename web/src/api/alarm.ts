@@ -489,3 +489,25 @@ export const updateDispatchRule = (id: number, payload: AlarmDispatchRuleCreateP
 /** 删除分发规则 */
 export const deleteDispatchRule = (id: number) =>
     request.delete(`/alarm/dispatch/${id}`)
+
+// ==================== 从 compositeAlarm.ts 迁移的类型 ====================
+
+/** 综合告警策略执行日志 */
+export interface CompositeAlarmLog {
+  id: number
+  alarmId: number
+  triggerTime: string
+  triggerMode: string
+  durationMs: number
+  status: string
+  output?: string
+  errorMsg?: string
+}
+
+/** 隐患点选项（供告警策略范围选择器使用） */
+export interface HazardPointOption {
+  id: number
+  name: string
+  parentId?: number
+  children?: HazardPointOption[]
+}

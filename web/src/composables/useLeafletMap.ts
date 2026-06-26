@@ -9,8 +9,8 @@ export let TIANDITU_KEY = '8dda07d4649c77efd0537a0ff0a1df13'
 export async function loadTiandituKey(): Promise<string> {
   try {
     const {default: request} = await import('@/utils/request')
-    const res: any = await request.get('/system/config/configKey/tianditu_key')
-    const val = res?.data ?? res?.msg ?? res
+    const res = await request.get<{ data?: string; msg?: string; configValue?: string }>('/system/config/configKey/tianditu_key')
+    const val = res?.data ?? res?.msg ?? (res as Record<string, unknown>).configValue
     if (val && typeof val === 'string' && val.trim()) {
       TIANDITU_KEY = val.trim()
     }

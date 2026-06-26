@@ -30,7 +30,21 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getHazardPointOptions, getCompositeAlarmScopes, updateCompositeAlarmScopes, type HazardPointOption } from '@/api/compositeAlarm'
+import { getStrategyScope, updateStrategy } from '@/api/alarm'
+import { getHazardPointPage, type HazardPointRaw } from '@/api/hazardPoint'
+import type { HazardPointOption } from '@/api/alarm'
+
+// 本地封装，避免依赖 deprecated compositeAlarm 模块
+const getHazardPointOptions = async (): Promise<HazardPointOption[]> => {
+  const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 }) as Record<string, unknown>
+  return (res?.rows as HazardPointRaw[] || []).map((hp) => ({ id: hp.id, name: hp.name }))
+}
+const getCompositeAlarmScopes = async (alarmId: number): Promise<HazardPointOption[]> => {
+  const ids = await getStrategyScope(alarmId) as number[]
+  return (Array.isArray(ids) ? ids : []).map((hpId) => ({ id: hpId, alarmId, hazardPointId: hpId }))
+}
+const updateCompositeAlarmScopes = async (alarmId: number, hpIds: number[]) =>
+  updateStrategy(alarmId, { hazardPointIds: hpIds } as Record<string, unknown>)
 
 const props = defineProps<{
   visible: boolean
