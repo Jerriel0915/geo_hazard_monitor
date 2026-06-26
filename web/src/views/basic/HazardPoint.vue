@@ -329,6 +329,7 @@
         v-model:visible="detailDialogVisible"
         :hazard-point="currentRow"
         :bound-devices="boundDevices"
+        :bound-video-devices="boundVideoDevices"
         :alarm-criteria-list="alarmCriteriaList"
         :dispatch-rules="dispatchRules"
     />
@@ -814,9 +815,41 @@ import {
 import {type GroupItem, useHazardPointGroups} from './composables/useHazardPointGroups'
 import {type DispatchRule, useHazardPointAlarm} from './composables/useHazardPointAlarm'
 import {type BoundDevice, useHazardPointDeviceBind} from './composables/useHazardPointDeviceBind'
+import {getBoundVideoDevices} from '@/api/hazardPoint'
+
+export interface BoundVideoDevice {
+  videoDeviceId: string
+  deviceCode: string
+  deviceName: string
+  bindTime: string
+  installLongitude?: number | null
+  installLatitude?: number | null
+}
 
 // ── Local refs shared between composables ──
 const boundDevices = ref<BoundDevice[]>([])
+const boundVideoDevices = ref<BoundVideoDevice[]>([])
+
+/** 加载已绑定视频设备 */
+const loadBoundVideoDevices = async (hpId: string) => {
+  try {
+    const resp: any = await getBoundVideoDevices(hpId)
+    if (resp.code === 200) {
+      boundVideoDevices.value = (resp.data || []).map((item: any) => ({
+        videoDeviceId: String(item.videoDeviceId),
+        deviceCode: item.deviceCode,
+        deviceName: item.deviceName,
+        bindTime: item.bindTime,
+        installLongitude: item.installLongitude ?? null,
+        installLatitude: item.installLatitude ?? null,
+      }))
+    } else {
+      boundVideoDevices.value = []
+    }
+  } catch {
+    boundVideoDevices.value = []
+  }
+}
 
 // ── CRUD composable ──
 const selectedGroupId = ref<string | null>(null)
@@ -1047,6 +1080,7 @@ const handleViewAndOpen = async (row: HazardPointItem) => {
   await handleView(row)
   activeTab.value = 'basic'
   await initBoundDevices(row.id)
+  await loadBoundVideoDevices(row.id)
   initAlarmCriteria(row.id)
   initDispatchRules(row.id)
   detailDialogVisible.value = true
