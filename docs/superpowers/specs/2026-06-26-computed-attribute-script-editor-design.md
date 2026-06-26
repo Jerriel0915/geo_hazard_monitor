@@ -42,13 +42,13 @@
 | FR-2 | 顶部黄条状态提示（未测试/测试失败/测试通过） | P0 |
 | FR-3 | 右侧固定 API 文档侧栏，列出 `curData`/`prevData`/`cache`/`sensor` 全部公开方法签名 | P0 |
 | FR-4 | 保存按钮状态机：未修改 → 可用；已修改未测试 → 禁用；测试失败 → 禁用；测试通过 → 可用 | P0 |
-| FR-5 | 测试通过判定：后端 `success=true` 且返回值非 null 且无执行异常 | P0 |
+| FR-5 | 测试通过判定：前端检查后端响应 `success === true`。后端语义已覆盖三个条件（无执行异常 + 返回值非 null + 脚本可编译） | P0 |
 | FR-6 | 在线测试面板（curData/prevData JSON 输入）默认折叠，点击展开 | P1 |
 | FR-7 | 主题：one-dark（与 mockup 一致），等宽字体 Consolas/Monaco | P1 |
 
 ### 非功能性需求
 
-- **包体积**: CodeMirror 6 + lang-groovy gzip 后 ≤ 200 KB
+- **包体积**: CodeMirror 6 + lang-groovy + theme-one-dark，生产 build gzip 后预计 ≤ 200 KB
 - **零后端改动**: 仅前端重构，不新增 API
 - **保留现有交互**: 取消按钮、关闭对话框行为不变
 - **可访问性**: 编辑器支持键盘导航（Tab/方向键）
@@ -76,30 +76,33 @@ web/src/views/basic/components/
 主组件维护两个 ref：
 
 ```typescript
-const dirty = ref(false)       // 用户修改了脚本（对比初始 script prop）
-const testedPassed = ref(false) // 最近一次测试是否通过
-```
+const initialScript = ref('')    // dialog 打开时父组件传入的 script 快照
+const localScript = ref('')      // 当前编辑器内容（可能与 initial 不同）
+const testedPassed = ref(false)  // 最近一次测试是否通过
 
-派生保存按钮状态：
+// dirty 基于内容 diff（而非事件触发）—— 更符合直觉
+const dirty = computed(() => localScript.value !== initialScript.value)
 
-```typescript
-const canSave = computed(() =>
-  !dirty.value || testedPassed.value
-)
+// canSave 派生：未改 OR 已测试通过
+const canSave = computed(() => !dirty.value || testedPassed.value)
 ```
 
 状态转移：
 
 | 当前状态 | 触发动作 | 新状态 | UI 表现 |
 |---|---|---|---|
-| (初始打开) | - | `dirty=false, tested=false` | 保存可用（脚本未改） |
-| 任意 | 编辑器输入 | `dirty=true, tested=false` | 保存禁用，黄条"未测试" |
-| `dirty=true` | 点击运行测试 + 后端成功 | `dirty=true, tested=true` | 保存变绿，绿条"测试通过" |
-| `dirty=true` | 点击运行测试 + 后端失败 | `dirty=true, tested=false` | 保存禁用，红条"测试失败 + 错误详情" |
-| `dirty=true, tested=true` | 编辑器再次输入 | `dirty=true, tested=false` | 保存禁用（再次失效） |
-| 任意 | 点击"重置为模板" | `dirty=true, tested=false` | 保存禁用（视为修改） |
+| (初始打开) | - | `local=initial, tested=false` | dirty=false，保存可用 |
+| 任意 | 编辑器输入使 `local !== initial` | `dirty=true, tested=false` | 保存禁用，黄条"未测试" |
+| `dirty=true` | 点击运行测试 + 后端 success=true | `dirty=true, tested=true` | 保存变绿，绿条"测试通过" |
+| `dirty=true` | 点击运行测试 + 后端 success=false | `dirty=true, tested=false` | 保存禁用，红条"测试失败 + 错误详情" |
+| `dirty=true, tested=true` | 编辑器再次输入（内容仍 != initial） | `dirty=true, tested=false` | 保存禁用（再次失效） |
+| 任意 | 编辑器输入使 `local === initial`（改回原样） | `dirty=false` | 保存可用（视为未修改） |
+| 任意 | 点击"重置为模板"，模板内容 != initial | `dirty=true, tested=false` | 保存禁用 |
+| dialog 重新打开 | 父组件传入新 script | `local=initial=新值, tested=false` | dirty=false，保存可用 |
 
-**初始打开时的 `dirty=false`**：脚本是从父组件传入的已保存版本，假定数据库里的脚本已验证过。允许直接保存（无修改场景）。
+**`dirty` 基于"内容是否与 initial 不同"**：用户改回原样自动解除 dirty，符合直觉。`testedPassed` 在编辑器 input 事件中清空（事件驱动，因为重新测试才能确认当前内容可用）。
+
+**初始打开的 `dirty=false`**：脚本是从父组件传入的已保存版本，假定数据库里的脚本已验证过。允许直接保存（无修改场景）。
 
 ### UI 布局
 
@@ -190,17 +193,22 @@ export const API_DOCS: ApiGroup[] = [
   {
     icon: '🛠', color: '#67c23a', name: 'cache', description: 'Redis 二次封装',
     methods: [
+      // 读取（14 方法，每种类型带/不带默认值两个重载）
       { signature: 'getInt(key, default?)' },
       { signature: 'getLong(key, default?)' },
       { signature: 'getDouble(key, default?)' },
+      { signature: 'getFloat(key, default?)' },
+      { signature: 'getBigDecimal(key, default?)' },
       { signature: 'getString(key, default?)' },
       { signature: 'getBoolean(key, default?)' },
-      { signature: 'set(key, value, ttl?)' },
-      { signature: 'hasKey(key)' },
-      { signature: 'delete(key)' },
-      { signature: 'expire(key, timeout, unit?)' },
-      { signature: 'getExpire(key)' },
-      // ... 其余方法，从 ScriptCacheOps.java 21 个方法提取
+      // 写入（2 方法）
+      { signature: 'set(key, value)' },
+      { signature: 'set(key, value, timeout, unit)' },
+      // 管理（5 方法）
+      { signature: 'delete(key) → boolean' },
+      { signature: 'hasKey(key) → boolean' },
+      { signature: 'expire(key, timeout, unit?) → boolean' },
+      { signature: 'getExpire(key) → long' },
     ]
   },
   {
@@ -250,7 +258,7 @@ const isTestPassed = (result: CalcScriptTestResult): boolean => {
 
 **不引入** `vue-codemirror` 封装 —— CodeMirror 6 的 imperative API 简洁，直接包装 50 行 Vue 组件即可，无需第三方封装。
 
-预计包体积增量：~150 KB gzip（生产 build）。
+预计包体积增量：≤ 200 KB gzip（与上述 NFR 一致）。
 
 ### 现有功能保留
 
@@ -289,12 +297,14 @@ web/src/views/basic/components/script-editor/__tests__/
 ```
 web/src/views/basic/components/__tests__/
 └── CalcScriptEditor.spec.ts
-    ├── 状态机: dirty × tested → canSave
+    ├── 状态机: dirty (内容 diff) × testedPassed → canSave
     ├── 初始打开 dirty=false 可保存
-    ├── 修改后 dirty=true, tested=false 保存禁用
-    ├── 测试成功 tested=true 保存启用
-    ├── 测试失败 tested=false 保存禁用
-    └── 重置模板 dirty=true 保存禁用
+    ├── 修改使 local != initial → dirty=true, tested=false 保存禁用
+    ├── 改回原样 local == initial → dirty=false 保存恢复可用
+    ├── 测试成功 testedPassed=true 保存启用
+    ├── 测试失败 testedPassed=false 保存禁用
+    ├── 测试通过后再次修改 → testedPassed 重置为 false 保存禁用
+    └── 重置模板（模板 != initial）→ dirty=true 保存禁用
 ```
 
 ### 手动验收
