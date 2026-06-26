@@ -114,6 +114,7 @@
           <div class="table-wrap">
             <div class="table-wrap__scroll">
               <el-table :data="online6hSorted" border stripe size="small">
+                  <template #empty><EmptyState description="暂无 6 小时在线率数据" /></template>
                 <el-table-column prop="type" label="监测类型" min-width="140" />
                 <el-table-column prop="total" label="总量" width="80" align="center" />
                 <el-table-column prop="online" label="在线" width="80" align="center" />
@@ -135,6 +136,7 @@
           <div class="table-wrap">
             <div class="table-wrap__scroll">
               <el-table :data="online12hSorted" border stripe size="small">
+                  <template #empty><EmptyState description="暂无 12 小时在线率数据" /></template>
                 <el-table-column prop="type" label="监测类型" min-width="140" />
                 <el-table-column prop="total" label="总量" width="80" align="center" />
                 <el-table-column prop="online" label="在线" width="80" align="center" />
@@ -156,6 +158,7 @@
           <div class="table-wrap">
             <div class="table-wrap__scroll">
               <el-table :data="online24hSorted" border stripe size="small">
+                  <template #empty><EmptyState description="暂无 24 小时在线率数据" /></template>
                 <el-table-column prop="type" label="监测类型" min-width="140" />
                 <el-table-column prop="total" label="总量" width="80" align="center" />
                 <el-table-column prop="online" label="在线" width="80" align="center" />
@@ -176,6 +179,7 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import echarts from '@/utils/echarts'
+import EmptyState from '@/components/EmptyState.vue'
 import {
   type DashboardOverview,
   getDashboardFull,
