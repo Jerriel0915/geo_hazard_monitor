@@ -125,7 +125,6 @@ function clearInputs() {
   font-size: 12px;
   font-weight: 600;
   color: #606266;
-  cursor: pointer;
 }
 
 .panel-body {
