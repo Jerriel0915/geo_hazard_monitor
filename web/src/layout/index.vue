@@ -792,19 +792,7 @@ const handleTabAction = (command: string) => {
 
 const handleUserCommand = async (command: string) => {
   if (command === 'info') {
-    try {
-      const user = await getUserInfo()
-      userInfo.id = user.id
-      userInfo.username = user.username
-      userInfo.realName = user.realName
-      userInfo.phone = user.phone
-      userInfo.email = user.email
-      userInfo.sex = user.sex || ''
-      userInfo.organization = user.orgName || ''
-    } catch {
-      // 保留现有值
-    }
-    infoDialogVisible.value = true
+    router.push('/user/profile')
   } else if (command === 'password') {
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
