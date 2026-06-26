@@ -7,7 +7,6 @@ import com.zwei.iot.device.domain.DeviceOnlineStatus;
 import com.zwei.iot.device.mapper.DeviceOnlineStatusMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
@@ -32,21 +31,6 @@ public class DeviceOnlineStatusService {
     @Autowired
     public DeviceOnlineStatusService(DeviceOnlineStatusMapper mapper) {
         this.mapper = mapper;
-    }
-
-    /**
-     * 启动恢复: 异常关闭后 MQTT broker 无留存连接，将所有在线状态重置为离线。
-     * <p>
-     * 监听 {@link ApplicationReadyEvent}（在所有 Bean 初始化、MQTT broker 启动完毕后触发），
-     * 确保设备在启动期间重连成功后不会被误重置为离线。
-     */
-    @EventListener
-    public void onApplicationReady(ApplicationReadyEvent event) {
-        String now = LocalDateTime.now().format(DT_FMT);
-        int affected = mapper.resetAllOnlineToOffline(now);
-        if (affected > 0) {
-            log.info("启动恢复: 已将 {} 台设备在线状态重置为离线", affected);
-        }
     }
 
     /**
