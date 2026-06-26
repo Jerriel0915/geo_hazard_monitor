@@ -1,5 +1,5 @@
 // web/src/composables/useMonitorData.ts
-import {type MaybeRef, reactive, ref, toValue, watch} from 'vue'
+import {type MaybeRef, computed, reactive, ref, toValue, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import {
   type ChartData,
@@ -73,6 +73,16 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     attrCode: '',
     valueType: 'current',
     timeRange: null as [string, string] | null,
+  })
+
+  // ── 降采样信息 ──
+  const downsampleInfo = computed(() => {
+    const sampled = chartSeries.value.find((s) => s.sampled)
+    if (!sampled) return null
+    return {
+      interval: sampled.downsampleInterval || '',
+      pointCount: sampled.pointCount ?? 0,
+    }
   })
 
   // ── 缓存 ──
@@ -459,6 +469,9 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         smooth: true,
         symbol: 'none' as const,
         sampling: 'lttb' as const,
+        large: true as const,
+        largeThreshold: 2000,
+        progressive: 400,
         areaStyle: {
           color: {
             type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
@@ -488,6 +501,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     tableData,
     loading,
     mode,
+    downsampleInfo,
     // 筛选
     filter,
     // 方法

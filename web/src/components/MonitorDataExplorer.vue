@@ -100,9 +100,12 @@
       </div>
     </div>
 
-    <!-- 数据点过多提示 -->
-    <div v-if="dataPointWarning" class="mde-warning">
-      数据点较多（{{ totalDataPoints }} 点），建议缩小时间范围以提升性能
+    <!-- 降采样 / 大数据量提示 -->
+    <div v-if="downsampleInfo" class="mde-info">
+      已启用大数据优化 · 降采样间隔 {{ downsampleInfo.interval }}，展示 {{ downsampleInfo.pointCount }} 个数据点
+    </div>
+    <div v-else-if="dataPointWarning" class="mde-warning">
+      数据点较多（{{ totalDataPoints }} 点），建议缩小时间范围或启用降采样以提升性能
     </div>
 
     <!-- 图表视图 -->
@@ -111,8 +114,9 @@
       <EChartsWrapper
         v-else-if="chartSeries.length > 0"
         :option="chartOptions"
-        :height="fillContainer ? '100%' : '400px'"
+        :height="fillContainer ? '100%' : '500px'"
         :loading="loading"
+        :show-fullscreen="true"
       />
       <div v-else class="mde-empty">
         <span>暂无数据，请选择条件后点击查询</span>
@@ -211,6 +215,7 @@ const {
   tableData,
   loading,
   mode,
+  downsampleInfo,
   filter,
   selectDevice,
   selectSensor,
@@ -227,7 +232,7 @@ const chartOptions = computed(() => buildChartOptions(chartSeries.value))
 const totalDataPoints = computed(() =>
   chartSeries.value.reduce((sum, s) => sum + s.labels.length, 0)
 )
-const dataPointWarning = computed(() => totalDataPoints.value > 500)
+const dataPointWarning = computed(() => totalDataPoints.value > 2000)
 
 const onDeviceChange = async (deviceId: string | number) => {
   await selectDevice(deviceId)
@@ -361,9 +366,17 @@ watch([chartSeries, tableData], () => {
   font-size: 12px;
 }
 
+.mde-info {
+  padding: 6px 12px;
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
 .mde-chart-area,
 .mde-table-area {
-  min-height: 400px;
+  min-height: 500px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
@@ -382,7 +395,7 @@ watch([chartSeries, tableData], () => {
 }
 
 .mde-skeleton {
-  height: 400px;
+  height: 500px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -394,7 +407,7 @@ watch([chartSeries, tableData], () => {
 }
 
 .mde-empty {
-  height: 400px;
+  height: 500px;
   display: flex;
   align-items: center;
   justify-content: center;
