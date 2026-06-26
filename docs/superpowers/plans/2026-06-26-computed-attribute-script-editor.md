@@ -41,15 +41,18 @@
 **文件：**
 - 修改：`web/package.json`
 
-**目的：** 加 3 个 codemirror 依赖到 dependencies，安装并验证可 import。
+**目的：** 加 4 个 codemirror 依赖到 dependencies，安装并验证可 import。
+
+**重要说明:** `@codemirror/lang-groovy` 不存在于 npm registry。CodeMirror 6 通过 `@codemirror/legacy-modes/mode/groovy` 暴露 CodeMirror 5 时代的 StreamParser,再用 `@codemirror/language` 的 `StreamLanguage.define()` 包装成 CM6 LanguageSupport。这是官方支持 Groovy 的标准路径。
 
 - [ ] **步骤 1.1：编辑 package.json**
 
-打开 `web/package.json`，在 `dependencies` 对象内（`"vue-router"` 之后）追加 3 行：
+打开 `web/package.json`，在 `dependencies` 对象内（`"vue-router"` 之后）追加 4 行：
 
 ```json
     "codemirror": "^6.0.1",
-    "@codemirror/lang-groovy": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/legacy-modes": "^6.5.3",
     "@codemirror/theme-one-dark": "^6.1.2",
 ```
 
@@ -58,7 +61,8 @@
 ```json
     "vue-router": "^4.3.0",
     "codemirror": "^6.0.1",
-    "@codemirror/lang-groovy": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/legacy-modes": "^6.5.3",
     "@codemirror/theme-one-dark": "^6.1.2",
     "vue3-apexcharts": "^1.11.1",
 ```
@@ -73,26 +77,23 @@ cd web && npm install
 
 - [ ] **步骤 1.3：验证包可 import**
 
-在 `web/` 临时跑一条 node 脚本验证（不需要写文件，用 `-e`）：
-
 ```bash
-cd web && node -e "import('codemirror').then(m => console.log('codemirror:', !!m.basicSetup)).then(() => import('@codemirror/lang-groovy')).then(m => console.log('groovy:', typeof m.groovy)).then(() => import('@codemirror/theme-one-dark')).then(m => console.log('oneDark:', typeof m.oneDark))"
+cd web && node -e "import('codemirror').then(m => console.log('codemirror:', !!m.basicSetup)).then(() => import('@codemirror/language')).then(m => console.log('StreamLanguage:', typeof m.StreamLanguage)).then(() => import('@codemirror/legacy-modes/mode/groovy')).then(m => console.log('groovy:', typeof m.groovy)).then(() => import('@codemirror/theme-one-dark')).then(m => console.log('oneDark:', typeof m.oneDark))"
 ```
 
 预期输出：
 ```
 codemirror: true
-groovy: function
+StreamLanguage: function
+groovy: object
 oneDark: object
 ```
-
-若 `@codemirror/lang-groovy` 报错"包不存在"，fallback 到 `@codemirror/lang-javascript`（JavaScript 语法对 Groovy 大部分关键字也高亮），并相应调整任务 3 的 import。
 
 - [ ] **步骤 1.4：Commit**
 
 ```bash
 cd web && git add package.json package-lock.json
-git commit -m "build(web): 引入 CodeMirror 6 + Groovy 语言包 + oneDark 主题"
+git commit -m "build(web): 引入 CodeMirror 6 + legacy-modes groovy + oneDark 主题"
 ```
 
 ---
@@ -377,7 +378,8 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState } from '@codemirror/state'
 import { basicSetup } from 'codemirror'
-import { groovy } from '@codemirror/lang-groovy'
+import { StreamLanguage } from '@codemirror/language'
+import { groovy } from '@codemirror/legacy-modes/mode/groovy'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { indentWithTab } from '@codemirror/commands'
 
@@ -402,7 +404,7 @@ onMounted(() => {
       doc: props.modelValue || '',
       extensions: [
         basicSetup,
-        groovy(),
+        StreamLanguage.define(groovy),
         oneDark,
         keymap.of([indentWithTab]),
         EditorView.lineWrapping,
