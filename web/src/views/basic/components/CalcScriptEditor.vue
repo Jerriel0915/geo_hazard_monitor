@@ -8,85 +8,54 @@
     destroy-on-close
   >
     <el-alert
-      type="info"
+      v-if="statusBar"
+      :type="statusBar.type"
       :closable="false"
-      class="form-alert"
+      class="status-bar"
+      data-test="status-bar"
     >
-      <template #title>
-        可用变量:
-        <code>curData?.props?.{{ attrCode }}</code>
-        (当前数据包) ·
-        <code>prevData?.props?.{{ attrCode }}</code>
-        (上一条数据包, 可空)
-        <br />
-        返回: 数值(Number)
-      </template>
+      <template #title>{{ statusBar.text }}</template>
     </el-alert>
 
-    <el-input
-      v-model="localScript"
-      type="textarea"
-      :rows="14"
-      class="code-textarea"
-      placeholder="// 输入计算脚本"
+    <div class="editor-area">
+      <div class="editor-main">
+        <div class="editor-tag">Groovy</div>
+        <CodeMirrorGroovy
+          :model-value="localScript"
+          @update:model-value="onScriptChange"
+          class="cm-wrapper"
+        />
+      </div>
+      <ApiDocsSidebar class="editor-side" />
+    </div>
+
+    <TestPanel
+      :result="testResult"
+      :testing="testing"
+      @run-test="onRunTest"
     />
 
-    <el-collapse v-model="testPanelActive" class="test-panel">
-      <el-collapse-item title="在线测试" name="test">
-        <el-form label-width="100px">
-          <el-form-item label="curData">
-            <el-input
-              v-model="curDataJson"
-              type="textarea"
-              :rows="4"
-              placeholder='{"props":{"attrCode":12.5}}'
-            />
-          </el-form-item>
-          <el-form-item label="prevData">
-            <el-input
-              v-model="prevDataJson"
-              type="textarea"
-              :rows="4"
-              placeholder='{"props":{"attrCode":10.0},"dataTime":1700000000000}'
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="runTest" :loading="testing">运行测试</el-button>
-            <el-button @click="curDataJson = ''; prevDataJson = ''">清空输入</el-button>
-          </el-form-item>
-        </el-form>
-
-        <el-alert
-          v-if="testResult"
-          :type="testResult.success ? 'success' : 'error'"
-          :closable="false"
-          class="form-alert"
-        >
-          <template #title>
-            {{ testResult.success ? '✅ 成功' : '❌ 失败' }}
-            <span v-if="testResult.executionTime !== undefined">
-              · 耗时 {{ testResult.executionTime }}ms
-            </span>
-            <br />
-            <pre v-if="testResult.success">{{ JSON.stringify(testResult.result, null, 2) }}</pre>
-            <span v-else>{{ testResult.error }}</span>
-          </template>
-        </el-alert>
-      </el-collapse-item>
-    </el-collapse>
-
     <template #footer>
-      <el-button @click="$emit('update:modelValue', false)">取消</el-button>
-      <el-button @click="localScript = defaultTemplate">重置为模板</el-button>
-      <el-button type="primary" @click="handleSave">确定</el-button>
+      <el-button data-test="cancel-btn" @click="$emit('update:modelValue', false)">取消</el-button>
+      <el-button data-test="reset-btn" @click="onReset">重置为模板</el-button>
+      <el-button
+        type="primary"
+        :disabled="!canSave"
+        :class="{ 'save-ready': canSave && dirty }"
+        data-test="save-btn"
+        @click="onSave"
+      >保存</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { testCalcScript, type CalcScriptTestResult } from '@/api/monitorType'
+import CodeMirrorGroovy from './script-editor/CodeMirrorGroovy.vue'
+import ApiDocsSidebar from './script-editor/ApiDocsSidebar.vue'
+import TestPanel from './script-editor/TestPanel.vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -102,63 +71,64 @@ const emit = defineEmits<{
   save: [script: string]
 }>()
 
+const initialScript = ref(props.script)
 const localScript = ref(props.script)
-const testPanelActive = ref<string[]>(['test'])
-const curDataJson = ref('{\n  "props": {}\n}')
-const prevDataJson = ref('')
+const testedPassed = ref(false)
 const testing = ref(false)
 const testResult = ref<CalcScriptTestResult | null>(null)
 
-// key 用 'props': Groovy 中 map.properties 会触发 GDK Object.getProperties(), 用 .props 规避
+const dirty = computed(() => localScript.value !== initialScript.value)
+const canSave = computed(() => !dirty.value || testedPassed.value)
+
+const statusBar = computed(() => {
+  if (!dirty.value) {
+    return null
+  }
+  if (testedPassed.value) {
+    return { type: 'success', text: '✅ 测试通过, 可以保存' }
+  }
+  if (testResult.value && !testResult.value.success) {
+    return { type: 'error', text: `❌ 测试失败: ${testResult.value.error || '未知错误'}` }
+  }
+  return { type: 'warning', text: '⚠️ 修改后必须通过测试才能保存' }
+})
+
 const defaultTemplate = computed(() =>
   `// 计算属性: ${props.attrCode}\n` +
   '// 可用变量:\n' +
   `//   curData?.props?.${props.attrCode}  当前数据包属性值\n` +
   `//   prevData?.props?.${props.attrCode}  上一条数据包属性值(可空)\n` +
+  '// 工具:\n' +
+  '//   cache.getInt(key, default)  Redis 读取 (异常吞噬)\n' +
+  '//   sensor.query(deviceId, sensorCode, time, attrCode)  IoTDB 查询 (异常返回 null)\n' +
   '// 返回: 数值 (Number)\n\n' +
   `return curData?.props?.${props.attrCode}\n`
 )
 
-// 每次打开重置本地状态
 watch(() => props.modelValue, (open) => {
   if (open) {
+    initialScript.value = props.script
     localScript.value = props.script || defaultTemplate.value
+    testedPassed.value = false
     testResult.value = null
   }
 })
 
-const handleSave = () => {
-  if (!localScript.value.trim()) {
-    ElMessage.warning('脚本不能为空')
-    return
-  }
-  emit('save', localScript.value)
+function onScriptChange(newVal: string) {
+  localScript.value = newVal
+  testedPassed.value = false
 }
 
-const runTest = async () => {
-  if (!localScript.value.trim()) {
-    ElMessage.warning('请先输入脚本')
-    return
-  }
+function onReset() {
+  localScript.value = defaultTemplate.value
+  testedPassed.value = false
+  testResult.value = null
+}
+
+async function onRunTest(payload: { curData: Record<string, any>; prevData: Record<string, any> | undefined }) {
   if (!props.monitorTypeId) {
     ElMessage.warning('请先保存监测类型, 再测试脚本')
     return
-  }
-  let curData: Record<string, any>
-  try {
-    curData = curDataJson.value.trim() ? JSON.parse(curDataJson.value) : {}
-  } catch (e) {
-    ElMessage.error('curData 不是合法 JSON')
-    return
-  }
-  let prevData: Record<string, any> | undefined
-  if (prevDataJson.value.trim()) {
-    try {
-      prevData = JSON.parse(prevDataJson.value)
-    } catch (e) {
-      ElMessage.error('prevData 不是合法 JSON')
-      return
-    }
   }
   testing.value = true
   try {
@@ -166,37 +136,73 @@ const runTest = async () => {
       monitorTypeId: props.monitorTypeId,
       attrCode: props.attrCode,
       calcScript: localScript.value,
-      curData,
-      prevData
+      curData: payload.curData,
+      prevData: payload.prevData
     })
     testResult.value = result
+    testedPassed.value = result.success === true
   } catch (e: any) {
     testResult.value = { success: false, error: e?.message || '请求失败' }
+    testedPassed.value = false
   } finally {
     testing.value = false
   }
 }
+
+function onSave() {
+  if (!canSave.value) return
+  if (!localScript.value.trim()) {
+    ElMessage.warning('脚本不能为空')
+    return
+  }
+  emit('save', localScript.value)
+}
 </script>
 
 <style scoped>
-.form-alert {
+.status-bar {
   margin-bottom: 12px;
 }
 
-.code-textarea :deep(textarea) {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
+.editor-area {
+  display: flex;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 320px;
 }
 
-.test-panel {
-  margin-top: 16px;
+.editor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-pre {
-  margin: 4px 0 0;
+.editor-tag {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  background: #264f78;
+  color: white;
+  padding: 1px 6px;
+  font-size: 10px;
+  border-radius: 2px;
   font-family: 'Consolas', monospace;
-  font-size: 12px;
-  white-space: pre-wrap;
+}
+
+.cm-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+
+.editor-side {
+  flex-shrink: 0;
+}
+
+.save-ready {
+  background: #67c23a !important;
+  border-color: #67c23a !important;
 }
 </style>
