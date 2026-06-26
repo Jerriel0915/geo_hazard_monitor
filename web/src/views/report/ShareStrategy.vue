@@ -453,9 +453,9 @@ async function handleSubmit() {
       description: formData.description,
       method: formData.method,
       address: formData.address,
-      topic: formData.topic || undefined,
-      username: formData.username || undefined,
-      password: formData.password || undefined,
+      topic: formData.topic,
+      username: formData.username,
+      password: formData.password,
       params: formData.params,
       scopeType: formData.scopeType,
       scopeIds: formData.scopeIds,
@@ -556,7 +556,7 @@ async function loadScopeOptions() {
       res = (hazardRes.data?.rows || []).map((item: any) => ({ id: item.id, name: item.name }))
     } else if (type === 'DEVICE') {
       const deviceRes = await import('@/api/device').then(m => m.getDevicePage({ pageNum: 1, pageSize: 1000 }))
-      res = (deviceRes.data?.rows || []).map((item: any) => ({ id: item.id, name: item.name }))
+      res = ((deviceRes as any).rows || []).map((item: any) => ({ id: item.id, name: item.name }))
     }
     scopeOptions.value = res
   } catch {

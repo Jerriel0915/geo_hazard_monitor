@@ -268,21 +268,21 @@ const DEVICE_TYPES: DeviceTypeOption[] = [
 
 // 12 devices spread across hazard points (3-4 per hazard point)
 const DEVICES: DeviceOption[] = [
-  { id: 101, name: 'WJP-WY-01', deviceType: 1, hazardPointId: 1 },
-  { id: 102, name: 'WJP-YL-01', deviceType: 2, hazardPointId: 1 },
-  { id: 103, name: 'WJP-QJ-01', deviceType: 3, hazardPointId: 1 },
-  { id: 201, name: 'LJG-YL-01', deviceType: 2, hazardPointId: 2 },
-  { id: 202, name: 'LJG-WY-01', deviceType: 1, hazardPointId: 2 },
-  { id: 203, name: 'LJG-QJ-01', deviceType: 3, hazardPointId: 2 },
-  { id: 204, name: 'LJG-TY-01', deviceType: 4, hazardPointId: 2 },
-  { id: 301, name: 'ZJP-WY-01', deviceType: 1, hazardPointId: 3 },
-  { id: 302, name: 'ZJP-QJ-01', deviceType: 3, hazardPointId: 3 },
-  { id: 303, name: 'ZJP-TY-01', deviceType: 4, hazardPointId: 3 },
-  { id: 401, name: 'ZJW-WY-01', deviceType: 1, hazardPointId: 4 },
-  { id: 402, name: 'ZJW-YL-01', deviceType: 2, hazardPointId: 4 },
-  { id: 403, name: 'ZJW-TY-01', deviceType: 4, hazardPointId: 4 },
-  { id: 501, name: 'LJA-WY-01', deviceType: 1, hazardPointId: 5 },
-  { id: 502, name: 'LJA-YL-01', deviceType: 2, hazardPointId: 5 },
+  { id: 101, name: 'WJP-WY-01', deviceType: 1, boundHazardPointId: 1 },
+  { id: 102, name: 'WJP-YL-01', deviceType: 2, boundHazardPointId: 1 },
+  { id: 103, name: 'WJP-QJ-01', deviceType: 3, boundHazardPointId: 1 },
+  { id: 201, name: 'LJG-YL-01', deviceType: 2, boundHazardPointId: 2 },
+  { id: 202, name: 'LJG-WY-01', deviceType: 1, boundHazardPointId: 2 },
+  { id: 203, name: 'LJG-QJ-01', deviceType: 3, boundHazardPointId: 2 },
+  { id: 204, name: 'LJG-TY-01', deviceType: 4, boundHazardPointId: 2 },
+  { id: 301, name: 'ZJP-WY-01', deviceType: 1, boundHazardPointId: 3 },
+  { id: 302, name: 'ZJP-QJ-01', deviceType: 3, boundHazardPointId: 3 },
+  { id: 303, name: 'ZJP-TY-01', deviceType: 4, boundHazardPointId: 3 },
+  { id: 401, name: 'ZJW-WY-01', deviceType: 1, boundHazardPointId: 4 },
+  { id: 402, name: 'ZJW-YL-01', deviceType: 2, boundHazardPointId: 4 },
+  { id: 403, name: 'ZJW-TY-01', deviceType: 4, boundHazardPointId: 4 },
+  { id: 501, name: 'LJA-WY-01', deviceType: 1, boundHazardPointId: 5 },
+  { id: 502, name: 'LJA-YL-01', deviceType: 2, boundHazardPointId: 5 },
 ]
 
 /** Format a Date to YYYY-MM-DD */
@@ -326,7 +326,7 @@ function getMockQueryData(params: MonitorQueryParams): PageResult<Record<string,
     const row: Record<string, any> = {
       time: formatDateTime(time),
       deviceName: device.name,
-      hazardPointName: HAZARD_POINTS.find((h) => h.id === device.hazardPointId)?.name || '',
+      hazardPointName: HAZARD_POINTS.find((h) => h.id === device.boundHazardPointId)?.name || '',
     }
 
     for (const attr of devType.attrs) {
@@ -428,8 +428,8 @@ export async function getDeviceOptions(params: {
   deviceType?: number
 }): Promise<DeviceOption[]> {
   // let filtered = [...DEVICES]
-  let devices = await request.get<DeviceOption[]>(`/devices/page?pageNum=1&pageSize=20&boundHazardPointId=${params.hazardPointId}`);
-    let filtered = devices.data.rows;
+  const devices = await request.get<any>(`/devices/page?pageNum=1&pageSize=20&boundHazardPointId=${params.hazardPointId}`);
+    let filtered = devices.data?.rows ?? [];
   // if (params.hazardPointId) {
   //   filtered = filtered.filter((d) => d.hazardPointId === params.hazardPointId)
   // }

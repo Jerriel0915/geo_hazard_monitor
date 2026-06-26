@@ -67,7 +67,7 @@
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button @click="emit('update:visible', false)">取消</el-button>
       <el-button type="primary" :loading="saving" @click="handleSave">保存脚本</el-button>
     </template>
   </el-drawer>
@@ -76,7 +76,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Database, Aim, Cpu, Files, ArrowRight, AlarmClock, Box, Bell } from '@element-plus/icons-vue'
+import { DataLine, Aim, Cpu, Files, ArrowRight, AlarmClock, Box, Bell } from '@element-plus/icons-vue'
 import { getShareStrategyScript, saveShareStrategyScript, METHOD_LABELS, type ShareStrategyItem } from '@/api/shareStrategy'
 
 const props = defineProps<{
@@ -87,6 +87,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  (e: 'update:visible', val: boolean): void
   (e: 'saved'): void
 }>()
 
@@ -111,7 +112,7 @@ const availableTools = ref<ToolItem[]>([
   { id: 'queryHazardPoint', name: '查询隐患点', description: '查询隐患点信息', icon: Aim, category: 'query' },
   { id: 'getProperty', name: '获取属性', description: '获取策略或设备的属性值', icon: Cpu, category: 'property' },
   { id: 'algorithm', name: '执行算法', description: '调用Python算法处理数据', icon: Cpu, category: 'algorithm' },
-  { id: 'storeData', name: '存储数据', description: '将数据存储到数据库', icon: Database, category: 'storage' },
+  { id: 'storeData', name: '存储数据', description: '将数据存储到数据库', icon: DataLine, category: 'storage' },
   { id: 'output', name: '数据输出', description: '输出数据到目标地址', icon: ArrowRight, category: 'output' },
   { id: 'delay', name: '延时等待', description: '暂停执行指定时间', icon: AlarmClock, category: 'control' },
   { id: 'log', name: '记录日志', description: '记录执行日志', icon: Files, category: 'utility' }
@@ -142,7 +143,7 @@ async function handleSave() {
     })
     ElMessage.success('保存成功')
     emit('saved')
-    props.visible = false
+    emit('update:visible', false)
   } catch (e: any) {
     ElMessage.error(e.message || '保存失败')
   } finally {

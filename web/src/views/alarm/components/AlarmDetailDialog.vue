@@ -786,8 +786,8 @@ const handleNotifySubmit = (data: any) => {
   emit('notify', data)
 }
 
-const handleFalseAlarm = () => { emit('false-alarm', props.data) }
-const handleCloseAlarm = () => { emit('close-alarm', props.data) }
+const handleFalseAlarm = () => { if (props.data) emit('false-alarm', props.data) }
+const handleCloseAlarm = () => { if (props.data) emit('close-alarm', props.data) }
 const handleClose = () => { emit('update:modelValue', false) }
 </script>
 

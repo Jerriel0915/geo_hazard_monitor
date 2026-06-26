@@ -150,6 +150,7 @@ import {
   getMonitorTypeListFiltered,
   getMonitorTypePage,
   type MonitorTypeItem,
+  removeMonitorType,
   toggleMonitorTypeStatus
 } from '@/api/monitorType'
 import {showRequestErrorMessage} from '@/utils/errorHandler'

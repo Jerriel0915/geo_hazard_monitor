@@ -176,6 +176,19 @@
               />
             </template>
           </el-table-column>
+          <el-table-column label="排序号" width="70" align="center">
+            <template #default="{ row }">
+              <template v-if="isView">{{ row.sortOrder ?? '-' }}</template>
+              <el-input-number
+                v-else
+                v-model="row.sortOrder"
+                :controls="false"
+                :min="0"
+                placeholder="排序号"
+                style="width: 100%"
+              />
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="140" fixed="right" align="center" v-if="!isView">
             <template #default="{ row, $index }">
               <div class="op-cell">
@@ -365,7 +378,8 @@ const normalizeMonitorContent = (item: any): MonitorContentItem => ({
   rangeMin: item?.rangeMin === null || item?.rangeMin === undefined ? null : Number(item.rangeMin),
   rangeMax: item?.rangeMax === null || item?.rangeMax === undefined ? null : Number(item.rangeMax),
   fieldType: item?.fieldType === 'computed' ? 'computed' : 'inherent',
-  calcScript: item?.calcScript || ''
+  calcScript: item?.calcScript || '',
+  sortOrder: item?.sortOrder !== null && item?.sortOrder !== undefined ? Number(item.sortOrder) : undefined
 })
 
 const normalizeMonitorType = (item: any): MonitorTypeItem => ({
@@ -596,7 +610,8 @@ const syncMonitorContents = async (monitorTypeId: number) => {
     rangeMin: item.rangeMin ?? null,
     rangeMax: item.rangeMax ?? null,
     fieldType: item.fieldType || 'inherent',
-    calcScript: item.calcScript ?? ''
+    calcScript: item.calcScript ?? '',
+    sortOrder: item.sortOrder
   }))
 
   const existingMap = new Map(originalContents.value.map((item) => [item.id, item]))
@@ -627,7 +642,8 @@ const syncMonitorContents = async (monitorTypeId: number) => {
           rangeMin: item.rangeMin,
           rangeMax: item.rangeMax,
           fieldType: item.fieldType,
-          calcScript: item.calcScript
+          calcScript: item.calcScript,
+          sortOrder: item.sortOrder
         })
         continue
       }
@@ -638,7 +654,8 @@ const syncMonitorContents = async (monitorTypeId: number) => {
         (oldItem.icon || '') !== (item.icon || '') ||
         (oldItem.rangeMin ?? null) !== (item.rangeMin ?? null) ||
         (oldItem.rangeMax ?? null) !== (item.rangeMax ?? null) ||
-        (oldItem.calcScript ?? '') !== (item.calcScript ?? '')
+        (oldItem.calcScript ?? '') !== (item.calcScript ?? '') ||
+        Number(oldItem.sortOrder ?? 0) !== Number(item.sortOrder ?? 0)
       ) {
         await updateMonitorContent(item.id, {
           name: item.name,
@@ -646,7 +663,8 @@ const syncMonitorContents = async (monitorTypeId: number) => {
           icon: item.icon,
           rangeMin: item.rangeMin,
           rangeMax: item.rangeMax,
-          calcScript: item.calcScript
+          calcScript: item.calcScript,
+          sortOrder: item.sortOrder
         })
       }
       continue
@@ -662,7 +680,8 @@ const syncMonitorContents = async (monitorTypeId: number) => {
       rangeMin: item.rangeMin,
       rangeMax: item.rangeMax,
       fieldType: item.fieldType,
-      calcScript: item.calcScript
+      calcScript: item.calcScript,
+      sortOrder: item.sortOrder
     })
   }
 }
