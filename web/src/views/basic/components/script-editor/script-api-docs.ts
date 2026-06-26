@@ -3,8 +3,10 @@
  *
  * 数据来源:
  *  - curData/prevData: ComputedScriptAssembler 拼装后的 Map 结构
+ *    (5 字段: deviceCode/sensorCode/dataTime/props/properties, 其中 properties 是 props 别名)
  *  - cache.* (21 方法): server/zwei-iot-timeseries/.../ScriptCacheOps.java
  *  - sensor.* (1 方法): server/zwei-iot-timeseries/.../ScriptSensorQuery.java
+ *    返回 SensorSnapshot: { time: long, values: Map<String,Double> }
  *
  * 注: cache 的 21 个 Java 方法存在重载 (如 getInt/getInt+default),
  * 文档侧按"对外语义"合并同名重载, 共 13 条签名覆盖所有 21 方法的使用语义。
@@ -36,7 +38,10 @@ export const API_DOCS: ApiGroup[] = [
     color: '#409eff',
     name: 'curData',
     methods: [
+      { signature: '.deviceCode', note: '设备编码' },
+      { signature: '.sensorCode', note: '传感器编码' },
       { signature: '.props.<attrCode>', note: '当前数据包属性值' },
+      { signature: '.properties.<attrCode>', note: 'props 别名 (同引用)' },
       { signature: '.dataTime', note: '数据时间戳 (ms)' }
     ]
   },
@@ -46,7 +51,10 @@ export const API_DOCS: ApiGroup[] = [
     name: 'prevData',
     description: '可空',
     methods: [
+      { signature: '.deviceCode', note: '上一条设备编码' },
+      { signature: '.sensorCode', note: '上一条传感器编码' },
       { signature: '.props.<attrCode>', note: '上一条数据包属性值' },
+      { signature: '.properties.<attrCode>', note: 'props 别名 (同引用)' },
       { signature: '.dataTime', note: '上一条数据时间戳 (ms)' }
     ]
   },
@@ -83,6 +91,14 @@ export const API_DOCS: ApiGroup[] = [
       {
         signature: 'query(deviceId, sensorCode, time, attrCode)',
         note: '异常时返回 null,不中断脚本'
+      },
+      {
+        signature: '↳ .time',
+        note: '最近一条数据的时间戳 (ms, long)'
+      },
+      {
+        signature: '↳ .values.<attrCode>',
+        note: '属性值 (Double), 无数据时为 null'
       }
     ]
   }

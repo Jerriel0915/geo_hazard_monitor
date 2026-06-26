@@ -3,7 +3,7 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     :title="`计算脚本 - ${attrName}`"
-    width="800px"
+    width="900px"
     :close-on-click-modal="false"
     destroy-on-close
   >

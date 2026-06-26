@@ -53,4 +53,22 @@ describe('script-api-docs', () => {
     expect(cur.methods.some(m => m.signature.includes('.props'))).toBe(true)
     expect(prev.methods.some(m => m.signature.includes('.props'))).toBe(true)
   })
+
+  it('curData/prevData 文档覆盖全部 5 个字段 (deviceCode/sensorCode/props/properties/dataTime)', () => {
+    const required = ['.deviceCode', '.sensorCode', '.props', '.properties', '.dataTime']
+    for (const g of ['curData', 'prevData'] as const) {
+      const group = API_DOCS.find(x => x.name === g)!
+      const sigs = group.methods.map(m => m.signature).join('\n')
+      for (const field of required) {
+        expect(sigs, `${g} 应包含 ${field}`).toContain(field)
+      }
+    }
+  })
+
+  it('sensor 文档说明 SensorSnapshot 返回结构 (time + values)', () => {
+    const sensor = API_DOCS.find(g => g.name === 'sensor')!
+    const allText = sensor.methods.map(m => `${m.signature} ${m.note || ''}`).join('\n')
+    expect(allText).toContain('time')
+    expect(allText).toContain('values')
+  })
 })

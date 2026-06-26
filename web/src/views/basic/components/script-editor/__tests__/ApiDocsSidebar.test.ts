@@ -29,9 +29,10 @@ describe('ApiDocsSidebar', () => {
     expect(sensorGroup.text()).toContain('null')
   })
 
-  it('顶部有 "API 文档" 标题 + "返回值必须是 Number" 提示', () => {
+  it('顶部有 "API 文档" 标题, 不再展示 Number 返回值提示', () => {
     const wrapper = mount(ApiDocsSidebar)
     expect(wrapper.text()).toContain('API 文档')
-    expect(wrapper.text()).toContain('Number')
+    // 已移除"返回值必须是 Number"页脚
+    expect(wrapper.find('.sidebar-footer').exists()).toBe(false)
   })
 })

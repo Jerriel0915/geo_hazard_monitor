@@ -21,10 +21,6 @@
         </li>
       </ul>
     </section>
-
-    <footer class="sidebar-footer">
-      返回值必须是 <strong>Number</strong>
-    </footer>
   </aside>
 </template>
 
@@ -110,14 +106,5 @@ import { API_DOCS } from './script-api-docs'
   font-style: italic;
   margin-left: 8px;
   margin-top: -2px;
-}
-
-.sidebar-footer {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid #ebeef5;
-  font-size: 10px;
-  color: #909399;
-  font-style: italic;
 }
 </style>
