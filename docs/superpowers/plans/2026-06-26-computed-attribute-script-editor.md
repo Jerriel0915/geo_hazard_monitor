@@ -16,7 +16,7 @@
 
 | 文件 | 职责 | 创建/修改 |
 |---|---|---|
-| `web/package.json` | 新增 3 个 codemirror 依赖 | 修改 |
+| `web/package.json` | 新增 4 个 codemirror 依赖 | 修改 |
 | `web/src/views/basic/components/script-editor/script-api-docs.ts` | 4 个 API 分组的静态数据（curData/prevData/cache/sensor） | 创建 |
 | `web/src/views/basic/components/script-editor/__tests__/script-api-docs.test.ts` | 数据结构完整性测试 | 创建 |
 | `web/src/views/basic/components/script-editor/CodeMirrorGroovy.vue` | CodeMirror 6 包装，v-model 双向绑定 | 创建 |
