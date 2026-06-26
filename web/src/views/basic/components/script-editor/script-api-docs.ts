@@ -70,7 +70,7 @@ export const API_DOCS: ApiGroup[] = [
       // 管理 (5 个)
       { signature: 'delete(key) → boolean' },
       { signature: 'hasKey(key) → boolean' },
-      { signature: 'expire(key, timeout, unit?) → boolean' },
+      { signature: 'expire(key, timeout, unit?) → boolean', note: '省略 unit 时 timeout 单位为秒' },
       { signature: 'getExpire(key) → long' }
     ]
   },
