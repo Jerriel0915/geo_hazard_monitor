@@ -6,6 +6,7 @@
       <div
         v-for="card in statCards"
         :key="card.key"
+        v-memo="[card.value]"
         class="stat-card"
         :style="{ '--tc': card.color }"
       >

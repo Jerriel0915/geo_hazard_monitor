@@ -70,6 +70,7 @@ declare module 'vue' {
     Notify: typeof import('./src/components/Notify.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    TablePagination: typeof import('./src/components/TablePagination.vue')['default']
     TableSortHeader: typeof import('./src/components/TableSortHeader.vue')['default']
     VideoPlayer: typeof import('./src/components/VideoPlayer.vue')['default']
   }

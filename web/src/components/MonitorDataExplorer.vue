@@ -165,8 +165,9 @@ import type { ChartData, MonitorDataPageItem } from '@/api/monitorData'
 import { useMonitorData } from '@/composables/useMonitorData'
 import { ElMessage } from 'element-plus'
 import { Grid, TrendCharts } from '@element-plus/icons-vue'
-import { computed, ref, watch } from 'vue'
-import VueApexCharts from 'vue3-apexcharts'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
+
+const VueApexCharts = defineAsyncComponent(() => import('vue3-apexcharts'))
 
 const props = withDefaults(defineProps<{
   hazardPointId?: number | null
