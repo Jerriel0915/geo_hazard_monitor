@@ -32,7 +32,7 @@
                 v-if="currentRow"
                 :initial-value="parsedBoundary"
                 :initial-center="previewCenter"
-                :bound-devices="boundDevices"
+                :video-devices="boundVideoDevices"
                 height="450px"
             />
           </div>
@@ -75,6 +75,28 @@
         </div>
       </el-tab-pane>
 
+      <el-tab-pane label="绑定视频设备" name="videoDevices">
+        <div class="table-wrap">
+          <div class="table-wrap__scroll">
+            <el-table :data="boundVideoDevices" border size="small">
+              <el-table-column prop="deviceCode" label="设备编号" width="150" align="center" />
+              <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center" />
+              <el-table-column prop="bindTime" label="绑定时间" width="180" align="center" />
+              <el-table-column label="安装位置" min-width="220" align="center">
+                <template #default="{ row }">
+                  <span v-if="row.installLongitude != null && row.installLatitude != null">
+                    {{ row.installLongitude?.toFixed(6) }}, {{ row.installLatitude?.toFixed(6) }}
+                  </span>
+                  <span v-else class="empty-text">-</span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div v-if="boundVideoDevices.length === 0" class="empty-hint">
+              <span>暂无绑定的视频设备</span>
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
 
       <!--暂时先屏蔽这个板块-->
       <!-- <el-tab-pane label="告警配置" name="alarmConfig">
@@ -168,11 +190,13 @@ import { deserialize, type LatLng } from '@/lib/boundaryCoords'
 import { getAlarmLevelType, getChannelLabel, getStatusType, type HazardPointItem } from '../composables/useHazardPointCrud'
 import type { BoundDevice } from '../composables/useHazardPointDeviceBind'
 import type { AlarmCriteria, DispatchRule } from '../composables/useHazardPointAlarm'
+import type { BoundVideoDevice } from '../HazardPoint.vue'
 
 interface Props {
   visible: boolean
   hazardPoint: HazardPointItem | null
   boundDevices: BoundDevice[]
+  boundVideoDevices: BoundVideoDevice[]
   alarmCriteriaList: AlarmCriteria[]
   dispatchRules: DispatchRule[]
 }
@@ -294,6 +318,13 @@ watch(() => dialogVisible.value, (val) => {
 
 .empty-text {
   color: #909399;
+}
+
+.empty-hint {
+  padding: 20px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
 }
 
 .table-wrap {

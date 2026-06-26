@@ -85,6 +85,7 @@
     <!-- 分页查询设备列表 -->
     <select id="selectDeviceList" parameterType="com.zwei.iot.device.domain.Device" resultMap="DeviceResult">
         <include refid="selectDeviceVo"/>
+        LEFT JOIN device_hazard_point dhp ON dhp.device_id = d.id
         <where>
             d.del_flag = 0
             <if test="code != null and code != ''">
@@ -98,6 +99,9 @@
             </if>
             <if test="status != null">
                 AND d.status = #{status}
+            </if>
+            <if test="hazardPointId != null">
+                AND dhp.hazard_point_id = #{hazardPointId}
             </if>
         </where>
         ORDER BY d.id DESC
