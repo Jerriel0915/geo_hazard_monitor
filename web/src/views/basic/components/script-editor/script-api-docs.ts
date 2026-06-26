@@ -6,6 +6,7 @@
  *    (5 字段: deviceCode/sensorCode/dataTime/props/properties, 其中 properties 是 props 别名)
  *  - cache.* (21 方法): server/zwei-iot-timeseries/.../ScriptCacheOps.java
  *  - sensor.* (1 方法): server/zwei-iot-timeseries/.../ScriptSensorQuery.java
+ *    入参 deviceCode (与 curData.deviceCode 同源), 内部解析 deviceId 查询 IoTDB;
  *    返回 SensorSnapshot: { time: long, values: Map<String,Double> }
  *
  * 注: cache 的 21 个 Java 方法存在重载 (如 getInt/getInt+default),
@@ -89,7 +90,7 @@ export const API_DOCS: ApiGroup[] = [
     description: 'IoTDB 查询',
     methods: [
       {
-        signature: 'query(deviceId, sensorCode, time, attrCode)',
+        signature: 'query(deviceCode, sensorCode, time, attrCode)',
         note: '异常时返回 null,不中断脚本'
       },
       {

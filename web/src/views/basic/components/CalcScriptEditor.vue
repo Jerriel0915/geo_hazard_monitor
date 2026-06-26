@@ -100,7 +100,7 @@ const defaultTemplate = computed(() =>
   `//   prevData?.props?.${props.attrCode}  上一条数据包属性值(可空)\n` +
   '// 工具:\n' +
   '//   cache.getInt(key, default)  Redis 读取 (异常吞噬)\n' +
-  '//   sensor.query(deviceId, sensorCode, time, attrCode)  IoTDB 查询 (异常返回 null)\n' +
+  '//   sensor.query(deviceCode, sensorCode, time, attrCode)  IoTDB 查询 (异常返回 null)\n' +
   '// 返回: 数值 (Number)\n\n' +
   `return curData?.props?.${props.attrCode}\n`
 )

@@ -71,4 +71,11 @@ describe('script-api-docs', () => {
     expect(allText).toContain('time')
     expect(allText).toContain('values')
   })
+
+  it('sensor.query 第一参为 deviceCode (与 curData.deviceCode 同源)', () => {
+    const sensor = API_DOCS.find(g => g.name === 'sensor')!
+    const querySig = sensor.methods.map(m => m.signature).join('\n')
+    expect(querySig).toContain('query(deviceCode,')
+    expect(querySig).not.toContain('deviceId')
+  })
 })
