@@ -27,6 +27,8 @@ export interface DeviceItem {
   latitude?: number | null
     /** 关联的隐患点 ID(用于地图选点时叠加其边界) */
     boundHazardPointId?: number | null
+    /** 关联的隐患点名称（Service 层富化） */
+    boundHazardPointName?: string
   createTime?: string
   sensors?: any[]
   /**
@@ -91,6 +93,7 @@ export interface DevicePageParams {
   name?: string
   sn?: string
   status?: number | ''
+  hazardPointId?: number | ''
 }
 
 const unwrap = async <T>(promise: Promise<AjaxResult<T>>): Promise<T> => {

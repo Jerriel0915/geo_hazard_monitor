@@ -23,6 +23,14 @@
         <el-option label="维修" :value="2" />
         <el-option label="停用" :value="3" />
       </el-select>
+      <el-select v-model="searchHazardPointId" placeholder="关联隐患点" clearable filterable>
+        <el-option
+            v-for="hp in hazardPointList"
+            :key="hp.id"
+            :label="hp.name"
+            :value="Number(hp.id)"
+        />
+      </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="handleReset">重置</el-button>
     </div>
@@ -69,18 +77,11 @@
               <span>{{ row.sn || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="authUsername" label="接入账号" width="120" align="center">
+          <el-table-column label="关联隐患点" min-width="130" align="center">
             <template #default="{ row }">
-              <el-tooltip
-                  v-if="row.authUsername"
-                  :content="`查看 ${row.name} 的接入账号`"
-                  placement="top"
-              >
-                <span class="link-cell" @click="handleOpenAccountFromList(row)">
-                  <el-icon class="link-icon"><User/></el-icon>
-                  <span>{{ row.authUsername }}</span>
-                </span>
-              </el-tooltip>
+              <span v-if="row.boundHazardPointName" class="link-cell">
+                <span>{{ row.boundHazardPointName }}</span>
+              </span>
               <span v-else class="empty-text">-</span>
             </template>
           </el-table-column>
@@ -567,7 +568,7 @@
 import {computed, onMounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {Cpu, User, Plus} from '@element-plus/icons-vue'
+import {Cpu, Plus} from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import DeviceDetail from './components/DeviceDetail.vue'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
@@ -591,7 +592,7 @@ import {getDeviceIconPathGreen} from '@/utils/deviceIcon'
 import {type DeviceItem, useDeviceCrud} from './composables/useDeviceCrud'
 
 const {
-  searchKeyword, searchStatus,
+  searchKeyword, searchStatus, searchHazardPointId,
   loading, submitLoading, tableData, currentPage, pageSize, total,
   dialogVisible, dialogTitle, isEdit, isView, isCopyMode, formRef, formData, formRules,
   detailDialogVisible, currentRow,
@@ -1060,12 +1061,6 @@ const handleConfigSensors = async (row: DeviceItem) => {
 const handleOpenSensorsFromList = async (row: DeviceItem) => {
   if (!row.id) return
   await handleConfigSensors(row)
-}
-
-// 列表行内“接入账号”单元格快捷入口：直接打开该设备的账号弹窗
-const handleOpenAccountFromList = async (row: DeviceItem) => {
-  if (!row.id) return
-  await handleViewAuth(row)
 }
 
 // 列表行内“设备状态”单元格快捷入口：直接打开该设备的运维弹窗

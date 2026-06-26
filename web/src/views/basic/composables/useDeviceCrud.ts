@@ -26,6 +26,7 @@ export function useDeviceCrud() {
     // ── Search / Filter ──
     const searchKeyword = ref('')
     const searchStatus = ref<number | ''>('')
+    const searchHazardPointId = ref<number | ''>('')
 
     // ── Table state ──
     const loading = ref(false)
@@ -119,6 +120,7 @@ export function useDeviceCrud() {
             const params: DevicePageParams = {pageNum: currentPage.value, pageSize: pageSize.value}
             if (searchKeyword.value) params.code = searchKeyword.value
             if (searchStatus.value !== '') params.status = searchStatus.value as number
+            if (searchHazardPointId.value !== '') params.hazardPointId = searchHazardPointId.value as number
             const data = await getDevicePage(params)
             tableData.value = data.rows || []
             total.value = data.total || 0
@@ -149,6 +151,7 @@ export function useDeviceCrud() {
     const handleReset = () => {
         searchKeyword.value = '';
         searchStatus.value = '';
+        searchHazardPointId.value = '';
         currentPage.value = 1;
         loadTableData()
     }
@@ -415,7 +418,7 @@ export function useDeviceCrud() {
     }
 
     return {
-        searchKeyword, searchStatus,
+        searchKeyword, searchStatus, searchHazardPointId,
         loading, refreshing, submitLoading, tableData, currentPage, pageSize, total,
         dialogVisible, dialogTitle, isEdit, isView, isCopyMode, formRef, formData, formRules,
         detailDialogVisible, detailPwdVisible, detailTab, currentRow,
