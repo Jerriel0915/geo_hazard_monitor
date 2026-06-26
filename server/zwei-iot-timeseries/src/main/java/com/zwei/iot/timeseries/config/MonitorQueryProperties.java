@@ -34,6 +34,7 @@ public class MonitorQueryProperties {
     private int maxMergeRows = 5000;
     private int maxAutoSlicePoints = 20000;
     private int maxPointsPerSlice = 5000;
+    private int maxSlices = 20;
 
     /**
      * 根据时间范围和目标点数计算合适的降采样间隔（对齐到 IoTDB 可识别的粒度）。

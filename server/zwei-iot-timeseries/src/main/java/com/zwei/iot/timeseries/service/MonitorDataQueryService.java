@@ -314,7 +314,9 @@ public class MonitorDataQueryService {
                 intervalUsed = downsampleInterval;
             } else if (rangeMs > 0) {
                 long estimated = (long) (rangeMs / 1000.0 * queryProperties.getDownsampleEstimateHz());
-                if (estimated > queryProperties.getMaxAutoSlicePoints()) {
+                int wouldBeSlices = (int) Math.ceil((double) estimated / queryProperties.getMaxPointsPerSlice());
+                if (estimated > queryProperties.getMaxAutoSlicePoints()
+                        && wouldBeSlices <= queryProperties.getMaxSlices()) {
                     rows = queryRangeBySlices(
                             measurement.deviceId(),
                             measurement.sensorCode(),
