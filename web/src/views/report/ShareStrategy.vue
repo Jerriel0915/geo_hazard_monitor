@@ -129,7 +129,7 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="editingItem ? '编辑策略' : '新增策略'" width="720px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="editingItem ? '编辑策略' : '新增策略'" width="800px" destroy-on-close>
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
         <el-row :gutter="20">
           <el-col :span="12">

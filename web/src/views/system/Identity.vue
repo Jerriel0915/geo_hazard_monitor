@@ -78,7 +78,7 @@
     <el-dialog
       :title="dialogTitle"
       v-model="dialogVisible"
-      width="650px"
+      width="640px"
       :close-on-click-modal="false"
     >
       <el-form

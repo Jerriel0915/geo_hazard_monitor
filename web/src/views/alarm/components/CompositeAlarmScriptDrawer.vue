@@ -73,7 +73,7 @@
     </div>
 
     <!-- 测试结果 -->
-    <el-dialog v-model="testResultVisible" title="测试运行结果" width="520px" append-to-body>
+    <el-dialog v-model="testResultVisible" title="测试运行结果" width="480px" append-to-body>
       <el-descriptions :column="1" border size="small">
         <el-descriptions-item label="状态">
           <el-tag v-if="testResult" :type="testResult.status === 'SUCCESS' ? 'success' : 'danger'" effect="dark">

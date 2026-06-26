@@ -116,7 +116,7 @@
     </div>
 
     <!-- 手动生成弹窗 -->
-    <el-dialog v-model="showGenerateDialog" title="手动生成报告" width="520px" destroy-on-close>
+    <el-dialog v-model="showGenerateDialog" title="手动生成报告" width="480px" destroy-on-close>
       <el-form :model="generateForm" label-width="100px">
         <el-form-item label="报告类型" required>
           <el-select v-model="generateForm.type" placeholder="请选择报告类型" style="width: 100%">

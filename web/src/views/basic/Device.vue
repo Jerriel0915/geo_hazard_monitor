@@ -314,7 +314,7 @@
     </el-dialog>
 
     <!-- 维修状态弹窗 -->
-    <el-dialog v-model="maintenanceDialogVisible" title="维修状态操作" width="520px" :close-on-click-modal="false"
+    <el-dialog v-model="maintenanceDialogVisible" title="维修状态操作" width="480px" :close-on-click-modal="false"
                destroy-on-close>
       <el-form ref="maintenanceFormRef" :model="maintenanceForm" :rules="maintenanceFormRules" label-width="80px">
         <el-form-item label="设备">{{ maintenanceDeviceName }}</el-form-item>
@@ -532,7 +532,7 @@
     </el-dialog>
 
     <!-- 设备图标选择弹窗 -->
-    <el-dialog v-model="deviceIconDialogVisible" title="选择设备图标" width="750px">
+    <el-dialog v-model="deviceIconDialogVisible" title="选择设备图标" width="800px">
       <div class="icon-grid">
         <div
             v-for="item in deviceIconList"

@@ -168,7 +168,7 @@
         </transition>
       </router-view>
     </main>
-    <el-dialog title="基本信息" v-model="infoDialogVisible" width="450px">
+    <el-dialog title="基本信息" v-model="infoDialogVisible" width="480px">
       <el-form :model="userInfo" label-width="100px">
         <el-form-item label="用户名">
           <el-input v-model="userInfo.username" disabled />
@@ -199,7 +199,7 @@
         <el-button type="primary" :loading="infoSaving" @click="saveUserInfo">保存</el-button>
       </template>
     </el-dialog>
-    <el-dialog title="修改密码" v-model="pwdDialogVisible" width="400px">
+    <el-dialog title="修改密码" v-model="pwdDialogVisible" width="480px">
       <el-form :model="pwdForm" label-width="80px">
         <el-form-item label="原密码">
           <el-input type="password" show-password v-model="pwdForm.oldPassword" />

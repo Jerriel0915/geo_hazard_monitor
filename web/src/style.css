@@ -720,3 +720,96 @@ html, body, #app {
 .skeleton-table-row .skeleton-block {
   height: 16px;
 }
+
+/* ============================================
+ * 响应式断点
+ * 基准: 桌面 ≥1200px | 平板 ≥768px | 手机 <768px
+ * ============================================ */
+
+/* ── 平板 (≤1200px) ── */
+@media (max-width: 1200px) {
+  /* 搜索栏换行 */
+  .search {
+    flex-wrap: wrap;
+  }
+  .search > :not(.el-button) {
+    min-width: 160px;
+  }
+
+  /* 弹窗不超出屏幕 */
+  .el-dialog {
+    width: 90% !important;
+    max-width: 800px;
+  }
+
+  /* 表格容器横向滚动 */
+  .table-wrap__scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 页面内边距缩减 */
+  .page {
+    padding: 16px;
+  }
+}
+
+/* ── 小屏 (≤768px) ── */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 12px;
+  }
+
+  /* 搜索栏全宽堆叠 */
+  .search {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .search > * {
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .search .el-date-editor {
+    width: 100% !important;
+  }
+
+  /* 弹窗铺满 */
+  .el-dialog {
+    width: 95% !important;
+    max-width: 100%;
+    margin-top: 5vh !important;
+  }
+
+  /* 操作按钮换行 */
+  .op-cell {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* 分页组件紧凑 */
+  .el-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
+  }
+}
+
+/* ── 打印样式 ── */
+@media print {
+  .header, .page-tabs, .search, .el-pagination, .op-cell, .header-nav {
+    display: none !important;
+  }
+  .main-content {
+    padding: 0 !important;
+  }
+  .page {
+    padding: 0 !important;
+  }
+  .table-wrap__scroll {
+    overflow: visible !important;
+  }
+}

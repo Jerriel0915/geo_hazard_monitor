@@ -1,5 +1,5 @@
 <template>
-  <el-dialog :model-value="visible" title="应用范围" width="540px" destroy-on-close @close="emit('update:visible', false)">
+  <el-dialog :model-value="visible" title="应用范围" width="480px" destroy-on-close @close="emit('update:visible', false)">
     <template #header>
       <div>
         <h3 style="margin: 0; font-size: 16px;">应用范围</h3>

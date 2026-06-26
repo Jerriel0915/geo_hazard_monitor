@@ -81,7 +81,7 @@
     </div>
 
     <!-- Add Sensor Dialog -->
-    <el-dialog v-model="addSensorDialogVisible" title="添加传感器" width="500px" destroy-on-close>
+    <el-dialog v-model="addSensorDialogVisible" title="添加传感器" width="480px" destroy-on-close>
       <el-form label-width="80px">
         <el-form-item label="隐患点">
           <el-select

@@ -205,7 +205,7 @@
     </template>
   </el-dialog>
 
-  <el-dialog v-model="typeIconDialogVisible" title="选择监测类型图标" width="750px">
+  <el-dialog v-model="typeIconDialogVisible" title="选择监测类型图标" width="800px">
     <div class="icon-grid">
       <div
         v-for="item in typeIconList"

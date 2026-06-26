@@ -44,7 +44,7 @@
     </div>
 
     <!-- Grid Config Dialog -->
-    <el-dialog v-model="gridConfigDialogVisible" title="配置图表" width="450px" destroy-on-close>
+    <el-dialog v-model="gridConfigDialogVisible" title="配置图表" width="480px" destroy-on-close>
       <el-form label-width="80px">
         <el-form-item label="隐患点">
           <el-select

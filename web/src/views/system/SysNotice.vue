@@ -66,7 +66,7 @@
       </div>
     </div>
 
-    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="700px" destroy-on-close>
+    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="640px" destroy-on-close>
       <el-form :model="form" label-width="80px" :rules="rules" ref="formRef">
         <el-form-item label="标题" prop="noticeTitle">
           <el-input v-model="form.noticeTitle" placeholder="请输入标题" maxlength="50" />
@@ -96,7 +96,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog title="通知详情" v-model="viewVisible" width="700px">
+    <el-dialog title="通知详情" v-model="viewVisible" width="640px">
       <div class="notice-detail">
         <h3>{{ viewData.noticeTitle }}</h3>
         <div class="notice-meta">
