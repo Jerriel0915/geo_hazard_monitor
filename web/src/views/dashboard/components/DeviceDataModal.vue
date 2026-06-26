@@ -71,10 +71,9 @@ const emit = defineEmits<{
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 95%;
   max-width: 1200px;
-  height: 85vh;
+  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .modal-header {

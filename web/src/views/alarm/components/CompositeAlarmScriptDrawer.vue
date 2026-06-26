@@ -1033,7 +1033,7 @@ async function handleTest() {
 .script-editor-layout {
   display: flex;
   gap: 0;
-  height: calc(100vh - 80px);
+  min-height: calc(100vh - 100px);
   background: #fff;
 }
 

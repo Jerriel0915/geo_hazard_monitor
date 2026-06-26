@@ -164,12 +164,11 @@
         <el-table-column prop="deviceName" label="设备" width="140" align="center" sortable />
         <el-table-column prop="sensorName" label="传感器" width="120" align="center" sortable />
         <el-table-column prop="attrName" label="指标" width="100" align="center" sortable />
-        <el-table-column prop="unit" label="单位" width="80" align="center" sortable>
+        <el-table-column prop="value" label="数值" width="140" align="center" sortable>
           <template #default="{ row }">
-            {{ row.unit || '-' }}
+            {{ row.value }}{{ row.unit ? ' ' + row.unit : '' }}
           </template>
         </el-table-column>
-        <el-table-column prop="value" label="数值" width="120" align="center" sortable />
       </el-table>
       <div v-if="!loading && tableData.length > 0" class="mde-table-pagination">
         <el-pagination

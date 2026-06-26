@@ -882,7 +882,7 @@ const handleClose = () => { emit('update:modelValue', false) }
 </script>
 
 <style scoped>
-.feedback-container { height: 70vh; display: flex; flex-direction: column; overflow: hidden; }
+.feedback-container { max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow-y: auto; }
 .main-content { display: flex; gap: 12px; flex: 1; min-height: 0; overflow: hidden; }
 
 /* ====== 左侧生命周期（按等级加载流程图）====== */
