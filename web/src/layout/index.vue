@@ -98,8 +98,11 @@
       </div>
     </header>
     <div class="page-tabs">
-      <div class="tabs-scroll-btn" @click="scrollTabs('left')">
-        <span>‹</span>
+      <div v-show="tabsOverflow" class="tabs-scroll-btn" @click="scrollTabs('left')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
       </div>
       <div class="tabs-container" ref="tabsContainerRef">
         <!-- 首页：锁定首位，不可拖动也不可关闭 -->
@@ -143,8 +146,11 @@
           </template>
         </draggable>
       </div>
-      <div class="tabs-scroll-btn" @click="scrollTabs('right')">
-        <span>›</span>
+      <div v-show="tabsOverflow" class="tabs-scroll-btn" @click="scrollTabs('right')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
       </div>
       <div class="tabs-actions">
         <el-dropdown @command="handleTabAction">
@@ -360,7 +366,7 @@ import {
   changePassword as changeUserPassword
 } from '@/utils/userApi'
 import {ElMessage, ElNotification} from 'element-plus'
-import {computed, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, reactive, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import draggable from 'vuedraggable'
 import request from '@/utils/request'
@@ -400,6 +406,13 @@ const dismissBrowserTip = () => {
 const router = useRouter()
 const route = useRoute()
 const tabsContainerRef = ref<HTMLElement | null>(null)
+const tabsOverflow = ref(false)
+let tabsResizeObserver: ResizeObserver | null = null
+
+const checkTabsOverflow = () => {
+  const el = tabsContainerRef.value
+  tabsOverflow.value = el ? el.scrollWidth > el.clientWidth : false
+}
 const tabs = ref<Array<{ name: string; label: string }>>([])
 const activeTab = ref('Dashboard')
 
@@ -1064,9 +1077,20 @@ onMounted(async () => {
     const c = (copyrightRes as any)?.data ?? (copyrightRes as any)?.msg
     if (c && typeof c === 'string' && c.trim()) systemCopyright.value = c.trim()
   } catch { /* 未配置时使用默认值 */ }
+
+  // 4. 页签溢出检测 — 自动显示/隐藏左右滚动按钮
+  if (tabsContainerRef.value) {
+    tabsResizeObserver = new ResizeObserver(checkTabsOverflow)
+    tabsResizeObserver.observe(tabsContainerRef.value)
+    checkTabsOverflow()
+  }
 })
 
 onUnmounted(() => {
+  if (tabsResizeObserver) {
+    tabsResizeObserver.disconnect()
+    tabsResizeObserver = null
+  }
   sseStopped = true
   if (noticeEventSource) {
     noticeEventSource.close()
@@ -1091,12 +1115,13 @@ watch(() => route.name, (name) => {
   if (name) syncTabWithRoute(String(name))
 })
 
-// tabs 变化时持久化到 localStorage
+// tabs 变化时持久化到 localStorage，并重新检测溢出（nextTick 等 DOM 更新后）
 watch(tabs, (val) => {
   try {
     localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(val))
   } catch { /* 配额超限等异常忽略 */
   }
+  nextTick(checkTabsOverflow)
 }, {deep: true})
 
 const scrollTabs = (direction: 'left' | 'right') => {
