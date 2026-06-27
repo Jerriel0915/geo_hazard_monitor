@@ -90,6 +90,12 @@
             <artifactId>zwei-monitor</artifactId>
         </dependency>
 
+        <!-- Terra AI Assistant -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-terra-agent</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

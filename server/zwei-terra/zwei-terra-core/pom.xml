@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>zwei-terra</artifactId>
+        <groupId>com.zwei</groupId>
+        <version>3.9.2</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>zwei-terra-core</artifactId>
+    <description>Terra Core — 接口协议层，业务模块依赖此模块实现 tool</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-common</artifactId>
+        </dependency>
+    </dependencies>
+</project>

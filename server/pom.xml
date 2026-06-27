@@ -222,6 +222,18 @@
                 <version>${zwei.version}</version>
             </dependency>
 
+            <!-- Terra AI Assistant 模块 -->
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-terra-core</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.zwei</groupId>
+                <artifactId>zwei-terra-agent</artifactId>
+                <version>${zwei.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -243,6 +255,7 @@
         <module>zwei-iot-report</module>
         <module>zwei-monitor</module>
         <module>zwei-datashare</module>
+        <module>zwei-terra</module>
     </modules>
     <packaging>pom</packaging>
 

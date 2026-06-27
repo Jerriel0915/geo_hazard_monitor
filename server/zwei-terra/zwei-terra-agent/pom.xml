@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>zwei-terra</artifactId>
+        <groupId>com.zwei</groupId>
+        <version>3.9.2</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>zwei-terra-agent</artifactId>
+    <description>Terra Agent — 智能助手 Agent 实现</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-terra-core</artifactId>
+            <version>${zwei.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-framework</artifactId>
+        </dependency>
+        <!-- Spring AI Anthropic -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-anthropic</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+    </dependencies>
+</project>
