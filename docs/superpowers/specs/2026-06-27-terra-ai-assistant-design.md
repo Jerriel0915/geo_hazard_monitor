@@ -319,7 +319,7 @@ tools:
 
 ### 5.1 Spring AI 集成
 
-使用 Spring AI Alibaba 的 `ChatClient` 封装 Anthropic Messages API 调用。由于只需要 Anthropic 协议且需要兼容 Spring Boot 4.x，实现方案为：自定义 `AnthropicChatModel` 实现 Spring AI 的 `ChatModel` 接口，内部直接使用 HTTP 客户端（WebClient/OkHttp）调用 Anthropic Messages API（`POST {base-url}/v1/messages`），支持 SSE 流式响应解析。不依赖 spring-ai-anthropic 原生 starter，确保最大兼容性。
+使用 `spring-ai-anthropic` 原生库的 `AnthropicChatModel` + Spring AI 的 `ChatClient` 封装对话调用。从 `terra_model_config` 表读取激活配置（base-url + api-key + model），动态构建 `AnthropicApi` 实例（覆盖默认的 `api.anthropic.com`），支持 SSE 流式响应和原生 tool calling。
 
 ```java
 // terra-agent: AnthropicChatService — 核心对话服务
@@ -695,10 +695,10 @@ terra:
 
 ## 12. 版本兼容性策略
 
-项目当前 Spring Boot 4.0.3。Spring AI Alibaba 对 Spring Boot 4.x 的支持版本需在实现第一步验证。
+项目当前 Spring Boot 4.0.3。`spring-ai-anthropic` 对 Spring Boot 4.x 的兼容版本需在实现第一步验证。
 
 **策略：**
-- `zwei-terra-agent` 依赖 `spring-ai-alibaba` 核心（ChatClient/ChatModel 接口），而非完整 starter
-- 自定义 `AnthropicChatModel` 直接用 HTTP 客户端调 Anthropic Messages API，不依赖 spring-ai-anthropic 原生模块
-- 这样即使 Spring AI Alibaba 版本升级有 breaking change，核心对话逻辑不受影响
+- `zwei-terra-agent` 依赖 `spring-ai-anthropic`（提供 `AnthropicChatModel` + `AnthropicApi`）
+- 从 `terra_model_config` 表读取 base-url + api-key + model，动态构建 `AnthropicApi`（覆盖默认 base URL）
+- 使用 Spring AI 的 `ChatClient` 封装流式调用和 tool calling
 - 实现计划的第一步：在 pom.xml 中验证依赖能否正常解析和编译
