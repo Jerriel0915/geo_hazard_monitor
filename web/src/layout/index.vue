@@ -346,6 +346,10 @@
         <el-empty v-else-if="!noticeDetailLoading" description="公告不存在或已被删除" />
       </div>
     </el-dialog>
+
+    <!-- Terra 智能助手 -->
+    <TerraWidget />
+    <TerraChatPanel />
   </div>
 </template>
 
@@ -372,6 +376,8 @@ import draggable from 'vuedraggable'
 import request from '@/utils/request'
 import {getMenuTree, type MenuItem} from '@/api/system'
 import {getMenuIconSvg, resolveRouteName} from '@/utils/menuIcon'
+import TerraWidget from '@/components/terra/TerraWidget.vue'
+import TerraChatPanel from '@/components/terra/TerraChatPanel.vue'
 
 
 /** 通知中心统一消息结构（公告 + 事件共用） */
