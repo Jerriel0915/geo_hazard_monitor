@@ -1,17 +1,26 @@
 package com.zwei.iot.alarm.service.impl;
 
 import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.alarm.domain.AlarmConstants;
 import com.zwei.iot.alarm.domain.AlarmStrategy;
 import com.zwei.iot.alarm.domain.AlarmStrategyHazardPoint;
+import com.zwei.iot.alarm.domain.dto.StrategyTestRunRequest;
+import com.zwei.iot.alarm.domain.dto.StrategyTestRunResult;
 import com.zwei.iot.alarm.mapper.AlarmStrategyHazardPointMapper;
 import com.zwei.iot.alarm.mapper.AlarmStrategyMapper;
 import com.zwei.iot.alarm.service.IAlarmStrategyService;
+import com.zwei.iot.alarm.service.engine.GroovyScriptExecutor;
+import com.zwei.iot.timeseries.compute.ScriptCacheOps;
+import com.zwei.iot.timeseries.compute.ScriptSensorQuery;
 import com.zwei.common.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 综合告警策略服务实现
@@ -23,11 +32,20 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
 
     private final AlarmStrategyMapper strategyMapper;
     private final AlarmStrategyHazardPointMapper bindingMapper;
+    private final GroovyScriptExecutor groovyScriptExecutor;
+    private final ScriptCacheOps cacheOps;
+    private final ScriptSensorQuery scriptSensorQuery;
 
     public AlarmStrategyServiceImpl(AlarmStrategyMapper strategyMapper,
-                                    AlarmStrategyHazardPointMapper bindingMapper) {
+                                    AlarmStrategyHazardPointMapper bindingMapper,
+                                    GroovyScriptExecutor groovyScriptExecutor,
+                                    ScriptCacheOps cacheOps,
+                                    ScriptSensorQuery scriptSensorQuery) {
         this.strategyMapper = strategyMapper;
         this.bindingMapper = bindingMapper;
+        this.groovyScriptExecutor = groovyScriptExecutor;
+        this.cacheOps = cacheOps;
+        this.scriptSensorQuery = scriptSensorQuery;
     }
 
     @Override
@@ -91,6 +109,54 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     @Override
     public boolean checkStrategyNameUnique(String name, Long id) {
         return strategyMapper.checkStrategyNameUnique(name, id) == null;
+    }
+
+    @Override
+    public StrategyTestRunResult testRun(Long id, StrategyTestRunRequest request) {
+        StrategyTestRunResult result = new StrategyTestRunResult();
+        long start = System.currentTimeMillis();
+
+        AlarmStrategy strategy = strategyMapper.selectStrategyById(id);
+        if (strategy == null) {
+            result.setError("策略不存在: id=" + id);
+            result.setDurationMs(System.currentTimeMillis() - start);
+            return result;
+        }
+        if (strategy.getScriptContent() == null || strategy.getScriptContent().trim().isEmpty()) {
+            result.setError("策略脚本内容为空");
+            result.setDurationMs(System.currentTimeMillis() - start);
+            return result;
+        }
+
+        List<Long> hazardPointIds = bindingMapper.selectHazardPointIdsByStrategyId(id);
+        if (hazardPointIds.isEmpty() && strategy.getMonitorTypeId() != null) {
+            hazardPointIds = strategyMapper.selectHazardPointIdsByMonitorTypeId(strategy.getMonitorTypeId());
+        }
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("hazardPointIds", hazardPointIds);
+        variables.put("currentTime", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        if (request != null && request.getMockSensorCode() != null) {
+            variables.put("sensorCode", request.getMockSensorCode());
+        }
+        if (request != null && request.getMockDataTime() != null) {
+            variables.put("dataTime", request.getMockDataTime());
+        }
+
+        Map<String, Object> tools = new HashMap<>();
+        tools.put("cache", cacheOps);
+        tools.put("sensor", scriptSensorQuery);
+
+        try {
+            Integer level = groovyScriptExecutor.executeWithTools(
+                    strategy.getScriptContent(), variables, tools);
+            result.setLevel(level);
+            result.setLevelText(level != null ? AlarmConstants.resolveLevelText(level) : null);
+        } catch (Exception e) {
+            result.setError(e.getMessage());
+        }
+        result.setDurationMs(System.currentTimeMillis() - start);
+        return result;
     }
 
     private void updateBindings(Long strategyId, Long[] hazardPointIds) {

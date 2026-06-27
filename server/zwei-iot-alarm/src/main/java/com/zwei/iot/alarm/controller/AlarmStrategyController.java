@@ -6,6 +6,8 @@ import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.TableDataInfo;
 import com.zwei.iot.alarm.domain.AlarmStrategy;
 import com.zwei.iot.alarm.domain.dto.StrategyCreateRequest;
+import com.zwei.iot.alarm.domain.dto.StrategyTestRunRequest;
+import com.zwei.iot.alarm.domain.dto.StrategyTestRunResult;
 import com.zwei.iot.alarm.service.IAlarmStrategyService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -106,5 +108,11 @@ public class AlarmStrategyController extends BaseController {
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
     public AjaxResult getScope(@PathVariable Long id) {
         return success(strategyService.getHazardPointIds(id));
+    }
+
+    @PostMapping("/{id}/test-run")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
+    public AjaxResult testRun(@PathVariable Long id, @RequestBody(required = false) StrategyTestRunRequest request) {
+        return success(strategyService.testRun(id, request));
     }
 }

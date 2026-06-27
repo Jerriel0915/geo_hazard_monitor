@@ -1,6 +1,8 @@
 package com.zwei.iot.alarm.service;
 
 import com.zwei.iot.alarm.domain.AlarmStrategy;
+import com.zwei.iot.alarm.domain.dto.StrategyTestRunRequest;
+import com.zwei.iot.alarm.domain.dto.StrategyTestRunResult;
 
 import java.util.List;
 
@@ -33,4 +35,6 @@ public interface IAlarmStrategyService {
      * @return true=唯一，false=已存在
      */
     boolean checkStrategyNameUnique(String name, Long id);
+
+    StrategyTestRunResult testRun(Long id, StrategyTestRunRequest request);
 }
