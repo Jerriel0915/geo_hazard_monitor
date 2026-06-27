@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.terra.agent.mapper.TerraMessageMapper">
+
+    <resultMap type="com.zwei.terra.agent.domain.TerraMessage" id="TerraMessageResult">
+        <id property="id" column="id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="role" column="role"/>
+        <result property="content" column="content"/>
+        <result property="toolCalls" column="tool_calls"/>
+        <result property="toolCallId" column="tool_call_id"/>
+        <result property="tokensUsed" column="tokens_used"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        SELECT id, conversation_id, role, content, tool_calls, tool_call_id,
+               tokens_used, create_time
+        FROM terra_message
+    </sql>
+
+    <select id="selectByConversationId" resultMap="TerraMessageResult">
+        <include refid="selectVo"/>
+        WHERE conversation_id = #{conversationId}
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.terra.agent.domain.TerraMessage"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO terra_message (conversation_id, role, content, tool_calls,
+                                   tool_call_id, tokens_used, create_time)
+        VALUES (#{conversationId}, #{role}, #{content}, #{toolCalls},
+                #{toolCallId}, #{tokensUsed}, #{createTime})
+    </insert>
+
+    <update id="updateConversationStats">
+        UPDATE terra_conversation
+        SET message_count = (
+                SELECT COUNT(*) FROM terra_message WHERE conversation_id = #{conversationId}
+            ),
+            last_message_time = (
+                SELECT MAX(create_time) FROM terra_message WHERE conversation_id = #{conversationId}
+            )
+        WHERE id = #{conversationId}
+    </update>
+
+</mapper>

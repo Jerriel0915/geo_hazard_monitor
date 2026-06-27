@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.terra.agent.mapper.TerraPersonalityMapper">
+
+    <resultMap type="com.zwei.terra.agent.domain.TerraPersonality" id="TerraPersonalityResult">
+        <id property="id" column="id"/>
+        <result property="layerType" column="layer_type"/>
+        <result property="name" column="name"/>
+        <result property="content" column="content"/>
+        <result property="isActive" column="is_active"/>
+        <result property="isPreset" column="is_preset"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        SELECT id, layer_type, name, content, is_active, is_preset, sort_order,
+               del_flag, create_by, create_time, update_by, update_time, remark
+        FROM terra_personality
+    </sql>
+
+    <select id="selectList" parameterType="com.zwei.terra.agent.domain.TerraPersonality"
+            resultMap="TerraPersonalityResult">
+        <include refid="selectVo"/>
+        <where>
+            del_flag = '0'
+            <if test="layerType != null and layerType != ''">AND layer_type = #{layerType}</if>
+            <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="isActive != null">AND is_active = #{isActive}</if>
+        </where>
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="TerraPersonalityResult">
+        <include refid="selectVo"/>
+        WHERE id = #{id} AND del_flag = '0'
+    </select>
+
+    <select id="selectActiveCore" resultMap="TerraPersonalityResult">
+        <include refid="selectVo"/>
+        WHERE del_flag = '0' AND is_active = 1 AND layer_type = 'core'
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveRoles" resultMap="TerraPersonalityResult">
+        <include refid="selectVo"/>
+        WHERE del_flag = '0' AND is_active = 1 AND layer_type = 'role'
+        ORDER BY sort_order ASC
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.terra.agent.domain.TerraPersonality"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO terra_personality (layer_type, name, content, is_active, is_preset,
+                                       sort_order, del_flag, create_by, create_time, remark)
+        VALUES (#{layerType}, #{name}, #{content}, #{isActive}, #{isPreset},
+                #{sortOrder}, '0', #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="update" parameterType="com.zwei.terra.agent.domain.TerraPersonality">
+        UPDATE terra_personality
+        <set>
+            <if test="layerType != null and layerType != ''">layer_type = #{layerType},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="isPreset != null">is_preset = #{isPreset},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteById" parameterType="Long">
+        UPDATE terra_personality
+        SET del_flag = '1'
+        WHERE id = #{id}
+    </update>
+
+</mapper>

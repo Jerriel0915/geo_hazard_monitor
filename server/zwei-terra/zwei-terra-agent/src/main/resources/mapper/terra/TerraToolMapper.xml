@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.terra.agent.mapper.TerraToolMapper">
+
+    <resultMap type="com.zwei.terra.agent.domain.TerraTool" id="TerraToolResult">
+        <id property="id" column="id"/>
+        <result property="toolKey" column="tool_key"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="source" column="source"/>
+        <result property="execSide" column="exec_side"/>
+        <result property="toolType" column="tool_type"/>
+        <result property="parametersSchema" column="parameters_schema"/>
+        <result property="endpoint" column="endpoint"/>
+        <result property="timeoutSeconds" column="timeout_seconds"/>
+        <result property="isPreset" column="is_preset"/>
+        <result property="isEnabled" column="is_enabled"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        SELECT id, tool_key, name, description, source, exec_side, tool_type,
+               parameters_schema, endpoint, timeout_seconds, is_preset, is_enabled,
+               sort_order, del_flag, create_by, create_time, update_by, update_time, remark
+        FROM terra_tool
+    </sql>
+
+    <select id="selectList" parameterType="com.zwei.terra.agent.domain.TerraTool"
+            resultMap="TerraToolResult">
+        <include refid="selectVo"/>
+        <where>
+            del_flag = '0'
+            <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="toolKey != null and toolKey != ''">AND tool_key = #{toolKey}</if>
+            <if test="isEnabled != null">AND is_enabled = #{isEnabled}</if>
+            <if test="toolType != null and toolType != ''">AND tool_type = #{toolType}</if>
+        </where>
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectByKey" parameterType="String" resultMap="TerraToolResult">
+        <include refid="selectVo"/>
+        WHERE tool_key = #{toolKey} AND del_flag = '0'
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="TerraToolResult">
+        <include refid="selectVo"/>
+        WHERE id = #{id} AND del_flag = '0'
+    </select>
+
+    <select id="selectEnabled" resultMap="TerraToolResult">
+        <include refid="selectVo"/>
+        WHERE del_flag = '0' AND is_enabled = 1
+        ORDER BY sort_order ASC
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.terra.agent.domain.TerraTool"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO terra_tool (tool_key, name, description, source, exec_side, tool_type,
+                                parameters_schema, endpoint, timeout_seconds, is_preset,
+                                is_enabled, sort_order, del_flag, create_by, create_time, remark)
+        VALUES (#{toolKey}, #{name}, #{description}, #{source}, #{execSide}, #{toolType},
+                #{parametersSchema}, #{endpoint}, #{timeoutSeconds}, #{isPreset},
+                #{isEnabled}, #{sortOrder}, '0', #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="update" parameterType="com.zwei.terra.agent.domain.TerraTool">
+        UPDATE terra_tool
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="source != null">source = #{source},</if>
+            <if test="execSide != null">exec_side = #{execSide},</if>
+            <if test="toolType != null">tool_type = #{toolType},</if>
+            <if test="parametersSchema != null">parameters_schema = #{parametersSchema},</if>
+            <if test="endpoint != null">endpoint = #{endpoint},</if>
+            <if test="timeoutSeconds != null">timeout_seconds = #{timeoutSeconds},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteById" parameterType="Long">
+        UPDATE terra_tool
+        SET del_flag = '1'
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.terra.agent.mapper.TerraSkillMapper">
+
+    <resultMap type="com.zwei.terra.agent.domain.TerraSkill" id="TerraSkillResult">
+        <id property="id" column="id"/>
+        <result property="skillKey" column="skill_key"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="directoryPath" column="directory_path"/>
+        <result property="triggersSummary" column="triggers_summary"/>
+        <result property="toolsSummary" column="tools_summary"/>
+        <result property="isPreset" column="is_preset"/>
+        <result property="isEnabled" column="is_enabled"/>
+        <result property="installedAt" column="installed_at"/>
+        <result property="installedBy" column="installed_by"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        SELECT id, skill_key, name, description, directory_path, triggers_summary, tools_summary,
+               is_preset, is_enabled, installed_at, installed_by, sort_order,
+               del_flag, create_by, create_time, update_by, update_time, remark
+        FROM terra_skill
+    </sql>
+
+    <select id="selectList" parameterType="com.zwei.terra.agent.domain.TerraSkill"
+            resultMap="TerraSkillResult">
+        <include refid="selectVo"/>
+        <where>
+            del_flag = '0'
+            <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="skillKey != null and skillKey != ''">AND skill_key = #{skillKey}</if>
+            <if test="isEnabled != null">AND is_enabled = #{isEnabled}</if>
+        </where>
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectByKey" parameterType="String" resultMap="TerraSkillResult">
+        <include refid="selectVo"/>
+        WHERE skill_key = #{skillKey} AND del_flag = '0'
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="TerraSkillResult">
+        <include refid="selectVo"/>
+        WHERE id = #{id} AND del_flag = '0'
+    </select>
+
+    <select id="selectEnabled" resultMap="TerraSkillResult">
+        <include refid="selectVo"/>
+        WHERE del_flag = '0' AND is_enabled = 1
+        ORDER BY sort_order ASC
+    </select>
+
+    <insert id="insert" parameterType="com.zwei.terra.agent.domain.TerraSkill"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO terra_skill (skill_key, name, description, directory_path,
+                                 triggers_summary, tools_summary, is_preset, is_enabled,
+                                 installed_at, installed_by, sort_order, del_flag,
+                                 create_by, create_time, remark)
+        VALUES (#{skillKey}, #{name}, #{description}, #{directoryPath},
+                #{triggersSummary}, #{toolsSummary}, #{isPreset}, #{isEnabled},
+                #{installedAt}, #{installedBy}, #{sortOrder}, '0',
+                #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="update" parameterType="com.zwei.terra.agent.domain.TerraSkill">
+        UPDATE terra_skill
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="directoryPath != null">directory_path = #{directoryPath},</if>
+            <if test="triggersSummary != null">triggers_summary = #{triggersSummary},</if>
+            <if test="toolsSummary != null">tools_summary = #{toolsSummary},</if>
+            <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteById" parameterType="Long">
+        UPDATE terra_skill
+        SET del_flag = '1'
+        WHERE id = #{id}
+    </update>
+
+</mapper>
