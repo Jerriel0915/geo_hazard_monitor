@@ -102,7 +102,7 @@ zwei-common ←── zwei-terra-core ←─── zwei-terra-agent
 
 ### 2.5 Controller 扫描
 
-terra 的 Controller 放在 `zwei-terra-agent` 模块内部。在 `zwei-admin` 的 Spring Boot 启动类上扩展 `@ComponentScan` 包含 `com.zwei.terra`，或通过 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 自动装配。
+terra 的 Controller 放在 `zwei-terra-agent` 模块内部。通过 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 自动装配，在 `zwei-terra-agent` 中创建一个 `@AutoConfiguration` 类，通过 `@ComponentScan(basePackages = "com.zwei.terra")` 扫描所有 terra 组件。这样 `zwei-admin` 无需修改启动类。
 
 ## 3. 数据模型
 
@@ -319,7 +319,7 @@ tools:
 
 ### 5.1 Spring AI 集成
 
-使用 Spring AI Alibaba 的 `ChatClient` 封装 Anthropic Messages API 调用。由于只需要 Anthropic 协议，将自定义实现 `AnthropicChatModel`：
+使用 Spring AI Alibaba 的 `ChatClient` 封装 Anthropic Messages API 调用。由于只需要 Anthropic 协议且需要兼容 Spring Boot 4.x，实现方案为：自定义 `AnthropicChatModel` 实现 Spring AI 的 `ChatModel` 接口，内部直接使用 HTTP 客户端（WebClient/OkHttp）调用 Anthropic Messages API（`POST {base-url}/v1/messages`），支持 SSE 流式响应解析。不依赖 spring-ai-anthropic 原生 starter，确保最大兼容性。
 
 ```java
 // terra-agent: AnthropicChatService — 核心对话服务
@@ -595,7 +595,7 @@ web/src/
   - `background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(12px)`
   - 消息列表自下向上堆叠
   - 输入框在底部
-  - 支持会话切换（左侧或顶部会话列表）
+  - 会话切换通过面板顶部的下拉列表选择
 
 ### 7.4 前端工具执行器（FrontendToolExecutor）
 
@@ -693,8 +693,12 @@ terra:
 4. 技能安装/上传功能完善
 5. 对话上下文窗口优化（token 计数 + 截断策略）
 
-## 12. 版本兼容性风险
+## 12. 版本兼容性策略
 
-- 项目当前 Spring Boot 4.0.3，需要确认 Spring AI Alibaba 的兼容版本
-- 如果 Spring AI Alibaba 不兼容 Spring Boot 4.x，需评估降级方案或使用 Spring AI 原生（spring-ai-anthropic）
-- 在实现计划的第一步中进行兼容性验证
+项目当前 Spring Boot 4.0.3。Spring AI Alibaba 对 Spring Boot 4.x 的支持版本需在实现第一步验证。
+
+**策略：**
+- `zwei-terra-agent` 依赖 `spring-ai-alibaba` 核心（ChatClient/ChatModel 接口），而非完整 starter
+- 自定义 `AnthropicChatModel` 直接用 HTTP 客户端调 Anthropic Messages API，不依赖 spring-ai-anthropic 原生模块
+- 这样即使 Spring AI Alibaba 版本升级有 breaking change，核心对话逻辑不受影响
+- 实现计划的第一步：在 pom.xml 中验证依赖能否正常解析和编译
