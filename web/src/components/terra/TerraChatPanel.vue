@@ -84,7 +84,7 @@
 import { ref, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Close, Promotion, VideoPause, ChatDotRound } from '@element-plus/icons-vue'
-import { useTerraChat } from './useTerraChat'
+import { useTerraChat, setNavigateCallback } from './useTerraChat'
 import TerraMessage from './TerraMessage.vue'
 
 const router = useRouter()
@@ -92,11 +92,17 @@ const chat = useTerraChat()
 const inputText = ref('')
 const messagesContainer = ref<HTMLElement>()
 
-/** 处理 AI 回复中的页面导航链接 */
-function onNavigate(routeName: string) {
-  router.push({ name: routeName }).catch(() => {})
+/** 处理 AI 回复中的页面导航链接（支持 query 参数） */
+function onNavigate(routeName: string, query?: Record<string, string>) {
+  router.push({ name: routeName, query: query || {} }).catch(() => {})
   chat.panelOpen.value = false
 }
+
+/** 设置前端导航回调 — AI 调用 frontend.navigate 工具时触发 */
+setNavigateCallback((routeName, query) => {
+  router.push({ name: routeName, query: query || {} }).catch(() => {})
+  chat.panelOpen.value = false
+})
 
 function onSend() {
   const text = inputText.value.trim()

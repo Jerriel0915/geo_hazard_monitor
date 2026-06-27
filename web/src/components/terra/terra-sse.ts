@@ -47,6 +47,7 @@ export function createTerraSSE(
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let currentEventName = ''  // 必须在 while 循环外声明，跨 chunk 保持
       retryCount = 0
 
       while (true) {
@@ -57,7 +58,6 @@ export function createTerraSSE(
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
-        let currentEventName = ''
         for (const line of lines) {
           if (line.startsWith('event:')) {
             currentEventName = line.slice(6).trim()

@@ -15,11 +15,10 @@ declare module 'vue' {
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']
+    ElCard: typeof import('element-plus/es')['ElCard']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
     ElCheckboxGroup: typeof import('element-plus/es')['ElCheckboxGroup']
     ElCol: typeof import('element-plus/es')['ElCol']
-    ElCollapse: typeof import('element-plus/es')['ElCollapse']
-    ElCollapseItem: typeof import('element-plus/es')['ElCollapseItem']
     ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
     ElDatePicker: typeof import('element-plus/es')['ElDatePicker']
     ElDescriptions: typeof import('element-plus/es')['ElDescriptions']
@@ -73,6 +72,9 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     TablePagination: typeof import('./src/components/TablePagination.vue')['default']
     TableSortHeader: typeof import('./src/components/TableSortHeader.vue')['default']
+    TerraChatPanel: typeof import('./src/components/terra/TerraChatPanel.vue')['default']
+    TerraMessage: typeof import('./src/components/terra/TerraMessage.vue')['default']
+    TerraWidget: typeof import('./src/components/terra/TerraWidget.vue')['default']
     VideoPlayer: typeof import('./src/components/VideoPlayer.vue')['default']
   }
   export interface GlobalDirectives {

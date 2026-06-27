@@ -33,6 +33,47 @@ const toolExecutor = new TerraToolExecutor()
 let currentController: AbortController | null = null
 let streamingMessage: ChatMessage | null = null
 
+// ---- 打字机效果 ----
+let typewriterTimer: ReturnType<typeof setInterval> | null = null
+let pendingBuffer = ''
+
+// ---- 前端导航回调（由 TerraChatPanel 设置）----
+let navigateCallback: ((routeName: string, query?: Record<string, string>) => void) | null = null
+
+export function setNavigateCallback(fn: typeof navigateCallback) {
+  navigateCallback = fn
+}
+
+function startTypewriter() {
+  if (typewriterTimer) return
+  typewriterTimer = setInterval(() => {
+    if (!streamingMessage || pendingBuffer.length === 0) {
+      stopTypewriter()
+      return
+    }
+    // 自适应速率：缓冲越长每次输出越多字符，保持流畅不堆积
+    const charsPerTick = Math.max(2, Math.ceil(pendingBuffer.length / 40))
+    const chunk = pendingBuffer.slice(0, charsPerTick)
+    pendingBuffer = pendingBuffer.slice(charsPerTick)
+    streamingMessage.content += chunk
+  }, 20) // 20ms/tick ≈ 50fps
+}
+
+function stopTypewriter() {
+  if (typewriterTimer) {
+    clearInterval(typewriterTimer)
+    typewriterTimer = null
+  }
+}
+
+function flushBuffer() {
+  if (streamingMessage && pendingBuffer) {
+    streamingMessage.content += pendingBuffer
+  }
+  pendingBuffer = ''
+  stopTypewriter()
+}
+
 export function useTerraChat() {
 
   async function loadConversations() {
@@ -86,23 +127,53 @@ export function useTerraChat() {
     const callbacks: SseCallbacks = {
       onToken: (event) => {
         if (streamingMessage) {
-          streamingMessage.content += event.content
+          pendingBuffer += event.content
+          startTypewriter()
         }
       },
-      onToolCall: async (event) => {
+      onToolCall: (event) => {
         if (streamingMessage) {
           if (!streamingMessage.toolCalls) streamingMessage.toolCalls = []
           streamingMessage.toolCalls.push(event)
         }
         if (event.execSide === 'frontend') {
-          const result = await toolExecutor.execute(event.tool, event.params || {})
-          await postToolResult(event.callId, result.success, result.result || result.error)
+          const toolName = event.tool
+          const params = event.params || {}
+
+          if (toolName === 'frontend.navigate') {
+            // 直接处理导航工具
+            const routeName = params.routeName as string
+            const query: Record<string, string> = {}
+            for (const [k, v] of Object.entries(params)) {
+              if (k !== 'routeName' && typeof v === 'string') query[k] = v
+            }
+            try {
+              if (navigateCallback) {
+                navigateCallback(routeName, Object.keys(query).length ? query : undefined)
+                postToolResult(event.callId, true, `已打开页面: ${routeName}`).catch(() => {})
+              } else {
+                postToolResult(event.callId, false, '导航回调未就绪').catch(() => {})
+              }
+            } catch (err) {
+              console.error('[Terra] 导航失败:', err)
+              postToolResult(event.callId, false, '导航执行异常').catch(() => {})
+            }
+          } else {
+            // 其他前端工具走 toolExecutor
+            toolExecutor.execute(toolName, params)
+              .then(result => postToolResult(event.callId, result.success, result.result || result.error))
+              .catch(err => {
+                console.error('[Terra] 前端工具执行异常:', toolName, err)
+                postToolResult(event.callId, false, err?.message || '执行异常').catch(() => {})
+              })
+          }
         }
       },
       onToolResult: (_event) => {
         // 后端工具结果（已由后端执行，仅展示）
       },
       onDone: (_event) => {
+        flushBuffer()
         if (streamingMessage) {
           streamingMessage.isStreaming = false
         }
@@ -110,6 +181,7 @@ export function useTerraChat() {
         streamingMessage = null
       },
       onError: (event) => {
+        flushBuffer()
         if (streamingMessage) {
           streamingMessage.content += `\n\n[错误] ${event.message}`
           streamingMessage.isStreaming = false
@@ -119,6 +191,7 @@ export function useTerraChat() {
         streamingMessage = null
       },
       onClose: () => {
+        flushBuffer()
         if (streamingMessage) {
           streamingMessage.isStreaming = false
         }
@@ -134,6 +207,7 @@ export function useTerraChat() {
       currentController.abort()
       currentController = null
     }
+    flushBuffer()
     isStreaming.value = false
     if (streamingMessage) {
       streamingMessage.isStreaming = false

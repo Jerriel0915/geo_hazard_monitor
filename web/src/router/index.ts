@@ -65,6 +65,7 @@ const routes: RouteRecordRaw[] = [
       // === Terra 智能助手 ===
       {
         path: '/terra/settings',
+        name: 'TerraSettings',
         component: () => import('@/views/terra/SettingsLayout.vue'),
         children: [
           { path: '', redirect: '/terra/settings/personality' },

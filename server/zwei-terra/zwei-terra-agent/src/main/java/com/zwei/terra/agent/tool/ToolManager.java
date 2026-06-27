@@ -97,11 +97,24 @@ public class ToolManager {
         List<TerraTool> tools = toolMapper.selectEnabled();
         for (TerraTool tool : tools) {
             if ("config".equals(tool.getSource())) {
-                ToolDefinition def = ToolDefinition.builder()
+                ToolDefinition.ToolDefinitionBuilder builder = ToolDefinition.builder()
                     .name(tool.getToolKey())
                     .description(tool.getDescription())
-                    .execSide(tool.getExecSide())
-                    .build();
+                    .execSide(tool.getExecSide());
+
+                // 解析 DB 中的 parameters_schema JSON
+                if (tool.getParametersSchema() != null && !tool.getParametersSchema().isBlank()) {
+                    try {
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        Map<String, Object> schema = mapper.readValue(tool.getParametersSchema(),
+                                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                        builder.parametersSchema(schema);
+                    } catch (Exception e) {
+                        log.warn("解析工具 parameters_schema 失败: tool={}, error={}", tool.getToolKey(), e.getMessage());
+                    }
+                }
+
+                ToolDefinition def = builder.build();
                 configTools.put(tool.getToolKey(), ToolRegistration.builder()
                     .toolKey(tool.getToolKey())
                     .definition(def)

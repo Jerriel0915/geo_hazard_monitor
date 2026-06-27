@@ -61,7 +61,7 @@ import { Loading } from '@element-plus/icons-vue'
 import type { ChatMessage } from './useTerraChat'
 
 const props = defineProps<{ message: ChatMessage }>()
-const emit = defineEmits<{ navigate: [routeName: string] }>()
+const emit = defineEmits<{ navigate: [routeName: string, query?: Record<string, string>] }>()
 
 /** 思考状态文案 */
 const thinkingText = computed(() => {
@@ -88,10 +88,13 @@ const renderedContent = computed(() => {
   if (!props.message.content) return ''
   const raw = marked.parse(props.message.content, { async: false }) as string
   let html = DOMPurify.sanitize(raw)
-  // 给 #page:xxx 链接添加 data-navigate 属性和样式
+  // 给 #page:xxx 或 #page:xxx?key=val 链接添加 data-navigate 属性和样式
   html = html.replace(
-    /href="#page:([^"]+)"/g,
-    'href="#page:$1" data-navigate="$1" class="nav-link"'
+    /href="#page:([^"?]+)(\?[^"]*)?"/g,
+    (_match, routeName: string, queryStr?: string) => {
+      const q = queryStr ? queryStr.slice(1) : ''
+      return `href="#page:${routeName}${queryStr || ''}" data-navigate="${routeName}" data-query="${q}" class="nav-link"`
+    }
   )
   return html
 })
@@ -102,8 +105,13 @@ function handleClick(e: MouseEvent) {
   if (!target) return
   e.preventDefault()
   const routeName = target.getAttribute('data-navigate')
+  const queryStr = target.getAttribute('data-query') || ''
   if (routeName) {
-    emit('navigate', routeName)
+    const query: Record<string, string> = {}
+    if (queryStr) {
+      new URLSearchParams(queryStr).forEach((v, k) => { query[k] = v })
+    }
+    emit('navigate', routeName, Object.keys(query).length ? query : undefined)
   }
 }
 </script>
