@@ -3,7 +3,7 @@
     <div class="panel-header">▶ 在线测试</div>
 
     <div class="panel-body">
-      <div class="form-row">
+      <div v-if="mode === 'calc'" class="form-row">
         <label class="row-label">curData</label>
         <el-input
           v-model="curDataJson"
@@ -14,7 +14,7 @@
         />
       </div>
 
-      <div class="form-row">
+      <div v-if="mode === 'calc'" class="form-row">
         <label class="row-label">prevData</label>
         <el-input
           v-model="prevDataJson"
@@ -25,7 +25,7 @@
         />
       </div>
 
-      <div v-if="jsonError" class="json-error">{{ jsonError }}</div>
+      <div v-if="mode === 'calc' && jsonError" class="json-error">{{ jsonError }}</div>
 
       <div class="actions">
         <el-button
@@ -35,11 +35,11 @@
           data-test="run-btn"
           @click="handleRun"
         >运行测试</el-button>
-        <el-button data-test="clear-btn" @click="clearInputs">清空输入</el-button>
+        <el-button v-if="mode === 'calc'" data-test="clear-btn" @click="clearInputs">清空输入</el-button>
       </div>
 
       <el-alert
-        v-if="result?.success"
+        v-if="mode === 'calc' && result?.success"
         type="success"
         :closable="false"
         class="result-alert"
@@ -53,7 +53,7 @@
       </el-alert>
 
       <el-alert
-        v-else-if="result && !result.success"
+        v-else-if="mode === 'calc' && result && !result.success"
         type="error"
         :closable="false"
         class="result-alert"
@@ -65,6 +65,24 @@
           <pre>{{ result.error }}</pre>
         </template>
       </el-alert>
+
+      <el-alert
+        v-if="mode === 'alarm' && result"
+        :type="(result as StrategyTestResult).error ? 'error' : 'success'"
+        :closable="false"
+        class="result-alert"
+        data-test="result-alarm"
+      >
+        <template #title>
+          <span v-if="(result as StrategyTestResult).error">
+            ❌ 错误: {{ (result as StrategyTestResult).error }}
+          </span>
+          <span v-else>
+            ✅ 告警等级: {{ (result as StrategyTestResult).levelText || '无告警' }}
+            · 耗时 {{ (result as StrategyTestResult).durationMs }}ms
+          </span>
+        </template>
+      </el-alert>
     </div>
   </div>
 </template>
@@ -73,10 +91,21 @@
 import { ref } from 'vue'
 import type { CalcScriptTestResult } from '@/api/monitorType'
 
-defineProps<{
-  result: CalcScriptTestResult | null
+/** 综合告警策略测试结果 */
+export interface StrategyTestResult {
+  level: number | null
+  levelText: string | null
+  durationMs: number
+  error: string | null
+}
+
+const props = withDefaults(defineProps<{
+  result: CalcScriptTestResult | StrategyTestResult | null
   testing: boolean
-}>()
+  mode?: 'calc' | 'alarm'
+}>(), {
+  mode: 'calc'
+})
 
 const emit = defineEmits<{
   runTest: [payload: { curData: Record<string, any>; prevData: Record<string, any> | undefined }]
@@ -87,6 +116,10 @@ const prevDataJson = ref('')
 const jsonError = ref('')
 
 function handleRun() {
+  if (props.mode === 'alarm') {
+    emit('runTest', {})
+    return
+  }
   jsonError.value = ''
   let curData: Record<string, any>
   try {
