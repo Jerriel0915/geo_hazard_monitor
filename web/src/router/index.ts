@@ -61,7 +61,19 @@ const routes: RouteRecordRaw[] = [
       { path: '/system/log', name: 'Log', component: () => import('@/views/system/Log.vue') },
       { path: '/system/settings', name: 'Settings', component: () => import('@/views/system/Settings.vue') },
       { path: '/system/notice', name: 'SysNotice', component: () => import('@/views/system/SysNotice.vue') },
-      { path: '/user/profile', name: 'UserProfile', component: () => import('@/views/user/UserProfile.vue') }
+      { path: '/user/profile', name: 'UserProfile', component: () => import('@/views/user/UserProfile.vue') },
+      // === Terra 智能助手 ===
+      {
+        path: '/terra/settings',
+        component: () => import('@/views/terra/SettingsLayout.vue'),
+        children: [
+          { path: '', redirect: '/terra/settings/personality' },
+          { path: 'personality', name: 'TerraPersonality', component: () => import('@/views/terra/PersonalitySettings.vue') },
+          { path: 'models', name: 'TerraModelConfigs', component: () => import('@/views/terra/ModelConfigList.vue') },
+          { path: 'skills', name: 'TerraSkills', component: () => import('@/views/terra/SkillManager.vue') },
+          { path: 'tools', name: 'TerraTools', component: () => import('@/views/terra/ToolManager.vue') },
+        ]
+      }
     ]
   },
   {
