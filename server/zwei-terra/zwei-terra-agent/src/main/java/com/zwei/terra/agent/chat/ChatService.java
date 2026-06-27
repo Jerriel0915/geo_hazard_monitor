@@ -359,8 +359,12 @@ public class ChatService {
      * @return Anthropic API 格式的消息列表
      */
     private List<Map<String, Object>> buildMessages(List<TerraMessage> history) {
+        // selectByConversationId 按 DESC 取最近 N 条，需反转为正序
+        List<TerraMessage> ordered = new ArrayList<>(history);
+        Collections.reverse(ordered);
+
         List<Map<String, Object>> messages = new ArrayList<>();
-        for (TerraMessage msg : history) {
+        for (TerraMessage msg : ordered) {
             // 跳过 tool 角色消息（Anthropic 用 tool_result content block 而非独立消息角色）
             if ("tool".equals(msg.getRole())) {
                 continue;
