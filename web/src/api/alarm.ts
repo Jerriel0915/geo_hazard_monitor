@@ -512,3 +512,20 @@ export interface HazardPointOption {
   hazardPointId?: number
   children?: HazardPointOption[]
 }
+
+// ==================== 综合告警策略测试运行 ====================
+
+/** 综合告警策略测试运行结果 */
+export interface StrategyTestRunResult {
+  level: number | null
+  levelText: string | null
+  durationMs: number
+  error: string | null
+}
+
+/** 测试运行综合告警策略脚本 */
+export const testStrategyRun = (id: number, payload?: {
+  mockSensorCode?: string
+  mockDataTime?: number
+}) =>
+  request.post<StrategyTestRunResult>(`/alarm/strategies/${id}/test-run`, payload || {})
