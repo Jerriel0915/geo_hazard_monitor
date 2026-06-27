@@ -208,9 +208,9 @@ VALUES ('默认配置', 'https://api.anthropic.com', 'PLACEHOLDER', 'claude-sonn
 -- 权限注册 — sys_menu
 -- ============================================================
 
--- Terra 设置菜单（系统设置目录下，parent_id=2 是"系统设置"目录菜单）
+-- Terra 设置菜单（parent_id=6 是"系统设置"目录菜单）
 INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, menu_type, visible, perms, icon, create_by, create_time)
-VALUES ('Terra 设置', 2, 10, 'terra', NULL, 'M', '0', 'terra:settings', 'tool', 'admin', NOW());
+VALUES ('Terra 设置', 6, 7, 'terra/settings', 'terra/SettingsLayout', 'C', '0', 'terra:settings', 'tool', 'admin', NOW());
 
 -- Terra 对话权限（功能按钮，不显示在菜单）
 INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, menu_type, visible, perms, icon, create_by, create_time)
