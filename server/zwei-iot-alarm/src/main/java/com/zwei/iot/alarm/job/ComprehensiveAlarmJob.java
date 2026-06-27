@@ -9,6 +9,8 @@ import com.zwei.iot.alarm.mapper.AlarmStrategyMapper;
 import com.zwei.iot.alarm.service.IAlarmRecordService;
 import com.zwei.iot.alarm.service.engine.AlarmDedupService;
 import com.zwei.iot.alarm.service.engine.GroovyScriptExecutor;
+import com.zwei.iot.timeseries.compute.ScriptCacheOps;
+import com.zwei.iot.timeseries.compute.ScriptSensorQuery;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,19 +48,25 @@ public class ComprehensiveAlarmJob {
     private final IAlarmRecordService alarmRecordService;
     private final ApplicationEventPublisher eventPublisher;
     private final AlarmDedupService dedupService;
+    private final ScriptCacheOps cacheOps;
+    private final ScriptSensorQuery scriptSensorQuery;
 
     public ComprehensiveAlarmJob(AlarmStrategyMapper strategyMapper,
                                  AlarmStrategyHazardPointMapper bindingMapper,
                                  GroovyScriptExecutor scriptExecutor,
                                  IAlarmRecordService alarmRecordService,
                                  ApplicationEventPublisher eventPublisher,
-                                 AlarmDedupService dedupService) {
+                                 AlarmDedupService dedupService,
+                                 ScriptCacheOps cacheOps,
+                                 ScriptSensorQuery scriptSensorQuery) {
         this.strategyMapper = strategyMapper;
         this.bindingMapper = bindingMapper;
         this.scriptExecutor = scriptExecutor;
         this.alarmRecordService = alarmRecordService;
         this.eventPublisher = eventPublisher;
         this.dedupService = dedupService;
+        this.cacheOps = cacheOps;
+        this.scriptSensorQuery = scriptSensorQuery;
     }
 
     /**
@@ -134,7 +142,11 @@ public class ComprehensiveAlarmJob {
         variables.put("hazardPointIds", hazardPointIds);
         variables.put("currentTime", now);
 
-        Integer alarmLevel = scriptExecutor.execute(strategy.getScriptContent(), variables);
+        Map<String, Object> tools = new HashMap<>();
+        tools.put("cache", cacheOps);
+        tools.put("sensor", scriptSensorQuery);
+
+        Integer alarmLevel = scriptExecutor.executeWithTools(strategy.getScriptContent(), variables, tools);
         if (alarmLevel == null || alarmLevel <= 0) {
             updateResult(strategy.getId(), "NO_ALARM");
             return;
