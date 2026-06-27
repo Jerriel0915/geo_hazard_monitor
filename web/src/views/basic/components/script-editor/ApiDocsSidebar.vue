@@ -3,7 +3,7 @@
     <div class="sidebar-title">📚 API 文档</div>
 
     <section
-      v-for="group in API_DOCS"
+      v-for="group in docs"
       :key="group.name"
       class="api-group"
       :data-test="`group-${group.name}`"
@@ -25,7 +25,17 @@
 </template>
 
 <script setup lang="ts">
-import { API_DOCS } from './script-api-docs'
+import { computed } from 'vue'
+import { getApiDocs } from './script-api-docs'
+import type { ScriptMode } from './script-api-docs'
+
+const props = withDefaults(defineProps<{
+  mode?: ScriptMode
+}>(), {
+  mode: 'calc'
+})
+
+const docs = computed(() => getApiDocs(props.mode))
 </script>
 
 <style scoped>
