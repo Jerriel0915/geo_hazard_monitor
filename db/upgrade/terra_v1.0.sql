@@ -135,3 +135,15 @@ VALUES ('core', 'Terra 核心灵魂',
 -- 默认模型配置（占位，管理员需编辑后激活）
 INSERT INTO terra_model_config (name, base_url, api_key, model_name, max_tokens, temperature, is_active, sort_order, create_by)
 VALUES ('默认配置', 'https://api.anthropic.com', 'PLACEHOLDER', 'claude-sonnet-4-20250514', 4096, 0.70, 0, 0, 'system');
+
+-- ============================================================
+-- 权限注册 — sys_menu
+-- ============================================================
+
+-- Terra 设置菜单（系统设置目录下，parent_id=2 是"系统设置"目录菜单）
+INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, menu_type, visible, perms, icon, create_by, create_time)
+VALUES ('Terra 设置', 2, 10, 'terra', NULL, 'M', '0', 'terra:settings', 'tool', 'admin', NOW());
+
+-- Terra 对话权限（功能按钮，不显示在菜单）
+INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, menu_type, visible, perms, icon, create_by, create_time)
+VALUES ('Terra 对话', 0, 0, '', NULL, 'F', '1', 'terra:chat', '#', 'admin', NOW());
