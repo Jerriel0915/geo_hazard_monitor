@@ -1,9 +1,10 @@
 /**
- * 计算属性脚本编辑器右侧 API 文档数据 (静态)。
+ * 脚本编辑器右侧 API 文档数据 (静态) — 支持多模式。
  *
  * 数据来源:
- *  - curData/prevData: ComputedScriptAssembler 拼装后的 Map 结构
+ *  - curData/prevData (calc): ComputedScriptAssembler 拼装后的 Map 结构
  *    (5 字段: deviceCode/sensorCode/dataTime/props/properties, 其中 properties 是 props 别名)
+ *  - hazardPointIds/currentTime (alarm): 综合告警策略脚本绑定注入
  *  - cache.* (21 方法): server/zwei-iot-timeseries/.../ScriptCacheOps.java
  *  - sensor.* (1 方法): server/zwei-iot-timeseries/.../ScriptSensorQuery.java
  *    入参 deviceCode (与 curData.deviceCode 同源), 内部解析 deviceId 查询 IoTDB;
@@ -12,6 +13,9 @@
  * 注: cache 的 21 个 Java 方法存在重载 (如 getInt/getInt+default),
  * 文档侧按"对外语义"合并同名重载, 共 13 条签名覆盖所有 21 方法的使用语义。
  */
+
+/** 脚本模式: calc=计算属性, alarm=综合告警策略 */
+export type ScriptMode = 'calc' | 'alarm'
 
 export interface ApiMethod {
   /** 方法签名, 如 "getInt(key, default?)" 或 ".props.<attrCode>" */
@@ -33,7 +37,9 @@ export interface ApiGroup {
   methods: ApiMethod[]
 }
 
-export const API_DOCS: ApiGroup[] = [
+// ── calc 模式专属分组 ──
+
+const CALC_SPECIFIC_GROUPS: ApiGroup[] = [
   {
     icon: '📦',
     color: '#409eff',
@@ -58,7 +64,37 @@ export const API_DOCS: ApiGroup[] = [
       { signature: '.properties.<attrCode>', note: 'props 别名 (同引用)' },
       { signature: '.dataTime', note: '上一条数据时间戳 (ms)' }
     ]
+  }
+]
+
+// ── alarm 模式专属分组 ──
+
+const ALARM_SPECIFIC_GROUPS: ApiGroup[] = [
+  {
+    icon: '⚠️',
+    color: '#e6a23c',
+    name: 'hazardPointIds',
+    description: 'List<Long> — 绑定的隐患点 ID',
+    methods: [
+      { signature: '.size()', note: '隐患点数量' },
+      { signature: '[i]', note: '按索引取 ID' },
+      { signature: 'for (id in hazardPointIds) { ... }' }
+    ]
   },
+  {
+    icon: '🕐',
+    color: '#e6a23c',
+    name: 'currentTime',
+    description: 'String — 当前时间 (yyyy-MM-dd HH:mm:ss)',
+    methods: [
+      { signature: 'new Date(currentTime)' }
+    ]
+  }
+]
+
+// ── 共享分组 (cache + sensor) ──
+
+const SHARED_GROUPS: ApiGroup[] = [
   {
     icon: '🛠',
     color: '#67c23a',
@@ -104,3 +140,20 @@ export const API_DOCS: ApiGroup[] = [
     ]
   }
 ]
+
+/**
+ * 根据脚本模式返回对应的 API 文档分组。
+ * - calc: curData + prevData + cache + sensor
+ * - alarm: hazardPointIds + currentTime + cache + sensor
+ */
+export function getApiDocs(mode: ScriptMode): ApiGroup[] {
+  if (mode === 'alarm') {
+    return [...ALARM_SPECIFIC_GROUPS, ...SHARED_GROUPS]
+  }
+  return [...CALC_SPECIFIC_GROUPS, ...SHARED_GROUPS]
+}
+
+/**
+ * @deprecated 使用 getApiDocs(mode) 替代。保留向后兼容。
+ */
+export const API_DOCS: ApiGroup[] = getApiDocs('calc')
