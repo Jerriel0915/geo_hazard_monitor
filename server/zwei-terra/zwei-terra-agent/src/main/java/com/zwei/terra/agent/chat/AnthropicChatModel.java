@@ -39,16 +39,7 @@ import java.util.function.Consumer;
 @Slf4j
 public class AnthropicChatModel {
 
-    private final ObjectMapper objectMapper;
-
-    /**
-     * 构造器注入 ObjectMapper。
-     *
-     * @param objectMapper Spring 容器提供的 Jackson ObjectMapper
-     */
-    public AnthropicChatModel(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 发起流式对话请求，阻塞直到流结束。

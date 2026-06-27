@@ -1,6 +1,6 @@
 package com.zwei.terra.agent.chat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.zwei.terra.agent.config.TerraProperties;
 import com.zwei.terra.agent.domain.TerraConversation;
 import com.zwei.terra.agent.domain.TerraMessage;
@@ -47,7 +47,6 @@ public class ChatService {
     @Autowired private TerraConversationMapper conversationMapper;
     @Autowired private TerraMessageMapper messageMapper;
     @Autowired private TerraProperties properties;
-    @Autowired private ObjectMapper objectMapper;
 
     /** 前端工具调用挂起表: callId → CompletableFuture，等待前端回调 */
     private final Map<String, CompletableFuture<ToolResult>> pendingFrontendTools = new ConcurrentHashMap<>();
@@ -66,7 +65,7 @@ public class ChatService {
      * @return SSE emitter，前端通过 EventSource 接收流式事件
      */
     public SseEmitter chat(Long conversationId, String userMessage, Long userId) {
-        TerraSseEmitter emitter = new TerraSseEmitter(SSE_TIMEOUT, objectMapper);
+        TerraSseEmitter emitter = new TerraSseEmitter(SSE_TIMEOUT);
 
         CompletableFuture.runAsync(() -> {
             try {

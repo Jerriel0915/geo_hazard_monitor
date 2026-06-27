@@ -29,17 +29,10 @@ import java.util.Map;
 @Slf4j
 public class TerraSseEmitter extends SseEmitter {
 
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * 构造器。
-     *
-     * @param timeout      SSE 连接超时时间（毫秒）
-     * @param objectMapper Jackson ObjectMapper，用于 JSON 序列化
-     */
-    public TerraSseEmitter(long timeout, ObjectMapper objectMapper) {
+    public TerraSseEmitter(long timeout) {
         super(timeout);
-        this.objectMapper = objectMapper;
     }
 
     /**
