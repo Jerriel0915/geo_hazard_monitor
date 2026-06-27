@@ -22,11 +22,10 @@
             <groupId>com.zwei</groupId>
             <artifactId>zwei-framework</artifactId>
         </dependency>
-        <!-- Spring AI Anthropic -->
+        <!-- Spring WebFlux — WebClient 用于 HTTP 调用 + SSE 流式响应解析 -->
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-anthropic</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
         <!-- Lombok -->
         <dependency>
