@@ -348,19 +348,19 @@ class IotdbTimeSeriesServiceQueryTest {
     }
 
     @Test
-    @DisplayName("queryRangeDownsampled — SQL 含 GROUP BY + AVG + 指定 interval")
+    @DisplayName("queryRangeDownsampled — SQL 含 GROUP BY + LAST_VALUE + 指定 interval")
     void queryRangeDownsampled_sqlContainsGroupBy() throws Exception {
         when(resultSet.next()).thenReturn(true, false);
         when(resultSet.getLong("Time")).thenReturn(1700000000000L);
-        when(resultSet.getObject("AVG(root.zwei.d1.srain_01.rainfall)")).thenReturn(12.5);
-        when(resultSet.getObject("AVG(root.zwei.d1.srain_01.quality)")).thenReturn(0);
+        when(resultSet.getObject("LAST_VALUE(root.zwei.d1.srain_01.rainfall)")).thenReturn(12.5);
+        when(resultSet.getObject("LAST_VALUE(root.zwei.d1.srain_01.quality)")).thenReturn(0);
 
         List<IotdbQueryRow> rows = service.queryRangeDownsampled(
                 1L, "rain_01", "rainfall", 1700000000000L, 1800000000000L, "10m");
 
         assertThat(rows).hasSize(1);
         verify(statement).executeQuery(argThat((String sql) ->
-                sql.contains("AVG(rainfall)") && sql.contains("AVG(quality)")
+                sql.contains("LAST_VALUE(rainfall)") && sql.contains("LAST_VALUE(quality)")
                         && sql.contains("GROUP BY ([1700000000000, 1800000000000), 10m)")
         ));
     }

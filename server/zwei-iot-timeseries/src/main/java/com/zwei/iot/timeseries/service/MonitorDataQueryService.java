@@ -271,16 +271,14 @@ public class MonitorDataQueryService {
         boolean userAggregated = vt.isAggregated();
         boolean needDownsample = false;
         String downsampleInterval = null;
-        // 用户主动指定降采样粒度
-        boolean userDownsample = granularity != null && !"auto".equals(granularity);
-        if (userDownsample) {
-            if ("raw".equals(granularity)) {
-                needDownsample = false;
-            } else {
-                needDownsample = true;
-                downsampleInterval = granularity;
-            }
-        } else if (!userAggregated && rangeMs > 0) {
+        // 降采样仅当用户明确要求时才启用（"auto" 或具体粒度 "1m"/"5m"...）。
+        // granularity == null 或 "raw" → 严格原始数据，不做任何计算。
+        boolean explicitDownsample = granularity != null && !"raw".equals(granularity);
+        boolean autoMode = "auto".equals(granularity);
+        if (explicitDownsample && !autoMode) {
+            needDownsample = true;
+            downsampleInterval = granularity;
+        } else if (autoMode && !userAggregated && rangeMs > 0) {
             long estimatedPoints = (long) (rangeMs / 1000.0 * queryProperties.getDownsampleEstimateHz());
             if (estimatedPoints > queryProperties.getMaxChartPoints()) {
                 needDownsample = true;

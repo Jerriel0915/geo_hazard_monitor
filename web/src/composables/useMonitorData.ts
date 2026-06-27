@@ -66,8 +66,13 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   const loading = ref(false)
   const mode = ref<'chart' | 'table'>('chart')
 
+  // ── 分页状态 ──
+  const tablePageNum = ref(1)
+  const tablePageSize = ref(20)
+  const tableTotal = ref(0)
+
   // ── 降采样控制 ──
-  const downsampleEnabled = ref(true)
+  const downsampleEnabled = ref(false)
   const downsampleGranularity = ref('auto')
 
   // ── 筛选状态 ──
@@ -236,71 +241,68 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
           endTime,
           }) as any)
 
-        if (mode.value === 'chart') {
-          // dataMap 是 Map<attrCode, List<{time, value, quality}>>，需要按 attrCode 展开
-            // 后端 ORDER BY TIME DESC（倒序），图表需正序（时间从左到右递增），所以反转
-          const seriesList: ChartData[] = []
-          for (const [attrCode, rows] of Object.entries(dataMap)) {
-              const sortedRows = [...rows].reverse()
-            const labels: string[] = []
-            const values: number[] = []
-            let max = Number.NEGATIVE_INFINITY
-            let min = Number.POSITIVE_INFINITY
-            let sum = 0
-              for (const r of sortedRows) {
-              labels.push(formatChartLabel(r.dataTime ?? r.time))
-              values.push(r.value)
-              if (r.value != null) {
-                max = Math.max(max, r.value)
-                min = Math.min(min, r.value)
-                sum += r.value
-              }
+        // ── 图表数据：按 attrCode 展开序列 ──
+        // 后端 ORDER BY TIME DESC（倒序），图表需正序（时间从左到右递增），所以反转
+        const seriesList: ChartData[] = []
+        const flatRows: Array<{ attrCode: string; row: Record<string, unknown> }> = []
+        for (const [attrCode, rows] of Object.entries(dataMap)) {
+            const sortedRows = [...rows].reverse()
+          // 图表序列
+          const labels: string[] = []
+          const values: number[] = []
+          let max = Number.NEGATIVE_INFINITY
+          let min = Number.POSITIVE_INFINITY
+          let sum = 0
+            for (const r of sortedRows) {
+            labels.push(formatChartLabel(r.dataTime ?? r.time))
+            values.push(r.value)
+            if (r.value != null) {
+              max = Math.max(max, r.value)
+              min = Math.min(min, r.value)
+              sum += r.value
             }
-            const attrDef = sensor.attrList?.find((a) => a.attrCode === attrCode)
-            const attrDisplayName = attrDef?.attrName || attrCode
-            seriesList.push({
-              seriesName: attrDisplayName,
-              deviceName: '',
-              sensorName: sensor.sensorName || sensor.sensorCode,
-              labels,
-              values,
-              unit: attrDef?.unit || '',
-              attrName: attrDisplayName,
-              maxValue: values.length ? max : null,
-              minValue: values.length ? min : null,
-              avgValue: values.length ? sum / values.length : null,
-            })
           }
-          chartSeries.value = seriesList
-        } else {
-          // 表格模式：扁平化所有 attrCode 的数据行（保留 attrCode 归属）
-            // 后端 ORDER BY TIME DESC，表格也按正序排列（时间由旧到新）
-          const flatRows: Array<{ attrCode: string; row: Record<string, unknown> }> = []
-          for (const [code, rows] of Object.entries(dataMap)) {
-              for (const r of [...rows].reverse()) flatRows.push({attrCode: code, row: r})
-          }
-          const raw = flatRows.map(({ attrCode: code, row: r }) => {
-            const attrDef = sensor.attrList?.find((a) => a.attrCode === code)
-            const attrDisplayName = attrDef?.attrName || code
-            return {
-              hazardPointId: 0,
-              hazardPointName: '',
-              dataTime: formatChartLabel((r as Record<string, unknown>).dataTime ?? (r as Record<string, unknown>).time),
-              deviceId,
-              deviceName: '',
-              sensorId: sensor.id ?? 0,
-              sensorName: sensor.sensorName,
-              attrCode: code,
-              attrName: attrDisplayName,
-              value: (r as Record<string, unknown>).value,
-              unit: attrDef?.unit || '',
-              quality: (r as Record<string, unknown>).quality,
-              qualityText: (r as Record<string, unknown>).quality === 0 || (r as Record<string, unknown>).quality == null ? '正常' : '异常',
-            }
+          const attrDef = sensor.attrList?.find((a) => a.attrCode === attrCode)
+          const attrDisplayName = attrDef?.attrName || attrCode
+          seriesList.push({
+            seriesName: attrDisplayName,
+            deviceName: '',
+            sensorName: sensor.sensorName || sensor.sensorCode,
+            labels,
+            values,
+            unit: attrDef?.unit || '',
+            attrName: attrDisplayName,
+            maxValue: values.length ? max : null,
+            minValue: values.length ? min : null,
+            avgValue: values.length ? sum / values.length : null,
           })
-          tableData.value = raw as typeof tableData.value
-          ElMessage.success(`加载 ${tableData.value.length} 条数据`)
+          // 表格行
+          for (const r of sortedRows) flatRows.push({ attrCode, row: r })
         }
+        chartSeries.value = seriesList
+
+        // ── 表格数据：扁平化所有 attrCode ──
+        tableData.value = flatRows.map(({ attrCode: code, row: r }) => {
+          const attrDef = sensor.attrList?.find((a) => a.attrCode === code)
+          const attrDisplayName = attrDef?.attrName || code
+          return {
+            hazardPointId: 0,
+            hazardPointName: '',
+            dataTime: formatChartLabel((r as Record<string, unknown>).dataTime ?? (r as Record<string, unknown>).time),
+            deviceId,
+            deviceName: '',
+            sensorId: sensor.id ?? 0,
+            sensorName: sensor.sensorName,
+            attrCode: code,
+            attrName: attrDisplayName,
+            value: (r as Record<string, unknown>).value,
+            unit: attrDef?.unit || '',
+            quality: (r as Record<string, unknown>).quality,
+            qualityText: (r as Record<string, unknown>).quality === 0 || (r as Record<string, unknown>).quality == null ? '正常' : '异常',
+          }
+        }) as typeof tableData.value
+        tableTotal.value = tableData.value.length
+        ElMessage.success(`加载 ${tableData.value.length} 条数据`)
       } catch (error) {
         showRequestErrorMessage(error, '获取监测数据失败')
       } finally {
@@ -324,10 +326,13 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     }
 
     const granularity = downsampleEnabled.value
-      ? (downsampleGranularity.value === 'auto' ? undefined : downsampleGranularity.value)
+      ? downsampleGranularity.value   // 'auto' 或 '1m'/'5m'/... 直接传给后端
       : 'raw'
 
-    const baseParams = {
+    // 新查询条件 → 重置到第一页
+    tablePageNum.value = 1
+
+    const commonParams = {
       hazardPointId: hpId,
       deviceId: filter.deviceId ? Number(filter.deviceId) : undefined,
       sensorId: filter.sensorId ? Number(filter.sensorId) : undefined,
@@ -335,19 +340,67 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       valueType: filter.valueType || undefined,
       startTime,
       endTime,
-      granularity,
     }
 
     loading.value = true
     try {
-      if (mode.value === 'chart') {
-        const series = await getChartData(baseParams as any)
-        chartSeries.value = series || []
-      } else {
-        const res = await getMonitorDataPage({ ...baseParams, pageNum: 1, pageSize: 100 })
-        tableData.value = (res as any).rows || []
-        ElMessage.success(`加载 ${tableData.value.length} 条数据`)
-      }
+      // 并发请求图表与表格数据，切换模式无需重新加载
+      const [series, pageRes] = await Promise.all([
+        getChartData({ ...commonParams, granularity } as any),
+        getMonitorDataPage({ ...commonParams, pageNum: tablePageNum.value, pageSize: tablePageSize.value }),
+      ])
+      chartSeries.value = series || []
+      tableData.value = (pageRes as any).rows || []
+      tableTotal.value = (pageRes as any).total ?? tableData.value.length
+      ElMessage.success(`加载 ${tableData.value.length} 条数据`)
+    } catch (error) {
+      showRequestErrorMessage(error, '获取监测数据失败')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** 翻页查询 — 不重置 pageNum，直接以指定页码请求后端 */
+  const queryPage = async (pageNum: number, pageSize: number) => {
+    const hpId = toValue(opts.hazardPointId)
+    const initDeviceId = toValue(opts.initialDeviceId)
+
+    // 设备单独模式暂不支持分页，回退到 query()
+    if (!hpId && (filter.deviceId || initDeviceId)) {
+      return query()
+    }
+    if (!hpId) {
+      ElMessage.warning('请先选择隐患点')
+      return
+    }
+
+    let startTime: string
+    let endTime: string
+    if (filter.timeRange && filter.timeRange[0] && filter.timeRange[1]) {
+      startTime = filter.timeRange[0]
+      endTime = filter.timeRange[1]
+    } else {
+      ;[startTime, endTime] = defaultTimeRange()
+    }
+
+    tablePageNum.value = pageNum
+    tablePageSize.value = pageSize
+    loading.value = true
+    try {
+      const res = await getMonitorDataPage({
+        hazardPointId: hpId,
+        deviceId: filter.deviceId ? Number(filter.deviceId) : undefined,
+        sensorId: filter.sensorId ? Number(filter.sensorId) : undefined,
+        attrCode: filter.attrCode || undefined,
+        valueType: filter.valueType || undefined,
+        startTime,
+        endTime,
+        pageNum,
+        pageSize,
+      })
+      tableData.value = (res as any).rows || []
+      tableTotal.value = (res as any).total ?? tableData.value.length
+      ElMessage.success(`加载 ${tableData.value.length} 条数据`)
     } catch (error) {
       showRequestErrorMessage(error, '获取监测数据失败')
     } finally {
@@ -513,12 +566,17 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     downsampleInfo,
     downsampleEnabled,
     downsampleGranularity,
+    // 分页
+    tablePageNum,
+    tablePageSize,
+    tableTotal,
     // 筛选
     filter,
     // 方法
     selectDevice,
     selectSensor,
     query,
+    queryPage,
     reset,
     buildChartOptions,
     // 高级

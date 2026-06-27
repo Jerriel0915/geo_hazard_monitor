@@ -44,6 +44,24 @@
         WHERE last_report_at >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE)
     </select>
 
+    <update id="resetAllOnlineToOffline">
+        UPDATE device_online_status
+        SET status     = 0,
+            offline_at = #{offlineAt}
+        WHERE status = 1
+    </update>
+
+    <update id="markOfflineExcept">
+        UPDATE device_online_status
+        SET status     = 0,
+            offline_at = #{offlineAt}
+        WHERE status = 1
+          AND device_id NOT IN
+        <foreach collection="connectedDeviceIds" item="deviceId" open="(" separator="," close=")">
+            #{deviceId}
+        </foreach>
+    </update>
+
     <!-- ==================== device_online_event_log 事件表 ==================== -->
 
     <insert id="insertEventLog">

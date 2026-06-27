@@ -18,6 +18,7 @@ import L from 'leaflet'
 import {useLeafletMap} from '@/composables/useLeafletMap'
 import type {BoundaryCoords, LatLng} from '@/lib/boundaryCoords'
 import {centroid} from '@/lib/boundaryCoords'
+import {getDeviceMapIconPath} from '@/utils/deviceIcon'
 
 export interface VideoDeviceMarker {
   videoDeviceId: string
@@ -27,14 +28,28 @@ export interface VideoDeviceMarker {
   installLatitude?: number | null
 }
 
+export interface DeviceMarker {
+  deviceId: string
+  deviceCode: string
+  deviceName: string
+  installLongitude?: number | null
+  installLatitude?: number | null
+  status?: number | null
+  onlineStatus?: number | null
+  icon?: string | null
+  iconPath?: string | null
+}
+
 const props = withDefaults(defineProps<{
   initialValue?: BoundaryCoords | null
   initialCenter?: LatLng | null
   height?: string | number
   videoDevices?: VideoDeviceMarker[]
+  devices?: DeviceMarker[]
 }>(), {
   height: 300,
-  videoDevices: () => []
+  videoDevices: () => [],
+  devices: () => []
 })
 
 const renderLayer = shallowRef<L.LayerGroup | null>(null)
@@ -137,6 +152,38 @@ function renderBoundary(map: L.Map) {
         )
   })
 
+  // === 普通设备 marker（使用 getDeviceMapIconPath 动态图标） ===
+  props.devices.forEach(d => {
+    if (d.installLongitude == null || d.installLatitude == null) return
+    allPoints.push([d.installLatitude, d.installLongitude])
+    const icon = L.icon({
+      iconUrl: getDeviceMapIconPath(d),
+      iconSize: [28, 32],
+      iconAnchor: [14, 16]
+    })
+    L.marker([d.installLatitude, d.installLongitude], {
+      icon,
+      interactive: true,
+      zIndexOffset: 500
+    })
+        .addTo(lg)
+        .bindPopup(
+            `<div class="hpv2-card">
+              <div class="hpv2-header"><span class="hpv2-title">${d.deviceName}</span></div>
+              <div class="hpv2-dash"></div>
+              <div class="hpv2-body">
+                <div class="hpv2-row single">
+                  <div class="hpv2-cell full"><span class="hpv2-label">编号</span><span class="hpv2-val">${d.deviceCode}</span></div>
+                </div>
+                <div class="hpv2-dash"></div>
+                <div class="hpv2-row single">
+                  <div class="hpv2-cell full"><span class="hpv2-label">坐标</span><span class="hpv2-val">${d.installLongitude!.toFixed(6)}, ${d.installLatitude!.toFixed(6)}</span></div>
+                </div>
+              </div>
+            </div>`
+        )
+  })
+
   // === 自适应边界：撑满显示区域 ===
   if (allPoints.length > 1) {
     map.fitBounds(L.latLngBounds(allPoints), {padding: [20, 20], maxZoom: 19})
@@ -146,7 +193,7 @@ function renderBoundary(map: L.Map) {
 }
 
 /** 地图就绪 + 数据就绪 → 渲染 */
-watch([leaflet.isReady, () => [props.initialValue, props.initialCenter, props.videoDevices]],
+watch([leaflet.isReady, () => [props.initialValue, props.initialCenter, props.videoDevices, props.devices]],
     ([ready]) => {
       if (!ready) return
       const map = leaflet.map.value

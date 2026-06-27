@@ -5,7 +5,6 @@ import com.zwei.iot.device.domain.DeviceOnlineStatus;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 设备在线状态 Mapper。
@@ -36,6 +35,13 @@ public interface DeviceOnlineStatusMapper {
 
     /** 统计时间窗口内活跃设备数（有数据上报） */
     int countActiveInWindow(@Param("windowMinutes") int windowMinutes);
+
+    /** 启动恢复: 将所有在线设备重置为离线（异常关闭后 MQTT broker 无留存连接） */
+    int resetAllOnlineToOffline(@Param("offlineAt") String offlineAt);
+
+    /** 批量标记不在连接清单内的设备为离线（周期性对账） */
+    int markOfflineExcept(@Param("offlineAt") String offlineAt,
+                          @Param("connectedDeviceIds") List<Long> connectedDeviceIds);
 
     // ========== device_online_event_log 事件表 ==========
 

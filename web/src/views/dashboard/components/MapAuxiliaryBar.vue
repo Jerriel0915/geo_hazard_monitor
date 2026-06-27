@@ -4,8 +4,20 @@
 
     <!-- 右下角组：图例 + 底图切换 -->
     <div class="bottom-right-group" :style="{ right: props.rightPanelOffset + 'px' }">
-      <!-- 图例 (多行，与底图切换等高) -->
-      <div v-show="props.legendVisible" class="legend-bar">
+      <!-- 图例 (可折叠) -->
+      <div v-show="props.legendVisible" class="legend-bar" :class="{ collapsed: legendCollapsed }">
+        <!-- 折叠态：仅显示图例标题 + 展开按钮 -->
+        <div v-if="legendCollapsed" class="legend-collapsed-row" @click="legendCollapsed = false">
+          <span class="legend-collapsed-label">图例</span>
+          <el-icon :size="12"><ArrowUp /></el-icon>
+        </div>
+        <!-- 展开态：完整图例内容 -->
+        <template v-else>
+          <div class="legend-header">
+            <span class="legend-title">图例</span>
+            <el-icon :size="14" class="legend-collapse-btn" @click="legendCollapsed = true"><ArrowDown /></el-icon>
+          </div>
+          <div class="legend-divider"></div>
         <div class="legend-group">
           <span class="legend-group-label">隐患点</span>
           <div class="legend-group-items">
@@ -44,6 +56,7 @@
             </div>
           </div>
         </div>
+        </template>
       </div>
 
       <!-- 底图切换器 -->
@@ -71,6 +84,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import type { MonitorTypeItem } from '@/api/monitorType'
 import basemapNormal from '@/assets/img/basemap-normal.png'
 import basemapSatellite from '@/assets/img/basemap-satellite.png'
@@ -88,6 +102,7 @@ const emit = defineEmits<{
 }>()
 
 const showBasemapOptions = ref(false)
+const legendCollapsed = ref(false)
 
 const basemapList = [
   { id: 'image', name: '影像', thumb: basemapSatellite },
@@ -140,6 +155,56 @@ const switchBasemap = (id: string) => {
   flex-direction: column;
   gap: 0;
   padding: 8px 12px;
+  transition: all 0.2s ease;
+}
+
+.legend-bar.collapsed {
+  padding: 4px 10px;
+}
+
+.legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 2px;
+}
+
+.legend-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.legend-collapse-btn {
+  color: #909399;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.legend-collapse-btn:hover {
+  color: #1890ff;
+  background: rgba(24, 144, 255, 0.08);
+}
+
+.legend-collapsed-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 2px 0;
+  transition: color 0.15s;
+}
+
+.legend-collapsed-row:hover {
+  color: #1890ff;
+}
+
+.legend-collapsed-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .legend-group {

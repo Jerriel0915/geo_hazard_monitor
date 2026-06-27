@@ -216,11 +216,11 @@ defineExpose({loadLayoutConfig})
 
 .layout-config-dialog {
   width: 580px;
-  max-height: 80vh;
+  max-height: calc(100vh - 80px);
   background: #ffffff;
   border-radius: 10px;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .layout-config-header {
