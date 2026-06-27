@@ -39,6 +39,7 @@
             v-for="(msg, idx) in chat.messages.value"
             :key="idx"
             :message="msg"
+            @navigate="onNavigate"
           />
         </div>
 
@@ -81,13 +82,21 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { Plus, Close, Promotion, VideoPause, ChatDotRound } from '@element-plus/icons-vue'
 import { useTerraChat } from './useTerraChat'
 import TerraMessage from './TerraMessage.vue'
 
+const router = useRouter()
 const chat = useTerraChat()
 const inputText = ref('')
 const messagesContainer = ref<HTMLElement>()
+
+/** 处理 AI 回复中的页面导航链接 */
+function onNavigate(routeName: string) {
+  router.push({ name: routeName }).catch(() => {})
+  chat.panelOpen.value = false
+}
 
 function onSend() {
   const text = inputText.value.trim()
