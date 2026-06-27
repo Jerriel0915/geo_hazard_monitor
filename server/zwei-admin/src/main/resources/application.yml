@@ -266,3 +266,12 @@ mqtt:
     ban-duration-seconds: 600
     # 开启后同一设备只允许保留一个活跃连接，后登录连接会挤掉前一个连接。
     disconnect-previous-client: true
+
+# Terra 智能助手配置
+terra:
+  skills:
+    base-path: ${user.home}/terra/skills
+  chat:
+    max-react-rounds: 10
+    default-timeout-seconds: 30
+    max-history-messages: 20
