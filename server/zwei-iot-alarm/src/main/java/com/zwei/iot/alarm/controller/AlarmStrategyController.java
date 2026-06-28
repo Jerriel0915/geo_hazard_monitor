@@ -5,15 +5,19 @@ import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.core.page.TableDataInfo;
 import com.zwei.iot.alarm.domain.AlarmStrategy;
+import com.zwei.iot.alarm.domain.StrategyExecutionLog;
 import com.zwei.iot.alarm.domain.dto.StrategyCreateRequest;
 import com.zwei.iot.alarm.domain.dto.StrategyTestRunRequest;
 import com.zwei.iot.alarm.domain.dto.StrategyTestRunResult;
+import com.zwei.iot.alarm.mapper.StrategyExecutionLogMapper;
 import com.zwei.iot.alarm.service.IAlarmStrategyService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 综合告警策略管理 Controller
@@ -25,9 +29,12 @@ import java.util.List;
 public class AlarmStrategyController extends BaseController {
 
     private final IAlarmStrategyService strategyService;
+    private final StrategyExecutionLogMapper executionLogMapper;
 
-    public AlarmStrategyController(IAlarmStrategyService strategyService) {
+    public AlarmStrategyController(IAlarmStrategyService strategyService,
+                                   StrategyExecutionLogMapper executionLogMapper) {
         this.strategyService = strategyService;
+        this.executionLogMapper = executionLogMapper;
     }
 
     @GetMapping("/list")
@@ -114,5 +121,22 @@ public class AlarmStrategyController extends BaseController {
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
     public AjaxResult testRun(@PathVariable Long id, @RequestBody(required = false) StrategyTestRunRequest request) {
         return success(strategyService.testRun(id, request));
+    }
+
+    /**
+     * 查询策略执行日志。
+     */
+    @GetMapping("/{id}/execution-logs")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
+    public AjaxResult executionLogs(@PathVariable Long id,
+                                     @RequestParam(defaultValue = "1") int pageNum,
+                                     @RequestParam(defaultValue = "20") int pageSize) {
+        int offset = (pageNum - 1) * pageSize;
+        List<StrategyExecutionLog> rows = executionLogMapper.selectByStrategyId(id, offset, pageSize);
+        long total = executionLogMapper.countByStrategyId(id);
+        Map<String, Object> data = new HashMap<>();
+        data.put("rows", rows);
+        data.put("total", total);
+        return success(data);
     }
 }
