@@ -10,9 +10,12 @@ import com.zwei.iot.alarm.mapper.AlarmStrategyHazardPointMapper;
 import com.zwei.iot.alarm.mapper.AlarmStrategyMapper;
 import com.zwei.iot.alarm.service.IAlarmStrategyService;
 import com.zwei.iot.alarm.service.engine.GroovyScriptExecutor;
+import com.zwei.iot.alarm.service.engine.StrategyQuartzScheduler;
 import com.zwei.iot.timeseries.compute.ScriptCacheOps;
 import com.zwei.iot.timeseries.compute.ScriptSensorQuery;
 import com.zwei.common.utils.SecurityUtils;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,7 @@ import java.util.stream.Collectors;
  *
  * @author zwei
  */
+@Slf4j
 @Service
 public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
 
@@ -36,17 +40,34 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     private final GroovyScriptExecutor groovyScriptExecutor;
     private final ScriptCacheOps cacheOps;
     private final ScriptSensorQuery scriptSensorQuery;
+    private final StrategyQuartzScheduler quartzScheduler;
 
     public AlarmStrategyServiceImpl(AlarmStrategyMapper strategyMapper,
                                     AlarmStrategyHazardPointMapper bindingMapper,
                                     GroovyScriptExecutor groovyScriptExecutor,
                                     ScriptCacheOps cacheOps,
-                                    ScriptSensorQuery scriptSensorQuery) {
+                                    ScriptSensorQuery scriptSensorQuery,
+                                    StrategyQuartzScheduler quartzScheduler) {
         this.strategyMapper = strategyMapper;
         this.bindingMapper = bindingMapper;
         this.groovyScriptExecutor = groovyScriptExecutor;
         this.cacheOps = cacheOps;
         this.scriptSensorQuery = scriptSensorQuery;
+        this.quartzScheduler = quartzScheduler;
+    }
+
+    /**
+     * 启动时批量注册所有启用的 CRON 策略到 Quartz。
+     */
+    @PostConstruct
+    public void initCronStrategies() {
+        List<AlarmStrategy> cronStrategies = strategyMapper.selectEnabledByTriggerMode("CRON");
+        for (AlarmStrategy s : cronStrategies) {
+            if (s.getIsEnabled() != null && s.getIsEnabled() == 1) {
+                quartzScheduler.scheduleOrUpdate(s);
+            }
+        }
+        log.info("已注册 {} 个 CRON 策略到 Quartz", cronStrategies.size());
     }
 
     @Override
@@ -70,6 +91,9 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
         if (rows > 0 && hazardPointIds != null) {
             updateBindings(strategy.getId(), hazardPointIds);
         }
+        if ("CRON".equals(strategy.getTriggerMode()) && strategy.getIsEnabled() != null && strategy.getIsEnabled() == 1) {
+            quartzScheduler.scheduleOrUpdate(strategy);
+        }
         return rows;
     }
 
@@ -84,6 +108,11 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
         if (rows > 0 && hazardPointIds != null) {
             updateBindings(strategy.getId(), hazardPointIds);
         }
+        if ("CRON".equals(strategy.getTriggerMode())) {
+            quartzScheduler.scheduleOrUpdate(strategy);
+        } else {
+            quartzScheduler.unschedule(strategy.getId());
+        }
         return rows;
     }
 
@@ -91,6 +120,7 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     @Transactional
     public int delete(Long id) {
         bindingMapper.deleteByStrategyId(id);
+        quartzScheduler.unschedule(id);
         return strategyMapper.deleteStrategyById(id);
     }
 
@@ -99,6 +129,8 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
         AlarmStrategy update = AlarmStrategy.builder()
                 .id(id).isEnabled(isEnabled)
                 .updateBy(SecurityUtils.getUsername()).updateTime(new Date()).build();
+        if (isEnabled == 1) quartzScheduler.resume(id);
+        else quartzScheduler.pause(id);
         return strategyMapper.updateStrategy(update);
     }
 
