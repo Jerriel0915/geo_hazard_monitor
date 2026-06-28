@@ -82,4 +82,25 @@ public class AlgoVersionController extends BaseController {
             throw new ServiceException("下载失败: " + e.getMessage());
         }
     }
+
+    @GetMapping("/{algoCode}/versions/{versionNo}/describe")
+    @PreAuthorize("@ss.hasPermi('iot:algo-library:query')")
+    public AjaxResult describe(@PathVariable String algoCode,
+                               @PathVariable String versionNo) {
+        com.zwei.iot.alarm.service.engine.AlgoResult result = versionService.describe(algoCode, versionNo);
+        if (result.success()) {
+            return success(result.data());
+        }
+        return error(result.error());
+    }
+
+    @GetMapping("/{algoCode}/describe-latest")
+    @PreAuthorize("@ss.hasPermi('iot:algo-library:query')")
+    public AjaxResult describeLatest(@PathVariable String algoCode) {
+        com.zwei.iot.alarm.service.engine.AlgoResult result = versionService.describeLatest(algoCode);
+        if (result.success()) {
+            return success(result.data());
+        }
+        return error(result.error());
+    }
 }

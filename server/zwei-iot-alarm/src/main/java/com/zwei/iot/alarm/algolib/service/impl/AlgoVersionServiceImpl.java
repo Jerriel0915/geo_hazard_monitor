@@ -8,6 +8,8 @@ import com.zwei.iot.alarm.algolib.domain.AlgoVersion;
 import com.zwei.iot.alarm.algolib.mapper.AlgoInfoMapper;
 import com.zwei.iot.alarm.algolib.mapper.AlgoVersionMapper;
 import com.zwei.iot.alarm.algolib.service.IAlgoVersionService;
+import com.zwei.iot.alarm.service.engine.AlgoResult;
+import com.zwei.iot.alarm.service.engine.PythonAlgoExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,11 +38,14 @@ public class AlgoVersionServiceImpl implements IAlgoVersionService {
 
     private final AlgoInfoMapper algoInfoMapper;
     private final AlgoVersionMapper algoVersionMapper;
+    private final PythonAlgoExecutor pythonAlgoExecutor;
 
     public AlgoVersionServiceImpl(AlgoInfoMapper algoInfoMapper,
-                                  AlgoVersionMapper algoVersionMapper) {
+                                  AlgoVersionMapper algoVersionMapper,
+                                  PythonAlgoExecutor pythonAlgoExecutor) {
         this.algoInfoMapper = algoInfoMapper;
         this.algoVersionMapper = algoVersionMapper;
+        this.pythonAlgoExecutor = pythonAlgoExecutor;
     }
 
     /** 测试可通过子类覆盖注入；生产用 RuoYiConfig.getProfile() */
@@ -86,6 +91,7 @@ public class AlgoVersionServiceImpl implements IAlgoVersionService {
 
         // 4. 落盘
         String relativePath;
+        String workPathRelative;
         try {
             relativePath = FileUploadUtils.extractAlgoLibFilename(file);
             File dest = new File(getProfilePath() + File.separator + relativePath);
@@ -93,6 +99,51 @@ public class AlgoVersionServiceImpl implements IAlgoVersionService {
                 throw new IOException("创建目录失败: " + dest.getParent());
             }
             file.transferTo(dest);
+
+            // 4.1 解压到工作目录
+            String workspaceDir = "algo-workspace";
+            workPathRelative = workspaceDir + "/" + algo.getCode() + "/" + versionNo;
+            File workDir = new File(getProfilePath() + File.separator + workPathRelative);
+            if (workDir.exists()) {
+                deleteDirectory(workDir);
+            }
+            if (!workDir.mkdirs()) {
+                throw new ServiceException("创建工作目录失败: " + workDir.getAbsolutePath());
+            }
+            try {
+                java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(
+                        new java.io.FileInputStream(dest));
+                java.util.zip.ZipEntry entry;
+                byte[] buffer = new byte[1024];
+                while ((entry = zis.getNextEntry()) != null) {
+                    File entryFile = new File(workDir, entry.getName());
+                    if (!entryFile.getCanonicalPath().startsWith(workDir.getCanonicalPath())) {
+                        zis.close();
+                        throw new ServiceException("zip 包含非法路径: " + entry.getName());
+                    }
+                    if (entry.isDirectory()) {
+                        entryFile.mkdirs();
+                    } else {
+                        entryFile.getParentFile().mkdirs();
+                        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(entryFile)) {
+                            int len;
+                            while ((len = zis.read(buffer)) > 0) {
+                                fos.write(buffer, 0, len);
+                            }
+                        }
+                    }
+                    zis.closeEntry();
+                }
+                zis.close();
+            } catch (java.io.IOException e) {
+                throw new ServiceException("解压失败: " + e.getMessage());
+            }
+
+            // 4.2 校验 algo_entry.py 存在
+            if (!new File(workDir, "algo_entry.py").exists()) {
+                deleteDirectory(workDir);
+                throw new ServiceException("算法包缺少 algo_entry.py 入口文件");
+            }
         } catch (IOException e) {
             log.error("算法包上传落盘失败 algoId={}, versionNo={}", algoId, versionNo, e);
             throw new ServiceException("算法包保存失败: " + e.getMessage());
@@ -115,6 +166,7 @@ public class AlgoVersionServiceImpl implements IAlgoVersionService {
                 .originalName(original)
                 .fileSize(file.getSize())
                 .sha256(sha256)
+                .workPath(workPathRelative)
                 .remark(remark)
                 .createBy(createBy)
                 .createTime(new Date())
@@ -126,6 +178,16 @@ public class AlgoVersionServiceImpl implements IAlgoVersionService {
 
     @Override
     public int delete(Long id) {
+        AlgoVersion version = algoVersionMapper.selectById(id);
+        if (version == null) {
+            return 0;
+        }
+        if (version.getWorkPath() != null) {
+            File workDir = new File(getProfilePath() + File.separator + version.getWorkPath());
+            if (workDir.exists()) {
+                deleteDirectory(workDir);
+            }
+        }
         return algoVersionMapper.softDeleteById(id);
     }
 
@@ -141,5 +203,37 @@ public class AlgoVersionServiceImpl implements IAlgoVersionService {
         StringBuilder sb = new StringBuilder();
         for (byte b : hash) sb.append(String.format("%02x", b));
         return sb.toString();
+    }
+
+    @Override
+    public AlgoResult describe(String algoCode, String versionNo) {
+        return pythonAlgoExecutor.describe(algoCode, versionNo);
+    }
+
+    @Override
+    public AlgoResult describeLatest(String algoCode) {
+        AlgoInfo algo = algoInfoMapper.selectByCode(algoCode);
+        if (algo == null) {
+            return AlgoResult.fail("算法不存在: " + algoCode);
+        }
+        AlgoVersion version = algoVersionMapper.selectLatestByAlgoId(algo.getId());
+        if (version == null) {
+            return AlgoResult.fail("算法无可用版本");
+        }
+        return pythonAlgoExecutor.describe(algoCode, version.getVersionNo());
+    }
+
+    private static void deleteDirectory(File dir) {
+        File[] children = dir.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                if (child.isDirectory()) {
+                    deleteDirectory(child);
+                } else {
+                    child.delete();
+                }
+            }
+        }
+        dir.delete();
     }
 }

@@ -54,6 +54,7 @@ public class ComprehensiveAlarmExecutionService {
     private final ScriptSensorQuery scriptSensorQuery;
     private final StrategyExecutionLogMapper executionLogMapper;
     private final StrategyScopeResolver scopeResolver;
+    private final ScriptAlgoOps scriptAlgoOps;
 
     /**
      * 执行综合告警策略。
@@ -88,6 +89,7 @@ public class ComprehensiveAlarmExecutionService {
         tools.put("cache", cacheOps);
         tools.put("sensor", scriptSensorQuery);
         tools.put("log", scriptLogger);
+        tools.put("algo", scriptAlgoOps);
 
         // 4. 执行 Groovy 脚本
         Integer alarmLevel = null;

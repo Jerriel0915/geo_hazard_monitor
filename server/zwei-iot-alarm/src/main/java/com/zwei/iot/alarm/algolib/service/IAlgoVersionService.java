@@ -34,4 +34,10 @@ public interface IAlgoVersionService {
 
     /** 校验版本号唯一 */
     boolean checkVersionUnique(Long algoId, String versionNo);
+
+    /** 查询指定版本的算法文档 */
+    com.zwei.iot.alarm.service.engine.AlgoResult describe(String algoCode, String versionNo);
+
+    /** 查询最新版本的算法文档 */
+    com.zwei.iot.alarm.service.engine.AlgoResult describeLatest(String algoCode);
 }

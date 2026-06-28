@@ -63,6 +63,14 @@
         LIMIT 1
     </select>
 
+    <select id="selectByCode" resultMap="AlgoInfoResult">
+        SELECT id, code, name, description, status, del_flag,
+               create_by, create_time, update_by, update_time, remark
+        FROM algo_info
+        WHERE code = #{code} AND del_flag = 0
+        LIMIT 1
+    </select>
+
     <insert id="insert" parameterType="com.zwei.iot.alarm.algolib.domain.AlgoInfo"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO algo_info (code, name, description, status, del_flag,

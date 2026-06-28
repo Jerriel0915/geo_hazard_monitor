@@ -9,6 +9,7 @@ import com.zwei.iot.alarm.algolib.service.IAlgoLibraryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.util.Date;
 import java.util.List;
 
@@ -57,9 +58,8 @@ public class AlgoLibraryServiceImpl implements IAlgoLibraryService {
 
     @Override
     public int update(AlgoInfo algoInfo) {
-        if (algoInfo.getCode() != null && !checkCodeUnique(algoInfo.getCode(), algoInfo.getId())) {
-            throw new ServiceException("修改失败，算法编码已存在: " + algoInfo.getCode());
-        }
+        // code 字段不可修改
+        algoInfo.setCode(null);
         algoInfo.setUpdateTime(new Date());
         return algoInfoMapper.update(algoInfo);
     }
@@ -74,11 +74,40 @@ public class AlgoLibraryServiceImpl implements IAlgoLibraryService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int deleteWithVersions(Long id) {
+        AlgoInfo info = algoInfoMapper.selectById(id);
+        if (info == null) return 0;
+
         int rows = algoInfoMapper.softDelete(id);
         if (rows > 0) {
             algoVersionMapper.softDeleteByAlgoId(id);
+            // 物理删除工作目录
+            if (info.getCode() != null) {
+                try {
+                    File workDir = new File(com.zwei.common.config.RuoYiConfig.getProfile()
+                            + File.separator + "algo-workspace" + File.separator + info.getCode());
+                    if (workDir.exists()) {
+                        deleteDirectoryRecursive(workDir);
+                    }
+                } catch (Exception e) {
+                    // 工作目录删除失败不影响逻辑删除
+                }
+            }
         }
         return rows;
+    }
+
+    private static void deleteDirectoryRecursive(File dir) {
+        File[] children = dir.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                if (child.isDirectory()) {
+                    deleteDirectoryRecursive(child);
+                } else {
+                    child.delete();
+                }
+            }
+        }
+        dir.delete();
     }
 
     @Override
