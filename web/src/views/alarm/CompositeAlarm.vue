@@ -58,9 +58,9 @@
           </div>
           <div class="card__meta-row">
             <span class="card__meta-label">静默:</span>
-            <span class="card__meta-value">{{ formatDuration(item.silenceSeconds || 0) }}</span>
+            <span class="card__meta-value">{{ item.silenceSeconds ? item.silenceSeconds + 'h' : '未设置' }}</span>
             <span class="card__meta-label" style="margin-left: 12px">持续:</span>
-            <span class="card__meta-value">{{ item.sustainSeconds ? formatDuration(item.sustainSeconds) : '未设置' }}</span>
+            <span class="card__meta-value">{{ item.sustainSeconds ? item.sustainSeconds + '次' : '未设置' }}</span>
           </div>
           <div class="card__meta-row">
             <span class="card__meta-label">等级变化提醒:</span>
@@ -139,12 +139,13 @@
             <el-option label="告警信息" value="ALARM" />
           </el-select>
         </el-form-item>
-        <el-form-item label="静默时长(秒)" prop="silenceSeconds">
-          <el-input-number v-model="formData.silenceSeconds" :min="0" :max="864000" :step="60" />
+        <el-form-item label="静默周期" prop="silenceSeconds">
+          <el-input-number v-model="formData.silenceSeconds" :min="0" :max="720" :step="1" />
+          <span class="form-hint">&nbsp;h</span>
         </el-form-item>
-        <el-form-item label="持续时长(秒)" prop="sustainSeconds">
-          <el-input-number v-model="formData.sustainSeconds" :min="0" :max="864000" :step="60" />
-          <span class="form-hint">为0表示不限制</span>
+        <el-form-item label="持续时长" prop="sustainSeconds">
+          <el-input-number v-model="formData.sustainSeconds" :min="0" :max="999" :step="1" />
+          <span class="form-hint">&nbsp;次 (0表示不限制)</span>
         </el-form-item>
         <el-form-item label="等级变化提醒">
           <el-switch v-model="formData.levelChangeNotify" />
