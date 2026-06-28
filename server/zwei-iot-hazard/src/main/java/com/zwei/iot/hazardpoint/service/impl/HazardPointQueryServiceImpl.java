@@ -32,4 +32,14 @@ public class HazardPointQueryServiceImpl implements IHazardPointQueryService {
                 hp.getLongitude(), hp.getLatitude()))
             .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Long> listIdsByGroupId(Long groupId) {
+        return hazardPointMapper.selectAll().stream()
+            .filter(hp -> groupId.equals(hp.getGroupId()))
+            .filter(hp -> hp.getStatus() != null && hp.getStatus() == 1)
+            .filter(hp -> hp.getDelFlag() == null || "0".equals(hp.getDelFlag()))
+            .map(HazardPoint::getId)
+            .collect(Collectors.toList());
+    }
 }
