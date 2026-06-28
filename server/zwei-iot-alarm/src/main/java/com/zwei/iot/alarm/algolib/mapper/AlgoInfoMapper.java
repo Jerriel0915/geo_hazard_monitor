@@ -31,6 +31,8 @@ public interface AlgoInfoMapper {
      */
     AlgoInfo checkCodeUnique(@Param("code") String code, @Param("id") Long id);
 
+    AlgoInfo selectByCode(@Param("code") String code);
+
     int insert(AlgoInfo algoInfo);
 
     int update(AlgoInfo algoInfo);

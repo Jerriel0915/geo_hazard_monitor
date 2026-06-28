@@ -32,6 +32,11 @@ public class AlarmProperties {
      */
     private int groovyTimeoutSeconds = 30;
 
+    /**
+     * Python 算法集成配置
+     */
+    private Algo algo = new Algo();
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -62,5 +67,62 @@ public class AlarmProperties {
 
     public void setGroovyTimeoutSeconds(int groovyTimeoutSeconds) {
         this.groovyTimeoutSeconds = groovyTimeoutSeconds;
+    }
+
+    public Algo getAlgo() {
+        return algo;
+    }
+
+    public void setAlgo(Algo algo) {
+        this.algo = algo;
+    }
+
+    /**
+     * Python 算法集成子配置
+     */
+    public static class Algo {
+        /** 算法工作空间目录（相对路径） */
+        private String workspaceDir = "algo-workspace";
+
+        /** Python 可执行文件路径 */
+        private String pythonCmd = "python";
+
+        /** 单次算法执行超时（秒） */
+        private int timeoutSeconds = 60;
+
+        /** 算法执行线程池大小 */
+        private int poolSize = 4;
+
+        public String getWorkspaceDir() {
+            return workspaceDir;
+        }
+
+        public void setWorkspaceDir(String workspaceDir) {
+            this.workspaceDir = workspaceDir;
+        }
+
+        public String getPythonCmd() {
+            return pythonCmd;
+        }
+
+        public void setPythonCmd(String pythonCmd) {
+            this.pythonCmd = pythonCmd;
+        }
+
+        public int getTimeoutSeconds() {
+            return timeoutSeconds;
+        }
+
+        public void setTimeoutSeconds(int timeoutSeconds) {
+            this.timeoutSeconds = timeoutSeconds;
+        }
+
+        public int getPoolSize() {
+            return poolSize;
+        }
+
+        public void setPoolSize(int poolSize) {
+            this.poolSize = poolSize;
+        }
     }
 }

@@ -38,4 +38,9 @@ public interface AlgoVersionMapper {
      * 逻辑删除单个版本
      */
     int softDeleteById(Long id);
+
+    AlgoVersion selectByAlgoIdAndVersionNo(@Param("algoId") Long algoId,
+                                            @Param("versionNo") String versionNo);
+
+    AlgoVersion selectLatestByAlgoId(Long algoId);
 }

@@ -11,6 +11,7 @@
         <result property="originalName" column="original_name"/>
         <result property="fileSize" column="file_size"/>
         <result property="sha256" column="sha256"/>
+        <result property="workPath" column="work_path"/>
         <result property="delFlag" column="del_flag"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
@@ -20,7 +21,7 @@
     </resultMap>
 
     <sql id="columns">
-        id, algo_id, version_no, file_name, original_name, file_size, sha256,
+        id, algo_id, version_no, file_name, original_name, file_size, sha256, work_path,
         del_flag, create_by, create_time, update_by, update_time, remark
     </sql>
 
@@ -49,10 +50,10 @@
     <insert id="insert" parameterType="com.zwei.iot.alarm.algolib.domain.AlgoVersion"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO algo_version (algo_id, version_no, file_name, original_name,
-                                  file_size, sha256, del_flag,
+                                  file_size, sha256, work_path, del_flag,
                                   create_by, create_time, update_by, update_time, remark)
         VALUES (#{algoId}, #{versionNo}, #{fileName}, #{originalName},
-                #{fileSize}, #{sha256}, 0,
+                #{fileSize}, #{sha256}, #{workPath}, 0,
                 #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, #{remark})
     </insert>
 
@@ -63,5 +64,22 @@
     <update id="softDeleteById" parameterType="Long">
         UPDATE algo_version SET del_flag = 1 WHERE id = #{id} AND del_flag = 0
     </update>
+
+    <select id="selectByAlgoIdAndVersionNo" resultMap="AlgoVersionResult">
+        SELECT <include refid="columns"/>
+        FROM algo_version
+        WHERE algo_id = #{algoId}
+        AND version_no = #{versionNo}
+        AND del_flag = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectLatestByAlgoId" parameterType="Long" resultMap="AlgoVersionResult">
+        SELECT <include refid="columns"/>
+        FROM algo_version
+        WHERE algo_id = #{algoId} AND del_flag = 0
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
 
 </mapper>

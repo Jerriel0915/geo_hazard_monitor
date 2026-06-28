@@ -31,5 +31,7 @@ public class AlgoVersion extends BaseEntity {
     private String originalName;
     private Long fileSize;
     private String sha256;
+    /** 解压后的工作目录相对路径 (相对于 RuoYiConfig.profile) */
+    private String workPath;
     private Integer delFlag;
 }
