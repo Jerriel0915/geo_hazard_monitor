@@ -5,6 +5,7 @@ import com.zwei.iot.alarm.algolib.domain.AlgoInfo;
 import com.zwei.iot.alarm.algolib.domain.AlgoVersion;
 import com.zwei.iot.alarm.algolib.mapper.AlgoInfoMapper;
 import com.zwei.iot.alarm.algolib.mapper.AlgoVersionMapper;
+import com.zwei.iot.alarm.service.engine.PythonAlgoExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,7 +17,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,6 +36,7 @@ class AlgoVersionServiceImplTest {
 
     @Mock private AlgoInfoMapper algoInfoMapper;
     @Mock private AlgoVersionMapper algoVersionMapper;
+    @Mock private PythonAlgoExecutor pythonAlgoExecutor;
 
     @TempDir
     Path tempDir;
@@ -41,7 +46,7 @@ class AlgoVersionServiceImplTest {
     @BeforeEach
     void setUp() {
         String tempPath = tempDir.toString();
-        service = new AlgoVersionServiceImpl(algoInfoMapper, algoVersionMapper) {
+        service = new AlgoVersionServiceImpl(algoInfoMapper, algoVersionMapper, pythonAlgoExecutor) {
             @Override
             protected String getProfilePath() {
                 return tempPath;
@@ -99,7 +104,7 @@ class AlgoVersionServiceImplTest {
         }
 
         @Test
-        @DisplayName("合法 zip 上传 → 落盘 + 入库 + 返回版本 ID")
+        @DisplayName("合法 zip 上传 → 解压 + 落盘 + 入库 + 返回版本 ID")
         void success() {
             when(algoInfoMapper.selectById(1L))
                     .thenReturn(AlgoInfo.builder().id(1L).code("ALGO_X").name("X").build());
@@ -109,7 +114,7 @@ class AlgoVersionServiceImplTest {
                 return 1;
             });
 
-            byte[] content = "fake-zip-content".getBytes();
+            byte[] content = createValidAlgoZip();
             MultipartFile file = new MockMultipartFile(
                     "file", "algo.zip", "application/zip", content);
 
@@ -123,15 +128,40 @@ class AlgoVersionServiceImplTest {
                     && v.getFileSize().equals((long) content.length)
                     && v.getFileName().startsWith("algo-lib/")
                     && v.getSha256() != null && !v.getSha256().isEmpty()
+                    && v.getWorkPath() != null && v.getWorkPath().contains("ALGO_X")
                     && v.getCreateBy().equals("admin")));
         }
     }
 
     @Test
-    @DisplayName("delete 委托 mapper.softDeleteById")
+    @DisplayName("delete — 版本不存在返回 0")
+    void deleteNotFound() {
+        when(algoVersionMapper.selectById(99L)).thenReturn(null);
+        assertThat(service.delete(99L)).isEqualTo(0);
+        verify(algoVersionMapper, never()).softDeleteById(any());
+    }
+
+    @Test
+    @DisplayName("delete — 清理工作目录后委托 mapper.softDeleteById")
     void delete() {
+        AlgoVersion version = AlgoVersion.builder()
+                .id(5L).versionNo("v1").workPath(null).build();
+        when(algoVersionMapper.selectById(5L)).thenReturn(version);
         when(algoVersionMapper.softDeleteById(5L)).thenReturn(1);
         assertThat(service.delete(5L)).isEqualTo(1);
         verify(algoVersionMapper).softDeleteById(5L);
+    }
+
+    /** 构造包含 algo_entry.py 的最小 zip 字节流 */
+    private static byte[] createValidAlgoZip() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+            zos.putNextEntry(new ZipEntry("algo_entry.py"));
+            zos.write("# entry\n".getBytes());
+            zos.closeEntry();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return baos.toByteArray();
     }
 }

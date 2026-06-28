@@ -101,6 +101,8 @@ class AlgoLibraryServiceImplTest {
         @Test
         @DisplayName("删除算法时级联软删所有版本")
         void cascadesVersionSoftDelete() {
+            when(algoInfoMapper.selectById(10L))
+                    .thenReturn(AlgoInfo.builder().id(10L).code("ALGO_X").build());
             when(algoInfoMapper.softDelete(10L)).thenReturn(1);
             when(algoVersionMapper.softDeleteByAlgoId(10L)).thenReturn(3);
 
@@ -114,7 +116,7 @@ class AlgoLibraryServiceImplTest {
         @Test
         @DisplayName("算法不存在时返回 0，不调用版本 mapper")
         void notFound() {
-            when(algoInfoMapper.softDelete(99L)).thenReturn(0);
+            when(algoInfoMapper.selectById(99L)).thenReturn(null);
 
             int rows = service.deleteWithVersions(99L);
 
