@@ -68,7 +68,6 @@ public class AlarmStrategyController extends BaseController {
                 .scriptContent(request.getScriptContent())
                 .defaultAlarmLevel(request.getDefaultAlarmLevel())
                 .silenceMinutes(request.getSilenceMinutes() != null ? request.getSilenceMinutes() : 0)
-                .escalationEnabled(request.getEscalationEnabled() != null ? request.getEscalationEnabled() : 0)
                 .isEnabled(request.getIsEnabled() != null ? request.getIsEnabled() : 1)
                 .createBy(getUsername())
                 .build();
@@ -92,7 +91,6 @@ public class AlarmStrategyController extends BaseController {
                 .scriptContent(request.getScriptContent())
                 .defaultAlarmLevel(request.getDefaultAlarmLevel())
                 .silenceMinutes(request.getSilenceMinutes())
-                .escalationEnabled(request.getEscalationEnabled())
                 .isEnabled(request.getIsEnabled())
                 .updateBy(getUsername())
                 .build();
@@ -115,6 +113,13 @@ public class AlarmStrategyController extends BaseController {
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
     public AjaxResult getScope(@PathVariable Long id) {
         return success(strategyService.getScopeValues(id));
+    }
+
+    @PutMapping("/{id}/scope")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:update')")
+    public AjaxResult updateScope(@PathVariable Long id, @RequestBody Map<String, String[]> body) {
+        String[] hazardPointIds = body.get("hazardPointIds");
+        return toAjax(strategyService.updateScope(id, hazardPointIds));
     }
 
     @PostMapping("/{id}/test-run")

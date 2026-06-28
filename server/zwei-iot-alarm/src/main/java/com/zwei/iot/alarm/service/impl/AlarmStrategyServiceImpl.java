@@ -140,6 +140,13 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     }
 
     @Override
+    @Transactional
+    public int updateScope(Long strategyId, String[] hazardPointIds) {
+        updateBindings(strategyId, hazardPointIds);
+        return hazardPointIds != null ? hazardPointIds.length : 0;
+    }
+
+    @Override
     public boolean checkStrategyNameUnique(String name, Long id) {
         return strategyMapper.checkStrategyNameUnique(name, id) == null;
     }

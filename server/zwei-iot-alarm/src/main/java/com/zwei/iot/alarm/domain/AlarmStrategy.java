@@ -65,10 +65,6 @@ public class AlarmStrategy extends BaseEntity {
      */
     private Integer silenceMinutes;
     /**
-     * 等级跃升提醒
-     */
-    private Integer escalationEnabled;
-    /**
      * 启用状态
      */
     private Integer isEnabled;

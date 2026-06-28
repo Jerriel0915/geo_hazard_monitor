@@ -63,10 +63,6 @@
             <span class="card__meta-value">{{ item.sustainSeconds ? item.sustainSeconds + '次' : '未设置' }}</span>
           </div>
           <div class="card__meta-row">
-            <span class="card__meta-label">等级变化提醒:</span>
-            <span :class="['card__meta-value', item.levelChangeNotify ? 'text-success' : 'text-muted']">{{ item.levelChangeNotify ? '已开启' : '已关闭' }}</span>
-          </div>
-          <div class="card__meta-row">
             <span class="card__meta-label">应用范围:</span>
             <span class="card__meta-value">{{ item.scopeCount || 0 }} 个隐患点</span>
           </div>
@@ -147,9 +143,6 @@
           <el-input-number v-model="formData.sustainSeconds" :min="0" :max="999" :step="1" />
           <span class="form-hint">&nbsp;次 (0表示不限制)</span>
         </el-form-item>
-        <el-form-item label="等级变化提醒">
-          <el-switch v-model="formData.levelChangeNotify" />
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -222,8 +215,7 @@ const formData = reactive({
   cronExpression: '',
   subscriptionSourceType: 'SENSOR_DATA' as 'ALARM' | 'SENSOR_DATA',
   silenceSeconds: 0,
-  sustainSeconds: 0,
-  levelChangeNotify: false
+  sustainSeconds: 0
 })
 
 const formRules: FormRules = {
@@ -263,7 +255,7 @@ function handleAdd() {
   editingItem.value = null
   Object.assign(formData, {
     name: '', description: '', triggerMode: 'PERIODIC', cronExpression: '',
-    subscriptionSourceType: 'SENSOR_DATA', silenceSeconds: 0, sustainSeconds: 0, levelChangeNotify: false
+    subscriptionSourceType: 'SENSOR_DATA', silenceSeconds: 0, sustainSeconds: 0
   })
   dialogVisible.value = true
 }
@@ -274,8 +266,7 @@ function handleEdit(item: CompositeAlarmItem) {
     name: item.name, description: item.description, triggerMode: item.triggerMode,
     cronExpression: item.cronExpression || '',
     subscriptionSourceType: item.subscriptionConfig?.sourceType || 'SENSOR_DATA',
-    silenceSeconds: item.silenceSeconds, sustainSeconds: item.sustainSeconds,
-    levelChangeNotify: item.levelChangeNotify
+    silenceSeconds: item.silenceSeconds, sustainSeconds: item.sustainSeconds
   })
   dialogVisible.value = true
 }
@@ -286,8 +277,7 @@ async function handleSubmit() {
   try {
     const payload: Partial<CompositeAlarmItem> = {
       name: formData.name, description: formData.description, triggerMode: formData.triggerMode,
-      silenceSeconds: formData.silenceSeconds, sustainSeconds: formData.sustainSeconds,
-      levelChangeNotify: formData.levelChangeNotify
+      silenceSeconds: formData.silenceSeconds, sustainSeconds: formData.sustainSeconds
     }
     if (formData.triggerMode === 'PERIODIC') {
       payload.cronExpression = formData.cronExpression

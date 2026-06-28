@@ -265,7 +265,6 @@ export interface AlarmStrategyItem {
     scriptContent?: string
     defaultAlarmLevel: number
     silenceMinutes: number
-    escalationEnabled: number
     isEnabled: number
     lastRunTime?: string
     lastRunResult?: string
@@ -277,8 +276,6 @@ export interface AlarmStrategyItem {
     silenceSeconds?: number
     /** @deprecated 使用 silenceMinutes */
     sustainSeconds?: number
-    /** @deprecated 使用 escalationEnabled */
-    levelChangeNotify?: boolean
     /** @deprecated 通过 /scope 接口单独查询 */
     scopeCount?: number
     /** @deprecated 使用 lastRunResult */
@@ -301,7 +298,6 @@ export interface AlarmStrategyCreatePayload {
     scriptContent?: string
     defaultAlarmLevel: number
     silenceMinutes?: number
-    escalationEnabled?: number
     isEnabled?: number
     hazardPointIds?: string[]
 }
@@ -467,6 +463,10 @@ export const toggleStrategy = (id: number, isEnabled: number) =>
 /** 策略绑定的隐患点ID列表 */
 export const getStrategyScope = (id: number) =>
     request.get<string[]>(`/alarm/strategies/${id}/scope`)
+
+/** 仅更新策略的应用范围 */
+export const updateStrategyScope = (id: number, hazardPointIds: string[]) =>
+    request.put(`/alarm/strategies/${id}/scope`, { hazardPointIds })
 
 // ==================== 告警分发规则 API ====================
 

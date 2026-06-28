@@ -39,7 +39,6 @@ public class StrategyCreateRequest {
     private Integer defaultAlarmLevel;
 
     private Integer silenceMinutes;
-    private Integer escalationEnabled;
     private Integer isEnabled;
 
     /**
@@ -118,14 +117,6 @@ public class StrategyCreateRequest {
 
     public void setSilenceMinutes(Integer silenceMinutes) {
         this.silenceMinutes = silenceMinutes;
-    }
-
-    public Integer getEscalationEnabled() {
-        return escalationEnabled;
-    }
-
-    public void setEscalationEnabled(Integer escalationEnabled) {
-        this.escalationEnabled = escalationEnabled;
     }
 
     public Integer getIsEnabled() {

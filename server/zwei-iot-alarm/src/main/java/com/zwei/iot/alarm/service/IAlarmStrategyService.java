@@ -31,6 +31,11 @@ public interface IAlarmStrategyService {
     List<String> getScopeValues(Long strategyId);
 
     /**
+     * 仅更新策略的应用范围绑定 (不影响策略本身)
+     */
+    int updateScope(Long strategyId, String[] hazardPointIds);
+
+    /**
      * 校验策略名称唯一
      *
      * @param name 策略名称

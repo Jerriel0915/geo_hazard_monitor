@@ -43,7 +43,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getStrategyScope, updateStrategy } from '@/api/alarm'
+import { getStrategyScope, updateStrategyScope } from '@/api/alarm'
 import { getHazardPointPage, getHazardPointGroups, type HazardPointRaw, type HazardPointGroupRaw } from '@/api/hazardPoint'
 
 interface GroupItem { id: number; code: string; name: string }
@@ -100,7 +100,7 @@ async function handleSave() {
     } else {
       scopeValues = [...selectedPoints.value]
     }
-    await updateStrategy(props.alarmId, { hazardPointIds: scopeValues } as any)
+    await updateStrategyScope(props.alarmId, scopeValues)
     ElMessage.success('应用范围已更新')
     emit('update:visible', false)
   } catch (e: any) {
