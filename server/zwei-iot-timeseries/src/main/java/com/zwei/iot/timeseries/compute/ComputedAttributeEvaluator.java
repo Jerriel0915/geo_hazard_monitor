@@ -8,9 +8,11 @@ import com.zwei.iot.device.service.IDeviceSensorQueryService;
 import com.zwei.iot.parser.engine.GroovyScriptEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +38,7 @@ public class ComputedAttributeEvaluator {
     private final GroovyScriptEngine scriptEngine;
     private final ScriptCacheOps cacheOps;
     private final ScriptSensorQuery scriptSensorQuery;
+    private final IScriptAlgoOps algoOps;
 
     public ComputedAttributeEvaluator(IDeviceSensorQueryService sensorQuery,
                                        ComputedAttributeRegistry registry,
@@ -43,7 +46,8 @@ public class ComputedAttributeEvaluator {
                                        LastMessageStore lastMessageStore,
                                        GroovyScriptEngine scriptEngine,
                                        ScriptCacheOps cacheOps,
-                                       ScriptSensorQuery scriptSensorQuery) {
+                                       ScriptSensorQuery scriptSensorQuery,
+                                       ObjectProvider<IScriptAlgoOps> algoOpsProvider) {
         this.sensorQuery = sensorQuery;
         this.registry = registry;
         this.assembler = assembler;
@@ -51,6 +55,7 @@ public class ComputedAttributeEvaluator {
         this.scriptEngine = scriptEngine;
         this.cacheOps = cacheOps;
         this.scriptSensorQuery = scriptSensorQuery;
+        this.algoOps = algoOpsProvider.getIfAvailable();
     }
 
     /**
@@ -79,8 +84,13 @@ public class ComputedAttributeEvaluator {
             // 5. 拼装脚本
             String script = assembler.assemble(attrs);
 
-            // 6. 执行 — 注入 cache/sensor wrapper 到 Groovy 脚本
-            Map<String, Object> tools = Map.of("cache", cacheOps, "sensor", scriptSensorQuery);
+            // 6. 执行 — 注入 cache/sensor/algo wrapper 到 Groovy 脚本
+            Map<String, Object> tools = new HashMap<>();
+            tools.put("cache", cacheOps);
+            tools.put("sensor", scriptSensorQuery);
+            if (algoOps != null) {
+                tools.put("algo", algoOps);
+            }
             Map<String, Object> results = scriptEngine.executeComputed(script, curData, prevData, tools);
 
             // 7. 转 PropertyValue (null 值跳过)

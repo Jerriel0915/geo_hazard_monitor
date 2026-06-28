@@ -8,7 +8,7 @@ import com.zwei.iot.alarm.algolib.domain.AlgoVersion;
 import com.zwei.iot.alarm.algolib.mapper.AlgoInfoMapper;
 import com.zwei.iot.alarm.algolib.mapper.AlgoVersionMapper;
 import com.zwei.iot.alarm.algolib.service.IAlgoVersionService;
-import com.zwei.iot.alarm.service.engine.AlgoResult;
+import com.zwei.common.domain.AlgoResult;
 import com.zwei.iot.alarm.service.engine.PythonAlgoExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

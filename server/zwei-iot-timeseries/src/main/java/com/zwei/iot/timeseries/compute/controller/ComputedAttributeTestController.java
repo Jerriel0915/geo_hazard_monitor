@@ -6,11 +6,13 @@ import com.zwei.iot.parser.engine.GroovyScriptEngine;
 import com.zwei.iot.timeseries.compute.ComputedAttribute;
 import com.zwei.iot.timeseries.compute.ComputedAttributeRegistry;
 import com.zwei.iot.timeseries.compute.ComputedScriptAssembler;
+import com.zwei.iot.timeseries.compute.IScriptAlgoOps;
 import com.zwei.iot.timeseries.compute.ScriptCacheOps;
 import com.zwei.iot.timeseries.compute.ScriptSensorQuery;
 import com.zwei.iot.timeseries.compute.dto.CalcScriptTestRequest;
 import com.zwei.iot.timeseries.compute.dto.CalcScriptTestResult;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,18 +41,21 @@ public class ComputedAttributeTestController extends BaseController {
     private final GroovyScriptEngine scriptEngine;
     private final ScriptCacheOps cacheOps;
     private final ScriptSensorQuery scriptSensorQuery;
+    private final IScriptAlgoOps algoOps;
 
     @Autowired
     public ComputedAttributeTestController(ComputedAttributeRegistry registry,
                                            ComputedScriptAssembler assembler,
                                            GroovyScriptEngine scriptEngine,
                                            ScriptCacheOps cacheOps,
-                                           ScriptSensorQuery scriptSensorQuery) {
+                                           ScriptSensorQuery scriptSensorQuery,
+                                           ObjectProvider<IScriptAlgoOps> algoOpsProvider) {
         this.registry = registry;
         this.assembler = assembler;
         this.scriptEngine = scriptEngine;
         this.cacheOps = cacheOps;
         this.scriptSensorQuery = scriptSensorQuery;
+        this.algoOps = algoOpsProvider.getIfAvailable();
     }
 
     @PreAuthorize("@ss.hasPermi('basic:monitorContent:test')")
@@ -84,7 +90,12 @@ public class ComputedAttributeTestController extends BaseController {
         Map<String, Object> prevData = request.getPrevData();
 
         long start = System.currentTimeMillis();
-        Map<String, Object> tools = Map.of("cache", cacheOps, "sensor", scriptSensorQuery);
+        Map<String, Object> tools = new HashMap<>();
+        tools.put("cache", cacheOps);
+        tools.put("sensor", scriptSensorQuery);
+        if (algoOps != null) {
+            tools.put("algo", algoOps);
+        }
         Map<String, Object> result = scriptEngine.executeComputed(script, curData, prevData, tools);
         long elapsed = System.currentTimeMillis() - start;
 

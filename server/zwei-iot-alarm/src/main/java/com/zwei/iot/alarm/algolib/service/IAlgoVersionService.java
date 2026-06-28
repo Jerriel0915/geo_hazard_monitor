@@ -1,5 +1,6 @@
 package com.zwei.iot.alarm.algolib.service;
 
+import com.zwei.common.domain.AlgoResult;
 import com.zwei.iot.alarm.algolib.domain.AlgoVersion;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,8 +37,8 @@ public interface IAlgoVersionService {
     boolean checkVersionUnique(Long algoId, String versionNo);
 
     /** 查询指定版本的算法文档 */
-    com.zwei.iot.alarm.service.engine.AlgoResult describe(String algoCode, String versionNo);
+    AlgoResult describe(String algoCode, String versionNo);
 
     /** 查询最新版本的算法文档 */
-    com.zwei.iot.alarm.service.engine.AlgoResult describeLatest(String algoCode);
+    AlgoResult describeLatest(String algoCode);
 }

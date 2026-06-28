@@ -4,6 +4,7 @@ import com.zwei.common.annotation.Log;
 import com.zwei.common.config.RuoYiConfig;
 import com.zwei.common.core.controller.BaseController;
 import com.zwei.common.core.domain.AjaxResult;
+import com.zwei.common.domain.AlgoResult;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.alarm.algolib.domain.AlgoVersion;
@@ -87,7 +88,7 @@ public class AlgoVersionController extends BaseController {
     @PreAuthorize("@ss.hasPermi('iot:algo-library:query')")
     public AjaxResult describe(@PathVariable String algoCode,
                                @PathVariable String versionNo) {
-        com.zwei.iot.alarm.service.engine.AlgoResult result = versionService.describe(algoCode, versionNo);
+        com.zwei.common.domain.AlgoResult result = versionService.describe(algoCode, versionNo);
         if (result.success()) {
             return success(result.data());
         }
@@ -97,7 +98,7 @@ public class AlgoVersionController extends BaseController {
     @GetMapping("/{algoCode}/describe-latest")
     @PreAuthorize("@ss.hasPermi('iot:algo-library:query')")
     public AjaxResult describeLatest(@PathVariable String algoCode) {
-        com.zwei.iot.alarm.service.engine.AlgoResult result = versionService.describeLatest(algoCode);
+        AlgoResult result = versionService.describeLatest(algoCode);
         if (result.success()) {
             return success(result.data());
         }

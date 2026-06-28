@@ -3,6 +3,7 @@ package com.zwei.iot.alarm.service.engine;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zwei.common.config.RuoYiConfig;
+import com.zwei.common.domain.AlgoResult;
 import com.zwei.iot.alarm.algolib.domain.AlgoInfo;
 import com.zwei.iot.alarm.algolib.domain.AlgoVersion;
 import com.zwei.iot.alarm.algolib.mapper.AlgoInfoMapper;

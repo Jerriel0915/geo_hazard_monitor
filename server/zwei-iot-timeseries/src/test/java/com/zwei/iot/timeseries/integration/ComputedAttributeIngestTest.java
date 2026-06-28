@@ -76,7 +76,8 @@ class ComputedAttributeIngestTest {
 
         evaluator = new ComputedAttributeEvaluator(
                 sensorQuery, registry, assembler, lastMessageStore, scriptEngine,
-                new ScriptCacheOps(), new ScriptSensorQuery(mock(com.zwei.iot.device.mapper.DeviceMapper.class)));
+                new ScriptCacheOps(), new ScriptSensorQuery(mock(com.zwei.iot.device.mapper.DeviceMapper.class)),
+                mock(org.springframework.beans.factory.ObjectProvider.class));
     }
 
     private IMonitorContentService mockMonitorContentService() {

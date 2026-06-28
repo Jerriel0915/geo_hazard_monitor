@@ -1,4 +1,4 @@
-package com.zwei.iot.alarm.service.engine;
+package com.zwei.common.domain;
 
 import java.util.Map;
 

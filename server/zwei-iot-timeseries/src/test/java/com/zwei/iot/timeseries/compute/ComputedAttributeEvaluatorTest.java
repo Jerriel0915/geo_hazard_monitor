@@ -42,7 +42,7 @@ class ComputedAttributeEvaluatorTest {
 
         evaluator = new ComputedAttributeEvaluator(
                 sensorQuery, registry, assembler, lastMessageStore, scriptEngine,
-                cacheOps, scriptSensorQuery);
+                cacheOps, scriptSensorQuery, mock(org.springframework.beans.factory.ObjectProvider.class));
     }
 
     private ParsedMessage msg(double value) {
