@@ -72,9 +72,10 @@ watch(() => props.visible, async (val) => {
       getStrategyScope(props.alarmId)
     ])
     groups.value = ((groupRes as any)?.data || (groupRes as any) || []).map((g: HazardPointGroupRaw) => ({ id: g.id, code: g.code, name: g.name }))
-    hazardPoints.value = ((pointRes as any)?.rows || []).map((hp: HazardPointRaw) => ({ id: hp.id, name: hp.name }))
+    hazardPoints.value = ((pointRes as any)?.data?.rows || (pointRes as any)?.rows || []).map((hp: HazardPointRaw) => ({ id: hp.id, name: hp.name }))
 
-    const scopes = Array.isArray(scopeRes) ? scopeRes as string[] : []
+    const rawScope = (scopeRes as any)?.data ?? scopeRes
+    const scopes = Array.isArray(rawScope) ? rawScope as string[] : []
     if (scopes.includes('*')) {
       scopeMode.value = 'all'
     } else if (scopes.some(s => s.startsWith('group:'))) {
