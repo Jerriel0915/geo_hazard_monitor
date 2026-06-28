@@ -18,6 +18,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -139,9 +140,13 @@ public class PythonAlgoExecutor {
         final String finalParamsJson = paramsJson;
         int timeout = properties.getAlgo().getTimeoutSeconds();
         Future<AlgoResult> future = executor.submit(() -> {
+            File tempParams = null;
             try {
+                // Write params to temp file to avoid Windows command-line space/quoting issues
+                tempParams = File.createTempFile("algo_params_", ".json");
+                Files.writeString(tempParams.toPath(), finalParamsJson);
                 String output = runProcess(finalWorkDir, properties.getAlgo().getPythonCmd(),
-                        "algo_entry.py", "--method", method, "--params", finalParamsJson);
+                        "algo_entry.py", "--method", method, "--params-file", tempParams.getAbsolutePath());
                 Map<String, Object> result = JSON.readValue(output, new TypeReference<>() {});
                 boolean success = Boolean.TRUE.equals(result.get("success"));
                 @SuppressWarnings("unchecked")
@@ -151,6 +156,10 @@ public class PythonAlgoExecutor {
             } catch (Exception e) {
                 log.error("Python算法执行异常: {}/{}/{}", algoCode, version.getVersionNo(), method, e);
                 return AlgoResult.fail("执行异常: " + e.getMessage());
+            } finally {
+                if (tempParams != null) {
+                    tempParams.delete();
+                }
             }
         });
 
