@@ -9,30 +9,28 @@
     </template>
 
     <div v-loading="loading">
-      <el-radio-group v-model="scopeMode" class="scope-mode-group">
-        <el-radio value="all">全部隐患点</el-radio>
-
-        <div v-show="scopeMode === 'group'" class="scope-section">
-          <el-checkbox-group v-model="selectedGroups" class="scope-list">
-            <el-checkbox v-for="g in groups" :key="g.id" :value="`group:${g.id}`" class="scope-item">
-              {{ g.name }} ({{ g.code }})
-            </el-checkbox>
-          </el-checkbox-group>
-        </div>
-
-        <el-radio value="group">按分组选择</el-radio>
-
-        <div v-show="scopeMode === 'specific'" class="scope-section">
-          <el-checkbox-group v-model="selectedPoints" class="scope-list">
-            <el-checkbox v-for="hp in hazardPoints" :key="hp.id" :value="String(hp.id)" class="scope-item">
-              {{ hp.name }}
-            </el-checkbox>
-          </el-checkbox-group>
-          <el-empty v-if="hazardPoints.length === 0 && !loading" description="暂无可选隐患点" />
-        </div>
-
-        <el-radio value="specific">指定隐患点</el-radio>
+      <el-radio-group v-model="scopeMode" class="scope-mode-row">
+        <el-radio-button value="all">全部隐患点</el-radio-button>
+        <el-radio-button value="group">按分组选择</el-radio-button>
+        <el-radio-button value="specific">指定隐患点</el-radio-button>
       </el-radio-group>
+
+      <div v-if="scopeMode === 'group'" class="scope-section">
+        <el-checkbox-group v-model="selectedGroups" class="scope-list">
+          <el-checkbox v-for="g in groups" :key="g.id" :value="`group:${g.id}`" class="scope-item">
+            {{ g.name }} ({{ g.code }})
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+
+      <div v-if="scopeMode === 'specific'" class="scope-section">
+        <el-checkbox-group v-model="selectedPoints" class="scope-list">
+          <el-checkbox v-for="hp in hazardPoints" :key="hp.id" :value="String(hp.id)" class="scope-item">
+            {{ hp.name }}
+          </el-checkbox>
+        </el-checkbox-group>
+        <el-empty v-if="hazardPoints.length === 0 && !loading" description="暂无可选隐患点" />
+      </div>
     </div>
 
     <template #footer>
@@ -114,8 +112,9 @@ async function handleSave() {
 </script>
 
 <style scoped>
-.scope-mode-group { display: flex; flex-direction: column; gap: 8px; }
-.scope-section { margin: 4px 0 4px 24px; }
+.scope-mode-row { display: flex; width: 100%; margin-bottom: 12px; }
+.scope-mode-row .el-radio-button { flex: 1; }
+.scope-section { margin-top: 4px; }
 .scope-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; }
 .scope-item { margin: 0; padding: 6px 10px; border-radius: 4px; }
 .scope-item:hover { background: #f2f3f5; }
