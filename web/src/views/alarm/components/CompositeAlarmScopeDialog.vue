@@ -10,9 +10,9 @@
 
     <div v-loading="loading">
       <el-radio-group v-model="scopeMode" class="scope-mode-row">
-        <el-radio-button value="all">全部隐患点</el-radio-button>
-        <el-radio-button value="group">按分组选择</el-radio-button>
-        <el-radio-button value="specific">指定隐患点</el-radio-button>
+        <el-radio value="all">全部隐患点</el-radio>
+        <el-radio value="group">按分组选择</el-radio>
+        <el-radio value="specific">指定隐患点</el-radio>
       </el-radio-group>
 
       <div v-if="scopeMode === 'group'" class="scope-section">
@@ -112,8 +112,7 @@ async function handleSave() {
 </script>
 
 <style scoped>
-.scope-mode-row { display: flex; width: 100%; margin-bottom: 12px; }
-.scope-mode-row .el-radio-button { flex: 1; }
+.scope-mode-row { display: flex; gap: 16px; margin-bottom: 12px; }
 .scope-section { margin-top: 4px; }
 .scope-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; }
 .scope-item { margin: 0; padding: 6px 10px; border-radius: 4px; }
