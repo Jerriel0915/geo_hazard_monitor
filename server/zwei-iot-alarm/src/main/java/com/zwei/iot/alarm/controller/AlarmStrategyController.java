@@ -107,7 +107,7 @@ public class AlarmStrategyController extends BaseController {
     @GetMapping("/{id}/scope")
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:list')")
     public AjaxResult getScope(@PathVariable Long id) {
-        return success(strategyService.getHazardPointIds(id));
+        return success(strategyService.getScopeValues(id));
     }
 
     @PostMapping("/{id}/test-run")

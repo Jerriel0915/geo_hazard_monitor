@@ -26,7 +26,8 @@ public class AlarmStrategyHazardPoint implements Serializable {
 
     private Long id;
     private Long strategyId;
-    private Long hazardPointId;
+    /** scope value: "*" = 全部隐患点; "group:{id}" = 按分组; "{数字}" = 指定隐患点ID */
+    private String hazardPointId;
     private String createBy;
     private Date createTime;
 }

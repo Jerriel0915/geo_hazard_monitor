@@ -119,7 +119,12 @@ public class ComprehensiveAlarmJob {
         }
 
         // 优先级1: 直接绑定的隐患点
-        List<Long> hazardPointIds = bindingMapper.selectHazardPointIdsByStrategyId(strategy.getId());
+        // TODO: Task 9 will delete this class; temporary parse for compilation
+        List<String> scopeValues = bindingMapper.selectScopeValuesByStrategyId(strategy.getId());
+        List<Long> hazardPointIds = scopeValues.stream()
+                .filter(s -> !s.startsWith("*") && !s.startsWith("group:"))
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
 
         // 优先级2: 无直接绑定时，通过监测类型ID兜底查找关联的隐患点
         if (hazardPointIds.isEmpty() && strategy.getMonitorTypeId() != null) {

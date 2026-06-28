@@ -42,8 +42,11 @@ public class StrategyCreateRequest {
     private Integer escalationEnabled;
     private Integer isEnabled;
 
-    // hazard point scope
-    private Long[] hazardPointIds;
+    /**
+     * hazard point scope values:
+     * "*" = 全部隐患点; "group:{id}" = 按分组; "{数字}" = 指定隐患点ID
+     */
+    private String[] hazardPointIds;
 
     public String getName() {
         return name;
@@ -133,11 +136,11 @@ public class StrategyCreateRequest {
         this.isEnabled = isEnabled;
     }
 
-    public Long[] getHazardPointIds() {
+    public String[] getHazardPointIds() {
         return hazardPointIds;
     }
 
-    public void setHazardPointIds(Long[] hazardPointIds) {
+    public void setHazardPointIds(String[] hazardPointIds) {
         this.hazardPointIds = hazardPointIds;
     }
 }

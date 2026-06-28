@@ -21,6 +21,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 综合告警策略服务实现
@@ -60,7 +61,7 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
 
     @Override
     @Transactional
-    public int insert(AlarmStrategy strategy, Long[] hazardPointIds) {
+    public int insert(AlarmStrategy strategy, String[] hazardPointIds) {
         if (!checkStrategyNameUnique(strategy.getName(), 0L)) {
             throw new ServiceException("新增失败，策略名称已存在");
         }
@@ -74,7 +75,7 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
 
     @Override
     @Transactional
-    public int update(AlarmStrategy strategy, Long[] hazardPointIds) {
+    public int update(AlarmStrategy strategy, String[] hazardPointIds) {
         if (!checkStrategyNameUnique(strategy.getName(), strategy.getId())) {
             throw new ServiceException("修改失败，策略名称已存在");
         }
@@ -102,8 +103,8 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
     }
 
     @Override
-    public List<Long> getHazardPointIds(Long strategyId) {
-        return bindingMapper.selectHazardPointIdsByStrategyId(strategyId);
+    public List<String> getScopeValues(Long strategyId) {
+        return bindingMapper.selectScopeValuesByStrategyId(strategyId);
     }
 
     @Override
@@ -128,7 +129,12 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
             return result;
         }
 
-        List<Long> hazardPointIds = bindingMapper.selectHazardPointIdsByStrategyId(id);
+        // TODO: Task 7 will replace with full StrategyScopeResolver logic
+        List<String> scopeValues = bindingMapper.selectScopeValuesByStrategyId(id);
+        List<Long> hazardPointIds = scopeValues.stream()
+                .filter(s -> !s.startsWith("*") && !s.startsWith("group:"))
+                .map(Long::parseLong)
+                .collect(Collectors.toList());
         if (hazardPointIds.isEmpty() && strategy.getMonitorTypeId() != null) {
             hazardPointIds = strategyMapper.selectHazardPointIdsByMonitorTypeId(strategy.getMonitorTypeId());
         }
@@ -159,9 +165,9 @@ public class AlarmStrategyServiceImpl implements IAlarmStrategyService {
         return result;
     }
 
-    private void updateBindings(Long strategyId, Long[] hazardPointIds) {
+    private void updateBindings(Long strategyId, String[] scopeValues) {
         bindingMapper.deleteByStrategyId(strategyId);
-        for (Long hpId : hazardPointIds) {
+        for (String hpId : scopeValues) {
             AlarmStrategyHazardPoint binding = AlarmStrategyHazardPoint.builder()
                     .strategyId(strategyId)
                     .hazardPointId(hpId)

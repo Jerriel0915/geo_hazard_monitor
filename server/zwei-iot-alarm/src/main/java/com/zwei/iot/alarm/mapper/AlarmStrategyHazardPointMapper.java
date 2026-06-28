@@ -9,14 +9,17 @@ import java.util.List;
 @Mapper
 public interface AlarmStrategyHazardPointMapper {
 
-    List<Long> selectHazardPointIdsByStrategyId(Long strategyId);
+    /**
+     * 查询策略绑定的 scope values (支持 "*", "group:{id}", "{隐患点ID}")
+     */
+    List<String> selectScopeValuesByStrategyId(Long strategyId);
 
     int insertBinding(AlarmStrategyHazardPoint binding);
 
     int deleteByStrategyId(Long strategyId);
 
     int deleteBinding(@Param("strategyId") Long strategyId,
-                      @Param("hazardPointId") Long hazardPointId);
+                      @Param("hazardPointId") String hazardPointId);
 
     int countByStrategyId(Long strategyId);
 }

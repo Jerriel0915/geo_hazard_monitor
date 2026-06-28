@@ -3,7 +3,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.zwei.iot.alarm.mapper.AlarmStrategyHazardPointMapper">
 
-    <select id="selectHazardPointIdsByStrategyId" resultType="Long">
+    <select id="selectScopeValuesByStrategyId" resultType="String">
         SELECT hazard_point_id
         FROM alarm_strategy_hazard_point
         WHERE strategy_id = #{strategyId}

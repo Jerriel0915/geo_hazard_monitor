@@ -17,15 +17,18 @@ public interface IAlarmStrategyService {
 
     AlarmStrategy selectById(Long id);
 
-    int insert(AlarmStrategy strategy, Long[] hazardPointIds);
+    int insert(AlarmStrategy strategy, String[] hazardPointIds);
 
-    int update(AlarmStrategy strategy, Long[] hazardPointIds);
+    int update(AlarmStrategy strategy, String[] hazardPointIds);
 
     int delete(Long id);
 
     int toggle(Long id, Integer isEnabled);
 
-    List<Long> getHazardPointIds(Long strategyId);
+    /**
+     * 查询策略绑定的 scope values (支持 "*", "group:{id}", "{隐患点ID}")
+     */
+    List<String> getScopeValues(Long strategyId);
 
     /**
      * 校验策略名称唯一
