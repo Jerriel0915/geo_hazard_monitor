@@ -89,6 +89,34 @@ const ALARM_SPECIFIC_GROUPS: ApiGroup[] = [
     methods: [
       { signature: 'new Date(currentTime)' }
     ]
+  },
+  {
+    icon: '📨',
+    color: '#e6a23c',
+    name: 'event',
+    description: '触发事件对象 (CRON 模式下为 null)',
+    methods: [
+      { signature: '.deviceId', note: '设备 ID (DataIngest)' },
+      { signature: '.deviceCode', note: '设备编码 (DataIngest)' },
+      { signature: '.sensorCode', note: '传感器编码 (DataIngest)' },
+      { signature: '.properties', note: '属性值列表 (DataIngest)' },
+      { signature: '.dataTime', note: '数据时间戳 (DataIngest)' },
+      { signature: '.alarmId', note: '告警记录 ID (AlarmTrigger)' },
+      { signature: '.hazardPointId', note: '隐患点 ID (AlarmTrigger)' },
+      { signature: '.alarmLevel', note: '告警等级 (AlarmTrigger)' },
+      { signature: '.alarmMessage', note: '告警消息 (AlarmTrigger)' }
+    ]
+  },
+  {
+    icon: '📝',
+    color: '#e6a23c',
+    name: 'log',
+    description: '脚本日志工具',
+    methods: [
+      { signature: '.info(msg)', note: '记录 INFO 日志' },
+      { signature: '.warn(msg)', note: '记录 WARN 日志' },
+      { signature: '.error(msg)', note: '记录 ERROR 日志' }
+    ]
   }
 ]
 

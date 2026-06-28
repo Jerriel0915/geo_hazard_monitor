@@ -303,7 +303,7 @@ export interface AlarmStrategyCreatePayload {
     silenceMinutes?: number
     escalationEnabled?: number
     isEnabled?: number
-    hazardPointIds?: number[]
+    hazardPointIds?: string[]
 }
 
 // ── 告警分发规则 ──
@@ -466,7 +466,7 @@ export const toggleStrategy = (id: number, isEnabled: number) =>
 
 /** 策略绑定的隐患点ID列表 */
 export const getStrategyScope = (id: number) =>
-    request.get<number[]>(`/alarm/strategies/${id}/scope`)
+    request.get<string[]>(`/alarm/strategies/${id}/scope`)
 
 // ==================== 告警分发规则 API ====================
 
@@ -529,3 +529,27 @@ export const testStrategyRun = (id: number, payload?: {
   mockDataTime?: number
 }) =>
   request.post<StrategyTestRunResult>(`/alarm/strategies/${id}/test-run`, payload || {})
+
+// ==================== 策略执行日志 ====================
+
+/** 执行日志项 */
+export interface ExecutionLogItem {
+  id: number
+  strategyId: number
+  triggerType: 'CRON' | 'DATA_INGEST' | 'ALARM_TRIGGER'
+  triggerSource: string | null
+  hazardPointIds: string | null
+  resultLevel: number | null
+  resultStatus: 'SUCCESS' | 'NO_ALARM' | 'FAIL' | 'TIMEOUT'
+  durationMs: number
+  scriptLogs: string | null
+  errorMessage: string | null
+  triggeredCount: number
+  createTime: string
+}
+
+/** 查询策略执行日志 */
+export const getExecutionLogs = (strategyId: number, params?: { pageNum?: number; pageSize?: number }) =>
+  request.get<{ rows: ExecutionLogItem[]; total: number }>(
+    `/alarm/strategies/${strategyId}/execution-logs`, { params }
+  )
