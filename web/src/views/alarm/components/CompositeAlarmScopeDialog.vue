@@ -10,7 +10,7 @@
 
     <div v-loading="loading">
       <el-radio-group v-model="scopeMode" class="scope-mode-group">
-        <el-radio value="all">全部隐患点</el-radio-group>
+        <el-radio value="all">全部隐患点</el-radio>
 
         <div v-show="scopeMode === 'group'" class="scope-section">
           <el-checkbox-group v-model="selectedGroups" class="scope-list">
