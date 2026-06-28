@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.iot.alarm.mapper.StrategyExecutionLogMapper">
+
+    <resultMap id="StrategyExecutionLogResult" type="com.zwei.iot.alarm.domain.StrategyExecutionLog">
+        <id     property="id"             column="id"/>
+        <result property="strategyId"     column="strategy_id"/>
+        <result property="triggerType"    column="trigger_type"/>
+        <result property="triggerSource"  column="trigger_source"/>
+        <result property="hazardPointIds" column="hazard_point_ids"/>
+        <result property="resultLevel"    column="result_level"/>
+        <result property="resultStatus"   column="result_status"/>
+        <result property="durationMs"     column="duration_ms"/>
+        <result property="scriptLogs"     column="script_logs"/>
+        <result property="errorMessage"   column="error_message"/>
+        <result property="triggeredCount" column="triggered_count"/>
+        <result property="createTime"     column="create_time"/>
+    </resultMap>
+
+    <insert id="insertLog" parameterType="com.zwei.iot.alarm.domain.StrategyExecutionLog"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO alarm_strategy_execution_log
+            (strategy_id, trigger_type, trigger_source, hazard_point_ids,
+             result_level, result_status, duration_ms, script_logs,
+             error_message, triggered_count)
+        VALUES
+            (#{strategyId}, #{triggerType}, #{triggerSource}, #{hazardPointIds},
+             #{resultLevel}, #{resultStatus}, #{durationMs}, #{scriptLogs},
+             #{errorMessage}, #{triggeredCount})
+    </insert>
+
+    <select id="selectByStrategyId" resultMap="StrategyExecutionLogResult">
+        SELECT id, strategy_id, trigger_type, trigger_source, hazard_point_ids,
+               result_level, result_status, duration_ms, script_logs,
+               error_message, triggered_count, create_time
+        FROM alarm_strategy_execution_log
+        WHERE strategy_id = #{strategyId}
+        ORDER BY create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByStrategyId" resultType="long">
+        SELECT COUNT(*) FROM alarm_strategy_execution_log
+        WHERE strategy_id = #{strategyId}
+    </select>
+
+</mapper>
