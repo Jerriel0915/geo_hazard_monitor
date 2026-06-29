@@ -24,7 +24,7 @@ public class StrategyCreateRequest {
     private Long monitorTypeId;
 
     @NotBlank(message = "触发方式不能为空")
-    @Pattern(regexp = "CRON|EVENT", message = "触发方式只能为CRON或EVENT")
+    @Pattern(regexp = "CRON|REALTIME", message = "触发方式只能为CRON或REALTIME")
     private String triggerMode;
 
     private String cronExpression;

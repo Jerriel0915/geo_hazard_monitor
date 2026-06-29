@@ -23,7 +23,7 @@
         <el-option label="已停用" value="DISABLED" />
       </el-select>
       <el-select v-model="searchTriggerMode" placeholder="触发方式" clearable class="search__select" @change="loadData">
-        <el-option label="周期触发" value="PERIODIC" />
+        <el-option label="周期触发" value="CRON" />
         <el-option label="实时触发" value="REALTIME" />
       </el-select>
       <el-button type="primary" @click="loadData">搜索</el-button>
@@ -54,13 +54,13 @@
             <el-tag :type="item.triggerMode === 'REALTIME' ? 'warning' : 'primary'" size="small" effect="plain">
               {{ item.triggerMode === 'REALTIME' ? '实时触发' : '周期触发' }}
             </el-tag>
-            <span v-if="item.triggerMode === 'PERIODIC' && item.cronExpression" class="cron-text">{{ item.cronExpression }}</span>
+            <span v-if="item.triggerMode === 'CRON' && item.cronExpression" class="cron-text">{{ item.cronExpression }}</span>
           </div>
           <div class="card__meta-row">
             <span class="card__meta-label">静默:</span>
-            <span class="card__meta-value">{{ item.silenceSeconds ? item.silenceSeconds + 'h' : '未设置' }}</span>
-            <span class="card__meta-label" style="margin-left: 12px">持续:</span>
-            <span class="card__meta-value">{{ item.sustainSeconds ? item.sustainSeconds + '次' : '未设置' }}</span>
+            <span class="card__meta-value">{{ item.silenceMinutes ? item.silenceMinutes + '分钟' : '未设置' }}</span>
+            <span class="card__meta-label" style="margin-left: 12px">默认等级:</span>
+            <span class="card__meta-value">{{ ({1:'蓝',2:'黄',3:'橙',4:'红'})[item.defaultAlarmLevel] || '-' }}</span>
           </div>
           <div class="card__meta-row">
             <span class="card__meta-label">应用范围:</span>
@@ -116,11 +116,11 @@
         </el-form-item>
         <el-form-item label="触发方式" prop="triggerMode">
           <el-radio-group v-model="formData.triggerMode">
-            <el-radio value="PERIODIC">周期触发</el-radio>
+            <el-radio value="CRON">周期触发</el-radio>
             <el-radio value="REALTIME">实时触发</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="formData.triggerMode === 'PERIODIC'" label="Cron 表达式" prop="cronExpression">
+        <el-form-item v-if="formData.triggerMode === 'CRON'" label="Cron 表达式" prop="cronExpression">
           <el-input v-model="formData.cronExpression" placeholder="例: 0 0/30 * * * ? (每30分钟)">
             <template #append>
               <el-tooltip content="常用: 每分钟(0 * * * * ?) 每5分钟(0 0/5 * * * ?) 每小时(0 0 * * * ?) 每天2点(0 0 2 * * ?)">
@@ -129,19 +129,17 @@
             </template>
           </el-input>
         </el-form-item>
-        <el-form-item v-if="formData.triggerMode === 'REALTIME'" label="订阅类型">
-          <el-select v-model="formData.subscriptionSourceType" placeholder="选择订阅数据源">
-            <el-option label="传感器数据" value="SENSOR_DATA" />
-            <el-option label="告警信息" value="ALARM" />
+        <el-form-item label="默认告警等级" prop="defaultAlarmLevel">
+          <el-select v-model="formData.defaultAlarmLevel" placeholder="选择默认告警等级">
+            <el-option label="蓝色预警" :value="1" />
+            <el-option label="黄色预警" :value="2" />
+            <el-option label="橙色预警" :value="3" />
+            <el-option label="红色预警" :value="4" />
           </el-select>
         </el-form-item>
-        <el-form-item label="静默周期" prop="silenceSeconds">
-          <el-input-number v-model="formData.silenceSeconds" :min="0" :max="720" :step="1" />
-          <span class="form-hint">&nbsp;h</span>
-        </el-form-item>
-        <el-form-item label="持续时长" prop="sustainSeconds">
-          <el-input-number v-model="formData.sustainSeconds" :min="0" :max="999" :step="1" />
-          <span class="form-hint">&nbsp;次 (0表示不限制)</span>
+        <el-form-item label="静默周期" prop="silenceMinutes">
+          <el-input-number v-model="formData.silenceMinutes" :min="0" :max="720" :step="1" />
+          <span class="form-hint">&nbsp;分钟</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -193,7 +191,7 @@ const pageSize = ref(12)
 
 const searchName = ref('')
 const searchStatus = ref<'' | 'ENABLED' | 'DISABLED'>('')
-const searchTriggerMode = ref<'' | 'PERIODIC' | 'REALTIME'>('')
+const searchTriggerMode = ref<'' | 'CRON' | 'REALTIME'>('')
 
 // ==================== 弹窗状态 ====================
 const dialogVisible = ref(false)
@@ -211,17 +209,27 @@ const currentTriggerMode = ref<string>('CRON')
 const formData = reactive({
   name: '',
   description: '',
-  triggerMode: 'PERIODIC' as 'PERIODIC' | 'REALTIME',
+  triggerMode: 'CRON' as 'CRON' | 'REALTIME',
   cronExpression: '',
-  subscriptionSourceType: 'SENSOR_DATA' as 'ALARM' | 'SENSOR_DATA',
-  silenceSeconds: 0,
-  sustainSeconds: 0
+  defaultAlarmLevel: 2 as number,
+  silenceMinutes: 0 as number,
+  scriptContent: ''
 })
 
 const formRules: FormRules = {
   name: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
   triggerMode: [{ required: true, message: '请选择触发方式', trigger: 'change' }],
-  cronExpression: [{ required: true, message: '请输入 Cron 表达式', trigger: 'blur' }]
+  defaultAlarmLevel: [{ required: true, message: '请选择默认告警等级', trigger: 'change' }],
+  cronExpression: [{
+    validator: (_rule: any, value: string, callback: any) => {
+      if (formData.triggerMode === 'CRON' && !value) {
+        callback(new Error('请输入 Cron 表达式'))
+      } else {
+        callback()
+      }
+    },
+    trigger: 'blur'
+  }]
 }
 
 // ==================== 数据加载 ====================
@@ -254,8 +262,9 @@ function handleResetSearch() {
 function handleAdd() {
   editingItem.value = null
   Object.assign(formData, {
-    name: '', description: '', triggerMode: 'PERIODIC', cronExpression: '',
-    subscriptionSourceType: 'SENSOR_DATA', silenceSeconds: 0, sustainSeconds: 0
+    name: '', description: '', triggerMode: 'CRON', cronExpression: '',
+    defaultAlarmLevel: 2, silenceMinutes: 0,
+    scriptContent: '// 综合告警策略脚本\n// 可用变量: hazardPointId, getLatestValue(attrCode, hpId)\n// 返回值: 1-4 表示告警等级，null 表示无告警\nreturn null\n'
   })
   dialogVisible.value = true
 }
@@ -263,10 +272,11 @@ function handleAdd() {
 function handleEdit(item: CompositeAlarmItem) {
   editingItem.value = item
   Object.assign(formData, {
-    name: item.name, description: item.description, triggerMode: item.triggerMode,
+    name: item.name, description: item.description, triggerMode: item.triggerMode as 'CRON' | 'REALTIME',
     cronExpression: item.cronExpression || '',
-    subscriptionSourceType: item.subscriptionConfig?.sourceType || 'SENSOR_DATA',
-    silenceSeconds: item.silenceSeconds, sustainSeconds: item.sustainSeconds
+    defaultAlarmLevel: item.defaultAlarmLevel || 2,
+    silenceMinutes: item.silenceMinutes || 0,
+    scriptContent: item.scriptContent || ''
   })
   dialogVisible.value = true
 }
@@ -277,12 +287,13 @@ async function handleSubmit() {
   try {
     const payload: Partial<CompositeAlarmItem> = {
       name: formData.name, description: formData.description, triggerMode: formData.triggerMode,
-      silenceSeconds: formData.silenceSeconds, sustainSeconds: formData.sustainSeconds
+      defaultAlarmLevel: formData.defaultAlarmLevel,
+      silenceMinutes: formData.silenceMinutes,
+      scriptType: 'GROOVY',
+      scriptContent: formData.scriptContent
     }
-    if (formData.triggerMode === 'PERIODIC') {
+    if (formData.triggerMode === 'CRON') {
       payload.cronExpression = formData.cronExpression
-    } else {
-      payload.subscriptionConfig = { sourceType: formData.subscriptionSourceType }
     }
     if (editingItem.value) {
       await updateCompositeAlarm(editingItem.value.id, payload as any)
@@ -338,14 +349,6 @@ function handleEditScope(item: CompositeAlarmItem) {
 }
 
 // ==================== 工具方法 ====================
-function formatDuration(seconds: number): string {
-  if (seconds <= 0) return '未设置'
-  if (seconds < 60) return `${seconds}秒`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}小时`
-  return `${Math.floor(seconds / 86400)}天`
-}
-
 function getRunStatusClass(status?: string): string {
   if (status === 'SUCCESS') return 'text-success'
   if (status === 'ERROR') return 'text-danger'
