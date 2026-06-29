@@ -442,7 +442,7 @@ export const getStrategyList = (params?: Record<string, unknown>) =>
 
 /** 策略详情 */
 export const getStrategyDetail = (id: number) =>
-    request.get<AlarmStrategyItem>(`/alarm/strategies/${id}`)
+    request.get<any>(`/alarm/strategies/${id}`).then(res => res.data as AlarmStrategyItem)
 
 /** 新增策略 */
 export const createStrategy = (payload: AlarmStrategyCreatePayload) =>
@@ -462,7 +462,7 @@ export const toggleStrategy = (id: number, isEnabled: number) =>
 
 /** 策略绑定的隐患点ID列表 */
 export const getStrategyScope = (id: number) =>
-    request.get<string[]>(`/alarm/strategies/${id}/scope`)
+    request.get<any>(`/alarm/strategies/${id}/scope`).then(res => res.data as string[])
 
 /** 仅更新策略的应用范围 */
 export const updateStrategyScope = (id: number, hazardPointIds: string[]) =>
@@ -528,7 +528,7 @@ export const testStrategyRun = (id: number, payload?: {
   mockSensorCode?: string
   mockDataTime?: number
 }) =>
-  request.post<StrategyTestRunResult>(`/alarm/strategies/${id}/test-run`, payload || {})
+  request.post<any>(`/alarm/strategies/${id}/test-run`, payload || {}).then(res => res.data as StrategyTestRunResult)
 
 // ==================== 策略执行日志 ====================
 

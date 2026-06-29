@@ -2,6 +2,8 @@ package com.zwei.iot.timeseries.compute;
 
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceHazardRelationService;
+import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.timeseries.domain.SensorSnapshot;
 import com.zwei.iot.timeseries.util.SensorDataQueryUtil;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +25,10 @@ class ScriptSensorQueryTest {
     private static final String SENSOR_CODE = "WY_1";
 
     private final DeviceMapper deviceMapper = mock(DeviceMapper.class);
-    private final ScriptSensorQuery query = new ScriptSensorQuery(deviceMapper);
+    private final ScriptSensorQuery query = new ScriptSensorQuery(
+            deviceMapper,
+            mock(IDeviceHazardRelationService.class),
+            mock(IDeviceSensorService.class));
 
     @Test
     @DisplayName("query(deviceCode, ...) 解析 deviceId 后委托 SensorDataQueryUtil.query")

@@ -80,4 +80,8 @@ public class AlarmStrategy extends BaseEntity {
      * 删除标记
      */
     private Integer delFlag;
+    /**
+     * 绑定隐患点数量（非持久化字段，由 SQL 子查询填充）
+     */
+    private Integer scopeCount;
 }

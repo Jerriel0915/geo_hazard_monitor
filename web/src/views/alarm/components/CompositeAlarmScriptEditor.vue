@@ -10,7 +10,7 @@
       <template #title>{{ statusBar.text }}</template>
     </el-alert>
 
-    <div class="editor-area">
+    <div class="editor-area" ref="editorAreaRef">
       <div class="editor-main">
         <div class="editor-tag">Groovy</div>
         <CodeMirrorGroovy
@@ -19,7 +19,10 @@
           class="cm-wrapper"
         />
       </div>
-      <ApiDocsSidebar class="editor-side" mode="alarm" />
+      <div class="editor-resizer" @mousedown="startResize" />
+      <div class="editor-side" :style="{ width: sidebarWidth + 'px' }">
+        <ApiDocsSidebar mode="alarm" />
+      </div>
     </div>
 
     <TestPanel
@@ -44,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getStrategyDetail, updateStrategy, testStrategyRun, type StrategyTestRunResult } from '@/api/alarm'
 import CodeMirrorGroovy from '../../basic/components/script-editor/CodeMirrorGroovy.vue'
@@ -85,9 +88,19 @@ const defaultTemplate = computed(() =>
   '//   currentTime     当前时间 (String, yyyy-MM-dd HH:mm:ss)\n' +
   '// 工具:\n' +
   '//   cache.getInt(key, default)   Redis 读取\n' +
-  '//   sensor.query(deviceCode, sensorCode, time, attrCode)  IoTDB 查询\n\n' +
+  '//   sensor.query(deviceCode, sensorCode, time, attrCode)  IoTDB 查询\n' +
+  '//   sensor.listDeviceSensorsByHazardPoint(hpId)  查询隐患点设备列表\n' +
+  '//   algo.executeLatest(algoCode, method, params)  调用Python算法\n' +
+  '//   log.info(msg) / log.warn(msg)  日志记录\n\n' +
   'def level = 0\n\n' +
-  '// 在此编写判断逻辑...\n\n' +
+  '// 遍历隐患点设备示例:\n' +
+  '// for (hpId in hazardPointIds) {\n' +
+  '//     def devices = sensor.listDeviceSensorsByHazardPoint(hpId)\n' +
+  '//     for (d in devices) {\n' +
+  '//         // sensor.query(d.deviceCode, d.sensorCode, ...)\n' +
+  '//         // algo.executeLatest("GJQXJ", "calc_speed", [...])\n' +
+  '//     }\n' +
+  '// }\n\n' +
   'return level\n'
 )
 
@@ -155,15 +168,49 @@ async function onSave() {
     saving.value = false
   }
 }
+
+// ── 侧栏拖拽调整宽度 ──
+const editorAreaRef = ref<HTMLElement>()
+const sidebarWidth = ref(240)
+let resizing = false
+
+function startResize(e: MouseEvent) {
+  e.preventDefault()
+  resizing = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', stopResize)
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (!resizing || !editorAreaRef.value) return
+  const rect = editorAreaRef.value.getBoundingClientRect()
+  const newWidth = rect.right - e.clientX
+  sidebarWidth.value = Math.max(160, Math.min(500, newWidth))
+}
+
+function stopResize() {
+  resizing = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', stopResize)
+}
+
+onBeforeUnmount(stopResize)
 </script>
 
 <style scoped>
 .composite-editor {
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .status-bar {
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .editor-area {
@@ -171,7 +218,8 @@ async function onSave() {
   border: 1px solid #ebeef5;
   border-radius: 4px;
   overflow: hidden;
-  height: 320px;
+  flex: 1;
+  min-height: 0;
 }
 
 .editor-main {
@@ -199,8 +247,29 @@ async function onSave() {
   overflow: hidden;
 }
 
+.editor-resizer {
+  flex-shrink: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: #ebeef5;
+  transition: background 0.15s;
+}
+
+.editor-resizer:hover {
+  background: #c0ccda;
+}
+
 .editor-side {
   flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-side :deep(.api-docs-sidebar) {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .editor-footer {
@@ -208,10 +277,19 @@ async function onSave() {
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 0;
+  flex-shrink: 0;
 }
 
 .save-ready {
   background: #67c23a !important;
   border-color: #67c23a !important;
+}
+</style>
+
+<style>
+.el-drawer__body {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
 }
 </style>

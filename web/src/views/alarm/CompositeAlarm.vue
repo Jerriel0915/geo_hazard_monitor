@@ -34,12 +34,12 @@
     <div v-loading="loading" class="grid">
       <el-empty v-if="!loading && alarmList.length === 0" description="暂无综合告警策略" />
 
-      <div v-for="item in alarmList" :key="item.id" class="card" :class="{ 'card--disabled': item.status === 'DISABLED' }">
+      <div v-for="item in alarmList" :key="item.id" class="card" :class="{ 'card--disabled': item.isEnabled === 0 }">
         <div class="card__header">
           <div class="card__title-row">
             <h3 class="card__title">{{ item.name }}</h3>
             <el-switch
-              :model-value="item.status === 'ENABLED'"
+              :model-value="item.isEnabled === 1"
               size="small"
               active-text="启用"
               inactive-text="停用"

@@ -117,6 +117,19 @@ const ALARM_SPECIFIC_GROUPS: ApiGroup[] = [
       { signature: '.warn(msg)', note: '记录 WARN 日志' },
       { signature: '.error(msg)', note: '记录 ERROR 日志' }
     ]
+  },
+  {
+    icon: '🧮',
+    color: '#e6a23c',
+    name: 'algo',
+    description: 'Python 算法调用',
+    methods: [
+      { signature: 'executeLatest(algoCode, method, params)', note: '调用最新版本算法' },
+      { signature: 'execute(algoCode, versionNo, method, params)', note: '调用指定版本算法' },
+      { signature: '↳ .success()', note: '是否成功 (boolean)' },
+      { signature: '↳ .data()', note: '返回数据 Map (成功时)' },
+      { signature: '↳ .error()', note: '错误信息 (失败时)' }
+    ]
   }
 ]
 
@@ -164,6 +177,18 @@ const SHARED_GROUPS: ApiGroup[] = [
       {
         signature: '↳ .values.<attrCode>',
         note: '属性值 (Double), 无数据时为 null'
+      },
+      {
+        signature: 'listDeviceSensorsByHazardPoint(hpId)',
+        note: '返回隐患点下设备+传感器列表'
+      },
+      {
+        signature: '↳ [i].deviceCode',
+        note: '设备编码'
+      },
+      {
+        signature: '↳ [i].sensorCode',
+        note: '传感器编码'
       }
     ]
   }
