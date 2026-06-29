@@ -298,6 +298,7 @@ export interface AlarmStrategyCreatePayload {
     scriptContent?: string
     defaultAlarmLevel: number
     silenceMinutes?: number
+    sustainSeconds?: number
     isEnabled?: number
     hazardPointIds?: string[]
 }

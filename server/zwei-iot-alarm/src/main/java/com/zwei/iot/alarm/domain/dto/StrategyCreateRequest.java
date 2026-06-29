@@ -39,6 +39,7 @@ public class StrategyCreateRequest {
     private Integer defaultAlarmLevel;
 
     private Integer silenceMinutes;
+    private Integer sustainSeconds;
     private Integer isEnabled;
 
     /**
@@ -117,6 +118,14 @@ public class StrategyCreateRequest {
 
     public void setSilenceMinutes(Integer silenceMinutes) {
         this.silenceMinutes = silenceMinutes;
+    }
+
+    public Integer getSustainSeconds() {
+        return sustainSeconds;
+    }
+
+    public void setSustainSeconds(Integer sustainSeconds) {
+        this.sustainSeconds = sustainSeconds;
     }
 
     public Integer getIsEnabled() {

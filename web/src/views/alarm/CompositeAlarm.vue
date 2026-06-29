@@ -59,8 +59,8 @@
           <div class="card__meta-row">
             <span class="card__meta-label">静默:</span>
             <span class="card__meta-value">{{ item.silenceMinutes ? item.silenceMinutes + '分钟' : '未设置' }}</span>
-            <span class="card__meta-label" style="margin-left: 12px">默认等级:</span>
-            <span class="card__meta-value">{{ ({1:'蓝',2:'黄',3:'橙',4:'红'})[item.defaultAlarmLevel] || '-' }}</span>
+            <span class="card__meta-label" style="margin-left: 12px">持续:</span>
+            <span class="card__meta-value">{{ item.sustainSeconds ? item.sustainSeconds + '次' : '未设置' }}</span>
           </div>
           <div class="card__meta-row">
             <span class="card__meta-label">应用范围:</span>
@@ -129,17 +129,13 @@
             </template>
           </el-input>
         </el-form-item>
-        <el-form-item label="默认告警等级" prop="defaultAlarmLevel">
-          <el-select v-model="formData.defaultAlarmLevel" placeholder="选择默认告警等级">
-            <el-option label="蓝色预警" :value="1" />
-            <el-option label="黄色预警" :value="2" />
-            <el-option label="橙色预警" :value="3" />
-            <el-option label="红色预警" :value="4" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="静默周期" prop="silenceMinutes">
           <el-input-number v-model="formData.silenceMinutes" :min="0" :max="720" :step="1" />
           <span class="form-hint">&nbsp;分钟</span>
+        </el-form-item>
+        <el-form-item label="持续次数" prop="sustainSeconds">
+          <el-input-number v-model="formData.sustainSeconds" :min="0" :max="999" :step="1" />
+          <span class="form-hint">&nbsp;次 (0表示不限制)</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -211,15 +207,14 @@ const formData = reactive({
   description: '',
   triggerMode: 'CRON' as 'CRON' | 'REALTIME',
   cronExpression: '',
-  defaultAlarmLevel: 2 as number,
   silenceMinutes: 0 as number,
+  sustainSeconds: 0 as number,
   scriptContent: ''
 })
 
 const formRules: FormRules = {
   name: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
   triggerMode: [{ required: true, message: '请选择触发方式', trigger: 'change' }],
-  defaultAlarmLevel: [{ required: true, message: '请选择默认告警等级', trigger: 'change' }],
   cronExpression: [{
     validator: (_rule: any, value: string, callback: any) => {
       if (formData.triggerMode === 'CRON' && !value) {
@@ -263,7 +258,7 @@ function handleAdd() {
   editingItem.value = null
   Object.assign(formData, {
     name: '', description: '', triggerMode: 'CRON', cronExpression: '',
-    defaultAlarmLevel: 2, silenceMinutes: 0,
+    silenceMinutes: 0, sustainSeconds: 0,
     scriptContent: '// 综合告警策略脚本\n// 可用变量: hazardPointId, getLatestValue(attrCode, hpId)\n// 返回值: 1-4 表示告警等级，null 表示无告警\nreturn null\n'
   })
   dialogVisible.value = true
@@ -274,8 +269,8 @@ function handleEdit(item: CompositeAlarmItem) {
   Object.assign(formData, {
     name: item.name, description: item.description, triggerMode: item.triggerMode as 'CRON' | 'REALTIME',
     cronExpression: item.cronExpression || '',
-    defaultAlarmLevel: item.defaultAlarmLevel || 2,
     silenceMinutes: item.silenceMinutes || 0,
+    sustainSeconds: item.sustainSeconds || 0,
     scriptContent: item.scriptContent || ''
   })
   dialogVisible.value = true
@@ -287,8 +282,9 @@ async function handleSubmit() {
   try {
     const payload: Partial<CompositeAlarmItem> = {
       name: formData.name, description: formData.description, triggerMode: formData.triggerMode,
-      defaultAlarmLevel: formData.defaultAlarmLevel,
+      defaultAlarmLevel: 2,
       silenceMinutes: formData.silenceMinutes,
+      sustainSeconds: formData.sustainSeconds,
       scriptType: 'GROOVY',
       scriptContent: formData.scriptContent
     }

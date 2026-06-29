@@ -14,6 +14,7 @@
         <result property="scriptContent" column="script_content"/>
         <result property="defaultAlarmLevel" column="default_alarm_level"/>
         <result property="silenceMinutes" column="silence_minutes"/>
+        <result property="sustainSeconds" column="sustain_seconds"/>
         <result property="isEnabled" column="is_enabled"/>
         <result property="lastRunTime" column="last_run_time"/>
         <result property="lastRunResult" column="last_run_result"/>
@@ -36,6 +37,7 @@
                script_content,
                default_alarm_level,
                silence_minutes,
+               sustain_seconds,
                is_enabled,
                last_run_time,
                last_run_result,
@@ -86,11 +88,11 @@
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO alarm_strategy (name, description, monitor_type_id, trigger_mode, cron_expression,
                                     script_type, script_content, default_alarm_level,
-                                    silence_minutes, is_enabled,
+                                    silence_minutes, sustain_seconds, is_enabled,
                                     create_by, create_time)
         VALUES (#{name}, #{description}, #{monitorTypeId}, #{triggerMode}, #{cronExpression},
                 #{scriptType}, #{scriptContent}, #{defaultAlarmLevel},
-                #{silenceMinutes}, #{isEnabled},
+                #{silenceMinutes}, #{sustainSeconds}, #{isEnabled},
                 #{createBy}, #{createTime})
     </insert>
 
@@ -106,6 +108,7 @@
             <if test="scriptContent != null">script_content = #{scriptContent},</if>
             <if test="defaultAlarmLevel != null">default_alarm_level = #{defaultAlarmLevel},</if>
             <if test="silenceMinutes != null">silence_minutes = #{silenceMinutes},</if>
+            <if test="sustainSeconds != null">sustain_seconds = #{sustainSeconds},</if>
             <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
             update_by = #{updateBy}, update_time = #{updateTime}
         </set>

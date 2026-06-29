@@ -65,6 +65,10 @@ public class AlarmStrategy extends BaseEntity {
      */
     private Integer silenceMinutes;
     /**
+     * 持续触发次数(0=不限制)
+     */
+    private Integer sustainSeconds;
+    /**
      * 启用状态
      */
     private Integer isEnabled;

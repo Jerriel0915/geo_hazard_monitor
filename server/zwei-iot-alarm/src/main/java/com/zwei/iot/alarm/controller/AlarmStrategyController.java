@@ -68,6 +68,7 @@ public class AlarmStrategyController extends BaseController {
                 .scriptContent(request.getScriptContent())
                 .defaultAlarmLevel(request.getDefaultAlarmLevel())
                 .silenceMinutes(request.getSilenceMinutes() != null ? request.getSilenceMinutes() : 0)
+                .sustainSeconds(request.getSustainSeconds() != null ? request.getSustainSeconds() : 0)
                 .isEnabled(request.getIsEnabled() != null ? request.getIsEnabled() : 1)
                 .createBy(getUsername())
                 .build();
@@ -76,8 +77,9 @@ public class AlarmStrategyController extends BaseController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPermi('iot:alarm-strategy:update')")
-    public AjaxResult update(@PathVariable Long id, @Validated @RequestBody StrategyCreateRequest request) {
-        if (!strategyService.checkStrategyNameUnique(request.getName(), id)) {
+    public AjaxResult update(@PathVariable Long id, @RequestBody StrategyCreateRequest request) {
+        if (request.getName() != null && !request.getName().isBlank()
+                && !strategyService.checkStrategyNameUnique(request.getName(), id)) {
             return error("修改失败，策略名称已存在");
         }
         AlarmStrategy strategy = AlarmStrategy.builder()
@@ -91,6 +93,7 @@ public class AlarmStrategyController extends BaseController {
                 .scriptContent(request.getScriptContent())
                 .defaultAlarmLevel(request.getDefaultAlarmLevel())
                 .silenceMinutes(request.getSilenceMinutes())
+                .sustainSeconds(request.getSustainSeconds() != null ? request.getSustainSeconds() : 0)
                 .isEnabled(request.getIsEnabled())
                 .updateBy(getUsername())
                 .build();
