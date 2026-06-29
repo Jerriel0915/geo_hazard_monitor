@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字生命体 - 完整平滑流动版</title>
+    <style>
+        :root {
+            --panel-bg: rgba(0, 8, 20, 0.9);
+            --accent: #00d4ff;
+            --border: rgba(0, 212, 255, 0.2);
+        }
+        body {
+            margin: 0;
+            background-color: #000105;
+            overflow: hidden;
+            font-family: 'Consolas', monospace;
+            color: white;
+        }
+
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 280px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        h2 { font-size: 0.9rem; margin: 0 0 15px 0; color: var(--accent); text-align: center; letter-spacing: 2px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.75rem; margin-bottom: 8px; color: var(--accent); opacity: 0.8; }
+
+        select, input[type="range"] {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        button {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            padding: 8px 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+        button.active { background: var(--accent); color: black; box-shadow: 0 0 15px var(--accent); }
+
+        #status-display {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            pointer-events: none;
+        }
+        .status-tag { font-size: 0.7rem; letter-spacing: 2px; opacity: 0.5; color: var(--accent); }
+        .status-value { font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 10px var(--accent); }
+    </style>
+</head>
+<body>
+
+    <div id="control-panel">
+        <h2>ENTITY INTERFACE</h2>
+        
+        <div class="group">
+            <label>情绪频率 (EMOTION)</label>
+            <select id="emotionSelect" onchange="updateAgentState()">
+                <option value="0">STABLE (正常)</option>
+                <option value="1">INFO (蓝色告警)</option>
+                <option value="2">WARN (黄色告警)</option>
+                <option value="3">ALERT (橙色告警)</option>
+                <option value="4">CRITICAL (红色告警)</option>
+            </select>
+        </div>
+
+        <div class="group">
+            <label>交互状态 (ACTION)</label>
+            <div class="btn-group">
+                <button onclick="setAction(0)" id="btn-a0" class="active">空闲</button>
+                <button onclick="setAction(1)" id="btn-a1">思考</button>
+                <button onclick="setAction(2)" id="btn-a2">输出</button>
+            </div>
+        </div>
+
+        <div class="group">
+            <label>流体湍流度: <span id="val-speed">1.0</span></label>
+            <input type="range" id="speedRange" min="0.1" max="4" step="0.1" value="1.0" oninput="updateAgentState()">
+        </div>
+    </div>
+
+    <div id="status-display">
+        <div class="status-tag">NEURAL LINK</div>
+        <div id="status-text" class="status-value">INITIALIZING...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+
+    <script id="vertexShader" type="x-shader/x-vertex">
+        uniform float uTime;
+        uniform float uEmotion; 
+        uniform float uAction;  
+        uniform float uGlobalSpeed;
+        
+        attribute float aSize;
+        attribute vec3 aColor;
+        varying vec3 vColor;
+
+        // 3D Perlin Noise 实现平滑流动
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+        vec3 fade(vec3 t) { return t*t*t*(t*(t*6.0-15.0)+10.0); }
+
+        float pnoise(vec3 P, vec3 rep) {
+            vec3 Pi0 = mod(floor(P), rep); vec3 Pi1 = mod(Pi0 + vec3(1.0), rep); 
+            Pi0 = mod289(Pi0); Pi1 = mod289(Pi1);
+            vec3 Pf0 = fract(P); vec3 Pf1 = Pf0 - vec3(1.0); 
+            vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x); vec4 iy = vec4(Pi0.yy, Pi1.yy); vec4 iz = vec4(Pi0.zzzz); vec4 iw = vec4(Pi1.zzzz);
+            vec4 ixy = permute(permute(ix) + iy); vec4 ixy0 = permute(ixy + iz); vec4 ixy1 = permute(ixy + iw);
+            vec4 gx0 = ixy0 / 7.0; vec4 gy0 = fract(floor(gx0) / 7.0) - 0.5; gx0 = fract(gx0); vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0); vec4 sz0 = step(gz0, vec4(0.0)); gx0 -= sz0 * (step(0.0, gx0) - 0.5); gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+            vec4 gx1 = ixy1 / 7.0; vec4 gy1 = fract(floor(gx1) / 7.0) - 0.5; gx1 = fract(gx1); vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1); vec4 sz1 = step(gz1, vec4(0.0)); gx1 -= sz1 * (step(0.0, gx1) - 0.5); gy1 -= sz1 * (step(0.0, gy1) - 0.5);
+            vec3 g000 = vec3(gx0.x,gy0.x,gz0.x); vec3 g100 = vec3(gx0.y,gy0.y,gz0.y); vec3 g010 = vec3(gx0.z,gy0.z,gz0.z); vec3 g110 = vec3(gx0.w,gy0.w,gz0.w); vec3 g001 = vec3(gx1.x,gy1.x,gz1.x); vec3 g101 = vec3(gx1.y,gy1.y,gz1.y); vec3 g011 = vec3(gx1.z,gy1.z,gz1.z); vec3 g111 = vec3(gx1.w,gy1.w,gz1.w);
+            vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g100, g100), dot(g010, g010), dot(g110, g110))); g000 *= norm0.x; g100 *= norm0.y; g010 *= norm0.z; g110 *= norm0.w;
+            vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g101, g101), dot(g011, g011), dot(g111, g111))); g001 *= norm1.x; g101 *= norm1.y; g011 *= norm1.z; g111 *= norm1.w;
+            float n000 = dot(g000, Pf0); float n100 = dot(g100, vec3(Pf1.x, Pf0.y, Pf0.z)); float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z)); float n110 = dot(g110, vec3(Pf1.x, Pf1.y, Pf0.z)); float n001 = dot(g001, vec3(Pf0.x, Pf0.y, Pf1.z)); float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z)); float n011 = dot(g011, vec3(Pf0.x, Pf1.y, Pf1.z)); float n111 = dot(g111, Pf1);
+            vec3 fade_xyz = fade(Pf0); vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z); vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
+            return 2.2 * mix(n_yz.x, n_yz.y, fade_xyz.x);
+        }
+
+        void main() {
+            vColor = aColor;
+            float time = uTime * (0.2 + uEmotion * 0.2) * uGlobalSpeed;
+            
+            float baseRadius = (uAction == 1.0) ? 0.7 : 1.0;
+            float noiseFreq = 1.2 + uEmotion * 0.4;
+            float noiseAmp = 0.15 + uEmotion * 0.1;
+            
+            if(uAction == 2.0) noiseAmp += sin(uTime * 15.0 - position.y * 5.0) * 0.1;
+
+            vec3 noiseInput = position * noiseFreq + vec3(time);
+            vec3 displacement = vec3(
+                pnoise(noiseInput, vec3(10.0)),
+                pnoise(noiseInput + vec3(12.3), vec3(10.0)),
+                pnoise(noiseInput - vec3(8.7), vec3(10.0))
+            ) * noiseAmp;
+
+            vec3 newPosition = position * baseRadius + displacement;
+            vec4 mvPosition = modelViewMatrix * vec4(newPosition, 1.0);
+            gl_Position = projectionMatrix * mvPosition;
+
+            float sizeMelt = (uAction == 1.0) ? 0.7 : (uAction == 2.0 ? 1.3 : 1.0);
+            gl_PointSize = aSize * sizeMelt * (20.0 / -mvPosition.z);
+        }
+    </script>
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        varying vec3 vColor;
+        void main() {
+            float d = distance(gl_PointCoord, vec2(0.5));
+            if(d > 0.5) discard;
+            gl_FragColor = vec4(vColor, (1.0 - d * 2.0) * 0.8);
+        }
+    </script>
+
+    <script>
+        let scene, camera, renderer, material, geometry, points;
+        const particleCount = 20000;
+        const emotionColors = ["#0055ff", "#00d4ff", "#ffcc00", "#ff8800", "#ff0022"];
+        let currentAction = 0;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 3;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            geometry = new THREE.BufferGeometry();
+            const posArr = new Float32Array(particleCount * 3);
+            const colArr = new Float32Array(particleCount * 3);
+            const sizArr = new Float32Array(particleCount);
+
+            for (let i = 0; i < particleCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(Math.random() * 2 - 1);
+                posArr[i*3] = Math.sin(phi) * Math.cos(theta);
+                posArr[i*3+1] = Math.sin(phi) * Math.sin(theta);
+                posArr[i*3+2] = Math.cos(phi);
+                sizArr[i] = Math.random() * 3 + 1;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+            geometry.setAttribute('aColor', new THREE.BufferAttribute(colArr, 3));
+            geometry.setAttribute('aSize', new THREE.BufferAttribute(sizArr, 1));
+
+            material = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    uEmotion: { value: 0 },
+                    uAction: { value: 0 },
+                    uGlobalSpeed: { value: 1.0 }
+                },
+                vertexShader: document.getElementById('vertexShader').textContent,
+                fragmentShader: document.getElementById('fragmentShader').textContent,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthTest: false
+            });
+
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+
+            updateAgentState(); 
+            animate();
+        }
+
+        // 核心更新函数：修复了变量未定义引用的逻辑
+        function updateAgentState() {
+            if (!material) return;
+
+            const eIdx = parseInt(document.getElementById('emotionSelect').value);
+            const gSpeed = parseFloat(document.getElementById('speedRange').value);
+            
+            document.getElementById('val-speed').innerText = gSpeed.toFixed(1);
+            
+            // 更新 Uniforms
+            material.uniforms.uEmotion.value = eIdx;
+            material.uniforms.uGlobalSpeed.value = gSpeed;
+
+            // 更新颜色属性
+            const targetColor = new THREE.Color(emotionColors[eIdx]);
+            const colors = geometry.attributes.aColor.array;
+            for(let i=0; i<particleCount; i++) {
+                colors[i*3] = targetColor.r + (Math.random()-0.5)*0.1;
+                colors[i*3+1] = targetColor.g + (Math.random()-0.5)*0.1;
+                colors[i*3+2] = targetColor.b + (Math.random()-0.5)*0.1;
+            }
+            geometry.attributes.aColor.needsUpdate = true;
+            updateUI();
+        }
+
+        function setAction(idx) {
+            if (!material) return;
+            currentAction = idx;
+            material.uniforms.uAction.value = idx;
+            
+            [0,1,2].forEach(i => {
+                document.getElementById(`btn-a${i}`).className = (i === idx) ? 'active' : '';
+            });
+            updateUI();
+        }
+
+        function updateUI() {
+            const eNames = ["STABLE", "INFO", "WARN", "ALERT", "CRITICAL"];
+            const aNames = ["IDLE", "THINKING", "VOICING"];
+            const eIdx = document.getElementById('emotionSelect').value;
+            document.getElementById('status-text').innerText = `${eNames[eIdx]} / ${aNames[currentAction]}`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            material.uniforms.uTime.value = performance.now() / 1000;
+            points.rotation.y += 0.001;
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        init();
+    </script>
+</body>
+</html>

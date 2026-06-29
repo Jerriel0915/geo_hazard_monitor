@@ -28,3 +28,24 @@ Thumbs.db
 *.swp
 *~
 node_modules/
+
+# Docker 构建排除：后端和数据库脚本（nginx 镜像不需要）
+server/
+db/
+
+# Claude / 工具链
+.claude/
+docs/
+*.png
+*.jpg
+*.jpeg
+
+# 本地构建产物（Docker 内重新构建）
+web/dist/
+web/node_modules/
+terra/dist/
+terra/node_modules/
+
+# 临时截图和测试文件
+terraform/
+*.e2e.png

@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerraMens Dashboard 命令测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+            background: linear-gradient(90deg, #22c55e, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-normal { background: #22c55e; color: white; }
+        .btn-info { background: #3b82f6; color: white; }
+        .btn-caution { background: #eab308; color: #1e293b; }
+        .btn-warning { background: #f97316; color: white; }
+        .btn-critical { background: #ef4444; color: white; }
+        .btn-secondary { background: #6366f1; color: white; }
+        .btn-gray { background: #475569; color: white; }
+        .btn-purple { background: #a855f7; color: white; }
+        .btn-teal { background: #14b8a6; color: white; }
+
+        .custom-command {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .custom-command input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            color: #e2e8f0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+        }
+
+        .custom-command input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .log-container {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+        }
+
+        .log-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #64748b;
+            margin-right: 10px;
+        }
+
+        .log-request {
+            color: #22c55e;
+        }
+
+        .log-response {
+            color: #3b82f6;
+        }
+
+        .log-error {
+            color: #ef4444;
+        }
+
+        .endpoint-config {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .endpoint-config input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            color: #e2e8f0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.connected {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .status-badge.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .clear-btn {
+            padding: 8px 16px;
+            background: #475569;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .clear-btn:hover {
+            background: #64748b;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TerraMens Dashboard 命令测试</h1>
+
+        <!-- API 配置 -->
+        <div class="section">
+            <div class="endpoint-config">
+                <input type="text" id="apiEndpoint" value="http://localhost:8000/api/dashboard/command" placeholder="API 端点">
+                <span id="connectionStatus" class="status-badge disconnected">未连接</span>
+                <button class="clear-btn" onclick="testConnection()">测试连接</button>
+            </div>
+        </div>
+
+        <!-- TerraMens 状态控制 -->
+        <div class="section">
+            <div class="section-title">🎯 TerraMens 状态</div>
+            <div class="btn-grid">
+                <button class="btn btn-normal" onclick="setState('normal')">
+                    <span>🟢</span> 正常监测
+                </button>
+                <button class="btn btn-info" onclick="setState('info')">
+                    <span>🔵</span> 信息提示
+                </button>
+                <button class="btn btn-caution" onclick="setState('caution')">
+                    <span>🟡</span> 需要注意
+                </button>
+                <button class="btn btn-warning" onclick="setState('warning')">
+                    <span>🟠</span> 发出警告
+                </button>
+                <button class="btn btn-critical" onclick="setState('critical')">
+                    <span>🔴</span> 紧急情况
+                </button>
+            </div>
+        </div>
+
+        <!-- 时间线操作 -->
+        <div class="section">
+            <div class="section-title">📝 基础时间线</div>
+            <div class="btn-grid">
+                <button class="btn btn-secondary" onclick="addTimeline('thinking')">
+                    💭 添加思考
+                </button>
+                <button class="btn btn-secondary" onclick="addTimeline('observation')">
+                    👁️ 添加观察
+                </button>
+                <button class="btn btn-warning" onclick="addTimeline('warning')">
+                    ⚠️ 添加预警
+                </button>
+                <button class="btn btn-normal" onclick="addTimeline('action')">
+                    ✓ 添加动作
+                </button>
+            </div>
+        </div>
+
+        <!-- 高级时间线格式 -->
+        <div class="section">
+            <div class="section-title">🎨 高级时间线格式</div>
+            <div class="btn-grid">
+                <button class="btn btn-purple" onclick="addMarkdownTimeline()">
+                    📝 Markdown 格式
+                </button>
+                <button class="btn btn-purple" onclick="addDataTimeline()">
+                    📊 数据展示格式
+                </button>
+                <button class="btn btn-purple" onclick="addAnalysisTimeline()">
+                    🔬 分析报告格式
+                </button>
+                <button class="btn btn-purple" onclick="addEmojiTimeline()">
+                    😀 表情符号格式
+                </button>
+                <button class="btn btn-teal" onclick="addMultiLineTimeline()">
+                    📄 多行消息
+                </button>
+                <button class="btn btn-teal" onclick="addCodeTimeline()">
+                    💻 代码块格式
+                </button>
+                <button class="btn btn-teal" onclick="addLinkTimeline()">
+                    🔗 链接格式
+                </button>
+                <button class="btn btn-info" onclick="addTableTimeline()">
+                    📋 表格数据格式
+                </button>
+            </div>
+        </div>
+
+        <!-- 面板管理 -->
+        <div class="section">
+            <div class="section-title">📊 面板管理</div>
+            <div class="btn-grid">
+                <button class="btn btn-secondary" onclick="createMapPanel()">
+                    🗺️ 创建地图面板
+                </button>
+                <button class="btn btn-secondary" onclick="createTablePanel()">
+                    📋 创建表格面板
+                </button>
+                <button class="btn btn-secondary" onclick="updatePanelTitle()">
+                    ✏️ 更新面板标题
+                </button>
+                <button class="btn btn-gray" onclick="destroyPanel()">
+                    🗑️ 销毁面板
+                </button>
+            </div>
+        </div>
+
+        <!-- 地图绘图测试 -->
+        <div class="section">
+            <div class="section-title">🎨 地图绘图测试</div>
+            <div class="btn-grid">
+                <button class="btn btn-info" onclick="createMapWithPolylines()">
+                    〰️ 创建带折线的地图
+                </button>
+                <button class="btn btn-warning" onclick="createMapWithPolygons()">
+                    🔶 创建带多边形的地图
+                </button>
+                <button class="btn btn-purple" onclick="createMapWithAllShapes()">
+                    🎯 创建综合地图（线+面+点）
+                </button>
+                <button class="btn btn-caution" onclick="createRiskZoneMap()">
+                    ⚠️ 风险区域地图
+                </button>
+                <button class="btn btn-normal" onclick="createMonitoringRouteMap()">
+                    🛤️ 监测路线地图
+                </button>
+                <button class="btn btn-teal" onclick="addShapeToExistingMap()">
+                    ➕ 向现有地图添加形状
+                </button>
+            </div>
+        </div>
+
+        <!-- 图表类型测试 -->
+        <div class="section">
+            <div class="section-title">📈 图表类型测试</div>
+            <div class="btn-grid">
+                <button class="btn btn-info" onclick="createLineChart()">
+                    📉 折线图
+                </button>
+                <button class="btn btn-info" onclick="createBarChart()">
+                    📊 柱状图
+                </button>
+                <button class="btn btn-info" onclick="createAreaChart()">
+                    🌊 面积图
+                </button>
+                <button class="btn btn-purple" onclick="createMultiLineChart()">
+                    📉 多系列折线图
+                </button>
+                <button class="btn btn-purple" onclick="createMultiBarChart()">
+                    📊 多系列柱状图
+                </button>
+                <button class="btn btn-teal" onclick="createMixedChart()">
+                    🔄 混合图表
+                </button>
+            </div>
+        </div>
+
+        <!-- 批量配置面板 -->
+        <div class="section">
+            <div class="section-title">🔄 批量配置面板</div>
+            <div class="btn-grid">
+                <button class="btn btn-info" onclick="batchCreateMonitorPanels()">
+                    📡 批量创建监测布局
+                </button>
+                <button class="btn btn-warning" onclick="batchCreateAlertLayout()">
+                    🚨 批量切换告警布局
+                </button>
+                <button class="btn btn-normal" onclick="batchCreateNormalLayout()">
+                    🟢 批量切换正常布局
+                </button>
+                <button class="btn btn-gray" onclick="batchClearAllPanels()">
+                    🗑️ 批量清除所有面板
+                </button>
+            </div>
+        </div>
+
+        <!-- 告警分析流程测试 -->
+        <div class="section">
+            <div class="section-title">🔬 告警分析流程测试</div>
+            <div class="btn-grid">
+                <button class="btn btn-normal" onclick="runStage1Initialize()">
+                    📊 阶段一：初始化监控看板
+                </button>
+                <button class="btn btn-caution" onclick="runStage2Discover()">
+                    🔍 阶段二：发现高风险点
+                </button>
+                <button class="btn btn-critical" onclick="runStage3Analysis()">
+                    📈 阶段三：深度分析
+                </button>
+                <button class="btn btn-purple" onclick="runFullAnalysisWorkflow()">
+                    🚀 完整流程（一键执行）
+                </button>
+            </div>
+        </div>
+
+        <!-- 警报操作 -->
+        <div class="section">
+            <div class="section-title">🚨 警报操作</div>
+            <div class="btn-grid">
+                <button class="btn btn-caution" onclick="showAlert('attention')">
+                    🔔 关注警报
+                </button>
+                <button class="btn btn-warning" onclick="showAlert('warning')">
+                    ⚠️ 预警警报
+                </button>
+                <button class="btn btn-critical" onclick="showAlert('critical')">
+                    🚨 紧急警报
+                </button>
+            </div>
+        </div>
+
+        <!-- 自定义命令 -->
+        <div class="section">
+            <div class="section-title">⚙️ 自定义命令</div>
+            <div class="custom-command">
+                <input type="text" id="customCommand" placeholder='{"action": "update", "component": "terra", "params": {...}}'>
+                <button class="btn btn-secondary" onclick="sendCustomCommand()">发送</button>
+            </div>
+        </div>
+
+        <!-- 请求日志 -->
+        <div class="section">
+            <div class="section-title">
+                📋 请求日志
+                <button class="clear-btn" onclick="clearLog()" style="margin-left: auto;">清空</button>
+            </div>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = document.getElementById('apiEndpoint');
+        const logContainer = document.getElementById('logContainer');
+        const connectionStatus = document.getElementById('connectionStatus');
+
+        // 日志函数
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const logItem = document.createElement('div');
+            logItem.className = 'log-item';
+            logItem.innerHTML = `<span class="log-time">[${time}]</span><span class="log-${type}">${message}</span>`;
+            logContainer.appendChild(logItem);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            logContainer.innerHTML = '';
+        }
+
+        // 发送命令
+        async function sendCommand(command) {
+            try {
+                log(`发送: ${JSON.stringify(command)}`, 'request');
+                const response = await fetch(API_ENDPOINT.value, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(command)
+                });
+                const data = await response.json();
+                log(`响应: ${JSON.stringify(data)}`, 'response');
+                return data;
+            } catch (error) {
+                log(`错误: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 测试连接
+        async function testConnection() {
+            try {
+                await sendCommand({
+                    action: 'update',
+                    component: 'terra',
+                    params: { terraState: 'normal' }
+                });
+                connectionStatus.textContent = '已连接';
+                connectionStatus.className = 'status-badge connected';
+            } catch (error) {
+                connectionStatus.textContent = '连接失败';
+                connectionStatus.className = 'status-badge disconnected';
+            }
+        }
+
+        // 设置状态
+        async function setState(state) {
+            const messages = {
+                normal: { watching: [], message: '一切正常，我在守护着大家。' },
+                info: { watching: ['三号点'], message: '我发现一些有趣的数据，正在分析中。' },
+                caution: { watching: ['七号点', '降雨量'], message: '七号点的位移有上升趋势，需要持续关注。' },
+                warning: { watching: ['七号点', '台风路径'], message: '七号点日位移连续三天往上走，我判断这是真的风险。' },
+                critical: { watching: ['七号点', '坡体', '裂缝'], message: '七号点出现加速变形，紧急状态！请立即派人到现场！' }
+            };
+            await sendCommand({
+                action: 'update',
+                component: 'terra',
+                params: {
+                    terraState: state,
+                    ...messages[state]
+                }
+            });
+        }
+
+        // 添加时间线
+        async function addTimeline(type) {
+            const messages = {
+                thinking: '我正在分析七号点的位移趋势和降雨量的关联性...',
+                observation: '我注意到三号点的孔隙水压力在过去24小时内上升了15%',
+                warning: '七号点日位移达到18.7mm，速率还在加快！结合孔隙水数据，判断这是真的风险。',
+                action: '我正在创建详细的位移分析图表...'
+            };
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: type,
+                    message: messages[type]
+                }
+            });
+        }
+
+        // Markdown 格式时间线
+        async function addMarkdownTimeline() {
+            const message = `## 分析报告
+
+**监测点**: 七号点
+**时间**: 2026-04-27 14:30
+
+### 关键发现
+- 日位移达到 *18.7mm*，超过阈值
+- 降雨量持续增加，达到 **45mm**
+- 孔隙水压力上升 *15%*
+
+> 这是一个需要关注的风险信号。`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: message
+                }
+            });
+        }
+
+        // 数据展示格式时间线
+        async function addDataTimeline() {
+            const message = `【实时数据更新】
+
+| 监测点 | 日位移 | 速率 | 状态 |
+|--------|--------|------|------|
+| 七号点 | 18.7mm | ↑ 15% | ⚠️ 预警 |
+| 三号点 | 2.3mm | → 0% | ✅ 正常 |
+| 一号点 | 1.1mm | ↓ 5% | ✅ 正常 |
+
+数据更新时间: ${new Date().toLocaleString()}`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: message
+                }
+            });
+        }
+
+        // 分析报告格式时间线
+        async function addAnalysisTimeline() {
+            const message = `🔬 综合分析报告
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【风险等级】🟠 中等风险
+【置信度】  85%
+【建议措施】立即派人到现场查看
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+基于多源数据融合分析：
+
+1️⃣ 位移分析：七号点连续3天上升趋势
+2️⃣ 降雨关联：与降雨量相关性达0.78
+3️⃣ 历史对比：达到去年同期最高值的92%
+
+结论：这是真的风险，不是误报。`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: message
+                }
+            });
+        }
+
+        // 表情符号格式时间线
+        async function addEmojiTimeline() {
+            const message = `🎯 监测状态更新
+
+📍 七号点：🟡 需要关注
+   💧 日位移 18.7mm ⬆️
+   🌧️ 降雨量 45mm 💦
+
+📍 三号点：🟢 运行正常
+   💧 日位移 2.3mm ➡️
+   ☀️ 无降雨 ☀️
+
+📍 一号点：🟢 运行正常
+   💧 日位移 1.1mm ⬇️
+   🌤️ 微量降雨 🌤️
+
+🤖 TerraMens 建议：七号点值得持续关注 🧐`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: message
+                }
+            });
+        }
+
+        // 多行消息格式时间线
+        async function addMultiLineTimeline() {
+            const message = `【事件记录】
+
+时间：2026-04-27 14:35:22
+事件类型：数据异常检测
+影响范围：七号点及周边区域
+
+详细描述：
+在常规数据扫描中，发现七号点位移数据出现异常上升趋势。经过与历史数据对比和降雨量数据关联分析，确认这是一个真实的风险信号，而非传感器故障。
+
+后续行动计划：
+1. 持续监控七号点数据变化
+2. 生成详细的位移趋势分析图表
+3. 准备现场核查建议报告
+
+预计完成时间：15分钟内`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: message
+                }
+            });
+        }
+
+        // 代码块格式时间线
+        async function addCodeTimeline() {
+            const message = `【算法分析结果】
+
+经过风险评估模型计算：
+
+\`\`\`python
+# 风险评分计算
+risk_score = (
+    displacement_factor * 0.4 +
+    rainfall_factor * 0.3 +
+    pressure_factor * 0.2 +
+    trend_factor * 0.1
+)
+
+# 七号点当前评分
+result = {
+    "displacement_factor": 0.87,  # 高
+    "rainfall_factor": 0.72,      # 中高
+    "pressure_factor": 0.65,      # 中
+    "trend_factor": 0.91,         # 很高
+    "total_risk_score": 0.78      # 中高风险
+}
+\`\`\`
+
+结论：风险评分 0.78/1.00，建议关注`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: message
+                }
+            });
+        }
+
+        // 链接格式时间线
+        async function addLinkTimeline() {
+            const message = `【相关资源链接】
+
+📊 数据源：
+- [七号点历史数据](/api/points/7/history)
+- [降雨量统计](/api/rainfall/stats)
+- [孔隙水压力数据](/api/pressure/point-7)
+
+📖 参考文档：
+- [应急预案手册](/docs/emergency)
+- [现场操作指南](/docs/field-guide)
+
+🔔 报警记录：
+- [今日报警历史](/alerts/today) - 共3条
+- [本周趋势分析](/analytics/weekly)`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: message
+                }
+            });
+        }
+
+        // 表格数据格式时间线
+        async function addTableTimeline() {
+            const message = `【监测点数据汇总】
+
+| 监测点 | 日位移 | 变化 | 速率 | 状态 |
+|--------|--------|------|------|------|
+| 七号点 | 18.7mm | ↑ 3.2 | +15% | ⚠️ |
+| 三号点 | 2.3mm | → 0.0 | 0% | ✅ |
+| 一号点 | 1.1mm | ↓ 0.1 | -5% | ✅ |
+| 二号点 | 0.8mm | → 0.0 | 0% | ✅ |
+| 五号点 | 1.5mm | ↑ 0.2 | +8% | 🟡 |
+
+统计：5个监测点 | 1个预警 | 1个关注 | 3个正常`;
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: message
+                }
+            });
+        }
+
+        // 创建地图面板
+        async function createMapPanel() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-map-test',
+                params: {
+                    panelType: 'map',
+                    title: '监测点分布图',
+                    data: {
+                        center: [28.08, 103.42],
+                        zoom: 10,
+                        markers: [
+                            { id: 'point-7', position: [28.1, 103.45], state: 'warning', label: '七号点' },
+                            { id: 'point-3', position: [28.05, 103.38], state: 'normal', label: '三号点' }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 8 }
+                }
+            });
+        }
+
+        // 创建带折线的地图
+        async function createMapWithPolylines() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-map-polylines',
+                params: {
+                    panelType: 'map',
+                    title: '监测路线图 - 折线示例',
+                    data: {
+                        center: [28.08, 103.42],
+                        zoom: 11,
+                        markers: [
+                            { id: 'start', position: [28.05, 103.38], state: 'normal', label: '起点' },
+                            { id: 'end', position: [28.12, 103.48], state: 'normal', label: '终点' }
+                        ],
+                        polylines: [
+                            {
+                                id: 'route-1',
+                                label: '主监测路线',
+                                color: '#3b82f6',
+                                weight: 4,
+                                opacity: 0.9,
+                                points: [
+                                    [28.05, 103.38],
+                                    [28.07, 103.40],
+                                    [28.09, 103.42],
+                                    [28.10, 103.44],
+                                    [28.12, 103.48]
+                                ],
+                                data: { length: '5.2km', difficulty: '中等' }
+                            },
+                            {
+                                id: 'route-2',
+                                label: '备用路线',
+                                color: '#22c55e',
+                                weight: 3,
+                                opacity: 0.7,
+                                points: [
+                                    [28.05, 103.38],
+                                    [28.06, 103.41],
+                                    [28.08, 103.43],
+                                    [28.12, 103.48]
+                                ]
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 8 }
+                }
+            });
+        }
+
+        // 创建带多边形的地图
+        async function createMapWithPolygons() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-map-polygons',
+                params: {
+                    panelType: 'map',
+                    title: '风险区域图 - 多边形示例',
+                    data: {
+                        center: [28.08, 103.42],
+                        zoom: 10,
+                        markers: [
+                            { id: 'center-point', position: [28.08, 103.42], state: 'warning', label: '中心监测点' }
+                        ],
+                        polygons: [
+                            {
+                                id: 'high-risk-zone',
+                                label: '高风险区域',
+                                color: '#ef4444',
+                                fillColor: '#ef4444',
+                                fillOpacity: 0.3,
+                                weight: 2,
+                                points: [
+                                    [28.06, 103.40],
+                                    [28.06, 103.44],
+                                    [28.10, 103.44],
+                                    [28.10, 103.40]
+                                ],
+                                data: { riskLevel: '高', area: '2.5km²' }
+                            },
+                            {
+                                id: 'medium-risk-zone',
+                                label: '中风险区域',
+                                color: '#f59e0b',
+                                fillColor: '#f59e0b',
+                                fillOpacity: 0.2,
+                                weight: 2,
+                                points: [
+                                    [28.04, 103.38],
+                                    [28.04, 103.46],
+                                    [28.06, 103.46],
+                                    [28.06, 103.38]
+                                ]
+                            },
+                            {
+                                id: 'safe-zone',
+                                label: '安全区域',
+                                color: '#22c55e',
+                                fillColor: '#22c55e',
+                                fillOpacity: 0.15,
+                                weight: 2,
+                                points: [
+                                    [28.10, 103.38],
+                                    [28.10, 103.42],
+                                    [28.14, 103.42],
+                                    [28.14, 103.38]
+                                ]
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 8 }
+                }
+            });
+        }
+
+        // 创建综合地图（线+面+点）
+        async function createMapWithAllShapes() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-map-comprehensive',
+                params: {
+                    panelType: 'map',
+                    title: '综合监测图 - 线面点组合',
+                    data: {
+                        center: [28.08, 103.42],
+                        zoom: 10,
+                        markers: [
+                            { id: 'point-a', position: [28.06, 103.40], state: 'warning', label: '监测点A' },
+                            { id: 'point-b', position: [28.10, 103.44], state: 'watching', label: '监测点B' },
+                            { id: 'point-c', position: [28.07, 103.43], state: 'normal', label: '监测点C' },
+                            { id: 'point-d', position: [28.09, 103.41], state: 'normal', label: '监测点D' }
+                        ],
+                        polylines: [
+                            {
+                                id: 'connection-line',
+                                label: '监测点连接线',
+                                color: '#8b5cf6',
+                                weight: 3,
+                                opacity: 0.8,
+                                points: [
+                                    [28.06, 103.40],
+                                    [28.07, 103.43],
+                                    [28.10, 103.44],
+                                    [28.09, 103.41],
+                                    [28.06, 103.40]
+                                ],
+                                data: { type: '闭合路径', perimeter: '8.3km' }
+                            }
+                        ],
+                        polygons: [
+                            {
+                                id: 'coverage-area',
+                                label: '覆盖区域',
+                                color: '#06b6d4',
+                                fillColor: '#06b6d4',
+                                fillOpacity: 0.15,
+                                weight: 2,
+                                points: [
+                                    [28.055, 103.395],
+                                    [28.055, 103.445],
+                                    [28.105, 103.445],
+                                    [28.105, 103.395]
+                                ]
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 8 }
+                }
+            });
+        }
+
+        // 风险区域地图
+        async function createRiskZoneMap() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-map-risk',
+                params: {
+                    panelType: 'map',
+                    title: '🚨 地质灾害风险分区图',
+                    data: {
+                        center: [28.10, 103.45],
+                        zoom: 11,
+                        markers: [
+                            { id: 'risk-center', position: [28.10, 103.45], state: 'warning', label: '七号点' },
+                            { id: 'monitor-1', position: [28.08, 103.42], state: 'normal', label: '辅助监测点1' },
+                            { id: 'monitor-2', position: [28.12, 103.48], state: 'watching', label: '辅助监测点2' }
+                        ],
+                        polygons: [
+                            {
+                                id: 'critical-zone',
+                                label: '危险区域',
+                                color: '#dc2626',
+                                fillColor: '#dc2626',
+                                fillOpacity: 0.35,
+                                weight: 3,
+                                points: [
+                                    [28.09, 103.43],
+                                    [28.09, 103.47],
+                                    [28.11, 103.47],
+                                    [28.11, 103.43]
+                                ],
+                                data: { riskLevel: '危险',禁止入内: true }
+                            },
+                            {
+                                id: 'warning-zone',
+                                label: '警戒区域',
+                                color: '#f59e0b',
+                                fillColor: '#f59e0b',
+                                fillOpacity: 0.2,
+                                weight: 2,
+                                points: [
+                                    [28.07, 103.41],
+                                    [28.07, 103.49],
+                                    [28.09, 103.49],
+                                    [28.09, 103.41],
+                                    [28.09, 103.43],
+                                    [28.11, 103.43],
+                                    [28.11, 103.47],
+                                    [28.09, 103.47],
+                                    [28.09, 103.49],
+                                    [28.13, 103.49],
+                                    [28.13, 103.41]
+                                ]
+                            }
+                        ],
+                        polylines: [
+                            {
+                                id: 'escape-route',
+                                label: '疏散路线',
+                                color: '#22c55e',
+                                weight: 4,
+                                opacity: 1,
+                                points: [
+                                    [28.10, 103.45],
+                                    [28.08, 103.42],
+                                    [28.06, 103.40]
+                                ],
+                                data: { type: '紧急疏散', length: '3.5km' }
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 8 }
+                }
+            });
+        }
+
+        // 监测路线地图
+        async function createMonitoringRouteMap() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-map-route',
+                params: {
+                    panelType: 'map',
+                    title: '🛤️ 巡检监测路线图',
+                    data: {
+                        center: [28.08, 103.43],
+                        zoom: 10,
+                        markers: [
+                            { id: 'station-1', position: [28.05, 103.38], state: 'normal', label: '巡检站1' },
+                            { id: 'station-2', position: [28.07, 103.41], state: 'normal', label: '巡检站2' },
+                            { id: 'station-3', position: [28.09, 103.43], state: 'watching', label: '巡检站3' },
+                            { id: 'station-4', position: [28.11, 103.46], state: 'normal', label: '巡检站4' },
+                            { id: 'station-5', position: [28.12, 103.48], state: 'normal', label: '巡检站5' }
+                        ],
+                        polylines: [
+                            {
+                                id: 'main-route',
+                                label: '主巡检路线',
+                                color: '#3b82f6',
+                                weight: 4,
+                                opacity: 0.9,
+                                points: [
+                                    [28.05, 103.38],
+                                    [28.07, 103.41],
+                                    [28.09, 103.43],
+                                    [28.11, 103.46],
+                                    [28.12, 103.48]
+                                ],
+                                data: { routeType: '主干线', distance: '8.2km', estimatedTime: '2.5小时' }
+                            },
+                            {
+                                id: 'branch-route-1',
+                                label: '支线1',
+                                color: '#06b6d4',
+                                weight: 2,
+                                opacity: 0.6,
+                                points: [
+                                    [28.07, 103.41],
+                                    [28.06, 103.40],
+                                    [28.065, 103.39]
+                                ]
+                            },
+                            {
+                                id: 'branch-route-2',
+                                label: '支线2',
+                                color: '#06b6d4',
+                                weight: 2,
+                                opacity: 0.6,
+                                points: [
+                                    [28.09, 103.43],
+                                    [28.095, 103.44],
+                                    [28.10, 103.45]
+                                ]
+                            }
+                        ],
+                        polygons: [
+                            {
+                                id: 'rest-area',
+                                label: '休息区域',
+                                color: '#22c55e',
+                                fillColor: '#22c55e',
+                                fillOpacity: 0.15,
+                                weight: 1,
+                                points: [
+                                    [28.085, 103.425],
+                                    [28.085, 103.435],
+                                    [28.095, 103.435],
+                                    [28.095, 103.425]
+                                ]
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 8 }
+                }
+            });
+        }
+
+        // 向现有地图添加形状
+        async function addShapeToExistingMap() {
+            await sendCommand({
+                action: 'update',
+                component: 'panel-map-test',
+                params: {
+                    data: {
+                        center: [28.08, 103.42],
+                        zoom: 10,
+                        markers: [
+                            { id: 'point-7', position: [28.1, 103.45], state: 'warning', label: '七号点' },
+                            { id: 'point-3', position: [28.05, 103.38], state: 'normal', label: '三号点' },
+                            { id: 'new-point', position: [28.08, 103.42], state: 'watching', label: '新增点' }
+                        ],
+                        polylines: [
+                            {
+                                id: 'new-line',
+                                label: '新增连接线',
+                                color: '#a855f7',
+                                weight: 3,
+                                opacity: 0.8,
+                                points: [
+                                    [28.05, 103.38],
+                                    [28.08, 103.42],
+                                    [28.1, 103.45]
+                                ]
+                            }
+                        ],
+                        polygons: [
+                            {
+                                id: 'new-polygon',
+                                label: '新增监测区域',
+                                color: '#06b6d4',
+                                fillColor: '#06b6d4',
+                                fillOpacity: 0.2,
+                                weight: 2,
+                                points: [
+                                    [28.07, 103.40],
+                                    [28.07, 103.44],
+                                    [28.09, 103.44],
+                                    [28.09, 103.40]
+                                ]
+                            }
+                        ]
+                    }
+                }
+            });
+        }
+
+        // 创建表格面板
+        async function createTablePanel() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-table-test',
+                params: {
+                    panelType: 'table',
+                    title: '监测数据表',
+                    data: {
+                        columns: [
+                            { key: 'point', label: '监测点', format: 'text' },
+                            { key: 'displacement', label: '日位移(mm)', format: 'number' },
+                            { key: 'rate', label: '速率', format: 'percent' }
+                        ],
+                        rows: [
+                            { point: '七号点', displacement: 18.7, rate: 0.15, _highlight: true },
+                            { point: '三号点', displacement: 2.3, rate: 0.02 },
+                            { point: '一号点', displacement: 1.1, rate: 0.01 }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 4 }
+                }
+            });
+        }
+
+        // 创建图表面板
+        async function createChartPanel() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'panel-chart-test',
+                params: {
+                    panelType: 'chart',
+                    title: '位移趋势图',
+                    data: {
+                        values: [12, 15, 14, 18, 18.7, 19, 21],
+                        labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 4 }
+                }
+            });
+        }
+
+        // 创建折线图
+        async function createLineChart() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'chart-line-test',
+                params: {
+                    panelType: 'chart',
+                    title: '七号点位移趋势 - 折线图',
+                    data: {
+                        chartType: 'line',
+                        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+                        datasets: [
+                            {
+                                label: '位移量(mm)',
+                                data: [12.1, 12.3, 12.5, 13.2, 14.8, 16.5, 18.7],
+                                color: '#3b82f6'
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 5 }
+                }
+            });
+        }
+
+        // 创建柱状图
+        async function createBarChart() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'chart-bar-test',
+                params: {
+                    panelType: 'chart',
+                    title: '各监测点日位移量 - 柱状图',
+                    data: {
+                        chartType: 'bar',
+                        labels: ['一号点', '二号点', '三号点', '四号点', '五号点', '六号点', '七号点'],
+                        datasets: [
+                            {
+                                label: '日位移(mm)',
+                                data: [0.8, 1.2, 1.1, 0.9, 1.5, 2.1, 18.7],
+                                color: '#22c55e'
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 5 }
+                }
+            });
+        }
+
+        // 创建面积图
+        async function createAreaChart() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'chart-area-test',
+                params: {
+                    panelType: 'chart',
+                    title: '孔隙水压力变化 - 面积图',
+                    data: {
+                        chartType: 'area',
+                        labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                        datasets: [
+                            {
+                                label: '水压力(kPa)',
+                                data: [45, 48, 52, 58, 62, 65, 68],
+                                color: '#06b6d4'
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 5 }
+                }
+            });
+        }
+
+        // 创建多系列折线图
+        async function createMultiLineChart() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'chart-multi-line-test',
+                params: {
+                    panelType: 'chart',
+                    title: '多监测点位移对比 - 多系列折线图',
+                    data: {
+                        chartType: 'line',
+                        labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                        datasets: [
+                            { label: '七号点', data: [10, 12, 15, 14, 18, 22], color: '#ef4444' },
+                            { label: '三号点', data: [5, 6, 7, 7, 8, 9], color: '#22c55e' },
+                            { label: '一号点', data: [3, 4, 4, 5, 5, 6], color: '#3b82f6' }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 5 }
+                }
+            });
+        }
+
+        // 创建多系列柱状图
+        async function createMultiBarChart() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'chart-multi-bar-test',
+                params: {
+                    panelType: 'chart',
+                    title: '月度降雨量对比 - 多系列柱状图',
+                    data: {
+                        chartType: 'bar',
+                        labels: ['一月', '二月', '三月', '四月', '五月', '六月'],
+                        datasets: [
+                            { label: '今年降雨(mm)', data: [45, 52, 78, 95, 120, 85], color: '#06b6d4' },
+                            { label: '去年降雨(mm)', data: [38, 45, 65, 88, 105, 72], color: '#94a3b8' }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 5 }
+                }
+            });
+        }
+
+        // 创建混合图表
+        async function createMixedChart() {
+            await sendCommand({
+                action: 'lifecycle:create',
+                component: 'chart-mixed-test',
+                params: {
+                    panelType: 'chart',
+                    title: '综合数据分析 - 混合图表',
+                    data: {
+                        chartType: 'mixed',
+                        labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                        datasets: [
+                            {
+                                label: '位移量(mm)',
+                                data: [12, 15, 14, 18, 18.7, 19, 21],
+                                type: 'line',
+                                color: '#ef4444'
+                            },
+                            {
+                                label: '降雨量(mm)',
+                                data: [0, 5, 12, 8, 0, 0, 2],
+                                type: 'bar',
+                                color: '#06b6d4'
+                            }
+                        ]
+                    },
+                    position: { x: 1, y: 1, w: 12, h: 5 }
+                }
+            });
+        }
+
+        // 更新面板标题
+        async function updatePanelTitle() {
+            await sendCommand({
+                action: 'update',
+                component: 'panel-map-test',
+                params: {
+                    title: '七号点实时监测 🚨'
+                }
+            });
+        }
+
+        // 销毁面板
+        async function destroyPanel() {
+            await sendCommand({
+                action: 'lifecycle:destroy',
+                component: 'panel-map-test'
+            });
+        }
+
+        // 显示警报
+        async function showAlert(level) {
+            const alerts = {
+                attention: {
+                    title: '关注通知',
+                    description: '三号点的孔隙水压力略有上升，建议持续关注。',
+                    suggestion: '继续监测，无需特殊处理。',
+                    actions: [{ id: 'ack', label: '我知道了', primary: true }]
+                },
+                warning: {
+                    title: '七号监测点',
+                    description: '日位移 18.7mm，速率还在加快。结合孔隙水数据，判断这是真的风险。',
+                    suggestion: '立刻让人去现场看一眼。不用太慌，但也不要拖。',
+                    actions: [
+                        { id: 'dispatch', label: '现场已出发', primary: true },
+                        { id: 'mistake', label: '我看错了', primary: false },
+                        { id: 'ack', label: '我知道了', primary: false }
+                    ]
+                },
+                critical: {
+                    title: '🚨 紧急警报：七号点',
+                    description: '检测到加速变形！日位移突破25mm，裂缝正在快速扩展！',
+                    suggestion: '立即启动应急预案！疏散周边人员！',
+                    actions: [
+                        { id: 'emergency', label: '启动应急预案', primary: true },
+                        { id: 'evacuate', label: '开始疏散', primary: true }
+                    ]
+                }
+            };
+
+            const stateMap = { attention: 'info', warning: 'warning', critical: 'critical' };
+            await sendCommand({
+                action: 'update',
+                component: 'terra',
+                params: {
+                    terraState: stateMap[level],
+                    alert: alerts[level]
+                }
+            });
+        }
+
+        // 发送自定义命令
+        async function sendCustomCommand() {
+            const input = document.getElementById('customCommand');
+            try {
+                const command = JSON.parse(input.value);
+                await sendCommand(command);
+            } catch (error) {
+                log('JSON 解析错误: ' + error.message, 'error');
+            }
+        }
+
+        // 批量配置面板
+        async function batchConfigurePanels(panels, mode = 'replace', clearExisting = true) {
+            const batchEndpoint = API_ENDPOINT.value.replace('/command', '/panels/batch');
+            try {
+                log(`批量配置: 发送 ${panels.length} 个面板配置 (${mode} 模式)`, 'request');
+                const response = await fetch(batchEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ panels, mode, clearExisting })
+                });
+                const data = await response.json();
+                if (data.success && data.summary) {
+                    log(`批量配置完成: 成功 ${data.summary.success}/${data.summary.total}`, 'response');
+                } else {
+                    log(`批量配置响应: ${JSON.stringify(data)}`, 'response');
+                }
+                return data;
+            } catch (error) {
+                log(`批量配置错误: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 批量创建监测布局
+        async function batchCreateMonitorPanels() {
+            const panels = [
+                {
+                    id: 'monitor-map',
+                    type: 'map',
+                    title: '全域监测分布',
+                    position: { x: 1, y: 1, w: 8, h: 6 },
+                    zIndex: 1,
+                    visible: true,
+                    data: {
+                        center: [28.08, 103.42],
+                        zoom: 10,
+                        markers: [
+                            { id: 'point-7', position: [28.1, 103.45], state: 'normal', label: '七号点' },
+                            { id: 'point-3', position: [28.05, 103.38], state: 'normal', label: '三号点' },
+                            { id: 'point-1', position: [28.02, 103.40], state: 'normal', label: '一号点' }
+                        ]
+                    }
+                },
+                {
+                    id: 'monitor-table',
+                    type: 'table',
+                    title: '实时监测数据',
+                    position: { x: 9, y: 1, w: 4, h: 6 },
+                    zIndex: 2,
+                    visible: true,
+                    data: {
+                        columns: [
+                            { key: 'point', label: '监测点', width: 80 },
+                            { key: 'displacement', label: '日位移(mm)', width: 100 },
+                            { key: 'rate', label: '速率', width: 80 }
+                        ],
+                        rows: [
+                            { point: '七号点', displacement: 2.3, rate: '+5%' },
+                            { point: '三号点', displacement: 1.1, rate: '+2%' },
+                            { point: '一号点', displacement: 0.8, rate: '0%' }
+                        ]
+                    }
+                },
+                {
+                    id: 'monitor-chart',
+                    type: 'chart',
+                    title: '位移趋势（近7日）- 折线图',
+                    position: { x: 1, y: 7, w: 6, h: 4 },
+                    zIndex: 3,
+                    visible: true,
+                    data: {
+                        chartType: 'line',
+                        labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                        datasets: [
+                            { label: '七号点', data: [1.2, 1.5, 1.4, 1.8, 2.0, 2.1, 2.3], color: '#22c55e' },
+                            { label: '三号点', data: [0.8, 0.9, 1.0, 0.9, 1.1, 1.0, 1.1], color: '#3b82f6' }
+                        ]
+                    }
+                },
+                {
+                    id: 'monitor-rain',
+                    type: 'chart',
+                    title: '降雨量统计 - 柱状图',
+                    position: { x: 7, y: 7, w: 6, h: 4 },
+                    zIndex: 4,
+                    visible: true,
+                    data: {
+                        chartType: 'bar',
+                        labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                        datasets: [
+                            { label: '降雨量(mm)', data: [0, 5, 12, 8, 0, 0, 2], color: '#06b6d4' }
+                        ]
+                    }
+                }
+            ];
+            await batchConfigurePanels(panels, 'replace', true);
+        }
+
+        // 批量切换告警布局
+        async function batchCreateAlertLayout() {
+            const panels = [
+                {
+                    id: 'alert-map',
+                    type: 'map',
+                    title: '🚨 七号点告警区域',
+                    position: { x: 1, y: 1, w: 12, h: 5 },
+                    zIndex: 1,
+                    visible: true,
+                    data: {
+                        center: [28.1, 103.45],
+                        zoom: 13,
+                        markers: [
+                            { id: 'point-7', position: [28.1, 103.45], state: 'critical', label: '七号点' }
+                        ]
+                    }
+                },
+                {
+                    id: 'alert-chart',
+                    type: 'chart',
+                    title: '七号点位移加速趋势 - 折线图',
+                    position: { x: 1, y: 6, w: 6, h: 4 },
+                    zIndex: 2,
+                    visible: true,
+                    data: {
+                        chartType: 'line',
+                        labels: ['1h', '2h', '3h', '4h', '5h', '6h'],
+                        datasets: [
+                            { label: '位移增量(mm)', data: [3, 5, 8, 12, 18, 25], color: '#ef4444' }
+                        ]
+                    }
+                },
+                {
+                    id: 'alert-table',
+                    type: 'table',
+                    title: '告警详情',
+                    position: { x: 7, y: 6, w: 6, h: 4 },
+                    zIndex: 3,
+                    visible: true,
+                    data: {
+                        columns: [
+                            { key: 'item', label: '项目', width: 120 },
+                            { key: 'value', label: '数值', width: 100 },
+                            { key: 'threshold', label: '阈值', width: 80 }
+                        ],
+                        rows: [
+                            { item: '日位移', value: '25.3mm', threshold: '20mm' },
+                            { item: '加速度', value: '5.2mm/h', threshold: '3mm/h' },
+                            { item: '裂缝宽度', value: '12cm', threshold: '10cm' }
+                        ]
+                    }
+                }
+            ];
+            await batchConfigurePanels(panels, 'replace', true);
+        }
+
+        // 批量切换正常布局
+        async function batchCreateNormalLayout() {
+            const panels = [
+                {
+                    id: 'normal-map',
+                    type: 'map',
+                    title: '全域监测态势',
+                    position: { x: 1, y: 1, w: 12, h: 5 },
+                    zIndex: 1,
+                    visible: true,
+                    data: {
+                        center: [28.08, 103.42],
+                        zoom: 9,
+                        markers: []
+                    }
+                },
+                {
+                    id: 'normal-summary',
+                    type: 'table',
+                    title: '监测摘要',
+                    position: { x: 1, y: 6, w: 6, h: 3 },
+                    zIndex: 2,
+                    visible: true,
+                    data: {
+                        columns: [
+                            { key: 'status', label: '状态', width: 100 },
+                            { key: 'count', label: '数量', width: 100 }
+                        ],
+                        rows: [
+                            { status: '🟢 正常', count: '23/25' },
+                            { status: '🟡 关注', count: '2/25' }
+                        ]
+                    }
+                },
+                {
+                    id: 'normal-trend',
+                    type: 'chart',
+                    title: '系统健康度趋势 - 面积图',
+                    position: { x: 7, y: 6, w: 6, h: 3 },
+                    zIndex: 3,
+                    visible: true,
+                    data: {
+                        chartType: 'area',
+                        labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                        datasets: [
+                            { label: '健康度(%)', data: [98, 97, 99, 98, 100, 99, 98], color: '#22c55e' }
+                        ]
+                    }
+                }
+            ];
+            await batchConfigurePanels(panels, 'replace', true);
+        }
+
+        // 批量清除所有面板
+        async function batchClearAllPanels() {
+            await batchConfigurePanels([], 'replace', true);
+        }
+
+        // ========================================
+        // 告警分析流程测试函数
+        // ========================================
+
+        // 延迟辅助函数
+        async function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 随机延迟辅助函数（1-2秒之间随机）
+        async function randomDelay() {
+            const ms = 1000 + Math.random() * 1000; // 1000-2000ms
+            await delay(ms);
+        }
+
+        // 阶段一：初始化监控看板
+        async function runStage1Initialize() {
+            // 添加时间线
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在初始化监控看板，查询所有待办警情...'
+                }
+            });
+            await randomDelay();
+
+            // 创建监控看板布局
+            const panels = [
+                // 全局地图面板
+                {
+                    id: 'map-main',
+                    type: 'map',
+                    title: '全域监控地图',
+                    position: { x: 1, y: 1, w: 12, h: 6 },
+                    zIndex: 1,
+                    visible: true,
+                    data: {
+                        center: [30.068171, 107.801698],
+                        zoom: 9,
+                        markers: [
+                            { id: 'point-1', position: [30.10, 107.85], state: 'critical', label: '一号点' },
+                            { id: 'point-2', position: [30.05, 107.78], state: 'warning', label: '二号点' },
+                            { id: 'point-3', position: [30.12, 107.82], state: 'normal', label: '三号点' },
+                            { id: 'zhangjiaba', position: [30.068171, 107.801698], state: 'watching', label: '张家坝滑坡' }
+                        ]
+                    }
+                },
+                // 待办警情表格
+                {
+                    id: 'table-warnings',
+                    type: 'table',
+                    title: '待办警情 (12条)',
+                    position: { x: 1, y: 7, w: 8, h: 4 },
+                    zIndex: 2,
+                    visible: true,
+                    data: {
+                        columns: [
+                            { key: 'project', label: '隐患点', width: 120 },
+                            { key: 'level', label: '级别', width: 60 },
+                            { key: 'type', label: '类型', width: 100 },
+                            { key: 'date', label: '时间', width: 120 },
+                            { key: 'status', label: '状态', width: 80 }
+                        ],
+                        rows: [
+                            { project: '一号点', level: '红', type: '滑坡', date: '2026-04-28 10:30', status: '待处理', _highlight: true },
+                            { project: '二号点', level: '橙', type: '崩塌', date: '2026-04-28 09:15', status: '处理中', _highlight: true },
+                            { project: '张家坝滑坡', level: '黄', type: '滑坡', date: '2026-04-28 08:00', status: '待处理' },
+                            { project: '三号点', level: '蓝', type: '泥石流', date: '2026-04-28 07:30', status: '待处理' }
+                        ]
+                    }
+                },
+                // 警情趋势图表
+                {
+                    id: 'chart-trend',
+                    type: 'chart',
+                    title: '近7天警情趋势',
+                    position: { x: 9, y: 7, w: 4, h: 4 },
+                    zIndex: 3,
+                    visible: true,
+                    data: {
+                        chartType: 'bar',
+                        labels: ['04-22', '04-23', '04-24', '04-25', '04-26', '04-27', '04-28'],
+                        datasets: [
+                            { label: '新增警情数', data: [3, 5, 2, 8, 4, 6, 12], color: '#f59e0b' }
+                        ]
+                    }
+                }
+            ];
+
+            await batchConfigurePanels(panels, 'replace', true);
+            await randomDelay();
+
+            // 更新状态
+            await sendCommand({
+                action: 'update',
+                component: 'terra',
+                params: { terraState: 'normal' }
+            });
+            await randomDelay();
+
+            // 添加完成时间线
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: '全局监控地图已创建，已标注隐患点。近7天警情趋势已统计。'
+                }
+            });
+            await randomDelay();
+
+            // 添加监控状态
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: '监控看板已就绪，我正在持续监测各隐患点状态...'
+                }
+            });
+        }
+
+        // 阶段二：发现高风险点
+        async function runStage2Discover() {
+            // 延迟5秒模拟持续监控
+            await sendCommand({
+                action: 'update',
+                component: 'terra',
+                params: { terraState: 'monitoring' }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: '监控看板已就绪，我正在持续监测各隐患点状态...'
+                }
+            });
+
+            // 模拟延迟（5秒持续监控）
+            log('模拟持续监控中... (5秒)', 'info');
+            await delay(5000);
+
+            // 清空现有面板
+            await batchConfigurePanels([], 'replace', true);
+            await randomDelay();
+
+            // 发出高风险告警
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'critical',
+                    message: '检测到高风险点位【张家坝滑坡】，数据出现异常波动！'
+                }
+            });
+            await randomDelay();
+
+            // 更新状态为告警
+            await sendCommand({
+                action: 'update',
+                component: 'terra',
+                params: {
+                    terraState: 'critical',
+                    watching: ['张家坝滑坡'],
+                    message: '检测到数据异常波动'
+                }
+            });
+            await randomDelay();
+
+            // 创建聚焦地图
+            const panels = [
+                {
+                    id: 'map-focus',
+                    type: 'map',
+                    title: '🚨 张家坝滑坡 - 高风险区域',
+                    position: { x: 1, y: 1, w: 12, h: 8 },
+                    zIndex: 1,
+                    visible: true,
+                    data: {
+                        center: [30.068171, 107.801698],
+                        zoom: 14,
+                        markers: [
+                            {
+                                id: 'highlight-zhangjiaba',
+                                position: [30.068171, 107.801698],
+                                state: 'critical',
+                                label: '张家坝滑坡',
+                                pulse: true
+                            }
+                        ]
+                    }
+                }
+            ];
+
+            await batchConfigurePanels(panels, 'replace', true);
+            await randomDelay();
+
+            // 添加思考时间线
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在调取【张家坝滑坡】的详细数据进行分析...'
+                }
+            });
+        }
+
+        // 阶段三：深度分析
+        async function runStage3Analysis() {
+            // 添加分析进度时间线
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在查询【张家坝滑坡】的告警详情...'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: '已获取【张家坝滑坡】的告警详情：红色告警'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在查询【张家坝滑坡】的所有监测设备...'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: '已找到8个监测设备'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在加载近三天的监测数据...'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: '近三天监测数据已加载完成'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在查询【张家坝滑坡】周边的降雨情况...'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: '已获取前后7天的降雨数据'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在启动 GIS 分析...'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'observation',
+                    message: 'GIS 分析正在进行中，分析参数已发送'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: 'GIS 分析已启动'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在查询灾害范围...'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: '灾害范围已在地图上标注'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'thinking',
+                    message: '我正在分析影响范围...'
+                }
+            });
+            await randomDelay();
+
+            // 创建深度分析看板
+            const panels = [
+                // 告警详情地图（含灾害范围和影响范围）
+                {
+                    id: 'map-analysis',
+                    type: 'map',
+                    title: '【张家坝滑坡】灾害范围分析',
+                    position: { x: 1, y: 1, w: 12, h: 6 },
+                    zIndex: 1,
+                    visible: true,
+                    data: {
+                        center: [30.068171, 107.801698],
+                        zoom: 14,
+                        markers: [
+                            {
+                                id: 'zhangjiaba-center',
+                                position: [30.068171, 107.801698],
+                                state: 'critical',
+                                label: '张家坝滑坡'
+                            }
+                        ],
+                        polygons: [
+                            {
+                                id: 'hazard-zone',
+                                label: '灾害范围',
+                                color: '#ef4444',
+                                fillColor: '#ef4444',
+                                fillOpacity: 0.3,
+                                weight: 2,
+                                points: [
+                                    [30.068371, 107.801576],
+                                    [30.068153, 107.801468],
+                                    [30.068031, 107.801402],
+                                    [30.067938, 107.801444],
+                                    [30.067881, 107.801551],
+                                    [30.067928, 107.801774],
+                                    [30.068017, 107.801939],
+                                    [30.068138, 107.802010],
+                                    [30.068303, 107.801948],
+                                    [30.068367, 107.801803],
+                                    [30.068371, 107.801576]
+                                ]
+                            },
+                            {
+                                id: 'impact-zone',
+                                label: '影响范围',
+                                color: '#f59e0b',
+                                fillColor: '#f59e0b',
+                                fillOpacity: 0.2,
+                                weight: 2,
+                                points: [
+                                    [30.067928, 107.801266],
+                                    [30.067913, 107.801163],
+                                    [30.067917, 107.801010],
+                                    [30.067820, 107.800861],
+                                    [30.067652, 107.800865],
+                                    [30.067534, 107.801002],
+                                    [30.067566, 107.801150],
+                                    [30.067670, 107.801233],
+                                    [30.067724, 107.801386],
+                                    [30.067852, 107.801464],
+                                    [30.067910, 107.801373]
+                                ]
+                            }
+                        ]
+                    }
+                },
+                // 告警详情表格
+                {
+                    id: 'table-alert-details',
+                    type: 'table',
+                    title: '告警详情',
+                    position: { x: 1, y: 7, w: 4, h: 4 },
+                    zIndex: 2,
+                    visible: true,
+                    data: {
+                        columns: [
+                            { key: 'item', label: '项目', width: 100 },
+                            { key: 'value', label: '内容', width: 120 }
+                        ],
+                        rows: [
+                            { item: '隐患点', value: '张家坝滑坡' },
+                            { item: '告警级别', value: '红色告警', _highlight: true },
+                            { item: '灾害类型', value: '滑坡' },
+                            { item: '触发条件', value: '日位移超过阈值' },
+                            { item: '告警时间', value: '2026-04-28 10:30' },
+                            { item: '处理状态', value: '待处理' }
+                        ]
+                    }
+                },
+                // 设备列表表格
+                {
+                    id: 'table-devices',
+                    type: 'table',
+                    title: '监测设备 (8个)',
+                    position: { x: 5, y: 7, w: 4, h: 4 },
+                    zIndex: 3,
+                    visible: true,
+                    data: {
+                        columns: [
+                            { key: 'name', label: '设备名称', width: 120 },
+                            { key: 'type', label: '类型', width: 80 },
+                            { key: 'level', label: '状态', width: 60 }
+                        ],
+                        rows: [
+                            { name: '张家坝1号GNSS', type: '表面位移', level: '危险', _highlight: true },
+                            { name: '张家坝雨量计', type: '雨量', level: '警告', _highlight: true },
+                            { name: '张家坝裂缝计', type: '裂缝', level: '关注' },
+                            { name: '张家坝2号GNSS', type: '表面位移', level: '正常' }
+                        ]
+                    }
+                },
+                // 降雨情况图表
+                {
+                    id: 'chart-rainfall',
+                    type: 'chart',
+                    title: '降雨情况分析',
+                    position: { x: 9, y: 7, w: 4, h: 4 },
+                    zIndex: 4,
+                    visible: true,
+                    data: {
+                        chartType: 'bar',
+                        labels: ['04-25', '04-26', '04-27', '04-28', '04-29', '04-30', '05-01'],
+                        datasets: [
+                            { label: '日降雨量(mm)', data: [0, 5.2, 12.8, 8.5, 0, 0, 2.1], color: '#06b6d4' }
+                        ]
+                    }
+                },
+                // 监测数据曲线图
+                {
+                    id: 'chart-monitoring',
+                    type: 'chart',
+                    title: '监测数据趋势（近3天）',
+                    position: { x: 1, y: 11, w: 12, h: 2 },
+                    zIndex: 5,
+                    visible: true,
+                    data: {
+                        chartType: 'line',
+                        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+                        datasets: [
+                            { label: '张家坝1号GNSS', data: [12.1, 13.5, 15.2, 16.8, 17.5, 18.2, 18.7], color: '#ef4444' }
+                        ]
+                    }
+                }
+            ];
+
+            await batchConfigurePanels(panels, 'replace', true);
+            await randomDelay();
+
+            // 调整地图视野以完整显示灾害范围和影响范围
+            await sendCommand({
+                action: 'map',
+                component: 'map-analysis',
+                params: {
+                    setViewport: {
+                        points: [
+                            // 灾害范围多边形的所有顶点
+                            [30.068371, 107.801576],
+                            [30.068153, 107.801468],
+                            [30.068031, 107.801402],
+                            [30.067938, 107.801444],
+                            [30.067881, 107.801551],
+                            [30.067928, 107.801774],
+                            [30.068017, 107.801939],
+                            [30.068138, 107.802010],
+                            [30.068303, 107.801948],
+                            [30.068367, 107.801803],
+                            // 影响范围多边形的所有顶点
+                            [30.067928, 107.801266],
+                            [30.067913, 107.801163],
+                            [30.067917, 107.801010],
+                            [30.067820, 107.800861],
+                            [30.067652, 107.800865],
+                            [30.067534, 107.801002],
+                            [30.067566, 107.801150],
+                            [30.067670, 107.801233],
+                            [30.067724, 107.801386],
+                            [30.067852, 107.801464],
+                            [30.067910, 107.801373],
+                            // 中心点
+                            [30.068171, 107.801698]
+                        ],
+                        padding: [50, 50, 50, 50],
+                        animate: true,
+                        maxZoom: 15
+                    }
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'action',
+                    message: '影响范围已在地图上标注，完整范围已展示'
+                }
+            });
+            await randomDelay();
+
+            await sendCommand({
+                action: 'setData',
+                component: 'timeline',
+                params: {
+                    timelineType: 'conclusion',
+                    message: '【张家坝滑坡】分析已完成。告警级别：红色告警，灾害类型：滑坡。共有8个监测设备，最新监测数值：18.7mm，根据监测数据、降雨情况和GIS分析，该点位当前处于高风险状态，建议立即启动应急响应机制，通知相关部门进行现场核查。'
+                }
+            });
+        }
+
+        // 完整分析流程（一键执行）
+        async function runFullAnalysisWorkflow() {
+            log('开始执行完整分析流程...', 'info');
+
+            // 依次执行三个阶段，阶段之间有额外延迟
+            await runStage1Initialize();
+            log('阶段一完成，等待3秒后进入阶段二...', 'info');
+            await delay(3000);
+
+            await runStage2Discover();
+            log('阶段二完成，等待3秒后进入阶段三...', 'info');
+            await delay(3000);
+
+            await runStage3Analysis();
+
+            log('完整分析流程执行完成', 'info');
+        }
+
+        // 页面加载时测试连接
+        window.addEventListener('load', () => {
+            log('测试页面已加载', 'info');
+        });
+    </script>
+</body>
+</html>

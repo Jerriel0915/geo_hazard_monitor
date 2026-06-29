@@ -1,0 +1,335 @@
+// ============================================
+// 全局通用样式 - 线框高对比度风格
+// ============================================
+
+@use './variables' as *;
+
+// === 全局重置 ===
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: $font-family-base;
+  font-size: $font-size-body;
+  color: $text-primary;
+  background-color: $bg-primary;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// === 滚动条样式（线框风格）===
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 8, 20, 0.5);
+  border: 1px solid $border-subtle;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.3);
+  border: 1px solid $border-default;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.5);
+  }
+}
+
+// === 选中文本样式 ===
+
+::selection {
+  background: rgba($color-primary, 0.3);
+  color: $text-primary;
+}
+
+::-moz-selection {
+  background: rgba($color-primary, 0.3);
+  color: $text-primary;
+}
+
+// === 工具类 ===
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-primary { color: $text-primary; }
+.text-secondary { color: $text-secondary; }
+.text-dim { color: $text-dim; }
+.text-muted { color: $text-muted; }
+
+// 线框风格文字样式
+.text-strong {
+  color: $text-primary;
+  font-weight: $font-weight-semibold;
+  text-shadow: $text-shadow-sm;
+}
+
+.text-bright {
+  color: #ffffff;
+  text-shadow: $text-shadow-md;
+}
+
+.text-accent {
+  color: $color-primary;
+  text-shadow: $text-shadow-sm;
+}
+
+.flex { display: flex; }
+.flex-column { flex-direction: column; }
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.full-width { width: 100%; }
+.full-height { height: 100%; }
+
+// 间距工具类
+.mt-xs { margin-top: $spacing-xs; }
+.mt-sm { margin-top: $spacing-sm; }
+.mt-md { margin-top: $spacing-md; }
+.mt-lg { margin-top: $spacing-lg; }
+
+.mb-xs { margin-bottom: $spacing-xs; }
+.mb-sm { margin-bottom: $spacing-sm; }
+.mb-md { margin-bottom: $spacing-md; }
+.mb-lg { margin-bottom: $spacing-lg; }
+
+// === 线框风格边框工具类 ===
+
+.border-subtle {
+  border: $border-width-thin solid $border-subtle;
+}
+
+.border-default {
+  border: $border-width-thin solid $border-default;
+}
+
+.border-strong {
+  border: $border-width-normal solid $border-medium;
+}
+
+.border-accent {
+  border: $border-width-thin solid $border-accent;
+  box-shadow: $glow-primary;
+}
+
+// === 通用卡片样式（线框风格）===
+
+.card {
+  background: $bg-secondary;
+  backdrop-filter: $backdrop-blur;
+  border: $border-width-thin solid $border-default;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+
+  &:hover {
+    border-color: $border-medium;
+    box-shadow: $shadow-md;
+  }
+}
+
+.card-strong {
+  background: $bg-secondary;
+  backdrop-filter: $backdrop-blur;
+  border: $border-width-normal solid $border-accent;
+  box-shadow: $shadow-md;
+}
+
+// === 通用按钮样式（线框风格）===
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: 8px 16px;
+  font-family: $font-family-ui;
+  font-size: $font-size-small;
+  font-weight: $font-weight-medium;
+  color: $color-primary;
+  background: transparent;
+  border: $border-width-thin solid $border-default;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  transition: all $transition-fast $ease-out;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+
+  &:hover {
+    background: rgba($color-primary, 0.1);
+    border-color: $border-accent;
+    box-shadow: $glow-primary;
+    text-shadow: $text-shadow-sm;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &.primary {
+    background: rgba($color-primary, 0.15);
+    color: $color-primary;
+    border-color: $border-accent;
+    font-weight: $font-weight-semibold;
+    box-shadow: $glow-primary;
+
+    &:hover {
+      background: rgba($color-primary, 0.25);
+      box-shadow: $shadow-md;
+    }
+  }
+
+  &.warning {
+    color: $color-warning;
+    border-color: $border-warning;
+    box-shadow: $glow-warning;
+
+    &:hover {
+      background: rgba($color-warning, 0.15);
+      box-shadow: $shadow-md;
+    }
+  }
+}
+
+// === 通用输入框样式（线框风格）===
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: $font-family-ui;
+  font-size: $font-size-body;
+  color: $text-primary;
+  background: $bg-tertiary;
+  backdrop-filter: $backdrop-blur-sm;
+  border: $border-width-thin solid $border-default;
+  border-radius: $radius-sm;
+  outline: none;
+  transition: all $transition-fast $ease-out;
+
+  &::placeholder {
+    color: $text-muted;
+  }
+
+  &:focus {
+    background: rgba(0, 12, 28, 0.85);
+    border-color: $border-accent;
+    box-shadow: $glow-primary;
+  }
+}
+
+// === 通用标签样式（线框风格）===
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-family: $font-family-ui;
+  font-size: $font-size-tiny;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: $color-primary;
+  background: transparent;
+  border: $border-width-thin solid $border-accent;
+  border-radius: $radius-sm;
+
+  &.success {
+    color: $terra-normal;
+    border-color: $terra-normal;
+    box-shadow: 0 0 8px rgba($terra-normal, 0.3);
+  }
+
+  &.warning {
+    color: $terra-warning;
+    border-color: $terra-warning;
+    box-shadow: $glow-warning;
+  }
+
+  &.error {
+    color: $terra-critical;
+    border-color: $terra-critical;
+    box-shadow: $glow-critical;
+  }
+}
+
+// === 加载动画 ===
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid $border-default;
+  border-top-color: $color-primary;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+// === 脉冲动画 ===
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+// === 扫描线效果（线框风格装饰）===
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.scanline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba($color-primary, 0.5),
+    transparent
+  );
+  animation: scanline 3s linear infinite;
+  pointer-events: none;
+}

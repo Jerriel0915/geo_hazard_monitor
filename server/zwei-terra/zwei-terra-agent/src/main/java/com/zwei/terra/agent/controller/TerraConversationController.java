@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -64,7 +65,10 @@ public class TerraConversationController extends BaseController {
         if (!getUserId().equals(conversation.getUserId())) {
             return error("无权访问此会话");
         }
-        return success(messageMapper.selectByConversationId(id, 100));
+        // mapper 按 id DESC 取最近 100 条，前端展示需反转为正序
+        List<com.zwei.terra.agent.domain.TerraMessage> messages = messageMapper.selectByConversationId(id, 100);
+        Collections.reverse(messages);
+        return success(messages);
     }
 
     /**

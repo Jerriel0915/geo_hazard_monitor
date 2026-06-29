@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css"
+      rel="stylesheet"
+    />
+  </head>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+      background: #082941;
+      z-index: 2;
+    }
+
+    .mask {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: url("./mask.png") no-repeat;
+      background-size: 100% 100%;
+      z-index: 1;
+    }
+  </style>
+  <body>
+    <div id="map"></div>
+    <div class="mask"></div>
+  </body>
+  <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+  <script>
+    const token = "8037710b2c683f6f31e5260d8f7e174d";
+    // 底图
+    const VEC_C =
+      "http://{s}.tianditu.com/img_c/wmts?layer=img&style=default&tilematrixset=c&Service=WMTS&Request=GetTile&Version=1.0.0&Format=tiles&TileMatrix={z}&TileCol={x}&TileRow={y}&tk=";
+    let map = L.map("map", {
+      minZoom: 3,
+      maxZoom: 17,
+      center: [34.33213, 109.00945],
+      zoomSnap: 0.1,
+      zoom: 1,
+      zoomControl: true,
+      attributionControl: false, //版权控制器
+      crs: L.CRS.EPSG4326,
+    });
+    L.tileLayer(VEC_C + token, {
+        maxZoom: 20,
+        tileSize: 256,
+        zoomOffset: 1,
+        subdomains: ["t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7"],
+      }, {noWrap: true}).addTo(map);
+  </script>
+</html>

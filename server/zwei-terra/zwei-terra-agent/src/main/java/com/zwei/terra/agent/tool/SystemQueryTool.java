@@ -76,12 +76,6 @@ public class SystemQueryTool {
             "SELECT COUNT(*) FROM hazard_point WHERE del_flag = '0'", Integer.class);
         result.put("total", total != null ? total : 0);
 
-        // 按级别分组
-        List<Map<String, Object>> byLevel = jdbcTemplate.queryForList(
-            "SELECT level, COUNT(*) AS count FROM hazard_point " +
-            "WHERE del_flag = '0' GROUP BY level ORDER BY count DESC");
-        result.put("byLevel", byLevel);
-
         // 按状态分组
         List<Map<String, Object>> byStatus = jdbcTemplate.queryForList(
             "SELECT status, COUNT(*) AS count FROM hazard_point " +
@@ -97,7 +91,7 @@ public class SystemQueryTool {
         String pattern = "%" + (keyword != null ? keyword : "") + "%";
 
         return jdbcTemplate.queryForList(
-            "SELECT id, name, code, level, status, longitude, latitude, description " +
+            "SELECT id, name, code, status, longitude, latitude, description " +
             "FROM hazard_point WHERE del_flag = '0' AND name LIKE ? " +
             "ORDER BY id DESC LIMIT ?",
             pattern, lim);

@@ -1,0 +1,137 @@
+// ============================================
+// TerraMens Dashboard UI - SCSS Variables
+// 线框高对比度风格（参考 ai.html）
+// ============================================
+
+// === 色彩系统 ===
+
+// 主背景色（深黑色系）
+$bg-primary: #000105;           // 主背景 - 纯黑微蓝
+$bg-secondary: rgba(0, 8, 20, 0.9);  // 次级背景（面板）
+$bg-tertiary: rgba(0, 12, 28, 0.7); // 三级背景（输入框等）
+
+// 边框/分割线 - 线框风格
+$border-subtle: rgba(0, 212, 255, 0.15);   // 微弱边框
+$border-default: rgba(0, 212, 255, 0.25);  // 默认边框
+$border-medium: rgba(0, 212, 255, 0.4);    // 中等边框
+$border-strong: rgba(0, 212, 255, 0.6);    // 强调边框
+
+// 主题色 - 青蓝色系（参考 ai.html accent color）
+$color-primary: #00d4ff;       // 主强调色
+$color-secondary: #00a8cc;     // 次级色
+$color-warning: #ff8800;       // 警告色
+$color-highlight: #ffcc00;     // 高亮色
+
+// TerraMens 状态色 - 5级颜色（保持现有）
+$terra-normal: #00ff5a;        // 正常绿
+$terra-info: #00d4ff;          // 信息蓝
+$terra-caution: #ffcc00;       // 警示黄
+$terra-warning: #ff8800;       // 警告橙
+$terra-critical: #ff0022;      // 紧急红
+
+// 文字色 - 高对比度
+$text-primary: #ffffff;        // 主文字 - 纯白
+$text-secondary: rgba(255, 255, 255, 0.85);  // 次级文字
+$text-dim: rgba(0, 212, 255, 0.6);          // 暗文字（用青色）
+$text-muted: rgba(255, 255, 255, 0.4);      // 静默文字
+
+// TerraMens 3D 形象色
+$terra-blue: #60A5FA;
+$terra-purple: #A78BFA;
+$terra-core: #C4B5FD;
+
+// === 线框风格辅助变量 ===
+
+// 边框强调色
+$border-accent: #00d4ff;       // 青色强调边框
+$border-warning: #ff8800;      // 警告边框
+$border-focus: #00d4ff;        // 焦点边框
+
+// 文字阴影（增强可读性）
+$text-shadow-sm: 0 0 8px rgba(0, 212, 255, 0.5);
+$text-shadow-md: 0 0 12px rgba(0, 212, 255, 0.7);
+
+// 发光效果
+$glow-primary: 0 0 15px rgba(0, 212, 255, 0.4);
+$glow-warning: 0 0 15px rgba(255, 136, 0, 0.4);
+$glow-critical: 0 0 15px rgba(255, 0, 34, 0.4);
+
+// 边框宽度
+$border-width-thin: 1px;
+$border-width-normal: 1px;
+$border-width-thick: 2px;
+
+// === 字体 ===
+
+$font-family-base: 'Consolas', 'Monaco', 'Courier New', monospace;
+$font-family-ui: 'Consolas', monospace;
+
+$font-size-large: 28px;
+$font-size-title: 18px;
+$font-size-body: 13px;
+$font-size-small: 11px;
+$font-size-tiny: 10px;
+
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// === 间距 ===
+
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 16px;
+$spacing-xl: 20px;
+$spacing-2xl: 24px;
+$spacing-3xl: 32px;
+
+// === 布局 ===
+
+$sidebar-width: 360px;
+$statusbar-height: 32px;
+$header-height: 60px;
+
+// === 面板网格尺寸 ===
+$panel-grid-rows: 12;
+$panel-row-height: 60px;
+
+// === 圆角（线框风格用小圆角）===
+
+$radius-sm: 4px;
+$radius-md: 6px;
+$radius-lg: 8px;
+$radius-xl: 10px;
+
+// === 过渡 ===
+
+$transition-fast: 150ms;
+$transition-normal: 250ms;
+$transition-slow: 350ms;
+
+$ease-default: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+$ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+$ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+$ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+// === 阴影（线框风格用发光代替阴影）===
+
+$shadow-sm: 0 0 8px rgba(0, 212, 255, 0.15);
+$shadow-md: 0 0 12px rgba(0, 212, 255, 0.25);
+$shadow-lg: 0 0 20px rgba(0, 212, 255, 0.35);
+
+// === Z-index 层级 ===
+
+$z-base: 1;
+$z-sidebar: 10;
+$statusbar: 20;
+$z-dropdown: 30;
+$z-modal: 50;
+$z-toast: 60;
+
+// === 背景模糊效果（线框风格关键）===
+
+$backdrop-blur: blur(15px);
+$backdrop-blur-sm: blur(10px);
+$backdrop-blur-lg: blur(20px);

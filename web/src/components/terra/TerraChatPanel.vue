@@ -92,14 +92,31 @@ const chat = useTerraChat()
 const inputText = ref('')
 const messagesContainer = ref<HTMLElement>()
 
+/** 打开值守模式 Dashboard，自动携带 token（跨 origin localStorage 不共享） */
+function openTerraDashboard() {
+  const token = localStorage.getItem('token') || ''
+  window.open(`/terra/#token=${encodeURIComponent(token)}`, '_blank')
+  chat.panelOpen.value = false
+}
+
 /** 处理 AI 回复中的页面导航链接（支持 query 参数） */
 function onNavigate(routeName: string, query?: Record<string, string>) {
+  // 值守模式是独立应用，需要整页跳转
+  if (routeName === 'terra' || routeName === 'duty') {
+    openTerraDashboard()
+    return
+  }
   router.push({ name: routeName, query: query || {} }).catch(() => {})
   chat.panelOpen.value = false
 }
 
 /** 设置前端导航回调 — AI 调用 frontend.navigate 工具时触发 */
 setNavigateCallback((routeName, query) => {
+  // 值守模式是独立应用，需要整页跳转
+  if (routeName === 'terra' || routeName === 'duty') {
+    openTerraDashboard()
+    return
+  }
   router.push({ name: routeName, query: query || {} }).catch(() => {})
   chat.panelOpen.value = false
 })

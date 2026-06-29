@@ -248,8 +248,8 @@ public class TokenService
         {
             token = token.replace(Constants.TOKEN_PREFIX, "");
         }
-        // EventSource SSE 连接无法携带自定义请求头，仅在 SSE 请求时允许 ?token=xxx 查询参数回退
-        if (StringUtils.isEmpty(token) && isSseRequest(request))
+        // EventSource SSE / WebSocket 握手无法携带自定义请求头，允许 ?token=xxx 查询参数回退
+        if (StringUtils.isEmpty(token) && (isSseRequest(request) || isWebSocketUpgrade(request)))
         {
             token = request.getParameter("token");
         }
@@ -263,6 +263,15 @@ public class TokenService
     private boolean isSseRequest(HttpServletRequest request) {
         String accept = request.getHeader("Accept");
         return StringUtils.isNotEmpty(accept) && accept.contains("text/event-stream");
+    }
+
+    /**
+     * 判断是否为 WebSocket 握手请求。
+     * WebSocket 升级请求携带 Upgrade: websocket 头。
+     */
+    private boolean isWebSocketUpgrade(HttpServletRequest request) {
+        String upgrade = request.getHeader("Upgrade");
+        return "websocket".equalsIgnoreCase(upgrade);
     }
 
     private String getTokenKey(String uuid)
