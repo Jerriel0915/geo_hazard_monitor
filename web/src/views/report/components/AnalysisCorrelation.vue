@@ -23,7 +23,7 @@
           />
         </div>
         <!-- Sensor List -->
-        <div class="panel-section">
+        <div class="panel-section panel-section--flex">
           <div class="panel-title">传感器列表</div>
           <el-button
               type="primary"
@@ -33,7 +33,7 @@
           >
             + 添加传感器
           </el-button>
-          <div class="sensor-tags" :class="{ 'sensor-tags--scroll': selectedSensors.length > 10 }">
+          <div class="sensor-tags">
             <div v-for="(s, idx) in selectedSensors" :key="s.id" class="sensor-tag-item">
               <el-tag :color="s.color" effect="dark" closable @close="removeSensor(idx)" style="width: 100%">
                 {{ s.deviceName }} - {{ s.attrName }}
@@ -125,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
+import {computed, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import echarts from '@/utils/echarts'
@@ -580,9 +580,9 @@ watch(correlationTimeRange, (newVal) => {
 onMounted(() => {
   // 初始化默认时间范围（最近7天）
   initDefaultTimeRange()
-  
+
   loadOptions()
-  
+
   resizeHandler = () => {
     correlationChartInstance.value?.resize()
   }
@@ -602,6 +602,7 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* 防止页面出现滚动条 */
 }
 .mode-header {
   display: flex;
@@ -622,6 +623,7 @@ onBeforeUnmount(() => {
   gap: 16px;
   flex: 1;
   min-height: 0;
+  overflow: hidden; /* 防止内容溢出 */
 }
 .correlation-panel {
   width: 280px;
@@ -629,16 +631,26 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .panel-section {
-  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+.panel-section--flex {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .panel-title {
   font-size: 13px;
   font-weight: bold;
   color: #303133;
   margin-bottom: 8px;
+  flex-shrink: 0;
 }
 .correlation-chart-area {
   flex: 1;
@@ -646,10 +658,12 @@ onBeforeUnmount(() => {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 .chart-main {
   flex: 1;
   min-height: 300px;
+  width: 100%;
 }
 .chart-toolbar {
   display: flex;
@@ -661,27 +675,32 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-.sensor-tags--scroll {
-  max-height: 420px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
 }
-.sensor-tags--scroll::-webkit-scrollbar {
+.sensor-tags::-webkit-scrollbar {
   width: 4px;
 }
-.sensor-tags--scroll::-webkit-scrollbar-thumb {
+.sensor-tags::-webkit-scrollbar-thumb {
   background: #c0c4cc;
   border-radius: 2px;
 }
+.sensor-tags::-webkit-scrollbar-track {
+  background: transparent;
+}
 .sensor-tag-item {
   width: 100%;
+  flex-shrink: 0;
 }
 .empty-hint {
   color: #909399;
   font-size: 12px;
   text-align: center;
   padding: 10px 0;
+  flex-shrink: 0;
 }
 .statistics-panel {
   margin-top: 16px;
