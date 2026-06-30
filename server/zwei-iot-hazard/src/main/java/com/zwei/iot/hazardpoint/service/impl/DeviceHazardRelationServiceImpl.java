@@ -8,6 +8,7 @@ import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
 import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,8 +42,13 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
 
     @Override public List<Long> getHazardPointIdsByDeviceIds(List<Long> ids) { return deviceHazardPointMapper.selectHazardPointIdsByDeviceIds(ids); }
     @Override public void deleteBindingsByDeviceIds(List<Long> ids) { deviceHazardPointMapper.deleteByDeviceIds(ids); }
-    @Override public void refreshDeviceCount(Long id) { hazardPointMapper.refreshDeviceCountById(id); }
-    @Override public void refreshDeviceCountByIds(List<Long> ids) { if (ids != null && !ids.isEmpty()) hazardPointMapper.refreshDeviceCountByIds(ids); }
+    @Override
+    @CacheEvict(value = "hazardPoint", key = "#id")
+    public void refreshDeviceCount(Long id) { hazardPointMapper.refreshDeviceCountById(id); }
+
+    @Override
+    @CacheEvict(value = "hazardPoint", allEntries = true)
+    public void refreshDeviceCountByIds(List<Long> ids) { if (ids != null && !ids.isEmpty()) hazardPointMapper.refreshDeviceCountByIds(ids); }
 
     @Override
     public String getHazardPointNameByDeviceId(Long deviceId) {

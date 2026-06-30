@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
@@ -75,6 +76,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
      */
     @Override
     @CacheEvict(value = "hazardPoint", key = "#hazardPoint.id")
+    @Transactional(rollbackFor = Exception.class)
     public int insertHazardPoint(HazardPoint hazardPoint) {
         if (!checkHazardPointCodeUnique(hazardPoint.getCode())) {
             throw new ServiceException("隐患点编号已存在");
@@ -111,7 +113,10 @@ public class HazardPointServiceImpl implements IHazardPointService {
      */
     @Override
     @CacheEvict(value = "hazardPoint", key = "#id")
+    @Transactional(rollbackFor = Exception.class)
     public int deleteHazardPointById(Long id) {
+        // 逻辑删除前先清理设备/视频绑定，避免孤儿记录
+        deviceHazardPointMapper.deleteByHazardPointId(id);
         return hazardPointMapper.deleteHazardPointById(id);
     }
 

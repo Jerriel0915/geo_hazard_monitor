@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * MQTT monitoring data ingest facade — rewritten to use parser module.
@@ -24,6 +25,8 @@ import java.util.List;
 @Slf4j
 @Service
 public class MonitorIngestFacade {
+
+    private static final Pattern POSITIONAL_PATTERN = Pattern.compile("value_\\d+");
     private final MonitorTopicParser topicParser;
     private final MonitorMetadataService metadataService;
     private final GroovyScriptEngine scriptEngine;
@@ -125,7 +128,7 @@ public class MonitorIngestFacade {
         // Fast path: no positional identifiers
         boolean hasPositional = false;
         for (var p : props) {
-            if (p.identifier() != null && p.identifier().matches("value_\\d+")) {
+            if (p.identifier() != null && POSITIONAL_PATTERN.matcher(p.identifier()).matches()) {
                 hasPositional = true;
                 break;
             }
@@ -136,7 +139,7 @@ public class MonitorIngestFacade {
         List<com.zwei.common.domain.PropertyValue> enriched = new java.util.ArrayList<>();
         for (var p : props) {
             String id = p.identifier();
-            if (id != null && id.matches("value_\\d+")) {
+            if (id != null && POSITIONAL_PATTERN.matcher(id).matches()) {
                 int idx = Integer.parseInt(id.substring(6));
                 if (idx >= 0 && idx < tslProps.size()) {
                     var tslProp = tslProps.get(idx);

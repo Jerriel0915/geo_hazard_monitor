@@ -2,6 +2,7 @@ package com.zwei.iot.device.controller;
 
 import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
+import com.zwei.common.exception.ServiceException;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.ip.IpUtils;
@@ -73,6 +74,9 @@ public class DeviceController extends BaseController {
     @PostMapping("/export")
     public void export(HttpServletResponse response, Device device) {
         List<Device> list = deviceService.selectDevicePage(device, 0, 0);
+        if (list.size() > 10_000) {
+            throw new ServiceException("导出数据量过大（" + list.size() + " 条），请缩小查询范围");
+        }
         List<DeviceExportVO> exportList = new ArrayList<>(list.size());
         for (Device item : list) {
             DeviceExportVO vo = new DeviceExportVO();
