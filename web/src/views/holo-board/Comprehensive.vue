@@ -422,6 +422,11 @@ const handleQueryData = () => {
 const mapContainer = ref<HTMLElement | null>(null)
 let map: L.Map | null = null
 
+function escapeHtml(str: string): string {
+  return String(str ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+}
+
 const initMap = () => {
   if (!mapContainer.value) return
 
@@ -451,7 +456,7 @@ const initMap = () => {
         </div>
         ${point.hasAlarm ? '<div class="alarm-ring"></div>' : ''}
         <div class="device-count-badge" style="position: absolute; top: -8px; right: -8px; background: #1890ff; color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-          ${point.deviceCount}
+          ${escapeHtml(String(point.deviceCount))}
         </div>
       </div>
     `
@@ -477,30 +482,30 @@ const initMap = () => {
       medium: { text: '中', bg: 'rgba(250,173,20,0.1)', color: '#fa8c16' },
       low: { text: '低', bg: 'rgba(82,196,26,0.1)', color: '#52c41a' }
     }
-    const levelInfo = levelMap[point.level] || { text: point.level, bg: 'rgba(24,144,255,0.1)', color: '#1890ff' }
+    const levelInfo = levelMap[point.level] || { text: escapeHtml(point.level), bg: 'rgba(24,144,255,0.1)', color: '#1890ff' }
 
     // 设备列表 HTML
     const devicesHtml = point.devices.map(device => {
       const dsColor = device.status === 'online' ? '#52c41a' : device.status === 'warning' ? '#faad14' : '#f5222d'
       const dsText = device.status === 'online' ? '在线' : device.status === 'warning' ? '异常' : '离线'
-      return `<div class="hpv2-device"><span class="hpv2-dn">${device.name}</span><span class="hpv2-ds" style="color:${dsColor}">${dsText}</span></div>`
+      return `<div class="hpv2-device"><span class="hpv2-dn">${escapeHtml(device.name)}</span><span class="hpv2-ds" style="color:${dsColor}">${dsText}</span></div>`
     }).join('')
 
     const popupContent = `
       <div class="hpv2-card">
         <div class="hpv2-header">
-          <span class="hpv2-title">${point.name}</span>
+          <span class="hpv2-title">${escapeHtml(point.name)}</span>
         </div>
         <div class="hpv2-dash"></div>
         <div class="hpv2-body">
           <div class="hpv2-row">
             <div class="hpv2-cell">
               <span class="hpv2-label">编号</span>
-              <span class="hpv2-val">${point.code}</span>
+              <span class="hpv2-val">${escapeHtml(point.code)}</span>
             </div>
             <div class="hpv2-cell">
               <span class="hpv2-label">类型</span>
-              <span class="hpv2-val">${point.type}</span>
+              <span class="hpv2-val">${escapeHtml(point.type)}</span>
             </div>
           </div>
           <div class="hpv2-dash"></div>
@@ -511,14 +516,14 @@ const initMap = () => {
             </div>
             <div class="hpv2-cell">
               <span class="hpv2-label">预警等级</span>
-              <span class="hpv2-level" style="background:${levelInfo.bg};color:${levelInfo.color}">${levelInfo.text}</span>
+              <span class="hpv2-level" style="background:${levelInfo.bg};color:${levelInfo.color}">${escapeHtml(levelInfo.text)}</span>
             </div>
           </div>
           <div class="hpv2-dash"></div>
           <div class="hpv2-row single">
             <div class="hpv2-cell full">
               <span class="hpv2-label">绑定设备</span>
-              <span class="hpv2-val">${point.deviceCount} 台</span>
+              <span class="hpv2-val">${escapeHtml(String(point.deviceCount))} 台</span>
             </div>
           </div>
           <div class="hpv2-devices">
