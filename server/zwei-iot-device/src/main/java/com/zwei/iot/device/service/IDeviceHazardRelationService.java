@@ -28,6 +28,22 @@ public interface IDeviceHazardRelationService {
     HazardPointRef getHazardPointByDeviceId(Long deviceId);
 
     /**
+     * 批量查询设备绑定的隐患点引用（避免 N+1）。
+     *
+     * @param deviceIds 设备ID列表
+     * @return deviceId → HazardPointRef 映射；无绑定的设备不在 Map 中
+     */
+    Map<Long, HazardPointRef> getHazardPointsByDeviceIds(List<Long> deviceIds);
+
+    /**
+     * 批量查询设备绑定的隐患点名称（避免 N+1）。
+     *
+     * @param deviceIds 设备ID列表
+     * @return deviceId → 隐患点名称 映射；无绑定的设备不在 Map 中
+     */
+    Map<Long, String> getHazardPointNamesByDeviceIds(List<Long> deviceIds);
+
+    /**
      * 绑定设备到隐患点（用于设备编辑页直接修改关联隐患点）。
      * @param deviceId 设备ID
      * @param hazardPointId 隐患点ID

@@ -148,6 +148,16 @@
         LIMIT 1
     </select>
 
+    <!-- 批量根据接入用户名查询设备 -->
+    <select id="selectDevicesByAuthUsernames" resultMap="DeviceResult">
+        <include refid="selectDeviceVo"/>
+        WHERE d.del_flag = 0
+          AND d.auth_username IN
+        <foreach collection="authUsernames" item="uname" open="(" separator="," close=")">
+            #{uname}
+        </foreach>
+    </select>
+
     <!-- 校验设备编码是否唯一 -->
     <select id="checkDeviceCodeUnique" resultMap="DeviceResult">
         <include refid="selectDeviceVo"/>

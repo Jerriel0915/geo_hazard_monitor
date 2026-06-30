@@ -116,6 +116,14 @@ public interface IDeviceService {
     List<DeviceSensor> selectSensorListByDeviceId(Long deviceId);
 
     /**
+     * 批量获取多个设备的传感器列表（含属性，避免 N+1）。
+     *
+     * @param deviceIds 设备ID列表
+     * @return 所有设备下的传感器列表（每个传感器已填充 attrList）
+     */
+    List<DeviceSensor> selectSensorListByDeviceIds(List<Long> deviceIds);
+
+    /**
      * 查询设备账号信息
      *
      * @param deviceId 设备ID

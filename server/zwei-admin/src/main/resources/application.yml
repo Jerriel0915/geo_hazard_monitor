@@ -99,7 +99,7 @@ spring:
       # 地址
       host: localhost
       # 端口，默认为6379
-      port: 16379
+      port: 6378
       # 数据库索引
       database: 0
       # 密码
@@ -160,6 +160,10 @@ iot:
     connection-timeout-ms: 5000
     query-timeout-seconds: 30
     fetch-size: 500
+    pool-max-size: 8
+    pool-min-idle: 2
+    pool-idle-timeout-seconds: 600
+    pool-max-lifetime-seconds: 1800
 
 # MyBatis配置
 mybatis:

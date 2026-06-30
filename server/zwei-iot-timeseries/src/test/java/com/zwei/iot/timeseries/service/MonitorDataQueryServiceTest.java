@@ -71,6 +71,8 @@ class MonitorDataQueryServiceTest {
         sensor.setAttrList(List.of(attr));
         when(deviceSensorService.selectSensorListByDeviceId(1L))
                 .thenReturn(List.of(sensor));
+        when(deviceSensorService.selectSensorListByDeviceIds(anyList()))
+                .thenReturn(List.of(sensor));
 
         IotdbQueryRow sampleRow = IotdbQueryRow.builder()
                 .time(1700000000000L).value(12.5).quality(0).build();

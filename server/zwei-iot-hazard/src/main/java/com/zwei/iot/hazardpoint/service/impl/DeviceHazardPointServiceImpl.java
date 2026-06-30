@@ -225,14 +225,10 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     }
 
     private List<DeviceSensor> loadSensors(List<Long> deviceIds) {
-        List<DeviceSensor> allSensors = new ArrayList<>();
-        for (Long deviceId : deviceIds) {
-            List<DeviceSensor> sensors = deviceService.selectSensorListByDeviceId(deviceId);
-            if (sensors != null) {
-                allSensors.addAll(sensors);
-            }
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return new ArrayList<>();
         }
-        return allSensors;
+        return deviceService.selectSensorListByDeviceIds(deviceIds);
     }
 
     /** 仅校验隐患点存在且未删除（查询操作使用，允许停测/完结状态查看） */

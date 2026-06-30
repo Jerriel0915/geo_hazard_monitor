@@ -401,36 +401,47 @@ public class MonitorDataQueryService {
             throw new ServiceException("隐患点ID不能为空");
         }
         List<BoundDeviceVO> boundDevices = deviceHazardPointMapper.selectBoundDevicesByHazardPointId(hazardPointId);
+        if (boundDevices.isEmpty()) {
+            return List.of();
+        }
+        List<Long> queryDeviceIds = boundDevices.stream()
+                .map(BoundDeviceVO::getDeviceId)
+                .filter(id -> deviceId == null || deviceId.equals(id))
+                .toList();
+        if (queryDeviceIds.isEmpty()) {
+            return List.of();
+        }
+        List<DeviceSensor> allSensors = deviceSensorService.selectSensorListByDeviceIds(queryDeviceIds);
         List<ResolvedMeasurement> measurements = new ArrayList<>();
-        for (BoundDeviceVO boundDevice : boundDevices) {
-            if (deviceId != null && !deviceId.equals(boundDevice.getDeviceId())) {
+        for (DeviceSensor sensor : allSensors) {
+            if (sensorId != null && !sensorId.equals(sensor.getId())) {
                 continue;
             }
-            List<DeviceSensor> sensors = deviceSensorService.selectSensorListByDeviceId(boundDevice.getDeviceId());
-            for (DeviceSensor sensor : sensors) {
-                if (sensorId != null && !sensorId.equals(sensor.getId())) {
+            if (sensor.getAttrList() == null) {
+                continue;
+            }
+            BoundDeviceVO boundDevice = boundDevices.stream()
+                    .filter(bd -> bd.getDeviceId().equals(sensor.getDeviceId()))
+                    .findFirst().orElse(null);
+            if (boundDevice == null) {
+                continue;
+            }
+            for (SensorAttribute attribute : sensor.getAttrList()) {
+                if (StringUtils.isNotBlank(attrCode) && !attrCode.equals(attribute.getAttrCode())) {
                     continue;
                 }
-                if (sensor.getAttrList() == null) {
-                    continue;
-                }
-                for (SensorAttribute attribute : sensor.getAttrList()) {
-                    if (StringUtils.isNotBlank(attrCode) && !attrCode.equals(attribute.getAttrCode())) {
-                        continue;
-                    }
-                    measurements.add(new ResolvedMeasurement(
-                            hazardPointName,
-                            hazardPointId,
-                            boundDevice.getDeviceId(),
-                            boundDevice.getDeviceName(),
-                            sensor.getId(),
-                            sensor.getSensorCode(),
-                            sensor.getSensorName(),
-                            attribute.getAttrCode(),
-                            attribute.getAttrName(),
-                            attribute.getUnit()
-                    ));
-                }
+                measurements.add(new ResolvedMeasurement(
+                        hazardPointName,
+                        hazardPointId,
+                        boundDevice.getDeviceId(),
+                        boundDevice.getDeviceName(),
+                        sensor.getId(),
+                        sensor.getSensorCode(),
+                        sensor.getSensorName(),
+                        attribute.getAttrCode(),
+                        attribute.getAttrName(),
+                        attribute.getUnit()
+                ));
             }
         }
         return measurements;

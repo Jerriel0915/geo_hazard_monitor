@@ -61,6 +61,14 @@ public interface DeviceMapper {
     Device selectDeviceByAuthUsername(String authUsername);
 
     /**
+     * 批量根据接入用户名查询设备（避免逐个查询 N+1）。
+     *
+     * @param authUsernames 用户名集合
+     * @return 设备列表
+     */
+    List<Device> selectDevicesByAuthUsernames(@Param("authUsernames") java.util.Set<String> authUsernames);
+
+    /**
      * 根据ID列表批量查询设备
      *
      * @param ids 设备ID列表

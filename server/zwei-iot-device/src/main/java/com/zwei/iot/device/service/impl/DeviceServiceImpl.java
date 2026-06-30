@@ -24,9 +24,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 设备全生命周期管理服务。
@@ -218,7 +220,7 @@ public class DeviceServiceImpl implements IDeviceService {
     @Transactional(rollbackFor = Exception.class)
     public int deleteDeviceById(Long id) {
         List<Long> hazardPointIds = hazardRelationService.getHazardPointIdsByDeviceIds(List.of(id));
-        deleteSensorAttributesByDeviceId(id);
+        attributeMapper.deleteAttributeByDeviceIds(List.of(id));
         sensorMapper.deleteSensorByDeviceId(id);
         hazardRelationService.deleteBindingsByDeviceIds(List.of(id));
         productMapper.deleteByDeviceId(id);
@@ -235,11 +237,9 @@ public class DeviceServiceImpl implements IDeviceService {
     public int deleteDeviceByIds(Long[] ids) {
         List<Long> deviceIds = new ArrayList<>(List.of(ids));
         List<Long> hazardPointIds = hazardRelationService.getHazardPointIdsByDeviceIds(deviceIds);
-        for (Long id : ids) {
-            deleteSensorAttributesByDeviceId(id);
-            sensorMapper.deleteSensorByDeviceId(id);
-            productMapper.deleteByDeviceId(id);
-        }
+        attributeMapper.deleteAttributeByDeviceIds(deviceIds);
+        sensorMapper.deleteSensorByDeviceIds(deviceIds);
+        productMapper.deleteByDeviceIds(deviceIds);
         hazardRelationService.deleteBindingsByDeviceIds(deviceIds);
         int rows = deviceMapper.deleteDeviceByIds(ids);
         refreshHazardPointDeviceCounts(hazardPointIds);
@@ -350,6 +350,28 @@ public class DeviceServiceImpl implements IDeviceService {
         return loadDeviceSensors(deviceId);
     }
 
+    /**
+     * 批量获取多个设备的传感器列表（含属性，2 次查询避免 N+1）。
+     */
+    @Override
+    public List<DeviceSensor> selectSensorListByDeviceIds(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return List.of();
+        }
+        List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceIds(deviceIds);
+        if (sensors.isEmpty()) {
+            return sensors;
+        }
+        List<Long> sensorIds = sensors.stream().map(DeviceSensor::getId).toList();
+        List<SensorAttribute> allAttrs = attributeMapper.selectAttributeListBySensorIds(sensorIds);
+        Map<Long, List<SensorAttribute>> attrsBySensor = allAttrs.stream()
+                .collect(Collectors.groupingBy(SensorAttribute::getSensorId));
+        for (DeviceSensor sensor : sensors) {
+            sensor.setAttrList(attrsBySensor.getOrDefault(sensor.getId(), List.of()));
+        }
+        return sensors;
+    }
+
     // ── 认证账号管理 → 委托 DeviceAuthService ──
 
     @Override
@@ -448,17 +470,19 @@ public class DeviceServiceImpl implements IDeviceService {
 
     private void enrichHazardPoint(List<Device> devices) {
         if (devices == null || devices.isEmpty()) return;
+        List<Long> deviceIds = devices.stream().map(Device::getId).toList();
+        Map<Long, HazardPointRef> refMap = hazardRelationService.getHazardPointsByDeviceIds(deviceIds);
         for (Device device : devices) {
-            enrichHazardPoint(device);
+            HazardPointRef ref = refMap.get(device.getId());
+            if (ref != null) {
+                device.setBoundHazardPointId(ref.id());
+                device.setBoundHazardPointName(ref.name());
+            }
         }
     }
 
     private void enrichHazardPoint(Device device) {
-        HazardPointRef ref = hazardRelationService.getHazardPointByDeviceId(device.getId());
-        if (ref != null) {
-            device.setBoundHazardPointId(ref.id());
-            device.setBoundHazardPointName(ref.name());
-        }
+        enrichHazardPoint(List.of(device));
     }
 
     private Device requireDevice(Long id) {
@@ -471,9 +495,14 @@ public class DeviceServiceImpl implements IDeviceService {
 
     private List<DeviceSensor> loadDeviceSensors(Long deviceId) {
         List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(deviceId);
+        if (sensors.isEmpty()) {
+            return sensors;
+        }
+        List<SensorAttribute> allAttrs = attributeMapper.selectAttributeListByDeviceId(deviceId);
+        Map<Long, List<SensorAttribute>> attrsBySensor = allAttrs.stream()
+                .collect(Collectors.groupingBy(SensorAttribute::getSensorId));
         for (DeviceSensor sensor : sensors) {
-            List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(sensor.getId());
-            sensor.setAttrList(attrs);
+            sensor.setAttrList(attrsBySensor.getOrDefault(sensor.getId(), List.of()));
         }
         return sensors;
     }

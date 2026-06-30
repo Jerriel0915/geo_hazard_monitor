@@ -181,4 +181,39 @@
         ORDER BY d.code
     </select>
 
+    <!-- 批量查询多个隐患点的设备摘要 -->
+    <select id="selectDeviceBriefByHazardPoints" resultType="java.util.LinkedHashMap">
+        SELECT
+            dhp.hazard_point_id AS hazardPointId,
+            d.id              AS id,
+            d.code            AS code,
+            d.name            AS name,
+            d.device_type     AS deviceType,
+            (SELECT COUNT(*) FROM device_sensor s WHERE s.device_id = d.id AND s.del_flag = 0) AS sensorCount,
+            dos.status        AS onlineStatus,
+            dos.last_report_at AS lastReportAt
+        FROM device_hazard_point dhp
+        JOIN device d ON d.id = dhp.device_id AND d.del_flag = 0
+        LEFT JOIN device_online_status dos ON dos.device_id = d.id
+        WHERE dhp.hazard_point_id IN
+        <foreach collection="hazardPointIds" item="hpId" open="(" separator="," close=")">
+            #{hpId}
+        </foreach>
+        ORDER BY d.code
+    </select>
+
+    <!-- 批量查询设备→隐患点绑定关系 (含隐患点名称) -->
+    <select id="selectDeviceHazardPointRefsByDeviceIds" resultType="java.util.LinkedHashMap">
+        SELECT
+            dhp.device_id     AS deviceId,
+            dhp.hazard_point_id AS hazardPointId,
+            hp.name           AS hazardPointName
+        FROM device_hazard_point dhp
+        JOIN hazard_point hp ON hp.id = dhp.hazard_point_id AND hp.del_flag = '0'
+        WHERE dhp.device_id IN
+        <foreach collection="deviceIds" item="devId" open="(" separator="," close=")">
+            #{devId}
+        </foreach>
+    </select>
+
 </mapper>

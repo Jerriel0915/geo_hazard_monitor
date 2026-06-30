@@ -37,6 +37,14 @@ public interface VideoDeviceMapper {
     VideoDevice selectVideoDeviceById(Long id);
 
     /**
+     * 批量根据ID查询视频设备
+     *
+     * @param ids 视频设备ID列表
+     * @return 视频设备列表
+     */
+    List<VideoDevice> selectVideoDeviceByIds(@Param("ids") List<Long> ids);
+
+    /**
      * 新增视频设备
      *
      * @param videoDevice 视频设备

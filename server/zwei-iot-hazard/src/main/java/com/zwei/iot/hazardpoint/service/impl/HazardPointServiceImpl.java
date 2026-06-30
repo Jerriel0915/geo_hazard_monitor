@@ -213,9 +213,19 @@ public class HazardPointServiceImpl implements IHazardPointService {
         Map<Long, Boolean> alarmMap = alarmQueryService.hasPendingAlarm(hpIds);
 
         // 批量查询设备列表
+        List<Map<String, Object>> allDeviceRows = deviceHazardPointMapper.selectDeviceBriefByHazardPoints(hpIds);
         Map<Long, List<DeviceBrief>> deviceMap = new HashMap<>();
-        for (Long hpId : hpIds) {
-            deviceMap.put(hpId, deviceHazardPointMapper.selectDeviceBriefByHazardPoint(hpId));
+        for (Map<String, Object> row : allDeviceRows) {
+            Long hpId = ((Number) row.get("hazardPointId")).longValue();
+            DeviceBrief brief = new DeviceBrief(
+                    ((Number) row.get("id")).longValue(),
+                    (String) row.get("code"),
+                    (String) row.get("name"),
+                    row.get("deviceType") != null ? ((Number) row.get("deviceType")).intValue() : null,
+                    row.get("sensorCount") != null ? ((Number) row.get("sensorCount")).intValue() : null,
+                    row.get("onlineStatus") != null ? ((Number) row.get("onlineStatus")).intValue() : null,
+                    row.get("lastReportAt") instanceof java.util.Date d ? d : null);
+            deviceMap.computeIfAbsent(hpId, k -> new ArrayList<>()).add(brief);
         }
 
         // 组装结果

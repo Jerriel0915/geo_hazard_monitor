@@ -74,6 +74,14 @@ public interface MonitorContentMapper {
     int deleteMonitorContentByMonitorTypeId(Long monitorTypeId);
 
     /**
+     * 批量查询监测类型ID（用于删除前收集受影响类型）
+     *
+     * @param ids 监测内容ID数组
+     * @return 监测类型ID列表（去重）
+     */
+    List<Long> selectMonitorTypeIdsByContentIds(@Param("ids") Long[] ids);
+
+    /**
      * 批量删除监测内容（逻辑删除）
      *
      * @param ids 需要删除的监测内容ID数组

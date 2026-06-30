@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +42,7 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
     @Override public List<Long> getHazardPointIdsByDeviceIds(List<Long> ids) { return deviceHazardPointMapper.selectHazardPointIdsByDeviceIds(ids); }
     @Override public void deleteBindingsByDeviceIds(List<Long> ids) { deviceHazardPointMapper.deleteByDeviceIds(ids); }
     @Override public void refreshDeviceCount(Long id) { hazardPointMapper.refreshDeviceCountById(id); }
-    @Override public void refreshDeviceCountByIds(List<Long> ids) { for (Long id : ids) hazardPointMapper.refreshDeviceCountById(id); }
+    @Override public void refreshDeviceCountByIds(List<Long> ids) { if (ids != null && !ids.isEmpty()) hazardPointMapper.refreshDeviceCountByIds(ids); }
 
     @Override
     public String getHazardPointNameByDeviceId(Long deviceId) {
@@ -63,6 +64,37 @@ public class DeviceHazardRelationServiceImpl implements IDeviceHazardRelationSer
             }
         }
         return null;
+    }
+
+    @Override
+    public Map<Long, HazardPointRef> getHazardPointsByDeviceIds(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Map<String, Object>> rows = deviceHazardPointMapper.selectDeviceHazardPointRefsByDeviceIds(deviceIds);
+        Map<Long, HazardPointRef> result = new HashMap<>(rows.size());
+        for (Map<String, Object> row : rows) {
+            Long devId = ((Number) row.get("deviceId")).longValue();
+            Long hpId = ((Number) row.get("hazardPointId")).longValue();
+            String hpName = (String) row.get("hazardPointName");
+            result.put(devId, new HazardPointRef(hpId, hpName));
+        }
+        return result;
+    }
+
+    @Override
+    public Map<Long, String> getHazardPointNamesByDeviceIds(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Map<String, Object>> rows = deviceHazardPointMapper.selectDeviceHazardPointRefsByDeviceIds(deviceIds);
+        Map<Long, String> result = new HashMap<>(rows.size());
+        for (Map<String, Object> row : rows) {
+            Long devId = ((Number) row.get("deviceId")).longValue();
+            String hpName = (String) row.get("hazardPointName");
+            result.put(devId, hpName);
+        }
+        return result;
     }
 
     @Override

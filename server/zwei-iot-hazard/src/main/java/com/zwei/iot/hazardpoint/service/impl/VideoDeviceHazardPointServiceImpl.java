@@ -2,6 +2,7 @@ package com.zwei.iot.hazardpoint.service.impl;
 
 import com.zwei.common.constant.HttpStatus;
 import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.video.domain.VideoDevice;
 import com.zwei.iot.video.domain.VideoDeviceHazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BindVideoDeviceRequest;
 import com.zwei.iot.video.domain.BoundVideoDeviceVO;
@@ -106,8 +107,10 @@ public class VideoDeviceHazardPointServiceImpl implements IVideoDeviceHazardPoin
     }
 
     private void validateVideoDevicesExist(List<Long> videoDeviceIds) {
+        List<VideoDevice> existing = videoDeviceMapper.selectVideoDeviceByIds(videoDeviceIds);
+        Set<Long> existingIds = existing.stream().map(VideoDevice::getId).collect(Collectors.toSet());
         for (Long videoDeviceId : videoDeviceIds) {
-            if (videoDeviceMapper.selectVideoDeviceById(videoDeviceId) == null) {
+            if (!existingIds.contains(videoDeviceId)) {
                 throw new ServiceException("视频设备不存在: " + videoDeviceId, HttpStatus.NOT_FOUND);
             }
         }

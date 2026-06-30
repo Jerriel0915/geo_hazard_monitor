@@ -70,7 +70,7 @@ public class VideoDeviceController extends BaseController {
     @PreAuthorize("@ss.hasPermi('basic:videoDevice:list')")
     @GetMapping
     public AjaxResult list(VideoDevice videoDevice) {
-        List<VideoDevice> list = videoDeviceService.selectVideoDeviceAll();
+        List<VideoDevice> list = videoDeviceService.selectVideoDevicePage(videoDevice, 0, 0);
         return success(list);
     }
 
@@ -156,7 +156,7 @@ public class VideoDeviceController extends BaseController {
     @Log(title = "视频设备", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, VideoDevice videoDevice) {
-        List<VideoDevice> list = videoDeviceService.selectVideoDeviceAll();
+        List<VideoDevice> list = videoDeviceService.selectVideoDevicePage(videoDevice, 0, 0);
         List<VideoDeviceExportVO> exportList = new ArrayList<>(list.size());
         for (VideoDevice item : list) {
             VideoDeviceExportVO vo = new VideoDeviceExportVO();
