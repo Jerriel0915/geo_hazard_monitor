@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -48,7 +49,8 @@ class MqttServerPublishPermissionTest {
     void setUp() {
         MqttAuthCenterProperties properties = new MqttAuthCenterProperties();
         MqttDeviceSessionRegistry registry = new MqttDeviceSessionRegistry();
-        MqttAuthFailureGuard failureGuard = new MqttAuthFailureGuard(properties);
+        MqttAuthFailureGuard failureGuard = new MqttAuthFailureGuard(properties,
+                mock(StringRedisTemplate.class, org.mockito.Mockito.RETURNS_DEEP_STUBS));
         MqttExceptionReporter mqttExceptionReporter = new MqttExceptionReporter();
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("mqttServer", org.mockito.Mockito.mock(MqttServer.class));

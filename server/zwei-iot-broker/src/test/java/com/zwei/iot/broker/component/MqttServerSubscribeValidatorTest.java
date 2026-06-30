@@ -1,6 +1,7 @@
 package com.zwei.iot.broker.component;
 
 import com.zwei.iot.broker.exception.MqttExceptionReporter;
+import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import net.dreamlu.mica.net.core.ChannelContext;
@@ -20,10 +21,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,11 +40,23 @@ class MqttServerSubscribeValidatorTest {
     @Mock
     private ChannelContext channelContext;
 
+    @Mock
+    private MqttDeviceSessionRegistry sessionRegistry;
+
     private MqttServerSubscribeValidator validator;
+
+    /**
+     * 为指定 deviceCode 建立会话 mock，使订阅归属校验通过。
+     */
+    private void givenSessionForDevice(String deviceCode) {
+        when(sessionRegistry.getByClientId(anyString()))
+                .thenReturn(Optional.of(new MqttDeviceSession(
+                        1L, deviceCode, "user", "client-1", "127.0.0.1", null)));
+    }
 
     @BeforeEach
     void setUp() {
-        validator = new MqttServerSubscribeValidator(deviceSensorService, new MqttExceptionReporter());
+        validator = new MqttServerSubscribeValidator(deviceSensorService, new MqttExceptionReporter(), sessionRegistry);
     }
 
     @Nested
@@ -130,6 +145,7 @@ class MqttServerSubscribeValidatorTest {
             String actualDeviceCode = generateString(length);
             String topic = "sys/v1/" + actualDeviceCode + "/sensor1/updata";
             if (expectedValid) {
+                givenSessionForDevice(actualDeviceCode);
                 when(deviceSensorService.selectSensorList(any())).thenReturn(Collections.emptyList());
             }
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -176,6 +192,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("设备存在时返回 true，不存在时返回 false")
         void sensorExists_shouldValidateCorrectly(
                 String deviceCode, String sensorCode, int resultSize, boolean expected) {
+            givenSessionForDevice(deviceCode);
             String topic = "sys/v1/" + deviceCode + "/" + sensorCode + "/updata";
             List<DeviceSensor> mockResult = resultSize > 0
                     ? List.of(DeviceSensor.builder().deviceCode(deviceCode).sensorCode(sensorCode).build())
@@ -195,6 +212,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("设备不存在时应记录 debug 日志")
         void sensorCodetFound_shouldReturnFalse() {
             String topic = "sys/v1/existDevice/existSensor/updata";
+            givenSessionForDevice("existDevice");
             when(deviceSensorService.selectSensorList(any())).thenReturn(Collections.emptyList());
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -207,6 +225,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("设备存在时应记录 debug 日志")
         void sensorFound_shouldReturnTrue() {
             String topic = "sys/v1/existDevice/existSensor/updata";
+            givenSessionForDevice("existDevice");
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("existDevice").sensorCode("existSensor").build())
             );
@@ -225,6 +244,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("数据库查询异常时应返回 false")
         void databaseException_shouldReturnFalse() {
             String topic = "sys/v1/device/sensor/updata";
+            givenSessionForDevice("device");
             when(deviceSensorService.selectSensorList(any())).thenThrow(new RuntimeException("DB connection failed"));
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -236,6 +256,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("数据库查询异常时不应继续执行")
         void databaseException_shouldNotContinue() {
             String topic = "sys/v1/device/sensor/updata";
+            givenSessionForDevice("device");
             when(deviceSensorService.selectSensorList(any())).thenThrow(new RuntimeException("DB error"));
 
             validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -254,6 +275,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("不同 QoS 级别应正常处理")
         void differentQoS_shouldWork(MqttQoS qos) {
             String topic = "sys/v1/device/sensor/updata";
+            givenSessionForDevice("device");
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );
@@ -272,6 +294,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("不同 clientId 应正常处理")
         void differentClientIds_shouldWork() {
             String topic = "sys/v1/device/sensor/updata";
+            givenSessionForDevice("device");
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );
@@ -292,6 +315,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("完整合法 topic 应通过所有检查并返回 true")
         void fullValidTopic_shouldPassAllChecks() {
             String topic = "sys/v1/my-device-001/my-sensor-001/updata";
+            givenSessionForDevice("my-device-001");
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("my-device-001").sensorCode("my-sensor-001").build())
             );
@@ -306,6 +330,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("包含下划线和连字符的 topic 应正常工作")
         void topicWithUnderscoresAndDashes_shouldWork() {
             String topic = "sys/v1/device_with_underscore/sensor-with-dash/updata";
+            givenSessionForDevice("device_with_underscore");
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device_with_underscore").sensorCode("sensor-with-dash").build())
             );
@@ -319,6 +344,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("纯字母数字的 topic 应正常工作")
         void pureAlphanumericTopic_shouldWork() {
             String topic = "sys/v1/Device123/Sensor456/updata";
+            givenSessionForDevice("Device123");
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("Device123").sensorCode("Sensor456").build())
             );
@@ -337,6 +363,7 @@ class MqttServerSubscribeValidatorTest {
         @DisplayName("channelContext 为 null 时应正常处理")
         void nullChannelContext_shouldWork() {
             String topic = "sys/v1/device/sensor/updata";
+            givenSessionForDevice("device");
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );

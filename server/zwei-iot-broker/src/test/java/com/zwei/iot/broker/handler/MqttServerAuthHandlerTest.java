@@ -20,11 +20,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +48,9 @@ class MqttServerAuthHandlerTest {
     @Mock
     private ChannelContext channelContext;
 
+    @Mock(answer = org.mockito.Answers.RETURNS_DEEP_STUBS)
+    private StringRedisTemplate stringRedisTemplate;
+
     private MqttServerAuthHandler authHandler;
 
     /**
@@ -54,7 +62,7 @@ class MqttServerAuthHandlerTest {
         MqttAuthCenterProperties properties = new MqttAuthCenterProperties();
         properties.setEnforceMqttProtocol(true);
         MqttDeviceSessionRegistry registry = new MqttDeviceSessionRegistry();
-        MqttAuthFailureGuard failureGuard = new MqttAuthFailureGuard(properties);
+        MqttAuthFailureGuard failureGuard = new MqttAuthFailureGuard(properties, stringRedisTemplate);
         MqttExceptionReporter mqttExceptionReporter = new MqttExceptionReporter();
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("mqttServer", mqttServer);
@@ -108,6 +116,13 @@ class MqttServerAuthHandlerTest {
     void authenticate_shouldBlockWhenFailuresReachThreshold() {
         Device device = buildDevice();
         when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(device);
+
+        // 模拟 Redis 失败计数: INCR 逐次递增，达到阈值后 ban key 存在
+        AtomicInteger counter = new AtomicInteger(0);
+        when(stringRedisTemplate.opsForValue().increment(startsWith("mqtt:auth:fail:")))
+                .thenAnswer(inv -> (long) counter.incrementAndGet());
+        when(stringRedisTemplate.hasKey(startsWith("mqtt:auth:ban:")))
+                .thenAnswer(inv -> counter.get() >= 5);
 
         for (int i = 0; i < 5; i++) {
             boolean failed = authHandler.authenticate(channelContext, "client-" + i, "client-" + i, "A7K9P2", "badPwd01");

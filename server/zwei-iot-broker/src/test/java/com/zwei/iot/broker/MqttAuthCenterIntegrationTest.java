@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import java.util.List;
@@ -118,8 +119,14 @@ class MqttAuthCenterIntegrationTest {
         }
 
         @Bean
-        MqttAuthFailureGuard mqttAuthFailureGuard(MqttAuthCenterProperties properties) {
-            return new MqttAuthFailureGuard(properties);
+        StringRedisTemplate stringRedisTemplate() {
+            return mock(StringRedisTemplate.class, org.mockito.Mockito.RETURNS_DEEP_STUBS);
+        }
+
+        @Bean
+        MqttAuthFailureGuard mqttAuthFailureGuard(MqttAuthCenterProperties properties,
+                                                   StringRedisTemplate stringRedisTemplate) {
+            return new MqttAuthFailureGuard(properties, stringRedisTemplate);
         }
 
         @Bean
