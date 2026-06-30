@@ -68,7 +68,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
 
   // ── 分页状态 ──
   const tablePageNum = ref(1)
-  const tablePageSize = ref(20)
+  const tablePageSize = ref(30)
   const tableTotal = ref(0)
 
   // ── 降采样控制 ──
