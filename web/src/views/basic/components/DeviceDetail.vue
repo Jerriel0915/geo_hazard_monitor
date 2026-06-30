@@ -132,12 +132,15 @@
       </el-tab-pane>
 
       <el-tab-pane label="监测数据" name="monitorData" lazy>
-        <MonitorDataExplorer
-          :hazard-point-id="currentRow?.boundHazardPointId ?? null"
-          :hazard-point-name="currentRow?.name"
-          :show-device="false"
-          :initial-device-id="currentRow?.id"
-        />
+        <div class="monitor-tab-wrapper">
+          <MonitorDataExplorer
+            :hazard-point-id="currentRow?.boundHazardPointId ?? null"
+            :hazard-point-name="currentRow?.name"
+            :show-device="false"
+            :initial-device-id="currentRow?.id"
+            fill-container
+          />
+        </div>
       </el-tab-pane>
     </el-tabs>
 
@@ -289,5 +292,11 @@ const copyPwd = (pwd: string) => {
   text-align: center;
   color: #94a3b8;
   font-size: 14px;
+}
+
+.monitor-tab-wrapper {
+  height: calc(85vh - 260px);
+  display: flex;
+  flex-direction: column;
 }
 </style>
