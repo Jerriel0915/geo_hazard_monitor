@@ -13,10 +13,12 @@
           <div class="panel-title">时间范围</div>
           <el-date-picker
               v-model="correlationTimeRange"
-              type="datetimerange"
-              start-placeholder="开始"
-              end-placeholder="结束"
-              value-format="YYYY-MM-DD HH:mm:ss"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="起始日期"
+              end-placeholder="截止日期"
+              value-format="YYYY-MM-DD"
+              :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
               style="width: 100%"
           />
         </div>
@@ -189,6 +191,32 @@ const availableAttrs = computed(() => {
   return deviceAttrsMap.value.get(addSensorForm.deviceId) || []
 })
 
+// 工具函数：将日期字符串转换为带时间的完整格式
+const formatDateWithTime = (dateStr: string, isEnd: boolean): string => {
+  if (!dateStr) return ''
+  const time = isEnd ? '23:59:59' : '00:00:00'
+  return `${dateStr} ${time}`
+}
+
+// 工具函数：获取默认时间范围（最近7天）
+const getDefaultTimeRange = (): [string, string] => {
+  const end = new Date()
+  const start = new Date(end.getTime() - 7 * 24 * 3600 * 1000)
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return [formatDate(start), formatDate(end)]
+}
+
+// 初始化默认时间范围
+const initDefaultTimeRange = () => {
+  const [start, end] = getDefaultTimeRange()
+  correlationTimeRange.value = [start, end]
+}
+
 // Load options
 const loadOptions = async () => {
   try {
@@ -309,21 +337,33 @@ const generateCorrelationChart = async () => {
   if (!selectedSensors.value.length) return
   chartLoading.value = true
   try {
-    const now = new Date()
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const toIsoStr = (d: Date) =>
-        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-    const startTime = correlationTimeRange.value?.[0]?.replace(' ', 'T') || toIsoStr(sevenDaysAgo)
-    const endTime = correlationTimeRange.value?.[1]?.replace(' ', 'T') || toIsoStr(now)
+    // 获取时间范围，如果没有则使用默认的最近7天
+    let startDateStr: string
+    let endDateStr: string
+    if (correlationTimeRange.value && correlationTimeRange.value.length === 2) {
+      startDateStr = correlationTimeRange.value[0]
+      endDateStr = correlationTimeRange.value[1]
+    } else {
+      const [defaultStart, defaultEnd] = getDefaultTimeRange()
+      startDateStr = defaultStart
+      endDateStr = defaultEnd
+    }
+
+    // 将日期补全为带时间的完整格式
+    const startTime = formatDateWithTime(startDateStr, false)
+    const endTime = formatDateWithTime(endDateStr, true)
+
+    // 转换为 ISO 格式（替换空格为 T）
+    const startTimeISO = startTime.replace(' ', 'T')
+    const endTimeISO = endTime.replace(' ', 'T')
 
     const allSeriesData: { sensor: SensorSeriesItem; chartData: ChartDataItem }[] = []
     for (const sensor of selectedSensors.value) {
       const data = await getChartData({
         deviceId: sensor.deviceId,
         attrCode: sensor.attrCode,
-        startTime,
-        endTime,
+        startTime: startTimeISO,
+        endTime: endTimeISO,
       })
       if (data) allSeriesData.push({ sensor, chartData: data })
     }
@@ -530,8 +570,19 @@ const exportChartImage = () => {
 // Resize handler
 let resizeHandler: (() => void) | null = null
 
+// 监听时间范围变化，自动刷新图表
+watch(correlationTimeRange, (newVal) => {
+  if (newVal && newVal.length === 2 && selectedSensors.value.length > 0) {
+    generateCorrelationChart()
+  }
+})
+
 onMounted(() => {
+  // 初始化默认时间范围（最近7天）
+  initDefaultTimeRange()
+  
   loadOptions()
+  
   resizeHandler = () => {
     correlationChartInstance.value?.resize()
   }
