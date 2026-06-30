@@ -80,7 +80,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # 复制源码
 COPY terra/ .
 
-# 构建生产版本（basePath=/terra/）
+# 构建生产版本（basePath=/terramens/）
 RUN npm run build
 
 # ---- 阶段三：Nginx 运行时 ----
@@ -95,8 +95,8 @@ COPY web/nginx.conf /etc/nginx/conf.d/
 # 复制主前端构建产物
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 复制 Terra 值守模式 Dashboard 构建产物（覆盖 public/terra/ 下的预构建文件）
-COPY --from=terra-builder /terra/dist /usr/share/nginx/html/terra
+# 复制 Terra 值守模式 Dashboard 构建产物（覆盖 public/terramens/ 下的预构建文件）
+COPY --from=terra-builder /terra/dist /usr/share/nginx/html/terramens
 
 # 创建日志目录并修复权限（nginx 以 nginx 用户运行 + read_only 容器）
 RUN mkdir -p /var/log/nginx && touch /var/log/nginx/nginx.pid && chown -R nginx:nginx /var/log/nginx

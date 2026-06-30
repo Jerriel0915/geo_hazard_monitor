@@ -509,8 +509,9 @@ function handleCommandMessage(payload: any) {
   }
 
   // 处理面板命令（支持 target 和 panelId 两种格式）
-  if (payload.panelId || payload.target) {
-    const panelId = payload.panelId || payload.target
+  // 使用已解析的 target 变量（兼容 payload.target、payload.panelId、params.panelId 三种位置）
+  if (target) {
+    const panelId = target
 
     if (action === 'lifecycle:create') {
       // 创建新面板，支持 zIndex 和 visible 参数

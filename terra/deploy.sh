@@ -1,12 +1,12 @@
 #!/bin/bash
 # Terra 值守模式 Dashboard 构建与部署脚本
-# 构建 terra 并输出到 web/public/terra/
+# 构建 terra 并输出到 web/public/terramens/
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-OUTPUT_DIR="$PROJECT_ROOT/web/public/terra"
+OUTPUT_DIR="$PROJECT_ROOT/web/public/terramens"
 
 echo "=== Terra Duty Dashboard Build ==="
 echo "Source: $SCRIPT_DIR"
@@ -33,4 +33,4 @@ mkdir -p "$OUTPUT_DIR"
 cp -r "$SCRIPT_DIR/dist/"* "$OUTPUT_DIR/"
 
 echo "=== Build and deploy complete ==="
-echo "Dashboard is available at /terra/"
+echo "Dashboard is available at /terramens/"

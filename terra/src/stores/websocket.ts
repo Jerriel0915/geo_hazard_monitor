@@ -45,7 +45,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // 从 localStorage 或 URL 参数获取 token
     const token = getToken()
     const tokenParam = token ? `?token=${encodeURIComponent(token)}` : ''
-    return `${protocol}//${host}/ws/terra/duty${tokenParam}`
+    return `${protocol}//${host}/ws/terramens/duty${tokenParam}`
   })
 
   /**

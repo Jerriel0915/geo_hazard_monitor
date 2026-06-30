@@ -8,7 +8,7 @@ import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 /**
- * 值守模式 WebSocket 配置 — 注册 /ws/terra/duty 端点。
+ * 值守模式 WebSocket 配置 — 注册 /ws/terramens/duty 端点。
  */
 @Configuration
 @EnableWebSocket
@@ -23,10 +23,10 @@ public class TerraDutyWebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(handler, "/ws/terra/duty")
+        registry.addHandler(handler, "/ws/terramens/duty")
                 .addInterceptors(interceptor)
                 .setAllowedOrigins("*");
 
-        log.info("值守模式 WebSocket 端点已注册: /ws/terra/duty");
+        log.info("值守模式 WebSocket 端点已注册: /ws/terramens/duty");
     }
 }

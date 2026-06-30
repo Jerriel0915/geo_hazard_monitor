@@ -24,7 +24,7 @@ import java.util.Map;
  * 值守模式 WebSocket 握手拦截器 — 从 query param 提取 JWT 并验证。
  *
  * <p>WebSocket 浏览器 API 不支持自定义请求头，因此 token 通过
- * {@code ws://host/ws/terra/duty?token=xxx} 查询参数传递。</p>
+ * {@code ws://host/ws/terramens/duty?token=xxx} 查询参数传递。</p>
  *
  * <p>验证通过后，将 userId 和 LoginUser 存入 WebSocket session attributes，
  * 后续 TerraDutyWebSocketHandler 可直接使用。</p>
