@@ -282,7 +282,6 @@ async function handleSubmit() {
   try {
     const payload: Partial<CompositeAlarmItem> = {
       name: formData.name, description: formData.description, triggerMode: formData.triggerMode,
-      defaultAlarmLevel: 2,
       silenceMinutes: formData.silenceMinutes,
       sustainSeconds: formData.sustainSeconds,
       scriptType: 'GROOVY',

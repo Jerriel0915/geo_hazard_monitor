@@ -263,7 +263,6 @@ export interface AlarmStrategyItem {
     cronExpression?: string
     scriptType?: string
     scriptContent?: string
-    defaultAlarmLevel: number
     silenceMinutes: number
     isEnabled: number
     lastRunTime?: string
@@ -296,7 +295,6 @@ export interface AlarmStrategyCreatePayload {
     cronExpression?: string
     scriptType?: string
     scriptContent?: string
-    defaultAlarmLevel: number
     silenceMinutes?: number
     sustainSeconds?: number
     isEnabled?: number

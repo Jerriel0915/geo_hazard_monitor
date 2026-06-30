@@ -1,9 +1,6 @@
 package com.zwei.iot.alarm.domain.dto;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 /**
@@ -32,11 +29,6 @@ public class StrategyCreateRequest {
 
     @NotBlank(message = "脚本内容不能为空")
     private String scriptContent;
-
-    @NotNull(message = "默认告警等级不能为空")
-    @Min(value = 1, message = "告警等级范围为1-4")
-    @Max(value = 4, message = "告警等级范围为1-4")
-    private Integer defaultAlarmLevel;
 
     private Integer silenceMinutes;
     private Integer sustainSeconds;
@@ -102,14 +94,6 @@ public class StrategyCreateRequest {
 
     public void setScriptContent(String scriptContent) {
         this.scriptContent = scriptContent;
-    }
-
-    public Integer getDefaultAlarmLevel() {
-        return defaultAlarmLevel;
-    }
-
-    public void setDefaultAlarmLevel(Integer defaultAlarmLevel) {
-        this.defaultAlarmLevel = defaultAlarmLevel;
     }
 
     public Integer getSilenceMinutes() {

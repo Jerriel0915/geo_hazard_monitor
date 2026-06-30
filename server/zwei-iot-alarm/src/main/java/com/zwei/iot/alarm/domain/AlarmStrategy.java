@@ -57,10 +57,6 @@ public class AlarmStrategy extends BaseEntity {
      */
     private String scriptContent;
     /**
-     * 默认告警等级: 1=蓝 2=黄 3=橙 4=红
-     */
-    private Integer defaultAlarmLevel;
-    /**
      * 静默周期（分钟）
      */
     private Integer silenceMinutes;

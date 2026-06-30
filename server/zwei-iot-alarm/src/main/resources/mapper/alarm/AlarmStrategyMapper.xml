@@ -12,7 +12,6 @@
         <result property="cronExpression" column="cron_expression"/>
         <result property="scriptType" column="script_type"/>
         <result property="scriptContent" column="script_content"/>
-        <result property="defaultAlarmLevel" column="default_alarm_level"/>
         <result property="silenceMinutes" column="silence_minutes"/>
         <result property="sustainSeconds" column="sustain_seconds"/>
         <result property="isEnabled" column="is_enabled"/>
@@ -35,7 +34,6 @@
                cron_expression,
                script_type,
                script_content,
-               default_alarm_level,
                silence_minutes,
                sustain_seconds,
                is_enabled,
@@ -87,11 +85,11 @@
     <insert id="insertStrategy" parameterType="com.zwei.iot.alarm.domain.AlarmStrategy"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO alarm_strategy (name, description, monitor_type_id, trigger_mode, cron_expression,
-                                    script_type, script_content, default_alarm_level,
+                                    script_type, script_content,
                                     silence_minutes, sustain_seconds, is_enabled,
                                     create_by, create_time)
         VALUES (#{name}, #{description}, #{monitorTypeId}, #{triggerMode}, #{cronExpression},
-                #{scriptType}, #{scriptContent}, #{defaultAlarmLevel},
+                #{scriptType}, #{scriptContent},
                 #{silenceMinutes}, #{sustainSeconds}, #{isEnabled},
                 #{createBy}, #{createTime})
     </insert>
@@ -106,7 +104,6 @@
             <if test="cronExpression != null">cron_expression = #{cronExpression},</if>
             <if test="scriptType != null">script_type = #{scriptType},</if>
             <if test="scriptContent != null">script_content = #{scriptContent},</if>
-            <if test="defaultAlarmLevel != null">default_alarm_level = #{defaultAlarmLevel},</if>
             <if test="silenceMinutes != null">silence_minutes = #{silenceMinutes},</if>
             <if test="sustainSeconds != null">sustain_seconds = #{sustainSeconds},</if>
             <if test="isEnabled != null">is_enabled = #{isEnabled},</if>

@@ -473,7 +473,6 @@ CREATE TABLE `alarm_strategy`
     `cron_expression`     varchar(100)          DEFAULT NULL COMMENT 'Cron表达式（周期触发时必填）',
     `script_type`         varchar(20)           DEFAULT 'GROOVY' COMMENT '脚本类型: GROOVY / JAVASCRIPT',
     `script_content`      text COMMENT '脚本内容',
-    `default_alarm_level` tinyint               DEFAULT '2' COMMENT '默认告警等级: 1=蓝 2=黄 3=橙 4=红',
     `silence_minutes`     int                   DEFAULT '0' COMMENT '静默周期（分钟），期内不重复生成告警',
     `escalation_enabled`  tinyint               DEFAULT '0' COMMENT '等级跃升提醒: 0=禁用 1=启用',
     `is_enabled`          tinyint               DEFAULT '1' COMMENT '启用状态: 0=禁用 1=启用',
