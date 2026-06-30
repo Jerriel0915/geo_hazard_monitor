@@ -2,6 +2,7 @@ package com.zwei.iot.broker.component;
 
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.config.MqttAuthCenterProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,11 @@ import java.util.concurrent.TimeUnit;
  * 防止错误密码高频重试持续占用 Broker 与数据库资源。
  * <p>
  * Redis 实现保证多实例部署下失败计数跨实例共享。
+ * <p>
+ * <b>容错策略</b>：Redis 不可用时采用 fail-open（放行），避免 Redis 故障导致全部设备无法鉴权。
+ * {@link #recordFailure} 在 Redis INCR 返回 {@code null} 时记录 warn 日志后跳过计数。
  */
+@Slf4j
 @Component
 public class MqttAuthFailureGuard {
 
@@ -74,10 +79,15 @@ public class MqttAuthFailureGuard {
         String countKey = KEY_PREFIX_FAIL + username;
         String banKey = KEY_PREFIX_BAN + username;
         Long count = redisTemplate.opsForValue().increment(countKey);
-        if (count != null && count == 1L) {
+        if (count == null) {
+            // fail-open: Redis 不可用时放行，不阻塞设备鉴权主链路
+            log.warn("Redis INCR 返回 null，跳过失败计数（fail-open）。username={}", username);
+            return;
+        }
+        if (count == 1L) {
             redisTemplate.expire(countKey, properties.getBanDurationSeconds(), TimeUnit.SECONDS);
         }
-        if (count != null && count >= properties.getFailureThreshold()) {
+        if (count >= properties.getFailureThreshold()) {
             redisTemplate.opsForValue().set(banKey, "1",
                     properties.getBanDurationSeconds(), TimeUnit.SECONDS);
             redisTemplate.delete(countKey);

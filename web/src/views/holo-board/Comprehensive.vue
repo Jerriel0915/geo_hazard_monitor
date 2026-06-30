@@ -482,7 +482,7 @@ const initMap = () => {
       medium: { text: '中', bg: 'rgba(250,173,20,0.1)', color: '#fa8c16' },
       low: { text: '低', bg: 'rgba(82,196,26,0.1)', color: '#52c41a' }
     }
-    const levelInfo = levelMap[point.level] || { text: escapeHtml(point.level), bg: 'rgba(24,144,255,0.1)', color: '#1890ff' }
+    const levelInfo = levelMap[point.level] || { text: point.level, bg: 'rgba(24,144,255,0.1)', color: '#1890ff' }
 
     // 设备列表 HTML
     const devicesHtml = point.devices.map(device => {

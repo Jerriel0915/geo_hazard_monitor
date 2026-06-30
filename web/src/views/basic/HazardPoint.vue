@@ -1066,8 +1066,13 @@ const {
 })
 
 const handleToggleDispatchStatus = async (row: DispatchRule, isEnabled: boolean) => {
+  const id = Number(row.id)
+  if (!Number.isFinite(id)) {
+    ElMessage.error('规则 ID 无效，无法切换状态')
+    return
+  }
   try {
-    await toggleDispatchRuleEnabled(Number(row.id), isEnabled ? 1 : 0)
+    await toggleDispatchRuleEnabled(id, isEnabled ? 1 : 0)
     row.status = isEnabled ? 1 : 0
     ElMessage.success(`规则${isEnabled ? '启用' : '禁用'}成功`)
   } catch {
