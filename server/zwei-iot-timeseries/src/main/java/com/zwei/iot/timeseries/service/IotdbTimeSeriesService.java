@@ -963,6 +963,6 @@ public class IotdbTimeSeriesService {
     /** 将值格式化为 IoTDB INSERT SQL 字面量（TEXT 需加单引号）。 */
     static String formatValue(Object value) {
         if (value instanceof Number || value instanceof Boolean) return String.valueOf(value);
-        return "'" + value.toString().replace("'", "\\'") + "'";
+        return "'" + value.toString().replace("'", "''") + "'";
     }
 }
