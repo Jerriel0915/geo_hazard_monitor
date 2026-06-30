@@ -140,7 +140,7 @@
       <EChartsWrapper
         v-else-if="chartSeries.length > 0"
         :option="chartOptions"
-        :height="fillContainer ? '100%' : '500px'"
+        :height="fillContainer ? '100%' : '380px'"
         :loading="loading"
         :show-fullscreen="true"
       />
@@ -164,7 +164,7 @@
         <el-table-column prop="deviceName" label="设备" width="140" align="center" sortable />
         <el-table-column prop="sensorName" label="传感器" width="120" align="center" sortable />
         <el-table-column prop="attrName" label="指标" width="100" align="center" sortable />
-        <el-table-column prop="value" label="数值" width="140" align="center" sortable>
+        <el-table-column prop="value" label="监测数值(mm)" width="140" align="center" sortable>
           <template #default="{ row }">
             {{ row.value }}{{ row.unit ? ' ' + row.unit : '' }}
           </template>
@@ -368,7 +368,7 @@ watch([chartSeries, tableData], () => {
 
 .mde-chart-area,
 .mde-table-area {
-  min-height: 500px;
+  min-height: 380px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
@@ -387,7 +387,7 @@ watch([chartSeries, tableData], () => {
 }
 
 .mde-skeleton {
-  height: 500px;
+  height: 380px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -399,7 +399,7 @@ watch([chartSeries, tableData], () => {
 }
 
 .mde-empty {
-  height: 500px;
+  height: 380px;
   display: flex;
   align-items: center;
   justify-content: center;
