@@ -296,10 +296,14 @@ public class MonitorIngestConsumerService {
             }
             long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
             int nextRetry = retryCount + 1;
-            ack(record);
             retryScheduler.schedule(() -> {
-                record.getValue().put("retryCount", String.valueOf(nextRetry));
-                redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+                try {
+                    record.getValue().put("retryCount", String.valueOf(nextRetry));
+                    redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+                    ack(record);
+                } catch (Exception re) {
+                    log.error("重试入队失败，不 ACK 以保留 PEL 恢复机会: {}", record.getId(), re);
+                }
             }, delaySeconds, TimeUnit.SECONDS);
         }
     }
@@ -313,6 +317,10 @@ public class MonitorIngestConsumerService {
             parsed = JSON.parseObject(payload, ParsedMessage.class);
             List<StandardMeasurementPoint> points = adapt(parsed);
             if (points.isEmpty()) {
+                // 设备/传感器未注册 → 死信队列，供运维排查后重新注册设备再回放
+                streamService.enqueueDeadLetter(parsed.deviceCode(), payload,
+                        "device or sensor not registered: deviceCode=" + parsed.deviceCode()
+                                + " sensorCode=" + parsed.sensorCode());
                 ack(record);
                 return;
             }
@@ -370,10 +378,14 @@ public class MonitorIngestConsumerService {
             }
             long delaySeconds = properties.getRetryDelaysSeconds().get(retryCount);
             int nextRetry = retryCount + 1;
-            ack(record);
             retryScheduler.schedule(() -> {
-                record.getValue().put("retryCount", String.valueOf(nextRetry));
-                redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+                try {
+                    record.getValue().put("retryCount", String.valueOf(nextRetry));
+                    redisTemplate.opsForStream().add(MapRecord.create(properties.getStreamKey(), record.getValue()));
+                    ack(record);
+                } catch (Exception re) {
+                    log.error("重试入队失败，不 ACK 以保留 PEL 恢复机会: {}", record.getId(), re);
+                }
             }, delaySeconds, TimeUnit.SECONDS);
         }
     }
@@ -446,6 +458,10 @@ public class MonitorIngestConsumerService {
      */
     private List<StandardMeasurementPoint> adapt(ParsedMessage msg) {
         Long deviceId = resolveDeviceId(msg.deviceCode());
+        if (deviceId == null) {
+            log.warn("未知设备 deviceCode={}，无法落库，送入死信队列", msg.deviceCode());
+            return List.of();
+        }
         Long sensorId = resolveSensorId(deviceId, msg.sensorCode());
         return msg.properties().stream()
                 .filter(p -> p.value() != null)
@@ -469,12 +485,13 @@ public class MonitorIngestConsumerService {
 
     private Long resolveDeviceId(String deviceCode) {
         Device dev = deviceMapper.selectDeviceByCode(deviceCode);
-        return dev != null ? dev.getId() : -1L;
+        return dev != null ? dev.getId() : null;
     }
 
     private Long resolveSensorId(Long deviceId, String sensorCode) {
+        if (deviceId == null) return null;
         DeviceSensor sensor = deviceSensorService.selectSensorByDeviceIdAndCode(deviceId, sensorCode);
-        return sensor != null ? sensor.getId() : -1L;
+        return sensor != null ? sensor.getId() : null;
     }
 
     /**
