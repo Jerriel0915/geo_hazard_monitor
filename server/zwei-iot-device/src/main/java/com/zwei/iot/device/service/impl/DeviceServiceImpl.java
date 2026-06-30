@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -260,23 +261,25 @@ public class DeviceServiceImpl implements IDeviceService {
             throw new ServiceException("复制失败，设备编号已存在");
         }
 
+        validateSnUnique(request.getSn(), null);
+
         Device copy = Device.builder()
                 .code(request.getCode())
                 .name(request.getName())
-                .sn(null)
-                .deviceType(original.getDeviceType())
-                .networkType(original.getNetworkType())
-                .protocolType(original.getProtocolType())
+                .sn(request.getSn())
+                .deviceType(request.getDeviceType() != null ? request.getDeviceType() : original.getDeviceType())
+                .networkType(request.getNetworkType() != null ? request.getNetworkType() : original.getNetworkType())
+                .protocolType(request.getProtocolType() != null ? request.getProtocolType() : original.getProtocolType())
                 .registerSource(REGISTER_SOURCE_MANUAL)
-                .vendorName(original.getVendorName())
+                .vendorName(request.getVendorName() != null ? request.getVendorName() : original.getVendorName())
                 .authUsername(accountGenerator.generateUsername())
                 .authPassword(accountGenerator.generatePassword())
                 .authStatus(AUTH_STATUS_ENABLED)
-                .icon(original.getIcon())
-                .iconPath(original.getIconPath())
-                .longitude(original.getLongitude())
-                .latitude(original.getLatitude())
-                .status(original.getStatus())
+                .icon(request.getIcon() != null ? request.getIcon() : original.getIcon())
+                .iconPath(request.getIconPath() != null ? request.getIconPath() : original.getIconPath())
+                .longitude(request.getLongitude() != null ? BigDecimal.valueOf(request.getLongitude()) : original.getLongitude())
+                .latitude(request.getLatitude() != null ? BigDecimal.valueOf(request.getLatitude()) : original.getLatitude())
+                .status(request.getStatus() != null ? request.getStatus() : original.getStatus())
                 .registeredAt(nowString())
                 .createBy(original.getCreateBy())
                 .build();
@@ -315,11 +318,16 @@ public class DeviceServiceImpl implements IDeviceService {
 
         productTslService.regenerate(copy.getId());
 
-        // 复制隐患点绑定
-        HazardPointRef oldBinding = hazardRelationService.getHazardPointByDeviceId(id);
-        if (oldBinding != null) {
-            hazardRelationService.bindDevice(copy.getId(), oldBinding.id(),
-                    original.getLongitude(), original.getLatitude(), original.getCreateBy());
+        // 复制隐患点绑定：优先使用用户指定的隐患点，否则沿用源设备的绑定
+        if (request.getBoundHazardPointId() != null) {
+            hazardRelationService.bindDevice(copy.getId(), request.getBoundHazardPointId(),
+                    copy.getLongitude(), copy.getLatitude(), original.getCreateBy());
+        } else {
+            HazardPointRef oldBinding = hazardRelationService.getHazardPointByDeviceId(id);
+            if (oldBinding != null) {
+                hazardRelationService.bindDevice(copy.getId(), oldBinding.id(),
+                        copy.getLongitude(), copy.getLatitude(), original.getCreateBy());
+            }
         }
 
         return copy.getId();
