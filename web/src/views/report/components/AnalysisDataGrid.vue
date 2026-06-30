@@ -104,10 +104,8 @@ import {showRequestErrorMessage} from '@/utils/errorHandler'
 import echarts from '@/utils/echarts'
 import {
   type DeviceOption,
-  type DeviceTypeOption,
   getChartData,
   getDeviceOptions,
-  getDeviceTypeOptions,
   getHazardPointOptions,
   type GridChartItem,
   type HazardPointOption,
@@ -121,7 +119,6 @@ const emit = defineEmits<{
 
 // State
 const hazardPointOptions = ref<HazardPointOption[]>([])
-const deviceTypeOptions = ref<DeviceTypeOption[]>([])
 const gridCells = ref<GridChartItem[]>(Array.from({ length: 9 }, (_, i) => ({ index: i })))
 const gridTimeRange = ref<[string, string] | null>(null)
 const gridChartRefs = new Map<number, HTMLElement>()
@@ -140,18 +137,23 @@ const gridFilteredDevices = computed(() => {
 })
 
 const gridAvailableAttrs = computed(() => {
-  // 如果已选择设备，根据设备的 deviceType 过滤属性
-  if (gridConfigForm.deviceId) {
-    const device = gridDialogDevices.value.find((d) => d.id === gridConfigForm.deviceId)
-    if (device) {
-      const dt = deviceTypeOptions.value.find((dt) => dt.value === device.deviceType)
-      if (dt) return dt.attrs
+  // 根据选定设备的传感器数据提取唯一属性（与关联分析一致）
+  if (!gridConfigForm.deviceId || gridDialogSensors.value.length === 0) return []
+  const seen = new Set<string>()
+  const attrs: { code: string; name: string; unit: string }[] = []
+  for (const sensor of gridDialogSensors.value) {
+    for (const attr of sensor.attrList) {
+      if (!seen.has(attr.attrCode)) {
+        seen.add(attr.attrCode)
+        attrs.push({
+          code: attr.attrCode,
+          name: attr.attrName || attr.attrCode,
+          unit: attr.unit || ''
+        })
+      }
     }
   }
-  // 未选择设备时展示全部属性
-  const allAttrs: { code: string; name: string; unit: string }[] = []
-  deviceTypeOptions.value.forEach((dt) => allAttrs.push(...dt.attrs))
-  return allAttrs
+  return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '' }]
 })
 
 // 工具函数：将日期字符串转换为带时间的完整格式
@@ -182,9 +184,7 @@ const initDefaultTimeRange = () => {
 
 // Load options
 const loadOptions = async () => {
-  const [hps, dts] = await Promise.all([getHazardPointOptions(), getDeviceTypeOptions()])
-  hazardPointOptions.value = hps
-  deviceTypeOptions.value = dts
+  hazardPointOptions.value = await getHazardPointOptions()
 }
 
 // Grid handlers
@@ -226,8 +226,7 @@ const onGridConfigDeviceChange = async () => {
 
 const confirmGridConfig = async () => {
   const device = gridDialogDevices.value.find((d) => d.id === gridConfigForm.deviceId)
-  const dt = deviceTypeOptions.value.find((dt) => dt.attrs.some((a) => a.code === gridConfigForm.attrCode))
-  const attr = dt?.attrs.find((a) => a.code === gridConfigForm.attrCode)
+  const attr = gridAvailableAttrs.value.find((a) => a.code === gridConfigForm.attrCode)
   if (!device || !attr) return
 
   const sensor = gridDialogSensors.value.find((s) => s.id === gridConfigForm.sensorId)
