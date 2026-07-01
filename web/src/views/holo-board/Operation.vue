@@ -114,12 +114,12 @@
         <div class="panel-body">
           <div class="table-wrap">
             <div class="table-wrap__scroll">
-              <el-table :data="online6hSorted" border stripe size="small">
+              <el-table :data="online6hSorted" border stripe size="small" :default-sort="{prop: 'rate', order: 'descending'}">
                   <template #empty><EmptyState description="暂无 6 小时在线率数据" /></template>
                 <el-table-column prop="type" label="监测类型" min-width="140" />
-                <el-table-column prop="total" label="总量" width="80" align="center" />
-                <el-table-column prop="online" label="在线" width="80" align="center" />
-                <el-table-column prop="rate" label="在线率(%)" width="120" align="center">
+                <el-table-column prop="total" label="总量" width="80" align="center" sortable />
+                <el-table-column prop="online" label="在线" width="80" align="center" sortable />
+                <el-table-column prop="rate" label="在线率(%)" width="120" align="center" sortable>
                   <template #default="{ row }">
                     <span :class="['rate-badge', row.rate >= 90 ? 'high' : row.rate >= 70 ? 'medium' : 'low']">{{ row.rate }}%</span>
                   </template>
@@ -136,12 +136,12 @@
         <div class="panel-body">
           <div class="table-wrap">
             <div class="table-wrap__scroll">
-              <el-table :data="online12hSorted" border stripe size="small">
+              <el-table :data="online12hSorted" border stripe size="small" :default-sort="{prop: 'rate', order: 'descending'}">
                   <template #empty><EmptyState description="暂无 12 小时在线率数据" /></template>
                 <el-table-column prop="type" label="监测类型" min-width="140" />
-                <el-table-column prop="total" label="总量" width="80" align="center" />
-                <el-table-column prop="online" label="在线" width="80" align="center" />
-                <el-table-column prop="rate" label="在线率(%)" width="120" align="center">
+                <el-table-column prop="total" label="总量" width="80" align="center" sortable />
+                <el-table-column prop="online" label="在线" width="80" align="center" sortable />
+                <el-table-column prop="rate" label="在线率(%)" width="120" align="center" sortable>
                   <template #default="{ row }">
                     <span :class="['rate-badge', row.rate >= 90 ? 'high' : row.rate >= 70 ? 'medium' : 'low']">{{ row.rate }}%</span>
                   </template>
@@ -158,12 +158,12 @@
         <div class="panel-body">
           <div class="table-wrap">
             <div class="table-wrap__scroll">
-              <el-table :data="online24hSorted" border stripe size="small">
+              <el-table :data="online24hSorted" border stripe size="small" :default-sort="{prop: 'rate', order: 'descending'}">
                   <template #empty><EmptyState description="暂无 24 小时在线率数据" /></template>
                 <el-table-column prop="type" label="监测类型" min-width="140" />
-                <el-table-column prop="total" label="总量" width="80" align="center" />
-                <el-table-column prop="online" label="在线" width="80" align="center" />
-                <el-table-column prop="rate" label="在线率(%)" width="120" align="center">
+                <el-table-column prop="total" label="总量" width="80" align="center" sortable />
+                <el-table-column prop="online" label="在线" width="80" align="center" sortable />
+                <el-table-column prop="rate" label="在线率(%)" width="120" align="center" sortable>
                   <template #default="{ row }">
                     <span :class="['rate-badge', row.rate >= 90 ? 'high' : row.rate >= 70 ? 'medium' : 'low']">{{ row.rate }}%</span>
                   </template>
@@ -200,7 +200,7 @@ const sensorDist = ref<SensorDistributionVO | null>(null)
 const stats = computed(() => ({
   totalDevices: overview.value?.device?.total ?? 0,
   onlineRate: deviceOnline.value?.onlineRate ?? 0,
-  repairRate: deviceOnline.value ? Math.round((100 - deviceOnline.value.onlineRate) * 100) / 100 : 0,
+  repairRate: overview.value ? Math.round(((overview.value.device.byStatus['2'] ?? 0) / overview.value.device.total) * 10000) / 100 : 0,
   monitorTypes: overview.value?.monitorType?.total ?? 0,
   sensorOnlineRate: sensorOnline.value?.onlineRate ?? 0,
   hiddenDangerCount: overview.value?.hazardPoint?.total ?? 0
@@ -209,7 +209,7 @@ const stats = computed(() => ({
 const statCards = computed(() => {
   const onlineCount = deviceOnline.value?.online ?? 0
   const totalCount = deviceOnline.value?.total ?? 0
-  const repairCount = totalCount - onlineCount
+  const repairCount = overview.value?.device?.byStatus['2'] ?? 0
   const sensorOnlineCount = sensorOnline.value?.online ?? 0
 
   return [
@@ -254,7 +254,7 @@ const initBarChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: barChartData.map(item => item.name),
+      data: barChartData.value.map(item => item.name),
       axisLabel: {
         interval: 0,
         rotate: 30,
@@ -289,7 +289,7 @@ const initBarChart = () => {
       {
         name: '在线率',
         type: 'bar',
-        data: barChartData.map((item, index) => ({
+        data: barChartData.value.map((item, index) => ({
           value: item.value,
           itemStyle: {
             color: barColors[index % barColors.length]
@@ -419,7 +419,7 @@ const initPyramidChart = () => {
     },
     yAxis: {
       type: 'category',
-      data: pyramidData.map(item => item.name).reverse(),
+      data: pyramidData.value.map(item => item.name).reverse(),
       axisLabel: {
         color: '#334155',
         fontSize: 16
@@ -434,7 +434,7 @@ const initPyramidChart = () => {
       {
         name: '数量',
         type: 'bar',
-        data: pyramidData.map((item, index) => ({
+        data: pyramidData.value.map((item, index) => ({
           value: item.count,
           itemStyle: {
             color: pyramidColors[index]
@@ -494,52 +494,24 @@ onUnmounted(() => {
 })
 
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316']
-const circumference = 2 * Math.PI * 70
-
-const devicePieData = computed(() => {
-  const types = sensorDist.value?.list ?? []
-  if (types.length === 0) return []
-  const total = types.reduce((s, t) => s + t.sensorCount, 0)
-  let offset = 0
-  return types.map((item, i) => {
-    const percent = total > 0 ? item.sensorCount / total : 0
-    const dashArray = `${percent * circumference} ${circumference}`
-    const currentOffset = -offset
-    offset += percent * circumference
-    return {
-      name: item.monitorTypeName,
-      value: Math.round(percent * 10000) / 100,
-      color: PIE_COLORS[i % PIE_COLORS.length],
-      dashArray,
-      offset: currentOffset
-    }
-  })
-})
 
 const barColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
-const barChartData = [
-  {name: '表面水平位移', value: 98.5},
-  {name: '深部位移', value: 97.8},
-  {name: '倾角', value: 96.2},
-  {name: '加速度', value: 94.5},
-  {name: '降雨量', value: 99.1},
-  {name: '地下水水位', value: 95.3}
-]
+const barChartData = computed(() =>
+  (deviceOnline.value?.byType ?? []).map(t => ({
+    name: t.monitorTypeName,
+    value: t.onlineRate ?? 0
+  }))
+)
 
 const pyramidColors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ec4899', '#00d4ff', '#84cc16', '#f97316']
 
-const pyramidData = [
-  {name: '表面水平位移', count: 535, width: 100},
-  {name: '深部位移', count: 515, width: 95},
-  {name: '倾角', count: 479, width: 90},
-  {name: '加速度', count: 415, width: 85},
-  {name: '降雨量', count: 142, width: 70},
-  {name: '地下水水位', count: 66, width: 50},
-  {name: '表面沉降', count: 80, width: 55},
-  {name: '温度', count: 27, width: 30},
-  {name: '孔隙水压力', count: 3, width: 10}
-]
+const pyramidData = computed(() =>
+  (sensorDist.value?.list ?? []).map(t => ({
+    name: t.monitorTypeName,
+    count: t.sensorCount ?? 0
+  }))
+)
 
 // 汇总所有监测类型名称（6h + 12h + 24h 的并集）
 const allMonitorTypes = computed(() => {
@@ -550,17 +522,33 @@ const allMonitorTypes = computed(() => {
   return [...set]
 })
 
-function buildTimeWindowData(source: RateByTypeVO | null): { type: string; total: number; online: number; rate: number }[] {
-  const map = new Map<string, { total: number; online: number; rate: number }>()
-  ;(source?.byType ?? []).forEach(t => {
-    map.set(t.monitorTypeName, { total: t.total, online: t.online, rate: t.onlineRate })
+// 监测类型名称 → sortOrder 的查找表（取自三个时间窗口的并集）
+const monitorTypeSortOrder = computed(() => {
+  const map = new Map<string, number>()
+  ;[deviceActive6h.value, deviceActive12h.value, deviceActive24h.value].forEach(d => {
+    (d?.byType ?? []).forEach(t => map.set(t.monitorTypeName, t.sortOrder ?? 999))
   })
+  return map
+})
+
+function buildTimeWindowData(source: RateByTypeVO | null): { type: string; total: number; online: number; rate: number }[] {
+  const map = new Map<string, { total: number; online: number; rate: number; sortOrder: number }>()
+  ;(source?.byType ?? []).forEach(t => {
+    map.set(t.monitorTypeName, { total: t.total, online: t.online, rate: t.onlineRate, sortOrder: t.sortOrder ?? 999 })
+  })
+  const orderMap = monitorTypeSortOrder.value
   return allMonitorTypes.value
     .map(name => {
       const found = map.get(name)
-      return { type: name, total: found?.total ?? 0, online: found?.online ?? 0, rate: found?.rate ?? 0 }
+      return {
+        type: name,
+        total: found?.total ?? 0,
+        online: found?.online ?? 0,
+        rate: found?.rate ?? 0,
+        sortOrder: found?.sortOrder ?? orderMap.get(name) ?? 999
+      }
     })
-    .sort((a, b) => b.rate - a.rate)
+    .sort((a, b) => b.rate - a.rate || a.sortOrder - b.sortOrder)
 }
 
 const online6hSorted = computed(() => buildTimeWindowData(deviceActive6h.value))

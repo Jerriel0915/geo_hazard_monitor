@@ -212,11 +212,11 @@
     </select>
 
     <select id="countByMonitorType" resultType="java.util.Map">
-        SELECT ds.monitor_type_id AS monitorTypeId, mt.name AS monitorTypeName, COUNT(*) AS cnt
+        SELECT ds.monitor_type_id AS monitorTypeId, mt.name AS monitorTypeName, COALESCE(mt.sort_order, 999) AS sortOrder, COUNT(*) AS cnt
         FROM device_sensor ds
                  INNER JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
         WHERE ds.del_flag = 0
-        GROUP BY ds.monitor_type_id, mt.name
+        GROUP BY ds.monitor_type_id, mt.name, mt.sort_order
     </select>
 
     <update id="updateLastReportTime">

@@ -257,6 +257,7 @@ public class DashboardStatService {
             RateByTypeVO.TypeStat ts = new RateByTypeVO.TypeStat();
             ts.setMonitorTypeId(((Number) row.get("monitorTypeId")).longValue());
             ts.setMonitorTypeName((String) row.get("monitorTypeName"));
+            ts.setSortOrder(((Number) row.getOrDefault("sortOrder", 999)).intValue());
             int cnt = ((Number) row.get("cnt")).intValue();
             int typeOnline = (int) Math.round(cnt * ratio);
             ts.setTotal(cnt);
