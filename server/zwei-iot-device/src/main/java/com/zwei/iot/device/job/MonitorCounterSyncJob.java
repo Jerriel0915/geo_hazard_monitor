@@ -39,13 +39,21 @@ public class MonitorCounterSyncJob {
     public void loadFromDb() {
         try {
             var row = monitorStatMapper.selectByKey("total_monitor_count");
-            if (row == null || row.getStatValue() == null) {
+            if (row == null) {
                 // 表里还没有记录，用 Redis 当前值初始化
                 Long redisVal = readRedis();
                 if (redisVal > 0) {
                     monitorStatMapper.insert("total_monitor_count", redisVal);
                     log.info("monitor_stats 初始化: total_monitor_count = {}", redisVal);
                 }
+                return;
+            }
+
+            if (row.getStatValue() == null) {
+                // 行存在但值为 null，修复为 Redis 当前值
+                long redisVal = readRedis();
+                monitorStatMapper.updateValue("total_monitor_count", redisVal);
+                log.info("monitor_stats 修复 null 值: total_monitor_count = {}", redisVal);
                 return;
             }
 
