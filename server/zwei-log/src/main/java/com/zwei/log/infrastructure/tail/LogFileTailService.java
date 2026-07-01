@@ -28,7 +28,7 @@ public class LogFileTailService implements InitializingBean, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(LogFileTailService.class);
     private static final int POLL_INTERVAL_MS = 500;
-    private static final int INITIAL_REPLAY_LINES = 50;
+    private static final int INITIAL_REPLAY_LINES = 300;
     private static final int MAX_READ_SIZE = 2 * 1024 * 1024; // 2MB per poll
 
     private final LogModuleProperties properties;
