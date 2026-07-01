@@ -70,6 +70,9 @@ public interface AlarmRecordMapper {
     /** 按监测类型统计待处理告警数量（JOIN device_sensor → monitor_type） */
     List<Map<String, Object>> countPendingByMonitorType();
 
+    /** 告警总览统计：pendingCount / historyCount / totalCount / recentThreeMonthsCount */
+    Map<String, Object> countOverview();
+
     /**
      * 更新告警等级 (再次触发且等级变化时调用)。
      */

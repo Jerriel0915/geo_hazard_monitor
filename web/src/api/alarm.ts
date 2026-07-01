@@ -405,6 +405,17 @@ export interface AlarmTrendVO {
 export const getAlarmTrend = (months?: number) =>
     request.get<AlarmTrendVO>('/alarm/records/trend', { params: { months } })
 
+/** 告警总览统计 */
+export interface AlarmOverviewVO {
+    pendingCount: number
+    historyCount: number
+    totalCount: number
+    recentThreeMonthsCount: number
+}
+
+export const getAlarmOverview = () =>
+    request.get<AlarmOverviewVO>('/alarm/records/overview')
+
 /** 告警来源分布 (按监测类型统计待处理告警) */
 export interface AlarmSourceStatVO {
     monitorTypeId: number

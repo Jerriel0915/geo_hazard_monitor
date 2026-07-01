@@ -117,6 +117,13 @@ public class AlarmRecordController extends BaseController {
         return success(alarmRecordService.getMonthlyTrend(months));
     }
 
+    /** 告警总览统计（待处理/历史/总计/近三月） */
+    @GetMapping("/overview")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult overview() {
+        return success(alarmRecordService.getOverview());
+    }
+
     /** 告警来源分布 (按监测类型统计待处理告警数量) */
     @GetMapping("/source-stats")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")

@@ -150,7 +150,7 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from 'vue'
 import echarts from '@/utils/echarts'
-import {getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmTrend, getAlarmSourceStats, type AlarmTrendVO} from '@/api/alarm'
+import {getPendingAlarms, getAlarmOverview, getAlarmLevelStats, getAlarmTrend, getAlarmSourceStats, type AlarmTrendVO} from '@/api/alarm'
 import {getDashboardFull} from '@/api/monitor'
 
 const alarmStats = ref({
@@ -199,11 +199,11 @@ const sourceDistribution = ref<{ name: string; count: number; rate: number }[]>(
 
 const loadAlarmData = async () => {
   try {
-    const [pendingRes, levelStatsRes, trendRes, historyRes, sourceRes, fullRes] = await Promise.all([
+    const [pendingRes, overviewRes, levelStatsRes, trendRes, sourceRes, fullRes] = await Promise.all([
       getPendingAlarms({ pageNum: 1, pageSize: 100 }),
+      getAlarmOverview(),
       getAlarmLevelStats(),
       getAlarmTrend(12),
-      getHistoryAlarms({ pageNum: 1, pageSize: 1 }),
       getAlarmSourceStats(),
       getDashboardFull(60)
     ])
@@ -223,8 +223,10 @@ const loadAlarmData = async () => {
       level: levelMap[item.alarmLevel]?.key ?? 'level4'
     }))
 
-    // 累计告警次数 = 历史告警 total
-    alarmStats.value.totalAlarms = (historyRes as any)?.total ?? 0
+    // 告警次数统计 — 来自 /alarm/records/overview（单次查询，精准计数）
+    const ovData = (overviewRes as any)?.data ?? overviewRes ?? {}
+    alarmStats.value.totalAlarms = ovData.totalCount ?? 0
+    alarmStats.value.recentThreeMonthsAlarms = ovData.recentThreeMonthsCount ?? 0
 
     // 等级统计
     const lsData = (levelStatsRes as any)?.data ?? levelStatsRes ?? {}
@@ -238,8 +240,6 @@ const loadAlarmData = async () => {
     const td = (trendRes as any)?.data ?? trendRes
     if (td && td.months?.length > 0) {
       alarmTrendData.value = td as AlarmTrendVO
-      // 近三月告警次数 = 趋势数据最近 3 个月合计
-      alarmStats.value.recentThreeMonthsAlarms = td.total.slice(-3).reduce((s: number, v: number) => s + v, 0)
       initTrendChart()
     }
     // 概览数据（设备总数、隐患点总数等）
@@ -544,14 +544,14 @@ const initSourceChart = () => {
       },
       formatter: (params: any) => {
         const data = params[0]
-        return `${data.name}<br/>数量: ${data.value}次 (${data.percent}%)`
+        return `${data.name}<br/>告警次数: ${data.value}次 (${data.data.percent}%)`
       }
     },
     grid: {
-      left: '8%',
+      left: '3%',
       right: '4%',
-      bottom: '5%',
-      top: '5%',
+      bottom: '15%',
+      top: '15%',
       containLabel: true
     },
     xAxis: {
@@ -559,7 +559,8 @@ const initSourceChart = () => {
       data: sourceDistribution.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 12
+        fontSize: 12,
+        rotate: 20
       },
       axisLine: {
         lineStyle: {
@@ -570,6 +571,7 @@ const initSourceChart = () => {
     yAxis: {
       type: 'value',
       name: '告警次数',
+      minInterval: 1,
       nameTextStyle: {
         color: '#6b7280',
         fontSize: 12
@@ -596,10 +598,11 @@ const initSourceChart = () => {
       label: {
         show: true,
         position: 'top',
-        formatter: '{c}次 ({d}%)',
+        formatter: (p: any) => `${p.value}次 (${p.data.percent}%)`,
         color: '#1e293b',
         fontSize: 12,
-        fontWeight: 600
+        fontWeight: 600,
+        overflow: 'truncate'
       }
     }]
   }
@@ -624,10 +627,10 @@ const initHazardChart = () => {
       }
     },
     grid: {
-      left: '8%',
+      left: '3%',
       right: '4%',
-      bottom: '5%',
-      top: '5%',
+      bottom: '15%',
+      top: '15%',
       containLabel: true
     },
     xAxis: {
@@ -635,7 +638,8 @@ const initHazardChart = () => {
       data: hazardData.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 12
+        fontSize: 12,
+        rotate: 20
       },
       axisLine: {
         lineStyle: {
@@ -646,7 +650,8 @@ const initHazardChart = () => {
     yAxis: {
       type: 'value',
       name: '告警次数',
-      max: Math.max(...hazardData.value.map(d => d.count)) * 1.4,
+      minInterval: 1,
+      max: hazardData.value.length > 0 ? Math.ceil(Math.max(...hazardData.value.map(d => d.count)) * 1.1) : 5,
       nameTextStyle: {
         color: '#6b7280',
         fontSize: 12

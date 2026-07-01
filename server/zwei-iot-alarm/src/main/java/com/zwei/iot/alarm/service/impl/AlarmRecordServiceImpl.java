@@ -408,6 +408,11 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
     }
 
     @Override
+    public Map<String, Object> getOverview() {
+        return alarmRecordMapper.countOverview();
+    }
+
+    @Override
     public List<Map<String, Object>> getSourceStats() {
         List<Map<String, Object>> rows = alarmRecordMapper.countPendingByMonitorType();
         int total = rows.stream().mapToInt(r -> ((Number) r.get("count")).intValue()).sum();

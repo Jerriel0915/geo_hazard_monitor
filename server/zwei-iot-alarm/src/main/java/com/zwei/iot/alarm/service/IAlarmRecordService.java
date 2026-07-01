@@ -59,4 +59,7 @@ public interface IAlarmRecordService {
 
     /** 按监测类型统计待处理告警数量（含百分比） */
     List<Map<String, Object>> getSourceStats();
+
+    /** 告警总览统计（待处理/历史/总计/近三月），单次查询 */
+    Map<String, Object> getOverview();
 }

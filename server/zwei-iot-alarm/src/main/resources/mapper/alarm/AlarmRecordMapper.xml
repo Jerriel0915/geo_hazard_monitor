@@ -275,6 +275,18 @@
         ORDER BY month
     </select>
 
+    <select id="countOverview" resultType="java.util.Map">
+        SELECT (SELECT COUNT(*) FROM alarm_record_trigger_detail td
+                INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
+                WHERE ar.status IN (1, 2))                                          AS pendingCount,
+               (SELECT COUNT(*) FROM alarm_record_trigger_detail td
+                INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
+                WHERE ar.status IN (3, 4))                                          AS historyCount,
+               (SELECT COUNT(*) FROM alarm_record_trigger_detail)                   AS totalCount,
+               (SELECT COUNT(*) FROM alarm_record_trigger_detail
+                WHERE trigger_time &gt;= DATE_SUB(NOW(), INTERVAL 3 MONTH))         AS recentThreeMonthsCount
+    </select>
+
     <!-- ==================== Report 跨模块查询 ==================== -->
 
     <select id="countPendingByMonitorType" resultType="java.util.Map">
