@@ -150,7 +150,7 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from 'vue'
 import echarts from '@/utils/echarts'
-import {getPendingAlarms, getAlarmOverview, getAlarmLevelStats, getAlarmTrend, getAlarmSourceStats, type AlarmTrendVO} from '@/api/alarm'
+import {getPendingAlarms, getAlarmOverview, getAlarmLevelStats, getAlarmTrend, getAlarmSourceStats, getHighRiskHazardPoints, type AlarmTrendVO} from '@/api/alarm'
 import {getDashboardFull} from '@/api/monitor'
 
 const alarmStats = ref({
@@ -199,12 +199,13 @@ const sourceDistribution = ref<{ name: string; count: number; rate: number }[]>(
 
 const loadAlarmData = async () => {
   try {
-    const [pendingRes, overviewRes, levelStatsRes, trendRes, sourceRes, fullRes] = await Promise.all([
+    const [pendingRes, overviewRes, levelStatsRes, trendRes, sourceRes, hazardRes, fullRes] = await Promise.all([
       getPendingAlarms({ pageNum: 1, pageSize: 100 }),
       getAlarmOverview(),
       getAlarmLevelStats(),
       getAlarmTrend(12),
       getAlarmSourceStats(),
+      getHighRiskHazardPoints(10),
       getDashboardFull(60)
     ])
     // 待处理告警
@@ -259,16 +260,17 @@ const loadAlarmData = async () => {
       }))
     }
 
-    // 高风险隐患点 — 从待处理告警按隐患点名称聚合
-    const hazardMap = new Map<string, number>()
-    pendingRows.forEach((item: any) => {
-      const name = item.hazardPointName
-      if (name) hazardMap.set(name, (hazardMap.get(name) || 0) + 1)
-    })
-    hazardData.value = [...hazardMap.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, count]) => ({ name, count, level: 'level2' }))
+    // 高风险隐患点 — 从后端 alarm_record_trigger_detail 统计触发次数
+    if (hazardRes) {
+      const hdData: any = hazardRes
+      hazardData.value = (Array.isArray(hdData) ? hdData : (hdData?.data || hdData?.rows || []))
+        .slice(0, 10)
+        .map((item: any) => ({
+          name: item.hazardPointName,
+          count: item.count || 0,
+          level: 'level2'
+        }))
+    }
 
     // 图表初始化（首次加载）
     initLevelChart()

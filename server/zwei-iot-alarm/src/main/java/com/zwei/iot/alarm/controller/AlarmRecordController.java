@@ -124,10 +124,17 @@ public class AlarmRecordController extends BaseController {
         return success(alarmRecordService.getOverview());
     }
 
-    /** 告警来源分布 (按监测类型统计待处理告警数量) */
+    /** 告警来源分布 (按监测类型统计待处理告警触发次数) */
     @GetMapping("/source-stats")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
     public AjaxResult sourceStats() {
         return success(alarmRecordService.getSourceStats());
+    }
+
+    /** 高风险隐患点 Top N (按待处理告警触发次数降序) */
+    @GetMapping("/high-risk-hazard-points")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult highRiskHazardPoints(@RequestParam(defaultValue = "10") int limit) {
+        return success(alarmRecordService.getHighRiskHazardPoints(limit));
     }
 }

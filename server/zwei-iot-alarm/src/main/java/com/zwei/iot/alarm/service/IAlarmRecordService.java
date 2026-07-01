@@ -62,4 +62,7 @@ public interface IAlarmRecordService {
 
     /** 告警总览统计（待处理/历史/总计/近三月），单次查询 */
     Map<String, Object> getOverview();
+
+    /** 高风险隐患点 Top N (按待处理告警触发次数降序) */
+    List<Map<String, Object>> getHighRiskHazardPoints(int limit);
 }

@@ -428,6 +428,15 @@ export interface AlarmSourceStatVO {
 export const getAlarmSourceStats = () =>
     request.get<AlarmSourceStatVO[]>('/alarm/records/source-stats')
 
+/** 高风险隐患点 Top N */
+export interface HighRiskHazardPointVO {
+    hazardPointName: string
+    count: number
+}
+
+export const getHighRiskHazardPoints = (limit?: number) =>
+    request.get<HighRiskHazardPointVO[]>('/alarm/records/high-risk-hazard-points', { params: { limit } })
+
 // ==================== 告警判据 API ====================
 
 /** 判据列表 */

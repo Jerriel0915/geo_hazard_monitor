@@ -423,4 +423,9 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
         }
         return rows;
     }
+
+    @Override
+    public List<Map<String, Object>> getHighRiskHazardPoints(int limit) {
+        return alarmRecordMapper.countTriggerByHazardPoint(limit);
+    }
 }
