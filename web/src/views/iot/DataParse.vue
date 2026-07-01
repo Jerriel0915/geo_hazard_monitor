@@ -11,14 +11,6 @@
       </div>
     </div>
 
-    <el-alert
-      title="此功能正在开发中，当前为演示数据"
-      type="warning"
-      show-icon
-      :closable="false"
-      style="margin-bottom: 16px;"
-    />
-
     <div class="search">
       <el-input
           v-model="searchKeyword"
@@ -37,9 +29,9 @@
 
     <div class="main-card">
       <div class="cards-container" v-loading="loading">
-        <el-empty v-if="filteredList.length === 0" description="暂无解析策略" />
+        <el-empty v-if="tableData.length === 0" description="暂无解析策略" />
         <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in filteredList" :key="item.id">
+          <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="item in tableData" :key="item.id">
             <div class="parse-card">
               <div class="card-header">
                 <div class="card-title">
@@ -76,8 +68,10 @@
 
               <div class="card-body">
                 <div class="info-row">
-                  <span class="info-label">服务地址:</span>
-                  <span class="info-value">{{ item.serverUrl || '-' }}</span>
+                  <span class="info-label">协议:</span>
+                  <span class="info-value">
+                    <el-tag size="small" type="warning">{{ item.sourceType || '-' }}</el-tag>
+                  </span>
                 </div>
                 <div class="info-row">
                   <span class="info-label">主题:</span>
@@ -93,7 +87,7 @@
                 </div>
                 <div class="info-row">
                   <span class="info-label">最近运行:</span>
-                  <span class="info-value">{{ item.lastRunTime || '-' }}</span>
+                  <span class="info-value">{{ formatTime(item.lastRunTime) }}</span>
                 </div>
               </div>
 
@@ -127,7 +121,7 @@
     <!-- 日志弹窗 -->
     <el-dialog
         v-model="logDialogVisible"
-        title="运行日志"
+        :title="`运行日志 — ${currentLogStrategy?.name || ''}`"
         width="90%"
         :close-on-click-modal="false"
         destroy-on-close
@@ -143,7 +137,7 @@
             :disabled-date="disabledDate"
             value-format="YYYY-MM-DD HH:mm:ss"
         />
-        <el-select v-model="logLevel" placeholder="日志级别" clearable>
+        <el-select v-model="logLevel" placeholder="日志级别" clearable style="width: 120px;">
           <el-option label="全部" value="" />
           <el-option label="INFO" value="INFO" />
           <el-option label="WARN" value="WARN" />
@@ -154,17 +148,19 @@
       </div>
 
       <div class="log-table-container">
-        <el-table :data="logList" border stripe height="400">
-          <el-table-column prop="timestamp" label="时间" width="180" />
-          <el-table-column prop="level" label="级别" width="100">
+        <el-table :data="logList" border stripe height="400" v-loading="logLoading">
+          <el-table-column prop="createTime" label="时间" width="180" />
+          <el-table-column prop="logLevel" label="级别" width="100">
             <template #default="{ row }">
-              <el-tag :type="getLogLevelType(row.level)" size="small">{{ row.level }}</el-tag>
+              <el-tag :type="getLogLevelType(row.logLevel)" size="small">{{ row.logLevel }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="message" label="日志内容" min-width="300" />
-          <el-table-column prop="data" label="数据" min-width="200">
+          <el-table-column prop="message" label="日志内容" min-width="300" show-overflow-tooltip />
+          <el-table-column prop="executionTime" label="耗时(ms)" width="100" />
+          <el-table-column prop="data" label="数据" min-width="120">
             <template #default="{ row }">
-              <el-button type="primary" link size="small" @click="showLogData(row)">查看</el-button>
+              <el-button type="primary" link size="small" @click="showLogData(row)" v-if="row.data">查看</el-button>
+              <span v-else>-</span>
             </template>
           </el-table-column>
         </el-table>
@@ -189,44 +185,11 @@
     </el-dialog>
 
     <!-- 测试弹窗 -->
-    <el-dialog
-        v-model="testDialogVisible"
-        title="脚本测试"
-        width="800px"
-        :close-on-click-modal="false"
-        destroy-on-close
-    >
-      <el-form label-width="100px">
-        <el-form-item label="测试数据">
-          <el-input
-              v-model="testData"
-              type="textarea"
-              :rows="8"
-              placeholder='请输入测试数据，JSON格式：
-{
-  "topic": "$dp",
-  "payload": {
-    "deviceId": "dev001",
-    "data": "..."
-  }
-}'
-          />
-        </el-form-item>
-        <el-form-item label="测试结果">
-          <el-input
-              v-model="testResult"
-              type="textarea"
-              :rows="8"
-              readonly
-              placeholder="测试结果将显示在这里"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="testDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="handleRunTest" :loading="testRunning">运行测试</el-button>
-      </template>
-    </el-dialog>
+    <ScriptTestDialog
+        v-model:visible="testDialogVisible"
+        :script-code="testStrategyScript"
+        :default-topic="testDefaultTopic"
+    />
 
     <!-- 查看详情组件 -->
     <DataParseDetail
@@ -240,36 +203,43 @@
         v-model:visible="formDialogVisible"
         :data="currentFormData"
         :mode="formMode"
-        @submit="handleFormSubmit"
+        @saved="handleFormSaved"
         @test="handleTestFromForm"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { MoreFilled } from '@element-plus/icons-vue'
-import DataParseDetail from './components/DataPasrseDetail.vue'
+import DataParseDetail from './components/DataParseDetail.vue'
 import DataParseForm from './components/DataParseForm.vue'
+import ScriptTestDialog from './components/ScriptTestDialog.vue'
+import {
+  getStrategyPage, getStrategyDetail, createStrategy, updateStrategy,
+  deleteStrategy, toggleStrategyStatus, copyStrategy,
+  getStrategyLogs, clearStrategyLogs,
+  type DataParseStrategy, type DataParseLog
+} from '@/api/dataParse'
 
 // ============ 弹窗状态 ============
 const detailDialogVisible = ref(false)
-const currentDetailData = ref<any>(null)
+const currentDetailData = ref<DataParseStrategy | null>(null)
 const formDialogVisible = ref(false)
 const formMode = ref<'add' | 'edit' | 'view'>('add')
-const currentFormData = ref<any>(null)
+const currentFormData = ref<DataParseStrategy | null>(null)
 
 // ============ 列表状态 ============
 const loading = ref(false)
 const refreshing = ref(false)
-const testRunning = ref(false)
 
 const searchKeyword = ref('')
-const searchStatus = ref<number | null>(null)
+const searchStatus = ref<number | ''>('')
 const currentPage = ref(1)
 const pageSize = ref(12)
 const total = ref(0)
+const tableData = ref<DataParseStrategy[]>([])
 
 // ============ 日志弹窗状态 ============
 const logDialogVisible = ref(false)
@@ -278,118 +248,17 @@ const logLevel = ref('')
 const logCurrentPage = ref(1)
 const logPageSize = ref(20)
 const logTotal = ref(0)
-const currentLogStrategy = ref<any>(null)
+const logList = ref<DataParseLog[]>([])
+const logLoading = ref(false)
+const currentLogStrategy = ref<DataParseStrategy | null>(null)
 
 // ============ 测试弹窗状态 ============
 const testDialogVisible = ref(false)
-const testData = ref('')
-const testResult = ref('')
-
-// ============ Mock 数据 ============
-const vendorList = ref([
-  { id: 1, name: '北京国信华源科技有限公司' },
-  { id: 2, name: '深圳北斗智联科技有限公司' },
-  { id: 3, name: '上海物联网科技有限公司' }
-])
-
-const deviceList = ref([
-  { id: 1, name: 'GNSS监测站-001' },
-  { id: 2, name: '雨量计-001' },
-  { id: 3, name: '裂缝监测-001' }
-])
-
-const tableData = ref([
-  {
-    id: 1,
-    name: '国标协议解析',
-    serverUrl: 'tcp://mqtt.server:1883',
-    topic: '$dp',
-    description: '国标协议数据解析策略，支持多厂商设备',
-    status: 1,
-    appScope: 'global',
-    vendorIds: [],
-    deviceIds: [],
-    lastRunTime: '2026-06-08 14:30:25',
-    scriptCode: `// 国标协议解析脚本
-function parse(message) {
-  const result = {};
-  result.timestamp = Date.now();
-  result.sourceTopic = message.topic;
-  result.payload = message.payload;
-
-  if (message.topic === '$dp') {
-    result.type = 'dataPoint';
-    result.deviceId = message.payload.deviceId;
-    result.data = parseDataPoint(message.payload);
-  }
-
-  return result;
-}
-
-function parseDataPoint(payload) {
-  const data = {};
-  data.timestamp = payload.timestamp;
-  data.values = payload.values || {};
-  return data;
-}`
-  },
-  {
-    id: 2,
-    name: '北斗智联协议解析',
-    serverUrl: 'tcp://mqtt.server:1883',
-    topic: '/beidou/+/data',
-    description: '北斗智联设备数据解析',
-    status: 1,
-    appScope: 'vendor',
-    vendorIds: [2],
-    deviceIds: [],
-    lastRunTime: '2026-06-08 14:25:10',
-    scriptCode: '// 北斗智联协议解析\nfunction parse(message) {\n  return { deviceId: message.deviceId, data: message.data };\n}'
-  },
-  {
-    id: 3,
-    name: '雨量计专用解析',
-    serverUrl: 'tcp://mqtt.server:1883',
-    topic: '/rainfall/+/data',
-    description: '雨量计设备专用解析策略',
-    status: 0,
-    appScope: 'device',
-    vendorIds: [],
-    deviceIds: [2],
-    lastRunTime: '2026-06-08 12:15:30',
-    scriptCode: '// 雨量计解析\nfunction parse(message) {\n  return { deviceId: message.deviceId, rainfall: message.value };\n}'
-  }
-])
-
-const logList = ref([
-  { timestamp: '2026-06-08 14:30:25', level: 'INFO', message: '接收到MQTT消息，主题: $dp', data: '{"topic":"$dp","payload":"..."}' },
-  { timestamp: '2026-06-08 14:30:26', level: 'INFO', message: '解析成功，设备ID: dev001', data: '{"deviceId":"dev001","data":"..."}' },
-  { timestamp: '2026-06-08 14:30:27', level: 'INFO', message: '数据已存储', data: '{}' },
-  { timestamp: '2026-06-08 14:25:10', level: 'WARN', message: '数据格式异常，使用默认值', data: '{"error":"format error"}' },
-  { timestamp: '2026-06-08 12:15:30', level: 'ERROR', message: '解析脚本执行失败', data: '{"error":"script error"}' }
-])
-
-// ============ 计算属性 ============
-const filteredList = computed(() => {
-  let list = [...tableData.value]
-
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    list = list.filter(item =>
-        item.name.toLowerCase().includes(keyword) ||
-        item.topic.toLowerCase().includes(keyword)
-    )
-  }
-
-  if (searchStatus.value !== null) {
-    list = list.filter(item => item.status === searchStatus.value)
-  }
-
-  return list
-})
+const testStrategyScript = ref('')
+const testDefaultTopic = ref('')
 
 // ============ 工具函数 ============
-const getAppScopeText = (item: any) => {
+const getAppScopeText = (item: DataParseStrategy) => {
   const scopeMap: Record<string, string> = {
     global: '全局',
     vendor: `指定厂商 (${item.vendorIds?.length || 0}个)`,
@@ -407,31 +276,33 @@ const getLogLevelType = (level: string) => {
   return typeMap[level] || 'info'
 }
 
-const disabledDate = (time: Date) => {
-  return time.getTime() > Date.now()
+const formatTime = (t?: string) => {
+  if (!t) return '-'
+  // 后端 datetime 字符串已是 'YYYY-MM-DD HH:mm:ss'
+  return t.replace('T', ' ').substring(0, 19)
 }
 
-// ============ 定时器追踪 ============
-const timers: ReturnType<typeof setTimeout>[] = []
+const disabledDate = (time: Date) => time.getTime() > Date.now()
 
-function setTimeoutTracked(fn: () => void, delay: number): ReturnType<typeof setTimeout> {
-  const id = setTimeout(fn, delay)
-  timers.push(id)
-  return id
-}
-
-function clearAllTimers() {
-  timers.forEach(id => clearTimeout(id))
-  timers.length = 0
-}
-
-// ============ 列表操作方法 ============
-const loadData = () => {
+// ============ 列表加载 ============
+const loadData = async () => {
   loading.value = true
-  setTimeoutTracked(() => {
-    total.value = filteredList.value.length
+  try {
+    const result = await getStrategyPage({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchKeyword.value || undefined,
+      status: searchStatus.value === '' ? undefined : searchStatus.value
+    })
+    tableData.value = result.rows
+    total.value = result.total
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载策略列表失败')
+    tableData.value = []
+    total.value = 0
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const handleSearch = () => {
@@ -441,26 +312,19 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchKeyword.value = ''
-  searchStatus.value = null
+  searchStatus.value = ''
   currentPage.value = 1
   loadData()
 }
 
-const handleRefresh = () => {
+const handleRefresh = async () => {
   refreshing.value = true
-  setTimeoutTracked(() => {
-    loadData()
-    refreshing.value = false
-  }, 500)
+  await loadData()
+  refreshing.value = false
 }
 
-const handleSizeChange = () => {
-  loadData()
-}
-
-const handlePageChange = () => {
-  loadData()
-}
+const handleSizeChange = () => loadData()
+const handlePageChange = () => loadData()
 
 // ============ CRUD 操作 ============
 const handleAdd = () => {
@@ -469,203 +333,197 @@ const handleAdd = () => {
   formDialogVisible.value = true
 }
 
-const handleView = (row: any) => {
-  currentDetailData.value = row
+const handleView = async (row: DataParseStrategy) => {
+  try {
+    // 详情接口回填 vendorIds/deviceIds
+    const detail = await getStrategyDetail(row.id)
+    currentDetailData.value = detail
+  } catch {
+    currentDetailData.value = row
+  }
   detailDialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = async (row: DataParseStrategy) => {
+  try {
+    const detail = await getStrategyDetail(row.id)
+    currentFormData.value = detail
+  } catch {
+    currentFormData.value = row
+  }
   formMode.value = 'edit'
-  currentFormData.value = row
   formDialogVisible.value = true
 }
 
-const handleFormSubmit = (data: any) => {
-  if (formMode.value === 'add') {
-    tableData.value.unshift({
-      ...data,
-      id: Date.now(),
-      lastRunTime: ''
-    })
-  } else if (formMode.value === 'edit') {
-    const index = tableData.value.findIndex(item => item.id === data.id)
-    if (index !== -1) {
-      tableData.value[index] = { ...data, lastRunTime: tableData.value[index].lastRunTime }
-    }
-  }
-  ElMessage.success(formMode.value === 'add' ? '新增成功' : '编辑成功')
+const handleFormSaved = () => {
+  formDialogVisible.value = false
+  loadData()
 }
 
-const handleDuplicate = (row: any) => {
+const handleDuplicate = (row: DataParseStrategy) => {
   ElMessageBox.confirm('确定要复制此解析策略吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
-  }).then(() => {
-    const newItem = { ...row, id: Date.now(), name: row.name + ' (副本)', lastRunTime: '' }
-    tableData.value.push(newItem)
-    ElMessage.success('复制成功')
+  }).then(async () => {
+    try {
+      await copyStrategy(row.id)
+      ElMessage.success('复制成功')
+      loadData()
+    } catch (e: any) {
+      ElMessage.error(e.message || '复制失败')
+    }
   }).catch(() => {})
 }
 
-const handleToggle = (row: any) => {
+const handleToggle = (row: DataParseStrategy) => {
   const newStatus = row.status === 1 ? 0 : 1
   const action = newStatus === 1 ? '启用' : '停用'
   ElMessageBox.confirm(`确定要${action}此解析策略吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    row.status = newStatus
-    ElMessage.success(`${action}成功`)
+  }).then(async () => {
+    try {
+      await toggleStrategyStatus(row.id, newStatus)
+      ElMessage.success(`${action}成功`)
+      loadData()
+    } catch (e: any) {
+      ElMessage.error(e.message || `${action}失败`)
+    }
   }).catch(() => {})
 }
 
-const handleDelete = (row: any) => {
+const handleDelete = (row: DataParseStrategy) => {
   ElMessageBox.confirm('确定要删除此解析策略吗？删除后不可恢复！', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const index = tableData.value.findIndex(item => item.id === row.id)
-    if (index !== -1) {
-      tableData.value.splice(index, 1)
+  }).then(async () => {
+    try {
+      await deleteStrategy(row.id)
+      ElMessage.success('删除成功')
+      loadData()
+    } catch (e: any) {
+      ElMessage.error(e.message || '删除失败')
     }
-    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
-const handleCardCommand = (cmd: string, row: any) => {
+const handleCardCommand = (cmd: string, row: DataParseStrategy) => {
   switch (cmd) {
-    case 'view':
-      handleView(row)
-      break
-    case 'edit':
-      handleEdit(row)
-      break
-    case 'log':
-      handleLog(row)
-      break
-    case 'duplicate':
-      handleDuplicate(row)
-      break
-    case 'toggle':
-      handleToggle(row)
-      break
-    case 'delete':
-      handleDelete(row)
-      break
+    case 'view': handleView(row); break
+    case 'edit': handleEdit(row); break
+    case 'log': handleLog(row); break
+    case 'duplicate': handleDuplicate(row); break
+    case 'toggle': handleToggle(row); break
+    case 'delete': handleDelete(row); break
   }
 }
 
 // ============ 日志相关 ============
-const handleLog = (row: any) => {
+const handleLog = (row: DataParseStrategy) => {
   currentLogStrategy.value = row
   logDialogVisible.value = true
+  logDateRange.value = []
+  logLevel.value = ''
+  logCurrentPage.value = 1
+  loadLogs()
+}
+
+const loadLogs = async () => {
+  if (!currentLogStrategy.value) return
+  logLoading.value = true
+  try {
+    const [startTime, endTime] = logDateRange.value.length === 2 ? logDateRange.value : ['', '']
+    const result = await getStrategyLogs(currentLogStrategy.value.id, {
+      pageNum: logCurrentPage.value,
+      pageSize: logPageSize.value,
+      logLevel: logLevel.value || undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
+    })
+    logList.value = result.rows
+    logTotal.value = result.total
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载日志失败')
+    logList.value = []
+    logTotal.value = 0
+  } finally {
+    logLoading.value = false
+  }
 }
 
 const handleLogSearch = () => {
-  ElMessage.info('查询日志')
+  logCurrentPage.value = 1
+  loadLogs()
 }
 
 const handleLogExport = () => {
-  ElMessage.info('导出日志')
+  // 导出当前日志为 JSON 文件
+  if (!logList.value.length) {
+    ElMessage.warning('暂无日志可导出')
+    return
+  }
+  const blob = new Blob([JSON.stringify(logList.value, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `parse-logs-${currentLogStrategy.value?.id || 'unknown'}-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('导出成功')
 }
 
 const handleLogClear = () => {
-  ElMessageBox.confirm('确定要清空运行日志吗？', '警告', {
+  if (!currentLogStrategy.value) return
+  ElMessageBox.confirm('确定要清空此策略的运行日志吗？', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    logList.value = []
-    ElMessage.success('日志已清空')
+  }).then(async () => {
+    try {
+      await clearStrategyLogs(currentLogStrategy.value!.id)
+      ElMessage.success('日志已清空')
+      loadLogs()
+    } catch (e: any) {
+      ElMessage.error(e.message || '清空日志失败')
+    }
   }).catch(() => {})
 }
 
-const showLogData = (row: any) => {
+const showLogData = (row: DataParseLog) => {
   ElMessageBox.alert(row.data || '-', '日志数据', {
-    confirmButtonText: '关闭'
+    confirmButtonText: '关闭',
+    customClass: 'log-data-dialog'
   })
 }
 
-const handleLogSizeChange = () => {}
-const handleLogPageChange = () => {}
+const handleLogSizeChange = () => loadLogs()
+const handleLogPageChange = () => loadLogs()
 
 // ============ 测试相关 ============
-const handleTest = (row?: any) => {
+const handleTest = (row?: DataParseStrategy) => {
   if (row) {
-    testData.value = JSON.stringify({
-      topic: row.topic || '$dp',
-      payload: {
-        deviceId: 'test001',
-        timestamp: Date.now(),
-        data: {
-          temperature: 25.5,
-          humidity: 60
-        }
-      }
-    }, null, 2)
+    testDefaultTopic.value = row.topic || 'sys/v1/DEV001/S001/updata'
+    testStrategyScript.value = row.scriptCode || ''
+  } else {
+    testStrategyScript.value = ''
+    testDefaultTopic.value = ''
   }
-  testResult.value = ''
   testDialogVisible.value = true
 }
 
-const handleTestFromDetail = (data: any) => {
-  handleTest(data)
-}
-
-const handleTestFromForm = (data: any) => {
-  handleTest(data)
-}
-
-const handleRunTest = () => {
-  if (!testData.value) {
-    ElMessage.warning('请输入测试数据')
-    return
-  }
-
-  testRunning.value = true
-  setTimeoutTracked(() => {
-    try {
-      const data = JSON.parse(testData.value)
-      testResult.value = JSON.stringify({
-        success: true,
-        timestamp: new Date().toISOString(),
-        input: data,
-        output: {
-          deviceId: data.payload?.deviceId || 'unknown',
-          parsedData: data.payload?.data || {},
-          status: 'parsed'
-        }
-      }, null, 2)
-      ElMessage.success('测试运行成功')
-    } catch (e) {
-      testResult.value = JSON.stringify({
-        success: false,
-        error: '测试数据格式错误，请输入有效的JSON'
-      }, null, 2)
-      ElMessage.error('测试失败')
-    }
-    testRunning.value = false
-  }, 1000)
-}
+const handleTestFromDetail = (data: DataParseStrategy) => handleTest(data)
+const handleTestFromForm = (data: DataParseStrategy) => handleTest(data)
 
 // ============ 生命周期 ============
 onMounted(() => {
   loadData()
 })
-
-onUnmounted(() => {
-  clearAllTimers()
-})
 </script>
 
 <style scoped>
-.status-select {
-  width: 150px;
-}
-
 .main-card {
   flex: 1;
   min-height: 0;
