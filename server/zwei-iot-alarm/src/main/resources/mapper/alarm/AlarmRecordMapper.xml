@@ -277,6 +277,19 @@
 
     <!-- ==================== Report 跨模块查询 ==================== -->
 
+    <select id="countPendingByMonitorType" resultType="java.util.Map">
+        SELECT COALESCE(mt.id, 0)                         AS monitorTypeId,
+               COALESCE(mt.name, '未知')                   AS monitorTypeName,
+               COALESCE(mt.sort_order, 999)               AS sortOrder,
+               COUNT(DISTINCT ar.id)                      AS count
+        FROM alarm_record ar
+                 LEFT JOIN device_sensor ds ON ar.sensor_id = ds.id AND ds.del_flag = 0
+                 LEFT JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
+        WHERE ar.status IN (1, 2)
+        GROUP BY mt.id, mt.name, mt.sort_order
+        ORDER BY mt.sort_order
+    </select>
+
     <select id="selectByHazardPointAndTime" resultMap="AlarmRecordResult">
         <include refid="selectRecordVo"/>
         WHERE hazard_point_id = #{hazardPointId}

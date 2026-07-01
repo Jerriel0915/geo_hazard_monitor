@@ -116,4 +116,11 @@ public class AlarmRecordController extends BaseController {
     public AjaxResult trend(@RequestParam(defaultValue = "12") int months) {
         return success(alarmRecordService.getMonthlyTrend(months));
     }
+
+    /** 告警来源分布 (按监测类型统计待处理告警数量) */
+    @GetMapping("/source-stats")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult sourceStats() {
+        return success(alarmRecordService.getSourceStats());
+    }
 }

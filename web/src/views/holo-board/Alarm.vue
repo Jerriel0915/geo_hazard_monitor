@@ -150,7 +150,7 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from 'vue'
 import echarts from '@/utils/echarts'
-import {getPendingAlarms, getAlarmLevelStats, getAlarmTrend, type AlarmTrendVO} from '@/api/alarm'
+import {getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmTrend, getAlarmSourceStats, type AlarmTrendVO} from '@/api/alarm'
 import {getDashboardFull} from '@/api/monitor'
 
 const alarmStats = ref({
@@ -199,66 +199,77 @@ const sourceDistribution = ref<{ name: string; count: number; rate: number }[]>(
 
 const loadAlarmData = async () => {
   try {
-    const [pendingRes, levelStatsRes, trendRes, fullRes] = await Promise.all([
-      getPendingAlarms({ pageNum: 1, pageSize: 5 }),
+    const [pendingRes, levelStatsRes, trendRes, historyRes, sourceRes, fullRes] = await Promise.all([
+      getPendingAlarms({ pageNum: 1, pageSize: 100 }),
       getAlarmLevelStats(),
       getAlarmTrend(12),
+      getHistoryAlarms({ pageNum: 1, pageSize: 1 }),
+      getAlarmSourceStats(),
       getDashboardFull(60)
     ])
     // 待处理告警
     const pendingRows = (pendingRes as any)?.rows ?? []
-    const pendingTotal = (pendingRes as any)?.total ?? 0
     const levelMap: Record<number, { name: string; key: string }> = {
       1: { name: '一级告警', key: 'level1' },
       2: { name: '二级告警', key: 'level2' },
       3: { name: '三级告警', key: 'level3' },
       4: { name: '四级告警', key: 'level4' }
     }
-    alarmStats.value.recentAlarms = pendingRows.map((item: any) => ({
+    alarmStats.value.recentAlarms = pendingRows.slice(0, 5).map((item: any) => ({
       id: item.id,
       title: item.alarmMessage || item.hazardPointName || '告警事件',
       source: item.deviceName || item.sensorName || '',
       time: item.lastTriggerTime ? item.lastTriggerTime.substring(11, 16) : '',
       level: levelMap[item.alarmLevel]?.key ?? 'level4'
     }))
-    alarmStats.value.totalAlarms = pendingTotal
+
+    // 累计告警次数 = 历史告警 total
+    alarmStats.value.totalAlarms = (historyRes as any)?.total ?? 0
+
     // 等级统计
     const lsData = (levelStatsRes as any)?.data ?? levelStatsRes ?? {}
-    const total = Object.values(lsData).reduce((s: number, v: any) => s + Number(v), 0) || 1
+    const levelTotal = Object.values(lsData).reduce((s: number, v: any) => s + Number(v), 0) || 1
     alarmStats.value.levelStats = [1, 2, 3, 4].map(lv => ({
       ...levelMap[lv],
       count: Number((lsData as any)[lv]) || 0,
-      rate: Math.round(Number((lsData as any)[lv]) / total * 1000) / 10 || 0
+      rate: Math.round(Number((lsData as any)[lv]) / levelTotal * 1000) / 10 || 0
     }))
     // 趋势
     const td = (trendRes as any)?.data ?? trendRes
     if (td && td.months?.length > 0) {
       alarmTrendData.value = td as AlarmTrendVO
+      // 近三月告警次数 = 趋势数据最近 3 个月合计
+      alarmStats.value.recentThreeMonthsAlarms = td.total.slice(-3).reduce((s: number, v: number) => s + v, 0)
       initTrendChart()
     }
     // 概览数据（设备总数、隐患点总数等）
     const d = (fullRes as any)?.data
     if (d?.overview) {
-      alarmStats.value.deviceCount = d.overview.totalDevices ?? 0
-      alarmStats.value.hazardPointCount = d.overview.totalHazardPoints ?? 0
+      alarmStats.value.deviceCount = d.overview.device?.total ?? 0
+      alarmStats.value.hazardPointCount = d.overview.hazardPoint?.total ?? 0
     }
-    // 传感器分布 → 告警来源分布
-    if (d?.sensorDistribution?.list) {
-      const totalSensors = d.sensorDistribution.list.reduce((s: number, t: any) => s + (t.sensorCount || 0), 0) || 1
-      sourceDistribution.value = d.sensorDistribution.list.map((t: any) => ({
-        name: t.monitorTypeName,
-        count: t.sensorCount || 0,
-        rate: Math.round((t.sensorCount || 0) / totalSensors * 1000) / 10
+
+    // 告警来源分布 — 从后端 source-stats 接口获取
+    const ssData = (sourceRes as any)?.data ?? sourceRes ?? []
+    if (Array.isArray(ssData) && ssData.length > 0) {
+      sourceDistribution.value = ssData.map((item: any) => ({
+        name: item.monitorTypeName,
+        count: item.count || 0,
+        rate: item.rate || 0
       }))
     }
-    // 隐患点趋势 → 告警隐患点分布
-    if (d?.hazardPointTrend?.list) {
-      hazardData.value = d.hazardPointTrend.list.map((h: any) => ({
-        name: h.name,
-        count: h.value || 0,
-        level: 'level2'
-      }))
-    }
+
+    // 高风险隐患点 — 从待处理告警按隐患点名称聚合
+    const hazardMap = new Map<string, number>()
+    pendingRows.forEach((item: any) => {
+      const name = item.hazardPointName
+      if (name) hazardMap.set(name, (hazardMap.get(name) || 0) + 1)
+    })
+    hazardData.value = [...hazardMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({ name, count, level: 'level2' }))
+
     // 图表初始化（首次加载）
     initLevelChart()
     initSourceChart()
