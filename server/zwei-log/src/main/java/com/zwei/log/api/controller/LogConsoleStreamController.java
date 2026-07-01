@@ -3,6 +3,7 @@ package com.zwei.log.api.controller;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -28,8 +29,11 @@ public class LogConsoleStreamController {
 
     @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
     @GetMapping("/console-stream")
-    public SseEmitter consoleStream() {
+    public SseEmitter consoleStream(
+        @RequestParam(value = "window", required = false) Long windowMinutes) {
         SseEmitter emitter = new SseEmitter(properties.getSseTimeoutMs());
-        return tailService.subscribe(emitter);
+        long window = (windowMinutes != null && windowMinutes > 0)
+            ? windowMinutes : properties.getConsoleReplayWindowMinutes();
+        return tailService.subscribe(emitter, window);
     }
 }

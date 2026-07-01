@@ -10,9 +10,14 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -28,10 +33,14 @@ public class LogFileTailService implements InitializingBean, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(LogFileTailService.class);
     private static final int POLL_INTERVAL_MS = 500;
-    private static final int INITIAL_REPLAY_LINES = 300;
     private static final int MAX_READ_SIZE = 2 * 1024 * 1024; // 2MB per poll
 
+    private static final DateTimeFormatter LOG_TS =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.of("Asia/Shanghai"));
+
     private final LogModuleProperties properties;
+    private final long replayWindowMinutes;
+    private final int replayMinLines;
     private final List<SseEmitter> subscribers = new CopyOnWriteArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "log-file-tailer");
@@ -45,6 +54,8 @@ public class LogFileTailService implements InitializingBean, DisposableBean {
 
     public LogFileTailService(LogModuleProperties properties) {
         this.properties = properties;
+        this.replayWindowMinutes = properties.getConsoleReplayWindowMinutes();
+        this.replayMinLines = properties.getConsoleReplayMinLines();
     }
 
     @Override
@@ -159,14 +170,18 @@ public class LogFileTailService implements InitializingBean, DisposableBean {
     }
 
     public SseEmitter subscribe(SseEmitter emitter) {
-        List<String> replayLines = readLastLines(INITIAL_REPLAY_LINES);
+        return subscribe(emitter, replayWindowMinutes);
+    }
+
+    public SseEmitter subscribe(SseEmitter emitter, long windowMinutes) {
+        List<String> replayLines = readLinesSince(windowMinutes, replayMinLines);
         try {
             for (String line : replayLines) {
                 emitter.send(SseEmitter.event().name("line").data(line));
             }
             emitter.send(SseEmitter.event()
                 .name("ready")
-                .data(Collections.singletonMap("replayCount", replayLines.size())));
+                .data(Map.of("replayCount", replayLines.size(), "windowMinutes", windowMinutes)));
         } catch (Exception e) {
             try {
                 emitter.completeWithError(e);
@@ -182,6 +197,103 @@ public class LogFileTailService implements InitializingBean, DisposableBean {
         subscribers.add(emitter);
         return emitter;
     }
+
+    // ---------------------------------------------------------------------------
+    // Time-based replay
+    // ---------------------------------------------------------------------------
+
+    List<String> readLinesSince(long windowMinutes, int minLines) {
+        List<String> result = new ArrayList<>();
+        try {
+            File file = new File(currentFilePath);
+            if (!file.exists() || file.length() == 0) {
+                return result;
+            }
+            Instant cutoff = Instant.now().minus(windowMinutes, ChronoUnit.MINUTES);
+            long startPos = findWindowStart(file, cutoff, minLines);
+            result = forwardRead(file, startPos);
+        } catch (Exception e) {
+            log.warn("Time-based replay failed, falling back to line-based: {}", e.getMessage());
+            return readLastLines(minLines);
+        }
+        return result;
+    }
+
+    /**
+     * 从文件尾部反向扫描，定位时间窗口起始字节偏移。
+     */
+    private long findWindowStart(File file, Instant cutoff, int minLines) throws IOException {
+        int linesScanned = 0;
+
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+            long fileLen = file.length();
+            long pos = fileLen;
+            byte[] buf = new byte[8192];
+            StringBuilder tail = new StringBuilder();
+
+            while (pos > 0) {
+                int readSize = (int) Math.min(buf.length, pos);
+                pos -= readSize;
+                raf.seek(pos);
+                int n = raf.read(buf, 0, readSize);
+                if (n <= 0) break;
+
+                String block = new String(buf, 0, n, StandardCharsets.UTF_8) + tail;
+                String[] lines = block.split("\\n", -1);
+
+                tail.setLength(0);
+                tail.append(lines[0]); // partial line, carry to next chunk
+
+                // Track byte offset of each line within the block
+                int[] offsets = new int[lines.length];
+                int off = 0;
+                for (int j = 0; j < lines.length; j++) {
+                    offsets[j] = off;
+                    off += lines[j].length() + 1; // +1 for the newline
+                }
+
+                for (int i = lines.length - 1; i >= 1; i--) {
+                    String line = lines[i].trim();
+                    if (line.isEmpty()) continue;
+                    linesScanned++;
+
+                    Instant ts = parseLogTimestamp(line);
+                    if (ts != null && ts.isBefore(cutoff) && linesScanned >= minLines) {
+                        return pos + offsets[i] + lines[i].length() + 1;
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
+    Instant parseLogTimestamp(String line) {
+        if (line == null || line.length() < 23) return null;
+        try {
+            return Instant.from(LOG_TS.parse(line.substring(0, 23)));
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private List<String> forwardRead(File file, long startOffset) throws IOException {
+        List<String> result = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            reader.skip(startOffset);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.isEmpty()) {
+                    result.add(line);
+                }
+            }
+        }
+        return result;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Fallback: line-based replay
+    // ---------------------------------------------------------------------------
 
     private List<String> readLastLines(int count) {
         List<String> result = new ArrayList<>();

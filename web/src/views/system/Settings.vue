@@ -309,6 +309,7 @@ const paramList = ref<ParamItem[]>([
 
   { code: 'log_keep_days', name: '日志保留时长(天)', type: 'number', category: 'data', value: 365, min: 90, max: 3650, step: 30, remark: '系统日志保留天数' },
   { code: 'auto_cleanup', name: '自动清理', type: 'switch', category: 'data', value: true, remark: '是否启用数据自动清理' },
+  { code: 'console_replay_window', name: '实时日志回放窗口(分钟)', type: 'number', category: 'data', value: 180, min: 5, max: 1440, step: 5, remark: '控制台实时日志初始回放的时间窗口，默认 180 分钟（3 小时）' },
 
   { code: 'alarm_enable', name: '告警总开关', type: 'switch', category: 'alarm', value: true, remark: '是否启用系统告警功能' },
 
