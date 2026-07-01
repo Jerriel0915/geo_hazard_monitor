@@ -242,11 +242,6 @@ interface HazardPoint {
   devices: DeviceInfo[]
 }
 
-interface ChartPoint {
-  x: number
-  y: number
-}
-
 const showAlgorithmDesc = ref(false)
 const healthTriggerRef = ref<HTMLElement | null>(null)
 const popoverStyle = ref<Record<string, string>>({})
@@ -318,12 +313,6 @@ const statCards = computed(() => [
   { key: 'hazard', label: '隐患点数量', desc: '监测区域', color: '#6366f1', value: summaryStats.value.hazardPointCount },
   { key: 'device', label: '设备数量', desc: '在线部署', color: '#10b981', value: summaryStats.value.deviceCount },
 ])
-
-interface SensorInfo {
-  id: string
-  name: string
-  type: string
-}
 
 const hazardTrendData = computed(() => ({
   months: hazardTrend.value?.months ?? [],
@@ -416,9 +405,6 @@ const initMonitorRateChart = () => {
   monitorRateChartInstance.setOption(option)
 }
 
-const handleQueryData = () => {
-  // TODO: 实现监测数据查询
-}
 const mapContainer = ref<HTMLElement | null>(null)
 let map: L.Map | null = null
 
@@ -567,7 +553,7 @@ onMounted(async () => {
     deviceOnlineRate.value = d.deviceOnlineRate
     hazardTrend.value = d.hazardPointTrend
     sensorDist.value = d.sensorDistribution
-    healthStats.value = d.healthScore
+    healthStats.value = d.healthScore ?? healthStats.value
   } catch { /* use defaults */
   }
 
@@ -1007,8 +993,6 @@ const alarmStats = ref({
 
 const hazardPoints = ref<HazardPoint[]>([])
 
-const handleMapZoom = () => {
-}
 
 const trendYLabels = ['100', '80', '60', '40', '20', '0']
 const trendXLabels = ['5-11', '5-12', '5-13', '5-14', '5-15', '5-16', '5-17']
