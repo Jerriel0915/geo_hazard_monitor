@@ -393,31 +393,103 @@ const handlePrint = () => {
 }
 
 // ── PDF 导出 ──
+
+/** 构建隐藏截图容器 — 样式与预览 .report-content 完全一致 */
+const buildCaptureContainer = (html: string): HTMLElement => {
+  document.getElementById('__pdf_capture')?.remove()
+  const wrap = document.createElement('div')
+  wrap.id = '__pdf_capture'
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:840px;z-index:-1;'
+  // 内联样式精确匹配预览中的 scoped .report-content 及其 :deep() 子选择器
+  wrap.innerHTML = `<style>
+    .capture-content { padding: 20px; border: 1px solid #e8e8e8; border-radius: 4px; line-height: 1.8; background: #fff; }
+    .capture-content table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    .capture-content th, .capture-content td { border: 1px solid #dcdfe6; padding: 8px 12px; text-align: center; }
+    .capture-content th { background: #f5f7fa; font-weight: bold; }
+    .capture-content h2 { margin: 15px 0 10px; font-size: 16px; color: #303133; }
+    .capture-content h3 { margin: 12px 0 8px; font-size: 15px; color: #303133; }
+    .capture-content p { margin: 8px 0; font-size: 15px; }
+    .capture-content li, .capture-content span { font-size: 15px; }
+    .capture-content img { max-width: 100%; height: auto; }
+  </style>
+  <div class="capture-content">${html}</div>`
+  document.body.appendChild(wrap)
+  return wrap.querySelector('.capture-content')!
+}
+
+/** 将 canvas 按 A4 分页输出 PDF */
+const canvasToPdf = (canvas: HTMLCanvasElement, fileName: string) => {
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageW = pdf.internal.pageSize.getWidth()
+  const pageH = pdf.internal.pageSize.getHeight()
+  const margin = 12
+  const contentW = pageW - margin * 2
+  const contentHPerPage = pageH - margin * 2
+  const totalContentH = (canvas.height * contentW) / canvas.width
+
+  const pageCount = Math.ceil(totalContentH / contentHPerPage)
+
+  for (let i = 0; i < pageCount; i++) {
+    if (i > 0) pdf.addPage()
+
+    const srcY = Math.floor((i * contentHPerPage / totalContentH) * canvas.height)
+    const slicePxH = Math.min(
+      Math.floor((contentHPerPage / totalContentH) * canvas.height),
+      canvas.height - srcY,
+    )
+
+    const pageCanvas = document.createElement('canvas')
+    pageCanvas.width = canvas.width
+    pageCanvas.height = slicePxH
+    const ctx = pageCanvas.getContext('2d')!
+    ctx.drawImage(canvas, 0, srcY, canvas.width, slicePxH, 0, 0, canvas.width, slicePxH)
+
+    const sliceMmH = (slicePxH * contentW) / canvas.width
+    pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', margin, margin, contentW, sliceMmH)
+
+    // 页码
+    pdf.setFontSize(9)
+    pdf.setTextColor(150, 150, 150)
+    pdf.text(`${i + 1} / ${pageCount}`, pageW / 2, pageH - 6, { align: 'center' })
+  }
+
+  pdf.save(`${fileName}.pdf`)
+}
+
+/** 从列表「更多→下载PDF」直接导出（不弹窗） */
 const handleExportPdf = async (row: ReportItem) => {
   try {
-    currentReport.value = await getReportDetail(row.id)
-    viewDialogVisible.value = true
-    await new Promise(r => setTimeout(r, 300))
-    await doExportPdf()
+    const report = await getReportDetail(row.id)
+    currentReport.value = report
+    const html = report?.content || '<p style="color:#909399">暂无报告内容</p>'
+    const captureEl = buildCaptureContainer(html)
+    // 等待图片等资源加载
+    await new Promise(r => setTimeout(r, 250))
+    const canvas = await html2canvas(captureEl, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' })
+    canvasToPdf(canvas, report?.reportName || '监测报告')
+    document.getElementById('__pdf_capture')?.remove()
   } catch (error) { showRequestErrorMessage(error, '导出PDF失败') }
 }
 
+/** 从弹窗底部「导出PDF」按钮导出（弹窗已打开，直接截取预览内容） */
 const handleExportPdfDialog = async () => {
   if (!reportContentRef.value || !currentReport.value) return
   pdfLoading.value = true
-  try { await doExportPdf() }
-  catch (error) { showRequestErrorMessage(error, '导出PDF失败') }
-  finally { pdfLoading.value = false }
-}
-
-const doExportPdf = async () => {
-  if (!reportContentRef.value || !currentReport.value) return
-  const canvas = await html2canvas(reportContentRef.value, { scale: 2, useCORS: true, logging: false })
-  const pdf = new jsPDF('p', 'mm', 'a4')
-  const pdfWidth = pdf.internal.pageSize.getWidth()
-  const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, pdfHeight)
-  pdf.save(`${currentReport.value.reportName || '监测报告'}.pdf`)
+  const el = reportContentRef.value
+  // 暂时移除 max-height/overflow 限制以保证截取完整内容
+  const orig = { maxHeight: el.style.maxHeight, overflow: el.style.overflow }
+  el.style.maxHeight = 'none'
+  el.style.overflow = 'visible'
+  try {
+    await new Promise(r => setTimeout(r, 100))
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' })
+    canvasToPdf(canvas, currentReport.value.reportName || '监测报告')
+  } catch (error) { showRequestErrorMessage(error, '导出PDF失败') }
+  finally {
+    el.style.maxHeight = orig.maxHeight
+    el.style.overflow = orig.overflow
+    pdfLoading.value = false
+  }
 }
 
 // ── 生成报告 ──
