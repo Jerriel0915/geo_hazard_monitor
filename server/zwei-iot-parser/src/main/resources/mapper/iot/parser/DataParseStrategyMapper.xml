@@ -8,6 +8,8 @@
         <result column="description" property="description"/>
         <result column="status" property="status"/>
         <result column="app_scope" property="appScope"/>
+        <result column="server_url" property="serverUrl"/>
+        <result column="topic" property="topic"/>
         <result column="script_code" property="scriptCode"/>
         <result column="is_preset" property="isPreset"/>
         <result column="last_run_time" property="lastRunTime"/>
@@ -23,7 +25,9 @@
 
     <select id="selectByCondition" resultMap="BaseResultMap">
         SELECT * FROM iot_data_parse_strategy WHERE del_flag = 0
-        <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') OR topic LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
         <if test="sourceType != null and sourceType != ''">AND source_type = #{sourceType}</if>
         <if test="status != null">AND status = #{status}</if>
         <if test="appScope != null and appScope != ''">AND app_scope = #{appScope}</if>
@@ -40,12 +44,12 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO iot_data_parse_strategy (name, source_type, description, status, app_scope, script_code, is_preset
+        INSERT INTO iot_data_parse_strategy (name, source_type, description, status, app_scope, server_url, topic, script_code, is_preset
             <if test="createBy != null">, create_by</if>
             <if test="createTime != null">, create_time</if>
             <if test="updateBy != null">, update_by</if>
             <if test="updateTime != null">, update_time</if>
-        ) VALUES (#{name}, #{sourceType}, #{description}, #{status}, #{appScope}, #{scriptCode}, IFNULL(#{isPreset}, 0)
+        ) VALUES (#{name}, #{sourceType}, #{description}, #{status}, #{appScope}, #{serverUrl}, #{topic}, #{scriptCode}, IFNULL(#{isPreset}, 0)
             <if test="createBy != null">, #{createBy}</if>
             <if test="createTime != null">, #{createTime}</if>
             <if test="updateBy != null">, #{updateBy}</if>
@@ -56,7 +60,8 @@
     <update id="updateById">
         UPDATE iot_data_parse_strategy
         SET name = #{name}, source_type = #{sourceType}, description = #{description},
-            status = #{status}, app_scope = #{appScope}, script_code = #{scriptCode}
+            status = #{status}, app_scope = #{appScope}, server_url = #{serverUrl}, topic = #{topic},
+            script_code = #{scriptCode}
             <if test="updateBy != null">, update_by = #{updateBy}</if>
             <if test="updateTime != null">, update_time = #{updateTime}</if>
         WHERE id = #{id}
@@ -71,6 +76,19 @@
 
     <update id="updateLastRunTime">
         UPDATE iot_data_parse_strategy SET last_run_time = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="batchUpdateLastRunTime">
+        UPDATE iot_data_parse_strategy
+        SET last_run_time = CASE id
+            <foreach collection="list" item="item">
+                WHEN #{item.strategyId} THEN #{item.lastRunTime}
+            </foreach>
+            ELSE last_run_time END
+        WHERE id IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.strategyId}
+        </foreach>
     </update>
 
     <select id="checkNameUnique" resultMap="BaseResultMap">
