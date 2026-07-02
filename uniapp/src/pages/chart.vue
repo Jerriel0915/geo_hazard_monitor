@@ -154,7 +154,7 @@
                     <text class="device-option-code">{{ device.code || device.deviceCode || '-' }}</text>
                   </view>
                   <view v-if="isSelected(device.id)" class="device-option-check">
-                    <zui-svg-icon icon="arrow-right" :width="16" color="#3068e4" />
+                    <zui-svg-icon icon="check" :width="18" color="#3068e4" />
                   </view>
                 </view>
                 <view v-if="pickerDevices.length === 0 && pickerSelectedHazardId" class="picker-col-empty">

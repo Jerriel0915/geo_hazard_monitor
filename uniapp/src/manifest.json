@@ -100,7 +100,12 @@
         "usingComponents" : true,
         "darkmode" : true,
         "themeLocation" : "theme.json",
-        "lazyCodeLoading" : "requiredComponents"
+        "lazyCodeLoading" : "requiredComponents",
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "展示监测点位与用户的位置"
+            }
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true

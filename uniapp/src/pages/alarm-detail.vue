@@ -73,7 +73,8 @@
             </view>
             <view class="info-row" @click="openMap">
               <text class="info-label">地理位置</text>
-              <text class="info-value" style="color: #3068e4;">{{ formatLocation(hazardPointData) }} ></text>
+              <text class="info-value" style="color: #3068e4;">{{ formatLocation(hazardPointData) }}</text>
+              <zui-svg-icon icon="arrow-right" :width="14" color="#3068e4" />
             </view>
             <view class="info-row">
               <text class="info-label">所属分组</text>

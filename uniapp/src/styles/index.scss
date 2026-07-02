@@ -143,18 +143,13 @@ uni-scroll-view-refresher,
   overflow: hidden;
 }
 
-// ============ 全局 Header 与内容重叠 ============
-// Header 底部向下延伸 48rpx(24px) 与内容区域重叠
-.page-container > .page-header {
-  position: relative;
-  margin-bottom: -48rpx !important;
-}
-
 // ============ page-body：页面内容区域 ============
 // 放在 page-header 之后，自动占满剩余高度并滚动
 // 用法：<scroll-view class="page-body" scroll-y>...</scroll-view>
+// 顶部向上偏移 48rpx(24px) 与 Header 底部重叠
 .page-body {
   flex: 1;
   height: 0;
   z-index: 1;
+  margin-top: -48rpx !important;
 }

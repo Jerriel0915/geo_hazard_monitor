@@ -237,7 +237,7 @@ function getDeviceStatusText(status: string | undefined): string {
             <text class="info-label">安装位置</text>
             <text class="info-value" :class="{ 'link-text': hasLocation }">
               {{ locationText }}
-              <text v-if="hasLocation" class="link-arrow">></text>
+              <zui-svg-icon v-if="hasLocation" icon="arrow-right" :width="14" color="#3068e4" />
             </text>
           </view>
           <view class="info-row">
@@ -476,12 +476,6 @@ function getDeviceStatusText(status: string | undefined): string {
   &.link-text {
     color: #3068e4;
   }
-}
-
-.link-arrow {
-  font-size: 26rpx;
-  color: #3068e4;
-  margin-left: 4rpx;
 }
 
 .info-row.clickable {

@@ -327,6 +327,7 @@ export default {
 .zui-svg-icon {
   position: relative;
   display: inline-flex;
+  line-height: 0;
 }
 .zui-svg-icon-wrapper {
   position: relative;
