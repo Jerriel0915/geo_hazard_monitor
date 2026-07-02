@@ -74,7 +74,6 @@
             <view class="info-row" @click="openMap">
               <text class="info-label">地理位置</text>
               <text class="info-value" style="color: #3068e4;">{{ formatLocation(hazardPointData) }}</text>
-              <zui-svg-icon icon="arrow-right" :width="14" color="#3068e4" />
             </view>
             <view class="info-row">
               <text class="info-label">所属分组</text>
@@ -299,7 +298,7 @@ import {
 import type { HazardWithDevices } from '@/utils/hazard'
 import { hazardApi } from '@/utils/hazard'
 import type { ChartSeries } from '@/utils/monitor'
-import { monitorApi, calcGranularity } from '@/utils/monitor'
+import { calcGranularity, monitorApi } from '@/utils/monitor'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { computed, nextTick, ref } from 'vue'
 
