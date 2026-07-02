@@ -14,7 +14,7 @@
  *   <view class="user-card">...</view>
  * </PageHeader>
  */
-import { useSafeArea } from '@/composables/useSafeArea'
+import { useSafeArea } from '@/composables/useSafeArea';
 
 withDefaults(defineProps<{
   /** 主标题 */
@@ -112,7 +112,7 @@ function handleBack() {
 .page-header__nav {
   display: flex;
   align-items: center;
-  padding-top: 24rpx;
+  padding-top: 40rpx;
   margin-bottom: 24rpx;
 }
 
@@ -129,7 +129,7 @@ function handleBack() {
 
 /* 紧凑标题（与返回按钮同行） */
 .page-header__title {
-  font-size: 34rpx;
+  font-size: 38rpx;
   font-weight: 600;
   color: #ffffff;
   flex: 1;

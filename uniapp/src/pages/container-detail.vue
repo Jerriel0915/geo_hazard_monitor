@@ -434,7 +434,7 @@ const generateEChartsOption = (categories: string[], values: number[], attr: any
     grid: {
       left: '5%',
       right: '5%',
-      bottom: '5%',
+      bottom: '20%',
       top: '10%',
       containLabel: true,
     },
@@ -540,8 +540,13 @@ const generateEChartsOption = (categories: string[], values: number[], attr: any
         }
       }
     }],
+    dataZoom: [
+      { type: 'slider', xAxisIndex: 0, height: 18, bottom: 4, borderColor: '#e5e7eb', fillerColor: 'rgba(48,104,228,0.15)', handleSize: '60%', textStyle: { fontSize: 9, color: '#9ca3af' } },
+      { type: 'inside', xAxisIndex: 0 },
+    ],
     tooltip: {
       trigger: 'axis',
+      triggerOn: 'mousemove|click',
       backgroundColor: 'rgba(0, 0, 0, 0.8)',
       borderColor: 'rgba(0, 0, 0, 0.8)',
       borderWidth: 0,

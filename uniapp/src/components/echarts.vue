@@ -81,11 +81,9 @@
 				const { disableTouch, chart } = this;
 				if (disableTouch || !chart || !e.mp || !e.mp.touches || !e.mp.touches.length) return;
 				const touch = e.mp.touches[0];
+				// 只派发 mousedown，不额外派发 mousemove
+				// 避免干扰 dataZoom 拖拽行为；tooltip 由 touchMove 触发
 				chart._zr.handler.dispatch('mousedown', {
-					zrX: touch.x,
-					zrY: touch.y
-				});
-				chart._zr.handler.dispatch('mousemove', {
 					zrX: touch.x,
 					zrY: touch.y
 				});
@@ -95,7 +93,7 @@
 				if (disableTouch || !chart || !e.mp || !e.mp.touches || !e.mp.touches.length) return;
 				if (throttleTouch) {
 					const currMoveTime = Date.now();
-					if (currMoveTime - lastMoveTime < 240) return;
+					if (currMoveTime - lastMoveTime < 50) return;
 					this.lastMoveTime = currMoveTime;
 				}
 				const touch = e.mp.touches[0];
@@ -109,12 +107,12 @@
 				if (disableTouch || !chart) return;
 				const touch = (e.mp && e.mp.changedTouches && e.mp.changedTouches[0]) || {};
 				chart._zr.handler.dispatch('mouseup', {
-					zrX: touch.x,
-					zrY: touch.y
+					zrX: touch.x || 0,
+					zrY: touch.y || 0
 				});
 				chart._zr.handler.dispatch('click', {
-					zrX: touch.x,
-					zrY: touch.y
+					zrX: touch.x || 0,
+					zrY: touch.y || 0
 				});
 			}
 		}

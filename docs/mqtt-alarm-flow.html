@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>知微 · MQTT → 解析 → 落库 → 告警引擎 → 分发 业务流线</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#dbeafe',
+        primaryTextColor: '#0f172a',
+        primaryBorderColor: '#2563eb',
+        lineColor: '#475569',
+        secondaryColor: '#f1f5f9',
+        tertiaryColor: '#f8fafc',
+        fontFamily: 'ui-monospace, "SFMono-Regular", "Menlo", monospace',
+        fontSize: '13px',
+        sequence: { actorBkg: '#1e40af', actorTextColor: '#fff', signalColor: '#1f2937', noteBkgColor: '#fef3c7', noteTextColor: '#78350f' }
+      },
+      flowchart: { htmlLabels: true, curve: 'basis', nodeSpacing: 40, rankSpacing: 50 },
+      sequence: { actorMargin: 40, mirrorActors: false }
+    });
+    window.__mermaid = mermaid;
+  </script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --code-bg: #0f172a;
+      --code-ink: #e2e8f0;
+      --chip-bg: #eef2ff;
+      --chip-ink: #3730a3;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --err: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      font-size: 14px;
+    }
+    header.topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: linear-gradient(120deg, #0f172a 0%, #1e3a8a 100%);
+      color: #fff; padding: 14px 28px;
+      box-shadow: 0 2px 6px rgba(15,23,42,.18);
+    }
+    header.topbar h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .3px; }
+    header.topbar .sub { margin-top: 4px; font-size: 12px; color: #cbd5e1; }
+    .layout { display: grid; grid-template-columns: 220px 1fr; gap: 24px; max-width: 1600px; margin: 0 auto; padding: 24px 28px; }
+    aside.toc { position: sticky; top: 80px; align-self: start; max-height: calc(100vh - 100px); overflow: auto; }
+    aside.toc nav a {
+      display: block; padding: 6px 10px; margin: 2px 0;
+      color: var(--muted); text-decoration: none; font-size: 13px;
+      border-left: 2px solid transparent; border-radius: 4px;
+    }
+    aside.toc nav a:hover { background: var(--accent-soft); color: var(--accent); }
+    aside.toc nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+    main { min-width: 0; }
+    section.card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 2px rgba(15,23,42,.04);
+    }
+    section.card h2 {
+      margin: 0 0 4px 0; font-size: 17px; font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
+    }
+    section.card h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; background: var(--accent); color: #fff;
+      border-radius: 6px; font-size: 13px; font-weight: 700;
+    }
+    section.card .lead { color: var(--muted); font-size: 13px; margin: 0 0 16px 36px; }
+    .mermaid {
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      padding: 16px; overflow-x: auto;
+    }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0 0; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: var(--chip-bg); color: var(--chip-ink);
+      font-size: 12px; font-family: ui-monospace, monospace;
+    }
+    .chip.ok { background: #dcfce7; color: #166534; }
+    .chip.warn { background: #fef3c7; color: #78350f; }
+    .chip.err { background: #fee2e2; color: #7f1d1d; }
+    .chip.ev { background: #ede9fe; color: #4c1d95; }
+    table.meta { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    table.meta th, table.meta td {
+      border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top;
+    }
+    table.meta th { background: var(--accent-soft); color: #1e3a8a; font-weight: 600; }
+    table.meta tr:nth-child(even) td { background: #f8fafc; }
+    code, .mono {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 12.5px;
+    }
+    code.inline {
+      background: #f1f5f9; padding: 1px 6px; border-radius: 4px;
+      color: #be185d; border: 1px solid #e2e8f0;
+    }
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: #eff6ff;
+      padding: 10px 14px;
+      margin: 12px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+    }
+    .callout.warn { border-left-color: var(--warn); background: #fffbeb; }
+    .callout.err { border-left-color: var(--err); background: #fef2f2; }
+    .callout.ok { border-left-color: var(--ok); background: #f0fdf4; }
+    ul.tight { margin: 6px 0; padding-left: 22px; }
+    ul.tight li { margin: 2px 0; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .toolbar button {
+      padding: 4px 12px; border: 1px solid var(--border); background: #fff;
+      border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--ink);
+    }
+    .toolbar button:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; padding: 16px; }
+      aside.toc { position: static; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>知微 (Zwei) · MQTT → 解析 → 落库 → 告警引擎 → 分发 业务流线</h1>
+  <div class="sub">关键技术类 / 方法签名 / 调用时机 / 数据结构 · 基于 server/zwei-iot-broker、zwei-iot-parser、zwei-iot-timeseries、zwei-iot-alarm 实际代码梳理</div>
+</header>
+
+<div class="layout">
+  <aside class="toc">
+    <nav id="toc">
+      <a href="#overview">0 · 总览</a>
+      <a href="#sequence">1 · 主调用时序图</a>
+      <a href="#dataflow">2 · 业务流转图</a>
+      <a href="#consumer">3 · 消费者 4 阶段</a>
+      <a href="#engine">4 · 告警引擎双优先级</a>
+      <a href="#dispatch">5 · 多通道告警分发</a>
+      <a href="#events">6 · 跨模块事件契约</a>
+      <a href="#dto">7 · 关键数据结构</a>
+      <a href="#classes">8 · 关键类索引</a>
+      <a href="#timing">9 · 关键时机汇总</a>
+    </nav>
+  </aside>
+
+  <main>
+
+    <section class="card" id="overview">
+      <h2><span class="num">0</span> 总览</h2>
+      <p class="lead">从设备 PUBLISH 一条 MQTT 报文,到前端收到 SSE 告警推送,跨越 4 个 Maven 模块,经历「接入鉴权 → 解析富化 → Redis Stream 缓冲 → 4 阶段入库 → 双优先级判据 → 多通道分发」六步。</p>
+      <div class="legend">
+        <span class="chip">zwei-iot-broker</span>
+        <span class="chip">zwei-iot-parser</span>
+        <span class="chip">zwei-iot-timeseries</span>
+        <span class="chip">zwei-iot-alarm</span>
+        <span class="chip">zwei-common (事件契约)</span>
+        <span class="chip ok">正常路径</span>
+        <span class="chip warn">退避重试</span>
+        <span class="chip err">失败/死信</span>
+        <span class="chip ev">Spring 事件</span>
+      </div>
+      <div class="callout">
+        <strong>架构主轴:</strong> 事件驱动 + Redis Stream 异步缓冲。同进程内通过 <code class="inline">ApplicationEventPublisher</code> 发布事件解耦模块;解析与入库之间通过 Redis Stream <code class="inline">stream:monitor:ingest</code> 解耦速率;告警引擎监听落库事件被动触发评估,告警分发再以事件触发,广播到 SSE/短信/邮件。
+      </div>
+    </section>
+
+    <section class="card" id="sequence">
+      <h2><span class="num">1</span> 主调用时序图</h2>
+      <p class="lead">从 MQTT PUBLISH 到 SSE 推送的完整时序,标注每个方法的调用方、被调方与触发时机。</p>
+      <div class="toolbar">
+        <button onclick="document.querySelectorAll('.mermaid').forEach(m=>{m.style.transform='scale(1)';m.dataset.scale='1';})">100%</button>
+        <button onclick="document.querySelector('#seq-diagram').closest('.mermaid').style.transform='scale(0.85)'">缩放 -</button>
+        <button onclick="document.querySelector('#seq-diagram').closest('.mermaid').style.transform='scale(1.15)'">缩放 +</button>
+      </div>
+      <pre class="mermaid" id="seq-diagram">
+sequenceDiagram
+    autonumber
+    participant Dev as "传感器设备"
+    participant Brk as "MQTT Broker<br/>(mica-mqtt :1883)"
+    participant Auth as "MqttDeviceAuthService<br/>(broker)"
+    participant Lst as "MqttServerMessageListener<br/>(broker)"
+    participant Fac as "MonitorIngestFacade<br/>(timeseries)"
+    participant Psr as "Parser 三件套<br/>TopicParser + Metadata + Groovy"
+    participant RS as "Redis Stream<br/>stream:monitor:ingest"
+    participant Con as "MonitorIngestConsumerService<br/>(timeseries · 单线程 daemon)"
+    participant IoT as "IotdbTimeSeriesService"
+    participant Eng as "AlarmEvaluationEngine<br/>(alarm · @EventListener)"
+    participant Rec as "AlarmRecordServiceImpl"
+    participant Not as "AlarmNotifier + AlarmStreamPublisher<br/>(alarm · @EventListener)"
+    participant Ch as "INotifyChannel 实现群<br/>System/Sms/Email + SSE"
+
+    Dev->>Brk: "MQTT CONNECT (clientId=device_xxx)"
+    Brk->>Auth: "verifyCredentials(clientId, username, password)"
+    Auth-->>Brk: "true / false"
+
+    Dev->>Brk: "PUBLISH sys/v1/{deviceCode}/{sensorCode}/updata"
+    Brk->>Auth: "hasPublishPermission(ctx, clientId, topic, qos, retain)"
+    Note over Auth: "校验 topic.deviceCode<br/>== 会话.deviceCode"
+    alt 鉴权通过
+        Auth-->>Brk: "true"
+        Brk->>Lst: "onMessage(ctx, topic, payload) @MqttServerFunction('#')"
+        Lst->>Lst: "主题过滤(sys/gb)<br/>+ 从 sessionRegistry 取 deviceId"
+        Lst->>RS: "publishEvent(MqttMessageReceivedEvent)"
+        Note over RS,Con: "被 zwei-log MqttMessageLogService 消费 → MQTT 消息日志"
+        Lst->>Fac: "ingest(topic, payload, deviceId)"
+        Fac->>Psr: "MonitorTopicParser.parse(topic) → MonitorTopic"
+        Fac->>Psr: "MonitorMetadataService.resolveStrategy(sourceType, deviceId) → DataParseStrategy"
+        Fac->>Psr: "GroovyScriptEngine.execute(strategy, topic, payload)<br/>→ ParsedMessage"
+        Note over Psr: "30s 超时 · 沙箱禁用 System/Runtime/exec/Class.forName"
+        Fac->>Psr: "enrichProperties(TSL 富化 + 范围校验)"
+        Fac->>RS: "enqueue(ParsedMessage) → XADD stream:monitor:ingest"
+        Note over Con: "XREADGROUP 阻塞拉取<br/>pollBatchSize=10, pollBlockMs=1000"
+        RS->>Con: "StreamRecord(payload, retryCount=0)"
+        Con->>Con: "阶段1 isDuplicate(SETNX dedupe:monitor:point:)"
+        alt 未重复
+            Con->>IoT: "阶段2 writePoints(StandardMeasurementPoint)<br/>懒建 aligned timeseries"
+            Con->>Con: "阶段3 运维指标回写<br/>device_online_status / device_sensor / device"
+            Con->>RS: "publishEvent(MonitorDataIngestedEvent)"
+            Note over Eng: "@EventListener 同步触发"
+            RS->>Eng: "onMonitorDataIngested(event)"
+            Eng->>Eng: "查询设备-隐患点绑定 (IDeviceHazardRelationService)"
+            Eng->>Eng: "加载判据: 优先级1 隐患点专属<br/>OR 优先级2 监测类型兜底"
+            Eng->>Eng: "CriteriaEvaluator.evaluateLevel + AlarmDedupService"
+            alt 命中且过静默期
+                Eng->>Rec: "createOrUpdateAlarm(AlarmRecord)"
+                Rec-->>Eng: "saved AlarmRecord (新建/累加/升级)"
+                Eng->>Not: "publishEvent(AlarmTriggeredEvent)"
+                par 并行分发
+                    Not->>Ch: "AlarmNotifier.dispatch → INotifyChannel.send<br/>(SYSTEM/SMS/EMAIL) 落 alarm_notification"
+                and
+                    Not->>Ch: "AlarmStreamPublisher.publish(alarm, data) → SSE 全量广播"
+                end
+                Ch-->>Dev: "前端 SseEmitter 收到 alarm 事件"
+            else 未命中或静默期内
+                Eng-->>RS: "skip(静默期未过)"
+            end
+        else 重复
+            Con-->>RS: "skip(幂等去重命中)"
+        end
+    else 鉴权失败
+        Auth-->>Brk: "false → 拒绝 PUBLISH"
+    end
+      </pre>
+      <div class="callout warn">
+        <strong>失败路径(未在图中展开):</strong> 消费者任意阶段抛异常 → 进入阶段4 三段退避重试(3s / 9s / 27s),retryCount+1 重新入队;超过 <code class="inline">retryDelaysSeconds.size()</code> 仍未成功,通过 <code class="inline">enqueueDeadLetter</code> 投递到 <code class="inline">stream:monitor:ingest:deadletter</code>。
+      </div>
+    </section>
+
+    <section class="card" id="dataflow">
+      <h2><span class="num">2</span> 业务流转图(数据结构标注)</h2>
+      <p class="lead">从原始 byte[] 到 SSE 推送的 JSON,数据结构在每一跳的演化。</p>
+      <pre class="mermaid">
+flowchart TD
+    subgraph MQ["① MQTT 接入层 · zwei-iot-broker"]
+        A0(["传感器 PUBLISH<br/>sys/v1/{dev}/{sens}/updata"])
+        A1["MqttDeviceAuthService<br/>.hasPublishPermission()"]
+        A2["MqttServerMessageListener<br/>.onMessage()"]
+        A0 --> A1 --> A2
+    end
+
+    subgraph PR["② 解析富化层 · zwei-iot-parser"]
+        B1["MonitorTopicParser.parse(topic)<br/>→ MonitorTopic"]
+        B2["MonitorMetadataService<br/>.resolveStrategy() → DataParseStrategy"]
+        B3["GroovyScriptEngine.execute()<br/>(30s 超时 · 沙箱)<br/>→ ParsedMessage"]
+        B4["enrichProperties(TSL 富化)<br/>→ ParsedMessage.properties[]"]
+        B1 --> B2 --> B3 --> B4
+    end
+
+    subgraph QS["③ Redis Stream 缓冲"]
+        C1[("stream:monitor:ingest<br/>{payload: ParsedMessage JSON,<br/>payloadType, retryCount}")]
+        C2[("stream:monitor:ingest:deadletter<br/>(超限重试后转入)")]
+        C1 -.重试失败.-> C2
+    end
+
+    subgraph CO["④ 4 阶段入库 · zwei-iot-timeseries"]
+        D1["① isDuplicate<br/>SETNX dedupe:monitor:point:<br/>{deviceId}:{sensorNo}:{attrCode}:{dataTime}:{payloadHash}"]
+        D2["② IotdbTimeSeriesService<br/>.writePoints(StandardMeasurementPoint)<br/>懒建 aligned timeseries"]
+        D3["③ 运维指标回写<br/>device_online_status.last_report_at<br/>device_sensor.last_report_time<br/>device.lastReportTime"]
+        D4["④ 失败重试 3s/9s/27s<br/>→ 死信队列"]
+        D1 --> D2 --> D3
+        D2 -.异常.-> D4
+    end
+
+    subgraph AL["⑤ 告警引擎 · zwei-iot-alarm"]
+        E1["AlarmEvaluationEngine<br/>.onMonitorDataIngested()"]
+        E2{"隐患点专属判据存在?<br/>(CriteriaCacheService)"}
+        E3["优先级1: 隐患点专属判据"]
+        E4["优先级2: 监测类型兜底判据"]
+        E5["CriteriaEvaluator.evaluateLevel()<br/>+ AlarmDedupService.shouldTrigger()"]
+        E6["AlarmRecordServiceImpl<br/>.createOrUpdateAlarm()"]
+        E1 --> E2
+        E2 -- 是 --> E3 --> E5
+        E2 -- 否 --> E4 --> E5
+        E5 --> E6
+    end
+
+    subgraph DT["⑥ 多通道分发 · zwei-iot-alarm"]
+        F1["AlarmTriggeredEvent"]
+        F2["AlarmNotifier (@Async)<br/>buildAndDedup() + batchCreate()"]
+        F3["AlarmChannelDispatcher<br/>.dispatch()"]
+        F4["SystemNotifyChannel<br/>+ 落库 alarm_notification"]
+        F5["SmsNotifyChannel<br/>阿里云 SMS"]
+        F6["EmailNotifyChannel<br/>SMTP"]
+        F7["AlarmStreamPublisher<br/>.publish(alarm, data)"]
+        F8["前端 SseEmitter"]
+        F1 --> F2 --> F3
+        F3 --> F4
+        F3 --> F5
+        F3 --> F6
+        F1 --> F7 --> F8
+        F4 -.SSE.-> F8
+    end
+
+    A2 -->|"ingest(topic, payload, deviceId)"| B1
+    B4 -->|"enqueue(ParsedMessage)"| C1
+    C1 -->|"XREADGROUP"| D1
+    D3 -->|"publishEvent"| E1
+    E6 -->|"publishEvent"| F1
+
+    classDef event fill:#ede9fe,stroke:#6d28d9,color:#4c1d95,stroke-width:1.5px
+    classDef mq fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef io fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef db fill:#dcfce7,stroke:#16a34a,color:#166534
+    classDef err fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    class C1,F1 event
+    class A1,A2,B1,B2,B3,E5,E6 mq
+    class C2,D4 err
+    class D2,D3,F4,F5,F6,F7,F8 db
+      </pre>
+    </section>
+
+    <section class="card" id="consumer">
+      <h2><span class="num">3</span> Redis Stream 消费者 4 阶段细化</h2>
+      <p class="lead"><code class="inline">MonitorIngestConsumerService.processRecord()</code> 内部的顺序处理逻辑,任何阶段失败都进入阶段 4 退避。</p>
+      <pre class="mermaid">
+flowchart TD
+    Start(["XREADGROUP 拉取 StreamRecord"]) --> Parse["反序列化 payload → ParsedMessage<br/>转 List&lt;StandardMeasurementPoint&gt;"]
+    Parse --> S1
+
+    subgraph S1["阶段 1 · 幂等去重"]
+        S1A["构造 dedupe-key<br/>= deviceId:sensorCode:attrCode:dataTime:payloadHash"]
+        S1B{"Redis SETNX<br/>(TTL = dedupeTtlSeconds 默认 3600s)"}
+        S1A --> S1B
+        S1B -- "已存在 → 跳过" --> Ack1["XACK · 跳过该点"]
+        S1B -- "首次出现" --> Next1["继续"]
+    end
+
+    Next1 --> S2
+
+    subgraph S2["阶段 2 · IoTDB 写入"]
+        S2A["IotdbTimeSeriesService.writePoints(points)<br/>懒建 aligned timeseries<br/>DOUBLE+GORILLA / INT32+RLE"]
+        S2B{"写入成功?"}
+        S2A --> S2B
+        S2B -- "是" --> Next2["继续"]
+        S2B -- "否" --> Fail["抛异常 → 阶段4"]
+    end
+
+    Next2 --> S3
+
+    subgraph S3["阶段 3 · 运维指标回写"]
+        S3A["DeviceOnlineStatusService<br/>.updateLastReportAt(deviceId)"]
+        S3B["DeviceSensorService<br/>.updateLastReportTime(sensorId, now)"]
+        S3C["DeviceMapper.updateDevice()<br/>(兼容保留 · lastReportTime)"]
+        S3A & S3B & S3C --> S3D
+        S3D["publishIngestedEvent(point)<br/>→ MonitorDataIngestedEvent"]
+    end
+
+    S3D --> AckAll["XACK · 完成"]
+    Fail --> S4
+    Parse -.任意异常.-> S4
+
+    subgraph S4["阶段 4 · 失败重试与死信"]
+        S4A{"retryCount ≥<br/>retryDelaysSeconds.size()?"}
+        S4B["读取退避延迟<br/>retryDelaysSeconds[0..2] = [3, 9, 27]s<br/>Thread.sleep(delay)"]
+        S4C["retryCount + 1 后重新 XADD<br/>到 stream:monitor:ingest"]
+        S4D["enqueueDeadLetter()<br/>→ stream:monitor:ingest:deadletter<br/>记录失败原因"]
+        S4A -- "否" --> S4B --> S4C --> AckFail["XACK 原记录"]
+        S4A -- "是(已耗尽)" --> S4D --> AckFail
+    end
+
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#166534
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef err fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    class S1A,S2A,S3A,S3B,S3C,S3D,AckAll ok
+    class S4B,S4C,Ack1,AckFail warn
+    class S4D err
+      </pre>
+    </section>
+
+    <section class="card" id="engine">
+      <h2><span class="num">4</span> 告警引擎双优先级判据</h2>
+      <p class="lead"><code class="inline">AlarmEvaluationEngine.onMonitorDataIngested()</code> 内部分流逻辑。隐患点专属判据存在时不再走兜底判据。</p>
+      <pre class="mermaid">
+flowchart TD
+    In(["MonitorDataIngestedEvent<br/>(deviceId, sensorId, attrCode, value, dataTime)"])
+    In --> Q1["查询设备-隐患点绑定<br/>IDeviceHazardRelationService.getHazardPointIds(deviceId)"]
+    Q1 --> Q2["加载传感器属性元数据<br/>SensorMetadata (monitorContentId, attrName)"]
+
+    Q2 --> Branch{"隐患点专属判据<br/>存在?"}
+
+    Branch -- "是 (优先级 1)" --> L1["CriteriaCacheService<br/>.getByHazardPointId(hpId)<br/>L1 本地 → L2 Redis(5min) → L3 MySQL"]
+    Branch -- "否 (优先级 2)" --> L2["CriteriaCacheService<br/>.getByMonitorTypeId(monitorTypeId)"]
+
+    L1 --> Eval
+    L2 --> Eval
+
+    subgraph Eval["判据评估与去重"]
+        E1["CriteriaEvaluator.parseLevelConfig(levelConfig JSON)<br/>→ Map&lt;level 1-4, LevelConfig&gt;"]
+        E2["evaluateLevel()<br/>逐级 (1→4) 评估条件组<br/>取最严重的命中等级"]
+        E3["AlarmDedupService.shouldTriggerAlarm()<br/>Redis 预触发计数 ≥ persistCount<br/>且当前 - 最近触发 ≥ silencePeriod"]
+        E1 --> E2 --> E3
+    end
+
+    Eval --> Decision{"是否触发?"}
+    Decision -- "否" --> Skip(["skip · 计入预触发或被静默期挡住"])
+    Decision -- "是" --> Build["构建 AlarmRecord<br/>level = winner(最小等级)<br/>criteriaId / currentValue / monitorContentId"]
+    Build --> Rec["AlarmRecordServiceImpl.createOrUpdateAlarm()<br/>按 (criteriaId, hazardPointId) 查询活跃告警"]
+
+    Rec --> Dup{"已有活跃告警?"}
+    Dup -- "否 (新建)" --> New["INSERT + 触发明细 + CREATE 日志<br/>status=1 待处理 · triggerCount=1"]
+    Dup -- "是 (更新)" --> Upd{"等级变化?"}
+    Upd -- "是" --> LvChg["UPDATE alarm_level<br/>追加 LEVEL_CHANGE 日志<br/>triggerCount++"]
+    Upd -- "否" --> ReTrig["triggerCount++<br/>追加 RE_TRIGGER 日志"]
+
+    New --> Fire(["publishEvent(AlarmTriggeredEvent)"])
+    LvChg --> Fire
+    ReTrig --> Fire
+
+    classDef branch fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef go fill:#dcfce7,stroke:#16a34a,color:#166534
+    classDef skip fill:#f1f5f9,stroke:#64748b,color:#475569
+    class L1,L2,Eval branch
+    class New,Fire,LvChg,ReTrig,Rec go
+    class Skip skip
+      </pre>
+    </section>
+
+    <section class="card" id="dispatch">
+      <h2><span class="num">5</span> 多通道告警分发</h2>
+      <p class="lead"><code class="inline">AlarmTriggeredEvent</code> 同时被两个监听器消费:<code class="inline">AlarmNotifier</code>(异步,@Async 线程池)负责落库 + 多通道发送;<code class="inline">AlarmStreamPublisher</code>负责 SSE 实时推送。</p>
+      <pre class="mermaid">
+flowchart LR
+    Ev(["AlarmTriggeredEvent<br/>(alarmId, level, type, message)"])
+
+    Ev --> N["AlarmNotifier<br/>@Async(alarmNotifyExecutor)"]
+    Ev --> S["AlarmStreamPublisher<br/>@EventListener"]
+
+    subgraph NFlow["Notifier 处理流程"]
+        N --> N1["IAlarmRuleMatcher.matchAlarmRules()<br/>按 alarmLevels 过滤 AlarmDispatchRule"]
+        N1 --> N2["IAlarmRecipientResolver.resolveUserIds()<br/>从规则收件人配置解析用户"]
+        N2 --> N3["buildAndDedup()<br/>用户 × 渠道去重"]
+        N3 --> N4["AlarmNotificationServiceImpl<br/>.batchCreate() 落 alarm_notification"]
+        N4 --> N5["AlarmChannelDispatcher.dispatch()<br/>按 channel 路由到 INotifyChannel"]
+    end
+
+    subgraph Channels["INotifyChannel 实现"]
+        CH1["SystemNotifyChannel<br/>(SYSTEM)<br/>→ 站内消息 + SSE"]
+        CH2["SmsNotifyChannel<br/>(SMS)<br/>→ 阿里云 SMS"]
+        CH3["EmailNotifyChannel<br/>(EMAIL)<br/>→ SMTP"]
+    end
+
+    N5 --> CH1
+    N5 --> CH2
+    N5 --> CH3
+    CH1 --> DB[("alarm_notification<br/>status 1-5 回写")]
+    CH2 --> DB
+    CH3 --> DB
+
+    subgraph SFlow["StreamPublisher 处理流程"]
+        S --> S1["组装 data Map<br/>{alarmId, hazardPointId,<br/>alarmLevel, alarmType, alarmMessage}"]
+        S1 --> S2["emitter.send(SseEmitter.event()<br/>.name('alarm').data(data))"]
+        S2 --> Broadcast["emitters 全量广播<br/>+ userEmitters 按 userId 定向"]
+    end
+
+    Broadcast --> Client["前端 SseEmitter<br/>EventSource: /api/v1/alarm/stream"]
+    CH1 -.内部走 SSE.-> Broadcast
+
+    classDef ev fill:#ede9fe,stroke:#6d28d9,color:#4c1d95
+    classDef io fill:#dcfce7,stroke:#16a34a,color:#166534
+    class Ev ev
+    class DB,Client io
+      </pre>
+      <table class="meta">
+        <thead><tr><th>通知状态码</th><th>常量</th><th>含义</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>STATUS_PENDING</code></td><td>待发送</td></tr>
+          <tr><td>2</td><td><code>STATUS_SENT</code></td><td>已发送</td></tr>
+          <tr><td>3</td><td><code>STATUS_FAILED</code></td><td>发送失败</td></tr>
+          <tr><td>4</td><td><code>STATUS_INVALID_RECIPIENT</code></td><td>接收人无效</td></tr>
+          <tr><td>5</td><td><code>STATUS_CHANNEL_NOT_CONFIGURED</code></td><td>渠道未配置</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="events">
+      <h2><span class="num">6</span> 跨模块事件契约(zwei-common)</h2>
+      <p class="lead">所有模块间解耦通过 Spring 事件,事件类位于 <code class="inline">com.zwei.common.event</code>,发布方与消费方各居一端。</p>
+      <table class="meta">
+        <thead><tr><th>事件类</th><th>关键字段</th><th>发布者</th><th>消费者</th><th>触发时机</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>MqttMessageReceivedEvent</code></td>
+            <td>clientId, username, topic, payload(byte[]), receiveTime</td>
+            <td>MqttServerMessageListener</td>
+            <td>MqttMessageLogService (zwei-log)</td>
+            <td>每条 PUBLISH 到达,落库前</td>
+          </tr>
+          <tr>
+            <td><code>DeviceOnlineEvent</code></td>
+            <td>clientId, deviceId, ip</td>
+            <td>MqttDeviceAuthService / MqttConnectStatusListener</td>
+            <td>DeviceOnlineStatusService</td>
+            <td>MQTT CONNECT 成功</td>
+          </tr>
+          <tr>
+            <td><code>DeviceOfflineEvent</code></td>
+            <td>clientId, deviceId, reason</td>
+            <td>MqttConnectStatusListener</td>
+            <td>DeviceOnlineStatusService</td>
+            <td>MQTT 连接断开</td>
+          </tr>
+          <tr>
+            <td><code>MonitorDataIngestedEvent</code></td>
+            <td>deviceId, sensorId, sensorCode, attrCode, value(Double), dataTime, sourceType</td>
+            <td>MonitorIngestConsumerService<br/>(阶段3 后)</td>
+            <td>AlarmEvaluationEngine (@EventListener)</td>
+            <td>IoTDB 写入成功 + 运维指标回写后</td>
+          </tr>
+          <tr>
+            <td><code>AlarmTriggeredEvent</code></td>
+            <td>alarmId, hazardPointId, alarmLevel, alarmType, alarmMessage, triggerReason</td>
+            <td>AlarmEvaluationEngine<br/>(createOrUpdateAlarm 后)</td>
+            <td>AlarmNotifier (@Async)<br/>+ AlarmStreamPublisher</td>
+            <td>新建 / 重触发 / 等级跃升告警</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="dto">
+      <h2><span class="num">7</span> 关键数据结构演化</h2>
+      <p class="lead">数据从原始字节到 SSE JSON,形态经历了 6 次转换。下表对应「业务流转图」每一跳。</p>
+      <table class="meta">
+        <thead><tr><th>阶段</th><th>类型</th><th>关键字段</th><th>位置</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>原始报文</td>
+            <td><code>byte[]</code></td>
+            <td>(协议二进制 / JSON 字节)</td>
+            <td>MQTT PUBLISH payload</td>
+          </tr>
+          <tr>
+            <td>主题元信息</td>
+            <td><code>MonitorTopic</code> (record)</td>
+            <td>sourceType(sys/gb), deviceCode, sensorCode</td>
+            <td>com.zwei.iot.parser.support</td>
+          </tr>
+          <tr>
+            <td>解析策略</td>
+            <td><code>DataParseStrategy</code></td>
+            <td>sourceType, scriptCode(Groovy), appScope, status</td>
+            <td>com.zwei.iot.parser.domain</td>
+          </tr>
+          <tr>
+            <td>解析后报文</td>
+            <td><code>ParsedMessage</code></td>
+            <td>deviceCode, sensorCode, sourceType, dataTime, receiveTime, payloadHash(SHA-256), properties[]</td>
+            <td>com.zwei.common.domain</td>
+          </tr>
+          <tr>
+            <td>属性运行时值</td>
+            <td><code>PropertyValue</code></td>
+            <td>identifier, name, unit, value(Object), quality(0=正常)</td>
+            <td>com.zwei.common.domain</td>
+          </tr>
+          <tr>
+            <td>标准化时序点</td>
+            <td><code>StandardMeasurementPoint</code></td>
+            <td>deviceId, sensorId, sensorCode, attrCode, attrName, unit, dataTime, value, quality, reportTime, receiveTime, sourceType, payloadHash</td>
+            <td>com.zwei.iot.timeseries.domain</td>
+          </tr>
+          <tr>
+            <td>告警判据</td>
+            <td><code>AlarmCriteria</code></td>
+            <td>monitorTypeId, monitorContentId, hazardPointId(NULL=兜底), levelConfig(JSON), persistCount, silencePeriod, isEnabled</td>
+            <td>com.zwei.iot.alarm.domain</td>
+          </tr>
+          <tr>
+            <td>等级配置</td>
+            <td><code>LevelConfig</code></td>
+            <td>logicOperator(AND/OR), conditions[], groups[], groupLogic, persistCount, silencePeriod</td>
+            <td>com.zwei.iot.alarm.domain</td>
+          </tr>
+          <tr>
+            <td>告警记录</td>
+            <td><code>AlarmRecord</code></td>
+            <td>hazardPointId, deviceId, sensorId, monitorContentId, alarmLevel(1-4), alarmType(THRESHOLD/COMPREHENSIVE), criteriaId/strategyId, currentValue, triggerCount, status(1-4)</td>
+            <td>com.zwei.iot.alarm.domain</td>
+          </tr>
+          <tr>
+            <td>通知记录</td>
+            <td><code>AlarmNotification</code></td>
+            <td>alarmId, dispatchRuleId, recipientId, channel, title, content, status(1-5), sendTime</td>
+            <td>com.zwei.iot.alarm.domain</td>
+          </tr>
+          <tr>
+            <td>SSE 推送</td>
+            <td><code>Map&lt;String,Object&gt;</code> (事件名: alarm)</td>
+            <td>alarmId, hazardPointId, alarmLevel, alarmType, alarmMessage</td>
+            <td>SseEmitter.event().data()</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="classes">
+      <h2><span class="num">8</span> 关键类与方法签名索引</h2>
+      <p class="lead">每条业务线的入口类、核心方法签名、文件路径。</p>
+
+      <h3 style="margin-top:18px;font-size:15px;color:#1e3a8a;">① MQTT 接入层 · zwei-iot-broker</h3>
+      <table class="meta">
+        <thead><tr><th>类 (全限定名)</th><th>关键方法</th><th>触发时机</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>com.zwei.iot.broker.service.MqttServerMessageListener</code></td>
+            <td><code>@MqttServerFunction("#") onMessage(ChannelContext, String topic, MqttPublishMessage, byte[])</code></td>
+            <td>设备 PUBLISH 任意 topic</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.broker.service.MqttDeviceAuthService</code></td>
+            <td><code>boolean hasPublishPermission(ChannelContext, String clientId, String topic, MqttQoS, boolean retain)</code></td>
+            <td>PUBLISH 前(由 broker 调用)</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.broker.service.MqttConnectStatusListener</code></td>
+            <td><code>online(...) / offline(...)</code></td>
+            <td>CONNECT 成功 / 连接断开</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;font-size:15px;color:#1e3a8a;">② 解析富化层 · zwei-iot-parser / zwei-iot-timeseries</h3>
+      <table class="meta">
+        <thead><tr><th>类 (全限定名)</th><th>关键方法</th><th>触发时机</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>com.zwei.iot.timeseries.service.MonitorIngestFacade</code></td>
+            <td><code>void ingest(String topic, byte[] message, Long deviceId)</code></td>
+            <td>MqttServerMessageListener.onMessage 内调用</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.parser.support.MonitorTopicParser</code></td>
+            <td><code>MonitorTopic parse(String topic)</code></td>
+            <td>ingest() 第 1 步</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.parser.service.MonitorMetadataService</code></td>
+            <td><code>DataParseStrategy resolveStrategy(String sourceType, Long deviceId)</code></td>
+            <td>ingest() 第 2 步</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.parser.engine.GroovyScriptEngine</code></td>
+            <td><code>ParsedMessage execute(DataParseStrategy, String topic, byte[] message)</code></td>
+            <td>ingest() 第 3 步(30s 超时,沙箱)</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.timeseries.service.MonitorIngestStreamService</code></td>
+            <td><code>void enqueue(ParsedMessage)</code><br/><code>void enqueueDeadLetter(...)</code></td>
+            <td>ingest() 末步 / 阶段 4 失败</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;font-size:15px;color:#1e3a8a;">③ 入库消费 · zwei-iot-timeseries</h3>
+      <table class="meta">
+        <thead><tr><th>类 (全限定名)</th><th>关键方法</th><th>触发时机</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>com.zwei.iot.timeseries.service.MonitorIngestConsumerService</code></td>
+            <td><code>processRecord(StreamRecord)</code> 内部:<br/>isDuplicate / writePoints / 运维回写 / publishIngestedEvent</td>
+            <td>Redis Stream XREADGROUP 后台 daemon</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.timeseries.service.IotdbTimeSeriesService</code></td>
+            <td><code>writePoints(List&lt;StandardMeasurementPoint&gt;)</code></td>
+            <td>阶段 2 · 幂等通过后</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;font-size:15px;color:#1e3a8a;">④ 告警引擎 · zwei-iot-alarm</h3>
+      <table class="meta">
+        <thead><tr><th>类 (全限定名)</th><th>关键方法</th><th>触发时机</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>com.zwei.iot.alarm.service.engine.AlarmEvaluationEngine</code></td>
+            <td><code>@EventListener onMonitorDataIngested(MonitorDataIngestedEvent)</code></td>
+            <td>MonitorDataIngestedEvent 发布后同步触发</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.alarm.service.engine.CriteriaCacheService</code></td>
+            <td><code>getByHazardPointId(Long)</code><br/><code>getByMonitorTypeId(Long)</code></td>
+            <td>引擎分流时(L1→L2→L3)</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.alarm.service.engine.CriteriaEvaluator</code></td>
+            <td><code>int evaluate(AlarmCriteria, Map&lt;String,Double&gt;)</code><br/><code>Map parseLevelConfig(String json)</code></td>
+            <td>判据加载后</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.alarm.service.engine.AlarmDedupService</code></td>
+            <td><code>boolean shouldTriggerAlarm(criteriaId, hpId, level, persistCount, silencePeriod)</code></td>
+            <td>评估命中后,落库前</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.alarm.service.impl.AlarmRecordServiceImpl</code></td>
+            <td><code>AlarmRecord createOrUpdateAlarm(AlarmRecord)</code></td>
+            <td>shouldTrigger 通过后</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;font-size:15px;color:#1e3a8a;">⑤ 告警分发 · zwei-iot-alarm</h3>
+      <table class="meta">
+        <thead><tr><th>类 (全限定名)</th><th>关键方法</th><th>触发时机</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>com.zwei.iot.alarm.service.notify.AlarmNotifier</code></td>
+            <td><code>@EventListener @Async("alarmNotifyExecutor") onAlarmTriggered(AlarmTriggeredEvent)</code></td>
+            <td>AlarmTriggeredEvent 发布后异步</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.alarm.channel.AlarmChannelDispatcher</code></td>
+            <td><code>void dispatch(AlarmNotification)</code></td>
+            <td>Notifier 落库后</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.alarm.channel.INotifyChannel</code></td>
+            <td><code>String getChannel()</code><br/><code>void send(AlarmNotification)</code></td>
+            <td>Dispatcher 路由后</td>
+          </tr>
+          <tr>
+            <td>实现:<code>SystemNotifyChannel / SmsNotifyChannel / EmailNotifyChannel</code></td>
+            <td>send() + 状态回写</td>
+            <td>各渠道实际发送</td>
+          </tr>
+          <tr>
+            <td><code>com.zwei.iot.alarm.service.notify.AlarmStreamPublisher</code></td>
+            <td><code>@EventListener onAlarmTriggered(AlarmTriggeredEvent)</code><br/><code>publishToUser(Long userId, String eventType, Map data)</code></td>
+            <td>AlarmTriggeredEvent 发布后</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="timing">
+      <h2><span class="num">9</span> 关键时机汇总</h2>
+      <p class="lead">按时间顺序排列的「触发点 → 动作」对照表,方便排查数据丢失、告警延迟等问题。</p>
+      <table class="meta">
+        <thead><tr><th>#</th><th>时机</th><th>动作</th><th>结果</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>设备 MQTT CONNECT</td><td>MqttDeviceAuthService.verifyCredentials</td><td>建会话 → DeviceOnlineEvent</td></tr>
+          <tr><td>2</td><td>设备 MQTT PUBLISH</td><td>MqttDeviceAuthService.hasPublishPermission</td><td>true / false</td></tr>
+          <tr><td>3</td><td>PUBLISH 通过 broker 转发</td><td>MqttServerMessageListener.onMessage</td><td>主题过滤 + 取 deviceId</td></tr>
+          <tr><td>4</td><td>onMessage 内,落库前</td><td>publishEvent(MqttMessageReceivedEvent)</td><td>zwei-log 异步落 MQTT 消息日志</td></tr>
+          <tr><td>5</td><td>同步调用 ingest()</td><td>MonitorIngestFacade 5 步流水</td><td>ParsedMessage → Redis Stream</td></tr>
+          <tr><td>6</td><td>Redis Stream XREADGROUP</td><td>MonitorIngestConsumerService 后台拉取</td><td>进入 4 阶段处理</td></tr>
+          <tr><td>7</td><td>阶段 1 SETNX</td><td>幂等去重判断</td><td>已存在 → 跳过;首次 → 继续</td></tr>
+          <tr><td>8</td><td>阶段 2 IoTDB writePoints</td><td>对齐时序写入</td><td>失败 → 阶段 4 退避</td></tr>
+          <tr><td>9</td><td>阶段 3 三处回写</td><td>online_status / sensor / device</td><td>运维仪表盘数据来源</td></tr>
+          <tr><td>10</td><td>阶段 3 末</td><td>publishEvent(MonitorDataIngestedEvent)</td><td>同步触发告警引擎</td></tr>
+          <tr><td>11</td><td>引擎分流</td><td>查询隐患点绑定 + 加载判据</td><td>优先级 1 / 2 二选一</td></tr>
+          <tr><td>12</td><td>评估 + 去重</td><td>CriteriaEvaluator + AlarmDedupService</td><td>触发 / 跳过</td></tr>
+          <tr><td>13</td><td>触发后</td><td>createOrUpdateAlarm</td><td>新建 / 更新 / 等级跃升</td></tr>
+          <tr><td>14</td><td>记录变更后</td><td>publishEvent(AlarmTriggeredEvent)</td><td>并行触发通知 + SSE</td></tr>
+          <tr><td>15</td><td>AlarmTriggeredEvent 异步</td><td>AlarmNotifier.dispatch → INotifyChannel.send</td><td>SYSTEM/SMS/EMAIL 发送</td></tr>
+          <tr><td>16</td><td>AlarmTriggeredEvent 同步</td><td>AlarmStreamPublisher.publish("alarm")</td><td>前端 SseEmitter 收到事件</td></tr>
+          <tr><td>17</td><td>任意阶段 1/2/3 抛异常</td><td>阶段 4 退避 3s/9s/27s</td><td>重试 / 死信队列</td></tr>
+          <tr><td>18</td><td>重试次数耗尽</td><td>enqueueDeadLetter</td><td>stream:monitor:ingest:deadletter</td></tr>
+        </tbody>
+      </table>
+      <div class="callout ok">
+        <strong>排查口诀:</strong> 「消息没收到 → 看 MQTT 消息日志(MqttMessageReceivedEvent 落库情况);数据没进 IoTDB → 看消费者日志和死信队列;告警没触发 → 看 AlarmEvaluationEngine 日志(判据匹配/去重);告警没推送 → 看 AlarmNotification 表 status 字段和 SSE 连接。」
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="border:none;">附:配置项速查</h2>
+      <table class="meta">
+        <thead><tr><th>配置前缀</th><th>项</th><th>默认值</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="6"><code>monitor.ingest</code><br/>(MonitorIngestProperties)</td><td>streamKey</td><td>stream:monitor:ingest</td><td>主消费流</td></tr>
+          <tr><td>deadLetterStreamKey</td><td>stream:monitor:ingest:deadletter</td><td>死信流</td></tr>
+          <tr><td>consumerGroup</td><td>monitor-ingest-group</td><td>消费组</td></tr>
+          <tr><td>dedupeKeyPrefix / dedupeTtlSeconds</td><td>dedupe:monitor:point: / 3600</td><td>幂等 key 前缀 + TTL</td></tr>
+          <tr><td>retryDelaysSeconds</td><td>[3, 9, 27]</td><td>三段退避延迟</td></tr>
+          <tr><td>pollBatchSize / pollBlockMs</td><td>10 / 1000</td><td>XREADGROUP 批量 + 阻塞</td></tr>
+          <tr><td><code>alarm</code></td><td>groovy-timeout-seconds</td><td>(见 application.yml)</td><td>Groovy 综合策略执行超时</td></tr>
+          <tr><td></td><td>pre-trigger-ttl-seconds</td><td>(见 application.yml)</td><td>预触发计数 Redis TTL</td></tr>
+        </tbody>
+      </table>
+      <p style="color:var(--muted);font-size:12px;margin-top:12px;">生成于 2026-06-20,基于 web260429 分支代码梳理。若代码结构变更请同步更新本页。</p>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // 侧边导航 active 跟随
+  (function() {
+    const links = document.querySelectorAll('#toc a');
+    const sections = Array.from(links).map(a => document.querySelector(a.getAttribute('href')));
+    function onScroll() {
+      let activeIdx = 0;
+      for (let i = 0; i < sections.length; i++) {
+        if (sections[i] && sections[i].getBoundingClientRect().top < 120) activeIdx = i;
+      }
+      links.forEach((a, i) => a.classList.toggle('active', i === activeIdx));
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+</script>
+
+</body>
+</html>
