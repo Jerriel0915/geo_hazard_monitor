@@ -5,27 +5,28 @@
     <PageHeader title="事件大厅" subtitle="边坡监测 · 智能预警" />
 
     <!-- 告警事件列表 -->
-    <scroll-view
-      class="page-body"
-      scroll-y
-      refresher-enabled
-      :refresher-triggered="isRefreshing"
-      @refresherrefresh="onRefresh"
-      @scrolltolower="onLoadMore"
-      lower-threshold="100"
-    >
-      <!-- Tab切换：待处理 / 历史事件 -->
-      <view class="tab-bar">
-        <view class="tab-item" :class="{ active: activeTab === 'pending' }" @click="switchTab('pending')">
-          <text class="tab-text">待处理</text>
+    <view class="page-body">
+      <!-- Tab切换：胶囊卡片 -->
+      <view class="tab-capsule">
+        <view class="tab-capsule-item" :class="{ active: activeTab === 'pending' }" @click="switchTab('pending')">
+          <text class="tab-capsule-text">待处理</text>
           <text v-if="pendingTotal > 0" class="tab-badge">{{ pendingTotal }}</text>
         </view>
-        <view class="tab-item" :class="{ active: activeTab === 'history' }" @click="switchTab('history')">
-          <text class="tab-text">历史事件</text>
+        <view class="tab-capsule-item" :class="{ active: activeTab === 'history' }" @click="switchTab('history')">
+          <text class="tab-capsule-text">历史事件</text>
         </view>
       </view>
 
-      <view class="list-inner">
+      <scroll-view
+        class="list-scroll"
+        scroll-y
+        refresher-enabled
+        :refresher-triggered="isRefreshing"
+        @refresherrefresh="onRefresh"
+        @scrolltolower="onLoadMore"
+        lower-threshold="100"
+      >
+        <view class="list-inner">
         <!-- 骨架屏 -->
         <view v-if="loading && pageNum === 1" class="skeleton-wrapper">
           <Skeleton :rows="4" />
@@ -70,7 +71,10 @@
                   >
                     {{ alarm.statusName }}
                   </view>
-                  <text class="alarm-device">{{ alarm.deviceName || '' }}</text>
+                  <text v-if="alarm.alarmType" class="alarm-type" :class="{ 'alarm-type--comprehensive': alarm.alarmType === 'COMPREHENSIVE' }">
+                    {{ alarm.alarmType === 'COMPREHENSIVE' ? '综合告警' : alarm.alarmType === 'THRESHOLD' ? '阈值告警' : alarm.alarmType }}
+                  </text>
+                  <text v-if="alarm.triggerCount > 1" class="alarm-trigger-count">累计 {{ alarm.triggerCount }} 次</text>
                 </view>
                 <text class="alarm-time">{{ formatTime(alarm.firstTriggerTime) }}</text>
               </view>
@@ -92,8 +96,9 @@
             <text class="loading-more-text">加载中...</text>
           </view>
         </view>
-      </view>
-    </scroll-view>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 </template>
 
@@ -101,10 +106,10 @@
 import EmptyState from '@/components/EmptyState.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import Skeleton from '@/components/Skeleton.vue'
-import { alarmApi, getAlarmLevelColor, getAlarmLevelText, getStatusType } from '@/utils/alarm'
 import type { AlarmRecordItem } from '@/utils/alarm'
+import { alarmApi, getAlarmLevelColor, getAlarmLevelText, getStatusType } from '@/utils/alarm'
 import { startPolling, stopPolling } from '@/utils/polling'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -230,36 +235,42 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #eef1f8 0%, #e8ecf4 100%);
 }
 
-/* Tab 切换栏 */
-.tab-bar {
+/* Tab 胶囊卡片 */
+.tab-capsule {
   display: flex;
-  padding: 16rpx 32rpx;
-  gap: 0;
+  gap: 20rpx;
+  padding: 16rpx;
+  margin: 0rpx 32rpx 0;
   background: #ffffff;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.1);
 }
 
-.tab-item {
+.tab-capsule-item {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  padding: 16rpx 0;
-  position: relative;
-  border-bottom: 4rpx solid transparent;
+  padding: 20rpx 0;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.4);
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
 
   &.active {
-    border-bottom-color: #3068e4;
+    background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
+    box-shadow: 0 8rpx 24rpx rgba(48, 104, 228, 0.3);
   }
 
-  &.active .tab-text {
-    color: #3068e4;
+  &.active .tab-capsule-text {
+    color: #ffffff;
     font-weight: 600;
   }
 }
 
-.tab-text {
+.tab-capsule-text {
   font-size: 28rpx;
   color: #6b7280;
 }
@@ -272,10 +283,21 @@ onUnmounted(() => {
   border-radius: 16rpx;
   min-width: 28rpx;
   text-align: center;
+
+  .active & {
+    background: rgba(255, 255, 255, 0.3);
+  }
 }
 
 /* 列表 */
 .page-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.list-scroll {
   flex: 1;
   height: 0;
 }
@@ -393,18 +415,33 @@ onUnmounted(() => {
   &.status-info { background: rgba(144, 147, 153, 0.1); color: #909399; }
 }
 
-.alarm-device {
-  font-size: 22rpx;
-  color: #3068e4;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.alarm-type {
+  font-size: 20rpx;
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.08);
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+
+  &--comprehensive {
+    color: #f53f3f;
+    background: rgba(245, 63, 63, 0.1);
+    font-weight: 600;
+  }
 }
 
 .alarm-time {
   font-size: 22rpx;
   color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.alarm-trigger-count {
+  font-size: 20rpx;
+  color: #ff7d00;
+  background: rgba(255, 125, 0, 0.08);
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
   flex-shrink: 0;
 }
 

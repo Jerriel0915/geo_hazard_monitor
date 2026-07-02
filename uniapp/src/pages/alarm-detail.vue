@@ -5,7 +5,17 @@
     <PageHeader show-back :title="alarmData?.hazardPointName || '告警详情'" />
 
     <!-- 内容 -->
-    <scroll-view class="page-body" scroll-y refresher-enabled :refresher-triggered="isRefreshing" @refresherrefresh="loadAll">
+    <view class="page-body">
+      <scroll-view
+        class="page-scroll"
+        scroll-y
+        refresher-enabled
+        :refresher-triggered="isRefreshing"
+        :scroll-top="scrollTop"
+        :style="{ marginTop: `${capsuleShift}px`, height: `calc(100% - ${capsuleShift}px)` }"
+        @refresherrefresh="loadAll"
+        @scroll="onScroll"
+      >
       <view v-if="loading && !alarmData" class="loading-wrapper">
         <text class="loading-text">加载中...</text>
       </view>
@@ -32,15 +42,9 @@
               <text class="info-label">告警时间</text>
               <text class="info-value time-range">{{ formatTime(alarmData.firstTriggerTime) }} ~ {{ formatTime(alarmData.lastTriggerTime) }}</text>
             </view>
-            <view class="info-row column">
-              <text class="info-label">警情来源</text>
-              <view class="source-row">
-                <view class="source-main">
-                  <text class="source-name">{{ alarmData.hazardPointName || '-' }}</text>
-                  <text v-if="alarmData.deviceName" class="source-device">{{ alarmData.deviceName }}</text>
-                </view>
-                <view v-if="canNavigate" class="nav-btn" @click.stop="openMap">📍</view>
-              </view>
+            <view class="info-row">
+              <text class="info-label">触发设备</text>
+              <text class="info-value">{{ alarmData.deviceName || '-' }}</text>
             </view>
             <view class="info-row column">
               <text class="info-label">告警描述</text>
@@ -63,6 +67,10 @@
         <view class="section" v-if="hazardPointData">
           <text class="section-title">项目信息</text>
           <view class="info-card">
+            <view class="info-row">
+              <text class="info-label">隐患点</text>
+              <text class="info-value">{{ alarmData.hazardPointName || '-' }}</text>
+            </view>
             <view class="info-row" @click="openMap">
               <text class="info-label">地理位置</text>
               <text class="info-value" style="color: #3068e4;">{{ formatLocation(hazardPointData) }} ></text>
@@ -149,13 +157,11 @@
                     <view class="notify-channel" :class="`channel-${n.channel?.toLowerCase()}`">
                       {{ getChannelText(n.channel) }}
                     </view>
+                    <text class="notify-label">接收人：</text>
+                    <text class="notify-value">{{ n.recipientName || n.recipientPhone || '-' }}</text>
                     <view class="notify-status" :class="`notify-status-${getNotifyStatusType(n.status)}`">
                       {{ getNotifyStatusText(n.status) }}
                     </view>
-                  </view>
-                  <view class="notify-recipient">
-                    <text class="notify-label">接收人：</text>
-                    <text class="notify-value">{{ n.recipientName || n.recipientPhone || '-' }}</text>
                   </view>
                   <view v-if="n.content" class="notify-content-row">
                     <text class="notify-content">{{ n.content }}</text>
@@ -227,7 +233,32 @@
         <!-- 底部留白 -->
         <view class="bottom-spacer" />
       </template>
-    </scroll-view>
+      </scroll-view>
+
+      <!-- 粘性胶囊：绝对固定在 page-body 可视区顶部，不随滚动消失 -->
+      <view
+        v-if="alarmData"
+        class="sticky-capsule"
+        :style="{ opacity: capsuleOpacity, transform: `translateY(${capsuleTranslateY})` }"
+      >
+        <view class="capsule-badge" :style="{ background: getAlarmLevelColor(alarmData.alarmLevel) }">
+          {{ getAlarmLevelText(alarmData.alarmLevel) }}
+        </view>
+        <view class="capsule-divider" />
+        <view class="capsule-field">
+          <text class="capsule-label">类型</text>
+          <text class="capsule-val">{{ getAlarmTypeText(alarmData.alarmType) }}</text>
+        </view>
+        <view class="capsule-divider" />
+        <view class="capsule-field">
+          <text class="capsule-label">触发</text>
+          <text class="capsule-val">{{ alarmData.triggerCount || 0 }} 次</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 回到顶部 -->
+    <view v-if="showBackTop" class="back-top-btn" @click="scrollToTop">↑</view>
 
     <!-- 底部操作栏 -->
     <view v-if="showActions" class="action-bar" :style="{ paddingBottom: `${safeAreaBottom + 16}rpx` }">
@@ -278,6 +309,40 @@ const loading = ref(false)
 const loadError = ref('')
 const isRefreshing = ref(false)
 
+// 回到顶部
+const showBackTop = ref(false)
+const scrollTop = ref(0)
+
+// 粘性胶囊：滚动时元素逐渐聚拢并吸顶
+const scrollY = ref(0)
+
+const capsuleOpacity = computed(() => {
+  // 从 60px 开始出现，140px 完全可见
+  return Math.min(1, Math.max(0, (scrollY.value - 60) / 80))
+})
+
+const capsuleTranslateY = computed(() => {
+  const progress = capsuleOpacity.value
+  return `${(1 - progress) * 12}rpx`
+})
+
+// 胶囊出现时，scroll-view 逐渐下移让出空间
+// 实际高度 = padding 20rpx×2 + 内容 ~44rpx ≈ 84rpx ≈ 42px，加 5px 间距 = 47px
+const capsuleShift = computed(() => {
+  return Math.round(capsuleOpacity.value * 55)
+})
+
+const onScroll = (e: { detail: { scrollTop: number } }) => {
+  const y = e.detail.scrollTop
+  scrollY.value = y
+  showBackTop.value = y > 400
+}
+
+const scrollToTop = () => {
+  scrollTop.value = 0
+  showBackTop.value = false
+}
+
 const alarmData = ref<AlarmRecordItem | null>(null)
 const triggerDetails = ref<AlarmRecordTriggerDetail[]>([])
 const actionLogs = ref<AlarmRecordActionLog[]>([])
@@ -291,7 +356,7 @@ const showAllTimeline = ref(false)
 type SupportTab = 'monitor' | 'trigger' | 'notify' | 'feedback'
 const supportTabs: { label: string; value: SupportTab }[] = [
   { label: '监测数据', value: 'monitor' },
-  { label: '告警次数', value: 'trigger' },
+  { label: '告警记录', value: 'trigger' },
   { label: '通知记录', value: 'notify' },
   { label: '反馈记录', value: 'feedback' },
 ]
@@ -312,10 +377,6 @@ const feedbackLogs = computed(() =>
 const showActions = computed(() => {
   const s = Number(alarmData.value?.status)
   return s === 1 || s === 2
-})
-
-const canNavigate = computed(() => {
-  return !!alarmData.value?.hazardPointId
 })
 
 const displayedTimeline = computed(() =>
@@ -633,9 +694,66 @@ const openMap = () => {
   color: #9ca3af;
 }
 
+/* page-body wrapper：继承全局 flex 布局，作为胶囊定位上下文 */
 .page-body {
+  position: relative;
+}
+
+.page-scroll {
+  height: 100%;
+}
+
+/* 粘性胶囊卡片：absolute 固定在 page-body 可视区顶部 */
+.sticky-capsule {
+  position: absolute;
+  top: 0;
+  left: 32rpx;
+  right: 32rpx;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 20rpx 8rpx;
+  box-shadow: 0 8rpx 32rpx rgba(102, 126, 234, 0.15);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.capsule-badge {
+  font-size: 20rpx;
+  color: #ffffff;
+  padding: 6rpx 18rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  margin: 0 8rpx;
+}
+
+.capsule-field {
   flex: 1;
-  height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rpx;
+}
+
+.capsule-label {
+  font-size: 18rpx;
+  color: #9ca3af;
+  line-height: 1;
+}
+
+.capsule-val {
+  font-size: 22rpx;
+  color: #1a1a2e;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.capsule-divider {
+  width: 1rpx;
+  height: 36rpx;
+  background: #e5e7eb;
+  flex-shrink: 0;
 }
 
 .section {
@@ -703,45 +821,6 @@ const openMap = () => {
   border-radius: 8rpx;
   font-size: 22rpx;
   color: #ffffff;
-}
-
-.source-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.source-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-  min-width: 0;
-}
-
-.source-name {
-  font-size: 26rpx;
-  color: #1a1a2e;
-  font-weight: 500;
-}
-
-.source-device {
-  font-size: 22rpx;
-  color: #6b7280;
-}
-
-.nav-btn {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  background: rgba(48, 104, 228, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-  flex-shrink: 0;
 }
 
 .status-badge {
@@ -869,8 +948,8 @@ const openMap = () => {
 
 .notify-top {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8rpx;
   margin-bottom: 8rpx;
 }
 
@@ -888,6 +967,8 @@ const openMap = () => {
   font-size: 22rpx;
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
+  margin-left: auto;
+  flex-shrink: 0;
 
   &.notify-status-info { background: rgba(144, 147, 153, 0.1); color: #909399; }
   &.notify-status-success { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
@@ -895,7 +976,6 @@ const openMap = () => {
   &.notify-status-warning { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
 }
 
-.notify-recipient,
 .notify-content-row {
   display: flex;
   gap: 8rpx;
@@ -908,7 +988,16 @@ const openMap = () => {
   color: #9ca3af;
 }
 
-.notify-value,
+.notify-value {
+  font-size: 22rpx;
+  color: #1a1a2e;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .feedback-value {
   font-size: 22rpx;
   color: #1a1a2e;
@@ -1096,5 +1185,27 @@ const openMap = () => {
 
 .bottom-spacer {
   height: 60rpx;
+}
+
+/* 回到顶部按钮 */
+.back-top-btn {
+  position: fixed;
+  right: 32rpx;
+  bottom: 200rpx;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  color: #3068e4;
+  z-index: 10;
+
+  &:active {
+    opacity: 0.7;
+  }
 }
 </style>

@@ -130,7 +130,8 @@ page {
 // ============ 下拉刷新区域背景透明 ============
 // UniApp 内置 refresher 组件默认白底，强制透明以适配渐变 header
 uni-scroll-view-refresher,
-.uni-scroll-view-refresher-container {
+.uni-scroll-view-refresher-container,
+.uni-scroll-view-refresher {
   background-color: transparent !important;
   background: transparent !important;
 }
@@ -155,4 +156,5 @@ uni-scroll-view-refresher,
 .page-body {
   flex: 1;
   height: 0;
+  z-index: 1;
 }
