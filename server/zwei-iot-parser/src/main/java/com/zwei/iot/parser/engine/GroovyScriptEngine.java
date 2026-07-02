@@ -52,6 +52,8 @@ public class GroovyScriptEngine {
 
     /** 脚本编译类缓存：strategyId -> 编译后的 Script Class */
     private final Map<Long, Class<? extends Script>> scriptClassCache = new ConcurrentHashMap<>();
+    /** 计算属性脚本编译类缓存：sha256(scriptCode) -> 编译后的 Script Class */
+    private final Map<String, Class<? extends Script>> computedClassCache = new ConcurrentHashMap<>();
     /** 共享安全类加载器（带沙箱配置），用于 parseClass */
     private final GroovyClassLoader secureClassLoader;
     private volatile ExecutorService executor;
@@ -205,13 +207,20 @@ public class GroovyScriptEngine {
                                                 Map<String, Object> extraBindings) {
         Future<Map<String, Object>> future = executor.submit(() -> {
             try {
-                GroovyShell shell = new GroovyShell(createSecureConfig());
+                String cacheKey = sha256(scriptCode);
+                Class<? extends Script> clazz = computedClassCache.computeIfAbsent(
+                        cacheKey, k -> {
+                            synchronized (secureClassLoader) {
+                                GroovyShell shell = new GroovyShell(createSecureConfig());
+                                return shell.parse(scriptCode).getClass();
+                            }
+                        });
+                Script script = clazz.getDeclaredConstructor().newInstance();
                 Binding binding = new Binding();
                 binding.setVariable("builtin", builtInFunctions);
                 if (extraBindings != null) {
                     extraBindings.forEach(binding::setVariable);
                 }
-                Script script = shell.parse(scriptCode);
                 script.setBinding(binding);
                 Object result = script.invokeMethod(
                         "compute", new Object[]{curData, prevData});
@@ -267,6 +276,7 @@ public class GroovyScriptEngine {
         if (strategyId != null) {
             scriptClassCache.remove(strategyId);
         }
+        computedClassCache.clear();
     }
 
     private Class<? extends Script> getOrCreateScriptClass(DataParseStrategy strategy) {

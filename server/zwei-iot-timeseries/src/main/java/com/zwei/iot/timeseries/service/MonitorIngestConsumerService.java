@@ -10,6 +10,7 @@ import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceOnlineStatusService;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.timeseries.compute.ComputedAttributeEvaluator;
 import com.zwei.iot.timeseries.compute.LastMessageStore;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
 import com.zwei.iot.timeseries.domain.StandardMeasurementPoint;
@@ -73,6 +74,7 @@ public class MonitorIngestConsumerService {
     private final IDeviceSensorService deviceSensorService;
     private final ApplicationEventPublisher eventPublisher;
     private final LastMessageStore lastMessageStore;
+    private final ComputedAttributeEvaluator computedAttrEvaluator;
     private final ExecutorService executorService;
     private final ScheduledExecutorService retryScheduler;
     private volatile boolean running = true;
@@ -100,7 +102,8 @@ public class MonitorIngestConsumerService {
                                         DeviceOnlineStatusService deviceOnlineStatusService,
                                         IDeviceSensorService deviceSensorService,
                                         ApplicationEventPublisher eventPublisher,
-                                        LastMessageStore lastMessageStore) {
+                                        LastMessageStore lastMessageStore,
+                                        ComputedAttributeEvaluator computedAttrEvaluator) {
         this.redisTemplate = redisTemplate;
         this.properties = properties;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
@@ -110,6 +113,7 @@ public class MonitorIngestConsumerService {
         this.deviceSensorService = deviceSensorService;
         this.eventPublisher = eventPublisher;
         this.lastMessageStore = lastMessageStore;
+        this.computedAttrEvaluator = computedAttrEvaluator;
         this.executorService = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "monitor-ingest-consumer");
             thread.setDaemon(true);
@@ -336,6 +340,43 @@ public class MonitorIngestConsumerService {
                 return;
             }
             points = nonDuplicatePoints;
+            // ── 计算属性求值：在 Consumer 端执行，复用 LastMessageStore 的 prevData ──
+            Long evalDeviceId = points.get(0).deviceId();
+            String evalSensorCode = parsed.sensorCode();
+            try {
+                List<PropertyValue> computed = computedAttrEvaluator.evaluate(
+                        evalDeviceId, evalSensorCode, parsed);
+                if (!computed.isEmpty()) {
+                    // 合并到 ParsedMessage（事件携带计算属性）并转为 StandardMeasurementPoint 写入 IoTDB
+                    List<PropertyValue> mergedProps = new ArrayList<>(parsed.properties());
+                    mergedProps.addAll(computed);
+                    parsed = new ParsedMessage(parsed.deviceCode(), parsed.sensorCode(),
+                            parsed.sourceType(), parsed.dataTime(),
+                            parsed.receiveTime(), parsed.payloadHash(), mergedProps);
+                    List<StandardMeasurementPoint> allPoints = new ArrayList<>(points);
+                    for (PropertyValue pv : computed) {
+                        allPoints.add(StandardMeasurementPoint.builder()
+                                .deviceId(evalDeviceId)
+                                .sensorCode(evalSensorCode)
+                                .sensorId(points.get(0).sensorId())
+                                .attrCode(pv.identifier())
+                                .attrName(pv.name())
+                                .unit(pv.unit())
+                                .value(pv.value())
+                                .quality(pv.quality())
+                                .dataTime(parsed.dataTime())
+                                .reportTime(parsed.dataTime())
+                                .receiveTime(parsed.receiveTime())
+                                .sourceType(parsed.sourceType())
+                                .payloadHash(parsed.payloadHash())
+                                .build());
+                    }
+                    points = allPoints;
+                }
+            } catch (Exception e) {
+                log.warn("Computed attribute evaluation failed: deviceId={}, sensorCode={}",
+                        evalDeviceId, evalSensorCode, e);
+            }
             iotdbTimeSeriesService.writePoints(points);
             // 累计监测次数 (+N)
             monitorCountAdder.add(points.size());
