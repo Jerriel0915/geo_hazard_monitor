@@ -4,9 +4,10 @@ import type { DeviceInfo, DeviceSensor, SensorAttr } from '@/utils/device'
 import type { ChartSeries } from '@/utils/monitor'
 import PageHeader from '@/components/PageHeader.vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { deviceApi } from '@/utils/device'
 import { monitorApi } from '@/utils/monitor'
+import { wgs84ToGcj02 } from '@/utils/coordTransform'
 import * as echartsLib from '@/components/echarts.esm.min.js'
 import EchartsComponent from '@/components/echarts.vue'
 
@@ -15,6 +16,20 @@ const deviceId = ref(0)
 const device = ref<DeviceInfo | undefined>(undefined)
 const sensorGroups = ref<SensorGroup[]>([])
 const loading = ref(true)
+
+// === 回到顶部 ===
+const showBackTop = ref(false)
+const scrollTop = ref(0)
+
+function onScroll(e: { detail: { scrollTop: number } }) {
+  showBackTop.value = e.detail.scrollTop > 400
+}
+
+function scrollToTop() {
+  scrollTop.value = 1
+  nextTick(() => { scrollTop.value = 0 })
+  showBackTop.value = false
+}
 
 // === 内联图表状态 ===
 const expandedKey = ref('')
@@ -215,6 +230,29 @@ function initInlineChart(canvas: any, width: number, height: number) {
   return chart
 }
 
+// === 安装位置 ===
+const hasLocation = computed(() => {
+  return device.value?.latitude != null && device.value?.longitude != null
+})
+
+const locationText = computed(() => {
+  if (!hasLocation.value) return device.value?.installLocation || '-'
+  const lat = Number(device.value!.latitude!).toFixed(6)
+  const lng = Number(device.value!.longitude!).toFixed(6)
+  return `${lng}, ${lat}`
+})
+
+function showLocation() {
+  if (!hasLocation.value) return
+  const gc = wgs84ToGcj02(device.value!.latitude!, device.value!.longitude!)
+  uni.openLocation({
+    latitude: gc.latitude,
+    longitude: gc.longitude,
+    name: device.value?.deviceName || '设备位置',
+    address: device.value?.installLocation || '',
+  })
+}
+
 // === 跳转 chart 页面 ===
 function goToChart() {
   const hazardId = device.value?.boundHazardPointId
@@ -257,11 +295,23 @@ function getTypeColor(type: string): string {
 
 function getStatusClass(status: string): string {
   switch (status) {
-    case '在线': return 'online'
-    case '离线': return 'offline'
-    case '故障': return 'fault'
+    case '正常': return 'online'
+    case '维修': return 'fault'
+    case '停用': return 'offline'
     default: return 'offline'
   }
+}
+
+function getOnlineStatusClass(onlineStatus: number | undefined): string {
+  return onlineStatus === 1 ? 'online' : 'offline'
+}
+
+function getOnlineStatusText(onlineStatus: number | undefined): string {
+  return onlineStatus === 1 ? '在线' : '离线'
+}
+
+function getDeviceStatusText(status: string | undefined): string {
+  return status || '-'
 }
 </script>
 
@@ -271,14 +321,14 @@ function getStatusClass(status: string): string {
     <PageHeader show-back :title="device?.deviceName || '设备详情'" />
 
     <!-- 可滚动内容 -->
-    <scroll-view class="page-body" scroll-y>
+    <scroll-view class="page-body" scroll-y :scroll-top="scrollTop" @scroll="onScroll">
       <!-- 状态卡片 -->
       <view class="section">
         <view class="status-card">
           <view class="status-main">
-            <view class="status-big-badge" :class="getStatusClass(device?.status || '')">
-              <view class="status-big-dot" :class="getStatusClass(device?.status || '')" />
-              <text class="status-big-text">{{ device?.status || '-' }}</text>
+            <view class="status-big-badge" :class="getOnlineStatusClass(device?.onlineStatus)">
+              <view class="status-big-dot" :class="getOnlineStatusClass(device?.onlineStatus)" />
+              <text class="status-big-text">{{ getOnlineStatusText(device?.onlineStatus) }}</text>
             </view>
             <view class="status-info">
               <text class="status-label">连接状态</text>
@@ -299,6 +349,28 @@ function getStatusClass(status: string): string {
           <view v-if="device?.boundHazardPointName" class="info-row">
             <text class="info-label">所属隐患点</text>
             <text class="info-value">{{ device.boundHazardPointName }}</text>
+          </view>
+          <view
+            class="info-row"
+            :class="{ clickable: hasLocation }"
+            @click="showLocation"
+          >
+            <text class="info-label">安装位置</text>
+            <text class="info-value" :class="{ 'link-text': hasLocation }">
+              {{ locationText }}
+              <text v-if="hasLocation" class="link-arrow">></text>
+            </text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">设备状态</text>
+            <view class="device-status-row">
+              <view class="device-status-dot" :class="getStatusClass(device?.status || '')" />
+              <text class="device-status-text">{{ getDeviceStatusText(device?.status) }}</text>
+            </view>
+          </view>
+          <view class="info-row">
+            <text class="info-label">创建时间</text>
+            <text class="info-value">{{ device?.createTime || '-' }}</text>
           </view>
         </view>
       </view>
@@ -405,6 +477,11 @@ function getStatusClass(status: string): string {
       <!-- 底部留白 -->
       <view class="bottom-spacer" />
     </scroll-view>
+
+    <!-- 回到顶部 -->
+    <view v-if="showBackTop" class="back-top-btn" @click="scrollToTop">
+      <zui-svg-icon icon="up" :width="20" color="#ffffff" />
+    </view>
   </view>
 </template>
 
@@ -524,6 +601,47 @@ function getStatusClass(status: string): string {
 }
 
 .info-value {
+  font-size: 26rpx;
+  color: #1a1a2e;
+  font-weight: 500;
+
+  &.link-text {
+    color: #3068e4;
+  }
+}
+
+.link-arrow {
+  font-size: 26rpx;
+  color: #3068e4;
+  margin-left: 4rpx;
+}
+
+.info-row.clickable {
+  cursor: pointer;
+
+  &:active {
+    background: #f7f8fc;
+    border-radius: 8rpx;
+  }
+}
+
+.device-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.device-status-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+
+  &.online { background: #52c41a; }
+  &.offline { background: #9ca3af; }
+  &.fault { background: #f5222d; }
+}
+
+.device-status-text {
   font-size: 26rpx;
   color: #1a1a2e;
   font-weight: 500;
@@ -747,5 +865,26 @@ function getStatusClass(status: string): string {
 
 .bottom-spacer {
   height: 32rpx;
+}
+
+/* 回到顶部 */
+.back-top-btn {
+  position: fixed;
+  right: 32rpx;
+  bottom: 200rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
+  box-shadow: 0 8rpx 24rpx rgba(48, 104, 228, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+
+  &:active {
+    transform: scale(0.9);
+    opacity: 0.85;
+  }
 }
 </style>

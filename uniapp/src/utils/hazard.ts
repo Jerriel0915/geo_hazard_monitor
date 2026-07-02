@@ -5,6 +5,7 @@ export interface Hazard {
   id: number
   name: string
   code?: string
+  groupName?: string
   longitude?: number
   latitude?: number
   location: string
@@ -67,10 +68,11 @@ function mapHazard(item: HazardRawItem): Hazard {
     id: item.id,
     name: item.name,
     code: item.code,
+    groupName: item.groupName,
     longitude: item.longitude,
     latitude: item.latitude,
     location: formatLocation(item),
-    status: item.statusName || (item.status === 1 ? '监测中' : '已停测'),
+    status: item.statusName || (item.status === 1 ? '监测中' : item.status === 2 ? '停测中' : '已完结'),
     deviceCount: item.deviceCount || 0,
     description: safeString(item.description),
     createTime: item.createTime || '',

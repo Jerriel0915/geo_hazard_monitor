@@ -3,11 +3,11 @@
  * 处理状态栏高度、底部安全区域等
  */
 console.log('[useSafeArea.ts] Module started')
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 
 // #ifdef H5
 // H5 环境无物理状态栏，设置默认安全高度保持 UI 与小程序一致
-const H5_STATUS_BAR_HEIGHT = 44
+const H5_STATUS_BAR_HEIGHT = 0
 // #endif
 
 export function useSafeArea() {

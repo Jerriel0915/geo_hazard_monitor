@@ -12,6 +12,7 @@ declare module 'vue' {
     CascadeSelector: typeof import('./src/components/CascadeSelector.vue')['default']
     ConfirmDialog: typeof import('./src/components/ConfirmDialog.vue')['default']
     ContainerCard: typeof import('./src/components/ContainerCard.vue')['default']
+    DataCard: typeof import('./src/components/DataCard.vue')['default']
     Echarts: typeof import('./src/components/echarts.vue')['default']
     EmptyState: typeof import('./src/components/EmptyState.vue')['default']
     InputEntry: typeof import('./src/components/InputEntry.vue')['default']

@@ -10,6 +10,14 @@ export interface DeviceInfo {
   onlineStatus: number
   lastReportTime: string
   createTime?: string
+  /** 安装位置（文字描述） */
+  installLocation?: string
+  /** 纬度 */
+  latitude?: number
+  /** 经度 */
+  longitude?: number
+  /** 传感器数量 */
+  sensorCount?: number
   /** 绑定的隐患点ID（Service层富化） */
   boundHazardPointId?: number
   /** 绑定的隐患点名称 */
@@ -49,6 +57,10 @@ interface DeviceRawItem {
   onlineStatus?: number
   lastReportTime?: string
   createTime?: string
+  installLocation?: string
+  latitude?: number
+  longitude?: number
+  sensorCount?: number
   boundHazardPointId?: number
   boundHazardPointName?: string
 }
@@ -64,7 +76,12 @@ function mapDevice(item: DeviceRawItem): DeviceInfo {
   const code = item.code || ''
   const deviceTypeName = DEVICE_TYPE_MAP[item.deviceType ?? -1] || ''
   const onlineStatus = item.onlineStatus ?? 0
-  const status = onlineStatus === 1 ? '在线' : '离线'
+  const status = item.status === 1 ? '正常' : item.status === 2 ? '维修' : item.status === 3 ? '停用' : (item.statusName || '正常')
+  // 安装位置：优先使用文字描述，否则用经纬度拼接
+  let installLocation = item.installLocation || ''
+  if (!installLocation && item.latitude != null && item.longitude != null) {
+    installLocation = `${Number(item.longitude).toFixed(6)}, ${Number(item.latitude).toFixed(6)}`
+  }
   return {
     id: item.id,
     name,
@@ -74,6 +91,10 @@ function mapDevice(item: DeviceRawItem): DeviceInfo {
     onlineStatus,
     lastReportTime: item.lastReportTime || '',
     createTime: item.createTime,
+    installLocation,
+    latitude: item.latitude,
+    longitude: item.longitude,
+    sensorCount: item.sensorCount,
     boundHazardPointId: item.boundHazardPointId,
     boundHazardPointName: item.boundHazardPointName,
     // 兼容字段
@@ -84,35 +105,17 @@ function mapDevice(item: DeviceRawItem): DeviceInfo {
 }
 
 export const deviceApi = {
-  async getAll(): Promise<DeviceInfo[]> {
-    let rawList: any[]
+  async getPage(pageNum: number, pageSize: number): Promise<{ rows: DeviceInfo[], total: number }> {
     try {
-      // 优先尝试不分页接口
-      const res = await http.get('/devices')
-      rawList = (res as any)?.rows || (res as any[]) || []
+      const res = await http.get('/devices/page', { pageNum, pageSize })
+      const rawList = (res as any)?.rows || []
+      const total = (res as any)?.total || 0
+      return { rows: rawList.map(mapDevice), total }
     }
     catch (error) {
-      console.error('获取设备列表失败，回退分页:', error)
-      const res = await http.get('/devices/page', { pageNum: 1, pageSize: 200 })
-      rawList = (res as any)?.rows || []
+      console.error('获取设备列表失败:', error)
+      return { rows: [], total: 0 }
     }
-    const devices = rawList.map(mapDevice)
-    // 并发获取每台设备的传感器，提取监测类型
-    await Promise.all(devices.map(async (d) => {
-      try {
-        const sensors = await this.getSensors(d.id)
-        const types = new Set<string>()
-        sensors.forEach((s) => {
-          if (s.monitorTypeName)
-            types.add(s.monitorTypeName)
-        })
-        d.monitorTypes = [...types]
-      }
-      catch {
-        d.monitorTypes = []
-      }
-    }))
-    return devices
   },
 
   /** 获取所有监测类型（用于筛选项） */

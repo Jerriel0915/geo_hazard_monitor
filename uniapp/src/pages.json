@@ -131,6 +131,7 @@
     "autoscan": true,
     "custom": {
       "^zui-svg-icon$": "@/uni_modules/zui-svg-icon/components/zui-svg-icon/zui-svg-icon.vue",
+      "^DataCard$": "@/components/DataCard.vue",
       "^EmptyState$": "@/components/EmptyState.vue",
       "^Skeleton$": "@/components/Skeleton.vue",
       "^StatBubble$": "@/components/StatBubble.vue"

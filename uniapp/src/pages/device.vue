@@ -3,7 +3,7 @@
 import type { DeviceInfo } from '@/utils/device'
 import type { VideoDevice } from '@/utils/video'
 import PageHeader from '@/components/PageHeader.vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { deviceApi } from '@/utils/device'
 import { videoApi } from '@/utils/video'
 
@@ -11,35 +11,31 @@ const TIME_SUFFIX_RE = /:\d{2}$/
 
 const activeTab = ref<'monitor' | 'video'>('monitor')
 const keyword = ref('')
-const activeType = ref('')
-const showTypeFilter = ref(false)
 const isRefreshing = ref(false)
 const devices = ref<DeviceInfo[]>([])
 const videoDevices = ref<VideoDevice[]>([])
 
-const deviceTypes = computed(() => {
-  const types = new Set<string>()
-  devices.value.forEach((d) => {
-    d.monitorTypes?.forEach(t => types.add(t))
-  })
-  return [...types]
-})
+// 分页
+const pageNum = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const loadingMore = ref(false)
+const hasMore = computed(() => devices.value.length < total.value)
 
-const activeTypeLabel = computed(() => activeType.value || '监测类型')
+// 回到顶部
+const showBackTop = ref(false)
+const scrollTop = ref(0)
+
+const deviceTotal = computed(() => total.value)
+const videoDeviceTotal = computed(() => videoDevices.value.length)
 
 const filteredDevices = computed(() => {
-  let list = devices.value
-  if (activeType.value) {
-    list = list.filter(d => d.monitorTypes?.includes(activeType.value))
-  }
-  if (keyword.value.trim()) {
-    const kw = keyword.value.trim().toLowerCase()
-    list = list.filter(d =>
-      d.deviceName.toLowerCase().includes(kw)
-      || d.deviceCode.toLowerCase().includes(kw),
-    )
-  }
-  return list
+  if (!keyword.value.trim()) return devices.value
+  const kw = keyword.value.trim().toLowerCase()
+  return devices.value.filter(d =>
+    d.deviceName.toLowerCase().includes(kw)
+    || d.deviceCode.toLowerCase().includes(kw),
+  )
 })
 
 const filteredVideoDevices = computed(() => {
@@ -58,7 +54,10 @@ onMounted(() => {
 
 async function loadDevices() {
   try {
-    devices.value = await deviceApi.getAll()
+    pageNum.value = 1
+    const res = await deviceApi.getPage(pageNum.value, pageSize.value)
+    devices.value = res.rows
+    total.value = res.total
   }
   catch (error) {
     console.error('加载设备列表失败:', error)
@@ -67,6 +66,24 @@ async function loadDevices() {
     setTimeout(() => {
       isRefreshing.value = false
     }, 400)
+  }
+}
+
+async function loadMoreDevices() {
+  if (loadingMore.value || !hasMore.value) return
+  loadingMore.value = true
+  try {
+    pageNum.value++
+    const res = await deviceApi.getPage(pageNum.value, pageSize.value)
+    devices.value.push(...res.rows)
+    total.value = res.total
+  }
+  catch (error) {
+    console.error('加载更多设备失败:', error)
+    pageNum.value--
+  }
+  finally {
+    loadingMore.value = false
   }
 }
 
@@ -97,15 +114,9 @@ function clearSearch() {
   keyword.value = ''
 }
 
-function selectType(type: string) {
-  activeType.value = type
-  showTypeFilter.value = false
-}
-
 function switchTab(tab: 'monitor' | 'video') {
   activeTab.value = tab
   keyword.value = ''
-  activeType.value = ''
 }
 
 function goToDetail(device: DeviceInfo) {
@@ -116,23 +127,11 @@ function goToVideoPlayer(video: VideoDevice) {
   uni.navigateTo({ url: `/pages/video-player?id=${video.id}` })
 }
 
-function getTypeColor(type: string): string {
-  const colorMap: Record<string, string> = {
-    GNSS: '#3068e4',
-    雨量计: '#1890ff',
-    测斜仪: '#722ed1',
-    裂缝计: '#fa8c16',
-    水位计: '#13c2c2',
-    视频设备: '#eb2f96',
-  }
-  return colorMap[type] || '#3068e4'
-}
-
 function getStatusClass(status: string): string {
   switch (status) {
-    case '在线': return 'online'
-    case '离线': return 'offline'
+    case '正常': return 'online'
     case '维修': return 'fault'
+    case '停用': return 'offline'
     default: return 'offline'
   }
 }
@@ -150,6 +149,22 @@ function formatTime(time: string): string {
     return '-'
   return time.replace(TIME_SUFFIX_RE, '')
 }
+
+function onScrollToLower() {
+  if (activeTab.value === 'monitor') {
+    loadMoreDevices()
+  }
+}
+
+function onScroll(e: { detail: { scrollTop: number } }) {
+  showBackTop.value = e.detail.scrollTop > 400
+}
+
+function scrollToTop() {
+  scrollTop.value = 1
+  nextTick(() => { scrollTop.value = 0 })
+  showBackTop.value = false
+}
 </script>
 
 <template>
@@ -158,170 +173,156 @@ function formatTime(time: string): string {
     <PageHeader title="设备库" subtitle="设备运维 · 状态监控" />
 
     <!-- 设备列表 -->
-    <scroll-view
-      class="page-body"
-      scroll-y
-      refresher-enabled
-      :refresher-triggered="isRefreshing"
-      @refresherrefresh="onRefresh"
-    >
-      <!-- Tab 切换 -->
-      <view class="tab-bar">
+    <view class="page-body">
+      <!-- Tab 胶囊切换 -->
+      <view class="tab-capsule">
         <view
-          class="tab-item"
+          class="tab-capsule-item"
           :class="{ active: activeTab === 'monitor' }"
           @click="switchTab('monitor')"
         >
-          <text class="tab-text">监测设备</text>
+          <text class="tab-capsule-text">监测设备({{ deviceTotal }})</text>
         </view>
         <view
-          class="tab-item"
+          class="tab-capsule-item"
           :class="{ active: activeTab === 'video' }"
           @click="switchTab('video')"
         >
-          <text class="tab-text">视频设备</text>
+          <text class="tab-capsule-text">视频设备({{ videoDeviceTotal }})</text>
         </view>
       </view>
 
-      <!-- 搜索 + 类型筛选 -->
-      <view class="filter-bar">
-        <view class="filter-row">
-          <view v-if="activeTab === 'monitor'" class="type-filter-btn" @click="showTypeFilter = !showTypeFilter">
-            <text class="filter-text">{{ activeTypeLabel }}</text>
-            <text class="filter-arrow" :class="{ open: showTypeFilter }">&#x25BC;</text>
+      <!-- 搜索框 -->
+      <view class="search-bar-wrapper">
+        <view class="search-bar">
+          <view class="search-icon-wrapper">
+            <zui-svg-icon icon="search" :width="16" color="#9ca3af" />
           </view>
-          <view class="search-bar">
-            <view class="search-icon-wrapper">
-              <text class="search-icon">&#x1F50D;</text>
-            </view>
-            <input
-              class="search-input"
-              type="text"
-              :placeholder="activeTab === 'video' ? '搜索视频设备名称 / 编号' : '搜索设备名称 / 编号'"
-              placeholder-class="search-placeholder"
-              :value="keyword"
-              confirm-type="search"
-              @input="onSearch"
+          <input
+            class="search-input"
+            type="text"
+            :placeholder="activeTab === 'video' ? '搜索视频设备名称 / 编号' : '搜索设备名称 / 编号'"
+            placeholder-class="search-placeholder"
+            :value="keyword"
+            confirm-type="search"
+            @input="onSearch"
+          >
+          <view v-if="keyword" class="search-clear" @click="clearSearch">
+            <text class="clear-icon">x</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 列表滚动区 -->
+      <scroll-view
+        class="list-scroll"
+        scroll-y
+        :scroll-top="scrollTop"
+        refresher-enabled
+        :refresher-triggered="isRefreshing"
+        @refresherrefresh="onRefresh"
+        @scrolltolower="onScrollToLower"
+        @scroll="onScroll"
+      >
+        <view class="list-inner">
+          <!-- 监测设备列表 -->
+          <template v-if="activeTab === 'monitor'">
+            <DataCard
+              v-for="item in filteredDevices"
+              :key="item.id"
+              :title="item.deviceName"
+              :subtitle="item.deviceCode"
+              @click="goToDetail(item)"
             >
-            <view v-if="keyword" class="search-clear" @click="clearSearch">
-              <text class="clear-icon">x</text>
-            </view>
-          </view>
-        </view>
-        <!-- 类型下拉列表 (仅监测设备) -->
-        <view v-if="showTypeFilter && activeTab === 'monitor'" class="type-dropdown">
-          <view
-            class="type-option"
-            :class="{ active: activeType === '' }"
-            @click="selectType('')"
-          >
-            全部类型
-          </view>
-          <view
-            v-for="t in deviceTypes"
-            :key="t"
-            class="type-option"
-            :class="{ active: activeType === t }"
-            @click="selectType(t)"
-          >
-            {{ t }}
-          </view>
-        </view>
-      </view>
-
-      <view class="list-inner">
-        <!-- 监测设备列表 -->
-        <template v-if="activeTab === 'monitor'">
-          <view
-            v-for="item in filteredDevices"
-            :key="item.id"
-            class="device-card"
-            @click="goToDetail(item)"
-          >
-            <view class="card-top">
-              <view class="card-left">
-                <text class="device-name">{{ item.deviceName }}</text>
-                <text class="device-code">{{ item.deviceCode }}</text>
-              </view>
-              <view class="card-right">
-                <view class="type-tag" :style="{ background: getTypeColor(item.monitorTypes?.[0] || '') }">
-                  <text class="type-tag-text">{{ item.monitorTypes?.[0] || '未分类' }}</text>
-                </view>
-                <view class="status-badge" :class="getStatusClass(item.status)">
-                  <view class="status-dot" :class="getStatusClass(item.status)" />
-                  <text class="status-text">{{ item.status }}</text>
-                </view>
-              </view>
-            </view>
-            <view class="card-bottom">
-              <view class="card-info-item">
-                <text class="info-label">最近上报</text>
-                <text class="info-value">{{ formatTime(item.lastReportTime) }}</text>
-              </view>
-            </view>
-          </view>
-
-          <view v-if="filteredDevices.length === 0" class="empty-state">
-            <text class="empty-icon">&#x1F4E1;</text>
-            <text class="empty-title">暂无设备</text>
-            <text class="empty-desc">{{ keyword || activeType ? '未找到匹配的设备' : '暂无设备数据' }}</text>
-          </view>
-        </template>
-
-        <!-- 视频设备列表 -->
-        <template v-else>
-          <view
-            v-for="item in filteredVideoDevices"
-            :key="item.id"
-            class="device-card"
-            @click="goToVideoPlayer(item)"
-          >
-            <view class="card-top">
-              <view class="card-left">
-                <view class="video-name-row">
-                  <image
-                    v-if="item.iconPath"
-                    class="video-card-icon"
-                    :src="item.iconPath"
-                    mode="aspectFit"
-                  />
-                  <text v-else class="video-card-icon-fallback">&#x1F4F7;</text>
-                  <text class="device-name">{{ item.deviceName }}</text>
-                </view>
-                <text class="device-code">{{ item.deviceCode }}</text>
-              </view>
-              <view class="card-right">
-                <view v-if="item.protocolName" class="type-tag" style="background: #eb2f96">
-                  <text class="type-tag-text">{{ item.protocolName }}</text>
-                </view>
+              <template #tag>
                 <view class="status-badge" :class="getVideoStatusClass(item.onlineStatus)">
                   <view class="status-dot" :class="getVideoStatusClass(item.onlineStatus)" />
                   <text class="status-text">{{ getVideoStatusText(item.onlineStatus) }}</text>
                 </view>
-              </view>
-            </view>
-            <view v-if="(item.longitude && item.latitude) || item.hazardPointIds" class="card-bottom">
-              <view v-if="item.longitude && item.latitude" class="card-info-item">
-                <text class="info-label">地址</text>
-                <text class="info-value">{{ item.longitude.toFixed(6) }}, {{ item.latitude.toFixed(6) }}</text>
-              </view>
-              <view v-if="item.hazardPointIds" class="card-info-item">
+              </template>
+
+              <!-- body: 信息行 -->
+              <view class="info-line">
                 <text class="info-label">关联隐患点</text>
-                <text class="info-value">ID: {{ item.hazardPointIds }}</text>
+                <text class="info-val">{{ item.boundHazardPointName || '-' }}</text>
               </view>
-            </view>
+              <view class="info-line">
+                <text class="info-label">安装位置</text>
+                <text class="info-val">{{ item.installLocation || '-' }}</text>
+              </view>
+
+              <!-- footer -->
+              <template #footer>
+                <text class="footer-left">📡 {{ item.sensorCount ?? 0 }}个传感器</text>
+                <text class="footer-time">最近上报: {{ formatTime(item.lastReportTime) }}</text>
+              </template>
+            </DataCard>
+
+            <EmptyState
+              v-if="filteredDevices.length === 0"
+              :use-image="true"
+              title="暂无设备"
+              :description="keyword ? '未找到匹配的设备' : '暂无设备数据'"
+            />
+          </template>
+
+          <!-- 视频设备列表 -->
+          <template v-else>
+            <DataCard
+              v-for="item in filteredVideoDevices"
+              :key="item.id"
+              :title="item.deviceName"
+              :subtitle="item.deviceCode"
+              @click="goToVideoPlayer(item)"
+            >
+              <template #tag>
+                <view class="status-badge" :class="getVideoStatusClass(item.onlineStatus)">
+                  <view class="status-dot" :class="getVideoStatusClass(item.onlineStatus)" />
+                  <text class="status-text">{{ getVideoStatusText(item.onlineStatus) }}</text>
+                </view>
+              </template>
+
+              <view class="info-line">
+                <text class="info-label">SN</text>
+                <text class="info-val">{{ item.deviceCode || '-' }}</text>
+              </view>
+              <view v-if="item.protocolName" class="info-line">
+                <text class="info-label">协议</text>
+                <text class="info-val">{{ item.protocolName }}</text>
+              </view>
+              <view v-if="item.longitude && item.latitude" class="info-line">
+                <text class="info-label">坐标</text>
+                <text class="info-val">{{ item.longitude.toFixed(6) }}, {{ item.latitude.toFixed(6) }}</text>
+              </view>
+              <view v-if="item.hazardPointIds" class="info-line">
+                <text class="info-label">关联隐患点</text>
+                <text class="info-val">ID: {{ item.hazardPointIds }}</text>
+              </view>
+            </DataCard>
+
+            <EmptyState
+              v-if="filteredVideoDevices.length === 0"
+              :use-image="true"
+              title="暂无视频设备"
+              :description="keyword ? '未找到匹配的视频设备' : '暂无视频设备数据'"
+            />
+          </template>
+
+          <!-- 加载更多提示 -->
+          <view v-if="activeTab === 'monitor' && devices.length > 0" class="load-more-tip">
+            <text v-if="loadingMore">加载中...</text>
+            <text v-else-if="!hasMore">没有更多了</text>
           </view>
 
-          <view v-if="filteredVideoDevices.length === 0" class="empty-state">
-            <text class="empty-icon">&#x1F4F7;</text>
-            <text class="empty-title">暂无视频设备</text>
-            <text class="empty-desc">{{ keyword ? '未找到匹配的视频设备' : '暂无视频设备数据' }}</text>
-          </view>
-        </template>
+          <view class="bottom-spacer" />
+        </view>
+      </scroll-view>
+    </view>
 
-        <view class="bottom-spacer" />
-      </view>
-    </scroll-view>
+    <!-- 回到顶部 -->
+    <view v-if="showBackTop" class="back-top-btn" @click="scrollToTop">
+      <zui-svg-icon icon="up" :width="20" color="#ffffff" />
+    </view>
   </view>
 </template>
 
@@ -338,88 +339,68 @@ function formatTime(time: string): string {
   flex-shrink: 0;
 }
 
-/* Tab 切换 */
-.tab-bar {
-  display: flex;
-  background: #ffffff;
-  padding: 0 32rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
-}
-
-.tab-item {
+/* 页面主体 */
+.page-body {
   flex: 1;
-  text-align: center;
-  padding: 20rpx 0;
-  position: relative;
-
-  &.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 25%;
-    right: 25%;
-    height: 4rpx;
-    background: linear-gradient(90deg, #3068e4, #1e5acc);
-    border-radius: 2rpx;
-  }
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.tab-text {
-  font-size: 28rpx;
-  color: #6b7280;
+/* Tab 胶囊卡片 */
+.tab-capsule {
+  display: flex;
+  gap: 20rpx;
+  padding: 16rpx;
+  margin: 0 32rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.1);
+  flex-shrink: 0;
+}
 
-  .tab-item.active & {
-    color: #3068e4;
+.tab-capsule-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.4);
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
+
+  &.active {
+    background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
+    box-shadow: 0 8rpx 24rpx rgba(48, 104, 228, 0.3);
+  }
+
+  &.active .tab-capsule-text {
+    color: #ffffff;
     font-weight: 600;
   }
 }
 
-/* 搜索 + 类型筛选 */
-.filter-bar {
-  padding: 20rpx 32rpx;
-  background: #ffffff;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+.tab-capsule-text {
+  font-size: 28rpx;
+  color: #6b7280;
 }
 
-.filter-row {
-  display: flex;
-  gap: 16rpx;
-  align-items: center;
-}
-
-.type-filter-btn {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  height: 72rpx;
-  padding: 0 20rpx;
-  background: #f0f5ff;
-  border-radius: 36rpx;
+/* 搜索框 */
+.search-bar-wrapper {
   flex-shrink: 0;
-  border: 1rpx solid #d6e4ff;
-}
-
-.filter-text {
-  font-size: 26rpx;
-  color: #3068e4;
-}
-
-.filter-arrow {
-  font-size: 18rpx;
-  color: #3068e4;
-  transition: transform 0.2s;
-
-  &.open { transform: rotate(180deg); }
+  padding: 16rpx 32rpx;
 }
 
 .search-bar {
-  flex: 1;
   display: flex;
   align-items: center;
   height: 72rpx;
-  background: #f7f8fc;
+  background: #ffffff;
   border-radius: 36rpx;
   padding: 0 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(102, 126, 234, 0.08);
 }
 
 .search-icon-wrapper {
@@ -427,11 +408,6 @@ function formatTime(time: string): string {
   align-items: center;
   justify-content: center;
   margin-right: 12rpx;
-}
-
-.search-icon {
-  font-size: 28rpx;
-  opacity: 0.6;
 }
 
 .search-input {
@@ -461,101 +437,49 @@ function formatTime(time: string): string {
   color: #6b7280;
 }
 
-/* 类型下拉 */
-.type-dropdown {
-  margin-top: 16rpx;
-  background: #f7f8fc;
-  border-radius: 16rpx;
-  padding: 8rpx 0;
-  border: 1rpx solid #e5e7eb;
-}
-
-.type-option {
-  padding: 20rpx 24rpx;
-  font-size: 26rpx;
-  color: #4b5563;
-
-  &.active {
-    color: #3068e4;
-    font-weight: 600;
-  }
-}
-
-/* 设备列表 */
-.page-body {
+/* 列表滚动区 */
+.list-scroll {
   flex: 1;
   height: 0;
 }
 
 .list-inner {
-  padding: 20rpx 32rpx 0;
+  padding: 4rpx 32rpx 0;
 }
 
-.device-card {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 28rpx 24rpx;
-  margin-bottom: 20rpx;
-  box-shadow: 0 8rpx 32rpx rgba(102, 126, 234, 0.12);
-  box-sizing: border-box;
-  width: 100%;
-
-  &:active { background: #f7f8fc; }
-}
-
-.card-top {
+/* 卡片内信息行 */
+.info-line {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20rpx;
+  padding: 6rpx 0;
 }
 
-.card-left {
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
+.info-label {
+  font-size: 24rpx;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.info-val {
+  font-size: 24rpx;
+  color: #4b5563;
   flex: 1;
-  min-width: 0;
-}
-
-.device-name {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1a1a2e;
+  text-align: right;
+  margin-left: 16rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.device-code {
-  font-size: 24rpx;
-  color: #9ca3af;
-}
-
-.card-right {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  flex-shrink: 0;
-}
-
-.type-tag {
-  padding: 6rpx 16rpx;
-  border-radius: 8rpx;
-}
-
-.type-tag-text {
-  font-size: 22rpx;
-  color: #ffffff;
-  font-weight: 500;
-}
-
+/* 状态徽章 */
 .status-badge {
   display: flex;
   align-items: center;
   gap: 6rpx;
   padding: 6rpx 14rpx;
   border-radius: 8rpx;
+  flex-shrink: 0;
 
   &.online { background: rgba(82, 196, 26, 0.1); }
   &.offline { background: rgba(156, 163, 175, 0.15); }
@@ -580,59 +504,47 @@ function formatTime(time: string): string {
   .status-badge.fault & { color: #f5222d; }
 }
 
-.card-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 20rpx;
-  border-top: 1rpx solid #f0f2f5;
-  gap: 24rpx;
-}
-
-.video-name-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.video-card-icon {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 8rpx;
-}
-
-.video-card-icon-fallback {
-  font-size: 32rpx;
-}
-
-.card-info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.info-label {
-  font-size: 22rpx;
-  color: #9ca3af;
-}
-
-.info-value {
+/* Footer */
+.footer-left {
   font-size: 24rpx;
   color: #4b5563;
 }
 
-/* 空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 120rpx 0;
+.footer-time {
+  font-size: 22rpx;
+  color: #9ca3af;
+  flex-shrink: 0;
 }
 
-.empty-icon { font-size: 80rpx; margin-bottom: 24rpx; opacity: 0.6; }
-.empty-title { font-size: 32rpx; font-weight: 600; color: #6b7280; margin-bottom: 8rpx; }
-.empty-desc { font-size: 24rpx; color: #9ca3af; }
+/* 加载更多 */
+.load-more-tip {
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  color: #9ca3af;
+}
 
+/* 空状态 */
 .bottom-spacer { height: 40rpx; }
+
+/* 回到顶部 */
+.back-top-btn {
+  position: fixed;
+  right: 32rpx;
+  bottom: 200rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
+  box-shadow: 0 8rpx 24rpx rgba(48, 104, 228, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+
+  &:active {
+    transform: scale(0.9);
+    opacity: 0.85;
+  }
+}
 </style>

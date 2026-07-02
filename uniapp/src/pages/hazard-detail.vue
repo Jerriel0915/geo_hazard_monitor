@@ -247,12 +247,12 @@ const mapPolylines = computed(() => {
             <text class="info-value">{{ hazard.deviceCount || 0 }}台</text>
           </view>
           <view class="info-row">
-            <text class="info-label">描述</text>
-            <text class="info-value desc-text">{{ hazard.description || '-' }}</text>
-          </view>
-          <view class="info-row">
             <text class="info-label">创建时间</text>
             <text class="info-value">{{ hazard.createTime || '-' }}</text>
+          </view>
+          <view class="info-row desc-row">
+            <text class="info-label">描述</text>
+            <text class="info-value desc-text">{{ hazard.description || '-' }}</text>
           </view>
         </view>
       </view>
@@ -387,6 +387,12 @@ const mapPolylines = computed(() => {
   &:last-child {
     border-bottom: none;
   }
+
+  &.desc-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8rpx;
+  }
 }
 
 .info-label {
@@ -402,9 +408,12 @@ const mapPolylines = computed(() => {
   text-align: right;
 
   &.desc-text {
-    max-width: 420rpx;
-    line-height: 1.5;
+    max-width: 100%;
+    line-height: 1.6;
     font-weight: 400;
+    text-align: left;
+    word-break: break-all;
+    white-space: pre-wrap;
   }
 }
 
