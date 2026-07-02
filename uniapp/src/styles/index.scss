@@ -9,7 +9,21 @@
   --safe-area-bottom: 0px;
 }
 
-// 全局样式
+// 全局样式 —— 禁止页面级滚动，滚动只发生在 page-body (scroll-view) 内部
+html, body {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+// UniApp H5 模式下的页面包裹元素
+uni-page-wrapper,
+uni-page-body {
+  height: 100%;
+  overflow: hidden;
+}
+
 page {
   height: 100vh;
   overflow: hidden;
