@@ -11,8 +11,8 @@
 </template>
 
 <script>
-import SvgIconLib from '@/static/svg-icons-lib.js'
-import { rpx2px } from '../../utils/utils'
+import SvgIconLib from '@/static/svg-icons-lib.js';
+import { rpx2px } from '../../utils/utils';
 
 export default {
   name: 'zui-svg-icon',
@@ -331,7 +331,6 @@ export default {
 }
 .zui-svg-icon-wrapper {
   position: relative;
-  display: inline-flex;
   justify-content: center;
   align-items: center;
   width: var(--zui-svg-icon-width);
