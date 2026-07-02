@@ -77,7 +77,7 @@ describe('CalcScriptEditor 状态机', () => {
     const saveBtn = wrapper.find('[data-test="save-btn"]')
     expect(saveBtn.attributes('disabled')).toBeDefined()
     expect(saveBtn.classes().join(' ')).toMatch(/is-disabled|disabled/)
-    expect(wrapper.find('[data-test="status-bar"]').text()).toMatch(/⚠️|未测试/)
+    expect(wrapper.find('[data-test="status-bar"]').text()).toMatch(/修改后必须通过测试才能保存|未测试/)
   })
 
   it('改回原样 (local === initial): dirty 自动解除, 保存恢复可用', async () => {
@@ -100,7 +100,38 @@ describe('CalcScriptEditor 状态机', () => {
     await wrapper.find('[data-test="run-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-test="save-btn"]').attributes('disabled')).toBeUndefined()
-    expect(wrapper.find('[data-test="status-bar"]').text()).toMatch(/✅/)
+    expect(wrapper.find('[data-test="status-bar"]').text()).toMatch(/测试通过/)
+  })
+
+  it('未保存监测类型 (monitorTypeId=0): 脚本测试仍可独立运行, 不再提示"请先保存"', async () => {
+    const { testCalcScript } = await import('@/api/monitorType')
+    const { ElMessage } = await import('element-plus')
+    ;(testCalcScript as any).mockClear()
+    const wrapper = await mountWith({ ...baseProps, monitorTypeId: 0 })
+    await flushPromises()
+    const cm = wrapper.findComponent({ name: 'CodeMirrorGroovy' })
+    await cm.vm.$emit('update:modelValue', 'return 42')
+    await flushPromises()
+    await wrapper.find('[data-test="run-btn"]').trigger('click')
+    await flushPromises()
+    // API 被调用, monitorTypeId=0 透传给后端
+    expect((testCalcScript as any)).toHaveBeenCalledWith(
+      expect.objectContaining({ monitorTypeId: 0, calcScript: 'return 42' })
+    )
+    // 未弹出"请先保存"警告
+    expect((ElMessage as any).warning).not.toHaveBeenCalledWith('请先保存监测类型, 再测试脚本')
+    // 测试结果正常显示
+    expect(wrapper.find('[data-test="status-bar"]').text()).toMatch(/测试通过/)
+  })
+
+  it('空脚本点击测试: 提示"脚本不能为空", 不发起请求', async () => {
+    const { testCalcScript } = await import('@/api/monitorType')
+    ;(testCalcScript as any).mockClear()
+    const wrapper = await mountWith({ ...baseProps, script: '   ' })
+    await flushPromises()
+    await wrapper.find('[data-test="run-btn"]').trigger('click')
+    await flushPromises()
+    expect((testCalcScript as any)).not.toHaveBeenCalled()
   })
 
   it('测试失败 (后端 success=false): 保存禁用, 红条显示错误', async () => {
@@ -118,7 +149,7 @@ describe('CalcScriptEditor 状态机', () => {
     await flushPromises()
     const saveBtn = wrapper.find('[data-test="save-btn"]')
     expect(saveBtn.attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-test="status-bar"]').text()).toMatch(/❌/)
+    expect(wrapper.find('[data-test="status-bar"]').text()).toMatch(/测试失败/)
   })
 
   it('测试通过后再次修改: testedPassed 重置, 保存再次禁用', async () => {

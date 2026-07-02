@@ -154,14 +154,14 @@ function handleFormatGroovy() {
 }
 
 async function onRunTest(payload: { curData: Record<string, any>; prevData: Record<string, any> | undefined }) {
-  if (!props.monitorTypeId) {
-    ElMessage.warning('请先保存监测类型, 再测试脚本')
+  if (!localScript.value.trim()) {
+    ElMessage.warning('脚本不能为空，无法测试')
     return
   }
   testing.value = true
   try {
     const result = await testCalcScript({
-      monitorTypeId: props.monitorTypeId,
+      monitorTypeId: props.monitorTypeId || 0,
       attrCode: props.attrCode,
       calcScript: localScript.value,
       curData: payload.curData,
