@@ -78,6 +78,10 @@
         }
     },
     "h5" : {
+        "publicPath" : "/h5/",
+        "router" : {
+            "base" : "/h5/"
+        },
         "darkmode" : true,
         "themeLocation" : "theme.json",
         "sdkConfigs" : {

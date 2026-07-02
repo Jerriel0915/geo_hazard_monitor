@@ -1,9 +1,9 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import Uni from '@uni-helper/plugin-uni'
 import Components from '@uni-helper/vite-plugin-uni-components'
 import { WotResolver } from '@uni-helper/vite-plugin-uni-components/resolvers'
-import Uni from '@uni-helper/plugin-uni'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
   resolve: {
