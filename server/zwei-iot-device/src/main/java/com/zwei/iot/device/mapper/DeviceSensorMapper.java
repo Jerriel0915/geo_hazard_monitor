@@ -22,6 +22,14 @@ public interface DeviceSensorMapper {
     List<DeviceSensor> selectSensorListByDeviceId(@Param("deviceId") Long deviceId);
 
     /**
+     * 批量查询多个设备下的传感器列表。
+     *
+     * @param deviceIds 设备ID列表
+     * @return 所有设备下的传感器列表
+     */
+    List<DeviceSensor> selectSensorListByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
+
+    /**
      * 根据ID查询传感器详情
      *
      * @param id 传感器ID
@@ -69,6 +77,14 @@ public interface DeviceSensorMapper {
      * @return 影响行数
      */
     int deleteSensorByDeviceId(Long deviceId);
+
+    /**
+     * 批量根据设备ID列表删除传感器（逻辑删除）。
+     *
+     * @param deviceIds 设备ID列表
+     * @return 影响行数
+     */
+    int deleteSensorByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
 
     /**
      * 根据传感器条件查询传感器列表

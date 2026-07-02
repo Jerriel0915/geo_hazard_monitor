@@ -22,6 +22,10 @@ import org.springframework.stereotype.Component;
  *   <li>{@code connectionTimeoutMs} — 连接超时毫秒数，默认 5000</li>
  *   <li>{@code queryTimeoutSeconds} — 查询超时秒数，默认 30</li>
  *   <li>{@code fetchSize} — JDBC fetch size，默认 500</li>
+ *   <li>{@code poolMaxSize} — 连接池最大连接数，默认 8</li>
+ *   <li>{@code poolMinIdle} — 连接池最小空闲连接数，默认 2</li>
+ *   <li>{@code poolIdleTimeoutSeconds} — 空闲连接超时秒数，默认 600</li>
+ *   <li>{@code poolMaxLifetimeSeconds} — 连接最大存活秒数，默认 1800</li>
  * </ul>
  *
  * <p>新增 IoTDB 连接参数绑定，用于支撑工业监测数据的时序化存储与查询。</p>
@@ -40,6 +44,10 @@ public class IotdbProperties {
     private int connectionTimeoutMs = 5000;
     private int queryTimeoutSeconds = 30;
     private int fetchSize = 500;
+    private int poolMaxSize = 8;
+    private int poolMinIdle = 2;
+    private int poolIdleTimeoutSeconds = 600;
+    private int poolMaxLifetimeSeconds = 1800;
 
     /**
      * 生成 IoTDB JDBC 连接地址。

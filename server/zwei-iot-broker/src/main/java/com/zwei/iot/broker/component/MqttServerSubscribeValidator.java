@@ -4,6 +4,7 @@ import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.exception.MqttBusinessException;
 import com.zwei.iot.broker.exception.MqttCommunicationException;
 import com.zwei.iot.broker.exception.MqttExceptionReporter;
+import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,8 @@ import org.dromara.mica.mqtt.core.server.auth.IMqttServerSubscribeValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +29,7 @@ import java.util.regex.Pattern;
  * <ol>
  *   <li>topic 非空 + 前缀 "sys/v1/" 快速过滤</li>
  *   <li>严格正则匹配（字母数字 + _ -，100 字符上限）</li>
+ *   <li>设备归属校验：验证订阅客户端的 deviceCode 与主题 deviceCode 一致</li>
  *   <li>数据库存在性校验：按 deviceCode + sensorCode 查 device_sensor 表</li>
  * </ol>
  *
@@ -42,12 +46,15 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
 
     private final IDeviceSensorService deviceSensorService;
     private final MqttExceptionReporter mqttExceptionReporter;
+    private final MqttDeviceSessionRegistry sessionRegistry;
 
     @Autowired
     public MqttServerSubscribeValidator(IDeviceSensorService deviceSensorService,
-                                        MqttExceptionReporter mqttExceptionReporter) {
+                                        MqttExceptionReporter mqttExceptionReporter,
+                                        MqttDeviceSessionRegistry sessionRegistry) {
         this.deviceSensorService = deviceSensorService;
         this.mqttExceptionReporter = mqttExceptionReporter;
+        this.sessionRegistry = sessionRegistry;
     }
 
     /**
@@ -89,6 +96,27 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
 
         String deviceCode = matcher.group("deviceCode");
         String sensorCode = matcher.group("sensorCode");
+
+        // 验证订阅客户端是否归属此 deviceCode（设备间数据隔离）
+        String normalizedClientId = clientId == null ? null : clientId.trim();
+        Optional<MqttDeviceSession> session = sessionRegistry.getByClientId(normalizedClientId);
+        if (session.isEmpty()) {
+            return mqttExceptionReporter.rejectWithDebug(new MqttBusinessException.PermissionDenied(
+                    mqttExceptionReporter.context(clientId, topicFilter, qoS)
+                            .putAttribute("deviceCode", deviceCode)
+                            .build(),
+                    "未建立鉴权会话，禁止订阅"
+            ));
+        }
+        if (!Objects.equals(session.get().deviceCode(), deviceCode)) {
+            return mqttExceptionReporter.rejectWithDebug(new MqttBusinessException.PermissionDenied(
+                    mqttExceptionReporter.context(clientId, topicFilter, qoS)
+                            .putAttribute("deviceCode", deviceCode)
+                            .putAttribute("sessionDeviceCode", session.get().deviceCode())
+                            .build(),
+                    "设备与订阅主题不匹配，禁止订阅"
+            ));
+        }
 
         try {
             DeviceSensor sensor = DeviceSensor.builder()

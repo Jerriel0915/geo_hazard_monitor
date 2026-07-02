@@ -1,5 +1,5 @@
 <template>
-  <div ref="hostRef" class="cm-groovy-host"></div>
+  <div ref="hostRef" class="cm-groovy-host" :style="{ minHeight: minHeight + 'px' }"></div>
 </template>
 
 <script setup lang="ts">
@@ -12,9 +12,14 @@ import { groovy } from '@codemirror/legacy-modes/mode/groovy'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { indentWithTab } from '@codemirror/commands'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string
-}>()
+  readonly?: boolean
+  minHeight?: number
+}>(), {
+  readonly: false,
+  minHeight: 280
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -28,24 +33,27 @@ let internal = false
 
 onMounted(() => {
   if (!hostRef.value) return
+  const extensions: any[] = [
+    basicSetup,
+    StreamLanguage.define(groovy),
+    oneDark,
+    keymap.of([indentWithTab]),
+    EditorView.lineWrapping
+  ]
+  if (props.readonly) {
+    extensions.push(EditorView.editable.of(false))
+  }
+  extensions.push(EditorView.updateListener.of(v => {
+    if (v.docChanged && !internal) {
+      internal = true
+      emit('update:modelValue', v.state.doc.toString())
+      queueMicrotask(() => { internal = false })
+    }
+  }))
   view = new EditorView({
     state: EditorState.create({
       doc: props.modelValue || '',
-      extensions: [
-        basicSetup,
-        StreamLanguage.define(groovy),
-        oneDark,
-        keymap.of([indentWithTab]),
-        EditorView.lineWrapping,
-        EditorView.updateListener.of(v => {
-          if (v.docChanged && !internal) {
-            internal = true
-            emit('update:modelValue', v.state.doc.toString())
-            // 下一个微任务里解除锁,以便外部 setProps 后内部仍能响应新输入
-            queueMicrotask(() => { internal = false })
-          }
-        })
-      ]
+      extensions
     }),
     parent: hostRef.value
   })
@@ -72,7 +80,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .cm-groovy-host {
   height: 100%;
-  min-height: 280px;
   font-size: 13px;
 }
 

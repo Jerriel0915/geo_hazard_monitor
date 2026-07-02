@@ -403,6 +403,38 @@ export interface AlarmTrendVO {
 export const getAlarmTrend = (months?: number) =>
     request.get<AlarmTrendVO>('/alarm/records/trend', { params: { months } })
 
+/** 告警总览统计 */
+export interface AlarmOverviewVO {
+    pendingCount: number
+    historyCount: number
+    totalCount: number
+    recentThreeMonthsCount: number
+}
+
+export const getAlarmOverview = () =>
+    request.get<AlarmOverviewVO>('/alarm/records/overview')
+
+/** 告警来源分布 (按监测类型统计待处理告警) */
+export interface AlarmSourceStatVO {
+    monitorTypeId: number
+    monitorTypeName: string
+    sortOrder: number
+    count: number
+    rate: number
+}
+
+export const getAlarmSourceStats = () =>
+    request.get<AlarmSourceStatVO[]>('/alarm/records/source-stats')
+
+/** 高风险隐患点 Top N */
+export interface HighRiskHazardPointVO {
+    hazardPointName: string
+    count: number
+}
+
+export const getHighRiskHazardPoints = (limit?: number) =>
+    request.get<HighRiskHazardPointVO[]>('/alarm/records/high-risk-hazard-points', { params: { limit } })
+
 // ==================== 告警判据 API ====================
 
 /** 判据列表 */

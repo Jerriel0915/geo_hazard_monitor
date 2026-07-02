@@ -60,10 +60,14 @@ public class MqttServerMessageListener {
      */
     @MqttServerFunction("#")
     public void onMessage(ChannelContext context, String topic, MqttPublishMessage publishMessage, byte[] message) {
-        Node clientNode = context.getClientNode();
         if (topic == null || (!topic.startsWith("sys/v1/") && !topic.startsWith("gb/v1/"))) {
             return;
         }
+        if (context == null) {
+            log.warn("监测消息缺少连接上下文，跳过。topic={}", sanitize(topic));
+            return;
+        }
+        Node clientNode = context.getClientNode();
         // 通过 bindContext 中写入的 clientId 从会话注册中心获取已认证设备信息，
         // 避免 Long → String → Long 的往返转换及 NumberFormatException 风险。
         String clientId = context.getBsId();

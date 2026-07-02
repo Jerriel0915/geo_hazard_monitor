@@ -6,6 +6,7 @@ import com.zwei.iot.parser.domain.DataParseStrategyDevice;
 import com.zwei.iot.parser.domain.DataParseStrategyVendor;
 import com.zwei.iot.parser.dto.DataParseStrategyDTO;
 import com.zwei.iot.parser.dto.DataParseStrategyQueryDTO;
+import com.zwei.iot.parser.engine.GroovyScriptEngine;
 import com.zwei.iot.parser.mapper.DataParseStrategyDeviceMapper;
 import com.zwei.iot.parser.mapper.DataParseStrategyMapper;
 import com.zwei.iot.parser.mapper.DataParseStrategyVendorMapper;
@@ -28,16 +29,23 @@ public class DataParseStrategyService {
     private DataParseStrategyVendorMapper vendorMapper;
     @Resource
     private DataParseStrategyDeviceMapper strategyDeviceMapper;
+    @Resource
+    private GroovyScriptEngine scriptEngine;
 
     public List<DataParseStrategy> listByPage(DataParseStrategyQueryDTO query) {
-        DataParseStrategy condition = new DataParseStrategy();
+        String keyword = null;
+        String sourceType = null;
+        Integer status = null;
+        String appScope = null;
         if (query != null) {
-            condition.setName(query.getName());
-            condition.setSourceType(query.getSourceType());
-            condition.setStatus(query.getStatus());
-            condition.setAppScope(query.getAppScope());
+            // keyword 优先（name 或 topic 模糊匹配）；兼容旧 name 字段
+            keyword = (query.getKeyword() != null && !query.getKeyword().isEmpty())
+                    ? query.getKeyword() : query.getName();
+            sourceType = query.getSourceType();
+            status = query.getStatus();
+            appScope = query.getAppScope();
         }
-        return strategyMapper.selectByCondition(condition);
+        return strategyMapper.selectByCondition(keyword, sourceType, status, appScope);
     }
 
     public DataParseStrategyDTO getById(Long id) {
@@ -90,6 +98,8 @@ public class DataParseStrategyService {
         strategyMapper.updateById(strategy);
         deleteRelations(dto.getId());
         saveRelations(dto.getId(), dto);
+        // 淘汰脚本编译缓存，确保新脚本立即生效 (B1 修复)
+        scriptEngine.evictCache(dto.getId());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -100,6 +110,7 @@ public class DataParseStrategyService {
         }
         deleteRelations(id);
         strategyMapper.deleteById(id);
+        scriptEngine.evictCache(id);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -110,6 +121,8 @@ public class DataParseStrategyService {
         }
         strategy.setStatus(status);
         strategyMapper.updateById(strategy);
+        // 启停不改变脚本内容, 但仍淘汰缓存以释放内存 (停用策略无需常驻编译类)
+        scriptEngine.evictCache(id);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -135,6 +148,8 @@ public class DataParseStrategyService {
             dto.setDeviceIds(strategyDeviceMapper.selectDeviceIdsByStrategyId(id));
         }
         saveRelations(copy.getId(), dto);
+        // 副本是新策略, 无旧缓存可淘汰; 但若复用了原策略编译类引用会错乱, 主动清一次
+        scriptEngine.evictCache(copy.getId());
         return copy.getId();
     }
 
@@ -145,20 +160,10 @@ public class DataParseStrategyService {
 
     private void saveRelations(Long strategyId, DataParseStrategyDTO dto) {
         if ("vendor".equals(dto.getAppScope()) && !CollectionUtils.isEmpty(dto.getVendorIds())) {
-            for (Long vendorId : dto.getVendorIds()) {
-                DataParseStrategyVendor rel = new DataParseStrategyVendor();
-                rel.setStrategyId(strategyId);
-                rel.setVendorId(vendorId);
-                vendorMapper.insert(rel);
-            }
+            vendorMapper.batchInsert(strategyId, dto.getVendorIds());
         }
         if ("device".equals(dto.getAppScope()) && !CollectionUtils.isEmpty(dto.getDeviceIds())) {
-            for (Long deviceId : dto.getDeviceIds()) {
-                DataParseStrategyDevice rel = new DataParseStrategyDevice();
-                rel.setStrategyId(strategyId);
-                rel.setDeviceId(deviceId);
-                strategyDeviceMapper.insert(rel);
-            }
+            strategyDeviceMapper.batchInsert(strategyId, dto.getDeviceIds());
         }
     }
 

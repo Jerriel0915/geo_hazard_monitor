@@ -44,22 +44,15 @@ public class DeviceQueryServiceImpl implements IDeviceQueryService {
     @Override
     public Map<String, DeviceBriefDTO> getDeviceBriefsByAuthUsernames(Set<String> usernames) {
         if (usernames == null || usernames.isEmpty()) return Collections.emptyMap();
-        Map<String, DeviceBriefDTO> result = new HashMap<>();
-        List<Device> devices = new ArrayList<>();
-        for (String username : usernames) {
-            try {
-                Device device = deviceMapper.selectDeviceByAuthUsername(username);
-                if (device != null) devices.add(device);
-            } catch (Exception e) { log.debug("查询设备失败 username={}: {}", username, e.getMessage()); }
-        }
-        if (devices.isEmpty()) return result;
-        Map<Long, String> hpNameMap = new HashMap<>();
+        List<Device> devices = deviceMapper.selectDevicesByAuthUsernames(usernames);
+        if (devices.isEmpty()) return Collections.emptyMap();
+        List<Long> deviceIds = devices.stream().map(Device::getId).toList();
+        Map<Long, String> hpNameMap = hazardRelationService.getHazardPointNamesByDeviceIds(deviceIds);
+        Map<String, DeviceBriefDTO> result = new HashMap<>(devices.size());
         for (Device device : devices) {
-            try { hpNameMap.put(device.getId(), hazardRelationService.getHazardPointNameByDeviceId(device.getId())); }
-            catch (Exception e) { log.debug("查询隐患点关联失败 deviceId={}", device.getId()); }
+            result.put(device.getAuthUsername(),
+                    toBriefDTO(device, hpNameMap.get(device.getId())));
         }
-        for (Device device : devices)
-            result.put(device.getAuthUsername(), toBriefDTO(device, hpNameMap.get(device.getId())));
         return result;
     }
 

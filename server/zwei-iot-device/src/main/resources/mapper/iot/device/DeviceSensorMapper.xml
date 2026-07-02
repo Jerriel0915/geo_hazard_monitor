@@ -55,6 +55,17 @@
         ORDER BY ds.id ASC
     </select>
 
+    <!-- 批量查询多个设备下的传感器列表 -->
+    <select id="selectSensorListByDeviceIds" resultMap="DeviceSensorResult">
+        <include refid="selectSensorVo"/>
+        WHERE ds.del_flag = 0
+          AND ds.device_id IN
+        <foreach collection="deviceIds" item="devId" open="(" separator="," close=")">
+            #{devId}
+        </foreach>
+        ORDER BY ds.device_id, ds.id
+    </select>
+
     <!-- 根据ID查询传感器详情 -->
     <select id="selectSensorById" parameterType="Long" resultMap="DeviceSensorResult">
         <include refid="selectSensorVo"/>
@@ -157,6 +168,19 @@
           AND del_flag = 0
     </delete>
 
+    <!-- 批量根据设备ID列表删除传感器（逻辑删除） -->
+    <delete id="deleteSensorByDeviceIds">
+        UPDATE device_sensor
+        SET sensor_code = CONCAT(LEFT(sensor_code, 75), '#DEL#', id),
+            del_flag = 1,
+            update_time = SYSDATE()
+        WHERE del_flag = 0
+          AND device_id IN
+        <foreach collection="deviceIds" item="devId" open="(" separator="," close=")">
+            #{devId}
+        </foreach>
+    </delete>
+
     <!-- 根据传感器条件查询传感器列表 -->
     <select id="selectSensorList" parameterType="com.zwei.iot.device.domain.DeviceSensor" resultMap="DeviceSensorResult">
         <include refid="selectSensorVo"/>
@@ -188,11 +212,11 @@
     </select>
 
     <select id="countByMonitorType" resultType="java.util.Map">
-        SELECT ds.monitor_type_id AS monitorTypeId, mt.name AS monitorTypeName, COUNT(*) AS cnt
+        SELECT ds.monitor_type_id AS monitorTypeId, mt.name AS monitorTypeName, COALESCE(mt.sort_order, 999) AS sortOrder, COUNT(*) AS cnt
         FROM device_sensor ds
                  INNER JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
         WHERE ds.del_flag = 0
-        GROUP BY ds.monitor_type_id, mt.name
+        GROUP BY ds.monitor_type_id, mt.name, mt.sort_order
     </select>
 
     <update id="updateLastReportTime">

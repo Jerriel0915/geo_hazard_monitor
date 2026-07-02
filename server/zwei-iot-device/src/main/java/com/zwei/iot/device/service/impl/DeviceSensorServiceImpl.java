@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 传感器全生命周期管理服务。
@@ -72,9 +73,37 @@ public class DeviceSensorServiceImpl implements IDeviceSensorService {
     @Override
     public List<DeviceSensor> selectSensorListByDeviceId(Long deviceId) {
         List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceId(deviceId);
+        if (sensors.isEmpty()) {
+            return sensors;
+        }
+        List<Long> sensorIds = sensors.stream().map(DeviceSensor::getId).toList();
+        List<SensorAttribute> allAttrs = attributeMapper.selectAttributeListBySensorIds(sensorIds);
+        Map<Long, List<SensorAttribute>> attrsBySensor = allAttrs.stream()
+                .collect(Collectors.groupingBy(SensorAttribute::getSensorId));
         for (DeviceSensor sensor : sensors) {
-            List<SensorAttribute> attrs = attributeMapper.selectAttributeListBySensorId(sensor.getId());
-            sensor.setAttrList(attrs);
+            sensor.setAttrList(attrsBySensor.getOrDefault(sensor.getId(), List.of()));
+        }
+        return sensors;
+    }
+
+    /**
+     * 批量根据设备ID列表查询传感器列表（含属性，2 次查询避免 N+1）。
+     */
+    @Override
+    public List<DeviceSensor> selectSensorListByDeviceIds(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return List.of();
+        }
+        List<DeviceSensor> sensors = sensorMapper.selectSensorListByDeviceIds(deviceIds);
+        if (sensors.isEmpty()) {
+            return sensors;
+        }
+        List<Long> sensorIds = sensors.stream().map(DeviceSensor::getId).toList();
+        List<SensorAttribute> allAttrs = attributeMapper.selectAttributeListBySensorIds(sensorIds);
+        Map<Long, List<SensorAttribute>> attrsBySensor = allAttrs.stream()
+                .collect(Collectors.groupingBy(SensorAttribute::getSensorId));
+        for (DeviceSensor sensor : sensors) {
+            sensor.setAttrList(attrsBySensor.getOrDefault(sensor.getId(), List.of()));
         }
         return sensors;
     }

@@ -122,6 +122,17 @@ export const deleteDevice = (id: number) =>
 export interface DeviceCopyPayload {
   code: string
   name: string
+  sn?: string
+  deviceType?: number | null
+  networkType?: number | null
+  protocolType?: string
+  vendorName?: string
+  icon?: string
+  iconPath?: string
+  longitude?: number | null
+  latitude?: number | null
+  status?: number
+  boundHazardPointId?: number | null
   copySensors?: boolean // 是否同时复制传感器，默认 true
 }
 

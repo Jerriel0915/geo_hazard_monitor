@@ -1,4 +1,4 @@
-import { ref, shallowRef, onBeforeUnmount } from 'vue'
+import { ref, shallowRef, onBeforeUnmount, unref, type Ref } from 'vue'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -262,7 +262,7 @@ export function detectLevel(rawLine: string): string {
 // Console file stream composable
 // ---------------------------------------------------------------------------
 
-export function useConsoleStream() {
+export function useConsoleStream(windowMinutes: Ref<number> | number = 180) {
   const lines = shallowRef<TerminalLine[]>([])
   const status = ref<StreamStatus>('disconnected')
   const autoScroll = ref(true)
@@ -323,7 +323,8 @@ export function useConsoleStream() {
     abortController = new AbortController()
     status.value = 'connecting'
 
-    fetch('/api/v1/logs/console-stream', {
+    const win = unref(windowMinutes)
+    fetch(`/api/v1/logs/console-stream?window=${win}`, {
       method: 'GET',
       headers: {
         Accept: 'text/event-stream',

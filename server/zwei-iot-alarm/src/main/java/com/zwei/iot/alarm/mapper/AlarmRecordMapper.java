@@ -67,6 +67,15 @@ public interface AlarmRecordMapper {
     /** 批量查询隐患点是否有待处理告警 (返回有告警的 hpId 列表) */
     List<Map<String, Object>> countPendingByHazardPointIds(@Param("ids") List<Long> hazardPointIds);
 
+    /** 按监测类型统计待处理告警数量（JOIN trigger_detail → alarm_record → device_sensor → monitor_type） */
+    List<Map<String, Object>> countPendingByMonitorType();
+
+    /** 按隐患点统计待处理告警触发次数（JOIN trigger_detail → alarm_record），按次数降序 */
+    List<Map<String, Object>> countTriggerByHazardPoint(@Param("limit") int limit);
+
+    /** 告警总览统计：pendingCount / historyCount / totalCount / recentThreeMonthsCount */
+    Map<String, Object> countOverview();
+
     /**
      * 更新告警等级 (再次触发且等级变化时调用)。
      */

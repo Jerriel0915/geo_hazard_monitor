@@ -26,6 +26,29 @@ public class DataParseLogService {
         save(log);
     }
 
+    /** 带 MQTT 主题的 INFO 日志（成功解析时记录 topic，便于按主题过滤/排查）。 */
+    public void info(Long strategyId, String topic, String message, String data) {
+        DataParseLog log = DataParseLog.builder()
+                .strategyId(strategyId).logLevel("INFO")
+                .message(message).data(data).topic(topic).build();
+        save(log);
+    }
+
+    public void warn(Long strategyId, String message, String data) {
+        DataParseLog log = DataParseLog.builder()
+                .strategyId(strategyId).logLevel("WARN")
+                .message(message).data(data).build();
+        save(log);
+    }
+
+    /** 带 MQTT 主题的 WARN 日志。 */
+    public void warn(Long strategyId, String topic, String message, String data) {
+        DataParseLog log = DataParseLog.builder()
+                .strategyId(strategyId).logLevel("WARN")
+                .message(message).data(data).topic(topic).build();
+        save(log);
+    }
+
     public void error(Long strategyId, String message, String data, String errorStack) {
         DataParseLog log = DataParseLog.builder()
                 .strategyId(strategyId).logLevel("ERROR")

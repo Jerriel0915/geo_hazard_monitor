@@ -421,7 +421,7 @@
                 </el-table-column>
                 <el-table-column prop="status" label="状态" width="80" align="center">
                   <template #default="{ row }">
-                    <el-switch v-model="row.status" @change="handleToggleDispatchStatus(row)" size="small" />
+                    <el-switch :model-value="row.status === 1" @change="(val: boolean) => handleToggleDispatchStatus(row, val)" size="small" />
                   </template>
                 </el-table-column>
                 <el-table-column label="操作" width="120" align="center">
@@ -816,6 +816,7 @@ import {type GroupItem, useHazardPointGroups} from './composables/useHazardPoint
 import {type DispatchRule, useHazardPointAlarm} from './composables/useHazardPointAlarm'
 import {type BoundDevice, useHazardPointDeviceBind} from './composables/useHazardPointDeviceBind'
 import {getBoundVideoDevices} from '@/api/hazardPoint'
+import {toggleDispatchRuleEnabled} from '@/api/alarmDispatch'
 
 export interface BoundVideoDevice {
   videoDeviceId: string
@@ -1064,8 +1065,19 @@ const {
   boundDevices: boundDevices as Ref<{ deviceId: string; deviceName: string }[]>,
 })
 
-const handleToggleDispatchStatus = (row: DispatchRule) => {
-  ElMessage.success(`规则${row.status === 1 ? '启用' : '禁用'}成功`)
+const handleToggleDispatchStatus = async (row: DispatchRule, isEnabled: boolean) => {
+  const id = Number(row.id)
+  if (!Number.isFinite(id)) {
+    ElMessage.error('规则 ID 无效，无法切换状态')
+    return
+  }
+  try {
+    await toggleDispatchRuleEnabled(id, isEnabled ? 1 : 0)
+    row.status = isEnabled ? 1 : 0
+    ElMessage.success(`规则${isEnabled ? '启用' : '禁用'}成功`)
+  } catch {
+    ElMessage.error('操作失败')
+  }
 }
 
 // ==================== 选择分组 ====================

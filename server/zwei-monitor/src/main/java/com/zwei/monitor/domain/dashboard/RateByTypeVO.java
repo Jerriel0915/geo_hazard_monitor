@@ -22,6 +22,7 @@ public class RateByTypeVO {
     public static class TypeStat {
         private long monitorTypeId;
         private String monitorTypeName;
+        private int sortOrder;
         private int total;
         private int online;
         private int offline;

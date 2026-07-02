@@ -66,6 +66,19 @@
         WHERE device_id = #{deviceId} AND del_flag = 0
     </update>
 
+    <!-- 批量根据设备ID列表逻辑删除 Product -->
+    <update id="deleteByDeviceIds">
+        UPDATE product SET
+            product_key = CONCAT(product_key, '#DEL#', device_id),
+            del_flag    = 1,
+            update_time = SYSDATE()
+        WHERE del_flag = 0
+          AND device_id IN
+        <foreach collection="deviceIds" item="devId" open="(" separator="," close=")">
+            #{devId}
+        </foreach>
+    </update>
+
     <select id="countAll" resultType="int">
         SELECT COUNT(*) FROM product WHERE del_flag = 0
     </select>

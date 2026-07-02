@@ -105,6 +105,14 @@ public interface HazardPointMapper
     int refreshDeviceCountById(@Param("id") Long id);
 
     /**
+     * 批量刷新隐患点绑定设备数量
+     *
+     * @param ids 隐患点ID列表
+     * @return 结果
+     */
+    int refreshDeviceCountByIds(@Param("ids") List<Long> ids);
+
+    /**
      * 原子递增隐患点设备数量
      *
      * @param id    隐患点ID

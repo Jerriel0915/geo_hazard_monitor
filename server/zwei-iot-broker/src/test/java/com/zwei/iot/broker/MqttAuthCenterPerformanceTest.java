@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -52,7 +54,8 @@ class MqttAuthCenterPerformanceTest {
                 deviceAuthQueryService,
                 deviceAuthLogService,
                 new MqttDeviceSessionRegistry(),
-                new MqttAuthFailureGuard(properties),
+                new MqttAuthFailureGuard(properties,
+                        mock(StringRedisTemplate.class, org.mockito.Mockito.RETURNS_DEEP_STUBS)),
                 properties,
                 new StaticListableBeanFactory() {{
                     addBean("mqttServer", mqttServer);

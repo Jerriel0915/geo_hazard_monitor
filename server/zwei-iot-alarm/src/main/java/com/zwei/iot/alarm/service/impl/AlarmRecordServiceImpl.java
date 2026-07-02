@@ -406,4 +406,26 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
         }
         return result;
     }
+
+    @Override
+    public Map<String, Object> getOverview() {
+        return alarmRecordMapper.countOverview();
+    }
+
+    @Override
+    public List<Map<String, Object>> getSourceStats() {
+        List<Map<String, Object>> rows = alarmRecordMapper.countPendingByMonitorType();
+        int total = rows.stream().mapToInt(r -> ((Number) r.get("count")).intValue()).sum();
+        for (Map<String, Object> row : rows) {
+            int cnt = ((Number) row.get("count")).intValue();
+            double rate = total > 0 ? Math.round(cnt * 1000.0 / total) / 10.0 : 0;
+            row.put("rate", rate);
+        }
+        return rows;
+    }
+
+    @Override
+    public List<Map<String, Object>> getHighRiskHazardPoints(int limit) {
+        return alarmRecordMapper.countTriggerByHazardPoint(limit);
+    }
 }

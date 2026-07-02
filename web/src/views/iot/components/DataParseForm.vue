@@ -14,11 +14,18 @@
           <el-form-item label="策略名称" prop="name">
             <el-input v-model="formData.name" placeholder="请输入策略名称" :disabled="isView" />
           </el-form-item>
-          <el-form-item label="服务地址" prop="serverUrl">
-            <el-input v-model="formData.serverUrl" placeholder="请输入MQTT服务地址" :disabled="isView" />
+          <el-form-item label="协议类型" prop="sourceType">
+            <el-select v-model="formData.sourceType" placeholder="请选择协议" :disabled="isView" style="width: 100%">
+              <el-option label="sys (系统自定义协议)" value="sys" />
+              <el-option label="gb (国标协议)" value="gb" />
+              <el-option label="自定义协议" value="custom" />
+            </el-select>
           </el-form-item>
-          <el-form-item label="主题" prop="topic">
-            <el-input v-model="formData.topic" placeholder="请输入订阅主题，如：$dp" :disabled="isView" />
+          <el-form-item label="服务地址" prop="serverUrl">
+            <el-input v-model="formData.serverUrl" placeholder="如 tcp://mqtt.server:1883 (描述用)" :disabled="isView" />
+          </el-form-item>
+          <el-form-item label="订阅主题" prop="topic">
+            <el-input v-model="formData.topic" placeholder="如 sys/v1/{deviceCode}/{sensorCode}/updata (描述用)" :disabled="isView" />
           </el-form-item>
           <el-form-item label="描述" prop="description">
             <el-input
@@ -38,18 +45,29 @@
           <el-form-item label="应用范围" prop="appScope">
             <el-radio-group v-model="formData.appScope" :disabled="isView" @change="handleAppScopeChange">
               <el-radio value="global">全局</el-radio>
-              <el-radio value="vendor">指定厂商</el-radio>
               <el-radio value="device">指定设备</el-radio>
+              <!-- 厂商主表暂未建立，隐藏 -->
             </el-radio-group>
           </el-form-item>
-          <el-form-item label="厂商选择" prop="vendorIds" v-if="formData.appScope === 'vendor'">
-            <el-select v-model="formData.vendorIds" multiple placeholder="请选择厂商" :disabled="isView" style="width: 100%">
-              <el-option v-for="vendor in vendorList" :key="vendor.id" :label="vendor.name" :value="vendor.id" />
-            </el-select>
-          </el-form-item>
           <el-form-item label="设备选择" prop="deviceIds" v-if="formData.appScope === 'device'">
-            <el-select v-model="formData.deviceIds" multiple placeholder="请选择设备" :disabled="isView" style="width: 100%">
-              <el-option v-for="device in deviceList" :key="device.id" :label="device.name" :value="device.id" />
+            <el-select
+                v-model="formData.deviceIds"
+                multiple
+                filterable
+                remote
+                remote-show-suffix
+                :remote-method="searchDevices"
+                placeholder="输入设备名称搜索"
+                :disabled="isView"
+                style="width: 100%"
+                :loading="deviceLoading"
+            >
+              <el-option
+                  v-for="device in deviceList"
+                  :key="device.id"
+                  :label="`${device.name} (${device.code})`"
+                  :value="device.id!"
+              />
             </el-select>
           </el-form-item>
         </el-form>
@@ -57,79 +75,20 @@
 
       <el-tab-pane label="脚本编辑" name="script">
         <div class="script-editor-container">
-          <div class="editor-tabs" v-if="!isView">
-            <el-radio-group v-model="scriptMode" size="small">
-<!--              <el-radio-button label="visual">可视化编程</el-radio-button>-->
-              <el-radio-button label="code">代码编辑</el-radio-button>
-            </el-radio-group>
+          <div class="editor-hint">
+            <el-alert type="info" :closable="false" show-icon>
+              <template #title>
+                Groovy 脚本约定：入口函数 <code>Map&lt;String, Object&gt; parse(String topic, byte[] messageBytes)</code>；
+                通过 <code>builtin.*</code> 调用内置函数（hexDecode/readFloat/readBcdTimestamp 等）；
+                禁用 <code>@CompileStatic</code>；Map 赋值用 <code>result.put("key", value)</code>。
+              </template>
+            </el-alert>
           </div>
-
-          <!-- 可视化编程区域 -->
-          <div v-if="scriptMode === 'visual'" class="blockly-container">
-            <div id="blocklyDiv" class="blockly-workspace">
-              <div class="blockly-placeholder">Blockly 可视化编程区域</div>
-            </div>
-            <div class="toolbox-container">
-              <div class="toolbox-title">工具模块</div>
-              <div class="toolbox-items">
-                <div class="toolbox-category">
-                  <div class="category-title">数据监听</div>
-                  <div class="tool-item">监听MQTT消息</div>
-                  <div class="tool-item">监听策略解析结果</div>
-                </div>
-                <div class="toolbox-category">
-                  <div class="category-title">数据查询</div>
-                  <div class="tool-item">查询设备信息</div>
-                  <div class="tool-item">查询厂商信息</div>
-                  <div class="tool-item">查询隐患点信息</div>
-                </div>
-                <div class="toolbox-category">
-                  <div class="category-title">算法调用</div>
-                  <div class="tool-item">数据清洗算法</div>
-                  <div class="tool-item">数据格式转换</div>
-                  <div class="tool-item">数据异常检测</div>
-                  <div class="tool-item">数据聚合计算</div>
-                  <div class="tool-item">数据趋势分析</div>
-                </div>
-                <div class="toolbox-category">
-                  <div class="category-title">数据存储</div>
-                  <div class="tool-item">存储监测数据</div>
-                  <div class="tool-item">存储设备状态</div>
-                  <div class="tool-item">存储告警事件</div>
-                </div>
-                <div class="toolbox-category">
-                  <div class="category-title">数据输出</div>
-                  <div class="tool-item">输出到其他策略</div>
-                  <div class="tool-item">输出到HTTP接口</div>
-                  <div class="tool-item">输出到消息队列</div>
-                </div>
-                <div class="toolbox-category">
-                  <div class="category-title">控制逻辑</div>
-                  <div class="tool-item">条件判断</div>
-                  <div class="tool-item">循环执行</div>
-                  <div class="tool-item">日志输出</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 代码编辑区域 -->
-          <div v-else class="code-editor-container">
-            <el-input
+          <div class="code-editor-container">
+            <CodeMirrorGroovy
                 v-model="formData.scriptCode"
-                type="textarea"
-                :rows="20"
-                placeholder="// 请输入解析脚本代码
-// 示例：解析国标协议数据
-function parse(data) {
-  const result = {};
-  result.timestamp = Date.now();
-  result.deviceId = data.deviceId;
-  result.data = data.payload;
-  return result;
-}"
-                :disabled="isView"
-                class="code-textarea"
+                :readonly="isView"
+                :min-height="400"
             />
           </div>
         </div>
@@ -147,60 +106,34 @@ function parse(data) {
   </el-dialog>
 
   <!-- 测试弹窗 -->
-  <el-dialog
-      v-model="testDialogVisible"
-      title="脚本测试"
-      width="800px"
-      :close-on-click-modal="false"
-      destroy-on-close
-  >
-    <el-form label-width="100px">
-      <el-form-item label="测试数据">
-        <el-input
-            v-model="testData"
-            type="textarea"
-            :rows="8"
-            placeholder='请输入测试数据，JSON格式：
-{
-  "topic": "$dp",
-  "payload": {
-    "deviceId": "dev001",
-    "data": "..."
-  }
-}'
-        />
-      </el-form-item>
-      <el-form-item label="测试结果">
-        <el-input
-            v-model="testResult"
-            type="textarea"
-            :rows="8"
-            readonly
-            placeholder="测试结果将显示在这里"
-        />
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <el-button @click="testDialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="handleRunTest" :loading="testRunning">运行测试</el-button>
-    </template>
-  </el-dialog>
+  <ScriptTestDialog
+      v-model:visible="testDialogVisible"
+      :script-code="formData.scriptCode"
+      :default-topic="formData.topic"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onUnmounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, computed, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import {
+  createStrategy, updateStrategy,
+  type DataParseStrategy
+} from '@/api/dataParse'
+import { getDevicePage, getDeviceDetail, type DeviceItem } from '@/api/device'
+import ScriptTestDialog from './ScriptTestDialog.vue'
+import CodeMirrorGroovy from '@/views/basic/components/script-editor/CodeMirrorGroovy.vue'
 
 interface Props {
   visible: boolean
-  data: any
+  data: DataParseStrategy | null
   mode: 'add' | 'edit' | 'view'
 }
 
 interface Emits {
   (e: 'update:visible', value: boolean): void
-  (e: 'submit', data: any): void
-  (e: 'test', data: any): void
+  (e: 'saved'): void
+  (e: 'test', data: DataParseStrategy): void
 }
 
 const props = defineProps<Props>()
@@ -208,28 +141,21 @@ const emit = defineEmits<Emits>()
 
 const dialogVisible = ref(false)
 const activeTab = ref('basic')
-const scriptMode = ref('code')
 const submitLoading = ref(false)
-const testRunning = ref(false)
 const formRef = ref()
 
-// 测试相关
+// 设备下拉（远程搜索）
+const deviceList = ref<DeviceItem[]>([])
+const deviceLoading = ref(false)
+
+// 测试弹窗
 const testDialogVisible = ref(false)
-const testData = ref('')
-const testResult = ref('')
-
-// setTimeout 清理
-const formTimers: ReturnType<typeof setTimeout>[] = []
-
-onUnmounted(() => {
-  formTimers.forEach(id => clearTimeout(id))
-  formTimers.length = 0
-})
 
 // 表单数据
 const formData = reactive({
   id: null as number | null,
   name: '',
+  sourceType: 'sys',
   serverUrl: '',
   topic: '',
   description: '',
@@ -240,26 +166,13 @@ const formData = reactive({
   scriptCode: ''
 })
 
-// 厂商和设备列表
-const vendorList = ref([
-  { id: 1, name: '北京国信华源科技有限公司' },
-  { id: 2, name: '深圳北斗智联科技有限公司' },
-  { id: 3, name: '上海物联网科技有限公司' }
-])
-
-const deviceList = ref([
-  { id: 1, name: 'GNSS监测站-001' },
-  { id: 2, name: '雨量计-001' },
-  { id: 3, name: '裂缝监测-001' }
-])
-
 // 表单验证规则
 const formRules = {
   name: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
-  serverUrl: [{ required: true, message: '请输入服务地址', trigger: 'blur' }],
-  topic: [{ required: true, message: '请输入主题', trigger: 'blur' }],
+  sourceType: [{ required: true, message: '请选择协议类型', trigger: 'change' }],
   status: [{ required: true, message: '请选择启用状态', trigger: 'change' }]
 }
+
 
 // 弹窗标题
 const dialogTitle = computed(() => {
@@ -268,20 +181,25 @@ const dialogTitle = computed(() => {
   return '查看解析策略'
 })
 
-// 是否只读
 const isView = computed(() => props.mode === 'view')
 
 // 监听 visible 变化
 watch(() => props.visible, (val) => {
   dialogVisible.value = val
-  if (val && props.data) {
-    fillForm(props.data)
+  if (val) {
+    if (props.data) {
+      fillForm(props.data)
+      // 编辑/查看模式：回填已选中设备的名称
+      if (props.data.deviceIds?.length) {
+        loadSelectedDevices(props.data.deviceIds)
+      } else {
+        deviceList.value = []
+      }
+    } else {
+      resetForm()
+      deviceList.value = []
+    }
     activeTab.value = 'basic'
-    scriptMode.value = 'code'
-  } else if (val && props.mode === 'add') {
-    resetForm()
-    activeTab.value = 'basic'
-    scriptMode.value = 'code'
   }
 })
 
@@ -291,10 +209,56 @@ watch(() => dialogVisible.value, (val) => {
   }
 })
 
-// 重置表单
+// 加载已选中设备（编辑模式回填名称）
+const loadSelectedDevices = async (deviceIds: number[]) => {
+  if (!deviceIds.length) {
+    deviceList.value = []
+    return
+  }
+  deviceLoading.value = true
+  try {
+    const results = await Promise.allSettled(deviceIds.map(id => getDeviceDetail(id)))
+    const devices: DeviceItem[] = []
+    results.forEach(r => {
+      if (r.status === 'fulfilled') devices.push(r.value)
+    })
+    deviceList.value = devices
+  } catch {
+    deviceList.value = []
+  } finally {
+    deviceLoading.value = false
+  }
+}
+
+// 远程搜索设备（按名称过滤，分页取前 50 条）
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+const searchDevices = (query: string) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(async () => {
+    const trimmed = query.trim()
+    if (!trimmed) {
+      // 空查询时保留已选中设备的选项
+      return
+    }
+    deviceLoading.value = true
+    try {
+      const result = await getDevicePage({ pageNum: 1, pageSize: 50, name: trimmed })
+      // 合并：保留已选中但不在搜索结果中的设备，避免选中项丢失标签
+      const existingIds = new Set(deviceList.value.map(d => d.id))
+      const newDevices = result.rows.filter(d => !existingIds.has(d.id))
+      deviceList.value = [...deviceList.value, ...newDevices]
+    } catch {
+      // 搜索失败时保留现有列表
+    } finally {
+      deviceLoading.value = false
+    }
+  }, 300)
+}
+
 const resetForm = () => {
   formData.id = null
   formData.name = ''
+  formData.sourceType = 'sys'
   formData.serverUrl = ''
   formData.topic = ''
   formData.description = ''
@@ -306,92 +270,64 @@ const resetForm = () => {
   formRef.value?.clearValidate()
 }
 
-// 填充表单
-const fillForm = (row: any) => {
-  formData.id = row.id
-  formData.name = row.name
-  formData.serverUrl = row.serverUrl
-  formData.topic = row.topic
+const fillForm = (row: DataParseStrategy) => {
+  formData.id = row.id ?? null
+  formData.name = row.name || ''
+  formData.sourceType = row.sourceType || 'sys'
+  formData.serverUrl = row.serverUrl || ''
+  formData.topic = row.topic || ''
   formData.description = row.description || ''
-  formData.status = row.status
+  formData.status = row.status ?? 1
   formData.appScope = row.appScope || 'global'
   formData.vendorIds = [...(row.vendorIds || [])]
   formData.deviceIds = [...(row.deviceIds || [])]
   formData.scriptCode = row.scriptCode || ''
 }
 
-// 应用范围变化
 const handleAppScopeChange = () => {
   formData.vendorIds = []
   formData.deviceIds = []
 }
 
-// 测试脚本
+// 测试脚本（打开共享测试弹窗）
 const handleTest = () => {
-  testData.value = JSON.stringify({
-    topic: formData.topic || '$dp',
-    payload: {
-      deviceId: 'test001',
-      timestamp: Date.now(),
-      data: {
-        temperature: 25.5,
-        humidity: 60
-      }
-    }
-  }, null, 2)
-  testResult.value = ''
   testDialogVisible.value = true
-  emit('test', formData)
-}
-
-// 运行测试
-const handleRunTest = () => {
-  if (!testData.value) {
-    ElMessage.warning('请输入测试数据')
-    return
-  }
-
-  testRunning.value = true
-  const t1 = setTimeout(() => {
-    try {
-      const data = JSON.parse(testData.value)
-      testResult.value = JSON.stringify({
-        success: true,
-        timestamp: new Date().toISOString(),
-        input: data,
-        output: {
-          strategyName: formData.name,
-          parsedData: data.payload?.data || {},
-          status: 'parsed'
-        }
-      }, null, 2)
-      ElMessage.success('测试运行成功')
-    } catch (e) {
-      testResult.value = JSON.stringify({
-        success: false,
-        error: '测试数据格式错误，请输入有效的JSON'
-      }, null, 2)
-      ElMessage.error('测试失败')
-    }
-    testRunning.value = false
-  }, 1000)
-  formTimers.push(t1)
+  emit('test', { ...formData } as DataParseStrategy)
 }
 
 // 提交表单
 const handleSubmit = () => {
   formRef.value?.validate(async (valid: boolean) => {
     if (!valid) return
-
     submitLoading.value = true
-    const t2 = setTimeout(() => {
-      const submitData = { ...formData }
-      emit('submit', submitData)
+    try {
+      const payload: Partial<DataParseStrategy> = {
+        name: formData.name,
+        sourceType: formData.sourceType,
+        serverUrl: formData.serverUrl || undefined,
+        topic: formData.topic || undefined,
+        description: formData.description || undefined,
+        status: formData.status,
+        appScope: formData.appScope,
+        scriptCode: formData.scriptCode,
+        deviceIds: formData.appScope === 'device' ? formData.deviceIds : [],
+        vendorIds: formData.appScope === 'vendor' ? formData.vendorIds : []
+      }
+      if (formData.id != null) {
+        payload.id = formData.id
+        await updateStrategy(payload)
+        ElMessage.success('保存成功')
+      } else {
+        await createStrategy(payload)
+        ElMessage.success('新增成功')
+      }
       dialogVisible.value = false
+      emit('saved')
+    } catch (e: any) {
+      ElMessage.error(e.message || '保存失败')
+    } finally {
       submitLoading.value = false
-      ElMessage.success(props.mode === 'add' ? '新增成功' : '保存成功')
-    }, 500)
-    formTimers.push(t2)
+    }
   })
 }
 </script>
@@ -412,94 +348,24 @@ const handleSubmit = () => {
 }
 
 .script-editor-container {
-  min-height: 450px;
+  min-height: 480px;
 }
 
-.editor-tabs {
-  margin-bottom: 15px;
-  text-align: right;
+.editor-hint {
+  margin-bottom: 12px;
 }
 
-.blockly-container {
-  display: flex;
-  gap: 15px;
-  height: 400px;
-}
-
-.blockly-workspace {
-  flex: 1;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.blockly-placeholder {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 16px;
-}
-
-.toolbox-container {
-  width: 280px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 15px;
-  overflow-y: auto;
-}
-
-.toolbox-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #409eff;
-}
-
-.toolbox-items {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.toolbox-category {
-  background: #fff;
-  border-radius: 6px;
-  padding: 10px;
-}
-
-.category-title {
-  font-size: 13px;
-  font-weight: bold;
-  color: #409eff;
-  margin-bottom: 8px;
-}
-
-.tool-item {
+.editor-hint code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: 'Consolas', monospace;
   font-size: 12px;
-  color: #606266;
-  padding: 6px 10px;
-  margin: 4px 0;
-  background: #f5f7fa;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tool-item:hover {
-  background: #ecf5ff;
-  color: #409eff;
 }
 
 .code-editor-container {
-  height: 400px;
-}
-
-.code-textarea :deep(textarea) {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
+  height: 460px;
+  border-radius: 4px;
+  overflow: hidden;
 }
 </style>

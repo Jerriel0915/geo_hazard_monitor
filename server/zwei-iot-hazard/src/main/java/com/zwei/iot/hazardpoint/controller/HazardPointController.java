@@ -2,6 +2,7 @@ package com.zwei.iot.hazardpoint.controller;
 
 import com.zwei.common.annotation.Log;
 import com.zwei.common.core.controller.BaseController;
+import com.zwei.common.exception.ServiceException;
 import com.zwei.common.core.domain.AjaxResult;
 import com.zwei.common.enums.BusinessType;
 import com.zwei.common.utils.StringUtils;
@@ -71,6 +72,9 @@ public class HazardPointController extends BaseController
     {
         HazardPoint hazardPoint = buildHazardPointFilter(request);
         List<HazardPoint> list = hazardPointService.selectHazardPointList(hazardPoint);
+        if (list.size() > 10_000) {
+            throw new ServiceException("导出数据量过大（" + list.size() + " 条），请缩小查询范围");
+        }
         List<HazardPointExportVO> exportList = new ArrayList<>(list.size());
         for (HazardPoint item : list)
         {

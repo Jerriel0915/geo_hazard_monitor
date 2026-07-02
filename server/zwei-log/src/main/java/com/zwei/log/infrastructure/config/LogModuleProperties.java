@@ -124,12 +124,38 @@ public class LogModuleProperties {
      */
     private String consoleLogPath = "./logs/sys-all.log";
 
+    /**
+     * 控制台实时日志回放时间窗口（分钟），默认 180（3 小时）
+     */
+    private long consoleReplayWindowMinutes = 180;
+
+    /**
+     * 控制台实时日志回放最少行数，窗口内不足时向前补充
+     */
+    private int consoleReplayMinLines = 500;
+
     public String getConsoleLogPath() {
         return consoleLogPath;
     }
 
     public void setConsoleLogPath(String consoleLogPath) {
         this.consoleLogPath = consoleLogPath;
+    }
+
+    public long getConsoleReplayWindowMinutes() {
+        return consoleReplayWindowMinutes;
+    }
+
+    public void setConsoleReplayWindowMinutes(long consoleReplayWindowMinutes) {
+        this.consoleReplayWindowMinutes = Math.max(1, consoleReplayWindowMinutes);
+    }
+
+    public int getConsoleReplayMinLines() {
+        return consoleReplayMinLines;
+    }
+
+    public void setConsoleReplayMinLines(int consoleReplayMinLines) {
+        this.consoleReplayMinLines = Math.max(10, consoleReplayMinLines);
     }
 
     public boolean supportsRuntimeLevel(String level) {

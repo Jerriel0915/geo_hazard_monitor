@@ -99,7 +99,7 @@ spring:
       # 地址
       host: localhost
       # 端口，默认为6379
-      port: 16379
+      port: 6378
       # 数据库索引
       database: 0
       # 密码
@@ -134,6 +134,12 @@ iot:
       enabled: true
       # 预热线程池大小（默认4）
       thread-size: 4
+  # 数据解析模块配置 (Groovy 脚本执行引擎)
+  parser:
+    # Groovy 脚本执行线程池大小（解析任务并发度，默认4）
+    groovy-pool-size: 4
+    # 策略最近运行时间定时同步间隔（毫秒，默认60s）
+    last-run-sync-ms: 60000
   # 监测数据 Redis Stream 接入配置，用于支撑 MQTT 报文缓冲、去重与异步写入 IoTDB。
   monitor-ingest:
     enabled: true
@@ -160,6 +166,10 @@ iot:
     connection-timeout-ms: 5000
     query-timeout-seconds: 30
     fetch-size: 500
+    pool-max-size: 8
+    pool-min-idle: 2
+    pool-idle-timeout-seconds: 600
+    pool-max-lifetime-seconds: 1800
 
 # MyBatis配置
 mybatis:

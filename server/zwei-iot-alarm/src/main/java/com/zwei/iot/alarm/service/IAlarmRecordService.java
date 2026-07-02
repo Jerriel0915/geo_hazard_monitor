@@ -56,4 +56,13 @@ public interface IAlarmRecordService {
 
     /** 按月+等级统计告警趋势 (近N个月)，含2个月预测 */
     Map<String, Object> getMonthlyTrend(int months);
+
+    /** 按监测类型统计待处理告警数量（含百分比） */
+    List<Map<String, Object>> getSourceStats();
+
+    /** 告警总览统计（待处理/历史/总计/近三月），单次查询 */
+    Map<String, Object> getOverview();
+
+    /** 高风险隐患点 Top N (按待处理告警触发次数降序) */
+    List<Map<String, Object>> getHighRiskHazardPoints(int limit);
 }

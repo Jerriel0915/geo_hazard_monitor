@@ -8,11 +8,13 @@
         <span style="margin-right: 8px; color: #606266; font-size: 13px">统一时间范围：</span>
         <el-date-picker
             v-model="gridTimeRange"
-            type="datetimerange"
-            start-placeholder="开始"
-            end-placeholder="结束"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            style="width: 340px"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="起始日期"
+            end-placeholder="截止日期"
+            value-format="YYYY-MM-DD"
+            :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+            style="width: 300px"
         />
         <el-button type="primary" size="small" @click="loadAllGridCharts" style="margin-left: 10px">应用</el-button>
       </div>
@@ -96,16 +98,14 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
+import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import echarts from '@/utils/echarts'
 import {
   type DeviceOption,
-  type DeviceTypeOption,
   getChartData,
   getDeviceOptions,
-  getDeviceTypeOptions,
   getHazardPointOptions,
   type GridChartItem,
   type HazardPointOption,
@@ -119,7 +119,6 @@ const emit = defineEmits<{
 
 // State
 const hazardPointOptions = ref<HazardPointOption[]>([])
-const deviceTypeOptions = ref<DeviceTypeOption[]>([])
 const gridCells = ref<GridChartItem[]>(Array.from({ length: 9 }, (_, i) => ({ index: i })))
 const gridTimeRange = ref<[string, string] | null>(null)
 const gridChartRefs = new Map<number, HTMLElement>()
@@ -138,25 +137,54 @@ const gridFilteredDevices = computed(() => {
 })
 
 const gridAvailableAttrs = computed(() => {
-  // 如果已选择设备，根据设备的 deviceType 过滤属性
-  if (gridConfigForm.deviceId) {
-    const device = gridDialogDevices.value.find((d) => d.id === gridConfigForm.deviceId)
-    if (device) {
-      const dt = deviceTypeOptions.value.find((dt) => dt.value === device.deviceType)
-      if (dt) return dt.attrs
+  // 根据选定设备的传感器数据提取唯一属性（与关联分析一致）
+  if (!gridConfigForm.deviceId || gridDialogSensors.value.length === 0) return []
+  const seen = new Set<string>()
+  const attrs: { code: string; name: string; unit: string }[] = []
+  for (const sensor of gridDialogSensors.value) {
+    for (const attr of sensor.attrList) {
+      if (!seen.has(attr.attrCode)) {
+        seen.add(attr.attrCode)
+        attrs.push({
+          code: attr.attrCode,
+          name: attr.attrName || attr.attrCode,
+          unit: attr.unit || ''
+        })
+      }
     }
   }
-  // 未选择设备时展示全部属性
-  const allAttrs: { code: string; name: string; unit: string }[] = []
-  deviceTypeOptions.value.forEach((dt) => allAttrs.push(...dt.attrs))
-  return allAttrs
+  return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '' }]
 })
+
+// 工具函数：将日期字符串转换为带时间的完整格式
+const formatDateWithTime = (dateStr: string, isEnd: boolean): string => {
+  if (!dateStr) return ''
+  const time = isEnd ? '23:59:59' : '00:00:00'
+  return `${dateStr} ${time}`
+}
+
+// 工具函数：获取默认时间范围（最近7天）
+const getDefaultTimeRange = (): [string, string] => {
+  const end = new Date()
+  const start = new Date(end.getTime() - 7 * 24 * 3600 * 1000)
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return [formatDate(start), formatDate(end)]
+}
+
+// 初始化默认时间范围
+const initDefaultTimeRange = () => {
+  const [start, end] = getDefaultTimeRange()
+  gridTimeRange.value = [start, end]
+}
 
 // Load options
 const loadOptions = async () => {
-  const [hps, dts] = await Promise.all([getHazardPointOptions(), getDeviceTypeOptions()])
-  hazardPointOptions.value = hps
-  deviceTypeOptions.value = dts
+  hazardPointOptions.value = await getHazardPointOptions()
 }
 
 // Grid handlers
@@ -198,8 +226,7 @@ const onGridConfigDeviceChange = async () => {
 
 const confirmGridConfig = async () => {
   const device = gridDialogDevices.value.find((d) => d.id === gridConfigForm.deviceId)
-  const dt = deviceTypeOptions.value.find((dt) => dt.attrs.some((a) => a.code === gridConfigForm.attrCode))
-  const attr = dt?.attrs.find((a) => a.code === gridConfigForm.attrCode)
+  const attr = gridAvailableAttrs.value.find((a) => a.code === gridConfigForm.attrCode)
   if (!device || !attr) return
 
   const sensor = gridDialogSensors.value.find((s) => s.id === gridConfigForm.sensorId)
@@ -228,11 +255,17 @@ const loadGridCellChart = async (idx: number) => {
   const el = gridChartRefs.get(idx)
   if (!cell.sensorSeriesId || !el || !cell.deviceId || !cell.attrCode) return
 
-  const startTime =
-      gridTimeRange.value?.[0] ||
-      new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-  const endTime =
-      gridTimeRange.value?.[1] || new Date().toISOString().slice(0, 19).replace('T', ' ')
+  // 获取时间范围，如果没有则使用默认的最近7天
+  let startTime: string
+  let endTime: string
+  if (gridTimeRange.value && gridTimeRange.value.length === 2) {
+    startTime = formatDateWithTime(gridTimeRange.value[0], false)
+    endTime = formatDateWithTime(gridTimeRange.value[1], true)
+  } else {
+    const [defaultStart, defaultEnd] = getDefaultTimeRange()
+    startTime = formatDateWithTime(defaultStart, false)
+    endTime = formatDateWithTime(defaultEnd, true)
+  }
 
   try {
     const data = await getChartData({
@@ -334,7 +367,16 @@ const handleGridCommand = (cmd: string, idx: number) => {
 let resizeHandler: (() => void) | null = null
 
 onMounted(() => {
+  // 初始化默认时间范围（最近7天）
+  initDefaultTimeRange()
+  
   loadOptions()
+  
+  // 延迟加载图表，确保DOM渲染完成
+  setTimeout(() => {
+    loadAllGridCharts()
+  }, 300)
+  
   resizeHandler = () => {
     gridChartInstances.forEach((chart) => chart.resize())
   }
@@ -343,8 +385,17 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   gridChartInstances.forEach((chart) => chart.dispose())
+  gridChartInstances.clear()
+  gridChartRefs.clear()
   if (resizeHandler) {
     window.removeEventListener('resize', resizeHandler)
+  }
+})
+
+// 监听时间范围变化，自动刷新图表
+watch(gridTimeRange, (newVal) => {
+  if (newVal && newVal.length === 2) {
+    loadAllGridCharts()
   }
 })
 </script>

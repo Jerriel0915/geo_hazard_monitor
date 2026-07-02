@@ -259,6 +259,7 @@ import {
 import {useLogQuery} from './composables/useLogQuery'
 import {useConsoleStream} from './composables/useLogStream'
 import LogTerminal from './components/LogTerminal.vue'
+import request from '@/utils/request'
 
 type TabKey = 'operation' | 'auth' | 'runtime' | 'realtime'
 
@@ -432,7 +433,8 @@ const {
 } = runtimeQuery
 
 // ── Console log stream composable ──
-const stream = useConsoleStream()
+const replayWindow = ref(180)
+const stream = useConsoleStream(replayWindow)
 
 const sseStatusText = computed(() => {
   const map: Record<string, string> = {
@@ -505,7 +507,15 @@ watch(activeTab, (tab) => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res: any = await request.get('/system/config/configKey/console_replay_window')
+    const val = res?.data
+    if (val != null) {
+      const n = Number(val)
+      if (!Number.isNaN(n) && n > 0) replayWindow.value = n
+    }
+  } catch { /* 使用默认值 180 */ }
   refreshActiveTab()
   if (activeTab.value === 'realtime') {
     stream.start()

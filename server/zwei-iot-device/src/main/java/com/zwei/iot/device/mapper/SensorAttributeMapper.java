@@ -22,6 +22,14 @@ public interface SensorAttributeMapper {
     List<SensorAttribute> selectAttributeListBySensorId(@Param("sensorId") Long sensorId);
 
     /**
+     * 批量根据传感器ID列表查询属性（避免逐传感器查询 N+1）。
+     *
+     * @param sensorIds 传感器ID列表
+     * @return 属性列表
+     */
+    List<SensorAttribute> selectAttributeListBySensorIds(@Param("sensorIds") List<Long> sensorIds);
+
+    /**
      * 根据设备ID查询所有传感器属性（JOIN device_sensor，批量查询避免 N+1）
      *
      * @param deviceId 设备ID
@@ -68,6 +76,14 @@ public interface SensorAttributeMapper {
      * @return 影响行数
      */
     int deleteAttributeBySensorId(Long sensorId);
+
+    /**
+     * 批量根据设备ID列表删除传感器属性（物理删除，JOIN device_sensor）。
+     *
+     * @param deviceIds 设备ID列表
+     * @return 影响行数
+     */
+    int deleteAttributeByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
 
     /**
      * 批量新增传感器属性

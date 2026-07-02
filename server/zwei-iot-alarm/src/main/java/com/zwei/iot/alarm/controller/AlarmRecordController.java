@@ -116,4 +116,25 @@ public class AlarmRecordController extends BaseController {
     public AjaxResult trend(@RequestParam(defaultValue = "12") int months) {
         return success(alarmRecordService.getMonthlyTrend(months));
     }
+
+    /** 告警总览统计（待处理/历史/总计/近三月） */
+    @GetMapping("/overview")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult overview() {
+        return success(alarmRecordService.getOverview());
+    }
+
+    /** 告警来源分布 (按监测类型统计待处理告警触发次数) */
+    @GetMapping("/source-stats")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult sourceStats() {
+        return success(alarmRecordService.getSourceStats());
+    }
+
+    /** 高风险隐患点 Top N (按待处理告警触发次数降序) */
+    @GetMapping("/high-risk-hazard-points")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult highRiskHazardPoints(@RequestParam(defaultValue = "10") int limit) {
+        return success(alarmRecordService.getHighRiskHazardPoints(limit));
+    }
 }

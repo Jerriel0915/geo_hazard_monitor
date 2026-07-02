@@ -150,60 +150,16 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from 'vue'
 import echarts from '@/utils/echarts'
+import {getPendingAlarms, getAlarmOverview, getAlarmLevelStats, getAlarmTrend, getAlarmSourceStats, getHighRiskHazardPoints, type AlarmTrendVO} from '@/api/alarm'
+import {getDashboardFull} from '@/api/monitor'
 
 const alarmStats = ref({
-  recentThreeMonthsAlarms: 156,
-  totalAlarms: 892,
-  hazardPointCount: 28,
-  deviceCount: 156,
-  levelStats: [
-    { name: '一级告警', key: 'level1', count: 112, rate: 12.6 },
-    { name: '二级告警', key: 'level2', count: 205, rate: 23.0 },
-    { name: '三级告警', key: 'level3', count: 318, rate: 35.6 },
-    { name: '四级告警', key: 'level4', count: 257, rate: 28.8 }
-  ],
-  recentAlarms: [
-    {
-      id: 1,
-      title: '边坡位移超阈值告警',
-      source: 'GNSS监测点-A1',
-      time: '2026-05-28 14:23',
-      level: 'level1',
-      priority: 1
-    },
-    {
-      id: 2,
-      title: '渗压异常告警',
-      source: '渗压计-B3',
-      time: '2026-05-28 13:45',
-      level: 'level2',
-      priority: 2
-    },
-    {
-      id: 3,
-      title: '雨量超限告警',
-      source: '雨量计-C5',
-      time: '2026-05-28 12:15',
-      level: 'level3',
-      priority: 3
-    },
-    {
-      id: 4,
-      title: '设备通讯中断',
-      source: '裂缝计-D2',
-      time: '2026-05-28 11:30',
-      level: 'level4',
-      priority: 3
-    },
-    {
-      id: 5,
-      title: '地下水位异常',
-      source: '水位计-E7',
-      time: '2026-05-28 10:05',
-      level: 'level2',
-      priority: 2
-    }
-  ]
+  recentThreeMonthsAlarms: 0,
+  totalAlarms: 0,
+  hazardPointCount: 0,
+  deviceCount: 0,
+  levelStats: [] as { name: string; key: string; count: number; rate: number }[],
+  recentAlarms: [] as { id: number; title: string; source: string; time: string; level: string; priority?: number }[]
 })
 
 const nextRefreshTime = ref('')
@@ -232,44 +188,103 @@ const formatTime = (date: Date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
-const alarmTrendData = ref({
-  months: ['2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
-  level1: [5, 8, 12, 10, 15, 12, 14, 16, 12, 14, 10, 12],
-  level2: [8, 12, 15, 14, 18, 15, 17, 20, 16, 18, 14, 15],
-  level3: [3, 5, 7, 6, 8, 6, 7, 8, 6, 7, 5, 6],
-  level4: [2, 3, 4, 3, 5, 4, 4, 5, 4, 4, 3, 4],
-  total: [18, 28, 38, 33, 46, 37, 42, 49, 38, 43, 32, 37],
-  forecastTotal: [35, 38],
-  forecastLevel1: [11, 12],
-  forecastLevel2: [16, 17],
-  forecastLevel3: [6, 6],
-  forecastLevel4: [4, 4]
+const alarmTrendData = ref<AlarmTrendVO>({
+  months: [], level1: [], level2: [], level3: [], level4: [], total: [],
+  forecastMonths: [], forecastLevel1: [], forecastLevel2: [], forecastLevel3: [], forecastLevel4: [], forecastTotal: []
 })
 
-const hazardData = ref([
-  { name: '边坡A', count: 12, level: 'level1' },
-  { name: '桥梁B', count: 8, level: 'level2' },
-  { name: '隧道C', count: 5, level: 'level2' },
-  { name: '路基D', count: 3, level: 'level3' }
-])
+const hazardData = ref<{ name: string; count: number; level: string }[]>([])
 
-const sourceDistribution = ref([
-  { name: 'GNSS', count: 320, rate: 35.9 },
-  { name: '裂缝计', count: 185, rate: 20.7 },
-  { name: '渗压计', count: 156, rate: 17.5 },
-  { name: '雨量计', count: 128, rate: 14.3 },
-  { name: '水位计', count: 103, rate: 11.6 }
-])
+const sourceDistribution = ref<{ name: string; count: number; rate: number }[]>([])
 
-onMounted(() => {
-  initLevelChart()
-  initTrendChart()
-  initSourceChart()
-  initHazardChart()
-  updateNextRefreshTime()
+const loadAlarmData = async () => {
+  try {
+    const [pendingRes, overviewRes, levelStatsRes, trendRes, sourceRes, hazardRes, fullRes] = await Promise.all([
+      getPendingAlarms({ pageNum: 1, pageSize: 100 }),
+      getAlarmOverview(),
+      getAlarmLevelStats(),
+      getAlarmTrend(12),
+      getAlarmSourceStats(),
+      getHighRiskHazardPoints(10),
+      getDashboardFull(60)
+    ])
+    // 待处理告警
+    const pendingRows = (pendingRes as any)?.rows ?? []
+    const levelMap: Record<number, { name: string; key: string }> = {
+      1: { name: '一级告警', key: 'level1' },
+      2: { name: '二级告警', key: 'level2' },
+      3: { name: '三级告警', key: 'level3' },
+      4: { name: '四级告警', key: 'level4' }
+    }
+    alarmStats.value.recentAlarms = pendingRows.slice(0, 5).map((item: any) => ({
+      id: item.id,
+      title: item.alarmMessage || item.hazardPointName || '告警事件',
+      source: item.deviceName || item.sensorName || '',
+      time: item.lastTriggerTime ? item.lastTriggerTime.substring(11, 16) : '',
+      level: levelMap[item.alarmLevel]?.key ?? 'level4'
+    }))
+
+    // 告警次数统计 — 来自 /alarm/records/overview（单次查询，精准计数）
+    const ovData = (overviewRes as any)?.data ?? overviewRes ?? {}
+    alarmStats.value.totalAlarms = ovData.totalCount ?? 0
+    alarmStats.value.recentThreeMonthsAlarms = ovData.recentThreeMonthsCount ?? 0
+
+    // 等级统计
+    const lsData = (levelStatsRes as any)?.data ?? levelStatsRes ?? {}
+    const levelTotal = Object.values(lsData).reduce((s: number, v: any) => s + Number(v), 0) || 1
+    alarmStats.value.levelStats = [1, 2, 3, 4].map(lv => ({
+      ...levelMap[lv],
+      count: Number((lsData as any)[lv]) || 0,
+      rate: Math.round(Number((lsData as any)[lv]) / levelTotal * 1000) / 10 || 0
+    }))
+    // 趋势
+    const td = (trendRes as any)?.data ?? trendRes
+    if (td && td.months?.length > 0) {
+      alarmTrendData.value = td as AlarmTrendVO
+      initTrendChart()
+    }
+    // 概览数据（设备总数、隐患点总数等）
+    const d = (fullRes as any)?.data
+    if (d?.overview) {
+      alarmStats.value.deviceCount = d.overview.device?.total ?? 0
+      alarmStats.value.hazardPointCount = d.overview.hazardPoint?.total ?? 0
+    }
+
+    // 告警来源分布 — 从后端 source-stats 接口获取
+    const ssData = (sourceRes as any)?.data ?? sourceRes ?? []
+    if (Array.isArray(ssData) && ssData.length > 0) {
+      sourceDistribution.value = ssData.map((item: any) => ({
+        name: item.monitorTypeName,
+        count: item.count || 0,
+        rate: item.rate || 0
+      }))
+    }
+
+    // 高风险隐患点 — 从后端 alarm_record_trigger_detail 统计触发次数
+    if (hazardRes) {
+      const hdData: any = hazardRes
+      hazardData.value = (Array.isArray(hdData) ? hdData : (hdData?.data || hdData?.rows || []))
+        .slice(0, 10)
+        .map((item: any) => ({
+          name: item.hazardPointName,
+          count: item.count || 0,
+          level: 'level2'
+        }))
+    }
+
+    // 图表初始化（首次加载）
+    initLevelChart()
+    initSourceChart()
+    initHazardChart()
+  } catch { /* keep defaults */ }
+}
+
+onMounted(async () => {
+  await loadAlarmData()
 
   // 开始周期性更新
   startAutoRefresh()
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
@@ -281,6 +296,7 @@ onUnmounted(() => {
 
   // 停止周期性更新
   stopAutoRefresh()
+  window.removeEventListener('resize', handleResize)
 })
 
 // 初始化告警等级分布图表
@@ -530,14 +546,14 @@ const initSourceChart = () => {
       },
       formatter: (params: any) => {
         const data = params[0]
-        return `${data.name}<br/>数量: ${data.value}次 (${data.percent}%)`
+        return `${data.name}<br/>告警次数: ${data.value}次 (${data.data.percent}%)`
       }
     },
     grid: {
-      left: '8%',
+      left: '3%',
       right: '4%',
-      bottom: '5%',
-      top: '5%',
+      bottom: '15%',
+      top: '15%',
       containLabel: true
     },
     xAxis: {
@@ -545,7 +561,8 @@ const initSourceChart = () => {
       data: sourceDistribution.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 12
+        fontSize: 12,
+        rotate: 20
       },
       axisLine: {
         lineStyle: {
@@ -556,6 +573,7 @@ const initSourceChart = () => {
     yAxis: {
       type: 'value',
       name: '告警次数',
+      minInterval: 1,
       nameTextStyle: {
         color: '#6b7280',
         fontSize: 12
@@ -582,10 +600,11 @@ const initSourceChart = () => {
       label: {
         show: true,
         position: 'top',
-        formatter: '{c}次 ({d}%)',
+        formatter: (p: any) => `${p.value}次 (${p.data.percent}%)`,
         color: '#1e293b',
         fontSize: 12,
-        fontWeight: 600
+        fontWeight: 600,
+        overflow: 'truncate'
       }
     }]
   }
@@ -610,10 +629,10 @@ const initHazardChart = () => {
       }
     },
     grid: {
-      left: '8%',
+      left: '3%',
       right: '4%',
-      bottom: '5%',
-      top: '5%',
+      bottom: '15%',
+      top: '15%',
       containLabel: true
     },
     xAxis: {
@@ -621,7 +640,8 @@ const initHazardChart = () => {
       data: hazardData.value.map(item => item.name),
       axisLabel: {
         color: '#64748b',
-        fontSize: 12
+        fontSize: 12,
+        rotate: 20
       },
       axisLine: {
         lineStyle: {
@@ -632,7 +652,8 @@ const initHazardChart = () => {
     yAxis: {
       type: 'value',
       name: '告警次数',
-      max: Math.max(...hazardData.value.map(d => d.count)) * 1.4,
+      minInterval: 1,
+      max: hazardData.value.length > 0 ? Math.ceil(Math.max(...hazardData.value.map(d => d.count)) * 1.1) : 5,
       nameTextStyle: {
         color: '#6b7280',
         fontSize: 12
@@ -692,7 +713,7 @@ const startAutoRefresh = () => {
   stopAutoRefresh()
   refreshInterval.value = window.setInterval(() => {
     // 模拟数据更新，实际应用中应从API获取最新数据
-    updateAlarmStats()
+    loadAlarmData()
 
     // 更新图表
     levelChartInstance?.setOption({
@@ -751,24 +772,6 @@ const stopAutoRefresh = () => {
   }
 }
 
-// 模拟更新告警统计数据
-const updateAlarmStats = () => {
-  // 实际应用中应从API获取最新数据
-  // 这里仅做模拟更新
-  const baseAlarms = 892
-  const randomIncrease = Math.floor(Math.random() * 3) + 1
-  alarmStats.value.totalAlarms = baseAlarms + randomIncrease
-
-  // 更新等级分布
-  const total = alarmStats.value.levelStats.reduce((sum, item) => sum + item.count, 0)
-  alarmStats.value.levelStats = [
-    { name: '一级告警', key: 'level1', count: Math.floor((baseAlarms + randomIncrease) * 0.12), rate: 12.0 },
-    { name: '二级告警', key: 'level2', count: Math.floor((baseAlarms + randomIncrease) * 0.23), rate: 23.0 },
-    { name: '三级告警', key: 'level3', count: Math.floor((baseAlarms + randomIncrease) * 0.35), rate: 35.0 },
-    { name: '四级告警', key: 'level4', count: Math.floor((baseAlarms + randomIncrease) * 0.29), rate: 29.0 }
-  ]
-}
-
 // 处理窗口大小变化
 const handleResize = () => {
   levelChartInstance?.resize()
@@ -777,8 +780,6 @@ const handleResize = () => {
   hazardChartInstance?.resize()
 }
 
-// 添加窗口大小变化监听
-window.addEventListener('resize', handleResize)
 </script>
 
 <style scoped>

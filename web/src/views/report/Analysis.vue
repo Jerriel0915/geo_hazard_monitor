@@ -19,10 +19,14 @@
     </div>
 
     <!-- Correlation Analysis Component -->
-    <CorrelationAnalysis v-if="currentMode === 'correlation'" @back="currentMode = ''" />
+    <div v-if="currentMode === 'correlation'" class="analysis-mode-wrapper">
+      <CorrelationAnalysis @back="currentMode = ''" />
+    </div>
 
     <!-- Data Grid Component -->
-    <DataGrid v-if="currentMode === 'grid'" @back="currentMode = ''" />
+    <div v-if="currentMode === 'grid'" class="analysis-mode-wrapper">
+      <DataGrid @back="currentMode = ''" />
+    </div>
   </div>
 </template>
 
@@ -40,7 +44,10 @@ const currentMode = ref<string>('') // '' | 'correlation' | 'grid'
   padding: 20px;
   background: #fff;
   border-radius: 8px;
-  min-height: calc(100% - 40px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 /* Mode selection */
@@ -50,6 +57,10 @@ const currentMode = ref<string>('') // '' | 'correlation' | 'grid'
   align-items: center;
   justify-content: center;
   min-height: 60vh;
+}
+.analysis-mode-wrapper {
+  flex: 1;
+  min-height: 0;
 }
 .mode-title {
   font-size: 24px;

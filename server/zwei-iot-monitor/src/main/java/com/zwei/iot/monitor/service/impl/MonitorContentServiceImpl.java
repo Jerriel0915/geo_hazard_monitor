@@ -186,13 +186,7 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
             @CacheEvict(value = "monitorType", allEntries = true)
     })
     public int deleteMonitorContentByIds(Long[] ids) {
-        Set<Long> monitorTypeIds = new HashSet<>();
-        for (Long id : ids) {
-            MonitorContent content = monitorContentMapper.selectMonitorContentById(id);
-            if (content != null) {
-                monitorTypeIds.add(content.getMonitorTypeId());
-            }
-        }
+        List<Long> monitorTypeIds = monitorContentMapper.selectMonitorTypeIdsByContentIds(ids);
         int rows = monitorContentMapper.deleteMonitorContentByIds(ids);
         for (Long monitorTypeId : monitorTypeIds) {
             eventPublisher.publishEvent(new MonitorContentChangedEvent(

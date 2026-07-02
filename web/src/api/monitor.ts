@@ -209,6 +209,7 @@ export interface RateByTypeVO {
     byType: Array<{
         monitorTypeId: number
         monitorTypeName: string
+        sortOrder: number
         total: number
         online: number
         offline: number

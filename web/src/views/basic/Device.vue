@@ -437,7 +437,7 @@
               <el-input
                   v-model="sensorFormData.sensorCode"
                   :placeholder="sensorCodePlaceholder"
-                  :disabled="sensorFormMode === 'edit'"
+                  :disabled="sensorFormMode === 'edit' && !isDraftMode"
                   @input="handleSensorCodeInput"
               />
             </el-form-item>
@@ -454,7 +454,7 @@
               <el-select
                   v-model="sensorFormData.monitorTypeId"
                   placeholder="请选择监测类型"
-                  :disabled="sensorFormMode === 'edit'"
+                  :disabled="sensorFormMode === 'edit' && !isDraftMode"
                   @change="handleMonitorTypeChange(sensorFormData)"
               >
                 <el-option v-for="mt in monitorTypeList" :key="mt.id" :label="mt.name" :value="mt.id" />
@@ -1441,6 +1441,17 @@ const commitDraft = async () => {
       deviceId = await copyDeviceApi(draftSourceId.value!, {
         code: formData.code.trim(),
         name: formData.name.trim(),
+        sn: formData.sn?.trim() || undefined,
+        deviceType: formData.deviceType ?? undefined,
+        networkType: formData.networkType ?? undefined,
+        protocolType: formData.protocolType || undefined,
+        vendorName: formData.vendorName?.trim() || undefined,
+        icon: formData.icon || undefined,
+        iconPath: formData.iconPath || undefined,
+        longitude: formData.longitude ?? undefined,
+        latitude: formData.latitude ?? undefined,
+        status: formData.status,
+        boundHazardPointId: formData.boundHazardPointId ?? undefined,
         copySensors: false,
       })
     }

@@ -12,31 +12,31 @@
       <el-tab-pane label="基本信息" name="basic">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="策略名称">{{ currentData?.name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="协议类型">
+            <el-tag size="small" type="warning">{{ currentData?.sourceType || '-' }}</el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="服务地址">{{ currentData?.serverUrl || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="主题">{{ currentData?.topic || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="订阅主题">{{ currentData?.topic || '-' }}</el-descriptions-item>
           <el-descriptions-item label="启用状态">
             <el-tag :type="currentData?.status === 1 ? 'success' : 'info'" size="small">
               {{ currentData?.status === 1 ? '启用' : '停用' }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="应用范围">{{ appScopeText }}</el-descriptions-item>
-          <el-descriptions-item label="最近运行">{{ currentData?.lastRunTime || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="最近运行">{{ formatTime(currentData?.lastRunTime) }}</el-descriptions-item>
+          <el-descriptions-item label="预置策略">
+            <el-tag :type="currentData?.isPreset === 1 ? 'success' : 'info'" size="small">
+              {{ currentData?.isPreset === 1 ? '是' : '否' }}
+            </el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="描述" :span="2">{{ currentData?.description || '-' }}</el-descriptions-item>
         </el-descriptions>
 
-        <!-- 指定厂商时显示厂商列表 -->
-        <template v-if="currentData?.appScope === 'vendor' && currentData?.vendorNames?.length">
-          <el-divider content-position="left">指定厂商</el-divider>
+        <!-- 指定设备时显示设备 ID 列表 -->
+        <template v-if="currentData?.appScope === 'device' && currentData?.deviceIds?.length">
+          <el-divider content-position="left">指定设备 ({{ currentData.deviceIds.length }} 个)</el-divider>
           <div class="scope-tags">
-            <el-tag v-for="name in currentData.vendorNames" :key="name" class="scope-tag">{{ name }}</el-tag>
-          </div>
-        </template>
-
-        <!-- 指定设备时显示设备列表 -->
-        <template v-if="currentData?.appScope === 'device' && currentData?.deviceNames?.length">
-          <el-divider content-position="left">指定设备</el-divider>
-          <div class="scope-tags">
-            <el-tag v-for="name in currentData.deviceNames" :key="name" class="scope-tag">{{ name }}</el-tag>
+            <el-tag v-for="did in currentData.deviceIds" :key="did" class="scope-tag">设备 #{{ did }}</el-tag>
           </div>
         </template>
       </el-tab-pane>
@@ -44,13 +44,19 @@
       <el-tab-pane label="解析脚本" name="script">
         <div class="script-viewer">
           <div class="script-header">
-            <span class="script-title">JavaScript 解析脚本</span>
+            <span class="script-title">Groovy 解析脚本</span>
             <el-button size="small" text type="primary" @click="copyScript">
               <el-icon><CopyDocument /></el-icon>
               复制代码
             </el-button>
           </div>
-          <pre class="script-code">{{ currentData?.scriptCode || '暂无脚本代码' }}</pre>
+          <div class="script-code-wrapper">
+            <CodeMirrorGroovy
+                v-model="scriptDisplay"
+                readonly
+                :min-height="280"
+            />
+          </div>
         </div>
       </el-tab-pane>
 
@@ -66,28 +72,29 @@
               value-format="YYYY-MM-DD HH:mm:ss"
               size="small"
           />
-          <el-select v-model="logLevel" placeholder="日志级别" clearable size="small">
+          <el-select v-model="logLevel" placeholder="日志级别" clearable size="small" style="width: 110px;">
             <el-option label="全部" value="" />
             <el-option label="INFO" value="INFO" />
             <el-option label="WARN" value="WARN" />
             <el-option label="ERROR" value="ERROR" />
           </el-select>
           <el-button type="primary" size="small" @click="handleLogSearch">查询</el-button>
-          <el-button size="small" @click="handleLogExport">导出</el-button>
         </div>
 
         <div class="log-table-container">
           <el-table :data="logList" border stripe size="small" height="350" v-loading="logLoading">
-            <el-table-column prop="timestamp" label="时间" width="170" />
-            <el-table-column prop="level" label="级别" width="90">
+            <el-table-column prop="createTime" label="时间" width="170" />
+            <el-table-column prop="logLevel" label="级别" width="90">
               <template #default="{ row }">
-                <el-tag :type="getLogLevelType(row.level)" size="small">{{ row.level }}</el-tag>
+                <el-tag :type="getLogLevelType(row.logLevel)" size="small">{{ row.logLevel }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="message" label="日志内容" min-width="280" show-overflow-tooltip />
-            <el-table-column prop="data" label="数据" width="100">
+            <el-table-column prop="executionTime" label="耗时(ms)" width="90" />
+            <el-table-column label="数据" width="90">
               <template #default="{ row }">
-                <el-button type="primary" link size="small" @click="showLogData(row)">查看详情</el-button>
+                <el-button type="primary" link size="small" @click="showLogData(row)" v-if="row.data">查看</el-button>
+                <span v-else>-</span>
               </template>
             </el-table-column>
           </el-table>
@@ -113,61 +120,23 @@
       <el-button type="primary" @click="dialogVisible = false">关闭</el-button>
     </template>
   </el-dialog>
-
-  <!-- 测试弹窗 -->
-  <el-dialog
-      v-model="testDialogVisible"
-      title="脚本测试"
-      width="800px"
-      :close-on-click-modal="false"
-      destroy-on-close
-  >
-    <el-form label-width="100px">
-      <el-form-item label="测试数据">
-        <el-input
-            v-model="testData"
-            type="textarea"
-            :rows="8"
-            placeholder='请输入测试数据，JSON格式：
-{
-  "topic": "$dp",
-  "payload": {
-    "deviceId": "dev001",
-    "data": "..."
-  }
-}'
-        />
-      </el-form-item>
-      <el-form-item label="测试结果">
-        <el-input
-            v-model="testResult"
-            type="textarea"
-            :rows="8"
-            readonly
-            placeholder="测试结果将显示在这里"
-        />
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <el-button @click="testDialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="handleRunTest" :loading="testRunning">运行测试</el-button>
-    </template>
-  </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CopyDocument } from '@element-plus/icons-vue'
+import CodeMirrorGroovy from '@/views/basic/components/script-editor/CodeMirrorGroovy.vue'
+import { getStrategyLogs, type DataParseStrategy, type DataParseLog } from '@/api/dataParse'
 
 interface Props {
   visible: boolean
-  data: any
+  data: DataParseStrategy | null
 }
 
 interface Emits {
   (e: 'update:visible', value: boolean): void
-  (e: 'test', data: any): void
+  (e: 'test', data: DataParseStrategy): void
 }
 
 const props = defineProps<Props>()
@@ -175,7 +144,10 @@ const emit = defineEmits<Emits>()
 
 const dialogVisible = ref(false)
 const activeTab = ref('basic')
-const currentData = ref<any>(null)
+const currentData = ref<DataParseStrategy | null>(null)
+
+// 脚本只读展示（CodeMirrorGroovy 需要 v-model）
+const scriptDisplay = computed(() => currentData.value?.scriptCode || '')
 
 // 日志相关
 const logLoading = ref(false)
@@ -184,15 +156,8 @@ const logLevel = ref('')
 const logCurrentPage = ref(1)
 const logPageSize = ref(20)
 const logTotal = ref(0)
-const logList = ref<any[]>([])
+const logList = ref<DataParseLog[]>([])
 
-// 测试相关
-const testDialogVisible = ref(false)
-const testData = ref('')
-const testResult = ref('')
-const testRunning = ref(false)
-
-// 应用范围文本
 const appScopeText = computed(() => {
   const data = currentData.value
   if (!data) return '-'
@@ -204,13 +169,30 @@ const appScopeText = computed(() => {
   return scopeMap[data.appScope] || '全局'
 })
 
-// 监听 visible 变化
+const formatTime = (t?: string) => {
+  if (!t) return '-'
+  return t.replace('T', ' ').substring(0, 19)
+}
+
+const getLogLevelType = (level: string) => {
+  const typeMap: Record<string, string> = {
+    INFO: 'info',
+    WARN: 'warning',
+    ERROR: 'danger'
+  }
+  return typeMap[level] || 'info'
+}
+
+const disabledDate = (time: Date) => time.getTime() > Date.now()
+
 watch(() => props.visible, (val) => {
   dialogVisible.value = val
   if (val && props.data) {
     currentData.value = props.data
     activeTab.value = 'basic'
-    loadMockLogs()
+    logList.value = []
+    logTotal.value = 0
+    logCurrentPage.value = 1
   }
 })
 
@@ -219,25 +201,54 @@ watch(() => dialogVisible.value, (val) => {
     activeTab.value = 'basic'
     currentData.value = null
     logList.value = []
+    emit('update:visible', val)
   }
-  emit('update:visible', val)
 })
 
-// 加载模拟日志数据
-const loadMockLogs = () => {
+// 切到日志 Tab 时自动加载
+watch(() => activeTab.value, (val) => {
+  if (val === 'log' && currentData.value && logList.value.length === 0) {
+    loadLogs()
+  }
+})
+
+const loadLogs = async () => {
+  if (!currentData.value?.id) return
   logLoading.value = true
-  setTimeout(() => {
-    logList.value = [
-      { timestamp: '2026-06-08 14:30:25', level: 'INFO', message: '接收到MQTT消息，主题: ' + (currentData.value?.topic || '-'), data: '{"topic":"$dp","payload":"..."}' },
-      { timestamp: '2026-06-08 14:30:26', level: 'INFO', message: '解析成功，策略: ' + (currentData.value?.name || '-'), data: '{"strategyId":1,"status":"success"}' },
-      { timestamp: '2026-06-08 14:30:27', level: 'INFO', message: '数据已存储', data: '{}' },
-    ]
-    logTotal.value = logList.value.length
+  try {
+    const [startTime, endTime] = logDateRange.value.length === 2 ? logDateRange.value : ['', '']
+    const result = await getStrategyLogs(currentData.value.id, {
+      pageNum: logCurrentPage.value,
+      pageSize: logPageSize.value,
+      logLevel: logLevel.value || undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
+    })
+    logList.value = result.rows
+    logTotal.value = result.total
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载日志失败')
+    logList.value = []
+    logTotal.value = 0
+  } finally {
     logLoading.value = false
-  }, 300)
+  }
 }
 
-// 复制脚本
+const handleLogSearch = () => {
+  logCurrentPage.value = 1
+  loadLogs()
+}
+
+const handleLogSizeChange = () => loadLogs()
+const handleLogPageChange = () => loadLogs()
+
+const showLogData = (row: DataParseLog) => {
+  ElMessageBox.alert(row.data || '-', '日志数据', {
+    confirmButtonText: '关闭'
+  })
+}
+
 const copyScript = async () => {
   if (currentData.value?.scriptCode) {
     try {
@@ -251,94 +262,10 @@ const copyScript = async () => {
   }
 }
 
-// 测试脚本
 const handleTest = () => {
   if (currentData.value) {
-    testData.value = JSON.stringify({
-      topic: currentData.value.topic || '$dp',
-      payload: {
-        deviceId: 'test001',
-        timestamp: Date.now(),
-        data: {
-          temperature: 25.5,
-          humidity: 60
-        }
-      }
-    }, null, 2)
-    testResult.value = ''
-    testDialogVisible.value = true
     emit('test', currentData.value)
   }
-}
-
-// 运行测试
-const handleRunTest = () => {
-  if (!testData.value) {
-    ElMessage.warning('请输入测试数据')
-    return
-  }
-
-  testRunning.value = true
-  setTimeout(() => {
-    try {
-      const data = JSON.parse(testData.value)
-      testResult.value = JSON.stringify({
-        success: true,
-        timestamp: new Date().toISOString(),
-        input: data,
-        output: {
-          strategyName: currentData.value?.name,
-          parsedData: data.payload?.data || {},
-          status: 'parsed'
-        }
-      }, null, 2)
-      ElMessage.success('测试运行成功')
-    } catch (e) {
-      testResult.value = JSON.stringify({
-        success: false,
-        error: '测试数据格式错误，请输入有效的JSON'
-      }, null, 2)
-      ElMessage.error('测试失败')
-    }
-    testRunning.value = false
-  }, 1000)
-}
-
-// 日志相关方法
-const getLogLevelType = (level: string) => {
-  const typeMap: Record<string, string> = {
-    INFO: 'info',
-    WARN: 'warning',
-    ERROR: 'danger'
-  }
-  return typeMap[level] || 'info'
-}
-
-const handleLogSearch = () => {
-  loadMockLogs()
-  ElMessage.info('查询日志')
-}
-
-const handleLogExport = () => {
-  ElMessage.info('导出日志')
-}
-
-const showLogData = (row: any) => {
-  ElMessageBox.alert(row.data || '-', '日志数据', {
-    confirmButtonText: '关闭'
-  })
-}
-
-const handleLogSizeChange = () => {
-  loadMockLogs()
-}
-
-const handleLogPageChange = () => {
-  loadMockLogs()
-}
-
-const disabledDate = (time: Date) => {
-  return time.getTime() > Date.now()
 }
 </script>
 
@@ -389,19 +316,9 @@ const disabledDate = (time: Date) => {
   color: #303133;
 }
 
-.script-code {
-  margin: 0;
-  padding: 15px;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  max-height: 400px;
-  overflow-y: auto;
+.script-code-wrapper {
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
 }
 
 .log-filter {

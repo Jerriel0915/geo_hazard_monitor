@@ -86,6 +86,14 @@ public interface DeviceHazardPointMapper {
     List<Long> selectHazardPointIdsByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
 
     /**
+     * 批量查询设备→隐患点绑定关系（含隐患点名称），单次 JOIN 避免逐设备查询 N+1。
+     *
+     * @param deviceIds 设备ID列表
+     * @return 行 Map 列表（key: deviceId / hazardPointId / hazardPointName）
+     */
+    List<Map<String, Object>> selectDeviceHazardPointRefsByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
+
+    /**
      * 查询隐患点已绑定的设备ID列表
      *
      * @param hazardPointId 隐患点ID
@@ -108,6 +116,14 @@ public interface DeviceHazardPointMapper {
      * @return 设备摘要列表
      */
     List<DeviceBrief> selectDeviceBriefByHazardPoint(@Param("hazardPointId") Long hazardPointId);
+
+    /**
+     * 批量查询多个隐患点的设备摘要（含在线状态与传感器数）。
+     *
+     * @param hazardPointIds 隐患点ID列表
+     * @return 行 Map 列表（key: hazardPointId / id / code / name / deviceType / sensorCount / onlineStatus / lastReportAt）
+     */
+    List<Map<String, Object>> selectDeviceBriefByHazardPoints(@Param("hazardPointIds") List<Long> hazardPointIds);
 
     /** 按隐患点统计设备监测率 (活跃设备数/总设备数) */
     List<Map<String, Object>> selectMonitorRateByHazardPoint(@Param("windowMinutes") int windowMinutes);

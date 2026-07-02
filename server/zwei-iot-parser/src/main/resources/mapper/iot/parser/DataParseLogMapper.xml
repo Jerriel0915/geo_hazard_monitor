@@ -23,7 +23,16 @@
         <if test="logLevel != null and logLevel != ''">AND log_level = #{logLevel}</if>
         <if test="startTime != null">AND create_time >= #{startTime}</if>
         <if test="endTime != null">AND create_time &lt;= #{endTime}</if>
-        ORDER BY create_time DESC LIMIT 500
+        ORDER BY create_time DESC
+    </select>
+    <select id="selectLatestCreateTimeByStrategyIds" resultType="map">
+        SELECT strategy_id AS strategyId, MAX(create_time) AS lastRunTime
+        FROM iot_data_parse_log
+        WHERE strategy_id IN
+        <foreach collection="strategyIds" item="sid" open="(" separator="," close=")">
+            #{sid}
+        </foreach>
+        GROUP BY strategy_id
     </select>
     <delete id="deleteByStrategyId">
         DELETE FROM iot_data_parse_log WHERE strategy_id = #{strategyId}

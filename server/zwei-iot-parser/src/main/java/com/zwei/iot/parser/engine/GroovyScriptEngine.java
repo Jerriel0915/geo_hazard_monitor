@@ -2,12 +2,15 @@ package com.zwei.iot.parser.engine;
 
 import com.zwei.common.domain.ParsedMessage;
 import com.zwei.common.domain.PropertyValue;
+import com.zwei.iot.parser.config.ParserProperties;
 import com.zwei.iot.parser.domain.DataParseLog;
 import com.zwei.iot.parser.domain.DataParseStrategy;
 import com.zwei.iot.parser.service.DataParseLogService;
 import groovy.lang.Binding;
+import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyShell;
 import groovy.lang.Script;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
 import org.codehaus.groovy.control.CompilerConfiguration;
@@ -24,30 +27,77 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Groovy 解析脚本执行引擎。
+ *
+ * <h3>缓存策略</h3>
+ * <p>编译后的脚本 {@link Class} 按 {@code strategyId} 缓存在 {@link #scriptClassCache} 中，
+ * 避免每条消息重复编译（B2 修复）。每次执行用 {@code clazz.getDeclaredConstructor().newInstance()}
+ * 创建线程局部的 {@link Script} 实例并注入独立 {@link Binding}，保证并发安全。
+ *
+ * <h3>缓存淘汰</h3>
+ * <p>策略更新/删除/启停时由 {@link com.zwei.iot.parser.service.DataParseStrategyService}
+ * 调用 {@link #evictCache(Long)} 清除旧脚本类，避免编辑后旧脚本继续执行（B1 修复）。
+ *
+ * <h3>线程池</h3>
+ * <p>解析任务在可配置线程池（{@code iot.parser.groovy-pool-size}，默认 4）上并发执行，
+ * 摆脱原单线程串行瓶颈（B5 修复）。沙箱隔离不受并发影响——每个 Script 实例独立。
+ */
 @Component
 public class GroovyScriptEngine {
 
     private static final Logger log = LoggerFactory.getLogger(GroovyScriptEngine.class);
 
-    private final Map<Long, GroovyShell> shellCache = new ConcurrentHashMap<>();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "parser-groovy");
-        t.setDaemon(true);
-        return t;
-    });
+    /** 脚本编译类缓存：strategyId -> 编译后的 Script Class */
+    private final Map<Long, Class<? extends Script>> scriptClassCache = new ConcurrentHashMap<>();
+    /** 共享安全类加载器（带沙箱配置），用于 parseClass */
+    private final GroovyClassLoader secureClassLoader;
+    private volatile ExecutorService executor;
+    private final AtomicInteger threadCounter = new AtomicInteger();
 
+    private static final int DEFAULT_POOL_SIZE = 4;
     private static final int TIMEOUT_SECONDS = 30;
 
     @Resource
     private BuiltInFunctions builtInFunctions;
     @Resource
     private DataParseLogService logService;
+    @Resource
+    private ParserProperties parserProperties;
+
+    public GroovyScriptEngine() {
+        this.secureClassLoader = new GroovyClassLoader(getClass().getClassLoader(), createSecureConfig());
+        this.executor = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE, this::buildDaemonThread);
+    }
+
+    @PostConstruct
+    public void initPool() {
+        int size = (parserProperties != null ? parserProperties.getGroovyPoolSize() : DEFAULT_POOL_SIZE);
+        if (size <= 0) size = DEFAULT_POOL_SIZE;
+        if (size != DEFAULT_POOL_SIZE) {
+            ExecutorService old = this.executor;
+            this.executor = Executors.newFixedThreadPool(size, this::buildDaemonThread);
+            old.shutdownNow();
+        }
+    }
+
+    private Thread buildDaemonThread(Runnable r) {
+        Thread t = new Thread(r, "parser-groovy-" + threadCounter.incrementAndGet());
+        t.setDaemon(true);
+        return t;
+    }
 
     @PreDestroy
     public void destroy() {
-        shellCache.clear();
+        scriptClassCache.clear();
         executor.shutdownNow();
+        try {
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -58,17 +108,17 @@ public class GroovyScriptEngine {
         long startTime = System.currentTimeMillis();
         Future<ParsedMessage> future = executor.submit(() -> {
             try {
-                GroovyShell shell = getOrCreateShell(strategy);
+                Class<? extends Script> clazz = getOrCreateScriptClass(strategy);
                 Binding binding = new Binding();
                 binding.setVariable("builtin", builtInFunctions);
-                Script script = shell.parse(strategy.getScriptCode());
+                Script script = clazz.getDeclaredConstructor().newInstance();
                 script.setBinding(binding);
 
                 @SuppressWarnings("unchecked")
                 Map<String, Object> result = (Map<String, Object>) script.invokeMethod(
                         "parse", new Object[]{topic, message});
 
-                String payloadStr = new String(message, StandardCharsets.UTF_8);
+                String payloadStr = new String(message == null ? new byte[0] : message, StandardCharsets.UTF_8);
                 String hash = sha256(payloadStr);
 
                 ParsedMessage parsed = new ParsedMessage(
@@ -82,7 +132,7 @@ public class GroovyScriptEngine {
                 );
 
                 long execTime = System.currentTimeMillis() - startTime;
-                logService.info(strategy.getId(), "Parse OK, took " + execTime + "ms",
+                logService.info(strategy.getId(), topic, "Parse OK, took " + execTime + "ms",
                         payloadStr.length() > 500 ? payloadStr.substring(0, 500) : payloadStr);
                 return parsed;
             } catch (Exception e) {
@@ -136,6 +186,10 @@ public class GroovyScriptEngine {
      * <p><b>注意</b>: {@code extraBindings} 在 {@code builtin} 之后注入, 若 key 与 {@code builtin}
      * 冲突将以 extraBindings 为准 (调用方负责避免冲突)。
      *
+     * <p><b>注意</b>: 计算属性脚本每次都新建 {@link GroovyShell} 解析, 未走脚本类缓存——
+     * 计算属性由 {@code ComputedScriptAssembler} 拼装, 内容随算法库变更频繁, 且单设备触发频率
+     * 远低于主解析链路, 不做缓存以避免缓存失效复杂度。
+     *
      * <p>失败永远返回空 Map, 不抛异常 (主链路数据接入可用性优先)。
      *
      * @param scriptCode    ComputedScriptAssembler.assemble() 产物
@@ -163,7 +217,9 @@ public class GroovyScriptEngine {
                         "compute", new Object[]{curData, prevData});
                 return result instanceof Map ? (Map<String, Object>) result : Map.of();
             } catch (Exception e) {
-                log.warn("Computed script execution failed", e);
+                log.warn("Computed script execution failed: {} | scriptHead=[{}]",
+                        e.getClass().getSimpleName(),
+                        scriptCode != null ? scriptCode.substring(0, Math.min(scriptCode.length(), 200)) : "null", e);
                 return Map.of();
             }
         });
@@ -198,21 +254,37 @@ public class GroovyScriptEngine {
                 "parsedMessage", buildTestMessage(result)
             );
         } catch (Exception e) {
-            return Map.of("success", false, "error", e.getMessage());
+            return Map.of("success", false, "error", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         }
     }
 
-    /** Evict cached shell when strategy is updated. */
+    /**
+     * 淘汰指定策略的脚本编译缓存。
+     *
+     * <p>策略更新/删除/启停后由 Service 调用, 确保下次执行重新编译新脚本 (B1 修复)。
+     */
     public void evictCache(Long strategyId) {
-        shellCache.remove(strategyId);
+        if (strategyId != null) {
+            scriptClassCache.remove(strategyId);
+        }
     }
 
-    private GroovyShell getOrCreateShell(DataParseStrategy strategy) {
-        return shellCache.computeIfAbsent(strategy.getId(), id -> {
-            GroovyShell shell = new GroovyShell(createSecureConfig());
-            shell.parse(strategy.getScriptCode());
-            return shell;
+    private Class<? extends Script> getOrCreateScriptClass(DataParseStrategy strategy) {
+        return scriptClassCache.computeIfAbsent(strategy.getId(), id -> {
+            // GroovyClassLoader.parseClass 非线程安全, 加锁串行编译
+            synchronized (secureClassLoader) {
+                return compileScript(strategy.getScriptCode());
+            }
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    private Class<? extends Script> compileScript(String scriptCode) {
+        Class<?> clazz = secureClassLoader.parseClass(scriptCode);
+        if (!Script.class.isAssignableFrom(clazz)) {
+            throw new RuntimeException("Parsed class does not extend groovy.lang.Script: " + clazz.getName());
+        }
+        return (Class<? extends Script>) clazz;
     }
 
     private CompilerConfiguration createSecureConfig() {
