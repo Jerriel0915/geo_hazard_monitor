@@ -103,19 +103,17 @@ ENV NPM_CONFIG_AUDIT=${NPM_CONFIG_AUDIT} \
 
 WORKDIR /uniapp
 
-# 切国内镜像源
+# 切国内镜像源（pnpm 同样读取 ~/.npmrc）
 RUN npm config set registry https://registry.npmmirror.com
 
-# 复制依赖清单
-COPY uniapp/package.json uniapp/package-lock.json uniapp/pnpm-lock.yaml* ./
+# 复制依赖清单（项目使用 pnpm，仅 pnpm-lock.yaml）
+COPY uniapp/package.json uniapp/pnpm-lock.yaml ./
 
-# 安装依赖（pnpm-lock 存在时用 pnpm，否则回退 npm）
-RUN --mount=type=cache,target=/root/.npm \
-    if [ -f pnpm-lock.yaml ]; then \
-      npm install -g pnpm && pnpm install --frozen-lockfile; \
-    else \
-      npm ci --prefer-offline --no-audit --no-fund || npm install --no-audit --no-fund; \
-    fi
+# 安装 pnpm 并按 lockfile 安装依赖（BuildKit 缓存 pnpm store）
+RUN --mount=type=cache,target=/root/.local/share/pnpm \
+    npm install -g pnpm \
+    && pnpm config set registry https://registry.npmmirror.com \
+    && pnpm install --frozen-lockfile
 
 # 复制源码
 COPY uniapp/ .
