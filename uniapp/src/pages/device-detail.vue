@@ -1,15 +1,13 @@
 <!-- src/pages/device-detail.vue -->
 <script setup lang="ts">
 import type { DeviceInfo, DeviceSensor, SensorAttr } from '@/utils/device'
-import type { ChartSeries } from '@/utils/monitor'
 import PageHeader from '@/components/PageHeader.vue'
+import MonitorChart from '@/components/MonitorChart.vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { computed, nextTick, ref } from 'vue'
 import { deviceApi } from '@/utils/device'
 import { monitorApi } from '@/utils/monitor'
 import { wgs84ToGcj02 } from '@/utils/coordTransform'
-import * as echartsLib from '@/components/echarts.esm.min.js'
-import EchartsComponent from '@/components/echarts.vue'
 
 // === 设备数据 ===
 const deviceId = ref(0)
@@ -34,9 +32,28 @@ function scrollToTop() {
 // === 内联图表状态 ===
 const expandedKey = ref('')
 const inlineTimeTab = ref<'24h' | '7d'>('24h')
-const inlineChartOption = ref<any>(null)
-const inlineLoading = ref(false)
-const inlineChartVersion = ref(0)
+
+const expandedSensorId = computed(() => {
+  if (!expandedKey.value) return 0
+  const parts = expandedKey.value.split('-')
+  return Number(parts[0]) || 0
+})
+
+const expandedAttrCode = computed(() => {
+  if (!expandedKey.value) return ''
+  return expandedKey.value.split('-').slice(1).join('-')
+})
+
+const inlineTimeRange = computed(() => {
+  const hours = inlineTimeTab.value === '24h' ? 24 : 168
+  const endTime = new Date()
+  const startTime = new Date(endTime.getTime() - hours * 3600000)
+  const fmt = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  }
+  return { startTime: fmt(startTime), endTime: fmt(endTime) }
+})
 
 interface AttrWithData extends SensorAttr {
   sensorId: number
@@ -95,139 +112,18 @@ async function loadDevice() {
 }
 
 // === 内联图表 ===
-async function toggleAttr(group: SensorGroup, attr: AttrWithData) {
+function toggleAttr(group: SensorGroup, attr: AttrWithData) {
   const key = `${group.sensor.id}-${attr.attrCode}`
   if (expandedKey.value === key) {
-    // 收起
     expandedKey.value = ''
-    inlineChartOption.value = null
     return
   }
-
   expandedKey.value = key
-  inlineChartOption.value = null
-
-  const hazardId = device.value?.boundHazardPointId
-  if (!hazardId) return
-
-  await loadInlineChart(group.sensor.id, attr.attrCode)
 }
 
-async function switchInlineTime(tab: '24h' | '7d') {
+function switchInlineTime(tab: '24h' | '7d') {
   if (inlineTimeTab.value === tab) return
   inlineTimeTab.value = tab
-
-  if (!expandedKey.value) return
-  const [sensorIdStr, attrCode] = expandedKey.value.split('-')
-  const sensorId = Number(sensorIdStr)
-  await loadInlineChart(sensorId, attrCode)
-}
-
-async function loadInlineChart(sensorId: number, attrCode: string) {
-  const hazardId = device.value?.boundHazardPointId
-  if (!hazardId) return
-
-  inlineLoading.value = true
-  try {
-    const hours = inlineTimeTab.value === '24h' ? 24 : 168
-    const endTime = new Date()
-    const startTime = new Date(endTime.getTime() - hours * 3600000)
-    const fmt = (d: Date) => {
-      const pad = (n: number) => String(n).padStart(2, '0')
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-    }
-
-    const seriesList = await monitorApi.getChart({
-      hazardPointId: hazardId,
-      deviceId: deviceId.value,
-      sensorId,
-      attrCode,
-      valueType: 'current',
-      startTime: fmt(startTime),
-      endTime: fmt(endTime),
-    })
-
-    inlineChartOption.value = buildInlineOption(seriesList)
-    inlineChartVersion.value++
-  }
-  catch (error) {
-    console.error('加载内联图表失败:', error)
-  }
-  finally {
-    inlineLoading.value = false
-  }
-}
-
-function buildInlineOption(series: ChartSeries[]): any {
-  if (!series || series.length === 0) return null
-
-  const allLabels = new Set<string>()
-  series.forEach(s => s.labels.forEach(l => allLabels.add(l)))
-  const categories = Array.from(allLabels)
-
-  const colors = ['#3068e4', '#52c41a', '#fa8c16']
-  const seriesList = series.map((s, i) => {
-    const color = colors[i % colors.length]
-    const valueMap = new Map<string, number>()
-    s.labels.forEach((l, idx) => valueMap.set(l, s.values[idx]))
-    const data = categories.map(c => valueMap.get(c) ?? null)
-    return {
-      name: s.seriesName || s.attrName,
-      type: 'line',
-      data,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 3,
-      showSymbol: categories.length <= 20,
-      lineStyle: { color, width: 2 },
-      itemStyle: { color: '#fff', borderColor: color, borderWidth: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: hexToRgba(color, 0.2) },
-            { offset: 1, color: hexToRgba(color, 0.02) },
-          ],
-        },
-      },
-    }
-  })
-
-  return {
-    animation: true,
-    grid: { left: '3%', right: '3%', bottom: '5%', top: '8%', containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: categories,
-      boundaryGap: false,
-      axisLabel: { color: '#9ca3af', fontSize: 9, margin: 8 },
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisTick: { show: false },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { color: '#9ca3af', fontSize: 9 },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
-    },
-    series: seriesList,
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(0,0,0,0.8)',
-      borderColor: 'rgba(0,0,0,0.8)',
-      textStyle: { color: '#fff', fontSize: 11 },
-    },
-  }
-}
-
-function initInlineChart(canvas: any, width: number, height: number) {
-  if (!inlineChartOption.value) return null
-  const chart = echartsLib.init(canvas, null, { width, height })
-  canvas.setChart(chart)
-  chart.setOption(inlineChartOption.value)
-  return chart
 }
 
 // === 安装位置 ===
@@ -253,16 +149,6 @@ function showLocation() {
   })
 }
 
-// === 跳转 chart 页面 ===
-function goToChart() {
-  const hazardId = device.value?.boundHazardPointId
-  if (!hazardId) {
-    uni.showToast({ title: '该设备未绑定隐患点，无法查看趋势数据', icon: 'none' })
-    return
-  }
-  uni.navigateTo({ url: `/pages/chart?deviceId=${deviceId.value}&hazardPointId=${hazardId}` })
-}
-
 // === 工具函数 ===
 function formatTimestamp(ts: number): string {
   const d = new Date(ts)
@@ -273,13 +159,6 @@ function formatTimestamp(ts: number): string {
 function formatValue(val: number | null | undefined): string {
   if (val === null || val === undefined) return '-'
   return Number.isInteger(val) ? String(val) : val.toFixed(3)
-}
-
-function hexToRgba(hex: string, alpha: number) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 function getTypeColor(type: string): string {
@@ -441,21 +320,17 @@ function getDeviceStatusText(status: string | undefined): string {
                   <view v-if="!device?.boundHazardPointId" class="inline-empty">
                     <text class="inline-empty-text">该设备未绑定隐患点，无法查看趋势图</text>
                   </view>
-                  <view v-else-if="inlineLoading" class="inline-loading">
-                    <text>加载中...</text>
-                  </view>
-                  <view v-else-if="!inlineChartOption" class="inline-empty">
-                    <text class="inline-empty-text">暂无数据</text>
-                  </view>
-                  <view v-else class="inline-chart-container">
-                    <EchartsComponent
-                      :key="`inline-${inlineChartVersion}`"
-                      :onInit="initInlineChart"
-                      :canvasId="`inline-chart-${inlineChartVersion}`"
-                      width="100%"
-                      height="400rpx"
-                    />
-                  </view>
+                  <MonitorChart
+                    v-else
+                    :key="`inline-${expandedKey}-${inlineTimeTab}`"
+                    :hazardPointId="device.boundHazardPointId"
+                    :deviceId="deviceId"
+                    :sensorId="expandedSensorId"
+                    :attrCode="expandedAttrCode"
+                    :startTime="inlineTimeRange.startTime"
+                    :endTime="inlineTimeRange.endTime"
+                    height="400rpx"
+                  />
                 </view>
               </template>
             </view>
@@ -464,13 +339,6 @@ function getDeviceStatusText(status: string | undefined): string {
 
         <view v-else-if="!loading" class="empty-attrs">
           <text class="empty-attrs-text">暂无监测参数</text>
-        </view>
-      </view>
-
-      <!-- 查看监测数据按钮 -->
-      <view class="section">
-        <view class="action-btn" @click="goToChart">
-          <text class="action-btn-text">查看监测数据</text>
         </view>
       </view>
 
@@ -806,20 +674,6 @@ function getDeviceStatusText(status: string | undefined): string {
   }
 }
 
-.inline-chart-container {
-  width: 100%;
-  height: 400rpx;
-}
-
-.inline-loading {
-  height: 400rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9ca3af;
-  font-size: 26rpx;
-}
-
 .inline-empty {
   height: 300rpx;
   display: flex;
@@ -843,24 +697,6 @@ function getDeviceStatusText(status: string | undefined): string {
 .empty-attrs-text {
   font-size: 26rpx;
   color: #9ca3af;
-}
-
-/* 操作按钮 */
-.action-btn {
-  padding: 28rpx;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 24rpx;
-  text-align: center;
-  box-shadow: 0 8rpx 32rpx rgba(102, 126, 234, 0.3);
-  box-sizing: border-box;
-
-  &:active { opacity: 0.9; }
-}
-
-.action-btn-text {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #ffffff;
 }
 
 .bottom-spacer {

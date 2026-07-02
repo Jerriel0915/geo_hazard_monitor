@@ -9,6 +9,7 @@ export interface ChartQuery {
   valueType?: 'current' | 'hour' | '24h' | '72h'
   startTime: string
   endTime: string
+  granularity?: string
 }
 
 export interface ChartSeries {
@@ -22,6 +23,9 @@ export interface ChartSeries {
   maxValue?: number
   minValue?: number
   avgValue?: number
+  sampled?: boolean
+  downsampleInterval?: string
+  pointCount?: number
 }
 
 export interface LatestMonitorData {
@@ -78,7 +82,8 @@ export const monitorApi = {
         attrCode: query.attrCode,
         valueType: query.valueType || 'current',
         startTime: query.startTime,
-        endTime: query.endTime
+        endTime: query.endTime,
+        granularity: query.granularity,
       })
       const list = (res as any)?.rows || (res as any[]) || []
       return list
@@ -87,6 +92,21 @@ export const monitorApi = {
       return []
     }
   }
+}
+
+/**
+ * 根据时间范围自动计算最佳降采样粒度
+ * <12h → 不重采样 | ≤1d → 10m | ≤3d → 30m | ≤7d → 1h | >7d → 6h
+ */
+export function calcGranularity(startTime: string, endTime: string): string {
+  const ms = new Date(endTime.replace(/-/g, '/')).getTime()
+         - new Date(startTime.replace(/-/g, '/')).getTime()
+  const hours = ms / 3_600_000
+  if (hours > 168) return '6h'    // >7天
+  if (hours > 72)  return '1h'    // >3天
+  if (hours > 24)  return '30m'   // >1天
+  if (hours >= 12) return '10m'   // ≥12小时
+  return ''                       // <12小时，不重采样
 }
 
 export default monitorApi

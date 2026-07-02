@@ -45,7 +45,7 @@
             <text>加载中...</text>
           </view>
 
-          <view v-else>
+          <template v-else>
             <view
               v-for="group in chartGroups"
               :key="group.deviceId"
@@ -58,26 +58,25 @@
                     <text class="group-sub">{{ group.deviceType }}</text>
                   </view>
                 </view>
-                <view class="chart-container">
-                  <EchartsComponent
-                    v-if="group.option"
-                    :key="`${group.deviceId}-${chartVersion}`"
-                    :onInit="(canvas, width, height) => initChart(canvas, width, height, group.deviceId)"
-                    :canvasId="`chart-${group.deviceId}-${chartVersion}`"
-                    width="100%"
-                    height="500rpx"
-                  />
-                  <view v-else class="chart-empty">
-                    <text class="empty-text">暂无数据</text>
-                  </view>
-                </view>
+                <MonitorChart
+                  :key="`chart-${group.deviceId}`"
+                  :series="group.series"
+                  chartType="auto"
+                  showLegend
+                  height="500rpx"
+                />
               </view>
             </view>
 
-            <view v-if="selectedDevices.length === 0" class="empty-hint">
-              <text class="empty-text">请添加设备查看监测数据</text>
-            </view>
-          </view>
+            <EmptyState
+              v-if="selectedDevices.length === 0"
+              :use-image="true"
+              title="暂无监测数据"
+              description="点击右下角按钮添加设备"
+              actionText="添加设备"
+              @action="openPicker"
+            />
+          </template>
         </view>
 
         <view class="bottom-spacer" />
@@ -174,15 +173,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import PageHeader from '@/components/PageHeader.vue'
-import * as echartsLib from '@/components/echarts.esm.min.js'
-import EchartsComponent from '@/components/echarts.vue'
+import MonitorChart from '@/components/MonitorChart.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { deviceApi } from '@/utils/device'
 import type { DeviceInfo, DeviceSensor } from '@/utils/device'
 import { hazardApi } from '@/utils/hazard'
 import type { Hazard } from '@/utils/hazard'
-import { monitorApi } from '@/utils/monitor'
+import { monitorApi, calcGranularity } from '@/utils/monitor'
 import type { ChartSeries } from '@/utils/monitor'
 
 const timeTabs = [
@@ -221,11 +220,10 @@ interface ChartGroup {
   deviceId: number
   deviceName: string
   deviceType: string
-  option: any
+  series: ChartSeries[]
 }
 
 const chartGroups = ref<ChartGroup[]>([])
-const chartVersion = ref(0)
 
 const isSelected = (id: number) => selectedDevices.value.some(d => d.id === id)
 
@@ -266,6 +264,51 @@ async function selectPickerHazard(h: Hazard) {
   }
 }
 
+/** 自动选中设备（供 device-detail 跳转和 URL 参数复用） */
+async function autoSelectDevice(deviceId: number, hazardPointId: number) {
+  // 加载设备信息
+  let device: DeviceInfo | undefined
+  try {
+    device = await deviceApi.getById(deviceId)
+  } catch (error) {
+    console.error('预加载设备失败:', error)
+  }
+  if (!device) return
+
+  // 若未指定 hazardPointId，从设备的 boundHazardPointId 取
+  if (!hazardPointId && device.boundHazardPointId) {
+    hazardPointId = device.boundHazardPointId
+  }
+
+  // 若设备仍无隐患点，取隐患点列表第一个作为默认（后端 chart 接口必传 hazardPointId）
+  if (!hazardPointId && allHazards.value.length > 0) {
+    hazardPointId = allHazards.value[0].id
+  }
+
+  // 设置隐患点上下文
+  if (hazardPointId) {
+    selectedHazardId.value = hazardPointId
+    const hazard = allHazards.value.find(h => h.id === hazardPointId)
+    if (hazard) {
+      pickerSelectedHazardId.value = hazard.id
+      pickerSelectedHazardName.value = hazard.name
+      await selectPickerHazard(hazard)
+    }
+  }
+
+  // 选中设备并加载图表
+  const existing = pickerDevices.value.find(d => d.id === deviceId)
+  selectedDevices.value = [existing || device]
+  await loadAllCharts()
+}
+
+// 监听 device-detail 页面通过事件传递的自动选中参数
+const onAutoSelect = (data: { deviceId: number; hazardPointId: number }) => {
+  if (data?.deviceId) {
+    autoSelectDevice(data.deviceId, data.hazardPointId || 0)
+  }
+}
+
 onMounted(async () => {
   try {
     allHazards.value = await hazardApi.getAll()
@@ -273,39 +316,23 @@ onMounted(async () => {
     console.error('加载隐患点失败:', error)
   }
 
+  uni.$on('chart:auto-select', onAutoSelect)
+
+  // 兼容 URL 参数（reLaunch 等场景）
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] as any
   const options = currentPage?.options || currentPage?.$page?.options || {}
 
   if (options?.deviceId) {
-    const deviceId = Number(options.deviceId)
-    const hazardPointId = options.hazardPointId ? Number(options.hazardPointId) : 0
-
-    if (hazardPointId) {
-      selectedHazardId.value = hazardPointId
-      const hazard = allHazards.value.find(h => h.id === hazardPointId)
-      if (hazard) {
-        pickerSelectedHazardId.value = hazard.id
-        pickerSelectedHazardName.value = hazard.name
-        await selectPickerHazard(hazard)
-      }
-    }
-
-    try {
-      const device = await deviceApi.getById(deviceId)
-      if (device) {
-        const existing = pickerDevices.value.find(d => d.id === deviceId)
-        if (existing) {
-          selectedDevices.value = [existing]
-        } else {
-          selectedDevices.value = [device]
-        }
-        await loadAllCharts()
-      }
-    } catch (error) {
-      console.error('预加载设备失败:', error)
-    }
+    autoSelectDevice(
+      Number(options.deviceId),
+      options.hazardPointId ? Number(options.hazardPointId) : 0,
+    )
   }
+})
+
+onUnmounted(() => {
+  uni.$off('chart:auto-select', onAutoSelect)
 })
 
 const toggleDevice = (device: DeviceInfo) => {
@@ -357,6 +384,7 @@ const loadAllCharts = async () => {
   try {
     const groups: ChartGroup[] = []
     const { startTime, endTime } = getTimeRange()
+    const granularity = calcGranularity(startTime, endTime)
     const hazardPointId = selectedHazardId.value
 
     for (const device of selectedDevices.value) {
@@ -378,7 +406,8 @@ const loadAllCharts = async () => {
               attrCode: attr.attrCode,
               valueType: 'current',
               startTime,
-              endTime
+              endTime,
+              granularity,
             })
             allSeries.push(...seriesList)
           } catch (error) {
@@ -387,147 +416,20 @@ const loadAllCharts = async () => {
         }
       }
 
-      const option = buildOption(allSeries)
       groups.push({
         deviceId: device.id,
         deviceName: device.name || device.deviceName,
         deviceType: device.deviceTypeName || device.deviceType,
-        option
+        series: allSeries,
       })
     }
 
     chartGroups.value = groups
-    chartVersion.value++
   } finally {
     loading.value = false
   }
 }
 
-const buildOption = (series: ChartSeries[]): any => {
-  if (series.length === 0) return null
-
-  const allLabels = new Set<string>()
-  series.forEach(s => s.labels.forEach(l => allLabels.add(l)))
-  const categories = Array.from(allLabels)
-
-  const seriesColors = ['#3068e4', '#52c41a', '#fa8c16', '#722ed1', '#13c2c2', '#eb2f96']
-  const seriesList: any[] = series.map((s, i) => {
-    const color = seriesColors[i % seriesColors.length]
-    const valueMap = new Map<string, number>()
-    s.labels.forEach((l, idx) => valueMap.set(l, s.values[idx]))
-    const data = categories.map(c => valueMap.get(c) ?? null)
-    const isRain = /rain/i.test(s.seriesName || '') || /rain/i.test(s.attrName || '') || /雨量/.test(s.attrName || '')
-
-    if (isRain) {
-      return {
-        name: s.seriesName || s.attrName,
-        type: 'bar',
-        data,
-        yAxisIndex: 0,
-        itemStyle: {
-          color: {
-            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color },
-              { offset: 1, color: hexToRgba(color, 0.4) }
-            ]
-          },
-          borderRadius: [4, 4, 0, 0]
-        },
-        barWidth: '30%'
-      }
-    }
-    return {
-      name: s.seriesName || s.attrName,
-      type: 'line',
-      data,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 4,
-      showSymbol: categories.length <= 24,
-      lineStyle: { color, width: 2.5 },
-      itemStyle: { color: '#fff', borderColor: color, borderWidth: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: hexToRgba(color, 0.2) },
-            { offset: 1, color: hexToRgba(color, 0.02) }
-          ]
-        }
-      }
-    }
-  })
-
-  const hasBarAndLine = seriesList.some((s: any) => s.type === 'bar') && seriesList.some((s: any) => s.type === 'line')
-
-  return {
-    animation: true,
-    legend: {
-      data: seriesList.map((s: any) => s.name),
-      bottom: 0,
-      textStyle: { color: '#6b7280', fontSize: 10 },
-      itemWidth: 16,
-      itemHeight: 10
-    },
-    grid: { left: '5%', right: hasBarAndLine ? '8%' : '5%', bottom: '15%', top: '10%', containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: categories,
-      boundaryGap: hasBarAndLine,
-      axisLabel: { color: '#9ca3af', fontSize: 9, margin: 8 },
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisTick: { show: false },
-      splitLine: { show: false }
-    },
-    yAxis: hasBarAndLine ? [
-      {
-        type: 'value',
-        axisLabel: { color: '#9ca3af', fontSize: 9 },
-        axisLine: { show: false },
-        axisTick: { show: false },
-        splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
-      },
-      {
-        type: 'value',
-        axisLabel: { color: '#9ca3af', fontSize: 9 },
-        axisLine: { show: false },
-        axisTick: { show: false },
-        splitLine: { show: false }
-      }
-    ] : {
-      type: 'value',
-      axisLabel: { color: '#9ca3af', fontSize: 9 },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
-    },
-    series: seriesList,
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(0,0,0,0.8)',
-      borderColor: 'rgba(0,0,0,0.8)',
-      textStyle: { color: '#fff', fontSize: 11 }
-    }
-  }
-}
-
-const initChart = (canvas: any, width: number, height: number, deviceId: number) => {
-  const group = chartGroups.value.find(g => g.deviceId === deviceId)
-  if (!group?.option) return null
-
-  const chart = echartsLib.init(canvas, null, { width, height })
-  canvas.setChart(chart)
-  chart.setOption(group.option)
-  return chart
-}
-
-const hexToRgba = (hex: string, alpha: number) => {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
 </script>
 
 <style lang="scss" scoped>
@@ -682,22 +584,6 @@ const hexToRgba = (hex: string, alpha: number) => {
   width: 100%;
   height: 500rpx;
   position: relative;
-}
-
-.chart-empty, .empty-hint {
-  height: 400rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-hint {
-  height: 200rpx;
-}
-
-.empty-text {
-  font-size: 26rpx;
-  color: #9ca3af;
 }
 
 .loading-wrapper {

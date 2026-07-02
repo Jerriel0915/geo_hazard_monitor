@@ -104,12 +104,11 @@
 
             <!-- 监测数据 -->
             <view v-if="activeSupportTab === 'monitor'" class="sub-content">
-              <EchartsComponent
-                v-if="chartOption && chartReady"
-                :key="`alarm-chart-${alarmId}-${chartVersion}`"
-                :onInit="initChart"
-                :canvasId="`alarm-chart-${alarmId}-${chartVersion}`"
-                width="100%"
+              <MonitorChart
+                v-if="chartSeries.length > 0 && chartReady"
+                :key="`alarm-chart-${alarmId}`"
+                :series="chartSeries"
+                :alarmLabels="alarmTimeLabels"
                 height="420rpx"
               />
               <view v-else class="empty-block">
@@ -272,8 +271,7 @@
 </template>
 
 <script setup lang="ts">
-import * as echartsLib from '@/components/echarts.esm.min.js'
-import EchartsComponent from '@/components/echarts.vue'
+import MonitorChart from '@/components/MonitorChart.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useSafeArea } from '@/composables/useSafeArea'
 import type {
@@ -300,7 +298,7 @@ import {
 import type { HazardWithDevices } from '@/utils/hazard'
 import { hazardApi } from '@/utils/hazard'
 import type { ChartSeries } from '@/utils/monitor'
-import { monitorApi } from '@/utils/monitor'
+import { monitorApi, calcGranularity } from '@/utils/monitor'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { computed, nextTick, ref } from 'vue'
 
@@ -367,9 +365,14 @@ const activeSupportTab = ref<SupportTab>('monitor')
 
 // 图表
 const chartSeries = ref<ChartSeries[]>([])
-const chartOption = ref<any>(null)
 const chartReady = ref(false)
-const chartVersion = ref(0)
+
+// 告警时间标签（用于 MonitorChart markPoint 标注）
+const alarmTimeLabels = computed(() =>
+  triggerDetails.value
+    .map(td => td.triggerTime)
+    .filter((t): t is string => !!t)
+)
 
 const feedbackLogs = computed(() =>
   actionLogs.value.filter(x =>
@@ -486,7 +489,6 @@ const loadAll = async () => {
     // 加载监测曲线
     await loadChartData()
     chartReady.value = true
-    chartVersion.value++
   } catch (e: any) {
     console.error('加载告警详情失败:', e)
     loadError.value = e?.message || '加载失败，请重试'
@@ -507,7 +509,6 @@ const fmtDateTime = (d: Date) =>
 const loadChartData = async () => {
   const rec: AlarmRecordItem | null = alarmData.value
   chartSeries.value = []
-  chartOption.value = null
   if (!rec) return
 
   const hpId = Number(rec.hazardPointId)
@@ -521,10 +522,14 @@ const loadChartData = async () => {
   const endTime = new Date()
   endTime.setHours(23, 59, 59, 0)
 
+  const startTimeStr = fmtDateTime(startTime)
+  const endTimeStr = fmtDateTime(endTime)
+
   const params: any = {
     hazardPointId: hpId,
-    startTime: fmtDateTime(startTime),
-    endTime: fmtDateTime(endTime),
+    startTime: startTimeStr,
+    endTime: endTimeStr,
+    granularity: calcGranularity(startTimeStr, endTimeStr),
   }
   if (rec.deviceId) params.deviceId = Number(rec.deviceId)
   if (rec.sensorId) params.sensorId = Number(rec.sensorId)
@@ -532,94 +537,9 @@ const loadChartData = async () => {
   try {
     const list = await monitorApi.getChart(params)
     chartSeries.value = Array.isArray(list) ? list : []
-    chartOption.value = buildChartOption(chartSeries.value)
   } catch (e) {
     chartSeries.value = []
-    chartOption.value = null
   }
-}
-
-/** 将触发明细时间匹配到图表 x 轴最近的数据点索引 */
-const findAlarmIndices = (labels: string[]): number[] => {
-  const indices: number[] = []
-  for (const td of triggerDetails.value) {
-    if (!td.triggerTime) continue
-    const triggerTs = new Date(String(td.triggerTime).replace(/-/g, '/')).getTime()
-    if (isNaN(triggerTs)) continue
-    let bestIdx = -1
-    let bestDiff = Infinity
-    labels.forEach((label, idx) => {
-      const labelTs = new Date(String(label).replace(/-/g, '/')).getTime()
-      if (isNaN(labelTs)) return
-      const diff = Math.abs(labelTs - triggerTs)
-      if (diff < bestDiff) { bestDiff = diff; bestIdx = idx }
-    })
-    if (bestIdx >= 0 && !indices.includes(bestIdx)) indices.push(bestIdx)
-  }
-  return indices
-}
-
-const buildChartOption = (series: ChartSeries[]): any => {
-  if (!series || series.length === 0) return null
-  const main = series[0]
-  if (!main || !main.labels || main.labels.length === 0) return null
-
-  const alarmIndices = findAlarmIndices(main.labels)
-
-  return {
-    title: { text: main.seriesName || main.attrName || '监测数据', left: 'left', textStyle: { fontSize: 12, color: '#606266' } },
-    tooltip: { trigger: 'axis' },
-    grid: { left: '15%', right: '8%', bottom: '18%', top: '15%' },
-    xAxis: {
-      type: 'category', data: main.labels,
-      axisLabel: { rotate: 45, fontSize: 9, color: '#666' },
-      axisLine: { lineStyle: { color: '#ddd' } },
-    },
-    yAxis: {
-      type: 'value', name: main.unit || '',
-      nameTextStyle: { fontSize: 10 },
-      axisLabel: { fontSize: 10, color: '#666' },
-      axisLine: { lineStyle: { color: '#ddd' } },
-      splitLine: { lineStyle: { color: '#f0f0f0' } },
-    },
-    series: [{
-      name: main.seriesName || main.attrName,
-      type: 'line',
-      data: main.values,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: (_v: number, params: any) => alarmIndices.includes(params.dataIndex) ? 10 : 5,
-      itemStyle: { color: (params: any) => alarmIndices.includes(params.dataIndex) ? '#f56c6c' : '#409eff' },
-      lineStyle: { width: 2, color: '#409eff' },
-      areaStyle: {
-        color: {
-          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(64,158,255,0.3)' },
-            { offset: 1, color: 'rgba(64,158,255,0.05)' },
-          ],
-        },
-      },
-      markPoint: {
-        data: alarmIndices.map((idx, i) => ({
-          name: `告警点${i + 1}`,
-          coord: [idx, main.values[idx]],
-          value: main.values[idx],
-          itemStyle: { color: '#f56c6c' },
-          symbol: 'pin', symbolSize: 30,
-          label: { show: true, formatter: '⚠', fontSize: 10 },
-        })),
-      },
-    }],
-  }
-}
-
-const initChart = (canvas: any, width: number, height: number) => {
-  if (!chartOption.value) return null
-  const chart = echartsLib.init(canvas, null, { width, height })
-  canvas.setChart(chart)
-  chart.setOption(chartOption.value)
-  return chart
 }
 
 // ─── 处置操作 ───
