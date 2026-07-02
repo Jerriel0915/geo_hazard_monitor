@@ -2,7 +2,8 @@
 # ==================== 前端构建（多阶段） ====================
 # 阶段一：主前端构建（web/）
 # 阶段二：Terra 值守模式 Dashboard 构建（terra/）
-# 阶段三：Nginx 运行时
+# 阶段三：UniApp H5 构建（uniapp/）
+# 阶段四：Nginx 运行时
 
 # ==================== 共享 npm 环境变量 ====================
 ARG NPM_CONFIG_AUDIT=false
@@ -83,7 +84,46 @@ COPY terra/ .
 # 构建生产版本（basePath=/terramens/）
 RUN npm run build
 
-# ---- 阶段三：Nginx 运行时 ----
+# ---- 阶段三：UniApp H5 构建 ----
+FROM node:20-slim AS uniapp-builder
+
+ARG NPM_CONFIG_AUDIT
+ARG NPM_CONFIG_FUND
+ARG NPM_CONFIG_PROGRESS
+ARG NPM_CONFIG_LOGLEVEL
+ARG NPM_CONFIG_FETCH_TIMEOUT
+ARG NPM_CONFIG_FETCH_RETRIES
+
+ENV NPM_CONFIG_AUDIT=${NPM_CONFIG_AUDIT} \
+    NPM_CONFIG_FUND=${NPM_CONFIG_FUND} \
+    NPM_CONFIG_PROGRESS=${NPM_CONFIG_PROGRESS} \
+    NPM_CONFIG_LOGLEVEL=${NPM_CONFIG_LOGLEVEL} \
+    NPM_CONFIG_FETCH_TIMEOUT=${NPM_CONFIG_FETCH_TIMEOUT} \
+    NPM_CONFIG_FETCH_RETRIES=${NPM_CONFIG_FETCH_RETRIES}
+
+WORKDIR /uniapp
+
+# 切国内镜像源
+RUN npm config set registry https://registry.npmmirror.com
+
+# 复制依赖清单
+COPY uniapp/package.json uniapp/package-lock.json uniapp/pnpm-lock.yaml* ./
+
+# 安装依赖（pnpm-lock 存在时用 pnpm，否则回退 npm）
+RUN --mount=type=cache,target=/root/.npm \
+    if [ -f pnpm-lock.yaml ]; then \
+      npm install -g pnpm && pnpm install --frozen-lockfile; \
+    else \
+      npm ci --prefer-offline --no-audit --no-fund || npm install --no-audit --no-fund; \
+    fi
+
+# 复制源码
+COPY uniapp/ .
+
+# 构建 H5 版本
+RUN npm run build:h5
+
+# ---- 阶段四：Nginx 运行时 ----
 FROM nginx:alpine
 
 # 删除默认配置
@@ -97,6 +137,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # 复制 Terra 值守模式 Dashboard 构建产物（覆盖 public/terramens/ 下的预构建文件）
 COPY --from=terra-builder /terra/dist /usr/share/nginx/html/terramens
+
+# 复制 UniApp H5 构建产物
+COPY --from=uniapp-builder /uniapp/dist/build/h5 /usr/share/nginx/html/h5
 
 # 创建日志目录并修复权限（nginx 以 nginx 用户运行 + read_only 容器）
 RUN mkdir -p /var/log/nginx && touch /var/log/nginx/nginx.pid && chown -R nginx:nginx /var/log/nginx

@@ -7,6 +7,7 @@
     "dev": "uni -p mp-weixin",
     "dev:h5": "uni -p h5",
     "build": "uni build -p mp-weixin",
+    "build:h5": "uni build -p h5",
     "about": "unh info",
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint .",
