@@ -10,6 +10,8 @@
 }
 
 // 全局样式 —— 禁止页面级滚动，滚动只发生在 page-body (scroll-view) 内部
+// 高度链: html → body → #app(UniApp内置) → uni-app → uni-page → uni-page-wrapper(均 100%)
+//         → uni-page-body(需补 height:100%) → page → .page-container
 html, body {
   height: 100%;
   overflow: hidden;
@@ -17,21 +19,25 @@ html, body {
   padding: 0;
 }
 
-// UniApp H5 模式下的页面包裹元素
-uni-page-wrapper,
+// 补全 UniApp 高度链：uni-page-body 默认无 height，导致 page 的 100% 无法解析
 uni-page-body {
   height: 100%;
   overflow: hidden;
 }
 
 page {
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background-color: $bg-color;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: $font-size-md;
   color: $text-primary;
   line-height: 1.5;
+}
+
+// 覆盖各页面 scoped 样式中的 height: 100vh，避免移动端地址栏遮挡
+.page-container {
+  height: 100% !important;
 }
 
 // 安全区域适配类
@@ -131,6 +137,7 @@ uni-scroll-view-refresher,
 
 // ============ page-container 禁止容器自身滚动 ============
 // 滚动只应发生在 .page-body (scroll-view) 内部
+// (height 已在上方统一设置)
 .page-container {
   overflow: hidden;
 }
