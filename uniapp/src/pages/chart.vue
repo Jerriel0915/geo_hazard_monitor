@@ -4,10 +4,11 @@
     <!-- 渐变头部 -->
     <PageHeader title="监测数据" subtitle="多设备数据可视化分析" />
 
-    <!-- 时间范围选择 -->
-    <scroll-view class="page-body" scroll-y>
-      <!-- 已选设备标签 -->
-      <view class="selected-devices">
+    <!-- 主体 -->
+    <view class="page-body">
+      <!-- 筛选胶囊卡片：已选设备 + 时间 Tab -->
+      <view class="filter-capsule-card">
+        <!-- 已选设备标签行 -->
         <scroll-view scroll-x class="tags-scroll">
           <view class="tags-container">
             <view
@@ -16,121 +17,157 @@
               class="device-tag"
             >
               <text class="tag-text">{{ device.name || device.deviceName }}</text>
-              <text class="tag-close" @click="removeDevice(device.id)">×</text>
+              <text class="tag-close" @click="removeDevice(device.id)">&times;</text>
             </view>
             <view v-if="selectedDevices.length === 0" class="hint-tag">
               <text class="hint-text">点击右下角按钮添加设备</text>
             </view>
           </view>
         </scroll-view>
-      </view>
-
-      <view class="time-tabs">
-        <view
-          v-for="tab in timeTabs"
-          :key="tab.value"
-          class="time-tab"
-          :class="{ active: activeTimeTab === tab.value }"
-          @click="changeTimeTab(tab.value)"
-        >
-          {{ tab.label }}
-        </view>
-      </view>
-
-      <!-- 图表区域 -->
-      <view class="charts-container">
-        <view v-if="loading && chartGroups.length === 0" class="loading-wrapper">
-          <text>加载中...</text>
-        </view>
-
-        <view v-else>
+        <!-- 时间 Tab 行 -->
+        <view class="time-capsule-row">
           <view
-            v-for="group in chartGroups"
-            :key="group.deviceId"
-            class="device-chart-group"
+            v-for="tab in timeTabs"
+            :key="tab.value"
+            class="capsule-item"
+            :class="{ active: activeTimeTab === tab.value }"
+            @click="changeTimeTab(tab.value)"
           >
-            <view class="chart-card">
-              <view class="card-header">
-                <view class="card-header-left">
-                  <text class="group-title">{{ group.deviceName }}</text>
-                  <text class="group-sub">{{ group.deviceType }}</text>
+            <text class="capsule-text">{{ tab.label }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 图表滚动区 -->
+      <scroll-view class="charts-scroll" scroll-y>
+        <view class="charts-container">
+          <view v-if="loading && chartGroups.length === 0" class="loading-wrapper">
+            <text>加载中...</text>
+          </view>
+
+          <view v-else>
+            <view
+              v-for="group in chartGroups"
+              :key="group.deviceId"
+              class="device-chart-group"
+            >
+              <view class="chart-card">
+                <view class="card-header">
+                  <view class="card-header-left">
+                    <text class="group-title">{{ group.deviceName }}</text>
+                    <text class="group-sub">{{ group.deviceType }}</text>
+                  </view>
                 </view>
-              </view>
-              <view class="chart-container">
-                <EchartsComponent
-                  v-if="group.option"
-                  :key="`${group.deviceId}-${chartVersion}`"
-                  :onInit="(canvas, width, height) => initChart(canvas, width, height, group.deviceId)"
-                  :canvasId="`chart-${group.deviceId}-${chartVersion}`"
-                  width="100%"
-                  height="500rpx"
-                />
-                <view v-else class="chart-empty">
-                  <text class="empty-text">暂无数据</text>
+                <view class="chart-container">
+                  <EchartsComponent
+                    v-if="group.option"
+                    :key="`${group.deviceId}-${chartVersion}`"
+                    :onInit="(canvas, width, height) => initChart(canvas, width, height, group.deviceId)"
+                    :canvasId="`chart-${group.deviceId}-${chartVersion}`"
+                    width="100%"
+                    height="500rpx"
+                  />
+                  <view v-else class="chart-empty">
+                    <text class="empty-text">暂无数据</text>
+                  </view>
                 </view>
               </view>
             </view>
-          </view>
 
-          <view v-if="selectedDevices.length === 0" class="empty-hint">
-            <text class="empty-text">请添加设备查看监测数据</text>
+            <view v-if="selectedDevices.length === 0" class="empty-hint">
+              <text class="empty-text">请添加设备查看监测数据</text>
+            </view>
           </view>
         </view>
-      </view>
 
-      <view class="bottom-spacer" />
-    </scroll-view>
+        <view class="bottom-spacer" />
+      </scroll-view>
+    </view>
 
     <!-- FAB 添加设备按钮 -->
-    <view class="fab-btn" @click="showDevicePicker = true">
-      <text class="fab-icon">+</text>
+    <view class="fab-btn" @click="openPicker">
+      <zui-svg-icon icon="device" :width="24" color="#ffffff" />
       <view v-if="selectedDevices.length > 0" class="fab-badge">
         <text class="fab-badge-text">{{ selectedDevices.length }}</text>
       </view>
     </view>
 
-    <!-- 设备选择弹窗 -->
+    <!-- 设备选择抽屉 -->
     <view v-if="showDevicePicker" class="picker-mask" @click="showDevicePicker = false">
       <view class="picker-panel" @click.stop>
         <view class="picker-header">
           <text class="picker-title">选择设备</text>
-          <text class="picker-close" @click="showDevicePicker = false">×</text>
+          <text class="picker-close" @click="showDevicePicker = false">&times;</text>
         </view>
 
-        <!-- 隐患点选择 -->
-        <view class="hazard-filter">
-          <text class="filter-label">隐患点：</text>
-          <picker
-            mode="selector"
-            :range="hazardNames"
-            :value="selectedHazardIndex"
-            @change="onHazardChange"
-          >
-            <view class="filter-picker">
-              <text class="filter-text">{{ hazardNames[selectedHazardIndex] || '请选择' }}</text>
-              <text class="filter-arrow">▼</text>
+        <!-- 双列布局 -->
+        <view class="picker-body">
+          <!-- 左列：隐患点列表 -->
+          <view class="picker-col hazard-col">
+            <view class="picker-search-bar">
+              <view class="picker-search-icon">
+                <zui-svg-icon icon="search" :width="14" color="#9ca3af" />
+              </view>
+              <input
+                class="picker-search-input"
+                type="text"
+                placeholder="搜索隐患点"
+                placeholder-class="picker-search-placeholder"
+                :value="hazardKeyword"
+                @input="onHazardSearch"
+              >
             </view>
-          </picker>
-        </view>
+            <scroll-view class="picker-col-list" scroll-y>
+              <view
+                v-for="h in filteredPickerHazards"
+                :key="h.id"
+                class="hazard-option"
+                :class="{ active: pickerSelectedHazardId === h.id }"
+                @click="selectPickerHazard(h)"
+              >
+                <text class="hazard-option-text">{{ h.name }}</text>
+              </view>
+              <view v-if="filteredPickerHazards.length === 0" class="picker-col-empty">
+                <text class="picker-col-empty-text">无匹配隐患点</text>
+              </view>
+            </scroll-view>
+          </view>
 
-        <scroll-view class="picker-list" scroll-y>
-          <view v-if="availableDevices.length === 0" class="picker-empty">
-            <text class="picker-empty-text">{{ selectedHazardId ? '该隐患点暂无设备' : '请先选择隐患点' }}</text>
-          </view>
-          <view
-            v-for="device in availableDevices"
-            :key="device.id"
-            class="picker-item"
-            :class="{ selected: isSelected(device.id) }"
-            @click="toggleDevice(device)"
-          >
-            <view class="picker-device-info">
-              <text class="picker-device-name">{{ device.name || device.deviceName }}</text>
-              <text class="picker-device-type">{{ device.code || device.deviceCode || '-' }}</text>
+          <!-- 右列：设备列表 -->
+          <view class="picker-col device-col">
+            <view v-if="pickerSelectedHazardName" class="device-col-header">
+              <text class="device-col-title">{{ pickerSelectedHazardName }}</text>
             </view>
-            <view class="picker-check" v-if="isSelected(device.id)">✓</view>
+            <scroll-view class="picker-col-list" scroll-y>
+              <view v-if="pickerLoading" class="picker-col-empty">
+                <text class="picker-col-empty-text">加载中...</text>
+              </view>
+              <template v-else>
+                <view
+                  v-for="device in pickerDevices"
+                  :key="device.id"
+                  class="device-option"
+                  :class="{ selected: isSelected(device.id) }"
+                  @click="toggleDevice(device)"
+                >
+                  <view class="device-option-info">
+                    <text class="device-option-name">{{ device.name || device.deviceName }}</text>
+                    <text class="device-option-code">{{ device.code || device.deviceCode || '-' }}</text>
+                  </view>
+                  <view v-if="isSelected(device.id)" class="device-option-check">
+                    <zui-svg-icon icon="arrow-right" :width="16" color="#3068e4" />
+                  </view>
+                </view>
+                <view v-if="pickerDevices.length === 0 && pickerSelectedHazardId" class="picker-col-empty">
+                  <text class="picker-col-empty-text">该隐患点暂无设备</text>
+                </view>
+                <view v-if="!pickerSelectedHazardId" class="picker-col-empty">
+                  <text class="picker-col-empty-text">请先选择隐患点</text>
+                </view>
+              </template>
+            </scroll-view>
           </view>
-        </scroll-view>
+        </view>
       </view>
     </view>
   </view>
@@ -156,11 +193,29 @@ const timeTabs = [
 
 const loading = ref(false)
 const allHazards = ref<Hazard[]>([])
-const allDevices = ref<DeviceInfo[]>([])
 const selectedDevices = ref<DeviceInfo[]>([])
 const activeTimeTab = ref('24h')
 const showDevicePicker = ref(false)
-const selectedHazardIndex = ref(0)
+
+// === Picker 状态 ===
+const hazardKeyword = ref('')
+const pickerSelectedHazardId = ref(0)
+const pickerSelectedHazardName = ref('')
+const pickerDevices = ref<DeviceInfo[]>([])
+const pickerLoading = ref(false)
+
+// 隐患点搜索过滤
+const filteredPickerHazards = computed(() => {
+  if (!hazardKeyword.value.trim()) return allHazards.value
+  const kw = hazardKeyword.value.trim().toLowerCase()
+  return allHazards.value.filter(h =>
+    h.name.toLowerCase().includes(kw)
+    || (h.code && h.code.toLowerCase().includes(kw))
+  )
+})
+
+// 当前已选隐患点对应的设备（用于图表加载）
+const selectedHazardId = ref(0)
 
 interface ChartGroup {
   deviceId: number
@@ -170,22 +225,46 @@ interface ChartGroup {
 }
 
 const chartGroups = ref<ChartGroup[]>([])
-// 递增版本号，强制 EchartsComponent 重新挂载以刷新图表
 const chartVersion = ref(0)
 
-const hazardNames = computed(() => allHazards.value.map(h => h.name))
-
-const selectedHazardId = computed(() => {
-  const h = allHazards.value[selectedHazardIndex.value]
-  return h?.id || 0
-})
-
-const availableDevices = computed(() => {
-  if (!selectedHazardId.value) return []
-  return allDevices.value
-})
-
 const isSelected = (id: number) => selectedDevices.value.some(d => d.id === id)
+
+function openPicker() {
+  showDevicePicker.value = true
+  hazardKeyword.value = ''
+  // 保持上次选中的隐患点
+}
+
+function onHazardSearch(e: any) {
+  hazardKeyword.value = e.detail.value || ''
+}
+
+async function selectPickerHazard(h: Hazard) {
+  pickerSelectedHazardId.value = h.id
+  pickerSelectedHazardName.value = h.name
+  pickerLoading.value = true
+  pickerDevices.value = []
+  try {
+    const list = await hazardApi.getBoundDevices(h.id)
+    pickerDevices.value = list.map((d: any) => ({
+      id: d.deviceId ?? d.id,
+      name: d.deviceName || d.name || d.deviceCode || '',
+      code: d.deviceCode || d.code || '',
+      deviceTypeName: d.deviceTypeName || d.deviceType || '',
+      status: d.onlineStatus === 1 ? '在线' : '离线',
+      onlineStatus: d.onlineStatus ?? 0,
+      lastReportTime: d.lastReportTime || '',
+      deviceName: d.deviceName || d.name || d.deviceCode || '',
+      deviceCode: d.deviceCode || d.code || '',
+      deviceType: d.deviceTypeName || d.deviceType || ''
+    })) as DeviceInfo[]
+  } catch (error) {
+    console.error('加载设备列表失败:', error)
+    pickerDevices.value = []
+  } finally {
+    pickerLoading.value = false
+  }
+}
 
 onMounted(async () => {
   try {
@@ -202,29 +281,24 @@ onMounted(async () => {
     const deviceId = Number(options.deviceId)
     const hazardPointId = options.hazardPointId ? Number(options.hazardPointId) : 0
 
-    // 如果传了 hazardPointId，自动匹配隐患点并加载设备列表
     if (hazardPointId) {
-      const hazardIndex = allHazards.value.findIndex(h => h.id === hazardPointId)
-      if (hazardIndex >= 0) {
-        selectedHazardIndex.value = hazardIndex
-        await onHazardChange({ detail: { value: hazardIndex } })
+      selectedHazardId.value = hazardPointId
+      const hazard = allHazards.value.find(h => h.id === hazardPointId)
+      if (hazard) {
+        pickerSelectedHazardId.value = hazard.id
+        pickerSelectedHazardName.value = hazard.name
+        await selectPickerHazard(hazard)
       }
     }
 
-    // 选中设备并加载图表
     try {
       const device = await deviceApi.getById(deviceId)
       if (device) {
-        const existing = allDevices.value.find(d => d.id === deviceId)
+        const existing = pickerDevices.value.find(d => d.id === deviceId)
         if (existing) {
           selectedDevices.value = [existing]
         } else {
-          // 设备不在隐患点列表中，也直接选中
           selectedDevices.value = [device]
-          // 确保 allDevices 有数据供 toggleDevice 使用
-          if (allDevices.value.length === 0) {
-            allDevices.value = [device]
-          }
         }
         await loadAllCharts()
       }
@@ -234,33 +308,11 @@ onMounted(async () => {
   }
 })
 
-const onHazardChange = async (e: any) => {
-  selectedHazardIndex.value = e.detail.value
-  if (selectedHazardId.value) {
-    try {
-      const list = await hazardApi.getBoundDevices(selectedHazardId.value)
-      allDevices.value = list.map((d: any) => ({
-        id: d.deviceId ?? d.id,
-        name: d.deviceName || d.name || d.deviceCode || '',
-        code: d.deviceCode || d.code || '',
-        deviceTypeName: d.deviceTypeName || d.deviceType || '',
-        status: d.onlineStatus === 1 ? '在线' : '离线',
-        onlineStatus: d.onlineStatus ?? 0,
-        lastReportTime: d.lastReportTime || '',
-        deviceName: d.deviceName || d.name || d.deviceCode || '',
-        deviceCode: d.deviceCode || d.code || '',
-        deviceType: d.deviceTypeName || d.deviceType || ''
-      })) as DeviceInfo[]
-    } catch (error) {
-      console.error('加载设备列表失败:', error)
-      allDevices.value = []
-    }
-  } else {
-    allDevices.value = []
-  }
-}
-
 const toggleDevice = (device: DeviceInfo) => {
+  // 记录当前隐患点 ID（用于图表请求）
+  if (pickerSelectedHazardId.value) {
+    selectedHazardId.value = pickerSelectedHazardId.value
+  }
   const idx = selectedDevices.value.findIndex(d => d.id === device.id)
   if (idx >= 0) {
     selectedDevices.value.splice(idx, 1)
@@ -486,14 +538,25 @@ const hexToRgba = (hex: string, alpha: number) => {
   background: linear-gradient(180deg, #eef1f8 0%, #e8ecf4 100%);
 }
 
-.header {
-  position: relative;
-  flex-shrink: 0;
+/* 页面主体 */
+.page-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-/* 已选设备标签 */
-.selected-devices {
-  padding: 16rpx 32rpx;
+/* 筛选胶囊卡片 */
+.filter-capsule-card {
+  flex-shrink: 0;
+  margin: 0 32rpx;
+  padding: 16rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
 .tags-scroll {
@@ -511,9 +574,8 @@ const hexToRgba = (hex: string, alpha: number) => {
   align-items: center;
   gap: 8rpx;
   padding: 10rpx 16rpx;
-  background: #ffffff;
+  background: #f0f5ff;
   border-radius: 24rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
@@ -537,38 +599,52 @@ const hexToRgba = (hex: string, alpha: number) => {
   color: #9ca3af;
 }
 
-.page-body {
+/* 时间胶囊 */
+.time-capsule-row {
+  display: flex;
+  gap: 16rpx;
+  background: #f7f8fc;
+  border-radius: 20rpx;
+  padding: 6rpx;
+}
+
+.capsule-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 0;
+  border-radius: 16rpx;
+  transition: all 0.2s;
+
+  &.active {
+    background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
+    box-shadow: 0 4rpx 16rpx rgba(48, 104, 228, 0.3);
+
+    .capsule-text {
+      color: #ffffff;
+      font-weight: 600;
+    }
+  }
+}
+
+.capsule-text {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+/* 图表滚动区 */
+.charts-scroll {
   flex: 1;
   height: 0;
 }
 
-.time-tabs {
-  display: flex;
-  gap: 16rpx;
-  margin: 0 24rpx 20rpx;
-}
-
-.time-tab {
-  flex: 1;
-  text-align: center;
-  padding: 20rpx 0;
-  background: #ffffff;
-  border-radius: 16rpx;
-  font-size: 26rpx;
-  color: #6b7280;
-
-  &.active {
-    background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-    color: #ffffff;
-  }
-}
-
 .charts-container {
-  padding: 0 24rpx 24rpx;
+  padding: 16rpx 32rpx 0;
 }
 
 .device-chart-group {
-  margin-bottom: 32rpx;
+  margin-bottom: 24rpx;
 }
 
 .chart-card {
@@ -631,13 +707,13 @@ const hexToRgba = (hex: string, alpha: number) => {
   color: #9ca3af;
 }
 
-.bottom-spacer { height: 120rpx; }
+.bottom-spacer { height: 40rpx; }
 
 /* FAB 按钮 */
 .fab-btn {
   position: fixed;
-  right: 40rpx;
-  bottom: 60rpx;
+  right: 32rpx;
+  bottom: 200rpx;
   width: 100rpx;
   height: 100rpx;
   background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
@@ -652,12 +728,6 @@ const hexToRgba = (hex: string, alpha: number) => {
     opacity: 0.9;
     transform: scale(0.95);
   }
-}
-
-.fab-icon {
-  font-size: 48rpx;
-  color: #ffffff;
-  font-weight: 300;
 }
 
 .fab-badge {
@@ -681,7 +751,7 @@ const hexToRgba = (hex: string, alpha: number) => {
   font-weight: 600;
 }
 
-/* 设备选择弹窗 */
+/* 设备选择抽屉 */
 .picker-mask {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -693,7 +763,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 
 .picker-panel {
   width: 100%;
-  max-height: 70vh;
+  max-height: 75vh;
   background: #ffffff;
   border-radius: 24rpx 24rpx 0 0;
   display: flex;
@@ -706,6 +776,7 @@ const hexToRgba = (hex: string, alpha: number) => {
   align-items: center;
   padding: 28rpx 32rpx;
   border-bottom: 1rpx solid #f0f0f0;
+  flex-shrink: 0;
 }
 
 .picker-title {
@@ -719,86 +790,150 @@ const hexToRgba = (hex: string, alpha: number) => {
   color: #9ca3af;
 }
 
-.picker-list {
-  max-height: 60vh;
+/* 双列布局 */
+.picker-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
-.picker-item {
+.picker-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hazard-col {
+  width: 280rpx;
+  flex-shrink: 0;
+  border-right: 1rpx solid #f0f0f0;
+  background: #f7f8fc;
+}
+
+.device-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-col-header {
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.device-col-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+/* 搜索框 */
+.picker-search-bar {
+  display: flex;
+  align-items: center;
+  margin: 12rpx;
+  padding: 0 16rpx;
+  height: 64rpx;
+  background: #ffffff;
+  border-radius: 32rpx;
+  flex-shrink: 0;
+}
+
+.picker-search-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 8rpx;
+}
+
+.picker-search-input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 24rpx;
+  color: #1a1a2e;
+}
+
+.picker-search-placeholder {
+  color: #9ca3af;
+  font-size: 24rpx;
+}
+
+/* 列内列表 */
+.picker-col-list {
+  flex: 1;
+  min-height: 0;
+  max-height: 55vh;
+}
+
+.hazard-option {
+  padding: 24rpx 20rpx;
+  font-size: 26rpx;
+  color: #4b5563;
+  border-bottom: 1rpx solid #eef0f5;
+
+  &.active {
+    background: #ffffff;
+    color: #3068e4;
+    font-weight: 600;
+  }
+}
+
+.hazard-option-text {
+  font-size: 26rpx;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.device-option {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24rpx 32rpx;
+  padding: 24rpx;
   border-bottom: 1rpx solid #f5f5f5;
 
   &.selected {
     background: rgba(48, 104, 228, 0.05);
   }
+
+  &:active {
+    background: #f7f8fc;
+  }
 }
 
-.picker-device-info {
+.device-option-info {
   display: flex;
   flex-direction: column;
   gap: 4rpx;
+  flex: 1;
+  min-width: 0;
 }
 
-.picker-device-name {
+.device-option-name {
   font-size: 28rpx;
   color: #1a1a2e;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.picker-device-type {
+.device-option-code {
   font-size: 22rpx;
   color: #9ca3af;
 }
 
-.picker-check {
-  font-size: 32rpx;
-  color: #3068e4;
-  font-weight: bold;
-}
-
-/* 隐患点筛选 */
-.hazard-filter {
-  display: flex;
-  align-items: center;
-  padding: 16rpx 32rpx;
-  border-bottom: 1rpx solid #f0f0f0;
-  gap: 16rpx;
-}
-
-.filter-label {
-  font-size: 26rpx;
-  color: #6b7280;
+.device-option-check {
   flex-shrink: 0;
+  margin-left: 12rpx;
 }
 
-.filter-picker {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12rpx 20rpx;
-  background: #f7f8fc;
-  border-radius: 8rpx;
-}
-
-.filter-text {
-  font-size: 26rpx;
-  color: #1a1a2e;
-}
-
-.filter-arrow {
-  font-size: 18rpx;
-  color: #9ca3af;
-}
-
-.picker-empty {
+.picker-col-empty {
   padding: 80rpx 0;
   text-align: center;
 }
 
-.picker-empty-text {
+.picker-col-empty-text {
   font-size: 26rpx;
   color: #9ca3af;
 }
