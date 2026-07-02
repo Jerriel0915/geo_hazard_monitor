@@ -188,6 +188,72 @@ export function getMqttMessages(params?: MqttMessageLogParams): Promise<AjaxResu
     return request.get('/monitor/mqtt/messages/page', {params})
 }
 
+// ===================== 异常报文 =====================
+
+/** MQTT 异常报文条目（已认证但解析/报送失败） */
+export interface MqttExceptionLogItem {
+    id: number
+    /** 接收时间（yyyy-MM-dd HH:mm:ss） */
+    receiveTime: string
+    clientId: string | null
+    username: string | null
+    deviceId: number | null
+    topic: string
+    payload: string | null
+    payloadSize: number
+    /** 失败阶段: TOPIC / FORMAT / STRATEGY / PARSE / UNKNOWN */
+    rejectStage: string
+    rejectReason: string
+    errorStack: string | null
+    createTime: string
+}
+
+/** 异常报文分页查询参数 */
+export interface MqttExceptionLogParams {
+    page?: number
+    pageSize?: number
+    clientId?: string
+    topic?: string
+    rejectReason?: string
+    /** yyyy-MM-dd HH:mm:ss */
+    startTime?: string
+    /** yyyy-MM-dd HH:mm:ss */
+    endTime?: string
+}
+
+/** 异常报文分页结果 */
+export interface MqttExceptionLogPageResult {
+    pageNumber: number
+    pageSize: number
+    totalRow: number
+    list: MqttExceptionLogItem[]
+}
+
+/** 异常报文保留期配置 */
+export interface ExceptionRetentionConfig {
+    enabled: boolean
+    retentionDays: number
+}
+
+/** 分页查询异常报文 */
+export function getMqttExceptions(params?: MqttExceptionLogParams): Promise<AjaxResult<MqttExceptionLogPageResult>> {
+    return request.get('/monitor/mqtt/exceptions/page', {params})
+}
+
+/** 导出异常报文（Excel） */
+export const exportMqttExceptions = (params?: MqttExceptionLogParams) =>
+    request.raw.post('/monitor/mqtt/exceptions/export', params || {}, {responseType: 'blob'})
+
+/** 查询异常报文保留期配置 */
+export function getExceptionRetentionConfig(): Promise<AjaxResult<ExceptionRetentionConfig>> {
+    return request.get('/monitor/mqtt/exceptions/retention-config')
+}
+
+/** 更新异常报文保留期配置 */
+export function updateExceptionRetentionConfig(body: Partial<ExceptionRetentionConfig>): Promise<AjaxResult<null>> {
+    return request.put('/monitor/mqtt/exceptions/retention-config', body)
+}
+
 // ===================== 大屏仪表盘统计 =====================
 
 export interface DashboardOverview {

@@ -1,7 +1,7 @@
 package com.zwei.iot.timeseries.service;
 
 import com.zwei.common.domain.ParsedMessage;
-import com.zwei.common.exception.ServiceException;
+import com.zwei.common.exception.MessageRejectException;
 import com.zwei.iot.parser.domain.DataParseStrategy;
 import com.zwei.iot.parser.engine.GroovyScriptEngine;
 import com.zwei.iot.parser.service.MonitorMetadataService;
@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -50,32 +49,28 @@ public class MonitorIngestFacade {
      * @param topic    MQTT topic
      * @param message  raw message bytes
      * @param deviceId authenticated device primary key
-     * @throws ServiceException when topic is malformed
+     * @throws MessageRejectException when topic is malformed, no strategy matches, or parse fails
      */
     public void ingest(String topic, byte[] message, Long deviceId) {
         // 1. Parse topic
         MonitorTopic parsedTopic = topicParser.parse(topic);
         if (parsedTopic == null) {
-            throw new ServiceException("Invalid monitor topic format: " + topic);
+            throw new MessageRejectException("FORMAT", "Invalid monitor topic format: " + topic);
         }
 
         // 2. Match strategy
         DataParseStrategy strategy = metadataService.resolveStrategy(
                 parsedTopic.sourceType(), deviceId);
         if (strategy == null) {
-            String payloadStr = new String(message, StandardCharsets.UTF_8);
-            streamService.enqueueDeadLetter(topic, payloadStr,
+            throw new MessageRejectException("STRATEGY",
                     "No matching parse strategy: sourceType=" + parsedTopic.sourceType() + ", deviceId=" + deviceId);
-            return;
         }
 
         // 3. Execute Groovy script
         ParsedMessage parsedMessage = scriptEngine.execute(strategy, topic, message);
         if (parsedMessage == null) {
-            String payloadStr = new String(message, StandardCharsets.UTF_8);
-            streamService.enqueueDeadLetter(topic, payloadStr,
+            throw new MessageRejectException("PARSE",
                     "Strategy [" + strategy.getName() + "] parse failed");
-            return;
         }
 
         // 4. Enrich + Validate: use TSL properties (sorted by sort_order) for both

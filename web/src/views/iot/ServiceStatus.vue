@@ -22,6 +22,7 @@
       <div class="tabs-row">
         <span class="tab-item" :class="{ active: activeTab === 'status' }" @click="switchTab('status')">MQTT状态</span>
         <span class="tab-item" :class="{ active: activeTab === 'log' }" @click="switchTab('log')">数据日志</span>
+        <span class="tab-item" :class="{ active: activeTab === 'exception' }" @click="switchTab('exception')">异常报文</span>
         <span class="tab-item" :class="{ active: activeTab === 'clients' }" @click="switchTab('clients')">
           在线客户端（{{ clientTotal }}）
         </span>
@@ -149,6 +150,77 @@
           layout="total, sizes, prev, pager, next"
           @size-change="fetchLogs"
           @current-change="fetchLogs"
+        />
+      </div>
+    </div>
+
+      <!-- 异常报文 -->
+      <div v-show="activeTab === 'exception'" class="tab-content table-wrap">
+        <div class="table-wrap__scroll">
+          <div class="query-bar">
+          <div class="query-item">
+            <label>接收时间起</label>
+            <input v-model="exceptionQuery.startTime" type="datetime-local"/>
+          </div>
+          <div class="query-item">
+            <label>接收时间止</label>
+            <input v-model="exceptionQuery.endTime" type="datetime-local"/>
+          </div>
+          <div class="query-item">
+            <label>Client ID</label>
+            <input v-model="exceptionQuery.clientId" type="text" placeholder="请输入 Client ID"/>
+          </div>
+          <div class="query-item">
+            <label>主题</label>
+            <input v-model="exceptionQuery.topic" type="text" placeholder="请输入主题"/>
+          </div>
+          <div class="query-item">
+            <label>报错内容</label>
+            <input v-model="exceptionQuery.rejectReason" type="text" placeholder="模糊匹配报错内容"/>
+          </div>
+          <div class="query-actions">
+            <el-button type="primary" @click="handleExceptionSearch">查询</el-button>
+            <el-button @click="handleExceptionReset">重置</el-button>
+            <el-button type="success" @click="handleExportExceptions" :loading="exceptionExporting">导出</el-button>
+          </div>
+        </div>
+        <el-table :data="exceptions" border stripe v-loading="exceptionsLoading">
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column label="接收时间" min-width="170" align="center">
+            <template #default="{ row }">{{ row.receiveTime || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="Client ID" min-width="150" align="center">
+            <template #default="{ row }"><code>{{ row.clientId || '-' }}</code></template>
+          </el-table-column>
+          <el-table-column prop="username" label="用户名" width="110" align="center" />
+          <el-table-column label="主题" min-width="170" align="center">
+            <template #default="{ row }"><code>{{ row.topic }}</code></template>
+          </el-table-column>
+          <el-table-column label="报错阶段" width="110" align="center">
+            <template #default="{ row }">
+              <el-tag :type="stageTagType(row.rejectStage)" size="small">{{ stageLabel(row.rejectStage) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="报错内容" min-width="220">
+            <template #default="{ row }"><span class="log-message-cell" :title="row.rejectReason">{{ row.rejectReason }}</span></template>
+          </el-table-column>
+          <el-table-column label="报文内容" min-width="200">
+            <template #default="{ row }"><span class="log-message-cell" :title="row.payload">{{ row.payload || '-' }}</span></template>
+          </el-table-column>
+          <el-table-column label="大小" width="80" align="center">
+            <template #default="{ row }">{{ fmtBytes(row.payloadSize) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="table-wrap__pagination" v-if="exceptionTotal > 0">
+        <el-pagination
+          v-model:current-page="exceptionPage"
+          v-model:page-size="exceptionPageSize"
+          :total="exceptionTotal"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="fetchExceptions"
+          @current-change="fetchExceptions"
         />
       </div>
     </div>
@@ -287,9 +359,11 @@ import {computed, onMounted, onUnmounted, ref} from 'vue'
 import { ElMessage } from 'element-plus'
 import {hasPermission} from '@/utils/permission'
 import {
+  exportMqttExceptions,
   getMqttClientDetail,
   getMqttClients,
   getMqttConfig,
+  getMqttExceptions,
   getMqttListeners,
   getMqttMessages,
   getMqttStats,
@@ -297,6 +371,7 @@ import {
   kickMqttClients,
   type MqttClientItem,
   type MqttConfig,
+  type MqttExceptionLogItem,
   type MqttListener,
   type MqttMessageLogItem,
   type MqttStats,
@@ -315,7 +390,7 @@ onMounted(() => {
 })
 
 // ===== 标签页 =====
-const activeTab = ref<'status' | 'log' | 'clients'>('status')
+const activeTab = ref<'status' | 'log' | 'exception' | 'clients'>('status')
 
 const switchTab = (tab: typeof activeTab.value) => {
   activeTab.value = tab
@@ -323,6 +398,8 @@ const switchTab = (tab: typeof activeTab.value) => {
     fetchStats()
     fetchListeners()
     fetchConfig()
+  } else if (tab === 'exception' && exceptions.value.length === 0) {
+    fetchExceptions()
   } else if (tab === 'clients' && clients.value.length === 0) {
     fetchClients()
   }
@@ -436,6 +513,114 @@ const handleLogReset = () => {
   logQuery.value = {clientId: '', topic: ''}
   logPage.value = 1
   fetchLogs()
+}
+
+// ===== 异常报文 =====
+const exceptionQuery = ref({startTime: '', endTime: '', clientId: '', topic: '', rejectReason: ''})
+const exceptionPage = ref(1)
+const exceptionPageSize = ref(20)
+const exceptionTotal = ref(0)
+const exceptions = ref<MqttExceptionLogItem[]>([])
+const exceptionsLoading = ref(false)
+const exceptionExporting = ref(false)
+
+/** 将 datetime-local 值转为接口所需的 yyyy-MM-dd HH:mm:ss */
+const toApiTime = (val: string): string | undefined => {
+  if (!val) return undefined
+  const normalized = val.replace('T', ' ')
+  const timePart = normalized.split(' ')[1] || ''
+  // HH:mm (5 字符) → 补 :00；已含秒则原样返回
+  return timePart.length === 5 ? normalized + ':00' : normalized
+}
+
+const fetchExceptions = async () => {
+  exceptionsLoading.value = true
+  try {
+    const res = await getMqttExceptions({
+      page: exceptionPage.value,
+      pageSize: exceptionPageSize.value,
+      clientId: exceptionQuery.value.clientId || undefined,
+      topic: exceptionQuery.value.topic || undefined,
+      rejectReason: exceptionQuery.value.rejectReason || undefined,
+      startTime: toApiTime(exceptionQuery.value.startTime),
+      endTime: toApiTime(exceptionQuery.value.endTime)
+    })
+    const data = res.data
+    exceptions.value = data?.list ?? []
+    exceptionTotal.value = data?.totalRow ?? 0
+  } catch {
+    exceptions.value = []
+    exceptionTotal.value = 0
+  } finally {
+    exceptionsLoading.value = false
+  }
+}
+
+const handleExceptionSearch = () => {
+  exceptionPage.value = 1
+  fetchExceptions()
+}
+
+const handleExceptionReset = () => {
+  exceptionQuery.value = {startTime: '', endTime: '', clientId: '', topic: '', rejectReason: ''}
+  exceptionPage.value = 1
+  fetchExceptions()
+}
+
+const handleExportExceptions = async () => {
+  exceptionExporting.value = true
+  try {
+    const response = await exportMqttExceptions({
+      clientId: exceptionQuery.value.clientId || undefined,
+      topic: exceptionQuery.value.topic || undefined,
+      rejectReason: exceptionQuery.value.rejectReason || undefined,
+      startTime: toApiTime(exceptionQuery.value.startTime),
+      endTime: toApiTime(exceptionQuery.value.endTime)
+    })
+    const blob = response.data
+    const disposition = String(response.headers['content-disposition'] || '')
+    const fileName = disposition
+      ? decodeURIComponent(disposition.split("filename*=UTF-8''")[1] || disposition.split('filename=')[1] || '')
+      : '异常报文.xlsx'
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch (error: any) {
+    ElMessage.error('导出失败: ' + (error?.message || '未知错误'))
+  } finally {
+    exceptionExporting.value = false
+  }
+}
+
+const stageTagType = (stage: string): 'success' | 'warning' | 'info' | 'danger' => {
+  switch (stage) {
+    case 'PARSE':
+      return 'danger'
+    case 'TOPIC':
+    case 'FORMAT':
+      return 'warning'
+    default:
+      return 'info'
+  }
+}
+
+const stageLabel = (stage: string): string => {
+  switch (stage) {
+    case 'TOPIC':
+      return '主题错误'
+    case 'FORMAT':
+      return '格式错误'
+    case 'STRATEGY':
+      return '无策略'
+    case 'PARSE':
+      return '解析失败'
+    default:
+      return '未知'
+  }
 }
 
 // ===== 在线客户端 =====

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zwei.log.infrastructure.persistence.mysql.ExceptionLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.zwei.log.mqtt.exception.domain.ExceptionMessageLog">
+        <id column="id" property="id"/>
+        <result column="receive_time" property="receiveTime"/>
+        <result column="client_id" property="clientId"/>
+        <result column="username" property="username"/>
+        <result column="device_id" property="deviceId"/>
+        <result column="topic" property="topic"/>
+        <result column="payload" property="payload"/>
+        <result column="payload_size" property="payloadSize"/>
+        <result column="reject_stage" property="rejectStage"/>
+        <result column="reject_reason" property="rejectReason"/>
+        <result column="error_stack" property="errorStack"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.zwei.log.mqtt.exception.domain.ExceptionMessageLog"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mqtt_exception_log
+            (receive_time, client_id, username, device_id, topic, payload, payload_size,
+             reject_stage, reject_reason, error_stack, create_time)
+        VALUES
+            (#{receiveTime}, #{clientId}, #{username}, #{deviceId}, #{topic}, #{payload}, #{payloadSize},
+             #{rejectStage}, #{rejectReason}, #{errorStack}, NOW())
+    </insert>
+
+    <select id="selectByCondition" resultMap="BaseResultMap">
+        SELECT * FROM mqtt_exception_log
+        <where>
+            <if test="clientId != null and clientId != ''">AND client_id LIKE CONCAT('%', #{clientId}, '%')</if>
+            <if test="topic != null and topic != ''">AND topic LIKE CONCAT('%', #{topic}, '%')</if>
+            <if test="rejectReason != null and rejectReason != ''">AND reject_reason LIKE CONCAT('%', #{rejectReason}, '%')</if>
+            <if test="startTime != null">AND receive_time &gt;= #{startTime}</if>
+            <if test="endTime != null">AND receive_time &lt;= #{endTime}</if>
+        </where>
+        ORDER BY receive_time DESC
+    </select>
+
+    <delete id="deleteBefore">
+        DELETE FROM mqtt_exception_log
+        WHERE create_time &lt; #{cutoffTime}
+        ORDER BY create_time ASC
+        LIMIT #{limit}
+    </delete>
+</mapper>
