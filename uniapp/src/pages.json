@@ -69,6 +69,13 @@
         "navigationBarTitleText": "设备详情",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/video-player",
+      "style": {
+        "navigationBarTitleText": "视频监控",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {

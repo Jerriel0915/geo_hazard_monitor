@@ -17,6 +17,7 @@ export interface Hazard {
 export interface HazardDetail extends Hazard {
   groupName?: string
   strike?: number
+  boundaryCoords?: string
   updateBy?: string
   updateTime?: string
 }
@@ -33,6 +34,7 @@ interface HazardRawItem {
   longitude?: number
   latitude?: number
   strike?: number
+  boundaryCoords?: string
   description?: string
   status?: number
   statusName?: string
@@ -94,6 +96,7 @@ export const hazardApi = {
         ...base,
         groupName: item.groupName,
         strike: item.strike,
+        boundaryCoords: item.boundaryCoords,
         updateBy: item.updateBy,
         updateTime: item.updateTime,
         devices: [],

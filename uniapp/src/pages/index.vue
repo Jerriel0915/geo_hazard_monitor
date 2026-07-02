@@ -1,33 +1,12 @@
 <!-- src/pages/index.vue -->
 <template>
   <view class="page-container">
-    <!-- 渐变头部（简化：标题 + 副标题） -->
-    <view class="header">
-      <view class="header-bg">
-        <view class="status-bar" :style="{ height: `${statusBarHeight + 220}rpx` }"></view>
-        <view class="bg-circle bg-circle-1"></view>
-        <view class="bg-circle bg-circle-2"></view>
-      </view>
-      <view class="header-content" :style="{ paddingTop: `${statusBarHeight}px` }">
-        <text class="header-title">事件大厅</text>
-        <text class="header-subtitle">边坡监测 · 智能预警</text>
-      </view>
-    </view>
-
-    <!-- Tab切换：待处理 / 历史事件 -->
-    <view class="tab-bar">
-      <view class="tab-item" :class="{ active: activeTab === 'pending' }" @click="switchTab('pending')">
-        <text class="tab-text">待处理</text>
-        <text v-if="pendingTotal > 0" class="tab-badge">{{ pendingTotal }}</text>
-      </view>
-      <view class="tab-item" :class="{ active: activeTab === 'history' }" @click="switchTab('history')">
-        <text class="tab-text">历史事件</text>
-      </view>
-    </view>
+    <!-- 渐变头部 -->
+    <PageHeader title="事件大厅" subtitle="边坡监测 · 智能预警" />
 
     <!-- 告警事件列表 -->
     <scroll-view
-      class="alarm-list"
+      class="page-body"
       scroll-y
       refresher-enabled
       :refresher-triggered="isRefreshing"
@@ -35,6 +14,17 @@
       @scrolltolower="onLoadMore"
       lower-threshold="100"
     >
+      <!-- Tab切换：待处理 / 历史事件 -->
+      <view class="tab-bar">
+        <view class="tab-item" :class="{ active: activeTab === 'pending' }" @click="switchTab('pending')">
+          <text class="tab-text">待处理</text>
+          <text v-if="pendingTotal > 0" class="tab-badge">{{ pendingTotal }}</text>
+        </view>
+        <view class="tab-item" :class="{ active: activeTab === 'history' }" @click="switchTab('history')">
+          <text class="tab-text">历史事件</text>
+        </view>
+      </view>
+
       <view class="list-inner">
         <!-- 骨架屏 -->
         <view v-if="loading && pageNum === 1" class="skeleton-wrapper">
@@ -109,14 +99,12 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import Skeleton from '@/components/Skeleton.vue'
-import { useSafeArea } from '@/composables/useSafeArea'
 import { alarmApi, getAlarmLevelColor, getAlarmLevelText, getStatusType } from '@/utils/alarm'
 import type { AlarmRecordItem } from '@/utils/alarm'
 import { startPolling, stopPolling } from '@/utils/polling'
 import { ref, onMounted, onUnmounted } from 'vue'
-
-const { statusBarHeight } = useSafeArea()
 
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -242,59 +230,12 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #eef1f8 0%, #e8ecf4 100%);
 }
 
-.header {
-  position: relative;
-  flex-shrink: 0;
-  padding-bottom: 20rpx;
-}
-
-.header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
-}
-
-.status-bar { width: 100%; }
-
-.bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.bg-circle-1 { width: 300rpx; height: 300rpx; top: -80rpx; right: -60rpx; }
-.bg-circle-2 { width: 200rpx; height: 200rpx; top: 60rpx; left: -50rpx; }
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 40rpx 32rpx 24rpx;
-}
-
-.header-title {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: #ffffff;
-  margin-bottom: 8rpx;
-  display: block;
-}
-
-.header-subtitle {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.8);
-}
-
 /* Tab 切换栏 */
 .tab-bar {
   display: flex;
   padding: 16rpx 32rpx;
   gap: 0;
   background: #ffffff;
-  flex-shrink: 0;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
 
@@ -334,7 +275,7 @@ onUnmounted(() => {
 }
 
 /* 列表 */
-.alarm-list {
+.page-body {
   flex: 1;
   height: 0;
 }

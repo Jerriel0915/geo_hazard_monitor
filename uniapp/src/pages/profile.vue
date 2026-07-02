@@ -21,27 +21,20 @@
     </view>
 
     <!-- 渐变头部 -->
-    <view class="header">
-      <view class="header-bg">
-        <view class="status-bar" :style="{ height: `${statusBarHeight + 73}px` }"></view>
-        <view class="bg-circle bg-circle-1"></view>
-        <view class="bg-circle bg-circle-2"></view>
-      </view>
-      <view class="header-content" :style="{ paddingTop: `${statusBarHeight + 20}px` }">
-        <view class="user-card">
-          <view class="avatar">
-            <text class="avatar-text">{{ avatarText }}</text>
-          </view>
-          <view class="user-info">
-            <text class="user-name">{{ user.nickname || user.username || '未登录' }}</text>
-            <text class="user-phone">{{ user.phone || '未绑定手机' }}</text>
-          </view>
+    <PageHeader>
+      <view class="user-card">
+        <view class="avatar">
+          <text class="avatar-text">{{ avatarText }}</text>
+        </view>
+        <view class="user-info">
+          <text class="user-name">{{ user.nickname || user.username || '未登录' }}</text>
+          <text class="user-phone">{{ user.phone || '未绑定手机' }}</text>
         </view>
       </view>
-    </view>
+    </PageHeader>
 
     <!-- 内容区域 -->
-    <view class="content-scroll">
+    <scroll-view class="page-body" scroll-y>
       <!-- 设置菜单 -->
       <view class="section">
         <text class="section-title"></text>
@@ -80,19 +73,17 @@
 
       <!-- 底部留白 -->
       <view class="bottom-spacer" />
-    </view>
+    </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import PageHeader from '@/components/PageHeader.vue'
 import miniappApi from '@/utils/miniapp'
 import authApi from '@/utils/auth'
-import { useSafeArea } from '@/composables/useSafeArea'
 import { checkUpdate, getCurrentVersionName, downloadAndInstallApk } from '@/utils/appVersion'
 import type { AppVersionInfo } from '@/utils/appVersion'
-
-const { statusBarHeight } = useSafeArea()
 
 const user = ref({
   id: null as number | null,
@@ -312,60 +303,18 @@ const handleLogout = async () => {
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #eef1f8 0%, #e8ecf4 100%);
-  overflow: hidden; /* 防止页面滚动 */
 }
 
 .header {
   position: relative;
   flex-shrink: 0;
-  min-height: 280rpx;
-}
-
-.header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
-}
-
-.status-bar {
-  width: 100%;
-}
-
-.bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.bg-circle-1 {
-  width: 300rpx;
-  height: 300rpx;
-  top: -80rpx;
-  right: -60rpx;
-}
-
-.bg-circle-2 {
-  width: 200rpx;
-  height: 200rpx;
-  top: 160rpx;
-  left: -50rpx;
-}
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 24rpx 32rpx 24rpx;
 }
 
 .user-card {
   display: flex;
   align-items: center;
   gap: 24rpx;
+  padding-top: 44rpx;
 }
 
 .avatar {
@@ -490,9 +439,9 @@ const handleLogout = async () => {
   color: #9ca3af;
 }
 
-.content-scroll {
+.page-body {
   flex: 1;
-  overflow: hidden; /* 禁止滚动 */
+  height: 0;
 }
 
 .logout-section {

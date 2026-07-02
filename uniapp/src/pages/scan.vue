@@ -1,47 +1,37 @@
 <template>
-  <view class="scan-container">
+  <view class="page-container">
     <!-- 渐变头部 -->
-    <view class="header">
-      <view class="header-bg">
-        <view class="status-bar" :style="{ height: `calc(${statusBarHeight}px + 200rpx)` }"></view>
-        <view class="bg-circle bg-circle-1"></view>
-        <view class="bg-circle bg-circle-2"></view>
+    <PageHeader show-back>
+      <view class="scan-header-info">
+        <text class="scan-header-title">扫码绑定</text>
+        <text class="scan-header-subtitle">扫描集装箱二维码即可绑定</text>
       </view>
-      <view class="header-content" :style="{ paddingTop: `${statusBarHeight}px` }">
-        <view class="header-nav">
-          <view class="back-btn" @click="goBack">
-            ←
-          </view>
-        </view>
-        <view class="header-top">
-          <text class="header-title">扫码绑定</text>
-          <text class="header-subtitle">扫描集装箱二维码即可绑定</text>
-        </view>
-      </view>
-    </view>
+    </PageHeader>
 
     <!-- 扫描区域 -->
-    <view class="content-area">
-      <view class="scan-area">
-        <view class="scan-frame">
-          <view class="corner top-left"></view>
-          <view class="corner top-right"></view>
-          <view class="corner bottom-left"></view>
-          <view class="corner bottom-right"></view>
-          <zui-svg-icon icon="camera" width="64rpx" color="rgba(102, 126, 234, 0.8)" />
-          <text class="scan-text">点击下方按钮开始扫码</text>
+    <scroll-view class="page-body" scroll-y>
+      <view class="content-area">
+        <view class="scan-area">
+          <view class="scan-frame">
+            <view class="corner top-left"></view>
+            <view class="corner top-right"></view>
+            <view class="corner bottom-left"></view>
+            <view class="corner bottom-right"></view>
+            <zui-svg-icon icon="camera" width="64rpx" color="rgba(102, 126, 234, 0.8)" />
+            <text class="scan-text">点击下方按钮开始扫码</text>
+          </view>
         </view>
-      </view>
 
-      <view class="scan-tips">
-        <text>扫描集装箱上的二维码，即可绑定该集装箱到您的账户</text>
-      </view>
+        <view class="scan-tips">
+          <text>扫描集装箱上的二维码，即可绑定该集装箱到您的账户</text>
+        </view>
 
-      <button class="scan-btn" @click="startScan">
-        <zui-svg-icon icon="search" width="36rpx" color="#ffffff" />
-        <text>开始扫码</text>
-      </button>
-    </view>
+        <button class="scan-btn" @click="startScan">
+          <zui-svg-icon icon="search" width="36rpx" color="#ffffff" />
+          <text>开始扫码</text>
+        </button>
+      </view>
+    </scroll-view>
 
     <!-- 确认绑定弹框 -->
     <ConfirmDialog
@@ -56,24 +46,15 @@
 
 <script setup>
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import { useSafeArea } from '@/composables/useSafeArea'
+import PageHeader from '@/components/PageHeader.vue'
 import containerApi from '@/utils/container'
 import { ref } from 'vue'
-
-const { statusBarHeight } = useSafeArea()
 
 const containerNo = ref('')
 const binding = ref(false)
 const confirmVisible = ref(false)
 const confirmContent = ref('')
 const pendingContainer = ref(null)
-
-/**
- * 返回上一页
- */
-const goBack = () => {
-  uni.navigateBack()
-}
 
 /**
  * 开始扫码
@@ -193,83 +174,23 @@ const doBind = async (container) => {
 </script>
 
 <style lang="scss" scoped>
-.scan-container {
-  min-height: 100vh;
+.page-container {
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #eef1f8 0%, #e8ecf4 100%);
 }
 
-.header {
-  position: relative;
-  flex-shrink: 0;
+.page-body {
+  flex: 1;
+  height: 0;
 }
 
-.header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
+.scan-header-info {
+  padding-top: 8rpx;
 }
 
-.status-bar {
-  width: 100%;
-}
-
-.bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.bg-circle-1 {
-  width: 300rpx;
-  height: 300rpx;
-  top: -80rpx;
-  right: -60rpx;
-}
-
-.bg-circle-2 {
-  width: 200rpx;
-  height: 200rpx;
-  top: 140rpx;
-  left: -50rpx;
-}
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 0 32rpx 24rpx;
-}
-
-.header-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-.back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-  color: #ffffff;
-  font-weight: 300;
-}
-
-.header-top {
-  margin-bottom: 24rpx;
-}
-
-.header-title {
+.scan-header-title {
   font-size: 40rpx;
   font-weight: bold;
   color: #ffffff;
@@ -277,13 +198,12 @@ const doBind = async (container) => {
   display: block;
 }
 
-.header-subtitle {
+.scan-header-subtitle {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.8);
 }
 
 .content-area {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

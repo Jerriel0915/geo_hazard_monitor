@@ -2,18 +2,10 @@
 <template>
   <view class="page-container">
     <!-- 头部 -->
-    <view class="header">
-      <view class="header-bg" :style="{ height: `calc(${statusBarHeight}px + 130rpx)` }"></view>
-      <view class="header-content" :style="{ marginTop: `${statusBarHeight}px` }">
-        <view class="header-nav">
-          <view class="back-btn" @click="goBack">←</view>
-          <text class="header-title">处置反馈</text>
-        </view>
-      </view>
-    </view>
+    <PageHeader show-back title="处置反馈" />
 
     <!-- 内容 -->
-    <scroll-view class="content-scroll" scroll-y>
+    <scroll-view class="page-body" scroll-y>
       <view class="form-section">
         <!-- 简洁告警概要 -->
         <view class="alarm-summary" v-if="alarmData">
@@ -57,6 +49,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import PageHeader from '@/components/PageHeader.vue'
 import { useSafeArea } from '@/composables/useSafeArea'
 import {
   alarmApi,
@@ -65,7 +58,7 @@ import {
 } from '@/utils/alarm'
 import type { AlarmRecordItem } from '@/utils/alarm'
 
-const { statusBarHeight, safeAreaBottom } = useSafeArea()
+const { safeAreaBottom } = useSafeArea()
 
 const alarmId = ref<number>(0)
 const alarmData = ref<AlarmRecordItem | null>(null)
@@ -137,47 +130,7 @@ const goBack = () => {
   flex-shrink: 0;
 }
 
-.header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
-}
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 0 32rpx 24rpx;
-}
-
-.header-nav {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-  color: #ffffff;
-}
-
-.header-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.content-scroll {
+.page-body {
   flex: 1;
   height: 0;
 }

@@ -1,11 +1,9 @@
 <!-- src/pages/hazard.vue -->
 <script setup lang="ts">
 import type { Hazard } from '@/utils/hazard'
+import PageHeader from '@/components/PageHeader.vue'
 import { onMounted, ref } from 'vue'
-import { useSafeArea } from '@/composables/useSafeArea'
 import { hazardApi } from '@/utils/hazard'
-
-const { statusBarHeight } = useSafeArea()
 
 const loading = ref(true)
 const isRefreshing = ref(false)
@@ -41,23 +39,11 @@ onMounted(() => {
 <template>
   <view class="page-container">
     <!-- 渐变头部 -->
-    <view class="header">
-      <view class="header-bg">
-        <view class="status-bar" :style="{ height: `${statusBarHeight + 65}px` }" />
-        <view class="bg-circle bg-circle-1" />
-        <view class="bg-circle bg-circle-2" />
-      </view>
-      <view class="header-content" :style="{ paddingTop: `${statusBarHeight}px` }">
-        <view class="header-top">
-          <text class="header-title">隐患点</text>
-          <text class="header-subtitle">风险管控 · 安全监测</text>
-        </view>
-      </view>
-    </view>
+    <PageHeader title="隐患点" subtitle="风险管控 · 安全监测" />
 
     <!-- 隐患点列表 -->
     <scroll-view
-      class="hazard-list"
+      class="page-body"
       scroll-y
       refresher-enabled
       :refresher-triggered="isRefreshing"
@@ -123,53 +109,10 @@ onMounted(() => {
 .header {
   position: relative;
   flex-shrink: 0;
-  padding-bottom: 20rpx;
-}
-
-.header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
-}
-
-.status-bar { width: 100%; }
-
-.bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.bg-circle-1 { width: 300rpx; height: 300rpx; top: -80rpx; right: -60rpx; }
-.bg-circle-2 { width: 200rpx; height: 200rpx; top: 80rpx; left: -50rpx; }
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 40rpx 32rpx 24rpx;
-}
-
-.header-top { margin-bottom: 0; }
-
-.header-title {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: #ffffff;
-  margin-bottom: 8rpx;
-  display: block;
-}
-
-.header-subtitle {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.8);
 }
 
 /* 列表 */
-.hazard-list {
+.page-body {
   flex: 1;
   height: 0;
 }

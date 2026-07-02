@@ -10,6 +10,10 @@ export interface DeviceInfo {
   onlineStatus: number
   lastReportTime: string
   createTime?: string
+  /** 绑定的隐患点ID（Service层富化） */
+  boundHazardPointId?: number
+  /** 绑定的隐患点名称 */
+  boundHazardPointName?: string
   /** 监测类型列表（从传感器提取，如 GNSS/雨量计/测斜仪） */
   monitorTypes?: string[]
   // 兼容字段（保留供现有 .vue 使用）
@@ -45,6 +49,8 @@ interface DeviceRawItem {
   onlineStatus?: number
   lastReportTime?: string
   createTime?: string
+  boundHazardPointId?: number
+  boundHazardPointName?: string
 }
 
 const DEVICE_TYPE_MAP: Record<number, string> = {
@@ -68,6 +74,8 @@ function mapDevice(item: DeviceRawItem): DeviceInfo {
     onlineStatus,
     lastReportTime: item.lastReportTime || '',
     createTime: item.createTime,
+    boundHazardPointId: item.boundHazardPointId,
+    boundHazardPointName: item.boundHazardPointName,
     // 兼容字段
     deviceName: name,
     deviceCode: code,
@@ -137,7 +145,7 @@ export const deviceApi = {
       const list = (res as any)?.rows || (res as any[]) || []
       return list.map((s: any) => ({
         id: s.id,
-        sensorNo: s.sensorNo,
+        sensorNo: s.sensorCode || s.sensorNo,
         sensorName: s.sensorName,
         monitorTypeName: s.monitorTypeName,
         attrs: Array.isArray(s.attrList) ? s.attrList : (Array.isArray(s.attrs) ? s.attrs : []),

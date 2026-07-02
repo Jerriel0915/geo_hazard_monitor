@@ -2,41 +2,29 @@
 <template>
   <view class="page-container">
     <!-- 渐变头部 -->
-    <view class="header">
-      <view class="header-bg">
-        <view class="status-bar" :style="{ height: `${statusBarHeight + 65}px` }"></view>
-        <view class="bg-circle bg-circle-1"></view>
-        <view class="bg-circle bg-circle-2"></view>
-      </view>
-      <view class="header-content" :style="{ paddingTop: `${statusBarHeight}px` }">
-        <view class="header-top">
-          <text class="header-title">监测数据</text>
-          <text class="header-subtitle">多设备数据可视化分析</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 已选设备标签 -->
-    <view class="selected-devices">
-      <scroll-view scroll-x class="tags-scroll">
-        <view class="tags-container">
-          <view
-            v-for="device in selectedDevices"
-            :key="device.id"
-            class="device-tag"
-          >
-            <text class="tag-text">{{ device.name || device.deviceName }}</text>
-            <text class="tag-close" @click="removeDevice(device.id)">×</text>
-          </view>
-          <view v-if="selectedDevices.length === 0" class="hint-tag">
-            <text class="hint-text">点击右下角按钮添加设备</text>
-          </view>
-        </view>
-      </scroll-view>
-    </view>
+    <PageHeader title="监测数据" subtitle="多设备数据可视化分析" />
 
     <!-- 时间范围选择 -->
-    <scroll-view class="content-scroll" scroll-y>
+    <scroll-view class="page-body" scroll-y>
+      <!-- 已选设备标签 -->
+      <view class="selected-devices">
+        <scroll-view scroll-x class="tags-scroll">
+          <view class="tags-container">
+            <view
+              v-for="device in selectedDevices"
+              :key="device.id"
+              class="device-tag"
+            >
+              <text class="tag-text">{{ device.name || device.deviceName }}</text>
+              <text class="tag-close" @click="removeDevice(device.id)">×</text>
+            </view>
+            <view v-if="selectedDevices.length === 0" class="hint-tag">
+              <text class="hint-text">点击右下角按钮添加设备</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
       <view class="time-tabs">
         <view
           v-for="tab in timeTabs"
@@ -150,7 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useSafeArea } from '@/composables/useSafeArea'
+import PageHeader from '@/components/PageHeader.vue'
 import * as echartsLib from '@/components/echarts.esm.min.js'
 import EchartsComponent from '@/components/echarts.vue'
 import { deviceApi } from '@/utils/device'
@@ -159,8 +147,6 @@ import { hazardApi } from '@/utils/hazard'
 import type { Hazard } from '@/utils/hazard'
 import { monitorApi } from '@/utils/monitor'
 import type { ChartSeries } from '@/utils/monitor'
-
-const { statusBarHeight } = useSafeArea()
 
 const timeTabs = [
   { label: '24小时', value: '24h' },
@@ -211,11 +197,35 @@ onMounted(async () => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] as any
   const options = currentPage?.options || currentPage?.$page?.options || {}
+
   if (options?.deviceId) {
+    const deviceId = Number(options.deviceId)
+    const hazardPointId = options.hazardPointId ? Number(options.hazardPointId) : 0
+
+    // 如果传了 hazardPointId，自动匹配隐患点并加载设备列表
+    if (hazardPointId) {
+      const hazardIndex = allHazards.value.findIndex(h => h.id === hazardPointId)
+      if (hazardIndex >= 0) {
+        selectedHazardIndex.value = hazardIndex
+        await onHazardChange({ detail: { value: hazardIndex } })
+      }
+    }
+
+    // 选中设备并加载图表
     try {
-      const device = await deviceApi.getById(Number(options.deviceId))
+      const device = await deviceApi.getById(deviceId)
       if (device) {
-        selectedDevices.value = [device]
+        const existing = allDevices.value.find(d => d.id === deviceId)
+        if (existing) {
+          selectedDevices.value = [existing]
+        } else {
+          // 设备不在隐患点列表中，也直接选中
+          selectedDevices.value = [device]
+          // 确保 allDevices 有数据供 toggleDevice 使用
+          if (allDevices.value.length === 0) {
+            allDevices.value = [device]
+          }
+        }
         await loadAllCharts()
       }
     } catch (error) {
@@ -481,48 +491,9 @@ const hexToRgba = (hex: string, alpha: number) => {
   flex-shrink: 0;
 }
 
-.header-bg {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
-}
-
-.status-bar { width: 100%; }
-
-.bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.bg-circle-1 { width: 300rpx; height: 300rpx; top: -80rpx; right: -60rpx; }
-.bg-circle-2 { width: 200rpx; height: 200rpx; top: 80rpx; left: -50rpx; }
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 40rpx 32rpx 24rpx;
-}
-
-.header-title {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: #ffffff;
-  margin-bottom: 8rpx;
-  display: block;
-}
-
-.header-subtitle {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.8);
-}
-
 /* 已选设备标签 */
 .selected-devices {
   padding: 16rpx 32rpx;
-  flex-shrink: 0;
 }
 
 .tags-scroll {
@@ -566,7 +537,7 @@ const hexToRgba = (hex: string, alpha: number) => {
   color: #9ca3af;
 }
 
-.content-scroll {
+.page-body {
   flex: 1;
   height: 0;
 }

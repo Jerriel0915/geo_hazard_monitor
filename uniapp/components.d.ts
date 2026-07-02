@@ -15,6 +15,7 @@ declare module 'vue' {
     Echarts: typeof import('./src/components/echarts.vue')['default']
     EmptyState: typeof import('./src/components/EmptyState.vue')['default']
     InputEntry: typeof import('./src/components/InputEntry.vue')['default']
+    PageHeader: typeof import('./src/components/PageHeader.vue')['default']
     Skeleton: typeof import('./src/components/Skeleton.vue')['default']
     StatBubble: typeof import('./src/components/StatBubble.vue')['default']
     UpdateDialog: typeof import('./src/components/UpdateDialog.vue')['default']

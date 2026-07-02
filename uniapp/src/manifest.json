@@ -79,7 +79,14 @@
     },
     "h5" : {
         "darkmode" : true,
-        "themeLocation" : "theme.json"
+        "themeLocation" : "theme.json",
+        "sdkConfigs" : {
+            "maps" : {
+                "tencent" : {
+                    "key" : "PMUBZ-I5P6A-CMEKK-C7TC4-B4ZDE-3FB4S"
+                }
+            }
+        }
     },
     "quickapp" : {},
     "mp-weixin" : {

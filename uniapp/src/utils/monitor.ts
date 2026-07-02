@@ -40,6 +40,12 @@ export interface LatestMonitorData {
   qualityText: string
 }
 
+export interface SensorLatestRow {
+  time: number
+  value: number | null
+  quality: number
+}
+
 export const monitorApi = {
   async getLatest(hazardPointId: number): Promise<LatestMonitorData[]> {
     try {
@@ -49,6 +55,17 @@ export const monitorApi = {
     } catch (error) {
       console.error('获取最新监测数据失败:', error)
       return []
+    }
+  },
+
+  /** 按传感器获取各属性最新一条数据，返回 Map<attrCode, SensorLatestRow> */
+  async getSensorLatest(deviceId: number, sensorCode: string): Promise<Record<string, SensorLatestRow>> {
+    try {
+      const res = await http.get('/monitor-data/sensor/latest', { deviceId, sensorCode })
+      return (res as any) || {}
+    } catch (error) {
+      console.error('获取传感器最新数据失败:', error)
+      return {}
     }
   },
 

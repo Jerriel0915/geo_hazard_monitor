@@ -5,9 +5,21 @@
 console.log('[useSafeArea.ts] Module started')
 import { ref, onMounted } from 'vue'
 
+// #ifdef H5
+// H5 环境无物理状态栏，设置默认安全高度保持 UI 与小程序一致
+const H5_STATUS_BAR_HEIGHT = 44
+// #endif
+
 export function useSafeArea() {
   console.log('[useSafeArea.ts] useSafeArea function called')
+
+  // #ifdef H5
+  const statusBarHeight = ref(H5_STATUS_BAR_HEIGHT)
+  // #endif
+  // #ifndef H5
   const statusBarHeight = ref(0)
+  // #endif
+
   const safeAreaBottom = ref(0)
   const safeArea = ref({
     top: 0,
@@ -21,7 +33,15 @@ export function useSafeArea() {
     try {
       const systemInfo = uni.getSystemInfoSync()
       console.log('[useSafeArea.ts] systemInfo:', systemInfo)
+
+      // #ifdef H5
+      // H5: 优先使用系统返回值，为 0 时保持默认
+      statusBarHeight.value = systemInfo.statusBarHeight || H5_STATUS_BAR_HEIGHT
+      // #endif
+      // #ifndef H5
       statusBarHeight.value = systemInfo.statusBarHeight || 0
+      // #endif
+
       safeAreaBottom.value = systemInfo.safeAreaInsets?.bottom || 0
 
       safeArea.value = {

@@ -2,28 +2,19 @@
 <template>
   <view class="page-container">
     <!-- 头部信息 -->
-    <view class="header">
-      <view class="header-bg" :style="{ height: `calc(${statusBarHeight}px + 220rpx` }">
+    <PageHeader show-back>
+      <view class="container-info-top">
+        <text class="container-no">{{ container.containerNo }}</text>
+        <text class="container-name">{{ container.containerName || '未命名' }}</text>
       </view>
-      <view class="header-content" :style="{marginTop: `${statusBarHeight}px`}">
-        <view class="header-nav">
-          <view class="back-btn" @click="goBack">
-            ←
-          </view>
-        </view>
-        <view class="container-info-top">
-          <text class="container-no">{{ container.containerNo }}</text>
-          <text class="container-name">{{ container.containerName || '未命名' }}</text>
-        </view>
-        <view class="header-right status-tag" :class="statusClass">
-          <view class="status-dot" />
-          <text>{{ statusText }}</text>
-        </view>
+      <view class="header-right status-tag" :class="statusClass">
+        <view class="status-dot" />
+        <text>{{ statusText }}</text>
       </view>
-    </view>
+    </PageHeader>
 
     <!-- 可滚动内容区域 -->
-    <scroll-view class="content-scroll" scroll-y>
+    <scroll-view class="page-body" scroll-y>
       <!-- 实时数据 -->
       <view class="section">
         <text class="section-title">实时数据</text>
@@ -153,14 +144,12 @@
 import * as echartsLib from '@/components/echarts.esm.min.js'
 import EchartsComponent from '@/components/echarts.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { useSafeArea } from '@/composables/useSafeArea'
+import PageHeader from '@/components/PageHeader.vue'
 import alarmApi from '@/utils/alarm'
 import containerApi from '@/utils/container'
 import deviceApi from '@/utils/device'
 import { startPolling, stopPolling } from '@/utils/polling'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-
-const { statusBarHeight } = useSafeArea()
 
 const containerId = ref(0)
 const container = ref<any>({})
@@ -183,7 +172,6 @@ const statusText = computed(() => {
 
 onMounted(() => {
   console.log('[container-detail.vue] mounted')
-  console.log('[container-detail.vue] statusBarHeight:', statusBarHeight.value)
 
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
@@ -610,9 +598,6 @@ const goToDeviceChart = (device: any) => {
   })
 }
 
-const goBack = () => {
-  uni.navigateBack()
-}
 
 const getAlarmLevelClass = (level: number) => {
   switch (level) {
@@ -645,59 +630,6 @@ const getAlarmLevelText = (level: number) => {
 .header {
   position: relative;
   flex-shrink: 0;
-}
-
-.header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
-}
-
-.header-bg::before {
-  content: '';
-  position: absolute;
-  width: 300rpx;
-  height: 280rpx;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  top: -80rpx;
-  right: -60rpx;
-}
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 0 32rpx 24rpx;
-}
-
-.header-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-.back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-  color: #ffffff;
-}
-
-.header-right {
-  position: absolute;
-  top: calc(40rpx + var(--status-bar-height, 0px));
-  right: 32rpx;
-  z-index: 2;
 }
 
 .container-info-top {
@@ -1085,7 +1017,7 @@ const getAlarmLevelText = (level: number) => {
   color: #9ca3af;
 }
 
-.content-scroll {
+.page-body {
   flex: 1;
   height: 0;
 }

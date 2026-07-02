@@ -2,23 +2,10 @@
 <template>
   <view class="page-container">
     <!-- 头部 -->
-    <view class="header">
-      <view class="header-bg" :style="{ height: `calc(${statusBarHeight}px + 155rpx)` }"></view>
-      <view class="header-content" :style="{ marginTop: `${statusBarHeight}px` }">
-        <view class="header-nav">
-          <view class="back-btn" @click="goBack">←</view>
-        </view>
-        <view class="alarm-info-top" v-if="alarmData">
-          <view class="alarm-level-badge" :style="{ background: getAlarmLevelColor(alarmData.alarmLevel) }">
-            {{ getAlarmLevelText(alarmData.alarmLevel) }}
-          </view>
-          <text class="alarm-time-text">{{ formatTime(alarmData.firstTriggerTime) }}</text>
-        </view>
-      </view>
-    </view>
+    <PageHeader show-back :title="alarmData?.hazardPointName || '告警详情'" />
 
     <!-- 内容 -->
-    <scroll-view class="content-scroll" scroll-y refresher-enabled :refresher-triggered="isRefreshing" @refresherrefresh="loadAll">
+    <scroll-view class="page-body" scroll-y refresher-enabled :refresher-triggered="isRefreshing" @refresherrefresh="loadAll">
       <view v-if="loading && !alarmData" class="loading-wrapper">
         <text class="loading-text">加载中...</text>
       </view>
@@ -30,7 +17,6 @@
       <template v-else>
         <!-- 告警信息卡 -->
         <view class="section">
-          <text class="section-title">告警信息</text>
           <view class="info-card">
             <view class="info-row">
               <text class="info-label">告警等级</text>
@@ -77,9 +63,9 @@
         <view class="section" v-if="hazardPointData">
           <text class="section-title">项目信息</text>
           <view class="info-card">
-            <view class="info-row">
+            <view class="info-row" @click="openMap">
               <text class="info-label">地理位置</text>
-              <text class="info-value">{{ formatLocation(hazardPointData) }}</text>
+              <text class="info-value" style="color: #3068e4;">{{ formatLocation(hazardPointData) }} ></text>
             </view>
             <view class="info-row">
               <text class="info-label">所属分组</text>
@@ -253,38 +239,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
-import { useSafeArea } from '@/composables/useSafeArea'
-import EchartsComponent from '@/components/echarts.vue'
 import * as echartsLib from '@/components/echarts.esm.min.js'
+import EchartsComponent from '@/components/echarts.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import { useSafeArea } from '@/composables/useSafeArea'
+import type {
+  AlarmNotificationItem,
+  AlarmRecordActionLog,
+  AlarmRecordItem,
+  AlarmRecordTriggerDetail,
+  TimelineNode,
+} from '@/utils/alarm'
 import {
   alarmApi,
+  buildTimeline,
   getAlarmLevelColor,
   getAlarmLevelText,
   getAlarmTypeText,
-  getStatusText,
-  getStatusType,
   getChannelText,
-  getNotifyStatusText,
-  getNotifyStatusType,
   getFeedbackActionText,
   getFeedbackActionType,
-  buildTimeline,
+  getNotifyStatusText,
+  getNotifyStatusType,
+  getStatusText,
+  getStatusType,
 } from '@/utils/alarm'
-import type {
-  AlarmRecordItem,
-  AlarmRecordTriggerDetail,
-  AlarmRecordActionLog,
-  AlarmNotificationItem,
-  TimelineNode,
-} from '@/utils/alarm'
-import { monitorApi } from '@/utils/monitor'
-import type { ChartSeries } from '@/utils/monitor'
-import { hazardApi } from '@/utils/hazard'
 import type { HazardWithDevices } from '@/utils/hazard'
+import { hazardApi } from '@/utils/hazard'
+import type { ChartSeries } from '@/utils/monitor'
+import { monitorApi } from '@/utils/monitor'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { computed, nextTick, ref } from 'vue'
 
-const { statusBarHeight, safeAreaBottom } = useSafeArea()
+const { safeAreaBottom } = useSafeArea()
 
 const alarmId = ref<number>(0)
 const loading = ref(false)
@@ -328,8 +315,7 @@ const showActions = computed(() => {
 })
 
 const canNavigate = computed(() => {
-  const hp = hazardPointData.value
-  return !!(hp && hp.longitude != null && hp.latitude != null)
+  return !!alarmData.value?.hazardPointId
 })
 
 const displayedTimeline = computed(() =>
@@ -614,26 +600,12 @@ const handleClear = () => {
 }
 
 const openMap = () => {
-  const hp = hazardPointData.value
-  if (!hp || hp.longitude == null || hp.latitude == null) {
-    uni.showToast({ title: '暂无位置信息', icon: 'none' })
+  const hpId = alarmData.value?.hazardPointId
+  if (!hpId) {
+    uni.showToast({ title: '暂无隐患点信息', icon: 'none' })
     return
   }
-  uni.openLocation({
-    latitude: Number(hp.latitude),
-    longitude: Number(hp.longitude),
-    name: hp.name || '',
-    address: hp.location || '',
-    scale: 16,
-    fail: (err) => {
-      console.error('openLocation failed', err)
-      uni.showToast({ title: '打开地图失败', icon: 'none' })
-    },
-  })
-}
-
-const goBack = () => {
-  uni.navigateBack()
+  uni.navigateTo({ url: `/pages/hazard-detail?id=${hpId}` })
 }
 </script>
 
@@ -650,59 +622,6 @@ const goBack = () => {
   flex-shrink: 0;
 }
 
-.header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
-  border-radius: 0 0 15rpx 15rpx;
-  overflow: hidden;
-}
-
-.header-content {
-  position: relative;
-  z-index: 1;
-  padding: 0 32rpx 24rpx;
-}
-
-.header-nav {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24rpx;
-}
-
-.back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-  color: #ffffff;
-}
-
-.alarm-info-top {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.alarm-level-badge {
-  padding: 8rpx 20rpx;
-  border-radius: 8rpx;
-  font-size: 24rpx;
-  color: #ffffff;
-}
-
-.alarm-time-text {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.85);
-  flex: 1;
-}
-
 .loading-wrapper {
   display: flex;
   justify-content: center;
@@ -714,7 +633,7 @@ const goBack = () => {
   color: #9ca3af;
 }
 
-.content-scroll {
+.page-body {
   flex: 1;
   height: 0;
 }
