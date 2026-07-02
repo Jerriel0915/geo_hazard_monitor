@@ -274,17 +274,17 @@
 </template>
 
 <script setup lang="ts">
+import { getChartData, type ChartData } from '@/api/monitorData'
 import FeedBack from '@/components/FeedBack.vue'
 import Notify from '@/components/Notify.vue'
 import echarts from '@/utils/echarts'
 import request from '@/utils/request'
-import QRCode from 'qrcode'
-import { getChartData, type ChartData } from '@/api/monitorData'
 import {
   Bell, ChatDotRound, CircleClose, Clock, Close,
   CopyDocument, MapLocation, Monitor, Warning, WarnTriangleFilled,
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import QRCode from 'qrcode'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 // 生命周期流程图：按告警等级 1-4 分别对应 flowChart1-4.png
 import {
@@ -340,7 +340,7 @@ const chartSeriesData = ref<ChartData[]>([])
 // H5 处置二维码（弹窗打开时按当前 data.id 生成 base64）
 const h5QrcodeDataUrl = ref('')
 const h5Url = computed(() => props.data?.id
-  ? `${window.location.origin}/h5/disposal/${props.data.id}`
+  ? `${window.location.origin}/h5x/disposal/${props.data.id}`
   : '')
 
 interface TimelineNode { time: string; label: string; description: string; operator: string; type: string }

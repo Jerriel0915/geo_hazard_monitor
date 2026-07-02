@@ -1,5 +1,5 @@
-import type {RouteRecordRaw} from 'vue-router'
-import {createRouter, createWebHistory} from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -8,7 +8,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Login.vue')
   },
   {
-    path: '/h5/disposal/:id?',
+    path: '/h5x/disposal/:id?',
     name: 'H5Disposal',
     component: () => import('@/views/alarm/H5Disposal.vue'),
     meta: { title: 'H5在线处置' }
