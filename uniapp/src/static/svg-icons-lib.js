@@ -6,7 +6,7 @@
  *
  * !!! DO NOT MODIFY MANUALLY !!!
  *
- * @datetime 2026/4/17 18:12:10
+ * @datetime 2026/7/2 12:38:49
  *
  */
 
@@ -16,6 +16,10 @@ const collections = {
     "icons": {
       "arrow-right": [
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" fill=\"none\" viewBox=\"0 0 24 24\"><path stroke=\"#22ac38\" stroke-linecap=\"round\" stroke-width=\"2\" d=\"M5 12h14\"/><path stroke=\"#22ac38\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"m12 5 7 7-7 7\"/></svg>",
+        0
+      ],
+      "back": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" fill=\"none\" viewBox=\"0 0 24 24\"><path stroke=\"#22ac38\" stroke-linecap=\"round\" stroke-width=\"2\" d=\"M19 12H5\"/><path stroke=\"#22ac38\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"m12 19-7-7 7-7\"/></svg>",
         0
       ],
       "battery": [
@@ -136,6 +140,10 @@ const collections = {
       ],
       "temperature": [
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" fill=\"none\" viewBox=\"0 0 24 24\"><path stroke=\"#22ac38\" stroke-width=\"2\" d=\"M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z\"/></svg>",
+        0
+      ],
+      "up": [
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" fill=\"none\" viewBox=\"0 0 24 24\"><path stroke=\"#22ac38\" stroke-linecap=\"round\" stroke-width=\"2\" d=\"M12 19V5\"/><path stroke=\"#22ac38\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"m5 12 7-7 7 7\"/></svg>",
         0
       ],
       "wechat-white": [

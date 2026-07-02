@@ -258,7 +258,9 @@
     </view>
 
     <!-- 回到顶部 -->
-    <view v-if="showBackTop" class="back-top-btn" @click="scrollToTop">↑</view>
+    <view v-if="showBackTop" class="back-top-btn" @click="scrollToTop">
+      <zui-svg-icon icon="up" :width="20" color="#ffffff" />
+    </view>
 
     <!-- 底部操作栏 -->
     <view v-if="showActions" class="action-bar" :style="{ paddingBottom: `${safeAreaBottom + 16}rpx` }">
@@ -339,7 +341,8 @@ const onScroll = (e: { detail: { scrollTop: number } }) => {
 }
 
 const scrollToTop = () => {
-  scrollTop.value = 0
+  scrollTop.value = 1
+  nextTick(() => { scrollTop.value = 0 })
   showBackTop.value = false
 }
 
@@ -1192,20 +1195,20 @@ const openMap = () => {
   position: fixed;
   right: 32rpx;
   bottom: 200rpx;
-  width: 80rpx;
-  height: 80rpx;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.12);
+  background: linear-gradient(135deg, #3068e4 0%, #1e5acc 100%);
+  box-shadow: 0 8rpx 24rpx rgba(48, 104, 228, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
-  color: #3068e4;
   z-index: 10;
 
   &:active {
-    opacity: 0.7;
+    transform: scale(0.9);
+    opacity: 0.85;
   }
 }
+
 </style>

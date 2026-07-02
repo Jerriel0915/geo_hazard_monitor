@@ -48,7 +48,9 @@ function handleBack() {
     <view class="page-header__content" :style="{ paddingTop: `${statusBarHeight}px` }">
       <!-- 返回按钮行：showBack=true 时始终渲染 -->
       <view v-if="showBack" class="page-header__nav">
-        <view class="page-header__back" @click="handleBack">←</view>
+        <view class="page-header__back" @click="handleBack">
+          <zui-svg-icon icon="back" :width="20" color="#ffffff" />
+        </view>
         <text v-if="title" class="page-header__title">{{ title }}</text>
       </view>
 
@@ -122,8 +124,6 @@ function handleBack() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
-  color: #ffffff;
   margin-right: 16rpx;
 }
 
