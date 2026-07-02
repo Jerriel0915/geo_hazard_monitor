@@ -84,33 +84,42 @@
               </template>
             </el-alert>
           </div>
+          <div class="editor-toolbar">
+            <el-button size="small" text type="primary" @click="handleFormatGroovy">格式化</el-button>
+            <el-button size="small" text @click="editorTheme = editorTheme === 'dark' ? 'light' : 'dark'">
+              <el-icon><Sunny v-if="editorTheme === 'dark'" /><Moon v-else /></el-icon>
+              {{ editorTheme === 'dark' ? '亮色' : '暗色' }}
+            </el-button>
+          </div>
           <div class="code-editor-container">
             <CodeMirrorGroovy
                 v-model="formData.scriptCode"
                 :readonly="isView"
-                :min-height="400"
+                :min-height="300"
+                :theme="editorTheme"
             />
           </div>
+          <TestPanel
+            v-if="!isView"
+            mode="parse"
+            :testing="testRunning"
+            :default-topic="formData.topic"
+            :parse-result="parseResultText"
+            :parse-result-type="parseResultType"
+            @run-test="handleInlineTest"
+          />
         </div>
       </el-tab-pane>
     </el-tabs>
 
     <template #footer v-if="!isView">
       <el-button @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="handleTest" :disabled="!formData.scriptCode">测试脚本</el-button>
       <el-button type="primary" @click="handleSubmit" :loading="submitLoading">保存</el-button>
     </template>
     <template #footer v-else>
       <el-button @click="dialogVisible = false">关闭</el-button>
     </template>
   </el-dialog>
-
-  <!-- 测试弹窗 -->
-  <ScriptTestDialog
-      v-model:visible="testDialogVisible"
-      :script-code="formData.scriptCode"
-      :default-topic="formData.topic"
-  />
 </template>
 
 <script setup lang="ts">
@@ -121,8 +130,11 @@ import {
   type DataParseStrategy
 } from '@/api/dataParse'
 import { getDevicePage, getDeviceDetail, type DeviceItem } from '@/api/device'
-import ScriptTestDialog from './ScriptTestDialog.vue'
+import { Sunny, Moon } from '@element-plus/icons-vue'
 import CodeMirrorGroovy from '@/views/basic/components/script-editor/CodeMirrorGroovy.vue'
+import TestPanel from '@/views/basic/components/script-editor/TestPanel.vue'
+import { formatGroovyCode } from '@/utils/groovyFormat'
+import { testScript, type DataParseTestResult } from '@/api/dataParse'
 
 interface Props {
   visible: boolean
@@ -148,8 +160,24 @@ const formRef = ref()
 const deviceList = ref<DeviceItem[]>([])
 const deviceLoading = ref(false)
 
-// 测试弹窗
-const testDialogVisible = ref(false)
+// 内联测试
+const testRunning = ref(false)
+const parseResultText = ref('')
+const parseResultType = ref<'success' | 'error'>('success')
+
+// 脚本编辑器主题
+const editorTheme = ref<'light' | 'dark'>('dark')
+
+function handleFormatGroovy() {
+  if (!formData.scriptCode?.trim()) {
+    ElMessage.warning('无代码可格式化')
+    return
+  }
+  const formatted = formatGroovyCode(formData.scriptCode)
+  if (formatted === formData.scriptCode) return
+  formData.scriptCode = formatted
+  ElMessage.success('格式化完成')
+}
 
 // 表单数据
 const formData = reactive({
@@ -289,10 +317,32 @@ const handleAppScopeChange = () => {
   formData.deviceIds = []
 }
 
-// 测试脚本（打开共享测试弹窗）
-const handleTest = () => {
-  testDialogVisible.value = true
-  emit('test', { ...formData } as DataParseStrategy)
+// 内联测试脚本
+const handleInlineTest = async (payload: { topic: string; testData: string }) => {
+  if (!payload.testData) {
+    ElMessage.warning('请输入测试数据')
+    return
+  }
+  if (!formData.scriptCode) {
+    ElMessage.warning('无脚本代码，无法测试')
+    return
+  }
+  testRunning.value = true
+  parseResultText.value = ''
+  try {
+    const result: DataParseTestResult = await testScript({
+      scriptCode: formData.scriptCode,
+      topic: payload.topic,
+      testData: payload.testData
+    })
+    parseResultText.value = JSON.stringify(result, null, 2)
+    parseResultType.value = result.success ? 'success' : 'error'
+  } catch (e: any) {
+    parseResultText.value = JSON.stringify({ success: false, error: e.message }, null, 2)
+    parseResultType.value = 'error'
+  } finally {
+    testRunning.value = false
+  }
 }
 
 // 提交表单
@@ -361,6 +411,13 @@ const handleSubmit = () => {
   border-radius: 3px;
   font-family: 'Consolas', monospace;
   font-size: 12px;
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .code-editor-container {

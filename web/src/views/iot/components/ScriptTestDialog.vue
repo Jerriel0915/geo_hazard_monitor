@@ -15,21 +15,37 @@
         />
       </el-form-item>
       <el-form-item label="测试数据">
-        <el-input
-            v-model="testData"
-            type="textarea"
-            :rows="6"
-            :placeholder="dataPlaceholder"
-        />
+        <div class="json-input-area">
+          <div class="json-input-header">
+            <span class="header-hint">原始 payload（脚本以 byte[] 接收）</span>
+            <div class="header-actions">
+              <el-button size="small" text type="primary" @click="formatTestData()">格式化</el-button>
+              <el-button size="small" text @click="toggleTheme">
+                <el-icon><Sunny v-if="editorTheme === 'dark'" /><Moon v-else /></el-icon>
+              </el-button>
+            </div>
+          </div>
+          <div class="cm-wrapper">
+            <CodeMirrorJson
+              v-model="testData"
+              :theme="editorTheme"
+              :min-height="140"
+              @blur="formatTestData(true)"
+            />
+          </div>
+        </div>
       </el-form-item>
       <el-form-item label="测试结果">
-        <el-input
-            v-model="testResult"
-            type="textarea"
-            :rows="8"
-            readonly
-            placeholder="测试结果将显示在这里"
-        />
+        <div class="json-input-area">
+          <div class="cm-wrapper">
+            <CodeMirrorJson
+              v-model="testResult"
+              :theme="editorTheme"
+              :min-height="180"
+              readonly
+            />
+          </div>
+        </div>
       </el-form-item>
     </el-form>
     <template #footer>
@@ -43,6 +59,8 @@
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { testScript, type DataParseTestResult } from '@/api/dataParse'
+import { Sunny, Moon } from '@element-plus/icons-vue'
+import CodeMirrorJson from '@/views/basic/components/script-editor/CodeMirrorJson.vue'
 
 interface Props {
   visible: boolean
@@ -64,9 +82,24 @@ const testTopic = ref('')
 const testData = ref('')
 const testResult = ref('')
 const testRunning = ref(false)
+const editorTheme = ref<'light' | 'dark'>('dark')
 
-const dataPlaceholder = `原始 payload（脚本以 byte[] 接收）。例如:
-{"version":"1.0","sensorNo":"S001","timestamp":1700000000000,"data":{"value":25.5}}`
+function toggleTheme() {
+  editorTheme.value = editorTheme.value === 'dark' ? 'light' : 'dark'
+}
+
+function formatTestData(silent = false) {
+  if (!testData.value.trim()) return
+  try {
+    const parsed = JSON.parse(testData.value)
+    const formatted = JSON.stringify(parsed, null, 2)
+    if (formatted === testData.value) return
+    testData.value = formatted
+    if (!silent) ElMessage.success('格式化完成')
+  } catch (e: any) {
+    if (!silent) ElMessage.error(`格式化失败: JSON 格式不合法 — ${e.message}`)
+  }
+}
 
 // 弹窗打开时重置状态 + 填入默认主题
 watch(() => props.visible, (val) => {
@@ -113,3 +146,32 @@ const handleRunTest = async () => {
   }
 }
 </script>
+
+<style scoped>
+.json-input-area {
+  width: 100%;
+}
+
+.json-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.header-hint {
+  font-size: 11px;
+  color: #909399;
+}
+
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.cm-wrapper {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+</style>

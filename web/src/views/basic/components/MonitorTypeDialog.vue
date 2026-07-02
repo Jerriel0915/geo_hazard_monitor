@@ -623,7 +623,8 @@ const syncMonitorContents = async (monitorTypeId: number) => {
     }
   }
 
-  for (const item of currentRows) {
+  for (let i = 0; i < currentRows.length; i++) {
+    const item = currentRows[i]
     if (item.id) {
       const oldItem = existingMap.get(item.id)
       if (!oldItem) {
@@ -632,7 +633,7 @@ const syncMonitorContents = async (monitorTypeId: number) => {
 
       if (oldItem.code !== item.code || oldItem.indicatorType !== item.indicatorType) {
         await removeMonitorContent(item.id)
-        await createMonitorContent({
+        const created = await createMonitorContent({
           monitorTypeId,
           code: item.code,
           name: item.name,
@@ -645,6 +646,7 @@ const syncMonitorContents = async (monitorTypeId: number) => {
           calcScript: item.calcScript,
           sortOrder: item.sortOrder
         })
+        formData.modelAttrs[i].id = created.id
         continue
       }
 
@@ -670,7 +672,7 @@ const syncMonitorContents = async (monitorTypeId: number) => {
       continue
     }
 
-    await createMonitorContent({
+    const created = await createMonitorContent({
       monitorTypeId,
       code: item.code,
       name: item.name,
@@ -683,7 +685,12 @@ const syncMonitorContents = async (monitorTypeId: number) => {
       calcScript: item.calcScript,
       sortOrder: item.sortOrder
     })
+    // 回写服务端返回的 ID，防止再次保存时重复创建
+    formData.modelAttrs[i].id = created.id
   }
+
+  // 同步 originalContents，防止后续保存时重复创建
+  originalContents.value = formData.modelAttrs.map((item) => ({ ...item }))
 }
 
 const handleSubmit = async () => {
@@ -707,12 +714,15 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     let monitorTypeId = formData.id
+    const wasCreate = !monitorTypeId
 
-    if (isEdit.value && monitorTypeId) {
+    if (monitorTypeId) {
       await updateMonitorType(monitorTypeId, buildMonitorTypeUpdatePayload())
     } else {
       const createResult = await createMonitorType(buildMonitorTypeCreatePayload())
       monitorTypeId = Number(createResult?.id)
+      // 回写 ID 到 formData，确保脚本编辑器能拿到正确的 monitorTypeId
+      formData.id = monitorTypeId
     }
 
     if (!monitorTypeId) {
@@ -721,8 +731,11 @@ const handleSubmit = async () => {
 
     await syncMonitorContents(monitorTypeId)
 
-    ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
-    dialogVisible.value = false
+    ElMessage.success(wasCreate ? '新增成功' : '修改成功')
+    // 新建成功后保持对话框打开，让用户可以测试计算脚本
+    if (!wasCreate) {
+      dialogVisible.value = false
+    }
     emit('saved')
   } catch (error) {
     console.error('保存监测类型失败:', error)

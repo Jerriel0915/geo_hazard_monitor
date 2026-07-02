@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { EditorView, keymap } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
+import { EditorState, Compartment } from '@codemirror/state'
 import { basicSetup } from 'codemirror'
 import { StreamLanguage } from '@codemirror/language'
 import { groovy } from '@codemirror/legacy-modes/mode/groovy'
@@ -16,9 +16,11 @@ const props = withDefaults(defineProps<{
   modelValue: string
   readonly?: boolean
   minHeight?: number
+  theme?: 'light' | 'dark'
 }>(), {
   readonly: false,
-  minHeight: 280
+  minHeight: 280,
+  theme: 'dark'
 })
 
 const emit = defineEmits<{
@@ -27,16 +29,21 @@ const emit = defineEmits<{
 
 const hostRef = ref<HTMLDivElement>()
 let view: EditorView | null = null
+const themeCompartment = new Compartment()
 
 // 防止内部变更触发 update 后又被外部 watch 回灌造成死循环
 let internal = false
+
+function themeExtension(theme: 'light' | 'dark') {
+  return theme === 'dark' ? oneDark : []
+}
 
 onMounted(() => {
   if (!hostRef.value) return
   const extensions: any[] = [
     basicSetup,
     StreamLanguage.define(groovy),
-    oneDark,
+    themeCompartment.of(themeExtension(props.theme)),
     keymap.of([indentWithTab]),
     EditorView.lineWrapping
   ]
@@ -69,6 +76,14 @@ watch(() => props.modelValue, (newVal) => {
     changes: { from: 0, to: current.length, insert: newVal || '' }
   })
   queueMicrotask(() => { internal = false })
+})
+
+// 主题切换
+watch(() => props.theme, (newTheme) => {
+  if (!view) return
+  view.dispatch({
+    effects: themeCompartment.reconfigure(themeExtension(newTheme))
+  })
 })
 
 onBeforeUnmount(() => {
