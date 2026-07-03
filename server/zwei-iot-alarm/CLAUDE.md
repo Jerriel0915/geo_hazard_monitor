@@ -1,6 +1,6 @@
 [根目录](../../CLAUDE.md) > [server](../) > **zwei-iot-alarm**
 
-# zwei-iot-alarm — 告警中心 (判据/综合策略/引擎/分发)
+# zwei-iot-alarm — 告警中心 (判据/综合策略/引擎/分发/算法库/通知中心)
 
 > 面包屑: [根目录](../../CLAUDE.md) > [server](../) > **zwei-iot-alarm**
 
@@ -14,6 +14,12 @@
 - **告警记录** (`alarm_record`) — 告警生命周期 (待处理/处理中/已销警/误报)
 - **告警通知分发** — 多通道 (SYSTEM/SMS/EMAIL)，监听 `AlarmTriggeredEvent` 自动建通知
 - **告警 SSE 推送** — `AlarmStreamPublisher` 实时推送到前端
+- **算法库** (`algo_lib_info`, `algo_lib_version`) — 算法文件上传/下载/版本管理
+- **告警通知中心** (`alarm_notification`) — 通知记录 CRUD + 已读/未读状态追踪
+- **综合告警并行评估引擎 v2** (`ComprehensiveAlarmExecutionService` REALTIME / `ComprehensiveAlarmQuartzJob` + `StrategyQuartzScheduler` CRON)
+- **Python 算法执行器** (`PythonAlgoExecutor`) — 非 Groovy 算法的独立执行路径
+- **脚本日志** (`ScriptLogger`) 与策略执行日志 (`StrategyExecutionLog`)
+- **策略作用域解析器** (`StrategyScopeResolver`) — 解析策略生效的隐患点范围
 
 ## 关键依赖
 
@@ -30,14 +36,17 @@
 
 | 子包               | 职责                                                                                                                                                     |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `controller`     | `AlarmCriteriaController` / `AlarmStrategyController` / `AlarmRecordController` / `AlarmDispatchController` / `AlarmStreamController` (SSE)            |
+| `controller`     | `AlarmCriteriaController` / `AlarmStrategyController` / `AlarmRecordController` / `AlarmDispatchController` / `AlarmNotificationController` / `AlarmStreamController` (SSE)            |
+| `algolib.controller` | `AlgoLibraryController` / `AlgoVersionController`                                                                                         |
+| `algolib.service`   | `IAlgoLibService` / `IAlgoLibVersionService`                                                                                               |
+| `algolib.mapper`    | `AlgoLibInfoMapper` / `AlgoLibVersionMapper`                                                                                               |
 | `service`        | `IAlarmCriteriaService` / `IAlarmStrategyService` / `IAlarmRecordService` / `IAlarmDispatchService` / `IAlarmNotificationService`                      |
 | `service.impl`   | 上述接口实现 (5 个)                                                                                                                                           |
-| `service.engine` | `AlarmEvaluationEngine` / `CriteriaEvaluator` / `CriteriaCacheService` / `AlarmDedupService` / `GroovyScriptExecutor`                                  |
-| `service.notify` | `AlarmNotifier` (分发) / `AlarmStreamPublisher` (SSE)                                                                                                    |
+| `service.engine` | `AlarmEvaluationEngine` / `CriteriaEvaluator` / `CriteriaCacheService` / `AlarmDedupService` / `GroovyScriptExecutor` / `ComprehensiveAlarmExecutionService` / `ComprehensiveAlarmEventListener` / `StrategyScopeResolver` / `PythonAlgoExecutor` / `ScriptAlgoOps` / `ScriptLogger` / `StrategyQuartzScheduler` |
+| `service.notify` | `AlarmNotifier` (分发) / `AlarmStreamPublisher` (SSE + `@Scheduled` heartbeat)                                                                             |
 | `domain`         | `AlarmCriteria` / `AlarmStrategy` / `AlarmRecord` / `AlarmDispatchRule` / `AlarmNotification` / `LevelConfig` / `LevelCondition` / `CriteriaCondition` |
 | `domain.dto`     | `CriteriaCreateRequest` / `StrategyCreateRequest` / `DispatchRuleCreateRequest` / `AlarmRecordDisposeRequest` / `BatchDisposeRequest`                  |
-| `job`            | `ComprehensiveAlarmJob` (周期综合策略调度)                                                                                                                     |
+| `job`            | `ComprehensiveAlarmQuartzJob` + `StrategyQuartzScheduler` (CRON 综合策略调度)                                                                                |
 | `config`         | `AlarmProperties` (Groovy 超时/预触发 TTL)                                                                                                                  |
 | `mapper`         | MyBatis 5 个 Mapper + XML                                                                                                                               |
 
@@ -50,6 +59,8 @@
 | `/api/v1/iot/alarm/record/*`       | 告警记录分页/详情/处置/批量销警      |
 | `/api/v1/iot/alarm/dispatch/*`     | 告警分发规则 CRUD            |
 | `/api/v1/iot/alarm/notification/*` | 通知记录查询/重发              |
+| `/api/v1/alarm/notifications/*`    | 通知中心 (分页/已读/未读)        |
+| `/api/v1/algo-lib/*`               | 算法库 CRUD + 上传/下载       |
 | `/api/v1/iot/alarm/stream`         | SSE 实时推送               |
 
 ## 关键流程
@@ -260,7 +271,8 @@ A: 检查链路：分发规则是否启用、收件人是否包含当前用户�
 - `src/main/java/com/zwei/iot/alarm/service/impl/AlarmNotificationServiceImpl.java` (P0)
 - `src/main/java/com/zwei/iot/alarm/service/notify/AlarmNotifier.java` (P0)
 - `src/main/java/com/zwei/iot/alarm/service/notify/AlarmStreamPublisher.java` (P0)
-- `src/main/java/com/zwei/iot/alarm/job/ComprehensiveAlarmJob.java` (P2, CRON 调度)
+- `src/main/java/com/zwei/iot/alarm/job/ComprehensiveAlarmQuartzJob.java` (CRON 综合策略调度)
+- `src/main/java/com/zwei/iot/alarm/service/engine/StrategyQuartzScheduler.java` (CRON 策略调度器)
 
 ## 变更记录 (Changelog)
 
@@ -270,3 +282,4 @@ A: 检查链路：分发规则是否启用、收件人是否包含当前用户�
 | 2026-06-10 19:08 | 增量补扫: 修正路径 `engine/` → `service/engine/`、`strategy/` → `service/engine/`、`notify/` → `service/notify/`; 新增核心实现类索引、Redis Key 模式、Groovy 沙箱、Engine/Service 完整清单 |
 | 2026-06-18 01:45 | 通知中心 v1 上线: AlarmNotificationController (用户视角 4 接口) + publishToUser SSE 按 userId 路由 + 23 case 测试矩阵 + sys_config 11 参数配置；详见 `docs/通知中心使用手册.md` |
 | 2026-06-25 10:00 | SSE 订阅泄漏修复: AlarmStreamPublisher 新增 25s 心跳 + 统一 removeEmitter 回调 (消除 userEmitters 双重注册) |
+| 2026-07 | 算法库 + 通知中心 v2 + 综合告警并行评估引擎 v2 (ComprehensiveAlarmExecutionService/EventListener REALTIME + ComprehensiveAlarmQuartzJob/StrategyQuartzScheduler CRON) + PythonAlgoExecutor + StrategyScopeResolver |

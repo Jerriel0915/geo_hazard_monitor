@@ -32,6 +32,7 @@
 | `support`    | `MonitorTopic` / `MonitorTopicParser` / `IotdbPathResolver`                                                                                                                                                                           |
 | `config`     | `IotdbProperties` / `MonitorIngestProperties`                                                                                                                                                                                         |
 | `domain`     | `StandardMeasurementPoint` (record) / `IotdbQueryRow` / `MonitorDataVO` / `ChartDataVO` / `ValueType`                                                                                                                                 |
+| `compute`    | `ComputedAttributeTestController` / `MonitorDataAggregationService` / `MonitorDataAnalysisService`                                                                                                                          |
 
 ## 数据流
 
@@ -60,6 +61,7 @@ Field sensors → MQTT (mica-mqtt) → MqttServerMessageListener
 | `/api/v1/iot/monitor-data/page`   | GET | 历史分页          |
 | `/api/v1/iot/monitor-data/chart`  | GET | 图表数据 (时间窗口聚合) |
 | `/api/v1/iot/monitor-data/export` | GET | 导出 Excel      |
+| `/api/v1/computed-attributes/*` | GET | 计算属性测试/聚合/分析  |
 
 ## 协议解析
 
@@ -218,3 +220,4 @@ A: `IotdbTimeSeriesService` 写入成功后由 `MonitorIngestConsumerService` �
 | 2026-06-10 19:08 | 增量补扫: 修正路径 `ingest/` → `service/`，`query/` → 实际为 `MonitorDataQueryService`；新增核心实现类索引、Redis Key 模式、四阶段处理流程、三段退避重试说明 |
 | 2026-06-14 | 新增查询能力增强: ExpressionSpec DSL + 数值范围 + 完整度/趋势 — 详见 specs/2026-06-14-timeseries-query-enhancement-design |
 | 2026-06-25 | PEL 泄漏修复: parseObject 移入 try 块 (解析失败→死信+ACK) + 启动时 XAUTOCLAIM 兜底回收超时 PEL (含 XPENDING+XCLAIM 降级) + MonitorIngestProperties 新增 pelRecoverIdleMs 配置 |
+| 2026-07 | 新增 `compute/` 子包: ComputedAttributeTestController + MonitorDataAggregationService + MonitorDataAnalysisService; 新增 `/api/v1/computed-attributes/*` 端点 |

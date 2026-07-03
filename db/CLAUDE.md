@@ -11,10 +11,10 @@
 | 文件                            | 用途                                               |
 |-------------------------------|--------------------------------------------------|
 | `geo_hazard_monitor_v2.0.sql` | **全量初始化脚本** (mysqldump 输出, 3099 行, 59 张表 + 完整数据) |
-| `api_20260525.md`             | 数据库相关 API 备忘                                     |
+| `api.md`                      | 后端接口设计文档 (v2.0, 2026-07-03)                     |
 | `CLAUDE.md`                   | 本文档                                              |
 
-> **升级脚本目录**: `db/upgrade/`，按版本号递增执行（如 `v2.1-parser-module.sql`、`v2.9-sensor-code-device-unique.sql`）。
+> **升级脚本目录**: `db/upgrade/`，含 23+ 个增量升级脚本（v2.11 ~ v2026.07.03），按版本号递增执行。
 
 ## 数据库基本信息
 
@@ -34,13 +34,17 @@
 
 | 域                | 表数  | 典型表                                                                                                                                                | 说明                              |
 |------------------|-----|----------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| **alarm** 告警     | 8   | `alarm_criteria` / `alarm_record` / `alarm_strategy`                                                                                               | 告警判据/记录/策略/分发/通知                |
+| **alarm** 告警     | 10  | `alarm_criteria` / `alarm_record` / `alarm_strategy` / `alarm_strategy_execution_log` / `alarm_record_trigger_detail` | 告警判据/记录/策略/分发/通知 + 执行日志 + 触发明细 |
 | **device** 设备    | 7   | `device` / `device_sensor` / `device_hazard_point`                                                                                                 | 设备主表/传感器/属性/绑定/在线状态             |
 | **hazard** 隐患点   | 2   | `hazard_point` / `hazard_point_group`                                                                                                              | 隐患点 + 分组                        |
 | **monitor** 监测字典 | 2   | `monitor_type` / `monitor_content`                                                                                                                 | 类型/内容 (2 级字典)                   |
-| **log** 日志       | 4   | `log_auth_record` / `log_operation_record` / `log_runtime_record` / `log_stream_checkpoint`                                                        | 认证/操作/运行/流断点                    |
+| **log** 日志       | 5   | `log_auth_record` / `log_operation_record` / `log_runtime_record` / `log_stream_checkpoint` / `mqtt_exception_log` | 认证/操作/运行/流断点 + MQTT 异常报文日志 |
 | **report** 报告    | 2   | `report_template` / `report_record`                                                                                                                | 报告模板 + 生成记录                     |
 | **video** 视频     | 2   | `video_device` / `video_device_hazard_point`                                                                                                       | 视频设备 + 隐患点绑定                    |
+| **terra** Terra AI | 7   | `terra_personality` / `terra_model_config` / `terra_skill` / `terra_tool` / `terra_skill_tool` / `terra_conversation` / `terra_message` | AI 人格/模型配置/技能/工具/会话/消息 |
+| **parser** 解析    | 2   | `data_parse_strategy` / `data_parse_log`                                                                                                           | 数据解析策略 + 执行日志                  |
+| **datashare** 共享 | 3   | `share_strategy` / `share_strategy_log` / `share_strategy_script`                                                                                 | 数据共享策略 + 日志 + 脚本               |
+| **algo** 算法库    | 2   | `algo_lib_info` / `algo_lib_version`                                                                                                               | 算法信息 + 版本管理                    |
 | **sys_** 系统 RBAC | 13  | `sys_user` / `sys_role` / `sys_menu` / `sys_dept` / `sys_dict_*` / `sys_notice_*` / `sys_notify_*` / `sys_organization` / `sys_config` / `sys_job` | 用户/角色/权限/部门/字典/通知/任务等           |
 | **sensor** 传感器属性 | 1   | `sensor_attribute`                                                                                                                                 | 设备传感器的属性字典 (与 device_sensor 关联) |
 | **业务辅助**         | 17+ | 跨域 Mapper 表                                                                                                                                        | 已在 alarm/device/hazard 域中列出     |
@@ -136,7 +140,7 @@
 | `sys_user_post`       | 用户与岗位关联表  | 2   | (PK)                                                | 多对多                             |
 | `sys_user_role`       | 用户和角色关联表  | 2   | (PK)                                                | 多对多                             |
 
-> **统计**: 严格意义上 sys_* 域 19 张表（含 job_log 等）；上述计数与全表 59 张表存在交叉，重在按业务语义分组。
+> **统计**: 全库约 68 张表（含新增 terra_* 7 张 + mqtt_exception_log + alarm_strategy_execution_log + alarm_record_trigger_detail + parser/datashare/algo 等）。按业务语义分为 13 大域。
 
 ## 核心实体 E-R 关系图
 
@@ -273,14 +277,32 @@ erDiagram
 
 ## 升级脚本说明
 
-**当前状态**: `db/upgrade/` 目录不存在。
+**当前状态**: `db/upgrade/` 目录含 23+ 个增量升级脚本，按时间顺序执行。
 
-如需新增升级脚本，建议:
+### 升级脚本清单
 
-1. 创建 `db/upgrade/v2.1.0.sql` / `v2.2.0.sql` (按版本号倒序执行)
-2. 脚本内容只包含 `ALTER TABLE` / `CREATE TABLE` / `INSERT` (字典/菜单新增项)
-3. 不修改历史脚本 — 已有部署实例无法重放
-4. 在 `db/CLAUDE.md` 维护变更日志
+| 脚本 | 日期 | 说明 |
+|------|------|------|
+| `v2.9-sensor-code-device-unique.sql` | 2026-06-23 | sensor_code 全局唯一 → 设备内唯一 |
+| `v2.10-monitor-content-code-type-unique.sql` | 2026-06-23 | monitor_content.code 全局唯一 → 类型内唯一 |
+| `v2.11-monitor-stats-counter.sql` | 2026-06 | 监测统计计数器表 |
+| `v2.12-dynamic-menu.sql` | 2026-06 | 动态菜单支持 |
+| `v2.13-sensor-burial-depth.sql` | 2026-06 | 传感器埋深字段 |
+| `v2.15-parser-audit-field-fix.sql` | 2026-06 | Parser 审计字段修复 |
+| `v2.16-trigger-detail-time-index.sql` | 2026-07 | alarm_record_trigger_detail 时间索引 |
+| `v2.16-parser-strategy-url-topic.sql` | 2026-07 | 解析策略 url/topic 字段 |
+| `v2.17-exception-message-log.sql` | 2026-07 | **新增 mqtt_exception_log 表** |
+| `terra_v1.0.sql` | 2026-06 | **新增 7 张 Terra AI 表 + 菜单权限** |
+| `2026-06-14-remove-monitor-category.sql` | 2026-06-14 | 移除监测分类 |
+| `v2026.06.17.001_dispatch_rule_v2.sql` | 2026-06-17 | 分发规则 v2 |
+| `v2026.06.17.002_dispatch_menu.sql` | 2026-06-17 | 分发规则菜单权限 |
+| `v2026.06.17.003_notif_dedup_key.sql` | 2026-06-17 | 通知去重键 |
+| `v2026.06.17.004_notification_menu.sql` | 2026-06-17 | 通知中心菜单权限 |
+| `v2026.06.22.001_clear_criteria_level_config.sql` | 2026-06-22 | 清理判据等级配置 |
+| `v2026.06.24.001_alarm_type_split.sql` | 2026-06-24 | ALARM → THRESHOLD/COMPREHENSIVE 拆分 |
+| `v2026.06.28.001_alarm_strategy_iteration.sql` | 2026-06-28 | **新增 alarm_strategy_execution_log 表** + 范围字段 |
+| `v2026.06.30.001_remove_default_alarm_level.sql` | 2026-06-30 | 删除 alarm_strategy.default_alarm_level |
+| `v2026.07.03.001_alarm_record_query_indexes.sql` | 2026-07-03 | alarm_record 查询复合索引 |
 
 ## 验证查询
 
@@ -305,13 +327,14 @@ LIMIT 10;
 - `geo_hazard_monitor_v2.0.sql` (3099 行, mysqldump 输出)
 - `upgrade/v2.9-sensor-code-device-unique.sql` (传感器编号约束：全局唯一 → 设备内唯一)
 - `upgrade/v2.10-monitor-content-code-type-unique.sql` (监测内容编码约束：全局唯一 → 监测类型内唯一)
-- `api_20260525.md` (数据库相关 API 备忘)
+- `api.md` (后端接口设计文档 v2.0)
 - `CLAUDE.md` (本文档)
 
 ## 变更记录 (Changelog)
 
 | 时间               | 变更                                                                 |
 |------------------|--------------------------------------------------------------------|
-| 2026-06-10 19:08 | 首次创建 db/CLAUDE.md (架构师增量扫描) — 提取 59 张表清单、按业务域分组、核心 E-R 关系图、初始化数据摘要 |
-| 2026-06-23 | **v2.9 升级**: `device_sensor.sensor_code` 唯一约束从全局唯一 `uk_device_sensor_code` 改为设备内唯一 `uk_device_sensor (device_id, sensor_code)`；下游 IoTDB 路径与告警引擎已使用 (deviceId, sensorCode) 复合键，无影响 |
-| 2026-06-23 | **v2.10 升级**: `monitor_content.code` 唯一约束从全局唯一 `uk_monitor_content_code` 改为类型内唯一 `uk_monitor_content_code (monitor_type_id, code)`；下游告警用 PK 匹配、同步按 typeId 过滤，无影响 |
+| 2026-06-10 19:08 | 首次创建 db/CLAUDE.md — 提取 59 张表清单、按业务域分组、E-R 关系图 |
+| 2026-06-23 | **v2.9**: sensor_code 全局唯一 → 设备内唯一 |
+| 2026-06-23 | **v2.10**: monitor_content.code 全局唯一 → 类型内唯一 |
+| 2026-07-03 | **全面更新**: 新增 terra (7 表) / parser / datashare / algo / mqtt_exception_log / alarm_strategy_execution_log 等域；升级脚本清单 23+；表总数 59→68；API 文档重命名为 api.md |

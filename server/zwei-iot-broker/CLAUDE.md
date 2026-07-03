@@ -17,7 +17,7 @@
   `DeviceOfflineEvent`
 - **消息监听** (`MqttServerMessageListener`) — 接收上行消息 → 调 `MonitorIngestFacade.ingest()`
 - **异常体系** — `MqttBusinessException` / `MqttConnectionException` / `MqttCommunicationException` /
-  `MqttProtocolException`
+  `MqttProtocolException` / `MessageRejectException`; 鉴权通过但后续阶段失败的报文发布 `MqttMessageRejectEvent`
 
 ## 关键依赖
 

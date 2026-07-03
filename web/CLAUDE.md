@@ -8,14 +8,16 @@
 
 Vue 3 单页应用, 为地质灾害监测平台提供:
 
-- 控制台首页 (含地图/隐患详情/告警/设备状态/健康/资源部件)
+- 控制台首页 (含地图/隐患详情/告警/设备状态/健康/资源部件 + Terra AI 悬浮球)
 - 视图看板 (综合/告警/运营/自定义)
 - 基础数据管理 (隐患点/监测类型/设备/视频设备)
-- 告警 (实时/判据/通知/综合/处置/H5 处置)
-- 报表/查询/分析/大屏
-- IoT (数据解析 + 服务状态)
+- 告警 (实时/判据/通知/综合/处置/H5 处置/分发规则/通知设置)
+- 报表/查询/分析/大屏/共享策略
+- IoT (数据解析 + 服务状态 + 异常报文)
+- Terra AI 设置 (人格/模型/技能/工具管理)
 - 小程序侧视图
 - 系统管理 (组织/身份/权限/日志/设置/通知公告)
+- 大屏展示 (报表大屏 + 灾害大屏 with Three.js 3D 地图)
 - 个人资料
 
 ## 技术栈
@@ -24,12 +26,19 @@ Vue 3 单页应用, 为地质灾害监测平台提供:
 - Vite 5
 - Vue Router 4
 - Element Plus 2.6
-- ECharts 6 / ApexCharts
+- ECharts 6 + echarts-gl 2.1 / ApexCharts
 - Leaflet 1.9 + leaflet-draw
 - Hls.js (HLS 播放) / mpegts.js (FLV 播放)
 - Blockly (告警策略脚本编辑器)
+- CodeMirror 6 (Groovy/JSON 脚本编辑器)
+- Three.js 0.184 (3D 灾害大屏)
 - html2canvas + jspdf (截图/导出 PDF)
+- marked (Markdown 渲染)
+- DOMPurify (XSS 防御)
+- qrcode (二维码)
 - Axios 1.16
+- Vitest 4.1 (单元测试)
+- @tweenjs/tween.js (动画补间)
 
 ## 目录结构
 
@@ -44,7 +53,7 @@ web/
 └── src/
     ├── main.ts
     ├── App.vue
-    ├── api/              # 各业务域 API 封装
+    ├── api/              # 17 个业务域 API 模块
     ├── views/            # 页面组件
     │   ├── Login.vue
     │   ├── dashboard/
@@ -53,57 +62,82 @@ web/
     │   ├── alarm/
     │   ├── report/
     │   ├── iot/
+    │   ├── terra/        # Terra AI 设置 (人格/模型/技能/工具)
+    │   ├── bigscreen/    # 大屏 (报表 + 灾害 3D)
     │   ├── miniprogram/
     │   ├── system/
     │   └── user/
+    ├── composables/      # 5 个共享 composables
+    │   ├── useLeafletMap.ts
+    │   ├── useMapEditor.ts
+    │   ├── useMonitorData.ts
+    │   ├── usePagination.ts
+    │   └── useTableSort.ts
+    ├── lib/              # 3 个地理空间工具库 (均有测试)
+    │   ├── boundaryCoords.ts
+    │   ├── coordParser.ts
+    │   └── mapGeometry.ts
+    ├── constants/        # monitorIcons.ts
+    ├── components/
+    │   ├── terra/        # Terra AI 聊天面板 + 悬浮球 + SSE + 工具执行
+    │   ├── map/          # 地图编辑器 (边界/坐标/定位)
+    │   ├── MonitorDataExplorer.vue
+    │   └── EChartsWrapper.vue
     ├── layout/
-    │   └── index.vue     # 主布局 (侧边栏/顶部/通知铃铛)
+    │   └── index.vue     # 主布局 (侧边栏/顶部/通知铃铛 + 双 SSE)
     ├── router/
     │   └── index.ts      # 路由 + 登录守卫
-    ├── utils/
-    │   ├── request.ts    # Axios 封装
-    │   ├── auth.ts       # 401 处理
-    │   ├── errorHandler.ts
-    │   ├── permission.ts
-    │   ├── deviceIcon.ts
-    │   └── userApi.ts
-    └── components/       # 公共组件 (需进一步扫描)
+    └── utils/
+        ├── request.ts    # Axios 封装
+        ├── auth.ts       # 401 处理
+        ├── errorHandler.ts
+        ├── permission.ts
+        ├── deviceIcon.ts
+        ├── groovyFormat.ts
+        └── echarts.ts
 ```
 
 ## 业务模块 → 页面映射
 
-| 业务域    | 前端路径                                                                                   | 入口页面                               |
-|--------|----------------------------------------------------------------------------------------|------------------------------------|
-| 控制台    | `/dashboard`                                                                           | `views/dashboard/Dashboard.vue`    |
-| 视图看板   | `/holo-board/{comprehensive\|alarm\|operation\|custom}`                                | `views/holo-board/*.vue`           |
-| 基础数据   | `/basic/{hazard-point\|monitor-type\|device\|video-device}`                            | `views/basic/*.vue`                |
-| 告警     | `/alarm/{realtime\|criteria\|notification\|disposal\|composite\|notification-setting}` | `views/alarm/*.vue`                |
-| H5 处置  | `/h5/disposal/:id?`                                                                    | `views/alarm/H5Disposal.vue` (免登录) |
-| 报表     | `/report/{report\|query\|analysis\|screen}`                                            | `views/report/*.vue`               |
-| IoT 内部 | `/iot/{data-parse\|service-status}`                                                    | `views/iot/*.vue`                  |
-| 小程序    | `/miniprogram/{hazard-point\|device\|monitor-data\|event}`                             | `views/miniprogram/*.vue`          |
-| 系统     | `/system/{organization\|identity\|permission\|log\|settings\|notice}`                  | `views/system/*.vue`               |
-| 个人     | `/user/profile`                                                                        | `views/user/UserProfile.vue`       |
-| 登录     | `/login`                                                                               | `views/Login.vue`                  |
+| 业务域      | 前端路径                                                                                         | 入口页面                               |
+|----------|----------------------------------------------------------------------------------------------|------------------------------------|
+| 控制台      | `/dashboard`                                                                                 | `views/dashboard/Dashboard.vue`    |
+| 视图看板     | `/holo-board/{comprehensive\|alarm\|operation\|custom}`                                      | `views/holo-board/*.vue`           |
+| 基础数据     | `/basic/{hazard-point\|monitor-type\|device\|video-device}`                                  | `views/basic/*.vue`                |
+| 告警       | `/alarm/{realtime\|criteria\|notification\|disposal\|composite\|notification-setting}`       | `views/alarm/*.vue`                |
+| H5 处置    | `/h5/disposal/:id?`                                                                          | `views/alarm/H5Disposal.vue` (免登录) |
+| 报表       | `/report/{report\|query\|analysis\|screen\|share-strategy}`                                  | `views/report/*.vue`               |
+| IoT 内部   | `/iot/{data-parse\|service-status}`                                                          | `views/iot/*.vue`                  |
+| Terra AI | `/terra/settings` (子路由: personality/models/skills/tools)                                   | `views/terra/SettingsLayout.vue`   |
+| 大屏       | `/bigscreen/disaster`                                                                        | `views/bigscreen/DisasterScreen.vue` |
+| 小程序      | `/miniprogram/{hazard-point\|device\|monitor-data}`                                          | `views/miniprogram/*.vue`          |
+| 系统       | `/system/{organization\|identity\|permission\|log\|settings\|notice}`                        | `views/system/*.vue`               |
+| 个人       | `/user/profile`                                                                              | `views/user/UserProfile.vue`       |
+| 登录       | `/login`                                                                                     | `views/Login.vue`                  |
 
-## API 模块 (`src/api/`)
+## API 模块 (`src/api/`) — 17 个模块
 
-| 文件                  | 业务域  |
-|---------------------|------|
-| `device.ts`         | 设备   |
-| `sensor.ts`         | 传感器  |
-| `hazardPoint.ts`    | 隐患点  |
-| `video.ts`          | 视频设备 |
-| `monitor.ts`        | 系统监控 |
-| `monitorData.ts`    | 监测数据 |
-| `monitorType.ts`    | 监测类型 |
-| `alarm.ts`          | 告警   |
-| `realtimeAlarm.ts`  | 实时告警 |
-| `compositeAlarm.ts` | 综合告警 |
-| `alarmNotification.ts` | 告警通知中心 (事件 Tab) |
-| `report.ts`         | 报表   |
-| `notice.ts`         | 通知公告 |
-| `system.ts`         | 系统管理 |
+| 文件                    | 业务域     | 说明                       |
+|-----------------------|---------|--------------------------|
+| `device.ts`           | 设备      | 设备 CRUD + 状态管理           |
+| `sensor.ts`           | 传感器     | 传感器 CRUD                 |
+| `hazardPoint.ts`      | 隐患点     | 隐患点 + 分组管理               |
+| `video.ts`            | 视频设备    | 视频设备 CRUD                |
+| `monitor.ts`          | 系统监控    | 服务器/Redis/MQTT 监控       |
+| `monitorData.ts`      | 监测数据    | 最新/分页/图表 + 传感器维度 (latest/range/aggregate/completeness/trend) |
+| `monitorType.ts`      | 监测类型    | 监测类型 + 监测内容字典            |
+| `alarm.ts`            | 告警      | 判据/策略/记录/处置 (合并了 realtimeAlarm + compositeAlarm) |
+| `alarmDispatch.ts`    | 告警分发规则  | 分发规则 CRUD + 收件人选项        |
+| `alarmNotification.ts` | 告警通知中心  | 事件 Tab: 已读/未读/分页          |
+| `algoLibrary.ts`      | 算法库     | 算法信息 + 版本管理 (文件上传/下载)    |
+| `dataParse.ts`        | 数据解析    | 解析策略 CRUD + 在线测试 + 执行日志   |
+| `shareStrategy.ts`    | 共享策略    | 数据共享策略 CRUD + 脚本管理       |
+| `terra.ts`            | Terra AI | 人格/模型/技能/工具/会话管理         |
+| `report.ts`           | 报表      | 报表模板 + 生成记录              |
+| `notice.ts`           | 通知公告    | 系统公告 + 已读追踪              |
+| `system.ts`           | 系统管理    | 用户/角色/菜单/组织/字典/日志        |
+
+> **注意**: `realtimeAlarm.ts` 和 `compositeAlarm.ts` 已合并入 `alarm.ts`，不再作为独立文件存在。
 
 ## 关键工具
 
@@ -112,6 +146,34 @@ web/
 - `permission.ts` — `hasPerm(perm)`, `hasAnyPerm(perms)` 前端权限指令
 - `errorHandler.ts` — 全局错误捕获 (Vue errorHandler, unhandledrejection)
 - `deviceIcon.ts` — 设备图标 (按 type 映射)
+- `groovyFormat.ts` — Groovy 脚本代码格式化
+- `echarts.ts` — ECharts 按需导入工具
+
+## 共享 Composables (`src/composables/`)
+
+| 文件                  | 用途                                              |
+|----------------------|--------------------------------------------------|
+| `useLeafletMap.ts`   | Leaflet 地图生命周期 (天地图瓦片, init/destroy/invalidate)   |
+| `useMapEditor.ts`    | 地图编辑器 (多边形绘制/编辑, 走向线, 顶点拖拽, 键盘快捷键)            |
+| `useMonitorData.ts`  | 监测数据加载 (设备/传感器级联, 图表/表格模式, 降采样, 传感器 API)     |
+| `usePagination.ts`   | 通用分页 + 搜索 + 选择 (消除 16+ 页面重复代码)                 |
+| `useTableSort.ts`    | 通用表格字段排序 (asc/desc/none 循环)                     |
+
+## 共享工具库 (`src/lib/`) — 均含测试
+
+| 文件                  | 用途                                              |
+|----------------------|--------------------------------------------------|
+| `boundaryCoords.ts`  | LatLng/BoundaryCoords 类型, 序列化, 质心, 走向角计算     |
+| `coordParser.ts`     | 单行/多行坐标解析 (decimal + DMS), 智能经纬度顺序检测        |
+| `mapGeometry.ts`     | Haversine 距离, 中点, 边中点, 命中检测, 自相交检测           |
+
+## SSE 实时推送 — 3 种实现
+
+| 位置                      | 方式                        | 端点                                | 说明                       |
+|--------------------------|---------------------------|------------------------------------|--------------------------|
+| `layout/index.vue`       | 原生 `EventSource` (GET)    | `/api/v1/alarm/stream` + `/api/v1/system/notice/stream` | 双 SSE 流, 指数退避重连 (最多 10 次) |
+| `components/terra/terra-sse.ts` | 自定义 `fetch()` + `ReadableStream` (POST) | `/api/v1/terra/chat`              | Terra AI 聊天流, 手动 SSE 行解析 |
+| `views/system/composables/useLogStream.ts` | 自定义 `fetch()` + `ReadableStream` (GET) | `/api/v1/logs/stream` + `/api/v1/logs/console-stream` | 日志实时尾巴, 类型过滤          |
 
 ## 路由守卫
 
@@ -149,10 +211,16 @@ npm run preview   # 预览生产构建
 
 ## 测试与质量
 
-- **E2E**: 暂未集成, 建议引入 Playwright (见 `web/.playwright-mcp/` 已存在的痕迹)
-- **单元**: 暂未集成
+- **单元测试**: Vitest 4.1 + @vitest/coverage-v8, 13 个测试文件分布在 `__tests__/` 目录
+  - `composables/__tests__/` — useLeafletMap, useMapEditor, usePagination, useTableSort
+  - `lib/__tests__/` — boundaryCoords, coordParser, mapGeometry
+  - `utils/__tests__/` — errorHandler, indicatorType, logTags
+  - `components/map/__tests__/` — MapBoundaryEditor
+  - `views/basic/components/__tests__/` — CalcScriptEditor
+  - `views/basic/components/script-editor/__tests__/` — 4 个测试文件
+- **E2E**: Playwright MCP 支持 (`web/.playwright-mcp/`)
 - **类型检查**: `vue-tsc` 在 `npm run build` 时执行
-- **Lint**: 项目无 ESLint 配置, 建议补全
+- **Lint**: Husky + commitlint (`commitlint.config.js`)
 
 ## 常见问题 (FAQ)
 
@@ -216,6 +284,20 @@ A: 检查: 1) `EventSource` URL; 2) 后端是否启用 SSE (`@RestController` + 
 | 时间               | 变更                          |
 |------------------|-----------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描) |
-| 2026-06-18 01:45 | 通知中心 v1: alarmNotification API + layout 双 Tab + Settings 通知配置分类 + 路由 query 兼容 |
-| 2026-06-24 18:00 | 通知中心 v2: 双 Tab 分页 UI（事件 ‹n/m› 公告 ‹n/m›）+ NoticeDetail.vue 独立详情页 + 系统管理菜单暴露 SysNotice + 告警跳转失败提示 |
-| 2026-06-25 10:00 | SSE 订阅泄漏修复: layout/index.vue SSE 重连定时器生命周期管理 + stopped 标志防止卸载后孤立订阅 |
+| 2026-06-18 01:45 | 通知中心 v1: alarmNotification API + layout 双 Tab + Settings 通知配置分类 |
+| 2026-06-24 18:00 | 通知中心 v2: 双 Tab 分页 + NoticeDetail.vue + 告警跳转失败提示 |
+| 2026-06-25 10:00 | SSE 订阅泄漏修复: 重连定时器生命周期管理 |
+| 2026-07-01 | Terra AI 集成: TerraWidget 悬浮球 + TerraChatPanel + TerraMessage + terra-sse.ts + useTerraChat + TerraToolExecutor + 4 个设置页 |
+| 2026-07-01 | IoT 数据解析: DataParse 策略管理页 + 详情/表单/测试对话框 + ServiceStatus 页 |
+| 2026-07-01 | 告警分发规则: alarmDispatch API + 分发规则管理 |
+| 2026-07-01 | 算法库: algoLibrary API + 算法信息/版本管理 |
+| 2026-07-01 | 共享策略: shareStrategy API + ShareStrategy 页面 + 脚本抽屉 |
+| 2026-07-01 | 监测数据增强: useMonitorData composable + MonitorDataExplorer 组件 + 传感器维度 API |
+| 2026-07-01 | 数据分析: Analysis 页面 (相关性分析 + 数据网格模式) |
+| 2026-07-01 | 共享基础设施: 5 个 composables + 3 个 lib 工具 + 13 个测试文件 |
+| 2026-07-01 | 地图编辑器: 6 个 map 组件 + useMapEditor composable |
+| 2026-07-01 | 灾害大屏: DisasterScreen + ThreeMap (Three.js 3D 地图) |
+| 2026-07-01 | 代码编辑器: Groovy 格式化 + CodeMirror JSON 编辑器 + ScriptTestDialog |
+| 2026-07-01 | 依赖更新: CodeMirror 6, Three.js, marked, DOMPurify, qrcode, Vitest |
+| 2026-07-01 | 代码质量: Husky + commitlint 配置 |
+| 2026-07-03 | 全面文档更新: API 模块 13→17, 路由补充, SSE 三系统, composables/lib 文档化 |
