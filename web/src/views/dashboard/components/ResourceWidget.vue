@@ -96,24 +96,25 @@ const renderChart = () => {
       textStyle: { color: '#1d2129', fontSize: 12 }
     },
     legend: {
-      orient: 'vertical',
-      right: 0,
-      top: 'middle',
+      orient: 'horizontal',
+      bottom: 0,
+      left: 'center',
       icon: 'circle',
       itemWidth: 8,
       itemHeight: 8,
-      itemGap: 10,
+      itemGap: 14,
       textStyle: { fontSize: 11, color: '#4e5969', lineHeight: 16 },
       formatter: (name: string) => {
         const item = props.resourceStats.deviceTypes.find(t => t.name === name)
-        return item ? `${name}  ${item.count}` : name
+        const label = item ? `${name}  ${item.count}` : name
+        return label.length > 10 ? label.slice(0, 9) + '…' : label
       }
     },
     series: [{
       type: 'pie',
       roseType: 'area',
-      radius: ['10%', '75%'],
-      center: ['35%', '50%'],
+      radius: ['15%', '72%'],
+      center: ['50%', '45%'],
       itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
       label: { show: false },
       emphasis: {
@@ -359,6 +360,6 @@ const handleResize = () => {
 .rose-chart {
   width: 100%;
   flex: 1;
-  min-height: 0;
+  min-height: 170px;
 }
 </style>
