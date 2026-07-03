@@ -335,7 +335,7 @@ export const getPendingAlarms = (params: AlarmRecordPageParams) =>
 
 /** 历史告警列表 (status IN 3,4) */
 export const getHistoryAlarms = (params: AlarmRecordPageParams) =>
-    request.get<PageResult<AlarmRecordItem>>('/alarm/records/history', {params})
+    request.get<AjaxResult<PageResult<AlarmRecordItem>>>('/alarm/records/history', {params})
 
 /** 告警详情 */
 export const getAlarmRecordDetail = (id: number) =>
@@ -401,7 +401,7 @@ export interface AlarmTrendVO {
 }
 
 export const getAlarmTrend = (months?: number) =>
-    request.get<AlarmTrendVO>('/alarm/records/trend', { params: { months } })
+    request.get<AjaxResult<AlarmTrendVO>>('/alarm/records/trend', { params: { months } })
 
 /** 告警总览统计 */
 export interface AlarmOverviewVO {
@@ -424,7 +424,7 @@ export interface AlarmSourceStatVO {
 }
 
 export const getAlarmSourceStats = () =>
-    request.get<AlarmSourceStatVO[]>('/alarm/records/source-stats')
+    request.get<AjaxResult<AlarmSourceStatVO[]>>('/alarm/records/source-stats')
 
 /** 高风险隐患点 Top N */
 export interface HighRiskHazardPointVO {
@@ -433,17 +433,17 @@ export interface HighRiskHazardPointVO {
 }
 
 export const getHighRiskHazardPoints = (limit?: number) =>
-    request.get<HighRiskHazardPointVO[]>('/alarm/records/high-risk-hazard-points', { params: { limit } })
+    request.get<AjaxResult<HighRiskHazardPointVO[]>>('/alarm/records/high-risk-hazard-points', { params: { limit } })
 
 // ==================== 告警判据 API ====================
 
 /** 判据列表 */
 export const getCriteriaList = (params?: Record<string, unknown>) =>
-    request.get<PageResult<AlarmCriteriaItem>>('/alarm/criteria/list', {params})
+    request.get<AjaxResult<PageResult<AlarmCriteriaItem>>>('/alarm/criteria/list', {params})
 
 /** 判据详情 */
 export const getCriteriaDetail = (id: number) =>
-    request.get<AlarmCriteriaItem>(`/alarm/criteria/${id}`)
+    request.get<AjaxResult<AlarmCriteriaItem>>(`/alarm/criteria/${id}`)
 
 /** 新增判据 */
 export const createCriteria = (payload: AlarmCriteriaCreatePayload) =>
@@ -463,13 +463,13 @@ export const toggleCriteria = (id: number, isEnabled: number) =>
 
 /** 判据变更日志 */
 export const getCriteriaLogs = (id: number) =>
-    request.get<AlarmCriteriaLog[]>(`/alarm/criteria/${id}/logs`)
+    request.get<AjaxResult<AlarmCriteriaLog[]>>(`/alarm/criteria/${id}/logs`)
 
 // ==================== 综合告警策略 API ====================
 
 /** 策略列表 */
 export const getStrategyList = (params?: Record<string, unknown>) =>
-    request.get<PageResult<AlarmStrategyItem>>('/alarm/strategies/list', {params})
+    request.get<AjaxResult<PageResult<AlarmStrategyItem>>>('/alarm/strategies/list', {params})
 
 /** 策略详情 */
 export const getStrategyDetail = (id: number) =>
@@ -503,11 +503,11 @@ export const updateStrategyScope = (id: number, hazardPointIds: string[]) =>
 
 /** 分发规则列表 */
 export const getDispatchRuleList = (params?: Record<string, unknown>) =>
-    request.get<PageResult<AlarmDispatchRuleItem>>('/alarm/dispatch/list', {params})
+    request.get<AjaxResult<PageResult<AlarmDispatchRuleItem>>>('/alarm/dispatch/list', {params})
 
 /** 分发规则详情 */
 export const getDispatchRuleDetail = (id: number) =>
-    request.get<AlarmDispatchRuleItem>(`/alarm/dispatch/${id}`)
+    request.get<AjaxResult<AlarmDispatchRuleItem>>(`/alarm/dispatch/${id}`)
 
 /** 新增分发规则 */
 export const createDispatchRule = (payload: AlarmDispatchRuleCreatePayload) =>
@@ -581,6 +581,6 @@ export interface ExecutionLogItem {
 
 /** 查询策略执行日志 */
 export const getExecutionLogs = (strategyId: number, params?: { pageNum?: number; pageSize?: number }) =>
-  request.get<{ rows: ExecutionLogItem[]; total: number }>(
+  request.get<AjaxResult<{ rows: ExecutionLogItem[]; total: number }>>(
     `/alarm/strategies/${strategyId}/execution-logs`, { params }
   )

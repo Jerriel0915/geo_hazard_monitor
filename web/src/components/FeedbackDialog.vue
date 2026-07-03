@@ -291,6 +291,7 @@ import {
   WarnTriangleFilled
 } from '@element-plus/icons-vue'
 import echarts from '@/utils/echarts'
+import { getTriggerDetails, getAlarmNotifications, getActionLogs } from '@/api/alarm'
 
 const props = defineProps<{
   modelValue: boolean
@@ -344,15 +345,25 @@ const alarmLevelRange = computed(() => {
 
 const levelCls = computed(() => getAlarmLevelType(props.data?.alarmLevel))
 
-// 告警列表 mock
-const alarmList = ref<any[]>([
-  { alarmTime: '2024-06-01 08:30:00', alarmLevel: '1', alarmContent: '边坡位移速率超过阈值12mm/h，当前值为12.5mm/h' },
-  { alarmTime: '2024-06-01 12:45:00', alarmLevel: '1', alarmContent: '边坡位移速率超过阈值12mm/h，当前值为13.8mm/h' },
-  { alarmTime: '2024-06-02 09:00:00', alarmLevel: '2', alarmContent: '降雨量超过预警值，当前35mm/h' },
-  { alarmTime: '2024-06-02 18:20:00', alarmLevel: '1', alarmContent: '边坡位移加速，当前值14.2mm/h' },
-  { alarmTime: '2024-06-03 06:10:00', alarmLevel: '3', alarmContent: '轻微倾斜预警，角度3.5度' },
-  { alarmTime: '2024-06-03 14:25:00', alarmLevel: '1', alarmContent: '边坡位移速率超过阈值12mm/h，当前值为15.2mm/h' },
-])
+// 告警列表（触发明细）
+const rawAlarmList = ref<any[]>([])
+const alarmListLoading = ref(false)
+const fetchAlarmList = async () => {
+  if (!props.data?.id) { rawAlarmList.value = []; return }
+  alarmListLoading.value = true
+  try {
+    const res: any = await getTriggerDetails(props.data.id)
+    if (res?.code === 200 && res.data) rawAlarmList.value = res.data
+    else rawAlarmList.value = []
+  } catch { rawAlarmList.value = [] }
+  finally { alarmListLoading.value = false }
+}
+
+const alarmList = computed(() => rawAlarmList.value.map((a: any) => ({
+  alarmTime: a.triggerTime || a.alarmTime,
+  alarmLevel: String(a.alarmLevel ?? ''),
+  alarmContent: a.alarmMessage || a.alarmContent || ''
+})))
 
 const alarmFilter = reactive({ desc: '', timeRange: [] as string[] })
 const filteredAlarmList = computed(() => {
@@ -368,14 +379,24 @@ const filteredAlarmList = computed(() => {
   return list
 })
 
-// 通知记录 mock
-const notifyList = ref<any[]>([
-  { notifyTime: '2024-06-01 08:32:00', channelType: '短信', target: '138****1234', content: '边坡监测点A-01发生一级告警', success: true },
-  { notifyTime: '2024-06-01 08:32:00', channelType: '邮件', target: 'zhangsan@abc.com', content: '边坡监测点A-01发生一级告警', success: true },
-  { notifyTime: '2024-06-01 08:35:00', channelType: '电话', target: '138****1234', content: '边坡监测点A-01告警未响应，请及时处理', success: false },
-  { notifyTime: '2024-06-02 09:05:00', channelType: '短信', target: 'lisi@abc.com', content: '边坡监测点A-01告警升级', success: true },
-  { notifyTime: '2024-06-03 14:30:00', channelType: '邮件', target: 'admin@abc.com', content: '边坡监测点A-01持续告警，请关注', success: true },
-])
+// 通知记录
+const channelMap: Record<string, string> = { SYSTEM: '系统', SMS: '短信', EMAIL: '邮件', PHONE: '电话' }
+const rawNotifyList = ref<any[]>([])
+const fetchNotifyList = async () => {
+  if (!props.data?.id) { rawNotifyList.value = []; return }
+  try {
+    const res: any = await getAlarmNotifications(props.data.id)
+    if (res?.code === 200 && res.data) rawNotifyList.value = res.data
+    else rawNotifyList.value = []
+  } catch { rawNotifyList.value = [] }
+}
+const notifyList = computed(() => rawNotifyList.value.map((n: any) => ({
+  notifyTime: n.sendTime || n.createTime || '',
+  channelType: channelMap[n.channel] || n.channel || '系统',
+  target: n.recipientPhone || n.recipientName || n.target || '',
+  content: n.content || '',
+  success: n.status !== 3
+})))
 
 const notifyFilter = reactive({ account: '', timeRange: [] as string[] })
 const filteredNotifyList = computed(() => {
@@ -391,12 +412,21 @@ const filteredNotifyList = computed(() => {
   return list
 })
 
-// 反馈历史 mock
-const feedbackList = ref<any[]>([
-  { feedbackTime: '2024-06-01 09:30:00', person: '张三', content: '已派人员前往现场核查' },
-  { feedbackTime: '2024-06-02 11:20:00', person: '李四', content: '现场情况稳定，持续监控中' },
-  { feedbackTime: '2024-06-03 15:45:00', person: '王五', content: '设备已检修，数据恢复正常' },
-])
+// 反馈历史（动作日志）
+const rawFeedbackList = ref<any[]>([])
+const fetchFeedbackList = async () => {
+  if (!props.data?.id) { rawFeedbackList.value = []; return }
+  try {
+    const res: any = await getActionLogs(props.data.id)
+    if (res?.code === 200 && res.data) rawFeedbackList.value = res.data
+    else rawFeedbackList.value = []
+  } catch { rawFeedbackList.value = [] }
+}
+const feedbackList = computed(() => rawFeedbackList.value.map((f: any) => ({
+  feedbackTime: f.createTime || f.feedbackTime || '',
+  person: f.operator || f.person || '',
+  content: f.description || f.remarks || f.content || ''
+})))
 
 const feedbackFilter = reactive({ person: '', timeRange: [] as string[] })
 const filteredFeedbackList = computed(() => {
@@ -415,6 +445,13 @@ const filteredFeedbackList = computed(() => {
 const switchToAlarmTab = () => {
   activeTab.value = 'alarm'
 }
+
+// 监听告警记录ID变化，加载触发明细/通知/反馈数据
+watch(() => props.data?.id, () => {
+  fetchAlarmList()
+  fetchNotifyList()
+  fetchFeedbackList()
+}, { immediate: true })
 
 // ---------- 图表 ----------
 const generateChartData = () => {
@@ -568,10 +605,10 @@ const handleFeedbackSubmit = async (data: { content: string; files: File[] }) =>
   }
 
   // 添加反馈历史记录
-  feedbackList.value.unshift({
-    feedbackTime: new Date().toLocaleString(),
-    person: '当前用户',
-    content: data.content
+  rawFeedbackList.value.unshift({
+    createTime: new Date().toLocaleString(),
+    operator: '当前用户',
+    description: data.content
   })
 
   // 向父组件 emit 带完整载荷

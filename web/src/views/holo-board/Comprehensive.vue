@@ -553,7 +553,17 @@ onMounted(async () => {
     deviceOnlineRate.value = d.deviceOnlineRate
     hazardTrend.value = d.hazardPointTrend
     sensorDist.value = d.sensorDistribution
-    healthStats.value = d.healthScore ?? healthStats.value
+    if (d.healthScore) {
+      healthStats.value.overallScore = d.healthScore.overallScore
+      if (d.healthScore.items?.length) {
+        // merge API items into defaults: overwrite matching names, keep unmatched
+        const merged = healthStats.value.items.map(def => {
+          const apiItem = d.healthScore!.items.find((i: any) => i.name === def.name)
+          return apiItem ? { ...def, ...apiItem } : def
+        })
+        healthStats.value.items = merged
+      }
+    }
   } catch { /* use defaults */
   }
 
@@ -980,8 +990,8 @@ const onlineStats = computed(() => {
 })
 
 const alarmStats = ref({
-  pendingCount: alarmPendingCount,
-  historyCount: alarmHistoryCount,
+  pendingCount: 0,
+  historyCount: 0,
   levelStats: [
     {name: '红色告警', key: 'red', count: 0},
     {name: '橙色告警', key: 'orange', count: 0},
@@ -995,13 +1005,19 @@ const hazardPoints = ref<HazardPoint[]>([])
 
 
 const trendYLabels = ['100', '80', '60', '40', '20', '0']
-const trendXLabels = ['5-11', '5-12', '5-13', '5-14', '5-15', '5-16', '5-17']
+
+const trendXLabels = computed(() =>
+  deviceOnlineRate.value?.byType?.map(t => t.monitorTypeName) ?? [])
 
 const trendDataPoints = computed(() => {
-  const data = [85, 88, 82, 90, 91, 89, 91]
-  return data.map((value, index) => ({
-    x: index * 46 + 23,
-    y: 100 - value
+  const types = deviceOnlineRate.value?.byType ?? []
+  if (!types.length) return []
+  // dynamic spacing: max ~7 items fit, fewer items get wider spacing
+  const maxItems = Math.min(Math.max(types.length, 3), 8)
+  const spacing = 280 / maxItems
+  return types.slice(0, 8).map((t, i) => ({
+    x: i * spacing + spacing / 2,
+    y: Math.max(0, Math.min(100, 100 - (t.onlineRate ?? 0)))
   }))
 })
 

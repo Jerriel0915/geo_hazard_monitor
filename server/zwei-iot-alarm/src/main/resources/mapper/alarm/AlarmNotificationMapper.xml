@@ -25,7 +25,8 @@
     <select id="selectNotificationList" resultMap="AlarmNotificationResult">
         SELECT id, alarm_id, dispatch_rule_id, recipient_id, recipient_name,
         recipient_phone, channel, title, content,
-        status, send_time, error_msg, create_time
+        status, send_time, error_msg, create_time,
+        source_type, source_id, read_time
         FROM alarm_notification
         <where>
             <if test="alarmId != null">AND alarm_id = #{alarmId}</if>
@@ -48,7 +49,10 @@
                status,
                send_time,
                error_msg,
-               create_time
+               create_time,
+               source_type,
+               source_id,
+               read_time
         FROM alarm_notification
         WHERE alarm_id = #{alarmId}
         ORDER BY create_time ASC

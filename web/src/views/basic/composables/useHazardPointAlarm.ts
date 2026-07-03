@@ -1,6 +1,13 @@
 import {computed, reactive, ref, type Ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import type {HazardPointItem} from './useHazardPointCrud'
+import {getMonitorTypeListWithContents, type MonitorTypeItem} from '@/api/monitorType'
+import {getUserPage} from '@/api/system'
+import {
+  createCriteria, updateCriteria, toggleCriteria, deleteCriteria,
+  createDispatchRule, updateDispatchRule, deleteDispatchRule,
+  getCriteriaList, getDispatchRuleList
+} from '@/api/alarm'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,9 +22,7 @@ export interface AlarmCriteria {
     monitorTypeName: string
     monitorContentCode: string
     monitorContentName: string
-    expression: string
-    alarmLevel: string
-    alarmLevelText: string
+    levelConfig: string
     isEnabled: boolean
 }
 
@@ -81,73 +86,32 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
         monitorContentCode: [{required: true, message: '请选择监测内容', trigger: 'blur'}],
     }
 
-    // ── Mock monitor type list ──
-    const monitorTypeList = ref<
-        { id: string; name: string; code: string; contents: { value: string; label: string; unit: string }[] }[]
-    >([
-        {
-            id: '1', name: '地表位移监测', code: 'DISPLACEMENT', contents: [
-                {value: 'displacement_x', label: 'X方向位移', unit: 'mm'},
-                {value: 'displacement_y', label: 'Y方向位移', unit: 'mm'},
-                {value: 'displacement_z', label: 'Z方向位移', unit: 'mm'},
-                {value: 'total_displacement', label: '总位移', unit: 'mm'},
-            ],
-        },
-        {
-            id: '2', name: '裂缝监测', code: 'CRACK', contents: [
-                {value: 'crack_width', label: '裂缝宽度', unit: 'mm'},
-                {value: 'crack_length', label: '裂缝长度', unit: 'm'},
-                {value: 'crack_depth', label: '裂缝深度', unit: 'm'},
-            ],
-        },
-        {
-            id: '3', name: '雨量监测', code: 'RAINFALL', contents: [
-                {value: 'rainfall_hour', label: '小时雨量', unit: 'mm'},
-                {value: 'rainfall_day', label: '日雨量', unit: 'mm'},
-                {value: 'rainfall_week', label: '周雨量', unit: 'mm'},
-                {value: 'rainfall_month', label: '月雨量', unit: 'mm'},
-            ],
-        },
-        {
-            id: '4', name: '水位监测', code: 'WATER_LEVEL', contents: [
-                {value: 'water_level', label: '水位', unit: 'm'},
-                {value: 'water_temp', label: '水温', unit: '℃'},
-                {value: 'water_pressure', label: '水压', unit: 'kPa'},
-            ],
-        },
-        {
-            id: '5', name: '地温监测', code: 'SOIL_TEMP', contents: [
-                {value: 'soil_temp_10cm', label: '10cm地温', unit: '℃'},
-                {value: 'soil_temp_30cm', label: '30cm地温', unit: '℃'},
-                {value: 'soil_temp_50cm', label: '50cm地温', unit: '℃'},
-            ],
-        },
-        {
-            id: '6', name: '含水率监测', code: 'MOISTURE', contents: [
-                {value: 'soil_moisture', label: '土壤含水率', unit: '%'},
-                {value: 'volumetric_water', label: '体积含水率', unit: '%'},
-            ],
-        },
-        {
-            id: '7', name: '倾斜监测', code: 'INCLINATION', contents: [
-                {value: 'inclination_x', label: 'X方向倾角', unit: '°'},
-                {value: 'inclination_y', label: 'Y方向倾角', unit: '°'},
-                {value: 'total_inclination', label: '总倾角', unit: '°'},
-            ],
-        },
-        {
-            id: '8', name: '应力应变监测', code: 'STRESS', contents: [
-                {value: 'axial_stress', label: '轴向应力', unit: 'MPa'},
-                {value: 'radial_stress', label: '径向应力', unit: 'MPa'},
-                {value: 'strain', label: '应变', unit: 'με'},
-            ],
-        },
-    ])
+    // ── Monitor type list (from real API) ──
+    const monitorTypeList = ref<MonitorTypeItem[]>([])
+    const monitorTypeLoadError = ref(false)
+
+    const loadMonitorTypes = async () => {
+      try {
+        const res: any = await getMonitorTypeListWithContents()
+        monitorTypeList.value = res?.data ?? res ?? []
+        monitorTypeLoadError.value = false
+      } catch {
+        monitorTypeList.value = []
+        monitorTypeLoadError.value = true
+      }
+    }
+    // preload on module init
+    loadMonitorTypes()
 
     const filteredMonitorContent = computed(() => {
         if (!alarmFormData.monitorTypeId) return []
-        const mt = monitorTypeList.value.find((t) => t.id === alarmFormData.monitorTypeId)
-        return mt ? mt.contents : []
+        const mt = monitorTypeList.value.find((t) => String(t.id) === alarmFormData.monitorTypeId)
+        if (!mt?.contents) return []
+        return mt.contents.map(c => ({
+          value: c.code,
+          label: c.name,
+          unit: c.unit
+        }))
     })
 
     // ── Dispatch rule dialog state ──
@@ -181,21 +145,64 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
         channels: [{required: true, type: 'array', min: 1, message: '请选择通知渠道', trigger: 'change'}],
     }
 
-    // ── Mock user list ──
-    const userList = ref<{ id: string; name: string; phone: string }[]>([
-        {id: '1', name: '张三', phone: '13923755477'},
-        {id: '2', name: '李四', phone: '13558981389'},
-        {id: '3', name: '王强', phone: '13889771288'},
-        {id: '4', name: '陈经理', phone: '13900001111'},
-    ])
+    // ── User list (from real API) ──
+    const userList = ref<{ id: string; name: string; phone: string }[]>([])
 
-    // ── Init (stubs, pending real API) ──
-    const initAlarmCriteria = (_hazardPointId: string) => {
-        alarmCriteriaList.value = []
+    const loadUsers = async () => {
+      try {
+        const res: any = await getUserPage({ pageNum: 1, pageSize: 200 })
+        if (res?.code === 200 && res.data?.rows) {
+          userList.value = res.data.rows.map((u: any) => ({
+            id: String(u.userId),
+            name: u.userName,
+            phone: u.phonenumber || ''
+          }))
+        }
+      } catch { userList.value = [] }
+    }
+    // preload on module init
+    loadUsers()
+
+    // ── Init (real API) ──
+    const initAlarmCriteria = async (hazardPointId: string) => {
+      if (!hazardPointId) { alarmCriteriaList.value = []; return }
+      try {
+        const res: any = await getCriteriaList({ hazardPointId })
+        if (res?.code === 200 && res.data?.rows) {
+          alarmCriteriaList.value = res.data.rows.map((r: any) => ({
+            id: String(r.id),
+            name: r.name,
+            deviceId: '',
+            deviceName: '',
+            monitorTypeId: String(r.monitorTypeId ?? ''),
+            monitorTypeName: r.monitorTypeName ?? '',
+            monitorContentCode: r.monitorContentCode ?? '',
+            monitorContentName: '',
+            levelConfig: r.levelConfig || '',
+            isEnabled: r.isEnabled === 1
+          }))
+        } else { alarmCriteriaList.value = [] }
+      } catch { alarmCriteriaList.value = [] }
     }
 
-    const initDispatchRules = (_hazardPointId: string) => {
-        dispatchRules.value = []
+    const initDispatchRules = async (hazardPointId: string) => {
+      if (!hazardPointId) { dispatchRules.value = []; return }
+      try {
+        const res: any = await getDispatchRuleList({ hazardPointId })
+        if (res?.code === 200 && res.data?.rows) {
+          dispatchRules.value = res.data.rows.map((r: any) => ({
+            id: String(r.id),
+            type: 'alarm' as const,
+            level: r.alarmLevels ? String(r.alarmLevels).split(',') : [],
+            deviceIds: [],
+            persons: r.recipientsJson ? JSON.parse(r.recipientsJson) : [],
+            channels: r.channels ? r.channels.split(',') : ['system'],
+            execTime: r.timeWindow ?? '',
+            status: r.isEnabled ?? 1,
+            remark: r.name ?? ''
+          }))
+        } else { dispatchRules.value = [] }
+      } catch { dispatchRules.value = [] }
     }
 
     // ── Alarm criteria CRUD ──
@@ -231,6 +238,8 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
 
     const handleEditAlarm = (row: AlarmCriteria) => {
         isEditAlarm.value = true
+        let lc: Record<string, { expression?: string; description?: string }> = {}
+        try { if (row.levelConfig) lc = JSON.parse(row.levelConfig) } catch { /* keep empty */ }
         Object.assign(alarmFormData, {
             id: row.id,
             name: row.name,
@@ -241,6 +250,14 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
             monitorContentCode: row.monitorContentCode,
             monitorContentName: row.monitorContentName,
             unit: '',
+            redExpression: lc['1']?.expression || '',
+            redDescription: lc['1']?.description || '',
+            orangeExpression: lc['2']?.expression || '',
+            orangeDescription: lc['2']?.description || '',
+            yellowExpression: lc['3']?.expression || '',
+            yellowDescription: lc['3']?.description || '',
+            blueExpression: lc['4']?.expression || '',
+            blueDescription: lc['4']?.description || '',
         })
         alarmDialogVisible.value = true
     }
@@ -251,7 +268,7 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
     }
 
     const handleMonitorTypeChange = (val: string) => {
-        const mt = monitorTypeList.value.find((t) => t.id === val)
+        const mt = monitorTypeList.value.find((t) => String(t.id) === val)
         if (mt) {
             alarmFormData.monitorTypeName = mt.name
             alarmFormData.monitorContentCode = ''
@@ -261,11 +278,11 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
     }
 
     const handleMonitorContentChange = (val: string) => {
-        const mt = monitorTypeList.value.find((t) => t.id === alarmFormData.monitorTypeId)
-        if (mt) {
-            const content = mt.contents.find((c) => c.value === val)
+        const mt = monitorTypeList.value.find((t) => String(t.id) === alarmFormData.monitorTypeId)
+        if (mt?.contents) {
+            const content = mt.contents.find((c) => c.code === val)
             if (content) {
-                alarmFormData.monitorContentName = content.label
+                alarmFormData.monitorContentName = content.name
                 alarmFormData.unit = content.unit
             }
         }
@@ -278,18 +295,43 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
         }
     }
 
-    const handleAlarmSubmit = () => {
-        alarmFormRef.value.validate((valid: boolean) => {
-            if (valid) {
+    const handleAlarmSubmit = async () => {
+        alarmFormRef.value.validate(async (valid: boolean) => {
+            if (!valid) return
+            const hpId = opts.currentRow.value?.id ?? ''
+            const levelConfig = JSON.stringify({
+              '1': { expression: alarmFormData.redExpression, description: alarmFormData.redDescription },
+              '2': { expression: alarmFormData.orangeExpression, description: alarmFormData.orangeDescription },
+              '3': { expression: alarmFormData.yellowExpression, description: alarmFormData.yellowDescription },
+              '4': { expression: alarmFormData.blueExpression, description: alarmFormData.blueDescription }
+            })
+            const payload = {
+              name: alarmFormData.name,
+              monitorTypeId: alarmFormData.monitorTypeId ? Number(alarmFormData.monitorTypeId) : undefined,
+              monitorContentCode: alarmFormData.monitorContentCode || undefined,
+              hazardPointId: hpId ? Number(hpId) : undefined,
+              levelConfig,
+              isEnabled: 1
+            }
+            try {
+              const res: any = isEditAlarm.value
+                ? await updateCriteria(Number(alarmFormData.id), payload)
+                : await createCriteria(payload)
+              if (res?.code === 200) {
                 ElMessage.success(isEditAlarm.value ? '判据修改成功' : '判据添加成功')
                 alarmDialogVisible.value = false
-                if (opts.currentRow.value) initAlarmCriteria(opts.currentRow.value.id)
-            }
+              }
+            } catch { ElMessage.error('操作失败') }
         })
     }
 
-    const handleToggleAlarm = (row: AlarmCriteria) => {
-        ElMessage.success(`判据${row.isEnabled ? '启用' : '停用'}成功`)
+    const handleToggleAlarm = async (row: AlarmCriteria) => {
+      try {
+        const res: any = await toggleCriteria(Number(row.id), row.isEnabled ? 0 : 1)
+        if (res?.code === 200) {
+          ElMessage.success(`判据${row.isEnabled ? '停用' : '启用'}成功`)
+        }
+      } catch { ElMessage.error('操作失败') }
     }
 
     const handleDeleteAlarm = (row: AlarmCriteria) => {
@@ -298,12 +340,16 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
             cancelButtonText: '取消',
             type: 'warning',
         })
-            .then(() => {
-                ElMessage.success('删除成功')
-                if (opts.currentRow.value) initAlarmCriteria(opts.currentRow.value.id)
+            .then(async () => {
+                try {
+                  const res: any = await deleteCriteria(Number(row.id))
+                  if (res?.code === 200) {
+                    ElMessage.success('删除成功')
+                    if (opts.currentRow.value) initAlarmCriteria(opts.currentRow.value.id)
+                  }
+                } catch { ElMessage.error('删除失败') }
             })
-            .catch(() => {
-            })
+            .catch(() => {})
     }
 
     // ── Dispatch rule CRUD ──
@@ -358,17 +404,34 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
         dispatchDialogVisible.value = true
     }
 
-    const handleDispatchSubmit = () => {
-        dispatchFormRef.value.validate((valid: boolean) => {
+    const handleDispatchSubmit = async () => {
+        dispatchFormRef.value.validate(async (valid: boolean) => {
             if (!valid) return
             let execTimeValue = ''
             if (dispatchFormData.execType === 'timed' && dispatchFormData.execTimePoints) {
                 execTimeValue = `${dispatchFormData.execFrequencyUnit}|${dispatchFormData.execTimePoints}`
             }
             dispatchFormData.execTime = execTimeValue
-            ElMessage.success(isEditDispatch.value ? '规则修改成功' : '规则添加成功')
-            dispatchDialogVisible.value = false
-            if (opts.currentRow.value) initDispatchRules(opts.currentRow.value.id)
+            const hpId = opts.currentRow.value?.id ?? ''
+            const payload = {
+              name: dispatchFormData.remark || (dispatchFormData.type === 'alarm' ? '监测告警规则' : '设备离线通知规则'),
+              hazardPointId: hpId ? Number(hpId) : undefined,
+              alarmLevels: dispatchFormData.level.join(','),
+              recipientsJson: JSON.stringify(dispatchFormData.persons),
+              channels: dispatchFormData.channels.join(','),
+              timeWindow: execTimeValue || undefined,
+              isEnabled: dispatchFormData.status as number
+            }
+            try {
+              const res: any = isEditDispatch.value
+                ? await updateDispatchRule(Number(dispatchFormData.id), payload)
+                : await createDispatchRule(payload)
+              if (res?.code === 200) {
+                ElMessage.success(isEditDispatch.value ? '规则修改成功' : '规则添加成功')
+                dispatchDialogVisible.value = false
+                if (opts.currentRow.value) initDispatchRules(opts.currentRow.value.id)
+              }
+            } catch { ElMessage.error('操作失败') }
         })
     }
 
@@ -379,12 +442,16 @@ export function useHazardPointAlarm(opts: UseHazardPointAlarmOptions) {
             cancelButtonText: '取消',
             type: 'warning',
         })
-            .then(() => {
-                ElMessage.success('删除成功')
-                if (opts.currentRow.value) initDispatchRules(opts.currentRow.value.id)
+            .then(async () => {
+                try {
+                  const res: any = await deleteDispatchRule(Number(row.id))
+                  if (res?.code === 200) {
+                    ElMessage.success('删除成功')
+                    if (opts.currentRow.value) initDispatchRules(opts.currentRow.value.id)
+                  }
+                } catch { ElMessage.error('删除失败') }
             })
-            .catch(() => {
-            })
+            .catch(() => {})
     }
 
     return {

@@ -263,37 +263,35 @@
     </select>
 
     <select id="selectMonthlyLevelCounts" resultType="java.util.Map">
-        SELECT DATE_FORMAT(td.trigger_time, '%Y-%m')                AS month,
-               SUM(CASE WHEN td.alarm_level = 1 THEN 1 ELSE 0 END)  AS level1,
-               SUM(CASE WHEN td.alarm_level = 2 THEN 1 ELSE 0 END)  AS level2,
-               SUM(CASE WHEN td.alarm_level = 3 THEN 1 ELSE 0 END)  AS level3,
-               SUM(CASE WHEN td.alarm_level = 4 THEN 1 ELSE 0 END)  AS level4,
+        SELECT DATE_FORMAT(ar.first_trigger_time, '%Y-%m')          AS month,
+               SUM(CASE WHEN ar.alarm_level = 1 THEN 1 ELSE 0 END)  AS level1,
+               SUM(CASE WHEN ar.alarm_level = 2 THEN 1 ELSE 0 END)  AS level2,
+               SUM(CASE WHEN ar.alarm_level = 3 THEN 1 ELSE 0 END)  AS level3,
+               SUM(CASE WHEN ar.alarm_level = 4 THEN 1 ELSE 0 END)  AS level4,
                COUNT(*)                                               AS total
-        FROM alarm_record_trigger_detail td
-        WHERE td.trigger_time &gt;= DATE_SUB(NOW(), INTERVAL #{months} MONTH)
-        GROUP BY DATE_FORMAT(td.trigger_time, '%Y-%m')
+        FROM alarm_record ar
+        WHERE ar.first_trigger_time &gt;= DATE_SUB(NOW(), INTERVAL #{months} MONTH)
+        GROUP BY DATE_FORMAT(ar.first_trigger_time, '%Y-%m')
         ORDER BY month
     </select>
 
     <select id="countOverview" resultType="java.util.Map">
-        SELECT (SELECT COUNT(*) FROM alarm_record_trigger_detail td
-                INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
-                WHERE ar.status IN (1, 2))                                          AS pendingCount,
-               (SELECT COUNT(*) FROM alarm_record_trigger_detail td
-                INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
-                WHERE ar.status IN (3, 4))                                          AS historyCount,
-               (SELECT COUNT(*) FROM alarm_record_trigger_detail)                   AS totalCount,
-               (SELECT COUNT(*) FROM alarm_record_trigger_detail
-                WHERE trigger_time &gt;= DATE_SUB(NOW(), INTERVAL 3 MONTH))         AS recentThreeMonthsCount
+        SELECT (SELECT COUNT(*) FROM alarm_record WHERE status IN (1, 2))
+                                                    AS pendingCount,
+               (SELECT COUNT(*) FROM alarm_record WHERE status IN (3, 4))
+                                                    AS historyCount,
+               (SELECT COUNT(*) FROM alarm_record)   AS totalCount,
+               (SELECT COUNT(*) FROM alarm_record
+                WHERE create_time &gt;= DATE_SUB(NOW(), INTERVAL 3 MONTH))
+                                                    AS recentThreeMonthsCount
     </select>
 
     <select id="countTriggerByHazardPoint" resultType="java.util.Map">
-        SELECT ar.hazard_point_name                 AS hazardPointName,
-               COUNT(*)                             AS count
-        FROM alarm_record_trigger_detail td
-        INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
-        WHERE ar.status IN (1, 2)
-        GROUP BY ar.hazard_point_name
+        SELECT hazard_point_name                     AS hazardPointName,
+               COUNT(*)                              AS count
+        FROM alarm_record
+        WHERE status IN (1, 2)
+        GROUP BY hazard_point_name
         ORDER BY count DESC
         LIMIT #{limit}
     </select>
@@ -305,8 +303,7 @@
                COALESCE(mt.name, '未知')                   AS monitorTypeName,
                COALESCE(mt.sort_order, 999)               AS sortOrder,
                COUNT(*)                                   AS count
-        FROM alarm_record_trigger_detail td
-        INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
+        FROM alarm_record ar
         LEFT JOIN device_sensor ds ON ar.sensor_id = ds.id AND ds.del_flag = 0
         LEFT JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
         WHERE ar.status IN (1, 2)

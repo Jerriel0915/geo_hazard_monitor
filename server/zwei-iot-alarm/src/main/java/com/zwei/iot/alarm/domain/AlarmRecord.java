@@ -55,7 +55,7 @@ public class AlarmRecord extends BaseEntity {
      */
     private Long monitorContentId;
     /**
-     * 告警等级: 1=蓝色 2=黄色 3=橙色 4=红色
+     * 告警等级: 1=红色(最严重) 2=橙色 3=黄色 4=蓝色(最轻)
      */
     private Integer alarmLevel;
     /**
