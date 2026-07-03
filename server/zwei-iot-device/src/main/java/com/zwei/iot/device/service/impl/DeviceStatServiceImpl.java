@@ -7,7 +7,7 @@ import com.zwei.iot.device.mapper.MonitorStatMapper;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceStatService;
 import com.zwei.iot.device.service.IVideoDeviceStatService;
-import com.zwei.iot.monitor.mapper.MonitorTypeMapper;
+import com.zwei.iot.monitor.service.IMonitorTypeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +29,7 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     private final DeviceMapper deviceMapper;
     private final DeviceSensorMapper deviceSensorMapper;
     private final IDeviceHazardRelationService hazardRelationService;
-    private final MonitorTypeMapper monitorTypeMapper;
+    private final IMonitorTypeService monitorTypeService;
     private final IVideoDeviceStatService videoDeviceStatService;
     private final DeviceOnlineStatusMapper onlineStatusMapper;
     private final RedisTemplate<Object, Object> redisTemplate;
@@ -39,7 +39,7 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     public DeviceStatServiceImpl(DeviceMapper deviceMapper,
                                  DeviceSensorMapper deviceSensorMapper,
                                  IDeviceHazardRelationService hazardRelationService,
-                                 MonitorTypeMapper monitorTypeMapper,
+                                 IMonitorTypeService monitorTypeService,
                                  IVideoDeviceStatService videoDeviceStatService,
                                  DeviceOnlineStatusMapper onlineStatusMapper,
                                  RedisTemplate<Object, Object> redisTemplate,
@@ -47,7 +47,7 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
         this.deviceMapper = deviceMapper;
         this.deviceSensorMapper = deviceSensorMapper;
         this.hazardRelationService = hazardRelationService;
-        this.monitorTypeMapper = monitorTypeMapper;
+        this.monitorTypeService = monitorTypeService;
         this.videoDeviceStatService = videoDeviceStatService;
         this.onlineStatusMapper = onlineStatusMapper;
         this.redisTemplate = redisTemplate;
@@ -101,7 +101,7 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
 
     @Override
     public int countAllMonitorTypes() {
-        return monitorTypeMapper.countAll();
+        return monitorTypeService.countAll();
     }
 
     @Override

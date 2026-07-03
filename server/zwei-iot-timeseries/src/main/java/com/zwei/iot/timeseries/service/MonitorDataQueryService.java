@@ -10,8 +10,8 @@ import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
-import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
-import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
+import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
+import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import com.zwei.iot.timeseries.config.MonitorQueryProperties;
 import com.zwei.iot.timeseries.domain.ChartDataVO;
 import com.zwei.iot.timeseries.domain.IotdbQueryRow;
@@ -31,8 +31,8 @@ import java.util.*;
 @Service
 public class MonitorDataQueryService {
     private static final Logger log = LoggerFactory.getLogger(MonitorDataQueryService.class);
-    private final DeviceHazardPointMapper deviceHazardPointMapper;
-    private final HazardPointMapper hazardPointMapper;
+    private final IDeviceHazardPointService deviceHazardPointService;
+    private final IHazardPointService hazardPointService;
     private final IDeviceSensorService deviceSensorService;
     private final IotdbTimeSeriesService iotdbTimeSeriesService;
     private final MonitorQueryProperties queryProperties;
@@ -40,20 +40,20 @@ public class MonitorDataQueryService {
     /**
      * 构造监测数据查询服务。
      *
-     * @param deviceHazardPointMapper 设备隐患点绑定 Mapper
-     * @param hazardPointMapper       隐患点 Mapper
+     * @param deviceHazardPointService 设备隐患点绑定服务
+     * @param hazardPointService       隐患点服务
      * @param deviceSensorService     设备传感器服务
      * @param iotdbTimeSeriesService  IoTDB 时序服务
      * @param queryProperties         查询性能配置（降采样阈值等）
      */
     @Autowired
-    public MonitorDataQueryService(DeviceHazardPointMapper deviceHazardPointMapper,
-                                   HazardPointMapper hazardPointMapper,
+    public MonitorDataQueryService(IDeviceHazardPointService deviceHazardPointService,
+                                   IHazardPointService hazardPointService,
                                    IDeviceSensorService deviceSensorService,
                                    IotdbTimeSeriesService iotdbTimeSeriesService,
                                    MonitorQueryProperties queryProperties) {
-        this.deviceHazardPointMapper = deviceHazardPointMapper;
-        this.hazardPointMapper = hazardPointMapper;
+        this.deviceHazardPointService = deviceHazardPointService;
+        this.hazardPointService = hazardPointService;
         this.deviceSensorService = deviceSensorService;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
         this.queryProperties = queryProperties;
@@ -400,7 +400,7 @@ public class MonitorDataQueryService {
         if (hazardPointId == null) {
             throw new ServiceException("隐患点ID不能为空");
         }
-        List<BoundDeviceVO> boundDevices = deviceHazardPointMapper.selectBoundDevicesByHazardPointId(hazardPointId);
+        List<BoundDeviceVO> boundDevices = deviceHazardPointService.getBoundDevices(hazardPointId);
         if (boundDevices.isEmpty()) {
             return List.of();
         }
@@ -479,7 +479,7 @@ public class MonitorDataQueryService {
      * @return 隐患点名称；不存在时返回空字符串
      */
     private String resolveHazardPointName(Long hazardPointId) {
-        HazardPoint hazardPoint = hazardPointMapper.selectHazardPointById(hazardPointId);
+        HazardPoint hazardPoint = hazardPointService.selectHazardPointById(hazardPointId);
         return hazardPoint != null ? hazardPoint.getName() : "";
     }
 

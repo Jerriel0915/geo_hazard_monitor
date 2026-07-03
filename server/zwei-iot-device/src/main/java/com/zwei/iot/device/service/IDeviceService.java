@@ -40,6 +40,22 @@ public interface IDeviceService {
     Device selectDeviceById(Long id);
 
     /**
+     * 批量查询设备（仅基础信息，不含传感器/隐患点富化）。
+     *
+     * @param ids 设备ID列表
+     * @return 设备列表
+     */
+    List<Device> selectDeviceByIds(List<Long> ids);
+
+    /**
+     * 根据设备编码查询设备（仅基础信息）。
+     *
+     * @param code 设备编码
+     * @return 设备；未找到时返回 {@code null}
+     */
+    Device selectDeviceByCode(String code);
+
+    /**
      * 后台新增设备并自动生成接入账号
      *
      * @param request  设备创建请求

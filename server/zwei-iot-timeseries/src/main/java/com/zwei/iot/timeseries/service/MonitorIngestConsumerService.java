@@ -7,9 +7,9 @@ import com.zwei.common.domain.PropertyValue;
 import com.zwei.common.event.MonitorDataIngestedEvent;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
-import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.DeviceOnlineStatusService;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.timeseries.compute.ComputedAttributeEvaluator;
 import com.zwei.iot.timeseries.compute.LastMessageStore;
 import com.zwei.iot.timeseries.config.MonitorIngestProperties;
@@ -69,7 +69,7 @@ public class MonitorIngestConsumerService {
     private final MonitorIngestProperties properties;
     private final IotdbTimeSeriesService iotdbTimeSeriesService;
     private final MonitorIngestStreamService streamService;
-    private final DeviceMapper deviceMapper;
+    private final IDeviceService deviceService;
     private final DeviceOnlineStatusService deviceOnlineStatusService;
     private final IDeviceSensorService deviceSensorService;
     private final ApplicationEventPublisher eventPublisher;
@@ -89,7 +89,7 @@ public class MonitorIngestConsumerService {
      * @param properties             接入缓冲配置
      * @param iotdbTimeSeriesService IoTDB 时序服务
      * @param streamService          Stream 写入服务
-     * @param deviceMapper           设备 Mapper
+     * @param deviceService          设备服务
      * @param deviceOnlineStatusService 设备在线状态服务
      * @param eventPublisher         Spring 事件发布器（发布 {@link MonitorDataIngestedEvent}）
      */
@@ -98,7 +98,7 @@ public class MonitorIngestConsumerService {
                                         MonitorIngestProperties properties,
                                         IotdbTimeSeriesService iotdbTimeSeriesService,
                                         MonitorIngestStreamService streamService,
-                                        DeviceMapper deviceMapper,
+                                        IDeviceService deviceService,
                                         DeviceOnlineStatusService deviceOnlineStatusService,
                                         IDeviceSensorService deviceSensorService,
                                         ApplicationEventPublisher eventPublisher,
@@ -108,7 +108,7 @@ public class MonitorIngestConsumerService {
         this.properties = properties;
         this.iotdbTimeSeriesService = iotdbTimeSeriesService;
         this.streamService = streamService;
-        this.deviceMapper = deviceMapper;
+        this.deviceService = deviceService;
         this.deviceOnlineStatusService = deviceOnlineStatusService;
         this.deviceSensorService = deviceSensorService;
         this.eventPublisher = eventPublisher;
@@ -272,7 +272,7 @@ public class MonitorIngestConsumerService {
                 deviceSensorService.updateLastReportTime(point.sensorId(), now);
             }
             // 同步回写设备主表 lastReportTime（保留兼容，后续可逐步移除）
-            deviceMapper.updateDevice(Device.builder()
+            deviceService.updateDevice(Device.builder()
                     .id(point.deviceId())
                     .lastReportTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             .format(new java.util.Date(point.dataTime())))
@@ -389,7 +389,7 @@ public class MonitorIngestConsumerService {
             if (metricsSensorId != null) {
                 deviceSensorService.updateLastReportTime(metricsSensorId, now);
             }
-            deviceMapper.updateDevice(Device.builder()
+            deviceService.updateDevice(Device.builder()
                     .id(metricsDeviceId)
                     .lastReportTime(now)
                     .build());
@@ -470,7 +470,7 @@ public class MonitorIngestConsumerService {
     private ParsedMessage wrapPointAsParsedMessage(StandardMeasurementPoint point) {
         String deviceCode = null;
         try {
-            Device dev = deviceMapper.selectDeviceById(point.deviceId());
+            Device dev = deviceService.selectDeviceById(point.deviceId());
             if (dev != null) {
                 deviceCode = dev.getCode();
             }
@@ -525,7 +525,7 @@ public class MonitorIngestConsumerService {
     }
 
     private Long resolveDeviceId(String deviceCode) {
-        Device dev = deviceMapper.selectDeviceByCode(deviceCode);
+        Device dev = deviceService.selectDeviceByCode(deviceCode);
         return dev != null ? dev.getId() : null;
     }
 

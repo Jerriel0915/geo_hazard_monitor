@@ -173,4 +173,9 @@ public class MonitorTypeServiceImpl implements IMonitorTypeService {
         MonitorType exist = monitorTypeMapper.checkMonitorTypeCodeUnique(monitorType.getCode(), id);
         return exist == null;
     }
+
+    @Override
+    public int countAll() {
+        return monitorTypeMapper.countAll();
+    }
 }

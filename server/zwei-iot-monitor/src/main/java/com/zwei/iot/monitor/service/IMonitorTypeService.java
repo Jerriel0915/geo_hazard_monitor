@@ -99,4 +99,11 @@ public interface IMonitorTypeService {
      * @return true-唯一，false-已存在
      */
     boolean checkMonitorTypeCodeUnique(MonitorType monitorType);
+
+    /**
+     * 统计监测类型总数。
+     *
+     * @return 监测类型总数
+     */
+    int countAll();
 }

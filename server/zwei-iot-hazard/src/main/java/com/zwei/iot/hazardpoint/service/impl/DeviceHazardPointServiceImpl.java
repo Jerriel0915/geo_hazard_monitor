@@ -4,7 +4,6 @@ import com.zwei.common.constant.HttpStatus;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
-import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.hazardpoint.domain.DeviceHazardPoint;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
@@ -50,17 +49,14 @@ import java.util.stream.Collectors;
 public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
 
     private final DeviceHazardPointMapper deviceHazardPointMapper;
-    private final DeviceMapper deviceMapper;
     private final IDeviceService deviceService;
     private final HazardPointMapper hazardPointMapper;
 
     @Autowired
     public DeviceHazardPointServiceImpl(DeviceHazardPointMapper deviceHazardPointMapper,
-                                       DeviceMapper deviceMapper,
                                        IDeviceService deviceService,
                                        HazardPointMapper hazardPointMapper) {
         this.deviceHazardPointMapper = deviceHazardPointMapper;
-        this.deviceMapper = deviceMapper;
         this.deviceService = deviceService;
         this.hazardPointMapper = hazardPointMapper;
     }
@@ -232,7 +228,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     }
 
     /** 仅校验隐患点存在且未删除（查询操作使用，允许停测/完结状态查看） */
-    private void ensureHazardPointExistsForView(Long hazardPointId) {
+    private HazardPoint ensureHazardPointExistsForView(Long hazardPointId) {
         if (hazardPointId == null) {
             throw new ServiceException("隐患点ID不能为空", HttpStatus.BAD_REQUEST);
         }
@@ -243,12 +239,12 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
         if (!"0".equals(hazardPoint.getDelFlag())) {
             throw new ServiceException("隐患点已删除", HttpStatus.BAD_REQUEST);
         }
+        return hazardPoint;
     }
 
     /** 校验隐患点存在且可操作（修改操作使用，额外要求 status=监测中） */
     private void ensureHazardPointActive(Long hazardPointId) {
-        ensureHazardPointExistsForView(hazardPointId);
-        HazardPoint hazardPoint = hazardPointMapper.selectHazardPointById(hazardPointId);
+        HazardPoint hazardPoint = ensureHazardPointExistsForView(hazardPointId);
         if (!Integer.valueOf(1).equals(hazardPoint.getStatus())) {
             throw new ServiceException("隐患点已停测或完结，无法修改设备绑定", HttpStatus.BAD_REQUEST);
         }
@@ -269,7 +265,7 @@ public class DeviceHazardPointServiceImpl implements IDeviceHazardPointService {
     }
 
     private void validateDevicesExist(List<Long> deviceIds) {
-        List<Device> devices = deviceMapper.selectDeviceByIds(deviceIds);
+        List<Device> devices = deviceService.selectDeviceByIds(deviceIds);
         if (devices.size() != deviceIds.size()) {
             Set<Long> foundIds = devices.stream().map(Device::getId).collect(Collectors.toCollection(LinkedHashSet::new));
             String missing = deviceIds.stream()

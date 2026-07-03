@@ -3,9 +3,9 @@ package com.zwei.iot.timeseries.compute;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.domain.brief.DeviceBrief;
-import com.zwei.iot.device.mapper.DeviceMapper;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.timeseries.domain.SensorSnapshot;
 import com.zwei.iot.timeseries.util.SensorDataQueryUtil;
 import org.slf4j.Logger;
@@ -35,15 +35,15 @@ public class ScriptSensorQuery {
 
     private static final Logger log = LoggerFactory.getLogger(ScriptSensorQuery.class);
 
-    private final DeviceMapper deviceMapper;
+    private final IDeviceService deviceService;
     private final IDeviceHazardRelationService hazardRelationService;
     private final IDeviceSensorService deviceSensorService;
 
     @Autowired
-    public ScriptSensorQuery(DeviceMapper deviceMapper,
+    public ScriptSensorQuery(IDeviceService deviceService,
                              IDeviceHazardRelationService hazardRelationService,
                              IDeviceSensorService deviceSensorService) {
-        this.deviceMapper = deviceMapper;
+        this.deviceService = deviceService;
         this.hazardRelationService = hazardRelationService;
         this.deviceSensorService = deviceSensorService;
     }
@@ -59,7 +59,7 @@ public class ScriptSensorQuery {
      */
     public SensorSnapshot query(String deviceCode, String sensorCode, long time, String attrCode) {
         try {
-            Device dev = deviceMapper.selectDeviceByCode(deviceCode);
+            Device dev = deviceService.selectDeviceByCode(deviceCode);
             if (dev == null || dev.getId() == null) {
                 log.warn("sensor query: deviceCode not found, return null — devCode={} sensor={} attr={}",
                         deviceCode, sensorCode, attrCode);

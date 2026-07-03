@@ -118,6 +118,22 @@ public class DeviceServiceImpl implements IDeviceService {
     }
 
     @Override
+    public List<Device> selectDeviceByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return deviceMapper.selectDeviceByIds(ids);
+    }
+
+    @Override
+    public Device selectDeviceByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return deviceMapper.selectDeviceByCode(code);
+    }
+
+    @Override
     @Transactional
     public Device createDevice(DeviceCreateRequest request, String operator) {
         Device device = new Device();
