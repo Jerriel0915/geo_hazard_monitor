@@ -84,6 +84,14 @@ public interface ISysUserService
     public boolean checkPhoneUnique(SysUser user);
 
     /**
+     * 通过手机号码查询用户
+     *
+     * @param phonenumber 手机号码
+     * @return 用户对象
+     */
+    public SysUser selectUserByPhone(String phonenumber);
+
+    /**
      * 校验email是否唯一
      *
      * @param user 用户信息

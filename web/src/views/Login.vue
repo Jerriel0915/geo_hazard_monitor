@@ -138,8 +138,8 @@
                   </span>
                   <input
                     v-model="loginForm.password"
-                    type="text"
-                    :class="['form-input', { 'password-hidden': !showPassword }]"
+                    :type="showPassword ? 'text' : 'password'"
+                    class="form-input"
                     placeholder="请输入密码"
                   />
                   <span class="input-suffix" @click="showPassword = !showPassword">
@@ -207,7 +207,8 @@
                 </span>
                 <input
                   v-model="loginForm.phone"
-                  type="text"
+                  type="tel"
+                  maxlength="11"
                   placeholder="请输入手机号"
                   class="form-input"
                 />
@@ -226,11 +227,12 @@
                 <input
                   v-model="loginForm.smsCode"
                   type="text"
+                  maxlength="6"
                   placeholder="请输入短信验证码"
                   class="form-input"
                   @keyup.enter="login"
                 />
-                <button class="sms-btn" :disabled="smsCooldown > 0" @click="sendSms">
+                <button class="sms-btn" :disabled="smsCooldown > 0 || !loginForm.phone" @click="sendSms">
                   {{ smsCooldown > 0 ? `${smsCooldown}s` : '获取验证码' }}
                 </button>
               </div>
@@ -359,6 +361,10 @@ const sendSms = async () => {
     ElMessage.warning('请输入手机号')
     return
   }
+  if (!/^1[3-9]\d{9}$/.test(loginForm.phone)) {
+    ElMessage.warning('请输入正确的手机号')
+    return
+  }
   if (smsCooldown.value > 0) return
 
   try {
@@ -398,9 +404,24 @@ const login = async () => {
         loginData.code = loginForm.captcha
         loginData.uuid = captchaKey
       }
-    } else {
+    } else if (loginMethod.value === 'sms') {
+      if (!loginForm.phone) {
+        ElMessage.warning('请输入手机号')
+        loginLoading.value = false
+        return
+      }
+      if (!loginForm.smsCode) {
+        ElMessage.warning('请输入短信验证码')
+        loginLoading.value = false
+        return
+      }
       loginData.phone = loginForm.phone
       loginData.smsCode = loginForm.smsCode
+    } else {
+      // 微信登录占位，暂不支持
+      ElMessage.info('微信登录功能暂未开放')
+      loginLoading.value = false
+      return
     }
 
     const res: any = await request.post('/auth/login', loginData)
@@ -763,11 +784,6 @@ onUnmounted(() => {
 
 .form-input::placeholder {
   color: #9CA3AF;
-}
-
-.form-input.password-hidden {
-  -webkit-text-security: disc;
-  font-family: sans-serif;
 }
 
 .input-suffix {

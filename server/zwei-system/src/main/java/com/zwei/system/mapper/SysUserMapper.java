@@ -138,6 +138,14 @@ public interface SysUserMapper
     public SysUser checkPhoneUnique(String phonenumber);
 
     /**
+     * 通过手机号码查询用户
+     *
+     * @param phonenumber 手机号码
+     * @return 用户对象
+     */
+    public SysUser selectUserByPhone(String phonenumber);
+
+    /**
      * 校验email是否唯一
      *
      * @param email 用户邮箱

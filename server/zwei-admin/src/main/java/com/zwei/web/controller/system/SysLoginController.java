@@ -1,5 +1,6 @@
 package com.zwei.web.controller.system;
 
+import com.zwei.common.annotation.Anonymous;
 import com.zwei.common.annotation.RateLimiter;
 import com.zwei.common.annotation.RepeatSubmit;
 import com.zwei.common.constant.Constants;
@@ -15,6 +16,7 @@ import com.zwei.common.utils.SecurityUtils;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.framework.web.service.SysLoginService;
 import com.zwei.framework.web.service.SysPermissionService;
+import com.zwei.framework.web.service.SysSmsCodeService;
 import com.zwei.framework.web.service.TokenService;
 import com.zwei.system.service.ISysConfigService;
 import com.zwei.system.service.ISysMenuService;
@@ -47,6 +49,29 @@ public class SysLoginController
     @Autowired
     private ISysConfigService configService;
 
+    @Autowired
+    private SysSmsCodeService smsCodeService;
+
+    /**
+     * 发送短信验证码
+     *
+     * @param body 请求体 { phone }
+     * @return 结果
+     */
+    @Anonymous
+    @RateLimiter(time = 60, count = 3, limitType = LimitType.IP)
+    @PostMapping("/sms")
+    public AjaxResult sendSms(@RequestBody Map<String, String> body)
+    {
+        String phone = body.get("phone");
+        if (StringUtils.isEmpty(phone))
+        {
+            return AjaxResult.error("手机号不能为空");
+        }
+        smsCodeService.sendCode(phone);
+        return AjaxResult.success("验证码已发送");
+    }
+
     /**
      * 登录方法
      *
@@ -60,9 +85,18 @@ public class SysLoginController
     {
         Map<String, Object> data = new HashMap<>();
         Integer expiresIN = loginBody.getRememberMe() ? 7 * 24 * 60 * 60 : 20 * 60;
-        // 生成令牌
-        String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(),
-                loginBody.getUuid(), loginBody.getRememberMe());
+        String token;
+        // 短信验证码登录
+        if (StringUtils.isNotEmpty(loginBody.getSmsCode()))
+        {
+            token = loginService.loginBySms(loginBody.getPhone(), loginBody.getSmsCode(), loginBody.getRememberMe());
+        }
+        else
+        {
+            // 账号密码登录
+            token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(),
+                    loginBody.getUuid(), loginBody.getRememberMe());
+        }
 
         data.put(Constants.TOKEN, token);
         data.put(Constants.EXPIRES_IN, expiresIN);

@@ -199,6 +199,12 @@ public class SysUserServiceImpl implements ISysUserService
         return UserConstants.UNIQUE;
     }
 
+    @Override
+    public SysUser selectUserByPhone(String phonenumber)
+    {
+        return userMapper.selectUserByPhone(phonenumber);
+    }
+
     /**
      * 校验email是否唯一
      *

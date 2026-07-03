@@ -65,6 +65,13 @@
             <artifactId>zwei-log</artifactId>
         </dependency>
 
+        <!-- 阿里云短信 SDK（登录验证码） -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>dysmsapi20170525</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+
     </dependencies>
 
 </project>

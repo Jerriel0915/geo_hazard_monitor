@@ -1,5 +1,6 @@
 package com.zwei.framework.web.service;
 
+import java.util.Set;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 import com.zwei.common.constant.CacheConstants;
 import com.zwei.common.constant.Constants;
 import com.zwei.common.constant.UserConstants;
+import com.zwei.common.core.domain.entity.SysUser;
 import com.zwei.common.core.domain.model.LoginUser;
 import com.zwei.common.core.redis.RedisCache;
 import com.zwei.common.exception.ServiceException;
@@ -57,6 +59,12 @@ public class SysLoginService
 
     @Autowired
     private LogCenterService logCenterService;
+
+    @Autowired
+    private SysSmsCodeService sysSmsCodeService;
+
+    @Autowired
+    private SysPermissionService permissionService;
 
     /**
      * 登录验证
@@ -106,6 +114,59 @@ public class SysLoginService
         recordLoginInfo(loginUser.getUserId());
         // 生成token
         return tokenService.createToken(loginUser, rememberMe);
+    }
+
+    /**
+     * 短信验证码登录
+     *
+     * @param phone      手机号
+     * @param smsCode    短信验证码
+     * @param rememberMe 记住我
+     * @return token
+     */
+    public String loginBySms(String phone, String smsCode, Boolean rememberMe)
+    {
+        sysSmsCodeService.verifyCode(phone, smsCode);
+        checkLoginBlackList(phone);
+        SysUser user = loadUserByPhone(phone);
+
+        Set<String> permissions = permissionService.getMenuPermission(user);
+        LoginUser loginUser = new LoginUser(user.getUserId(), user.getDeptId(), user, permissions);
+        recordLoginInfo(loginUser.getUserId());
+
+        publishAuthRecord(phone, AuthEventType.LOGIN_SUCCESS, LogExecutionStatus.SUCCESS.name(),
+            MessageUtils.message("user.login.success"), null, "SMS");
+
+        return tokenService.createToken(loginUser, rememberMe);
+    }
+
+    private void checkLoginBlackList(String identifier) {
+        String blackStr = configService.selectConfigByKey("sys.login.blackIPList");
+        if (IpUtils.isMatchedIp(blackStr, IpUtils.getIpAddr()))
+        {
+            publishLoginFailure(identifier, MessageUtils.message("login.blocked"));
+            throw new BlackListException();
+        }
+    }
+
+    private SysUser loadUserByPhone(String phone) {
+        SysUser user = userService.selectUserByPhone(phone);
+        if (StringUtils.isNull(user))
+        {
+            publishLoginFailure(phone, MessageUtils.message("user.not.exists"));
+            throw new UserNotExistsException();
+        }
+        if ("1".equals(user.getDelFlag()))
+        {
+            publishLoginFailure(phone, MessageUtils.message("user.password.delete"));
+            throw new UserNotExistsException();
+        }
+        if ("1".equals(user.getStatus()))
+        {
+            publishLoginFailure(phone, MessageUtils.message("user.blocked"));
+            throw new BlackListException();
+        }
+        return user;
     }
 
     /**
@@ -188,10 +249,14 @@ public class SysLoginService
     }
 
     private void publishAuthRecord(String username, AuthEventType eventType, String resultStatus, String message, String failureCode) {
+        publishAuthRecord(username, eventType, resultStatus, message, failureCode, "PASSWORD");
+    }
+
+    private void publishAuthRecord(String username, AuthEventType eventType, String resultStatus, String message, String failureCode, String authChannel) {
         LogAuthRecord record = new LogAuthRecord();
         record.setUsername(username);
         record.setAuthEventType(eventType.name());
-        record.setAuthChannel("PASSWORD");
+        record.setAuthChannel(authChannel);
         record.setResultStatus(resultStatus);
         record.setFailureMessage(message);
         record.setFailureCode(failureCode);

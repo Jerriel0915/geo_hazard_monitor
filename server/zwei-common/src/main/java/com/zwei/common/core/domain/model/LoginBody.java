@@ -1,13 +1,8 @@
 package com.zwei.common.core.domain.model;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
-import javax.annotation.Nullable;
-
 /**
  * 用户登录对象
- * 
+ *
  * @author zwei
  */
 public class LoginBody
@@ -15,13 +10,11 @@ public class LoginBody
     /**
      * 用户名
      */
-    @NotBlank
     private String username;
 
     /**
      * 用户密码
      */
-    @NotBlank
     private String password;
 
     /**
@@ -33,6 +26,16 @@ public class LoginBody
      * 唯一标识
      */
     private String uuid;
+
+    /**
+     * 手机号（短信登录）
+     */
+    private String phone;
+
+    /**
+     * 短信验证码（短信登录）
+     */
+    private String smsCode;
 
     /**
      * 记住我
@@ -77,6 +80,26 @@ public class LoginBody
     public void setUuid(String uuid)
     {
         this.uuid = uuid;
+    }
+
+    public String getPhone()
+    {
+        return phone;
+    }
+
+    public void setPhone(String phone)
+    {
+        this.phone = phone;
+    }
+
+    public String getSmsCode()
+    {
+        return smsCode;
+    }
+
+    public void setSmsCode(String smsCode)
+    {
+        this.smsCode = smsCode;
     }
 
     public Boolean getRememberMe()
