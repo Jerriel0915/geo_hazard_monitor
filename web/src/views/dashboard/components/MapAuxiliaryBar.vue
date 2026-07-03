@@ -50,7 +50,7 @@
           <span class="legend-group-label">监测类型</span>
           <div class="legend-group-items legend-group-items-wrap">
             <div v-for="mt in monitorTypes" :key="mt.id" class="legend-item">
-              <img v-if="mt.icon" :src="mt.icon" class="legend-type-icon" :alt="mt.name" />
+              <img v-if="mt.icon" :src="mt.icon" class="legend-type-icon" :alt="mt.name" @error="onIconError" />
               <div v-else class="legend-dot" style="background: #1890ff;"></div>
               <span>{{ mt.name }}</span>
             </div>
@@ -121,6 +121,15 @@ const currentName = computed(() => {
 const switchBasemap = (id: string) => {
   emit('update:currentLayer', id)
   showBasemapOptions.value = false
+}
+
+const onIconError = (e: Event) => {
+  const img = e.target as HTMLImageElement
+  img.style.display = 'none'
+  const dot = document.createElement('div')
+  dot.className = 'legend-dot'
+  dot.style.background = '#1890ff'
+  img.parentElement?.insertBefore(dot, img)
 }
 </script>
 
