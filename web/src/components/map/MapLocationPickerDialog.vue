@@ -36,6 +36,7 @@
             v-model="pickerLngLat"
             :readonly="readonly"
             :overlay-polygon="boundHpPolygon"
+            :device-markers="boundDeviceMarkers"
             height="400px"
         />
       </div>
@@ -96,7 +97,8 @@ import {ElMessage} from 'element-plus'
 import MapPointPicker from './MapPointPicker.vue'
 import {centroid, decimalToDMS, deserialize, type LatLng} from '@/lib/boundaryCoords'
 import {parseLatLngPair} from '@/lib/coordParser'
-import {getHazardPointDetail} from '@/api/hazardPoint'
+import {getHazardPointDetail, getBoundDevices} from '@/api/hazardPoint'
+import type {DeviceMarker} from './MapPointPicker.vue'
 
 /** 公共组件:地图选点弹窗
  *
@@ -154,6 +156,7 @@ const coordInputPlaceholder = `十进制(如 104.063, 30.671)或度分秒(如 10
 // 地图叠加层:独立的下拉框,用于在地图上预览任意隐患点的范围
 const overlayHpId = ref<string>('')
 const boundHpPolygon = ref<LatLng[] | null>(null)
+const boundDeviceMarkers = ref<DeviceMarker[]>([])
 
 // ── 只读展示 ──
 const decimalDisplay = computed(() => {
@@ -166,9 +169,10 @@ const dmsDisplay = computed(() => {
   return `${decimalToDMS(pickerLngLat.value.lng, false)} ${decimalToDMS(pickerLngLat.value.lat, true)}`
 })
 
-// ── HP 边界加载 ──
-const loadHpBoundary = async (hpId: string, zoomToFit = false) => {
+// ── HP 边界 + 绑定设备加载 ──
+const loadHpBoundary = async (hpId: string) => {
   boundHpPolygon.value = null
+  boundDeviceMarkers.value = []
   if (!hpId) return
   try {
     const resp: any = await getHazardPointDetail(hpId)
@@ -178,7 +182,6 @@ const loadHpBoundary = async (hpId: string, zoomToFit = false) => {
         boundHpPolygon.value = bc.polygon
         const center = centroid(bc.polygon)
         if (center) {
-          // 根据多边形尺寸计算合适的缩放级别
           const poly = bc.polygon
           let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity
           for (const p of poly) {
@@ -190,7 +193,6 @@ const loadHpBoundary = async (hpId: string, zoomToFit = false) => {
           const latDiff = maxLat - minLat
           const lngDiff = maxLng - minLng
           const diagonal = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff)
-          // 粗略缩放: 对角线越大，zoom 越小；范围 10~17
           const zoom = Math.max(10, Math.min(17, Math.round(17 - Math.log2(diagonal * 100 + 1))))
           nextTick(() => {
             pickerRef.value?.focusToCoord(center.lng, center.lat, zoom)
@@ -200,6 +202,22 @@ const loadHpBoundary = async (hpId: string, zoomToFit = false) => {
     }
   } catch {
     boundHpPolygon.value = null
+  }
+  // 同步加载该隐患点的已绑定设备,在地图上标记位置
+  try {
+    const devResp: any = await getBoundDevices(hpId)
+    if (devResp?.code === 200 && Array.isArray(devResp.data)) {
+      boundDeviceMarkers.value = devResp.data
+        .filter((d: any) => d.installLongitude != null && d.installLatitude != null)
+        .map((d: any) => ({
+          lng: d.installLongitude,
+          lat: d.installLatitude,
+          name: d.deviceName,
+          code: d.deviceCode
+        }))
+    }
+  } catch {
+    boundDeviceMarkers.value = []
   }
 }
 

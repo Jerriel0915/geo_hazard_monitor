@@ -10,15 +10,24 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ref, toRef, watch} from 'vue'
+import {computed, ref, toRef, watch, onBeforeUnmount} from 'vue'
+import L from 'leaflet'
 import {useMapEditor} from '@/composables/useMapEditor'
 import type {LatLng} from '@/lib/boundaryCoords'
 import MapCoordInput from './MapCoordInput.vue'
+
+export interface DeviceMarker {
+  lng: number
+  lat: number
+  name: string
+  code: string
+}
 
 const props = withDefaults(defineProps<{
   modelValue: LatLng | null
   readonly?: boolean
   overlayPolygon?: LatLng[] | null
+  deviceMarkers?: DeviceMarker[]
   defaultCenter?: LatLng
   defaultZoom?: number
   coordInputEnabled?: boolean
@@ -26,6 +35,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   readonly: false,
   overlayPolygon: null,
+  deviceMarkers: () => [],
   defaultZoom: 12,
   coordInputEnabled: true,
   height: 400
@@ -69,6 +79,34 @@ function onCoordParsed(result: LatLng | LatLng[]) {
   const pt = Array.isArray(result) ? result[0] : result
   if (pt) localPoint.value = pt
 }
+
+// ── 设备位置标记渲染 ──
+let deviceLayer: L.LayerGroup | null = null
+
+watch([() => props.deviceMarkers, editor.mapRef], ([markers, map]) => {
+  deviceLayer?.remove()
+  if (!map || !markers || markers.length === 0) return
+  deviceLayer = L.layerGroup().addTo(map)
+  markers.forEach(m => {
+    const marker = L.circleMarker([m.lat, m.lng], {
+      radius: 7,
+      fillColor: '#3b82f6',
+      fillOpacity: 0.7,
+      color: '#ffffff',
+      weight: 2,
+      opacity: 1
+    })
+    marker.bindTooltip(`${m.name} (${m.code})`, {
+      direction: 'top',
+      offset: [0, -8]
+    })
+    deviceLayer!.addLayer(marker)
+  })
+}, {immediate: true})
+
+onBeforeUnmount(() => {
+  deviceLayer?.remove()
+})
 
 defineExpose({
   invalidate: editor.invalidate,
