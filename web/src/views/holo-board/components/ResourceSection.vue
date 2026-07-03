@@ -7,8 +7,8 @@
           <div class="total-circle">
             <svg class="total-ring" viewBox="0 0 100 100">
               <circle class="ring-bg" cx="50" cy="50" r="45"/>
-              <circle class="ring-hazard" cx="50" cy="50" r="45" stroke-dasharray="113 170" stroke-dashoffset="0"/>
-              <circle class="ring-device" cx="50" cy="50" r="45" stroke-dasharray="142 141" stroke-dashoffset="-113"/>
+              <circle class="ring-hazard" cx="50" cy="50" r="45" :stroke-dasharray="hazardDash" stroke-dashoffset="0"/>
+              <circle class="ring-device" cx="50" cy="50" r="45" :stroke-dasharray="deviceDash" :stroke-dashoffset="deviceDashOffset"/>
             </svg>
             <div class="total-value">{{ stats.totalResources }}</div>
           </div>
@@ -50,14 +50,37 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface DeviceTypeStat {
   name: string;
   count: number
 }
 
-defineProps<{
+const props = defineProps<{
   stats: { totalResources: number; hazardTotal: number; deviceTotal: number; deviceTypes: DeviceTypeStat[] }
 }>()
+
+const RING_R = 45
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_R
+
+const hazardDash = computed(() => {
+  const total = props.stats.totalResources || 1
+  const len = (props.stats.hazardTotal / total) * RING_CIRCUMFERENCE
+  return `${len} ${RING_CIRCUMFERENCE - len}`
+})
+
+const deviceDashOffset = computed(() => {
+  const total = props.stats.totalResources || 1
+  const hazardLen = (props.stats.hazardTotal / total) * RING_CIRCUMFERENCE
+  return -hazardLen
+})
+
+const deviceDash = computed(() => {
+  const total = props.stats.totalResources || 1
+  const len = (props.stats.deviceTotal / total) * RING_CIRCUMFERENCE
+  return `${len} ${RING_CIRCUMFERENCE - len}`
+})
 </script>
 
 <style scoped>

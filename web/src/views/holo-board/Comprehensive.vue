@@ -569,7 +569,7 @@ onMounted(async () => {
   // 获取告警总览（告警记录数统计）
   try {
     const overviewRes = await getAlarmOverview()
-    const od = (overviewRes as any)?.data ?? overviewRes
+    const od = overviewRes?.data ?? overviewRes
     if (od) {
       alarmOverview.value = {
         pendingCount: od.pendingCount ?? 0,
@@ -605,7 +605,7 @@ onMounted(async () => {
   // 获取告警等级统计（独立接口，所有待处理告警准确计数）
   try {
     const levelStatsRes = await getAlarmLevelStats()
-    const data = (levelStatsRes as any)?.data ?? levelStatsRes ?? {}
+    const data = levelStatsRes?.data ?? {}
     alarmStats.value.levelStats = [1, 2, 3, 4].map(lv => ({
       ...levelMap[lv],
       count: Number(data[lv]) || 0
@@ -615,7 +615,7 @@ onMounted(async () => {
   // 获取告警趋势
   try {
     const trendRes = await getAlarmTrend(12)
-    const td = (trendRes as any)?.data ?? trendRes
+    const td = trendRes?.data ?? trendRes
     if (td && td.months?.length > 0) {
       alarmTrendData.value = td as AlarmTrendVO
       initAlarmTrendChart()
@@ -631,7 +631,7 @@ onMounted(async () => {
   // 获取隐患点设备监测率
   try {
     const mrRes = await getMonitorRates(60)
-    const data = (mrRes as any)?.data ?? mrRes ?? []
+    const data = (mrRes as any)?.data ?? []
     if (Array.isArray(data) && data.length > 0) {
       monitorRateData.value = data.map((item: HazardPointMonitorRate) => ({
         name: item.hazardPointName,
@@ -645,7 +645,7 @@ onMounted(async () => {
   // 获取地图总览数据
   try {
     const mapRes = await getMapOverview()
-    const data = (mapRes as any)?.data ?? mapRes ?? []
+    const data = (mapRes as any)?.data ?? []
     if (Array.isArray(data) && data.length > 0) {
       hazardPoints.value = data.map((item: HazardPointMapVO) => ({
         id: item.id,
