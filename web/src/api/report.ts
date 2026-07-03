@@ -134,7 +134,7 @@ export async function getHazardPointOptions(): Promise<HazardPointOption[]> {
   }
 }
 
-// ====== Query / Analysis (保留原 mock, 不在本次改动范围) ======
+// ====== 分析查询 API (真实接口) ======
 
 // --- Query ---
 export interface MonitorQueryParams {
@@ -157,7 +157,7 @@ export interface SensorSeriesItem {
   deviceName: string
   sensorId: number
   sensorName: string
-  sensorCode?: string
+  sensorCode: string
   attrCode: string
   attrName: string
   unit: string
@@ -177,12 +177,6 @@ export interface DeviceOption {
   boundHazardPointId: number
 }
 
-export interface DeviceTypeOption {
-  value: number
-  label: string
-  attrs: { code: string; name: string; unit: string }[]
-}
-
 export interface GridChartItem {
   index: number
   sensorSeriesId?: string
@@ -191,191 +185,24 @@ export interface GridChartItem {
   deviceId?: number
   sensorId?: number
   sensorName?: string
+  sensorCode?: string
   attrCode?: string
   attrName?: string
   unit?: string
 }
 
-// ---------------------------------------------------------------------------
-// Deterministic pseudo-random helpers (seeded, no Math.random)
-// ---------------------------------------------------------------------------
-
-/** Simple seeded PRNG — returns a float in [0, 1) */
-function seededRandom(seed: number): () => number {
-  let s = seed
-  return () => {
-    s = (s * 16807 + 0) % 2147483647
-    return (s - 1) / 2147483646
-  }
-}
-
-/** Return a deterministic float in [min, max) using the given rng */
-function randRange(rng: () => number, min: number, max: number): number {
-  return min + rng() * (max - min)
-}
-
-/** Round to fixed decimals */
-function toFixed(value: number, decimals: number): number {
-  const factor = Math.pow(10, decimals)
-  return Math.round(value * factor) / factor
-}
-
-// ---------------------------------------------------------------------------
-// Mock data generators
-// ---------------------------------------------------------------------------
-
-const HAZARD_POINTS: HazardPointOption[] = [
-  { id: 1, name: '王家坪滑坡' },
-  { id: 2, name: '李家沟泥石流' },
-  { id: 3, name: '赵家坡危岩体' },
-  { id: 4, name: '张家湾崩塌' },
-  { id: 5, name: '刘家坳滑坡' },
-]
-
-const DEVICE_TYPES: DeviceTypeOption[] = [
-  {
-    value: 1,
-    label: '位移计',
-    attrs: [
-      { code: 'disp_x', name: 'X方向位移', unit: 'mm' },
-      { code: 'disp_y', name: 'Y方向位移', unit: 'mm' },
-      { code: 'disp_z', name: 'Z方向位移', unit: 'mm' },
-      { code: 'disp_result', name: '成果值', unit: 'mm' },
-    ],
-  },
-  {
-    value: 2,
-    label: '雨量计',
-    attrs: [
-      { code: 'rainfall', name: '降雨量', unit: 'mm' },
-      { code: 'rainfall_daily', name: '日累计雨量', unit: 'mm' },
-    ],
-  },
-  {
-    value: 3,
-    label: '倾角传感器',
-    attrs: [
-      { code: 'tilt_x', name: 'X倾角', unit: '°' },
-      { code: 'tilt_y', name: 'Y倾角', unit: '°' },
-    ],
-  },
-  {
-    value: 4,
-    label: '土压力计',
-    attrs: [
-      { code: 'earth_pressure', name: '土压力', unit: 'kPa' },
-    ],
-  },
-]
-
-// 12 devices spread across hazard points (3-4 per hazard point)
-const DEVICES: DeviceOption[] = [
-  { id: 101, name: 'WJP-WY-01', deviceType: 1, boundHazardPointId: 1 },
-  { id: 102, name: 'WJP-YL-01', deviceType: 2, boundHazardPointId: 1 },
-  { id: 103, name: 'WJP-QJ-01', deviceType: 3, boundHazardPointId: 1 },
-  { id: 201, name: 'LJG-YL-01', deviceType: 2, boundHazardPointId: 2 },
-  { id: 202, name: 'LJG-WY-01', deviceType: 1, boundHazardPointId: 2 },
-  { id: 203, name: 'LJG-QJ-01', deviceType: 3, boundHazardPointId: 2 },
-  { id: 204, name: 'LJG-TY-01', deviceType: 4, boundHazardPointId: 2 },
-  { id: 301, name: 'ZJP-WY-01', deviceType: 1, boundHazardPointId: 3 },
-  { id: 302, name: 'ZJP-QJ-01', deviceType: 3, boundHazardPointId: 3 },
-  { id: 303, name: 'ZJP-TY-01', deviceType: 4, boundHazardPointId: 3 },
-  { id: 401, name: 'ZJW-WY-01', deviceType: 1, boundHazardPointId: 4 },
-  { id: 402, name: 'ZJW-YL-01', deviceType: 2, boundHazardPointId: 4 },
-  { id: 403, name: 'ZJW-TY-01', deviceType: 4, boundHazardPointId: 4 },
-  { id: 501, name: 'LJA-WY-01', deviceType: 1, boundHazardPointId: 5 },
-  { id: 502, name: 'LJA-YL-01', deviceType: 2, boundHazardPointId: 5 },
-]
-
-/** Format a Date to YYYY-MM-DD */
-function formatDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-/** Format a Date to YYYY-MM-DD HH:mm:ss */
-function formatDateTime(d: Date): string {
-  const date = formatDate(d)
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  const s = String(d.getSeconds()).padStart(2, '0')
-  return `${date} ${h}:${min}:${s}`
-}
-
-/** Generate mock query data (time-series rows) */
-function getMockQueryData(params: MonitorQueryParams): PageResult<Record<string, any>> {
-  const { deviceType = 1, pageNum = 1, pageSize = 20 } = params
-  const rng = seededRandom(Number(deviceType) * 100 + pageNum * 7 + pageSize)
-
-  const devType = DEVICE_TYPES.find((t) => t.value === Number(deviceType)) || DEVICE_TYPES[0]
-  const filteredDevices = DEVICES.filter((d) => d.deviceType === Number(deviceType))
-  if (filteredDevices.length === 0) return { rows: [], total: 0, pageNum, pageSize }
-
-  const totalRows = 60
-  const rows: Record<string, any>[] = []
-
-  const startIdx = (pageNum - 1) * pageSize
-  const endIdx = Math.min(startIdx + pageSize, totalRows)
-
-  for (let i = startIdx; i < endIdx; i++) {
-    const device = filteredDevices[i % filteredDevices.length]
-    const timeOffset = (totalRows - i) * 2 // hours ago
-    const time = new Date()
-    time.setHours(time.getHours() - timeOffset)
-
-    const row: Record<string, any> = {
-      time: formatDateTime(time),
-      deviceName: device.name,
-      hazardPointName: HAZARD_POINTS.find((h) => h.id === device.boundHazardPointId)?.name || '',
-    }
-
-    for (const attr of devType.attrs) {
-      let val: number
-      switch (attr.code) {
-        case 'disp_x':
-        case 'disp_y':
-        case 'disp_z':
-          val = toFixed(randRange(rng, 0.1, 5.0), 2)
-          break
-        case 'rainfall':
-          val = toFixed(randRange(rng, 0, 50), 1)
-          break
-        case 'rainfall_daily':
-          val = toFixed(randRange(rng, 0, 80), 1)
-          break
-        case 'tilt_x':
-        case 'tilt_y':
-          val = toFixed(randRange(rng, -2.0, 2.0), 3)
-          break
-        case 'earth_pressure':
-          val = toFixed(randRange(rng, 10, 120), 2)
-          break
-        default:
-          val = toFixed(randRange(rng, 0, 100), 2)
-      }
-      row[attr.code] = val
-    }
-
-    rows.push(row)
-  }
-
-  return { rows, total: totalRows, pageNum, pageSize }
-}
-
 /** Parse data from real sensor/range API into ChartDataItem */
 async function fetchRealChartData(
   deviceId: number,
+  sensorCode: string,
   attrCode: string,
   startTime: string,
   endTime: string,
-  sensorCode?: string
 ): Promise<ChartDataItem | null> {
   try {
     const dataMap: Record<string, { dataTime: string; value: number }[]> = await getSensorRange({
       deviceId,
-      sensorCode: sensorCode || '1',
+      sensorCode,
       attrCode,
       startTime,
       endTime,
@@ -395,50 +222,34 @@ async function fetchRealChartData(
 }
 
 // ---------------------------------------------------------------------------
-// API functions (try real API, fall back to mock)
+// API functions
 // ---------------------------------------------------------------------------
 
-/** Fetch device type options with attributes (mock) */
-export async function getDeviceTypeOptions(): Promise<DeviceTypeOption[]> {
-  return DEVICE_TYPES
-}
-
-/** Fetch device options, optionally filtered (mock) */
+/** Fetch device options filtered by hazardPointId */
 export async function getDeviceOptions(params: {
   hazardPointId?: number
   deviceType?: number
 }): Promise<DeviceOption[]> {
-  // let filtered = [...DEVICES]
-  const devices = await request.get<any>(`/devices/page?pageNum=1&pageSize=20&boundHazardPointId=${params.hazardPointId}`);
-    let filtered = devices.data?.rows ?? [];
-  // if (params.hazardPointId) {
-  //   filtered = filtered.filter((d) => d.hazardPointId === params.hazardPointId)
-  // }
-  // if (params.deviceType) {
-  //   filtered = filtered.filter((d) => d.deviceType === params.deviceType)
-  // }
-
-
-
-  return filtered
+  const queryParts: string[] = [`pageNum=1`, `pageSize=100`]
+  if (params.hazardPointId) queryParts.push(`boundHazardPointId=${params.hazardPointId}`)
+  const res = await request.get<any>(`/devices/page?${queryParts.join('&')}`)
+  return (res.data?.rows ?? res.rows ?? []).map((d: any) => ({
+    id: d.id,
+    name: d.name,
+    deviceType: d.deviceType,
+    boundHazardPointId: d.boundHazardPointId,
+  }))
 }
 
-/** Fetch paginated monitor query data (mock) */
-export async function getMonitorQueryData(
-  params: MonitorQueryParams
-): Promise<PageResult<Record<string, any>>> {
-  return getMockQueryData(params)
-}
-
-/** Fetch chart data for a single device+attribute (real API) */
+/** Fetch chart data for a single device+attribute (real API, sensor-level) */
 export async function getChartData(params: {
   deviceId: number
+  sensorCode: string
   attrCode: string
   startTime: string
   endTime: string
-  sensorCode?: string
 }): Promise<ChartDataItem | null> {
-  return fetchRealChartData(params.deviceId, params.attrCode, params.startTime, params.endTime, params.sensorCode)
+  return fetchRealChartData(params.deviceId, params.sensorCode, params.attrCode, params.startTime, params.endTime)
 }
 
 /** Fetch chart data for multiple grid items (real API) */
@@ -449,8 +260,8 @@ export async function getGridChartData(
 ): Promise<Map<number, ChartDataItem | null>> {
   const result = new Map<number, ChartDataItem | null>()
   for (const item of items) {
-    if (item.deviceId && item.attrCode) {
-      result.set(item.index, await fetchRealChartData(item.deviceId, item.attrCode, startTime, endTime))
+    if (item.deviceId && item.attrCode && item.sensorCode) {
+      result.set(item.index, await fetchRealChartData(item.deviceId, item.sensorCode, item.attrCode, startTime, endTime))
     }
   }
   return result

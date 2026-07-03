@@ -4,6 +4,15 @@
     <div class="mode-header">
       <el-button text @click="emit('back')">&larr; 返回</el-button>
       <span class="mode-label">数据宫格</span>
+      <el-button-group class="grid-layout-switcher">
+        <el-button
+          v-for="opt in layoutOptions"
+          :key="opt.cols + 'x' + opt.rows"
+          :type="gridLayout.cols === opt.cols && gridLayout.rows === opt.rows ? 'primary' : 'default'"
+          size="small"
+          @click="switchLayout(opt.cols, opt.rows)"
+        >{{ opt.label }}</el-button>
+      </el-button-group>
       <div class="grid-time-range">
         <span style="margin-right: 8px; color: #606266; font-size: 13px">统一时间范围：</span>
         <el-date-picker
@@ -19,8 +28,19 @@
         <el-button type="primary" size="small" @click="loadAllGridCharts" style="margin-left: 10px">应用</el-button>
       </div>
     </div>
-    <div class="grid-container">
-      <div v-for="(cell, idx) in gridCells" :key="idx" class="grid-cell">
+    <div class="grid-container" :style="{ gridTemplateColumns: `repeat(${gridLayout.cols}, 1fr)` }">
+      <div
+        v-for="(cell, idx) in visibleGridCells"
+        :key="cell.index"
+        class="grid-cell"
+        :class="{ 'grid-cell--active': cell.sensorSeriesId, 'grid-cell--dragging': dragIdx === idx, 'grid-cell--dragover': dragOverIdx === idx }"
+        draggable="true"
+        @dragstart="onDragStart($event, idx)"
+        @dragover.prevent="onDragOver($event, idx)"
+        @dragleave="onDragLeave"
+        @drop="onDrop($event, idx)"
+        @dragend="onDragEnd"
+      >
         <template v-if="cell.sensorSeriesId">
           <div class="grid-cell-header">
             <span class="grid-cell-title">{{ cell.title }}</span>
@@ -28,12 +48,15 @@
               <span class="grid-cell-more">···</span>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="edit">修改</el-dropdown-item>
+                  <el-dropdown-item command="refresh">刷新</el-dropdown-item>
+                  <el-dropdown-item command="fullscreen">全屏查看</el-dropdown-item>
+                  <el-dropdown-item command="edit" divided>修改</el-dropdown-item>
                   <el-dropdown-item command="clear">清除</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
           </div>
+          <div v-if="gridCellLoading.has(idx)" class="grid-cell-skeleton" />
           <div :ref="(el: any) => setGridChartRef(idx, el)" class="grid-chart" />
         </template>
         <template v-else>
@@ -44,6 +67,18 @@
         </template>
       </div>
     </div>
+
+    <!-- Grid Fullscreen Dialog -->
+    <el-dialog
+      v-model="gridFullscreenVisible"
+      :title="gridFullscreenCell?.cell?.title || '图表全屏'"
+      width="90%"
+      top="3vh"
+      destroy-on-close
+      @closed="onGridFullscreenClosed"
+    >
+      <div ref="gridFullscreenChartRef" style="width: 100%; height: 75vh" />
+    </el-dialog>
 
     <!-- Grid Config Dialog -->
     <el-dialog v-model="gridConfigDialogVisible" title="配置图表" width="480px" destroy-on-close>
@@ -102,24 +137,144 @@ import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} fr
 import {ElMessage} from 'element-plus'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import echarts from '@/utils/echarts'
-import {
-  type DeviceOption,
-  getDeviceOptions,
-  getHazardPointOptions,
-  type GridChartItem,
-  type HazardPointOption,
-} from '@/api/report'
-import { getChartData } from '@/api/monitorData'
-import type { SensorItem } from '@/api/sensor'
-import { getDeviceSensors } from '@/api/sensor'
+import { getSensorRange } from '@/api/monitorData'
+import { getHazardPointPage } from '@/api/hazardPoint'
+import { getDevicePage, type DeviceItem } from '@/api/device'
+import { getDeviceSensors, type SensorItem } from '@/api/sensor'
+import { formatDateWithTime, formatTimestamp, formatXAxisLabel, getDefaultTimeRange } from './analysisUtils'
 
 const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
+// Types
+interface HazardPointOption {
+  id: number
+  name: string
+}
+
+interface DeviceOption {
+  id: number
+  name: string
+  deviceType: number
+  boundHazardPointId: number
+}
+
+interface DeviceAttr {
+  code: string
+  name: string
+  unit: string
+  sensorCode: string
+}
+
+interface GridChartItem {
+  index: number
+  sensorSeriesId?: string
+  title?: string
+  hazardPointId?: number
+  deviceId?: number
+  sensorId?: number
+  sensorName?: string
+  sensorCode?: string
+  attrCode?: string
+  attrName?: string
+  unit?: string
+}
+
+// Layout
+const layoutOptions = [
+  { cols: 3, rows: 3, label: '3×3' },
+  { cols: 2, rows: 2, label: '2×2' },
+  { cols: 1, rows: 2, label: '1×2' },
+  { cols: 2, rows: 4, label: '2×4' },
+]
+const gridLayout = reactive({ cols: 3, rows: 3 })
+
+const switchLayout = (cols: number, rows: number) => {
+  // Dispose ALL existing chart instances — old DOM refs become stale after layout change
+  gridChartInstances.forEach((inst) => inst.dispose())
+  gridChartInstances.clear()
+  gridChartRefs.clear()
+
+  gridLayout.cols = cols
+  gridLayout.rows = rows
+  const total = cols * rows
+
+  // Preserve existing configured cells, pad with empty slots
+  const configured = gridCells.value.filter((c) => c.sensorSeriesId)
+  const newCells: GridChartItem[] = []
+  for (let i = 0; i < total; i++) {
+    if (i < configured.length) {
+      newCells.push(configured[i])
+    } else {
+      newCells.push({ index: i })
+    }
+  }
+  gridCells.value = newCells
+
+  // Re-render all configured cells in the new layout
+  nextTick(() => {
+    setTimeout(() => loadAllGridCharts(), 50)
+  })
+}
+
+// Visible cells (computed from gridCells, with index = position)
+const visibleGridCells = computed(() => gridCells.value)
+
+// Drag and drop
+const dragIdx = ref(-1)
+const dragOverIdx = ref(-1)
+
+const onDragStart = (e: DragEvent, idx: number) => {
+  if (!e.dataTransfer) return
+  dragIdx.value = idx
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', String(idx))
+}
+
+const onDragOver = (e: DragEvent, idx: number) => {
+  if (dragIdx.value === -1 || dragIdx.value === idx) return
+  dragOverIdx.value = idx
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+}
+
+const onDragLeave = () => {
+  dragOverIdx.value = -1
+}
+
+const onDrop = (e: DragEvent, targetIdx: number) => {
+  const sourceIdx = dragIdx.value
+  dragIdx.value = -1
+  dragOverIdx.value = -1
+  if (sourceIdx === -1 || sourceIdx === targetIdx) return
+
+  // Swap cells
+  const source = gridCells.value[sourceIdx]
+  const target = gridCells.value[targetIdx]
+  gridCells.value[sourceIdx] = target
+  gridCells.value[targetIdx] = source
+
+  // Dispose chart instances for swapped positions
+  const srcInst = gridChartInstances.get(sourceIdx)
+  const tgtInst = gridChartInstances.get(targetIdx)
+  if (srcInst) { srcInst.dispose(); gridChartInstances.delete(sourceIdx) }
+  if (tgtInst) { tgtInst.dispose(); gridChartInstances.delete(targetIdx) }
+
+  // Re-render both cells
+  nextTick(() => {
+    if (gridCells.value[sourceIdx].sensorSeriesId) loadGridCellChart(sourceIdx)
+    if (gridCells.value[targetIdx].sensorSeriesId) loadGridCellChart(targetIdx)
+  })
+}
+
+const onDragEnd = () => {
+  dragIdx.value = -1
+  dragOverIdx.value = -1
+}
+
 // State
 const hazardPointOptions = ref<HazardPointOption[]>([])
-const gridCells = ref<GridChartItem[]>(Array.from({ length: 9 }, (_, i) => ({ index: i })))
+const gridCells = ref<GridChartItem[]>(Array.from({ length: gridLayout.cols * gridLayout.rows }, (_, i) => ({ index: i })))
 const gridTimeRange = ref<[string, string] | null>(null)
 const gridChartRefs = new Map<number, HTMLElement>()
 const gridChartInstances = new Map<number, echarts.ECharts>()
@@ -129,6 +284,11 @@ const gridConfigTargetIdx = ref(0)
 const gridConfigForm = reactive({ hazardPointId: '' as number | '', deviceId: '' as number | '', sensorId: '' as number | '', attrCode: '' })
 const gridDialogDevices = ref<DeviceOption[]>([])
 const gridDialogSensors = ref<SensorItem[]>([])
+const gridCellLoading = ref(new Set<number>())
+const gridFullscreenVisible = ref(false)
+const gridFullscreenCell = ref<{ idx: number; cell: GridChartItem } | null>(null)
+const gridFullscreenChartRef = ref<HTMLElement>()
+const gridFullscreenChartInstance = ref<echarts.ECharts | null>(null)
 
 const gridFilteredDevices = computed(() => {
   return gridDialogDevices.value.filter(
@@ -137,10 +297,9 @@ const gridFilteredDevices = computed(() => {
 })
 
 const gridAvailableAttrs = computed(() => {
-  // 根据选定设备的传感器数据提取唯一属性（与关联分析一致）
   if (!gridConfigForm.deviceId || gridDialogSensors.value.length === 0) return []
   const seen = new Set<string>()
-  const attrs: { code: string; name: string; unit: string }[] = []
+  const attrs: DeviceAttr[] = []
   for (const sensor of gridDialogSensors.value) {
     for (const attr of sensor.attrList) {
       if (!seen.has(attr.attrCode)) {
@@ -148,33 +307,14 @@ const gridAvailableAttrs = computed(() => {
         attrs.push({
           code: attr.attrCode,
           name: attr.attrName || attr.attrCode,
-          unit: attr.unit || ''
+          unit: attr.unit || '',
+          sensorCode: sensor.sensorCode,
         })
       }
     }
   }
-  return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '' }]
+  return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '', sensorCode: '1' }]
 })
-
-// 工具函数：将日期字符串转换为带时间的完整格式
-const formatDateWithTime = (dateStr: string, isEnd: boolean): string => {
-  if (!dateStr) return ''
-  const time = isEnd ? '23:59:59' : '00:00:00'
-  return `${dateStr} ${time}`
-}
-
-// 工具函数：获取默认时间范围（最近7天）
-const getDefaultTimeRange = (): [string, string] => {
-  const end = new Date()
-  const start = new Date(end.getTime() - 7 * 24 * 3600 * 1000)
-  const formatDate = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-  return [formatDate(start), formatDate(end)]
-}
 
 // 初始化默认时间范围
 const initDefaultTimeRange = () => {
@@ -184,7 +324,16 @@ const initDefaultTimeRange = () => {
 
 // Load options
 const loadOptions = async () => {
-  hazardPointOptions.value = await getHazardPointOptions()
+  try {
+    const res = await getHazardPointPage({ pageNum: 1, pageSize: 500 })
+    const rows = (res.data as any)?.rows ?? (res as any).rows ?? []
+    hazardPointOptions.value = rows.map((item: any) => ({
+      id: item.id,
+      name: item.name
+    }))
+  } catch {
+    hazardPointOptions.value = []
+  }
 }
 
 // Grid handlers
@@ -207,8 +356,20 @@ const onGridConfigHpChange = async () => {
   gridConfigForm.sensorId = ''
   gridConfigForm.attrCode = ''
   gridDialogSensors.value = []
-  const devices = await getDeviceOptions({ hazardPointId: gridConfigForm.hazardPointId || undefined })
-  gridDialogDevices.value = devices
+  try {
+    const params: any = { pageNum: 1, pageSize: 100 }
+    if (gridConfigForm.hazardPointId) params.boundHazardPointId = gridConfigForm.hazardPointId
+    const res = await getDevicePage(params)
+    const rows = res.rows || []
+    gridDialogDevices.value = rows.map((item: DeviceItem) => ({
+      id: item.id!,
+      name: item.name,
+      deviceType: item.deviceType ?? 0,
+      boundHazardPointId: item.boundHazardPointId ?? 0,
+    }))
+  } catch {
+    gridDialogDevices.value = []
+  }
 }
 
 const onGridConfigDeviceChange = async () => {
@@ -240,6 +401,7 @@ const confirmGridConfig = async () => {
     deviceId: device.id,
     sensorId: sensor?.id,
     sensorName: sensor?.sensorName,
+    sensorCode: attr.sensorCode,
     attrCode: gridConfigForm.attrCode,
     attrName: attr.name,
     unit: attr.unit,
@@ -250,10 +412,12 @@ const confirmGridConfig = async () => {
   loadGridCellChart(idx)
 }
 
-const loadGridCellChart = async (idx: number) => {
+const loadGridCellChart = async (idx: number, fullscreen = false) => {
   const cell = gridCells.value[idx]
-  const el = gridChartRefs.get(idx)
-  if (!cell.sensorSeriesId || !el || !cell.deviceId || !cell.attrCode) return
+  const el = fullscreen ? gridFullscreenChartRef.value : gridChartRefs.get(idx)
+  if (!cell.sensorSeriesId || !el || !cell.deviceId || !cell.attrCode || !cell.sensorCode) return
+
+  if (!fullscreen) gridCellLoading.value.add(idx)
 
   // 获取时间范围，如果没有则使用默认的最近7天
   let startTime: string
@@ -268,58 +432,53 @@ const loadGridCellChart = async (idx: number) => {
   }
 
   try {
-    if (!cell.hazardPointId) {
-      ElMessage.warning('该设备未绑定隐患点，无法查询数据')
-      return
-    }
-    const params = {
-      hazardPointId: cell.hazardPointId,
+    const dataMap: Record<string, { dataTime: string; value: number }[]> = await getSensorRange({
       deviceId: cell.deviceId,
-      sensorId: cell.sensorId || undefined,
+      sensorCode: cell.sensorCode,
       attrCode: cell.attrCode,
       startTime,
       endTime,
+    }) as any
+
+    const rows = dataMap[cell.attrCode] || Object.values(dataMap)[0]
+    if (!rows || rows.length === 0) {
+      ElMessage.warning(`宫格 ${idx + 1} "${cell.title}" 在当前时间范围内无可用数据`)
+      return
     }
-    console.log(`[DataGrid] 请求 chart:`, JSON.stringify(params))
-    const result = await getChartData(params)
-    console.log(`[DataGrid] 返回:`, result)
-    if (!result || result.length === 0) return
-    // /monitor-data/chart 返回 ChartData[]，取第一个
-    const data = result[0]
-    if (!data.labels || data.labels.length === 0) return
+
+    const sorted = [...rows].reverse()
+    const times = sorted.map((r: any) => formatTimestamp(r.dataTime ?? r.time))
+    const values = sorted.map((r: any) => r.value)
 
     const existing = gridChartInstances.get(idx)
-    if (existing) {
+    if (existing && !fullscreen) {
       existing.dispose()
       gridChartInstances.delete(idx)
     }
 
     const chart = echarts.init(el)
-    gridChartInstances.set(idx, chart)
+    if (fullscreen) {
+      gridFullscreenChartInstance.value = chart
+    } else {
+      gridChartInstances.set(idx, chart)
+    }
 
     const isRainfall = /^rainfall/.test(cell.attrCode)
 
     chart.setOption({
-      grid: { left: 60, right: 25, top: 25, bottom: 40 },
+      grid: { left: 60, right: 25, top: fullscreen ? 35 : 25, bottom: 40 },
       xAxis: {
         type: 'category',
         name: '时间',
         nameLocation: 'end',
         nameGap: 2,
         nameTextStyle: { fontSize: 10, color: '#909399' },
-        data: data.labels,
+        data: times,
         axisLabel: {
           fontSize: 9,
           rotate: 30,
-          interval: Math.max(1, Math.floor((data.labels || []).length / 6)),
-          formatter: (val: string) => {
-            const t = val.replace('T', ' ')
-            const parts = t.split(/[\s-:]/)
-            if (parts.length >= 5) {
-              return `${Number(parts[1])}月${Number(parts[2])}日 ${parts[3]}:${parts[4]}`
-            }
-            return t.slice(5, 16)
-          },
+          interval: Math.max(1, Math.floor(times.length / 6)),
+          formatter: formatXAxisLabel,
         },
       },
       yAxis: {
@@ -333,7 +492,7 @@ const loadGridCellChart = async (idx: number) => {
       },
       series: [isRainfall ? {
         type: 'bar',
-        data: data.values,
+        data: values,
         barWidth: '60%',
         itemStyle: {
           color: '#67c23a',
@@ -341,21 +500,26 @@ const loadGridCellChart = async (idx: number) => {
         },
       } : {
         type: 'line',
-        data: data.values,
+        data: values,
         smooth: true,
         symbol: 'none',
         lineStyle: { width: 1.5 },
       }],
       tooltip: { trigger: 'axis' },
-      dataZoom: [{ type: 'inside' }],
+      dataZoom: [{ type: 'inside' }, ...(fullscreen ? [{ type: 'slider', bottom: 10 }] : [])],
     })
   } catch (error) {
-    showRequestErrorMessage(error, `加载宫格图表 ${idx} 失败`)
+    showRequestErrorMessage(error, `加载宫格图表 ${idx + 1} 失败`)
+  } finally {
+    if (!fullscreen) {
+      gridCellLoading.value.delete(idx)
+      gridCellLoading.value = new Set(gridCellLoading.value)
+    }
   }
 }
 
 const loadAllGridCharts = async () => {
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < gridCells.value.length; i++) {
     if (gridCells.value[i].sensorSeriesId) {
       await loadGridCellChart(i)
     }
@@ -363,7 +527,11 @@ const loadAllGridCharts = async () => {
 }
 
 const handleGridCommand = (cmd: string, idx: number) => {
-  if (cmd === 'edit') {
+  if (cmd === 'refresh') {
+    loadGridCellChart(idx)
+  } else if (cmd === 'fullscreen') {
+    openGridFullscreen(idx)
+  } else if (cmd === 'edit') {
     openGridConfig(idx)
   } else if (cmd === 'clear') {
     const existing = gridChartInstances.get(idx)
@@ -372,6 +540,21 @@ const handleGridCommand = (cmd: string, idx: number) => {
       gridChartInstances.delete(idx)
     }
     gridCells.value[idx] = { index: idx }
+  }
+}
+
+const openGridFullscreen = (idx: number) => {
+  gridFullscreenCell.value = { idx, cell: gridCells.value[idx] }
+  gridFullscreenVisible.value = true
+  nextTick(() => {
+    setTimeout(() => loadGridCellChart(idx, true), 100)
+  })
+}
+
+const onGridFullscreenClosed = () => {
+  if (gridFullscreenChartInstance.value) {
+    gridFullscreenChartInstance.value.dispose()
+    gridFullscreenChartInstance.value = null
   }
 }
 
@@ -415,6 +598,9 @@ watch(gridTimeRange, (newVal) => {
 <style scoped>
 .grid-mode {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .mode-header {
   display: flex;
@@ -423,11 +609,16 @@ watch(gridTimeRange, (newVal) => {
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
 }
 .mode-label {
   font-size: 16px;
   font-weight: bold;
   color: #303133;
+}
+.grid-layout-switcher {
+  margin-left: 16px;
+  flex-shrink: 0;
 }
 .grid-time-range {
   display: flex;
@@ -436,17 +627,38 @@ watch(gridTimeRange, (newVal) => {
 }
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   padding: 16px;
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: 1fr;
 }
 .grid-cell {
-  min-height: 220px;
   border: 1px solid #e8e8e8;
   border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
+  transition: border-color 0.3s, box-shadow 0.3s, opacity 0.2s;
+  cursor: grab;
+}
+.grid-cell:active {
+  cursor: grabbing;
+}
+.grid-cell--dragging {
+  opacity: 0.45;
+}
+.grid-cell--dragover {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.25);
+}
+.grid-cell--active {
+  border-color: #d9d9d9;
+}
+.grid-cell--active:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.1);
 }
 .grid-cell-header {
   display: flex;
@@ -490,5 +702,23 @@ watch(gridTimeRange, (newVal) => {
 .grid-cell-add-icon {
   font-size: 32px;
   margin-bottom: 8px;
+  line-height: 1;
+}
+.grid-cell-hint {
+  font-size: 11px;
+  color: #c0c4cc;
+}
+.grid-cell-skeleton {
+  position: absolute;
+  inset: 36px 0 0 0;
+  background: linear-gradient(90deg, #f5f7fa 25%, #e8ecf1 50%, #f5f7fa 75%);
+  background-size: 200% 100%;
+  animation: grid-shimmer 1.8s infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+@keyframes grid-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 </style>

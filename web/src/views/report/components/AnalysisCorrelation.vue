@@ -132,10 +132,11 @@ import echarts from '@/utils/echarts'
 import {
   type SensorSeriesItem,
 } from '@/api/report'
-import { getChartData } from '@/api/monitorData'
+import { getSensorRange } from '@/api/monitorData'
 import { getHazardPointPage } from '@/api/hazardPoint'
 import { getDevicePage, type DeviceItem } from '@/api/device'
 import { getDeviceSensors } from '@/api/sensor'
+import { formatDateWithTime, formatTimestamp, formatXAxisLabel, getDefaultTimeRange } from './analysisUtils'
 
 const emit = defineEmits<{
   (e: 'back'): void
@@ -190,26 +191,6 @@ const availableAttrs = computed(() => {
   if (!addSensorForm.deviceId) return []
   return deviceAttrsMap.value.get(addSensorForm.deviceId) || []
 })
-
-// 工具函数：将日期字符串转换为带时间的完整格式
-const formatDateWithTime = (dateStr: string, isEnd: boolean): string => {
-  if (!dateStr) return ''
-  const time = isEnd ? '23:59:59' : '00:00:00'
-  return `${dateStr} ${time}`
-}
-
-// 工具函数：获取默认时间范围（最近7天）
-const getDefaultTimeRange = (): [string, string] => {
-  const end = new Date()
-  const start = new Date(end.getTime() - 7 * 24 * 3600 * 1000)
-  const formatDate = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-  return [formatDate(start), formatDate(end)]
-}
 
 // 初始化默认时间范围
 const initDefaultTimeRange = () => {
@@ -359,30 +340,30 @@ const generateCorrelationChart = async () => {
     const startTime = formatDateWithTime(startDateStr, false)
     const endTime = formatDateWithTime(endDateStr, true)
 
-    // 使用 /monitor-data/chart API，由后端解析正确的 sensorCode
+    // 使用 getSensorRange（传感器级 API），不依赖 hazardPointId，与 MonitorDataExplorer 保持一致
     const allSeriesData: { sensor: SensorSeriesItem; chartData: { times: string[]; values: number[] } }[] = []
     for (const sensor of selectedSensors.value) {
       try {
-        const params = {
-          hazardPointId: sensor.hazardPointId,
+        const dataMap: Record<string, { dataTime: string; value: number }[]> = await getSensorRange({
           deviceId: sensor.deviceId,
+          sensorCode: sensor.sensorCode,
           attrCode: sensor.attrCode,
           startTime,
           endTime,
-        }
-        console.log('[Correlation] 请求 chart:', JSON.stringify(params))
-        const result = await getChartData(params)
-        console.log('[Correlation] 返回:', result)
-        if (result && result.length > 0) {
-          for (const series of result) {
-            allSeriesData.push({
-              sensor,
-              chartData: { times: series.labels, values: series.values },
-            })
-          }
+        }) as any
+        const rows = dataMap[sensor.attrCode] || Object.values(dataMap)[0]
+        if (rows && rows.length > 0) {
+          const sorted = [...rows].reverse()
+          allSeriesData.push({
+            sensor,
+            chartData: {
+              times: sorted.map((r: any) => formatTimestamp(r.dataTime ?? r.time)),
+              values: sorted.map((r: any) => r.value),
+            },
+          })
         }
       } catch (e) {
-        console.error('[Correlation] 请求异常:', e)
+        // 单个传感器查询失败不影响其他传感器
       }
     }
 
@@ -552,15 +533,7 @@ const generateCorrelationChart = async () => {
           fontSize: 10,
           rotate: 30,
           interval: xLabelInterval,
-          formatter: (val: string) => {
-            // 简化时间格式：MM月DD日 HH:mm
-            const t = val.replace('T', ' ')
-            const parts = t.split(/[\s-:]/)  // ['2026','06','23','14','30','00']
-            if (parts.length >= 5) {
-              return `${Number(parts[1])}月${Number(parts[2])}日 ${parts[3]}:${parts[4]}`
-            }
-            return t.slice(5, 16)
-          },
+          formatter: formatXAxisLabel,
         },
       },
       yAxis: yAxesArray,
