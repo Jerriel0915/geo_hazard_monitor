@@ -237,6 +237,12 @@ watch(() => props.visible, (val) => {
 watch(() => dialogVisible.value, (val) => {
   emit('update:visible', val)
 })
+
+watch(() => props.hazardPoint?.id, (newId, oldId) => {
+  if (newId && newId !== oldId && dialogVisible.value) {
+    activeTab.value = 'basic'
+  }
+})
 </script>
 
 <style scoped>

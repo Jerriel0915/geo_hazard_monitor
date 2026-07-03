@@ -69,7 +69,7 @@
             class="search__input"
             clearable
             @clear="handleSearch"
-            @keyup.enter="handleSearch"
+            @keyup.enter="debouncedSearch"
           >
             <template #prefix>
               <el-icon><Search/></el-icon>
@@ -956,6 +956,13 @@ const sortInfo = sort.sortInfo
 const groupDialogTitle = groupDlgTitle
 
 const statsGroupCount = groupStatsGroupCount
+
+// ── Debounced search ──
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+const debouncedSearch = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => handleSearch(), 300)
+}
 
 const mapDialogVisible = ref(false)
 const mapEditorRef = ref<InstanceType<typeof MapBoundaryEditor> | null>(null)

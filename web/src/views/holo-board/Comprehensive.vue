@@ -346,7 +346,7 @@ const initMonitorRateChart = () => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params: any) => {
+      formatter: (params: { name: string; dataIndex: number; value: number; marker: string }[]) => {
         const data = params[0]
         const item = monitorRateData.value[data.dataIndex]
         return `${data.name}<br/>监测率: ${data.value}%<br/>设备数量: ${item.deviceCount}台`

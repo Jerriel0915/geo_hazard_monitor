@@ -544,7 +544,7 @@ const initSourceChart = () => {
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
+      formatter: (params: { name: string; value: number; data: { percent: number } }[]) => {
         const data = params[0]
         return `${data.name}<br/>告警次数: ${data.value}次 (${data.data.percent}%)`
       }
@@ -600,7 +600,7 @@ const initSourceChart = () => {
       label: {
         show: true,
         position: 'top',
-        formatter: (p: any) => `${p.value}次 (${p.data.percent}%)`,
+        formatter: (p: { value: number; data: { percent: number } }) => `${p.value}次 (${p.data.percent}%)`,
         color: '#1e293b',
         fontSize: 12,
         fontWeight: 600,
@@ -623,7 +623,7 @@ const initHazardChart = () => {
       axisPointer: {
         type: 'shadow'
       },
-      formatter: (params: any) => {
+      formatter: (params: { name: string; value: number }[]) => {
         const data = params[0]
         return `${data.name}<br/>告警次数: ${data.value}次`
       }
