@@ -207,8 +207,8 @@ const hazardPointMap = computed(() => {
 // 加载隐患分组选项
 const loadGroupOptions = async () => {
   try {
-    const groups = await getHazardPointGroups()
-    groupOptions.value = (groups || []).map((g: any) => ({
+    const response = await getHazardPointGroups()
+    groupOptions.value = (response.data || []).map((g: any) => ({
       id: g.id,
       name: g.name
     }))

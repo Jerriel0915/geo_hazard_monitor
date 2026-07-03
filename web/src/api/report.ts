@@ -157,6 +157,7 @@ export interface SensorSeriesItem {
   deviceName: string
   sensorId: number
   sensorName: string
+  sensorCode?: string
   attrCode: string
   attrName: string
   unit: string
@@ -368,12 +369,13 @@ async function fetchRealChartData(
   deviceId: number,
   attrCode: string,
   startTime: string,
-  endTime: string
+  endTime: string,
+  sensorCode?: string
 ): Promise<ChartDataItem | null> {
   try {
     const dataMap: Record<string, { dataTime: string; value: number }[]> = await getSensorRange({
       deviceId,
-      sensorCode: '1',
+      sensorCode: sensorCode || '1',
       attrCode,
       startTime,
       endTime,
@@ -434,8 +436,9 @@ export async function getChartData(params: {
   attrCode: string
   startTime: string
   endTime: string
+  sensorCode?: string
 }): Promise<ChartDataItem | null> {
-  return fetchRealChartData(params.deviceId, params.attrCode, params.startTime, params.endTime)
+  return fetchRealChartData(params.deviceId, params.attrCode, params.startTime, params.endTime, params.sensorCode)
 }
 
 /** Fetch chart data for multiple grid items (real API) */

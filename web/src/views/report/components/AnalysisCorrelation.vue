@@ -162,6 +162,7 @@ interface DeviceAttr {
   code: string
   name: string
   unit: string
+  sensorCode: string
 }
 
 // State
@@ -244,14 +245,15 @@ const loadDeviceAttrs = async (deviceId: number): Promise<DeviceAttr[]> => {
           attrs.push({
             code: attr.attrCode,
             name: attr.attrName || attr.attrCode,
-            unit: attr.unit || ''
+            unit: attr.unit || '',
+            sensorCode: sensor.sensorCode
           })
         }
       }
     }
-    return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '' }]
+    return attrs.length > 0 ? attrs : [{ code: 'value', name: '监测值', unit: '', sensorCode: '1' }]
   } catch {
-    return [{ code: 'value', name: '监测值', unit: '' }]
+    return [{ code: 'value', name: '监测值', unit: '', sensorCode: '1' }]
   }
 }
 
@@ -320,6 +322,7 @@ const confirmAddSensor = () => {
     deviceName: device.name,
     sensorId: device.id,
     sensorName: device.name,
+    sensorCode: attr.sensorCode,
     attrCode: addSensorForm.attrCode,
     attrName: attr.name,
     unit: attr.unit,
@@ -353,17 +356,14 @@ const generateCorrelationChart = async () => {
     const startTime = formatDateWithTime(startDateStr, false)
     const endTime = formatDateWithTime(endDateStr, true)
 
-    // 转换为 ISO 格式（替换空格为 T）
-    const startTimeISO = startTime.replace(' ', 'T')
-    const endTimeISO = endTime.replace(' ', 'T')
-
     const allSeriesData: { sensor: SensorSeriesItem; chartData: ChartDataItem }[] = []
     for (const sensor of selectedSensors.value) {
       const data = await getChartData({
         deviceId: sensor.deviceId,
         attrCode: sensor.attrCode,
-        startTime: startTimeISO,
-        endTime: endTimeISO,
+        startTime,
+        endTime,
+        sensorCode: sensor.sensorCode,
       })
       if (data) allSeriesData.push({ sensor, chartData: data })
     }
