@@ -36,7 +36,7 @@
             v-model="pickerLngLat"
             :readonly="readonly"
             :overlay-polygon="boundHpPolygon"
-            :device-markers="boundDeviceMarkers"
+            :bound-devices="boundDeviceList"
             height="400px"
         />
       </div>
@@ -98,7 +98,7 @@ import MapPointPicker from './MapPointPicker.vue'
 import {centroid, decimalToDMS, deserialize, type LatLng} from '@/lib/boundaryCoords'
 import {parseLatLngPair} from '@/lib/coordParser'
 import {getHazardPointDetail, getBoundDevices} from '@/api/hazardPoint'
-import type {DeviceMarker} from './MapPointPicker.vue'
+import type {BoundDevice} from '@/views/basic/composables/useHazardPointDeviceBind'
 
 /** 公共组件:地图选点弹窗
  *
@@ -156,7 +156,7 @@ const coordInputPlaceholder = `十进制(如 104.063, 30.671)或度分秒(如 10
 // 地图叠加层:独立的下拉框,用于在地图上预览任意隐患点的范围
 const overlayHpId = ref<string>('')
 const boundHpPolygon = ref<LatLng[] | null>(null)
-const boundDeviceMarkers = ref<DeviceMarker[]>([])
+const boundDeviceList = ref<BoundDevice[]>([])
 
 // ── 只读展示 ──
 const decimalDisplay = computed(() => {
@@ -172,7 +172,7 @@ const dmsDisplay = computed(() => {
 // ── HP 边界 + 绑定设备加载 ──
 const loadHpBoundary = async (hpId: string) => {
   boundHpPolygon.value = null
-  boundDeviceMarkers.value = []
+  boundDeviceList.value = []
   if (!hpId) return
   try {
     const resp: any = await getHazardPointDetail(hpId)
@@ -203,21 +203,14 @@ const loadHpBoundary = async (hpId: string) => {
   } catch {
     boundHpPolygon.value = null
   }
-  // 同步加载该隐患点的已绑定设备,在地图上标记位置
+  // 同步加载该隐患点的已绑定设备,在地图上显示图钉
   try {
     const devResp: any = await getBoundDevices(hpId)
     if (devResp?.code === 200 && Array.isArray(devResp.data)) {
-      boundDeviceMarkers.value = devResp.data
-        .filter((d: any) => d.installLongitude != null && d.installLatitude != null)
-        .map((d: any) => ({
-          lng: d.installLongitude,
-          lat: d.installLatitude,
-          name: d.deviceName,
-          code: d.deviceCode
-        }))
+      boundDeviceList.value = devResp.data
     }
   } catch {
-    boundDeviceMarkers.value = []
+    boundDeviceList.value = []
   }
 }
 

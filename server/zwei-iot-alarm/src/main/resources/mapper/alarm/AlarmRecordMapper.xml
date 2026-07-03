@@ -276,15 +276,17 @@
     </select>
 
     <select id="countOverview" resultType="java.util.Map">
-        SELECT COALESCE(SUM(CASE WHEN status IN (1, 2) THEN 1 ELSE 0 END), 0)
+        SELECT COALESCE(SUM(CASE WHEN ar.status IN (1, 2) THEN 1 ELSE 0 END), 0)
                                                     AS pendingCount,
-               COALESCE(SUM(CASE WHEN status IN (3, 4) THEN 1 ELSE 0 END), 0)
+               COALESCE(SUM(CASE WHEN ar.status IN (3, 4) THEN 1 ELSE 0 END), 0)
                                                     AS historyCount,
-               COUNT(*)
+               COALESCE(SUM(ar.trigger_count), 0)
                                                     AS totalCount,
-               SUM(CASE WHEN create_time &gt;= DATE_SUB(NOW(), INTERVAL 3 MONTH) THEN 1 ELSE 0 END)
+               COALESCE((SELECT COUNT(*)
+                         FROM alarm_record_trigger_detail td
+                         WHERE td.trigger_time &gt;= DATE_SUB(NOW(), INTERVAL 3 MONTH)), 0)
                                                     AS recentThreeMonthsCount
-        FROM alarm_record
+        FROM alarm_record ar
     </select>
 
     <select id="countTriggerByHazardPoint" resultType="java.util.Map">

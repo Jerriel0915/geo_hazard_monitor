@@ -10,24 +10,20 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ref, toRef, watch, onBeforeUnmount} from 'vue'
+import {computed, ref, shallowRef, toRef, watch} from 'vue'
 import L from 'leaflet'
 import {useMapEditor} from '@/composables/useMapEditor'
 import type {LatLng} from '@/lib/boundaryCoords'
+import {getDeviceMapIconPath} from '@/utils/deviceIcon'
+import type {BoundDevice} from '@/views/basic/composables/useHazardPointDeviceBind'
 import MapCoordInput from './MapCoordInput.vue'
-
-export interface DeviceMarker {
-  lng: number
-  lat: number
-  name: string
-  code: string
-}
 
 const props = withDefaults(defineProps<{
   modelValue: LatLng | null
   readonly?: boolean
   overlayPolygon?: LatLng[] | null
-  deviceMarkers?: DeviceMarker[]
+  /** 已绑定设备列表 — 在地图上叠加只读图钉, 与 MapBoundaryEditor 渲染一致 */
+  boundDevices?: BoundDevice[]
   defaultCenter?: LatLng
   defaultZoom?: number
   coordInputEnabled?: boolean
@@ -35,7 +31,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   readonly: false,
   overlayPolygon: null,
-  deviceMarkers: () => [],
+  boundDevices: () => [],
   defaultZoom: 12,
   coordInputEnabled: true,
   height: 400
@@ -80,33 +76,39 @@ function onCoordParsed(result: LatLng | LatLng[]) {
   if (pt) localPoint.value = pt
 }
 
-// ── 设备位置标记渲染 ──
-let deviceLayer: L.LayerGroup | null = null
+// ── 设备只读图层 (与 MapBoundaryEditor 渲染一致) ──
+const deviceLayer = shallowRef<L.LayerGroup | null>(null)
 
-watch([() => props.deviceMarkers, editor.mapRef], ([markers, map]) => {
-  deviceLayer?.remove()
-  if (!map || !markers || markers.length === 0) return
-  deviceLayer = L.layerGroup().addTo(map)
-  markers.forEach(m => {
-    const marker = L.circleMarker([m.lat, m.lng], {
-      radius: 7,
-      fillColor: '#3b82f6',
-      fillOpacity: 0.7,
-      color: '#ffffff',
-      weight: 2,
-      opacity: 1
+function renderDeviceLayer(devices: BoundDevice[]) {
+  const map = editor.mapRef.value
+  if (!map) return
+  if (!deviceLayer.value) {
+    deviceLayer.value = L.layerGroup().addTo(map)
+  }
+  deviceLayer.value.clearLayers()
+  devices.forEach(d => {
+    if (d.installLongitude == null || d.installLatitude == null) return
+    const icon = L.icon({
+      iconUrl: getDeviceMapIconPath(d),
+      iconSize: [28, 32],
+      iconAnchor: [14, 16]
     })
-    marker.bindTooltip(`${m.name} (${m.code})`, {
-      direction: 'top',
-      offset: [0, -8]
-    })
-    deviceLayer!.addLayer(marker)
+    L.marker([d.installLatitude, d.installLongitude], {
+      icon,
+      interactive: true,
+      zIndexOffset: 500
+    }).addTo(deviceLayer.value!)
   })
-}, {immediate: true})
+}
 
-onBeforeUnmount(() => {
-  deviceLayer?.remove()
-})
+watch(
+  [() => props.boundDevices, editor.isReady],
+  ([devices, ready]) => {
+    if (!ready) return
+    renderDeviceLayer(devices ?? [])
+  },
+  {immediate: true}
+)
 
 defineExpose({
   invalidate: editor.invalidate,
