@@ -389,18 +389,42 @@ public class MonitorDataQueryService {
     /**
      * 根据隐患点和筛选条件解析可查询的测点指标。
      *
-     * @param hazardPointId 隐患点ID
-     * @param deviceId      设备ID，可空
-     * @param sensorId      传感器ID，可空
-     * @param attrCode      属性编码，可空
+     * <p>当 {@code hazardPointId} 为 {@code null} 时，遍历所有活跃隐患点的已绑定设备，
+     * 实现全局搜索。过滤条件（deviceId / sensorId / attrCode）始终生效。</p>
+     *
+     * @param hazardPointName 隐患点名称（单隐患点模式时使用，全局搜索时忽略）
+     * @param hazardPointId   隐患点ID，可空（空=全局搜索）
+     * @param deviceId        设备ID，可空
+     * @param sensorId        传感器ID，可空
+     * @param attrCode        属性编码，可空
      * @return 可查询指标集合
-     * @throws ServiceException 当隐患点ID为空时抛出
      */
     private List<ResolvedMeasurement> resolveMeasurements(String hazardPointName, Long hazardPointId, Long deviceId, Long sensorId, String attrCode) {
-        if (hazardPointId == null) {
-            throw new ServiceException("隐患点ID不能为空");
+        if (hazardPointId != null) {
+            List<BoundDeviceVO> boundDevices = deviceHazardPointService.getBoundDevices(hazardPointId);
+            return buildMeasurements(hazardPointId, hazardPointName, boundDevices, deviceId, sensorId, attrCode);
         }
-        List<BoundDeviceVO> boundDevices = deviceHazardPointService.getBoundDevices(hazardPointId);
+        // 全局搜索：遍历所有活跃隐患点的已绑定设备，按条件过滤
+        HazardPoint filter = new HazardPoint();
+        filter.setStatus(1);
+        List<HazardPoint> allHazardPoints = hazardPointService.selectHazardPointList(filter);
+        List<ResolvedMeasurement> allMeasurements = new ArrayList<>();
+        for (HazardPoint hp : allHazardPoints) {
+            List<BoundDeviceVO> boundDevices = deviceHazardPointService.getBoundDevices(hp.getId());
+            if (boundDevices.isEmpty()) {
+                continue;
+            }
+            allMeasurements.addAll(buildMeasurements(hp.getId(), hp.getName(), boundDevices, deviceId, sensorId, attrCode));
+        }
+        return allMeasurements;
+    }
+
+    /**
+     * 根据已绑定设备列表构建可查询的测点指标。
+     */
+    private List<ResolvedMeasurement> buildMeasurements(Long hazardPointId, String hazardPointName,
+                                                        List<BoundDeviceVO> boundDevices,
+                                                        Long deviceId, Long sensorId, String attrCode) {
         if (boundDevices.isEmpty()) {
             return List.of();
         }
@@ -479,6 +503,9 @@ public class MonitorDataQueryService {
      * @return 隐患点名称；不存在时返回空字符串
      */
     private String resolveHazardPointName(Long hazardPointId) {
+        if (hazardPointId == null) {
+            return "";
+        }
         HazardPoint hazardPoint = hazardPointService.selectHazardPointById(hazardPointId);
         return hazardPoint != null ? hazardPoint.getName() : "";
     }

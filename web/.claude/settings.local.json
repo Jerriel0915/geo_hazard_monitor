@@ -31,7 +31,10 @@
       "Bash(python3 _fix_log.py)",
       "Bash(python3 _dp_clean.py)",
       "mcp__ide__getDiagnostics",
-      "Bash(mvn install *)"
+      "Bash(mvn install *)",
+      "Bash(./mvnw compile *)",
+      "Bash(where mvn *)",
+      "Read(//c/Program Files/**)"
     ]
   }
 }

@@ -60,7 +60,7 @@ public class MonitorDataController {
      */
     @PreAuthorize("@ss.hasPermi('basic:device:query')")
     @GetMapping("/page")
-    public AjaxResult page(@RequestParam Long hazardPointId,
+    public AjaxResult page(@RequestParam(required = false) Long hazardPointId,
                            @RequestParam(required = false) Long deviceId,
                            @RequestParam(required = false) Long sensorId,
                            @RequestParam(required = false) String attrCode,

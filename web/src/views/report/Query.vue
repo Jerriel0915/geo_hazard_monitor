@@ -12,6 +12,20 @@
 
     <div class="search">
       <el-select
+          v-model="selectedGroupId"
+          placeholder="隐患分组"
+          clearable
+          @change="onGroupChange"
+      >
+        <el-option
+            v-for="g in groupOptions"
+            :key="g.id"
+            :label="g.name"
+            :value="g.id"
+        />
+      </el-select>
+
+      <el-select
           v-model="selectedHazardPointId"
           placeholder="隐患点"
           clearable
@@ -78,6 +92,8 @@
             stripe
             v-loading="loading"
         >
+          <el-table-column prop="groupName" label="隐患分组" width="140" align="center" show-overflow-tooltip />
+          <el-table-column prop="hazardPointName" label="隐患点" width="160" align="center" show-overflow-tooltip />
           <el-table-column prop="dataTime" label="时间" width="170" align="center" />
           <el-table-column prop="deviceName" label="设备名称" width="180" align="center" />
           <el-table-column prop="sensorName" label="传感器" width="180" align="center" />
@@ -110,15 +126,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { showRequestErrorMessage } from '@/utils/errorHandler'
-import { getHazardPointPage } from '@/api/hazardPoint'
+import { getHazardPointPage, getHazardPointGroups } from '@/api/hazardPoint'
 import { getDevicePage, type DeviceItem } from '@/api/device'
-import { getMonitorDataPage, type MonitorDataPageItem, type MonitorDataPageQuery } from '@/api/monitorData'
+import { getMonitorDataPage, type MonitorDataPageItem } from '@/api/monitorData'
 import { getDeviceSensors } from '@/api/sensor'
 
 // 类型定义
 interface HazardPointOption {
   id: number
   name: string
+  groupName: string
 }
 
 interface DeviceAttr {
@@ -128,6 +145,11 @@ interface DeviceAttr {
 }
 
 interface DeviceOption {
+  id: number
+  name: string
+}
+
+interface GroupOption {
   id: number
   name: string
 }
@@ -155,11 +177,13 @@ const pageSize = ref(10)
 const total = ref(0)
 
 // 选项数据
+const groupOptions = ref<GroupOption[]>([])
 const hazardPointOptions = ref<HazardPointOption[]>([])
 const deviceOptions = ref<DeviceOption[]>([])
 const deviceAttrsMap = ref<Map<number, DeviceAttr[]>>(new Map())
 
 // 选中的筛选条件 - 默认最近7天
+const selectedGroupId = ref<number | ''>('')
 const selectedHazardPointId = ref<number | ''>('')
 const selectedDeviceId = ref<number | ''>('')
 const selectedAttrCodes = ref<string[]>([])
@@ -171,14 +195,41 @@ const availableAttrs = computed(() => {
   return deviceAttrsMap.value.get(selectedDeviceId.value) || []
 })
 
-// 加载隐患点选项
+// 隐患点ID → 名称/分组映射（用于表格列展示）
+const hazardPointMap = computed(() => {
+  const map = new Map<number, { name: string; groupName: string }>()
+  hazardPointOptions.value.forEach(hp => {
+    map.set(hp.id, { name: hp.name, groupName: hp.groupName })
+  })
+  return map
+})
+
+// 加载隐患分组选项
+const loadGroupOptions = async () => {
+  try {
+    const groups = await getHazardPointGroups()
+    groupOptions.value = (groups || []).map((g: any) => ({
+      id: g.id,
+      name: g.name
+    }))
+  } catch (error) {
+    console.error('加载隐患分组失败:', error)
+  }
+}
+
+// 加载隐患点选项（支持按分组过滤）
 const loadHazardPointOptions = async () => {
   try {
-    const res = await getHazardPointPage({ pageNum: 1, pageSize: 1000 })
+    const params: any = { pageNum: 1, pageSize: 1000 }
+    if (selectedGroupId.value) {
+      params.groupId = selectedGroupId.value
+    }
+    const res = await getHazardPointPage(params)
     const rows = res.data?.rows || []
     hazardPointOptions.value = rows.map((item: any) => ({
       id: item.id,
-      name: item.name
+      name: item.name,
+      groupName: item.groupName || ''
     }))
   } catch (error) {
     showRequestErrorMessage(error, '加载隐患点列表失败')
@@ -229,7 +280,7 @@ const loadDeviceAttrs = async (deviceId: number): Promise<DeviceAttr[]> => {
   }
 }
 
-// 设备变化时加载其属性
+// 设备变化时加载其属性（级联过滤监测属性）
 const onDeviceChange = async () => {
   selectedAttrCodes.value = []
   if (selectedDeviceId.value) {
@@ -237,9 +288,12 @@ const onDeviceChange = async () => {
     deviceAttrsMap.value.set(selectedDeviceId.value, attrs)
     // 自动全选所有属性
     selectedAttrCodes.value = attrs.map(a => a.code)
+    // 自动查询
+    await handleQuery()
+  } else {
+    tableData.value = []
+    total.value = 0
   }
-  // 自动查询
-  await handleQuery()
 }
 
 // 转换监测数据为表格行（将同一时间点的多条属性聚合）
@@ -249,8 +303,11 @@ const transformMonitorData = (rows: MonitorDataPageItem[]) => {
   rows.forEach(item => {
     const key = `${item.dataTime}_${item.deviceId}_${item.sensorId}`
     if (!grouped[key]) {
+      const hpInfo = hazardPointMap.value.get(item.hazardPointId)
       grouped[key] = {
         dataTime: item.dataTime,
+        groupName: hpInfo?.groupName || '',
+        hazardPointName: item.hazardPointName || hpInfo?.name || '',
         deviceId: item.deviceId,
         deviceName: item.deviceName,
         sensorId: item.sensorId,
@@ -271,22 +328,17 @@ const transformMonitorData = (rows: MonitorDataPageItem[]) => {
 
 // 查询监测数据
 const handleQuery = async () => {
-  if (!selectedDeviceId.value) {
-    ElMessage.warning('请选择设备')
-    return
-  }
-  if (!selectedHazardPointId.value) {
-    ElMessage.warning('请选择隐患点')
-    return
-  }
-
   loading.value = true
   try {
-    const baseParams: MonitorDataPageQuery = {
-      hazardPointId: selectedHazardPointId.value,
-      deviceId: selectedDeviceId.value,
+    const baseParams: any = {
       pageNum: currentPage.value,
       pageSize: pageSize.value
+    }
+    if (selectedHazardPointId.value) {
+      baseParams.hazardPointId = selectedHazardPointId.value
+    }
+    if (selectedDeviceId.value) {
+      baseParams.deviceId = selectedDeviceId.value
     }
     if (timeRange.value) {
       baseParams.startTime = timeRange.value[0]
@@ -314,20 +366,48 @@ const handleQuery = async () => {
   }
 }
 
-// 事件处理
-const onHazardPointChange = async () => {
+// 分组变更：重新加载隐患点列表，尝试保留已选的隐患点和设备
+const onGroupChange = async () => {
+  const prevHpId = selectedHazardPointId.value
+  const prevDeviceId = selectedDeviceId.value
+  selectedHazardPointId.value = ''
   selectedDeviceId.value = ''
   selectedAttrCodes.value = []
   deviceOptions.value = []
   deviceAttrsMap.value.clear()
-  tableData.value = []
-  total.value = 0
-  // 重置时保留默认时间范围
-  timeRange.value = getDefaultTimeRange()
+  await loadHazardPointOptions()
+  if (prevHpId && hazardPointOptions.value.some(hp => hp.id === prevHpId)) {
+    selectedHazardPointId.value = prevHpId
+    await loadDeviceOptions()
+    if (prevDeviceId && deviceOptions.value.some(d => d.id === prevDeviceId)) {
+      selectedDeviceId.value = prevDeviceId
+      const attrs = await loadDeviceAttrs(prevDeviceId)
+      deviceAttrsMap.value.set(prevDeviceId, attrs)
+      selectedAttrCodes.value = attrs.map(a => a.code)
+    }
+  } else {
+    await loadDeviceOptions()
+  }
+}
+
+// 隐患点变更：重新加载设备列表，尝试保留已选的设备
+const onHazardPointChange = async () => {
+  const prevDeviceId = selectedDeviceId.value
+  selectedDeviceId.value = ''
+  selectedAttrCodes.value = []
+  deviceOptions.value = []
+  deviceAttrsMap.value.clear()
   await loadDeviceOptions()
+  if (prevDeviceId && deviceOptions.value.some(d => d.id === prevDeviceId)) {
+    selectedDeviceId.value = prevDeviceId
+    const attrs = await loadDeviceAttrs(prevDeviceId)
+    deviceAttrsMap.value.set(prevDeviceId, attrs)
+    selectedAttrCodes.value = attrs.map(a => a.code)
+  }
 }
 
 const handleReset = () => {
+  selectedGroupId.value = ''
   selectedHazardPointId.value = ''
   selectedDeviceId.value = ''
   selectedAttrCodes.value = []
@@ -337,15 +417,13 @@ const handleReset = () => {
   total.value = 0
   deviceOptions.value = []
   deviceAttrsMap.value.clear()
+  loadHazardPointOptions()
+  loadDeviceOptions()
 }
 
 const EXPORT_MAX = 20000
 
 const handleExportCsv = async () => {
-  if (!selectedDeviceId.value || !selectedHazardPointId.value) {
-    ElMessage.warning('请先选择隐患点和设备并查询')
-    return
-  }
   if (total.value === 0) {
     ElMessage.warning('没有数据可导出')
     return
@@ -364,12 +442,16 @@ const handleExportCsv = async () => {
   try {
     for (let p = 1; p <= totalPages; p++) {
       for (const attrCode of attrCodes) {
-      const params: MonitorDataPageQuery = {
-        hazardPointId: selectedHazardPointId.value,
-        deviceId: selectedDeviceId.value,
+      const params: any = {
         pageNum: p,
           pageSize: fetchPageSize,
           attrCode: attrCode || undefined
+      }
+      if (selectedHazardPointId.value) {
+        params.hazardPointId = selectedHazardPointId.value
+      }
+      if (selectedDeviceId.value) {
+        params.deviceId = selectedDeviceId.value
       }
       if (timeRange.value) {
         params.startTime = timeRange.value[0]
@@ -388,13 +470,13 @@ const handleExportCsv = async () => {
 
   const exportRows = transformMonitorData(allRows)
 
-  // 构建CSV数据（与查询表格一致：时间 | 设备名称 | 传感器 | 监测数据）
-  const headers = ['时间', '设备名称', '传感器', '监测数据']
+  // 构建CSV数据（与查询表格一致：隐患分组 | 隐患点 | 时间 | 设备名称 | 传感器 | 监测数据）
+  const headers = ['隐患分组', '隐患点', '时间', '设备名称', '传感器', '监测数据']
   const rows = exportRows.map(row => {
     const monitorDataStr = row.dataList.map((item: any) =>
       `${item.attrName}: ${item.value}${item.unit}`
     ).join('; ')
-    return [row.dataTime, row.deviceName, row.sensorName, monitorDataStr]
+    return [row.groupName, row.hazardPointName, row.dataTime, row.deviceName, row.sensorName, monitorDataStr]
   })
 
   const csv = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
@@ -408,6 +490,7 @@ const handleExportCsv = async () => {
 }
 
 onMounted(() => {
+  loadGroupOptions()
   loadHazardPointOptions()
   loadDeviceOptions()
 })
