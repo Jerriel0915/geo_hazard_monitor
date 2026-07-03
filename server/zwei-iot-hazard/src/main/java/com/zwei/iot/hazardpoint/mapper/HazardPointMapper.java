@@ -137,6 +137,27 @@ public interface HazardPointMapper
      */
     List<HazardPoint> selectAll();
 
+    /**
+     * 按状态与删除标记查询隐患点（替代 selectAll + 内存过滤）。
+     *
+     * @param status  隐患点状态
+     * @param delFlag 删除标记
+     * @return 符合条件的隐患点列表
+     */
+    List<HazardPoint> selectByStatusAndDelFlag(@Param("status") int status, @Param("delFlag") String delFlag);
+
+    /**
+     * 按分组、状态、删除标记查询隐患点ID列表。
+     *
+     * @param groupId 分组ID
+     * @param status  隐患点状态
+     * @param delFlag 删除标记
+     * @return 符合条件的隐患点ID列表
+     */
+    List<Long> selectIdsByGroupIdAndStatus(@Param("groupId") Long groupId,
+                                           @Param("status") int status,
+                                           @Param("delFlag") String delFlag);
+
     int countAll();
 
     List<java.util.Map<String, Object>> countByStatus();

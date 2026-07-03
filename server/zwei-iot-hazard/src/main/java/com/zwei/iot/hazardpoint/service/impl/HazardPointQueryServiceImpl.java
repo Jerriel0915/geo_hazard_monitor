@@ -7,7 +7,6 @@ import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 隐患点查询跨模块服务实现。
@@ -23,23 +22,20 @@ public class HazardPointQueryServiceImpl implements IHazardPointQueryService {
 
     @Override
     public List<HazardPointBrief> listMonitoring() {
-        List<HazardPoint> all = hazardPointMapper.selectAll();
-        return all.stream()
-            .filter(hp -> hp.getStatus() != null && hp.getStatus() == 1)
-            .filter(hp -> hp.getDelFlag() == null || "0".equals(hp.getDelFlag()))
+        return hazardPointMapper.selectByStatusAndDelFlag(HazardPoint.STATUS_MONITORING, "0")
+            .stream()
             .map(hp -> new HazardPointBrief(
                 hp.getId(), hp.getCode(), hp.getName(),
                 hp.getLongitude(), hp.getLatitude()))
-            .collect(Collectors.toList());
+            .toList();
     }
 
     @Override
     public List<Long> listIdsByGroupId(Long groupId) {
-        return hazardPointMapper.selectAll().stream()
-            .filter(hp -> groupId.equals(hp.getGroupId()))
-            .filter(hp -> hp.getStatus() != null && hp.getStatus() == 1)
-            .filter(hp -> hp.getDelFlag() == null || "0".equals(hp.getDelFlag()))
-            .map(HazardPoint::getId)
-            .collect(Collectors.toList());
+        if (groupId == null) {
+            return List.of();
+        }
+        return hazardPointMapper.selectIdsByGroupIdAndStatus(
+                groupId, HazardPoint.STATUS_MONITORING, "0");
     }
 }

@@ -164,11 +164,9 @@ public class MqttDeviceAuthService {
 
         // 鉴权通过后优先回写设备最近一次接入信息，便于后台排查连接来源。
         LocalDateTime now = LocalDateTime.now();
-        deviceAuthQueryService.updateDevice(Device.builder()
-                .id(device.getId())
-                .lastAuthTime(DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, DateUtils.toDate(now)))
-                .lastAuthIp(clientIp)
-                .build());
+        deviceAuthQueryService.updateAuthInfo(device.getId(),
+                DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, DateUtils.toDate(now)),
+                clientIp);
 
         MqttDeviceSession session = new MqttDeviceSession(
                 device.getId(),
@@ -258,12 +256,8 @@ public class MqttDeviceAuthService {
     public void handleClientOnline(ChannelContext context, String clientId, String username) {
         String clientIp = resolveClientIp(context);
         sessionRegistry.getByClientId(clientId).ifPresentOrElse(session -> {
-            Device update = new Device();
-            update.setId(session.deviceId());
-            if (StringUtils.isNotBlank(clientIp)) {
-                update.setLastAuthIp(clientIp);
-            }
-            deviceAuthQueryService.updateDevice(update);
+            deviceAuthQueryService.updateAuthInfo(
+                    session.deviceId(), null, StringUtils.isNotBlank(clientIp) ? clientIp : null);
         }, () -> log.debug("[MQTT-AUTH] Online event ignored because no authenticated session was found. clientId:{}, username:{}",
                 clientId, username));
     }

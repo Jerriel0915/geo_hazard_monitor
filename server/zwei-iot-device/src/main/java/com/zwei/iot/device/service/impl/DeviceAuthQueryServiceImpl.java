@@ -14,5 +14,13 @@ public class DeviceAuthQueryServiceImpl implements IDeviceAuthQueryService {
     public DeviceAuthQueryServiceImpl(DeviceMapper deviceMapper) { this.deviceMapper = deviceMapper; }
 
     @Override public Device findByAuthUsername(String authUsername) { return deviceMapper.selectDeviceByAuthUsername(authUsername); }
-    @Override public void updateDevice(Device device) { deviceMapper.updateDevice(device); }
+
+    @Override
+    public void updateAuthInfo(Long deviceId, String lastAuthTime, String lastAuthIp) {
+        deviceMapper.updateDevice(Device.builder()
+                .id(deviceId)
+                .lastAuthTime(lastAuthTime)
+                .lastAuthIp(lastAuthIp)
+                .build());
+    }
 }

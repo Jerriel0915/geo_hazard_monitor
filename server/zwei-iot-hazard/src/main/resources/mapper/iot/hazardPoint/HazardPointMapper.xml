@@ -208,6 +208,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ORDER BY h.create_time DESC
     </select>
 
+    <select id="selectByStatusAndDelFlag" resultMap="HazardPointResult">
+        <include refid="selectHazardPointVo"/>
+        WHERE h.status = #{status} AND h.del_flag = #{delFlag}
+        ORDER BY h.create_time DESC
+    </select>
+
+    <select id="selectIdsByGroupIdAndStatus" resultType="long">
+        SELECT h.id
+        FROM hazard_point h
+        WHERE h.group_id = #{groupId}
+          AND h.status = #{status}
+          AND h.del_flag = #{delFlag}
+        ORDER BY h.create_time DESC
+    </select>
+
     <select id="countAll" resultType="int">
         SELECT COUNT(*)
         FROM hazard_point
