@@ -193,7 +193,7 @@
           </el-descriptions-item>
         </el-descriptions>
       </div>
-      <div ref="reportContentRef" class="report-content" v-html="currentReport?.content || '<p style=\'color:#909399\'>暂无报告内容</p>'" />
+      <div ref="reportContentRef" class="report-content" v-html="formattedContent || '<p style=\'color:#909399\'>暂无报告内容</p>'" />
       <template #footer>
         <el-button @click="handlePrint">打印</el-button>
         <el-button type="primary" @click="handleExportPdfDialog" :loading="pdfLoading" :disabled="currentReport?.status !== 2">导出PDF</el-button>
@@ -236,6 +236,18 @@ const viewDialogVisible = ref(false)
 const currentReport = ref<ReportItem | null>(null)
 const reportContentRef = ref<HTMLElement>()
 const pdfLoading = ref(false)
+
+// 清洗后端返回 HTML 中的 ISO 时间戳 → 北京时间格式（不修改后端）
+const formattedContent = computed(() => {
+  const raw = currentReport.value?.content
+  if (!raw) return ''
+  return raw.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?/g, (match) => {
+    const d = new Date(match)
+    if (isNaN(d.getTime())) return match
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}年${pad(d.getMonth() + 1)}月${pad(d.getDate())}日 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  })
+})
 
 function typeLabel(t: ReportType): string { return ({ weekly: '周报', monthly: '月报', quarterly: '季报' } as const)[t] ?? t }
 function typeTagType(t: ReportType): string { return ({ weekly: 'success', monthly: 'warning', quarterly: 'danger' } as const)[t] ?? '' }
@@ -327,7 +339,7 @@ const handlePrint = () => {
 
   const r = currentReport.value
   const title = r?.reportName || '监测报告'
-  const contentHtml = r?.content || '<p style="color:#909399">暂无报告内容</p>'
+  const contentHtml = formattedContent.value || '<p style="color:#909399">暂无报告内容</p>'
   const now = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   const bjTime = `${now.getFullYear()}年${pad(now.getMonth() + 1)}月${pad(now.getDate())}日 ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
@@ -462,7 +474,7 @@ const handleExportPdf = async (row: ReportItem) => {
   try {
     const report = await getReportDetail(row.id)
     currentReport.value = report
-    const html = report?.content || '<p style="color:#909399">暂无报告内容</p>'
+    const html = formattedContent.value || '<p style="color:#909399">暂无报告内容</p>'
     const captureEl = buildCaptureContainer(html)
     // 等待图片等资源加载
     await new Promise(r => setTimeout(r, 250))
