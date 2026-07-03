@@ -29,17 +29,19 @@ public class ProductTslServiceImpl implements IProductTslService {
     private final DeviceMapper deviceMapper;
     private final SensorAttributeMapper attributeMapper;
     private final TslBuilder tslBuilder;
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public ProductTslServiceImpl(ProductMapper productMapper,
                                   DeviceMapper deviceMapper,
                                   SensorAttributeMapper attributeMapper,
-                                  TslBuilder tslBuilder) {
+                                  TslBuilder tslBuilder,
+                                  ObjectMapper objectMapper) {
         this.productMapper = productMapper;
         this.deviceMapper = deviceMapper;
         this.attributeMapper = attributeMapper;
         this.tslBuilder = tslBuilder;
+        this.objectMapper = objectMapper;
     }
 
     @Override

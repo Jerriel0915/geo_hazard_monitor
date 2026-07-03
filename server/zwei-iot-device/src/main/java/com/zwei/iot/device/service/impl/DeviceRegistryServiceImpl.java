@@ -79,7 +79,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     private final DeviceAuthAccountGenerator accountGenerator;
     private final ITimeSeriesSchemaService timeSeriesSchemaService;
     private final IProductTslService productTslService;
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper objectMapper;
 
     @Value("${zwei.iot.device-registry.register-codes:}")
     private String configuredRegisterCodes;
@@ -94,7 +94,8 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
                                      IMonitorContentService monitorContentService,
                                      DeviceAuthAccountGenerator accountGenerator,
                                      ITimeSeriesSchemaService timeSeriesSchemaService,
-                                     IProductTslService productTslService) {
+                                     IProductTslService productTslService,
+                                     ObjectMapper objectMapper) {
         this.deviceMapper = deviceMapper;
         this.sensorMapper = sensorMapper;
         this.attributeMapper = attributeMapper;
@@ -105,6 +106,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
         this.accountGenerator = accountGenerator;
         this.timeSeriesSchemaService = timeSeriesSchemaService;
         this.productTslService = productTslService;
+        this.objectMapper = objectMapper;
     }
 
     @Override

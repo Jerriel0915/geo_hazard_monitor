@@ -48,14 +48,11 @@ public class VideoDeviceHazardPointServiceImpl implements IVideoDeviceHazardPoin
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public int bindVideoDevices(Long hazardPointId, BindVideoDeviceRequest request, String username) {
         ensureHazardPointExists(hazardPointId);
         List<Long> videoDeviceIds = normalizeVideoDeviceIds(request.getVideoDeviceIds());
         validateVideoDevicesExist(videoDeviceIds);
         Map<Long, VideoInstallPosition> positionMap = buildPositionMap(videoDeviceIds, request.getInstallPositions());
-
-        videoDeviceHazardPointMapper.deleteByVideoDeviceIdsAndHazardPointId(hazardPointId, videoDeviceIds);
 
         List<VideoDeviceHazardPoint> bindList = new ArrayList<>(videoDeviceIds.size());
         for (Long videoDeviceId : videoDeviceIds) {
@@ -71,7 +68,9 @@ public class VideoDeviceHazardPointServiceImpl implements IVideoDeviceHazardPoin
             }
             bindList.add(bind);
         }
-        return videoDeviceHazardPointMapper.insertBatch(bindList);
+        // 基于 uk_video_device_hazard_point 唯一键幂等 upsert，
+        // 已绑定设备仅更新安装位置和更新者，与 DeviceHazardPointServiceImpl 策略一致
+        return videoDeviceHazardPointMapper.insertOrUpdate(bindList);
     }
 
     @Override

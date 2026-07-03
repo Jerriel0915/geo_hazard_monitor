@@ -42,6 +42,26 @@
         </foreach>
     </insert>
 
+    <!-- 批量插入或更新绑定记录（基于 uk_video_device_hazard_point 唯一键幂等） -->
+    <insert id="insertOrUpdate" parameterType="java.util.List">
+        INSERT INTO video_device_hazard_point (
+            video_device_id, hazard_point_id, install_longitude, install_latitude,
+            bind_time, create_by, create_time, update_by, update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.videoDeviceId}, #{item.hazardPointId},
+                #{item.installLongitude}, #{item.installLatitude},
+                SYSDATE(), #{item.createBy}, SYSDATE(), #{item.createBy}, SYSDATE()
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            install_longitude = VALUES(install_longitude),
+            install_latitude = VALUES(install_latitude),
+            update_by = VALUES(update_by),
+            update_time = SYSDATE()
+    </insert>
+
     <delete id="deleteByVideoDeviceIdsAndHazardPointId">
         DELETE FROM video_device_hazard_point
         WHERE hazard_point_id = #{hazardPointId}

@@ -40,6 +40,14 @@ public interface VideoDeviceHazardPointMapper {
                                                @Param("videoDeviceIds") List<Long> videoDeviceIds);
 
     /**
+     * 批量插入或更新绑定记录（基于 uk_video_device_hazard_point 唯一键幂等）。
+     *
+     * @param bindList 绑定记录
+     * @return 影响行数
+     */
+    int insertOrUpdate(@Param("list") List<VideoDeviceHazardPoint> bindList);
+
+    /**
      * 根据视频设备ID列表删除绑定记录
      *
      * @param videoDeviceIds 视频设备ID列表
