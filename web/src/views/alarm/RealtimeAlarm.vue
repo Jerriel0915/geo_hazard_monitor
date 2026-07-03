@@ -182,7 +182,7 @@ const getDefaultTimeRange = (): [string, string] => {
 // 查询参数
 const queryParams = reactive({
   hazardPointName: '',
-  alarmTimeRange: getDefaultTimeRange() as string[],
+  alarmTimeRange: [] as string[],
   alarmLevel: [] as number[],
   alarmType: [] as string[],
   status: [] as number[],
@@ -265,7 +265,7 @@ const getStatusText = (status: number | string) => {
 const handleQuery = () => { pagination.currentPage = 1; loadList() }
 const handleReset = () => {
   queryParams.hazardPointName = ''
-  queryParams.alarmTimeRange = getDefaultTimeRange()
+  queryParams.alarmTimeRange = []
   queryParams.alarmLevel = []
   queryParams.alarmType = []
   queryParams.status = []
