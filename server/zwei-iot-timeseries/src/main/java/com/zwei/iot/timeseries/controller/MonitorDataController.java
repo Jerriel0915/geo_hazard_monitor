@@ -37,7 +37,7 @@ public class MonitorDataController {
      */
     @PreAuthorize("@ss.hasPermi('basic:device:query')")
     @GetMapping("/latest")
-    public AjaxResult latest(@RequestParam(required = false) Long hazardPointId) {
+    public AjaxResult latest(@RequestParam Long hazardPointId) {
         return AjaxResult.success("成功", monitorDataQueryService.latest(hazardPointId));
     }
 
@@ -89,7 +89,7 @@ public class MonitorDataController {
      */
     @PreAuthorize("@ss.hasPermi('basic:device:query')")
     @GetMapping("/chart")
-    public AjaxResult chart(@RequestParam(required = false) Long hazardPointId,
+    public AjaxResult chart(@RequestParam Long hazardPointId,
                             @RequestParam(required = false) Long deviceId,
                             @RequestParam(required = false) Long sensorId,
                             @RequestParam(required = false) String attrCode,

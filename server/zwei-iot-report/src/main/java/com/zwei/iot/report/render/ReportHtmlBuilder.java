@@ -2,6 +2,7 @@ package com.zwei.iot.report.render;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.format.DateTimeFormatter;
 
 import com.zwei.iot.report.datasource.ReportContext;
 import com.zwei.iot.report.domain.ReportType;
@@ -27,7 +28,7 @@ public final class ReportHtmlBuilder {
             + (ctx.hazardPoint().longitude() != null
                 ? "<p style=\"margin:4px 0;\"><strong>隐患点位置：</strong>经度 " + ctx.hazardPoint().longitude().setScale(6, RoundingMode.HALF_UP) + ", 纬度 " + ctx.hazardPoint().latitude().setScale(6, RoundingMode.HALF_UP) + "</p>"
                 : "")
-            + "<p style=\"margin:4px 0;\"><strong>生成时间：</strong>" + ctx.generatedAt() + "</p>"
+            + "<p style=\"margin:4px 0;\"><strong>生成时间：</strong>" + ctx.generatedAt().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss")) + "</p>"
             + "<div style=\"height:12px;\"></div>";
     }
 

@@ -16,13 +16,13 @@
     </div>
 
     <div class="search">
-      <el-input v-model="searchKeyword" placeholder="搜索报告名称" clearable @clear="handleSearch" @keyup.enter="handleSearch" />
-      <el-select v-model="searchType" placeholder="报告类型" clearable>
+      <el-input v-model="searchKeyword" placeholder="搜索报告名称" clearable style="width: 180px" @clear="handleSearch" @keyup.enter="handleSearch" />
+      <el-select v-model="searchType" placeholder="报告类型" clearable style="width: 120px">
         <el-option label="周报" value="weekly" />
         <el-option label="月报" value="monthly" />
         <el-option label="季报" value="quarterly" />
       </el-select>
-      <el-select v-model="searchStatus" placeholder="状态" clearable>
+      <el-select v-model="searchStatus" placeholder="状态" clearable style="width: 110px">
         <el-option label="生成中" :value="1" />
         <el-option label="已生成" :value="2" />
         <el-option label="生成失败" :value="3" />
@@ -33,6 +33,7 @@
         range-separator="至"
         start-placeholder="周期起始"
         end-placeholder="周期截止"
+        style="width: 260px"
         value-format="YYYY-MM-DD HH:mm:ss"
         :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
       />
@@ -186,7 +187,7 @@
               {{ currentReport?.statusDesc || statusLabel(currentReport?.status || 1) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="生成时间">{{ currentReport?.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="生成时间">{{ formatBjTime(currentReport?.createTime || '') }}</el-descriptions-item>
           <el-descriptions-item label="错误信息" v-if="currentReport?.errorMsg">
             <span style="color: #f56c6c">{{ currentReport?.errorMsg }}</span>
           </el-descriptions-item>
@@ -548,7 +549,7 @@ onMounted(async () => {
 .report-content :deep(th) { background: #f5f7fa; font-weight: bold; }
 .report-content :deep(h2) { margin: 15px 0 10px; font-size: 16px; color: #303133; }
 .report-content :deep(p) { margin: 8px 0; }
-.search { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.search { display: flex; gap: 12px; align-items: center; }
 .table-wrap { margin-top: 16px; }
 .table-wrap__scroll { overflow-x: auto; }
 .table-wrap__pagination { display: flex; justify-content: flex-end; margin-top: 16px; }
