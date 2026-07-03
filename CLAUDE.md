@@ -12,6 +12,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 时间               | 变更                                                                                                                        | 备注                                                                                                                                                                                        |
 |------------------|---------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-07-03 | **全面文档更新**: 根级 + 模块级 CLAUDE.md 全量刷新; 接口文档重写为 `db/api.md` | 新增 4 个后端模块 (zwei-terra/zwei-datashare/zwei-iot-report/zwei-iot-parser) + 1 个前端应用 (terra/) 文档化; 23+ 升级脚本记录 |
+| 2026-07-01 | **综合告警引擎 v2**: 并行评估 + Python 执行器 + Quartz 动态调度 + 脚本日志 | ComprehensiveAlarmExecutionService + ComprehensiveAlarmEventListener + ComprehensiveAlarmQuartzJob + StrategyQuartzScheduler + PythonAlgoExecutor + StrategyScopeResolver + ScriptAlgoOps; 新增 StrategyExecutionLog; 删除旧 ComprehensiveAlarmJob |
+| 2026-06-28 | **Terra AI 助手**: 新 Maven 模块 zwei-terra (core + agent) + 独立前端 terra/ | TerraChatController (SSE 聊天, ReAct loop) + TerraConversationController + TerraPersonalityController + TerraModelConfigController + TerraSkillController + TerraToolController + TerraDutyWebSocketHandler (值守模式); 7 张新表 (terra_personality/terra_model_config/terra_skill/terra_tool/terra_skill_tool/terra_conversation/terra_message); 前端 TerraWidget 悬浮球 + TerraChatPanel + 4 个设置页 |
+| 2026-07-01 | **新模块 zwei-datashare**: 数据共享策略管理 | ShareStrategyController + IShareStrategyService + 3 Mapper; 支持 UNIFIED_PUSH/CUSTOM_PUSH/UNIFIED_SERVICE/CUSTOM_SERVICE 四种模式 |
+| 2026-07-01 | **新模块 zwei-iot-report**: 报告生成 | ReportTemplate + ReportRecord 管理; 日报/周报/月报/季报/年报/自定义模板 |
+| 2026-07-01 | **zwei-iot-parser 增强**: Groovy 缓存 + 并发线程池 + last_run_time 回写 | GroovyScriptEngine 编译缓存 + ParserProperties + StrategyLastRunTimeUpdater; 前端 ScriptTestDialog + Groovy 格式化 |
+| 2026-07-03 | **MQTT 异常报文日志**: zwei-log 新增 exception 子包 | MqttExceptionLogController + ExceptionMessageLogService + mqtt_exception_log 表 + ExceptionLogCleanupTask |
+| 2026-07-01 | **算法库 (Algo Library)**: zwei-iot-alarm 新增 algolib 子包 | AlgoLibraryController + AlgoVersionController + IAlgoLibraryService + IAlgoVersionService; 前端 algoLibrary API + 版本上传/下载 |
+| 2026-07-01 | **告警通知中心**: AlarmNotificationController | GET /recent + GET /unread-count + POST /{id}/read + POST /read-all; 双 Tab 分页 |
+| 2026-06-28 | **计算属性 (Computed Attributes)**: zwei-iot-timeseries 新增 compute 子包 | ComputedAttributeTestController + MonitorDataAggregationService + MonitorDataAnalysisService |
+| 2026-07-01 | **短信验证码登录** | SysSmsCodeService + LoginBody 扩展 + SysLoginController 改造 |
+| 2026-07-03 | **前端基础设施**: 5 个共享 composables + 3 个 lib 工具 + 13 个测试文件 | useLeafletMap/useMapEditor/useMonitorData/usePagination/useTableSort; boundaryCoords/coordParser/mapGeometry; Vitest 测试框架 |
+| 2026-07-01 | **UniApp 大更新**: 新组件 + H5 Docker 部署 + 小程序兼容 | MonitorChart (自动降采样) + DataCard + PageHeader + video-player; Docker H5 构建阶段; pnpm 构建; 微信小程序修复 |
+| 2026-07-01 | **安全/基础设施加固** | Husky + commitlint; MQTT NPE 防护 + 缓存失效 + IoTDB HikariCP + Redis fail-open + MqttAuthFailureGuard Redis 迁移; 存储型 XSS 修复 |
 | 2026-06-10 18:52 | 新增 `.claude/index.json` 项目扫描索引                                                                                            | 记录模块清单、事件契约、Service 接口、覆盖率与下一步建议                                                                                                                                                          |
 | 2026-06-10 18:52 | 新增 14 个模块级 CLAUDE.md                                                                                                      | server 各 Maven 模块 + web 前端总览                                                                                                                                                              |
 | 2026-06-10 18:52 | 根级 CLAUDE.md 新增模块结构图 (Mermaid)                                                                                            | 直观表达 Maven 依赖与前后端目录关系                                                                                                                                                                     |
@@ -19,14 +33,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 2026-06-10 19:08 | 新增 `db/CLAUDE.md`                                                                                                         | 解析 SQL 2.0 全量脚本，59 张表 + Mermaid E-R 图                                                                                                                                                     |
 | 2026-06-10 19:08 | `coding-standards.md` 追加 4 节                                                                                              | 第三方库 / 异步线程池 / Redis 规范 / Controller 响应                                                                                                                                                   |
 | 2026-06-10 21:20 | **移除 `server/zwei-iot` 兼容空壳模块**                                                                                           | 父 POM + `zwei-admin`/`zwei-monitor` POM + Dockerfile 全部引用清空；Maven 验证 14 模块 BUILD SUCCESS                                                                                                  |
-| 2026-06-10 19:08 | **增量补扫 P0-P3**: 6 个核心模块 (alarm/timeseries/device/hazard/video/broker/monitor) 新增"核心实现类索引"小节; 修正多处 `service/impl/` 等子包路径错误 | alarm 5 个 engine 类 + 5 个 service impl + notify 双 SSE; timeseries 4 阶段 + Redis Stream 三段退避; device 设备状态机 + 自注册 7 步; hazard REPEATABLE READ 安全 device_count; broker 10 步鉴权; monitor 8 维度健康分 |
-| 2026-06-10 19:08 | 新增 `db/CLAUDE.md` (59 张表清单 + 业务域分组 + E-R 关系图 + 初始化数据)                                                                     | 9 大业务域 + Mermaid `erDiagram` + 关键记录数                                                                                                                                                      |
-| 2026-06-24 18:00 | 通知中心 v2: 双 Tab 分页 + 公告详情页 + 菜单暴露 SysNotice | 后端 listTop/recent 接口分页；前端 NoticeDetail.vue + 路由 + 系统管理菜单入口 + 告警跳转失败提示 |
-| 2026-06-25 10:00 | **SSE 订阅泄漏修复**: 3 个发布器 25s 心跳 + Nginx 90s 超时 + 前端重连定时器管理 | AlarmStreamPublisher/NoticeStreamPublisher/LogStreamPublisher 新增 @Scheduled heartbeat()；Nginx proxy_read_timeout 60s→90s；layout/index.vue 重连定时器跟踪 + stopped 标志 + onUnmounted 清理；ThreadPoolConfig 新增 TaskScheduler Bean (poolSize=4)；新增 NoticeStreamPublisherTest (3 case) + 扩展 AlarmStreamPublisherTest (2 case)/LogStreamPublisherTest (1 case) |
-| 2026-06-14 17:30 | 增强 iot-timeseries 查询能力 | 7 domain + 2 service + 1 controller + IotdbTimeSeriesService 新增 6 方法,ExpressionSpec DSL + 数值范围 + 完整度/趋势 |
-| 2026-06-10 19:08 | 模块索引表追加 `db` 行                                                                                                            | MySQL 8.0 全量脚本 + 升级                                                                                                                                                                       |
-| 2026-06-26 11:00 | **P0 图表自动降采样**: MonitorDataQueryService.chart() 自动决策 + IotdbTimeSeriesService 新增 2 查询方法 + MonitorQueryProperties 配置 | 区间估算点数>2000 自动切 GROUP BY 桶(AVG); raw 路径 LIMIT 4000 兜底防 OOM; ChartDataVO 加 sampled/downsampleInterval/pointCount; 前端 ChartData 接口同步; 109 模块测试通过 + 18 模块编译成功; 设计文档 docs/superpowers/specs/2026-06-26-query-performance-optimization-design.md |
-| 2026-06-26 14:30 | **P1 多测点 keyset 游标分页 + offset 上限守护**: MonitorDataQueryService.page() keyset cursor 支持 + IotdbTimeSeriesService.queryRangeCursor + MonitorQueryProperties.maxMergeRows | 多测点传 cursor 走游标路径(内存 O(measurements×pageSize)); offset 路径加 maxMergeRows=5000 上限守护; Controller 加 cursor 参; 前端 MonitorDataPageQuery 加 cursor; 新增 8 test cases; 116 模块测试通过 |
+| 2026-06-10 19:08 | **增量补扫 P0-P3**: 6 个核心模块 (alarm/timeseries/device/hazard/video/broker/monitor) 新增"核心实现类索引"小节 | alarm 5 个 engine 类 + 5 个 service impl + notify 双 SSE; timeseries 4 阶段 + Redis Stream 三段退避; device 设备状态机 + 自注册 7 步; hazard REPEATABLE READ 安全 device_count; broker 10 步鉴权; monitor 8 维度健康分 |
+| 2026-06-24 18:00 | 通知中心 v2: 双 Tab 分页 + 公告详情页 + 菜单暴露 SysNotice | 后端 listTop/recent 接口分页；前端 NoticeDetail.vue + 路由 + 系统管理菜单入口 |
+| 2026-06-25 10:00 | **SSE 订阅泄漏修复**: 3 个发布器 25s 心跳 + Nginx 90s 超时 + 前端重连定时器管理 | AlarmStreamPublisher/NoticeStreamPublisher/LogStreamPublisher @Scheduled heartbeat()；Nginx proxy_read_timeout 60s→90s；ThreadPoolConfig TaskScheduler Bean (poolSize=4) |
+| 2026-06-26 11:00 | **P0 图表自动降采样**: MonitorDataQueryService.chart() 自动决策 + MonitorQueryProperties 配置 | 区间估算点数>2000 自动切 GROUP BY 桶(AVG); raw 路径 LIMIT 4000 兜底防 OOM |
+| 2026-06-26 14:30 | **P1 多测点 keyset 游标分页 + offset 上限守护**: keyset cursor + MonitorQueryProperties.maxMergeRows | 多测点 cursor 路径; offset 路径加 maxMergeRows=5000 上限守护
 
 ## Project Overview
 
@@ -100,7 +111,12 @@ graph TD
     SI --> IBr["zwei-iot-broker<br/>(MQTT 鉴权+ACL)"];
     SI --> IHaz["zwei-iot-hazard<br/>(隐患点+绑定)"];
     SI --> IVid["zwei-iot-video<br/>(视频设备)"];
-    SI --> IAlm["zwei-iot-alarm<br/>(告警引擎+Groovy)"];
+    SI --> IAlm["zwei-iot-alarm<br/>(告警引擎+Groovy+算法库)"];
+    SI --> IPar["zwei-iot-parser<br/>(数据解析引擎+Groovy缓存)"];
+    SI --> IRep["zwei-iot-report<br/>(报告模板+生成)"];
+    SI --> IDS["zwei-datashare<br/>(数据共享策略)"];
+
+    Server --> ST["zwei-terra<br/>(Terra AI 助手: core+agent)"];
 
     Web --> WDash["views/dashboard"];
     Web --> WHolo["views/holo-board"];
@@ -111,6 +127,10 @@ graph TD
     Web --> WMini["views/miniprogram"];
     Web --> WSys["views/system"];
     Web --> WUser["views/user"];
+    Web --> WTerra["components/terra<br/>(AI 聊天面板+悬浮球)"];
+    Web --> WTerraV["views/terra<br/>(人格/模型/技能/工具设置)"];
+
+    Root --> TerraApp["terra/ (Vue 3 独立应用)<br/>Terra AI 值守大屏"];
 
     click SA "./server/zwei-admin/CLAUDE.md" "查看 Spring Boot 启动入口"
     click SF "./server/zwei-framework/CLAUDE.md" "查看框架层"
@@ -147,8 +167,13 @@ graph TD
 | `zwei-iot-broker`     | `server/zwei-iot-broker`     | MQTT 鉴权/会话/ACL                    | [CLAUDE.md](./server/zwei-iot-broker/CLAUDE.md)     |
 | `zwei-iot-hazard`     | `server/zwei-iot-hazard`     | 隐患点/分组/设备绑定                       | [CLAUDE.md](./server/zwei-iot-hazard/CLAUDE.md)     |
 | `zwei-iot-video`      | `server/zwei-iot-video`      | 视频设备 + 隐患点关联                      | [CLAUDE.md](./server/zwei-iot-video/CLAUDE.md)      |
-| `zwei-iot-alarm`      | `server/zwei-iot-alarm`      | 告警中心: 判据/策略/引擎/分发 (Groovy)        | [CLAUDE.md](./server/zwei-iot-alarm/CLAUDE.md)      |
+| `zwei-iot-alarm`      | `server/zwei-iot-alarm`      | 告警中心: 判据/策略/引擎/分发 (Groovy) + 算法库 (algolib) | [CLAUDE.md](./server/zwei-iot-alarm/CLAUDE.md)      |
+| `zwei-iot-parser`     | `server/zwei-iot-parser`     | 数据解析引擎: Groovy 脚本解析 + 缓存 + 策略管理     | [CLAUDE.md](./server/zwei-iot-parser/CLAUDE.md)     |
+| `zwei-iot-report`     | `server/zwei-iot-report`     | 报告模板 + 报告记录生成                       | [CLAUDE.md](./server/zwei-iot-report/CLAUDE.md)     |
+| `zwei-datashare`      | `server/zwei-datashare`      | 数据共享策略管理 (4 种推送/服务模式)              | [CLAUDE.md](./server/zwei-datashare/CLAUDE.md)      |
+| `zwei-terra`          | `server/zwei-terra`          | Terra AI 助手: core (接口定义) + agent (聊天/值守/工具) | [CLAUDE.md](./server/zwei-terra/CLAUDE.md)          |
 | 前端总览                  | `web`                        | Vue 3 + TS + Vite + Element Plus  | [CLAUDE.md](./web/CLAUDE.md)                        |
+| Terra 独立前端            | `terra`                      | Vue 3 独立应用 — Terra AI 值守大屏         | —                                                   |
 | **数据库**               | `db`                         | **MySQL 8.0 全量脚本 (59 张表) + 升级**   | **[CLAUDE.md](./db/CLAUDE.md)**                     |
 
 ### Backend Module Map (Maven multi-module)
@@ -169,10 +194,14 @@ server/
 ├── zwei-iot-hazard/       IoT — 隐患点管理 + 分组 + 设备/视频设备绑定
 ├── zwei-iot-video/        IoT — 视频设备管理 + 隐患点关联
 ├── zwei-iot/              (空壳，保留兼容旧依赖)
-├── zwei-iot-alarm/        IoT — 告警中心: 判据/综合策略/引擎/通知分发 (Groovy)
+├── zwei-iot-alarm/        IoT — 告警中心: 判据/综合策略/引擎/通知分发 (Groovy) + 算法库
+├── zwei-iot-parser/       IoT — 数据解析引擎: Groovy 脚本解析策略管理 + 编译缓存
+├── zwei-iot-report/       IoT — 报告模板 + 报告记录生成
+├── zwei-datashare/        IoT — 数据共享策略管理 (4 种模式)
+├── zwei-terra/            AI — Terra AI 助手 (core 接口定义 + agent 聊天/值守/工具执行)
 ├── zwei-monitor/          System monitoring — unified monitoring API & MQTT broker status
 ├── zwei-quartz/           Scheduled tasks (quartz job framework)
-└── zwei-log/              Audit/operation logging, SSE streaming, MQTT message logs
+└── zwei-log/              Audit/operation logging, SSE streaming, MQTT message logs + 异常报文日志
 ```
 
 ### IoT Modules — Core Business Logic (拆分后)
@@ -187,7 +216,10 @@ Previously a single `zwei-iot` module. Now split into 6 independent Maven module
 | `zwei-iot-broker`     | `com.zwei.iot.broker`      | MQTT CONNECT auth, session registry, publish/subscribe ACL, connect/disconnect listeners     |
 | `zwei-iot-hazard`     | `com.zwei.iot.hazardpoint` | Hazard point & group CRUD, device/video binding, implements IDeviceHazardRelationService     |
 | `zwei-iot-video`      | `com.zwei.iot.video`       | Video device CRUD, hazard point association, implements IVideoDeviceStatService              |
-| `zwei-iot-alarm`      | `com.zwei.iot.alarm`       | Alarm center: criteria/strategy/engine/notification (Groovy) — **P0**                        |
+| `zwei-iot-alarm`      | `com.zwei.iot.alarm`       | Alarm center: criteria/strategy/engine/notification (Groovy) + algorithm library (algolib) — **P0** |
+| `zwei-iot-parser`     | `com.zwei.iot.parser`      | Data parse strategy engine: Groovy script parsing + compile cache + concurrency tuning                |
+| `zwei-iot-report`     | `com.zwei.iot.report`      | Report template CRUD + report record generation                                                        |
+| `zwei-datashare`      | `com.zwei.datashare`       | Data sharing strategy management (UNIFIED_PUSH/CUSTOM_PUSH/UNIFIED_SERVICE/CUSTOM_SERVICE)             |
 
 **Cross-module dependency rules:**
 - `zwei-iot-device` defines all cross-module service interfaces (IDeviceAuthQueryService, IDeviceSensorQueryService, etc.)
@@ -195,6 +227,70 @@ Previously a single `zwei-iot` module. Now split into 6 independent Maven module
 - `zwei-iot-monitor` is the leaf module — no IoT dependencies
 - `zwei-iot-broker` depends on `zwei-iot-timeseries` (reverse direction; needed to call `MonitorIngestFacade.ingest()`
   from message listener)
+
+### Terra AI Assistant (`zwei-terra/ + terra/`) — AI 值守助手
+
+A dual-module AI assistant system with a Spring Boot backend and a standalone Vue 3 frontend application:
+
+**Backend (`server/zwei-terra/`):**
+
+| Sub-module        | Package                        | Responsibility                                                                               |
+|-------------------|--------------------------------|----------------------------------------------------------------------------------------------|
+| `zwei-terra-core` | `com.zwei.terra.core`          | Interface/protocol layer: SkillManifest, SkillTrigger, TerraBackendTool, TerraTool            |
+| `zwei-terra-agent` | `com.zwei.terra.agent`        | AI chat (SSE + ReAct loop), conversation CRUD, personality/model/skill/tool management, duty mode (WebSocket) |
+
+| Controller                     | Path Prefix                         | Responsibility                                                  |
+|--------------------------------|-------------------------------------|-----------------------------------------------------------------|
+| `TerraChatController`          | `/api/v1/terra`                     | SSE streaming chat with ReAct tool-calling loop                |
+| `TerraConversationController`  | `/api/v1/terra/conversations`       | Conversation & message CRUD                                     |
+| `TerraPersonalityController`   | `/api/v1/terra/personality`         | AI personality layers (core/role)                               |
+| `TerraModelConfigController`   | `/api/v1/terra/model-configs`       | LLM model provider config (Anthropic, etc.)                     |
+| `TerraSkillController`         | `/api/v1/terra/skills`              | AI skill management (preset/custom)                             |
+| `TerraToolController`          | `/api/v1/terra/tools`               | AI tool CRUD (frontend/backend execSide)                        |
+| `TerraDutyWebSocketHandler`    | `/ws/terra/duty`                    | Duty mode real-time WebSocket communication                     |
+
+Key infrastructure:
+- `ChatService` — SSE streaming with Anthropic API, ReAct tool-calling loop
+- `TerraSseEmitter` — Custom SSE emitter for chat response streaming
+- `TerraDutyService` — Duty rotation/handover protocol
+- `SkillSyncService` — Syncs AI skills from filesystem to database
+- `ToolManager` — Runtime tool registration and invocation
+- `DashboardControlTool` / `SystemQueryTool` — Built-in duty mode tools
+
+**Standalone Frontend (`terra/` root directory):**
+- Vue 3 + TypeScript + Vite independent app
+- Panel system: AlertPanel, ChartPanel, MapPanel, VideoPanel, TablePanel, ImagePanel, IframePanel
+- Components: TerraAvatar, StatusBar, Timeline, TypewriterMessage
+- WebSocket real-time communication for duty mode
+
+**Web Integrated Frontend (`web/src/components/terra/`):**
+- `TerraChatPanel.vue`, `TerraMessage.vue` — Chat UI
+- `TerraWidget.vue` — Draggable floating orb (saves position to localStorage)
+- `terra-sse.ts` — Custom SSE via fetch()+ReadableStream (POST-based)
+- `useTerraChat.ts` — Chat state management composable (typewriter effect, tool execution)
+- Web settings pages at `/terra/settings`: PersonalitySettings, ModelConfigList, SkillManager, ToolManager
+
+**Database:** 7 new tables (terra_personality, terra_model_config, terra_skill, terra_tool, terra_skill_tool, terra_conversation, terra_message) via `db/upgrade/terra_v1.0.sql`.
+
+### Data Share Module (`zwei-datashare/`)
+
+| Controller              | Path Prefix                     | Responsibility                                      |
+|-------------------------|---------------------------------|-----------------------------------------------------|
+| `ShareStrategyController` | `/api/v1/datashare/strategy`    | Data sharing strategy CRUD + status toggle + execution |
+
+Four strategy methods: UNIFIED_PUSH, CUSTOM_PUSH, UNIFIED_SERVICE, CUSTOM_SERVICE.
+
+### Parser Module (`zwei-iot-parser/`)
+
+| Controller                   | Path Prefix                     | Responsibility                                      |
+|------------------------------|---------------------------------|-----------------------------------------------------|
+| `DataParseStrategyController` | `/api/v1/parser/strategy`       | Parse strategy CRUD + status toggle + online test   |
+
+Key infrastructure:
+- `GroovyScriptEngine` — Groovy script execution with compile cache optimization
+- `ParserProperties` — Configurable thread pool + cache properties
+- `StrategyLastRunTimeUpdater` — Batch `last_run_time` write-back
+- `DataParseLogService` — Execution log query
 
 ### Monitor Module (`zwei-monitor/`) — System & MQTT Monitoring
 
@@ -241,39 +337,88 @@ Key infrastructure:
 ### Data Flow
 
 ```
-Field sensors → MQTT (mica-mqtt) → MqttServerMessageListener → MqttDeviceAuthService.hasPublishPermission
-    → MonitorIngestFacade.ingest()
-    → MonitorTopicParser → MonitorMetadataService → payload parser (sys/gb)
-    → MonitorIngestStreamService.enqueue() → Redis Stream (stream:monitor:ingest)
-    → MonitorIngestConsumerService (单线程 daemon, 4 阶段处理)
-        ─ 阶段1: 幂等去重 (Redis SETNX, dedupe-key 拼接 deviceId:sensorNo:attrCode:dataTime:payloadHash)
-        ─ 阶段2: IotdbTimeSeriesService.writePoints (懒建 aligned timeseries, 质量码 INT32 RLE)
-        ─ 阶段3: 运维指标回写
-            ├─ DeviceOnlineStatusService → device_online_status.last_report_at
-            ├─ DeviceSensorService → device_sensor.last_report_time
-            └─ DeviceMapper → device.lastReportTime (兼容保留)
-        ─ 阶段4: 失败重试 (三段退避 3s/9s/27s) → 死信队列
-    → AlarmEvaluationEngine.@EventListener(MonitorDataIngestedEvent)
-        → 隐患点专属判据 (优先级 1) → 监测类型兜底 (优先级 2) → 综合策略
-        → AlarmRecordServiceImpl.createOrUpdateAlarm (去重 + 状态机)
-        → AlarmNotifier (分发) + AlarmStreamPublisher (SSE)
+┌─ MQTT 数据入站 ───────────────────────────────────────────────────────┐
+│ Field sensors → MQTT (mica-mqtt) → MqttServerMessageListener           │
+│   → MqttDeviceAuthService.hasPublishPermission                         │
+│   ┌─ 鉴权失败 → MqttMessageRejectEvent → mqtt_exception_log            │
+│   └─ 鉴权成功 → MonitorIngestFacade.ingest()                            │
+│       → MonitorTopicParser → MonitorMetadataService → payload parser   │
+│       → MonitorIngestStreamService.enqueue()                           │
+│       → Redis Stream (stream:monitor:ingest)                            │
+│       → MonitorIngestConsumerService (单线程 daemon, 4 阶段处理)        │
+│           ─ 阶段1: 幂等去重 (Redis SETNX)                               │
+│           ─ 阶段2: IotdbTimeSeriesService.writePoints                   │
+│           ─ 阶段3: 运维指标回写 (online_status/sensor/device)           │
+│           ─ 阶段4: 失败重试 (三段退避 3s/9s/27s) → 死信队列            │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│ ┌─ 数据解析策略 (Parser) ──────────────────────────────────────────┐   │
+│ │ MQTT raw payload → DataParseStrategy (Groovy 脚本, 编译缓存)      │   │
+│ │   → 策略级线程池 (ParserProperties) → 解析结果 → IoTDB 写入       │   │
+│ └───────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│ ┌─ 告警评估引擎 ─────────────────────────────────────────────────────┐  │
+│ │ MonitorDataIngestedEvent                                             │  │
+│ │   ├─ AlarmEvaluationEngine (阈值判据)                                │  │
+│ │   │   → 隐患点专属判据 (优先级 1) → 监测类型兜底 (优先级 2)         │  │
+│ │   │   → AlarmRecordServiceImpl.createOrUpdateAlarm (去重 + 状态机)  │  │
+│ │   │   → AlarmNotifier (分发) + AlarmStreamPublisher (SSE)           │  │
+│ │   └─ ComprehensiveAlarmEventListener (综合策略 REALTIME 模式)       │  │
+│ │       → ComprehensiveAlarmExecutionService (并行评估)                │  │
+│ │       → Groovy 脚本 (ScriptAlgoOps) / Python (PythonAlgoExecutor)   │  │
+│ │       → StrategyExecutionLog (执行日志)                              │  │
+│ │                                                                      │  │
+│ │ ComprehensiveAlarmQuartzJob (综合策略 CRON 模式)                     │  │
+│ │   → StrategyQuartzScheduler (动态注册/取消 Quartz 任务)              │  │
+│ │   → StrategyScopeResolver (解析评估范围)                             │  │
+│ └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+│ ┌─ 告警通知中心 ────────────────────────────────────────────────────┐   │
+│ │ AlarmNotification (通知记录)                                        │   │
+│ │   → 用户已读/未读管理 (AlarmNotificationController)                  │   │
+│ │   → 前端双 Tab 分页 (recent/unread)                                  │   │
+│ └───────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│ ┌─ Terra AI 助手 ───────────────────────────────────────────────────┐   │
+│ │ TerraChatController (POST SSE, ReAct loop)                           │   │
+│ │   → AnthropicChatModel → LLM API                                     │   │
+│ │   → ToolManager.invoke() → backend tools (DashboardControl, etc.)   │   │
+│ │   → Frontend tools via SSE tool_call event → TerraToolExecutor      │   │
+│ │ TerraDutyWebSocketHandler (值守模式)                                  │   │
+│ │   → TerraDutyService → 轮值/交接协议                                 │   │
+│ └───────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│ ┌─ 数据共享 ───────────────────────────────────────────────────────┐   │
+│ │ ShareStrategy (UNIFIED_PUSH/CUSTOM_PUSH/UNIFIED_SERVICE/CUSTOM)     │   │
+│ │   → Groovy 脚本执行 → 外部系统推送 / HTTP 服务                       │   │
+│ └───────────────────────────────────────────────────────────────────┘   │
 ```
 
 ### Frontend Structure
 
 ```
 web/src/
-├── api/          # Per-domain API modules (device, hazardPoint, monitorData, sensor, etc.)
+├── api/          # Per-domain API modules (17 modules: device, hazardPoint, monitorData, sensor, alarm, alarmDispatch, algoLibrary, dataParse, shareStrategy, terra, video, etc.)
 ├── views/        # Page components organized by feature area:
 │   ├── dashboard/       # Home dashboard
 │   ├── holo-board/      # Comprehensive views (map overlay, alarm, operation, custom)
 │   ├── basic/           # Hazard points, monitor types, device/video management
-│   ├── alarm/           # Real-time alarms, criteria, notification, disposal
-│   ├── report/          # Reports, query center, data analysis, large screen
-│   ├── iot/             # Alarm engine, data parsing
+│   ├── alarm/           # Real-time alarms, criteria, notification, disposal, dispatch rules
+│   ├── report/          # Reports, query center, data analysis, share strategy
+│   ├── iot/             # IoT data parse strategies, service status, exception messages
+│   ├── terra/           # Terra AI settings (personality, models, skills, tools)
+│   ├── bigscreen/       # Large screen (report screen + disaster screen with Three.js)
 │   ├── miniprogram/     # Mini-program facing views
 │   ├── system/          # Organization, identity, permission, logs, settings, notice
 │   └── user/            # User profile
+├── components/   # Shared components:
+│   ├── terra/           # Terra AI chat panel, message, widget (floating orb), SSE, tool executor
+│   ├── map/             # Map boundary editor, preview, coord input, location picker, point picker
+│   ├── MonitorDataExplorer.vue  # Reusable data explorer (chart/table toggle, downsampling)
+│   └── EChartsWrapper.vue       # Reusable ECharts wrapper (option/loading/fullscreen)
+├── composables/  # Shared composables: useLeafletMap, useMapEditor, useMonitorData, usePagination, useTableSort
+├── lib/          # Geospatial utilities: boundaryCoords, coordParser, mapGeometry (all tested)
+├── constants/    # monitorIcons.ts
 ├── layout/       # Main layout shell with sidebar navigation
 ├── router/       # Vue Router config — all routes except /login require token auth
 └── utils/
@@ -298,7 +443,9 @@ web/src/
 | `server/pom.xml`                 | Parent POM with all dependency versions and module declarations              |
 | `.env.example`                   | Required environment variables template                                      |
 | `db/geo_hazard_monitor_v2.0.sql` | MySQL 8.0.42 full dump (59 tables, 3099 lines)                               |
+| `db/upgrade/*.sql`               | 23+ incremental upgrade scripts (v2.11 ~ v2026.07.03)                       |
 | `db/CLAUDE.md`                   | Database ER + table inventory + initialization data                          |
+| `server/zwei-terra/zwei-terra-agent/src/main/resources/application-terra.yml` | Terra AI config (skills path, chat rounds, timeout)         |
 
 ## Database Notes
 
@@ -309,20 +456,22 @@ web/src/
 - **逻辑删除**统一 `del_flag` 列 (0-正常 1-删除)，不物理 DELETE
 - IoTDB stores time-series data — paths `root.{database}.d{deviceId}.s{sensorNo}` with auto-created aligned timeseries
   (DOUBLE+GORILLA for values, INT32+RLE for quality codes)
-- 升级脚本目录 `db/upgrade/` 当前**不存在**；如需新增请按版本号命名
+- 升级脚本目录 `db/upgrade/`，按版本号命名（如 `v2.16-*.sql`、`v2026.06.28.001_*.sql`、`terra_v1.0.sql`）；当前含 23+ 个脚本
 
 ## Shared Events (`zwei-common`)
 
 Event classes in `com.zwei.common.event` serve as contracts between modules without direct Maven dependencies:
 
-| Event                      | Publisher                                                   | Consumer                                           |
-|----------------------------|-------------------------------------------------------------|----------------------------------------------------|
-| `MqttMessageReceivedEvent` | zwei-iot (MqttServerMessageListener)                        | zwei-log (MqttMessageLogService)                   |
-| `DeviceOnlineEvent`        | zwei-iot (MqttDeviceAuthService, MqttConnectStatusListener) | zwei-iot (DeviceOnlineStatusService)               |
-| `DeviceOfflineEvent`       | zwei-iot (MqttConnectStatusListener)                        | zwei-iot (DeviceOnlineStatusService)               |
-| `NoticeCreatedEvent`       | zwei-system (SysNoticeServiceImpl)                          | zwei-system (NoticeStreamPublisher → SSE)          |
-| `AlarmTriggeredEvent`      | zwei-iot-alarm (AlarmEvaluationEngine)                      | alarm (AlarmNotifier + AlarmStreamPublisher → SSE) |
-| `MonitorDataIngestedEvent` | zwei-iot-timeseries (MonitorIngestConsumerService)          | alarm (AlarmEvaluationEngine) + future analytics   |
+| Event                        | Publisher                                                            | Consumer                                              |
+|------------------------------|----------------------------------------------------------------------|-------------------------------------------------------|
+| `MqttMessageReceivedEvent`   | zwei-iot-broker (MqttServerMessageListener)                          | zwei-log (MqttMessageLogService)                      |
+| `MqttMessageRejectEvent`     | zwei-iot-broker (message validation failure)                         | zwei-log (ExceptionMessageLogService → mqtt_exception_log) |
+| `DeviceOnlineEvent`          | zwei-iot-broker (MqttDeviceAuthService, MqttConnectStatusListener)   | zwei-iot-device (DeviceOnlineStatusService)           |
+| `DeviceOfflineEvent`         | zwei-iot-broker (MqttConnectStatusListener)                          | zwei-iot-device (DeviceOnlineStatusService)           |
+| `NoticeCreatedEvent`         | zwei-system (SysNoticeServiceImpl)                                   | zwei-system (NoticeStreamPublisher → SSE)             |
+| `AlarmTriggeredEvent`        | zwei-iot-alarm (AlarmEvaluationEngine)                               | zwei-iot-alarm (AlarmNotifier + AlarmStreamPublisher + ComprehensiveAlarmEventListener) |
+| `MonitorDataIngestedEvent`   | zwei-iot-timeseries (MonitorIngestConsumerService)                   | zwei-iot-alarm (AlarmEvaluationEngine + ComprehensiveAlarmEventListener) |
+| `MonitorContentChangedEvent` | zwei-iot-monitor (MonitorContentServiceImpl)                         | zwei-iot-device (MonitorContentSyncListener → sensor_attribute + TSL sync) |
 
 ## Notification Module (`zwei-system/notice/`)
 
@@ -363,8 +512,14 @@ All `@PreAuthorize` annotations follow the pattern `module:entity:action` (e.g. 
 | `monitor:mqtt:list` | MQTT broker stats, clients, listeners, message logs |
 | `monitor:mqtt:kick` | Kick/ban MQTT clients |
 | `monitor:operlog:list` | Query operation/auth/runtime logs and SSE stream |
+| `monitor:mqtt:exception:list` | Query MQTT exception/rejected message logs |
 | `common:file:upload` | File upload (single + batch) |
 | `common:file:query` | File download |
+| `terra:chat:send` | Terra AI chat interaction |
+| `terra:settings:manage` | Terra personality/model/skill/tool management |
+| `datashare:strategy:list` | Data share strategy query |
+| `parser:strategy:list` | Data parse strategy query |
+| `algo:library:list` | Algorithm library query |
 
 **Permission management endpoints (SysMenuController):**
 

@@ -32,6 +32,7 @@
 | `mqtt.controller`               | `MqttMessageLogController`                                                  | MQTT 消息日志查询                   |
 | `mqtt.service` / `service.impl` | `IMqttMessageLogService`                                                    | MQTT 消息持久化                    |
 | `mqtt.event`                    | `MqttMessageLogService.@EventListener`                                      | 订阅 `MqttMessageReceivedEvent` |
+| `mqtt.exception`                | `MqttExceptionLogController` / `ExceptionMessageLogService` / `ExceptionLogCleanupTask` | MQTT 异常日志查询/清理                 |
 | `sse`                           | `LogSsePublisher`                                                           | 推送给前端                         |
 
 ## 对外接口 (Controller)
@@ -43,6 +44,7 @@
 | `LogStreamController`             | `/api/v1/monitor/operlog/stream` | SSE 实时推送        |
 | `LogCleanupConfigController`      | `/api/v1/monitor/log/cleanup`    | 日志清理策略配置        |
 | `MqttMessageLogController`        | `/api/v1/monitor/mqtt/messages`  | MQTT 消息日志查询     |
+| `MqttExceptionLogController`     | `/api/v1/monitor/mqtt/exceptions/*` | MQTT 异常日志查询     |
 
 ## 事件消费
 
@@ -50,6 +52,7 @@
 |----------------------------|----------------------------------|--------------------|
 | `MqttMessageReceivedEvent` | `@EventListener`                 | `mqtt_message_log` |
 | `NoticeCreatedEvent`       | `@EventListener` (在 zwei-system) | `sys_notice`       |
+| `MqttMessageRejectEvent`   | `@EventListener` (在 mqtt.exception) | `mqtt_exception_log` |
 
 > **解耦设计**: 本模块**不**直接依赖 `zwei-iot-broker` (MQTT 来源), 通过 `zwei-common` 事件契约异步消费。
 
@@ -92,3 +95,4 @@ A: 前端用 `EventSource` 自带重连机制; 服务端应记录活跃连接, �
 |------------------|-----------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描) |
 | 2026-06-25 10:00 | SSE 订阅泄漏修复: LogStreamPublisher 新增 25s 心跳 (复用 failSubscription) + LogStreamPublisherTest 扩展心跳覆盖 |
+| 2026-07 | 新增 `mqtt/exception/` 子包: MqttExceptionLogController + ExceptionMessageLogService + ExceptionLogCleanupTask; 订阅 MqttMessageRejectEvent |

@@ -11,10 +11,11 @@
 - **监测类型** (`monitor_type`) — 一级分类 (例: 雨量监测、位移监测、水位监测)
 - **监测内容** (`monitor_content`) — 二级字段 (例: 小时雨量、X轴位移、水位)
 
-> **叶子模块**: 不依赖任何其他 IoT 子模块, 也不被业务反向调用 (只提供字典查询)。
+> **叶子模块**: 不依赖任何其他 IoT 子模块 (Maven 级别)。但通过 Spring 事件机制发布 `MonitorContentChangedEvent`，
+> 供 `zwei-iot-device.MonitorContentSyncListener` 消费，反向同步字典变更到 sensor_attribute 和 TSL。
 
 > **历史变更 (2026-06-14)**: 原先的三级字典"监测大类 (monitor_category)"已移除。大类与类型几乎 1:1 映射, 且 MyBatis
-> 层从未实际读写 category_id, 功能已事实失效。
+> 层从未实际读写 category_id, 功能已事实失效。新增 `MonitorContentChangedEvent` 发布 (INSERT/UPDATE/DELETE)。
 
 ## 关键依赖
 
