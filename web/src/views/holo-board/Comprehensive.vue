@@ -216,7 +216,7 @@ import {
   type RateByTypeVO,
   type SensorDistributionVO
 } from '@/api/monitor'
-import { getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmTrend, type AlarmTrendVO } from '@/api/alarm'
+import { getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmOverview, getAlarmTrend, type AlarmTrendVO } from '@/api/alarm'
 import { getMonitorRates, getMapOverview, type HazardPointMapVO, type HazardPointMonitorRate } from '@/api/hazardPoint'
 
 import {TIANDITU_KEY, loadTiandituKey} from '@/composables/useLeafletMap'
@@ -295,12 +295,11 @@ const deviceOnlineRate = ref<RateByTypeVO | null>(null)
 const hazardTrend = ref<HazardPointTrendVO | null>(null)
 const sensorDist = ref<SensorDistributionVO | null>(null)
 
-const alarmPendingCount = ref(0)
-const alarmHistoryCount = ref(0)
+const alarmOverview = ref({ pendingCount: 0, historyCount: 0, totalCount: 0, recentThreeMonthsCount: 0 })
 
 const summaryStats = computed(() => ({
-  recentThreeMonthsAlarms: alarmPendingCount.value + alarmHistoryCount.value,
-  totalAlarms: alarmHistoryCount.value,
+  recentThreeMonthsAlarms: alarmOverview.value.recentThreeMonthsCount,
+  totalAlarms: alarmOverview.value.totalCount,
   totalMonitorCount: overview.value?.totalMonitorCount ?? 0,
   hazardPointCount: overview.value?.hazardPoint?.total ?? 0,
   deviceCount: overview.value?.device?.total ?? 0
@@ -567,11 +566,26 @@ onMounted(async () => {
   } catch { /* use defaults */
   }
 
+  // 获取告警总览（告警记录数统计）
+  try {
+    const overviewRes = await getAlarmOverview()
+    const od = (overviewRes as any)?.data ?? overviewRes
+    if (od) {
+      alarmOverview.value = {
+        pendingCount: od.pendingCount ?? 0,
+        historyCount: od.historyCount ?? 0,
+        totalCount: od.totalCount ?? 0,
+        recentThreeMonthsCount: od.recentThreeMonthsCount ?? 0
+      }
+      alarmStats.value.pendingCount = alarmOverview.value.pendingCount
+      alarmStats.value.historyCount = alarmOverview.value.historyCount
+    }
+  } catch { /* keep defaults */ }
+
   // 获取待办告警（实时告警事件）
   try {
     const pending = await getPendingAlarms({ pageNum: 1, pageSize: 5 })
     const rows = pending?.rows ?? []
-    alarmStats.value.pendingCount = alarmPendingCount.value = pending?.total ?? 0
     const levelMap: Record<number, { name: string; key: string; color: string }> = {
       1: { name: '红色告警', key: 'red', color: '#dc2626' },
       2: { name: '橙色告警', key: 'orange', color: '#ea580c' },
@@ -616,7 +630,7 @@ onMounted(async () => {
   // 获取历史告警总数
   try {
     const history = await getHistoryAlarms({ pageNum: 1, pageSize: 1 })
-    alarmStats.value.historyCount = alarmHistoryCount.value = history?.total ?? 0
+    alarmStats.value.historyCount = history?.total ?? 0
   } catch { /* keep defaults */ }
 
   // 获取隐患点设备监测率

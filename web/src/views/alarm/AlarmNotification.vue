@@ -140,7 +140,7 @@ const getDefaultTimeRange = (): [string, string] => {
 const queryParams = reactive({
   hazardPointName: '',
   personName: '',
-  alarmTimeRange: getDefaultTimeRange() as string[],
+  alarmTimeRange: [] as string[],
   alarmCountMin: null as number | null,
   alarmCountMax: null as number | null,
   alarmLevel: [] as string[],
@@ -223,7 +223,7 @@ const handleQuery = () => {
 const handleReset = () => {
   queryParams.hazardPointName = ''
   queryParams.personName = ''
-  queryParams.alarmTimeRange = getDefaultTimeRange()
+  queryParams.alarmTimeRange = []
   queryParams.alarmCountMin = null
   queryParams.alarmCountMax = null
   queryParams.alarmLevel = []
