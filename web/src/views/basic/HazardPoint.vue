@@ -834,7 +834,7 @@ const boundVideoDevices = ref<BoundVideoDevice[]>([])
 /** 加载已绑定视频设备 */
 const loadBoundVideoDevices = async (hpId: string) => {
   try {
-    const resp: any = await getBoundVideoDevices(hpId)
+    const resp = await getBoundVideoDevices(hpId)
     if (resp.code === 200) {
       boundVideoDevices.value = (resp.data || []).map((item: any) => ({
         videoDeviceId: String(item.videoDeviceId),
@@ -957,21 +957,6 @@ const groupDialogTitle = groupDlgTitle
 
 const statsGroupCount = groupStatsGroupCount
 
-// ── Remaining local state ──
-const activeTab = ref('basic')
-
-// ── Detail map preview data (传入 MapBoundaryPreview) ──
-const parsedBoundary = computed(() => {
-  if (!currentRow.value) return null
-  return deserialize((currentRow.value as any).boundaryCoords)
-})
-
-const previewCenter = computed<LatLng | null>(() => {
-  const r = currentRow.value
-  if (!r || r.latitude == null || r.longitude == null) return null
-  return {lat: r.latitude, lng: r.longitude}
-})
-
 const mapDialogVisible = ref(false)
 const mapEditorRef = ref<InstanceType<typeof MapBoundaryEditor> | null>(null)
 const mapInitialCenter = computed<LatLng>(() => ({
@@ -1090,7 +1075,6 @@ const handleSelectGroup = (group: GroupItem) => {
 // 点击操作列"查看"时加载详情并打开详情弹窗（额外处理：加载关联数据+地图）
 const handleViewAndOpen = async (row: HazardPointItem) => {
   await handleView(row)
-  activeTab.value = 'basic'
   await initBoundDevices(row.id)
   await loadBoundVideoDevices(row.id)
   initAlarmCriteria(row.id)

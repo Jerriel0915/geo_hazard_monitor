@@ -23,6 +23,7 @@ const routes: RouteRecordRaw[] = [
       { path: '/holo-board/comprehensive', name: 'Comprehensive', component: () => import('@/views/holo-board/Comprehensive.vue') },
       { path: '/holo-board/alarm', name: 'Alarm', component: () => import('@/views/holo-board/Alarm.vue') },
       { path: '/holo-board/operation', name: 'Operation', component: () => import('@/views/holo-board/Operation.vue') },
+      { path: '/holo-board/custom', name: 'Custom', component: () => import('@/views/holo-board/Custom.vue') },
       { path: '/basic/hazard-point', name: 'HazardPoint', component: () => import('@/views/basic/HazardPoint.vue') },
       { path: '/basic/monitor-type', name: 'MonitorType', component: () => import('@/views/basic/MonitorType.vue') },
       { path: '/basic/device', name: 'Device', component: () => import('@/views/basic/Device.vue') },

@@ -115,12 +115,12 @@ export function deleteHazardPointGroup(id: string): Promise<AjaxResult<null>> {
 }
 
 // 获取隐患点已绑定的设备
-export function getBoundDevices(hpId: string) {
+export function getBoundDevices(hpId: string): Promise<AjaxResult> {
   return request.get(`/hazard-points/${hpId}/bound-devices`)
 }
 
 // 获取未绑定设备列表
-export function getUnboundDevices(hpId: string, keyword?: string) {
+export function getUnboundDevices(hpId: string, keyword?: string): Promise<AjaxResult> {
   return request.get(`/hazard-points/${hpId}/unbound-devices`, { params: { keyword } })
 }
 
@@ -138,7 +138,7 @@ export function unbindDevicesFromHazardPoint(hpId: string, deviceIds: number[]) 
 }
 
 // 获取隐患点已绑定的视频设备
-export function getBoundVideoDevices(hpId: string) {
+export function getBoundVideoDevices(hpId: string): Promise<AjaxResult> {
   return request.get(`/hazard-points/${hpId}/bound-video-devices`)
 }
 

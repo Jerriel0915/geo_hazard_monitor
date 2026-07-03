@@ -582,16 +582,17 @@ onMounted(async () => {
     }
   } catch { /* keep defaults */ }
 
+  const levelMap: Record<number, { name: string; key: string; color: string }> = {
+    1: { name: '红色告警', key: 'red', color: '#dc2626' },
+    2: { name: '橙色告警', key: 'orange', color: '#ea580c' },
+    3: { name: '黄色告警', key: 'yellow', color: '#ca8a04' },
+    4: { name: '蓝色提示', key: 'blue', color: '#1890ff' }
+  }
+
   // 获取待办告警（实时告警事件）
   try {
     const pending = await getPendingAlarms({ pageNum: 1, pageSize: 5 })
     const rows = pending?.rows ?? []
-    const levelMap: Record<number, { name: string; key: string; color: string }> = {
-      1: { name: '红色告警', key: 'red', color: '#dc2626' },
-      2: { name: '橙色告警', key: 'orange', color: '#ea580c' },
-      3: { name: '黄色告警', key: 'yellow', color: '#ca8a04' },
-      4: { name: '蓝色提示', key: 'blue', color: '#1890ff' }
-    }
     alarmStats.value.recentAlarms = rows.map((item: any) => ({
       id: item.id,
       title: item.alarmMessage || item.hazardPointName || '告警事件',
@@ -604,12 +605,6 @@ onMounted(async () => {
   // 获取告警等级统计（独立接口，所有待处理告警准确计数）
   try {
     const levelStatsRes = await getAlarmLevelStats()
-    const levelMap: Record<number, { name: string; key: string; color: string }> = {
-      1: { name: '红色告警', key: 'red', color: '#dc2626' },
-      2: { name: '橙色告警', key: 'orange', color: '#ea580c' },
-      3: { name: '黄色告警', key: 'yellow', color: '#ca8a04' },
-      4: { name: '蓝色提示', key: 'blue', color: '#1890ff' }
-    }
     const data = (levelStatsRes as any)?.data ?? levelStatsRes ?? {}
     alarmStats.value.levelStats = [1, 2, 3, 4].map(lv => ({
       ...levelMap[lv],
@@ -944,13 +939,6 @@ const initAlarmTrendChart = () => {
   alarmTrendChartInstance.setOption(option)
 }
 
-const chartTabs = [
-  {key: 'displacement', label: '位移监测'},
-  {key: 'rainfall', label: '雨量监测'},
-  {key: 'waterLevel', label: '水位监测'},
-  {key: 'inclination', label: '倾斜监测'}
-]
-
 const healthStats = ref<HealthScoreVO>({
   overallScore: 0,
   items: [
@@ -1143,14 +1131,6 @@ const trendAreaPath = computed(() => {
   transform-origin: center center;
   overflow: hidden;
 }
-
-.echarts-body {
-  flex: 1;
-  min-height: 0;
-  transform-origin: center center;
-  overflow: hidden;
-}
-
 
 .panel-section {
   background: rgba(255, 255, 255, 0.7);

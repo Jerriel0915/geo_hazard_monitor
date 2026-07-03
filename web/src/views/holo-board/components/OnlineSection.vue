@@ -41,19 +41,13 @@
 <script setup lang="ts">
 import {computed} from 'vue'
 
-interface TypeStat {
-  name: string;
-  online: number;
-  total: number
-}
-
 interface Point {
   x: number;
   y: number
 }
 
 const props = defineProps<{
-  stats: { onlineRate: number; onlineCount: number; totalCount: number; typeStats: TypeStat[] };
+  stats: { onlineRate: number; onlineCount: number; totalCount: number };
   points: Point[];
   yLabels: string[];
   xLabels: string[]
