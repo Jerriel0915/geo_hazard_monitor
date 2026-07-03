@@ -279,28 +279,17 @@ export function useConsoleStream(windowMinutes: Ref<number> | number = 180) {
     }
   }
 
-  const makeLine = (raw: string): TerminalLine => {
+  const pushLine = (raw: string) => {
     const level = detectLevel(raw)
     const now = new Date()
     const timestamp = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0')
-    return { timestamp, level, logType: 'CONSOLE', message: '', raw }
-  }
-
-  const pushLine = (line: TerminalLine) => {
+    const line: TerminalLine = { timestamp, level, logType: 'CONSOLE', message: '', raw }
     const current = lines.value
     if (current.length >= MAX_LINES) {
       lines.value = [...current.slice(current.length - MAX_LINES + 1), line]
     } else {
       lines.value = [...current, line]
     }
-  }
-
-  const pushLineBatch = (rawLines: string[]) => {
-    if (!rawLines.length) return
-    const newLines = rawLines.map(makeLine)
-    const current = lines.value
-    const merged = [...current, ...newLines]
-    lines.value = merged.length > MAX_LINES ? merged.slice(merged.length - MAX_LINES) : merged
   }
 
   const scheduleReconnect = () => {
@@ -354,8 +343,6 @@ export function useConsoleStream(windowMinutes: Ref<number> | number = 180) {
         const reader = response.body.getReader()
         const decoder = new TextDecoder('utf-8')
         let buffer = ''
-        let replayBuffer: string[] = []
-        let readyReceived = false
 
         while (keepAlive && currentSessionId === sessionId) {
           const { value, done } = await reader.read()
@@ -366,18 +353,9 @@ export function useConsoleStream(windowMinutes: Ref<number> | number = 180) {
           for (const segment of segments) {
             if (!segment.trim()) continue
             const parsed = parseEventBlock(segment)
-            if (parsed.event === 'ready') {
-              readyReceived = true
-              pushLineBatch(replayBuffer)
-              replayBuffer = []
-              continue
-            }
+            if (parsed.event === 'ready') continue
             if (parsed.data) {
-              if (readyReceived) {
-                pushLine(makeLine(parsed.data))
-              } else {
-                replayBuffer.push(parsed.data)
-              }
+              pushLine(parsed.data)
             }
           }
         }
