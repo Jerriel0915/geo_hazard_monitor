@@ -20,7 +20,7 @@
         <!-- SpringBoot Web容器 -->
          <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
+             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
         <!-- SpringBoot 拦截器 -->
