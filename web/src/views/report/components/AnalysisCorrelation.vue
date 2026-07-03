@@ -46,9 +46,9 @@
         <div class="panel-section">
           <div class="panel-title">分析工具</div>
           <el-checkbox-group v-model="activeTools">
-            <div class="tool-checkbox"><el-checkbox label="statistics">统计指标</el-checkbox></div>
-            <div class="tool-checkbox"><el-checkbox label="trend">趋势分析</el-checkbox></div>
-            <div class="tool-checkbox"><el-checkbox label="changeRate">变化率</el-checkbox></div>
+            <div class="tool-checkbox"><el-checkbox value="statistics">统计指标</el-checkbox></div>
+            <div class="tool-checkbox"><el-checkbox value="trend">趋势分析</el-checkbox></div>
+            <div class="tool-checkbox"><el-checkbox value="changeRate">变化率</el-checkbox></div>
           </el-checkbox-group>
         </div>
         <el-button
@@ -130,10 +130,9 @@ import {ElMessage} from 'element-plus'
 import {showRequestErrorMessage} from '@/utils/errorHandler'
 import echarts from '@/utils/echarts'
 import {
-  type ChartDataItem,
-  getChartData,
   type SensorSeriesItem,
 } from '@/api/report'
+import { getChartData } from '@/api/monitorData'
 import { getHazardPointPage } from '@/api/hazardPoint'
 import { getDevicePage, type DeviceItem } from '@/api/device'
 import { getDeviceSensors } from '@/api/sensor'
@@ -329,10 +328,14 @@ const confirmAddSensor = () => {
     color: COLORS[colorIndex],
   })
   addSensorDialogVisible.value = false
+  generateCorrelationChart()
 }
 
 const removeSensor = (idx: number) => {
   selectedSensors.value.splice(idx, 1)
+  if (selectedSensors.value.length > 0) {
+    generateCorrelationChart()
+  }
 }
 
 // Chart generation
@@ -356,16 +359,29 @@ const generateCorrelationChart = async () => {
     const startTime = formatDateWithTime(startDateStr, false)
     const endTime = formatDateWithTime(endDateStr, true)
 
-    const allSeriesData: { sensor: SensorSeriesItem; chartData: ChartDataItem }[] = []
+    // 使用 /monitor-data/chart API，由后端解析正确的 sensorCode
+    const allSeriesData: { sensor: SensorSeriesItem; chartData: { times: string[]; values: number[] } }[] = []
     for (const sensor of selectedSensors.value) {
-      const data = await getChartData({
-        deviceId: sensor.deviceId,
-        attrCode: sensor.attrCode,
-        startTime,
-        endTime,
-        sensorCode: sensor.sensorCode,
-      })
-      if (data) allSeriesData.push({ sensor, chartData: data })
+      try {
+        const result = await getChartData({
+          hazardPointId: sensor.hazardPointId,
+          deviceId: sensor.deviceId,
+          attrCode: sensor.attrCode,
+          startTime,
+          endTime,
+        })
+        if (result && result.length > 0) {
+          // /monitor-data/chart 返回 ChartData[]，转换为 {times, values} 格式
+          for (const series of result) {
+            allSeriesData.push({
+              sensor,
+              chartData: { times: series.labels, values: series.values },
+            })
+          }
+        }
+      } catch (e) {
+        // 单个传感器查询失败不影响其他传感器
+      }
     }
 
     if (allSeriesData.length === 0) {
@@ -522,7 +538,7 @@ const generateCorrelationChart = async () => {
     const option = {
       tooltip: { trigger: 'axis' },
       legend: { type: 'scroll', bottom: 0 },
-      grid: { left: 80, right: 80, top: 30, bottom: 80, containLabel: true },
+      grid: { left: 80, right: 80, top: 30, bottom: 80 },
       xAxis: {
         type: 'category',
         name: '时间',
