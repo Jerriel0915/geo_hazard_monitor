@@ -83,7 +83,7 @@ class MqttAuthCenterIntegrationTest {
         assertFalse(publishAfterOffline);
 
         // 鉴权通过后应更新 lastAuthTime/lastAuthIp（不再写 runStatus——该职责已迁移至 DeviceOnlineStatusService）
-        verify(deviceAuthQueryService, atLeast(1)).updateDevice(any(Device.class));
+        verify(deviceAuthQueryService, atLeast(1)).updateAuthInfo(anyLong(), anyString(), anyString());
     }
 
     /**

@@ -1,7 +1,7 @@
 package com.zwei.iot.timeseries.compute;
 
 import com.zwei.iot.device.domain.Device;
-import com.zwei.iot.device.mapper.DeviceMapper;
+import com.zwei.iot.device.service.IDeviceService;
 import com.zwei.iot.device.service.IDeviceHazardRelationService;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.timeseries.domain.SensorSnapshot;
@@ -24,9 +24,9 @@ class ScriptSensorQueryTest {
     private static final long DEVICE_ID = 1L;
     private static final String SENSOR_CODE = "WY_1";
 
-    private final DeviceMapper deviceMapper = mock(DeviceMapper.class);
+    private final IDeviceService deviceService = mock(IDeviceService.class);
     private final ScriptSensorQuery query = new ScriptSensorQuery(
-            deviceMapper,
+            deviceService,
             mock(IDeviceHazardRelationService.class),
             mock(IDeviceSensorService.class));
 
@@ -34,7 +34,7 @@ class ScriptSensorQueryTest {
     @DisplayName("query(deviceCode, ...) 解析 deviceId 后委托 SensorDataQueryUtil.query")
     void queryDelegates() {
         Device dev = deviceWithId(DEVICE_ID);
-        when(deviceMapper.selectDeviceByCode(DEVICE_CODE)).thenReturn(dev);
+        when(deviceService.selectDeviceByCode(DEVICE_CODE)).thenReturn(dev);
         SensorSnapshot snap = new SensorSnapshot(1700000000000L, Map.of("rain", 25.5));
 
         try (MockedStatic<SensorDataQueryUtil> mocked = mockStatic(SensorDataQueryUtil.class)) {
@@ -51,7 +51,7 @@ class ScriptSensorQueryTest {
     @Test
     @DisplayName("deviceCode 未找到: 返回 null, 不调 SensorDataQueryUtil (避免无谓查询)")
     void queryDeviceCodeNotFound() {
-        when(deviceMapper.selectDeviceByCode("UNKNOWN")).thenReturn(null);
+        when(deviceService.selectDeviceByCode("UNKNOWN")).thenReturn(null);
 
         try (MockedStatic<SensorDataQueryUtil> mocked = mockStatic(SensorDataQueryUtil.class)) {
             assertThat(query.query("UNKNOWN", SENSOR_CODE, 0L, "rain")).isNull();
@@ -62,7 +62,7 @@ class ScriptSensorQueryTest {
     @Test
     @DisplayName("query 返回 null (无数据): 透传 null, 不抛")
     void queryNullPropagated() {
-        when(deviceMapper.selectDeviceByCode(DEVICE_CODE)).thenReturn(deviceWithId(DEVICE_ID));
+        when(deviceService.selectDeviceByCode(DEVICE_CODE)).thenReturn(deviceWithId(DEVICE_ID));
         try (MockedStatic<SensorDataQueryUtil> mocked = mockStatic(SensorDataQueryUtil.class)) {
             mocked.when(() -> SensorDataQueryUtil.query(DEVICE_ID, SENSOR_CODE, 0L, "rain"))
                   .thenReturn(null);
@@ -74,7 +74,7 @@ class ScriptSensorQueryTest {
     @Test
     @DisplayName("query 抛异常: wrapper 吞噬返回 null (主链路保护)")
     void queryExceptionSwallowed() {
-        when(deviceMapper.selectDeviceByCode(DEVICE_CODE)).thenReturn(deviceWithId(DEVICE_ID));
+        when(deviceService.selectDeviceByCode(DEVICE_CODE)).thenReturn(deviceWithId(DEVICE_ID));
         try (MockedStatic<SensorDataQueryUtil> mocked = mockStatic(SensorDataQueryUtil.class)) {
             mocked.when(() -> SensorDataQueryUtil.query(DEVICE_ID, SENSOR_CODE, 0L, "rain"))
                   .thenThrow(new RuntimeException("IoTDB down"));

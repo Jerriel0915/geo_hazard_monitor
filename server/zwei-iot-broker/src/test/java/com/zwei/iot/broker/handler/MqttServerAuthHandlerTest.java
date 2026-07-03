@@ -90,7 +90,7 @@ class MqttServerAuthHandlerTest {
         boolean result = authHandler.authenticate(channelContext, "client-1", "client-1", "A7K9P2", "m4T9x2Q8");
 
         assertTrue(result);
-        verify(deviceAuthQueryService).updateDevice(any(Device.class));
+        verify(deviceAuthQueryService).updateAuthInfo(anyLong(), anyString(), anyString());
         verify(deviceAuthLogService).save(any());
         verify(channelContext).setUserId("101");
         verify(channelContext).setToken("A7K9P2");

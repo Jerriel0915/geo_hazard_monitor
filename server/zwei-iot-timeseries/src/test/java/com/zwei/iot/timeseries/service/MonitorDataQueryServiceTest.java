@@ -5,8 +5,8 @@ import com.zwei.iot.device.domain.SensorAttribute;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.hazardpoint.domain.HazardPoint;
 import com.zwei.iot.hazardpoint.domain.dto.BoundDeviceVO;
-import com.zwei.iot.hazardpoint.mapper.DeviceHazardPointMapper;
-import com.zwei.iot.hazardpoint.mapper.HazardPointMapper;
+import com.zwei.iot.hazardpoint.service.IDeviceHazardPointService;
+import com.zwei.iot.hazardpoint.service.IHazardPointService;
 import com.zwei.common.exception.ServiceException;
 import com.zwei.iot.timeseries.config.MonitorQueryProperties;
 import com.zwei.iot.timeseries.domain.ChartDataVO;
@@ -34,8 +34,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("MonitorDataQueryService 图表自动降采样")
 class MonitorDataQueryServiceTest {
 
-    @Mock private DeviceHazardPointMapper deviceHazardPointMapper;
-    @Mock private HazardPointMapper hazardPointMapper;
+    @Mock private IDeviceHazardPointService deviceHazardPointService;
+    @Mock private IHazardPointService hazardPointService;
     @Mock private IDeviceSensorService deviceSensorService;
     @Mock private IotdbTimeSeriesService iotdbService;
 
@@ -45,18 +45,18 @@ class MonitorDataQueryServiceTest {
     @BeforeEach
     void setUp() {
         service = new MonitorDataQueryService(
-                deviceHazardPointMapper, hazardPointMapper,
+                deviceHazardPointService, hazardPointService,
                 deviceSensorService, iotdbService, queryProps);
 
         HazardPoint hp = new HazardPoint();
         hp.setId(1L);
         hp.setName("测试隐患点");
-        when(hazardPointMapper.selectHazardPointById(1L)).thenReturn(hp);
+        when(hazardPointService.selectHazardPointById(1L)).thenReturn(hp);
 
         BoundDeviceVO bound = new BoundDeviceVO();
         bound.setDeviceId(1L);
         bound.setDeviceName("测试设备");
-        when(deviceHazardPointMapper.selectBoundDevicesByHazardPointId(1L))
+        when(deviceHazardPointService.getBoundDevices(1L))
                 .thenReturn(List.of(bound));
 
         DeviceSensor sensor = new DeviceSensor();
@@ -238,7 +238,7 @@ class MonitorDataQueryServiceTest {
         BoundDeviceVO bound2 = new BoundDeviceVO();
         bound2.setDeviceId(2L);
         bound2.setDeviceName("设备2");
-        when(deviceHazardPointMapper.selectBoundDevicesByHazardPointId(1L))
+        when(deviceHazardPointService.getBoundDevices(1L))
                 .thenReturn(List.of(
                         createBoundDevice(1L, "设备1"),
                         createBoundDevice(2L, "设备2")
@@ -283,7 +283,7 @@ class MonitorDataQueryServiceTest {
         BoundDeviceVO bound2 = new BoundDeviceVO();
         bound2.setDeviceId(2L);
         bound2.setDeviceName("设备2");
-        when(deviceHazardPointMapper.selectBoundDevicesByHazardPointId(1L))
+        when(deviceHazardPointService.getBoundDevices(1L))
                 .thenReturn(List.of(
                         createBoundDevice(1L, "设备1"),
                         createBoundDevice(2L, "设备2")
@@ -307,7 +307,7 @@ class MonitorDataQueryServiceTest {
         BoundDeviceVO bound2 = new BoundDeviceVO();
         bound2.setDeviceId(2L);
         bound2.setDeviceName("设备2");
-        when(deviceHazardPointMapper.selectBoundDevicesByHazardPointId(1L))
+        when(deviceHazardPointService.getBoundDevices(1L))
                 .thenReturn(List.of(
                         createBoundDevice(1L, "设备1"),
                         createBoundDevice(2L, "设备2")
