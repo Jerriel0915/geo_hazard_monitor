@@ -210,7 +210,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectByStatusAndDelFlag" resultMap="HazardPointResult">
         <include refid="selectHazardPointVo"/>
-        WHERE h.status = #{status} AND h.del_flag = #{delFlag}
+        AND h.status = #{status}
         ORDER BY h.create_time DESC
     </select>
 
