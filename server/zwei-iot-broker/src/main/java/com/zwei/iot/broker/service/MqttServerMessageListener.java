@@ -2,7 +2,6 @@ package com.zwei.iot.broker.service;
 
 import com.zwei.common.event.MqttMessageReceivedEvent;
 import com.zwei.common.event.MqttMessageRejectEvent;
-import com.zwei.common.exception.MessageRejectException;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.component.MqttDeviceSessionRegistry;
 import com.zwei.iot.broker.model.MqttDeviceSession;
@@ -16,8 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Optional;
 
 /**
@@ -91,18 +88,11 @@ public class MqttServerMessageListener {
                     "TOPIC", "主题不匹配监测协议前缀 (sys/v1/ 或 gb/v1/)", null);
             return;
         }
-        try {
-            eventPublisher.publishEvent(new MqttMessageReceivedEvent(
-                    clientId, username, topic, message, receiveTime));
-            monitorIngestFacade.ingest(topic, message, deviceId);
-        } catch (MessageRejectException e) {
-            publishReject(clientId, username, deviceId, topic, message, receiveTime,
-                    e.getRejectStage(), e.getMessage(), getStackTrace(e));
-        } catch (Exception e) {
-            log.error("监测消息处理失败。topic={}, deviceId={}, clientId={}", sanitize(topic), deviceId, sanitize(clientId), e);
-            publishReject(clientId, username, deviceId, topic, message, receiveTime,
-                    "UNKNOWN", e.getMessage(), getStackTrace(e));
-        }
+        eventPublisher.publishEvent(new MqttMessageReceivedEvent(
+                clientId, username, topic, message, receiveTime));
+        // ingest() 异步提交到线程池，不阻塞 MQTT IO 线程；
+        // Groovy 脚本执行、异常报文发布均在工作线程中完成
+        monitorIngestFacade.ingest(topic, message, deviceId);
     }
 
     /** 发布异常报文事件，供 log 模块异步持久化 */
@@ -116,14 +106,6 @@ public class MqttServerMessageListener {
         } catch (Exception ex) {
             log.warn("发布异常报文事件失败。topic={}, stage={}", sanitize(topic), rejectStage, ex);
         }
-    }
-
-    /** 获取异常堆栈字符串 */
-    private static String getStackTrace(Throwable t) {
-        if (t == null) return null;
-        StringWriter sw = new StringWriter();
-        t.printStackTrace(new PrintWriter(sw));
-        return sw.toString();
     }
 
     /** 转义日志参数中的控制字符（\r\n\t 等），防止日志注入伪造日志行 */
