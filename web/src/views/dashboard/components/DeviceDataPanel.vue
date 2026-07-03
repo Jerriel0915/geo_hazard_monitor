@@ -64,7 +64,8 @@ const emit = defineEmits<{
   border: 1px solid #e5e6eb;
   display: flex;
   flex-direction: column;
-  height: 400px;
+  height: min(400px, calc(var(--layout-content-height) * 0.45));
+  max-height: 420px;
   overflow: hidden;
 }
 

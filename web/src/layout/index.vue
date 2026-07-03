@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-container">
+  <div class="layout-container" :style="layoutContainerStyle">
     <!-- 非 Chrome 浏览器兼容性提示 -->
     <div v-if="isNotChrome && !browserTipDismissed" class="edge-warning-bar">
       <span class="edge-warning-icon">⚠</span>
@@ -408,6 +408,11 @@ const dismissBrowserTip = () => {
     localStorage.setItem(BROWSER_TIP_KEY, '1')
   }
 }
+
+const warningBarVisible = computed(() => isNotChrome.value && !browserTipDismissed.value)
+const layoutContainerStyle = computed(() => ({
+  '--layout-warning-height': warningBarVisible.value ? '36px' : '0px'
+}))
 
 const router = useRouter()
 const route = useRoute()
@@ -1512,7 +1517,7 @@ const goToDashboard = () => {
   top: 64px;
   right: -400px;
   width: 380px;
-  max-height: 500px;
+  max-height: calc(100vh - 64px);
   background: white;
   border-radius: 8px 0 0 8px;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
@@ -1930,9 +1935,10 @@ const goToDashboard = () => {
 
 .main-content {
   flex: 1;
+  min-height: 0;
   background: linear-gradient(90deg, #e3f2fd 0%, #f5f7fa 50%, #ffffff 100%);
   padding: 1px;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
 }
 

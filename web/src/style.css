@@ -6,6 +6,7 @@
 
 html, body, #app {
   height: 100%;
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -54,6 +55,13 @@ html, body, #app {
   --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 32px;
+
+  /* ── Layout Height Budget ── */
+  --layout-header-height: 64px;
+  --layout-tabs-height: 44px;
+  --layout-page-padding: 12px;
+  --layout-warning-height: 0px;
+  --layout-content-height: calc(100vh - var(--layout-header-height) - var(--layout-tabs-height) - var(--layout-warning-height));
 }
 
 .el-menu {
@@ -134,8 +142,8 @@ html, body, #app {
  * 统一高度、内边距、字号、圆角，颜色由 type 属性控制
  * ============================================ */
 .el-button {
-  height: 32px;
-  padding: 0 15px;
+  height: 36px;
+  padding: 0 16px;
   font-size: 13px;
   font-weight: 500;
   border-radius: 6px;
@@ -185,7 +193,7 @@ html, body, #app {
 
 /* ---------- Page 页面容器 ---------- */
 .page {
-  padding: 15px;
+  padding: var(--layout-page-padding, 12px);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -197,10 +205,10 @@ html, body, #app {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   flex-shrink: 0;
   background: #fff;
-  padding: 8px 15px;
+  padding: 6px 12px;
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
@@ -236,12 +244,15 @@ html, body, #app {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   background: #fff;
-  padding: 8px 15px;
+  padding: 6px 12px;
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
+  min-height: 44px;
+  max-height: 80px;
+  overflow: hidden;
 }
 
 /* 检索控件固定宽度（不均分拉伸），按钮保持自适应 */
@@ -412,11 +423,11 @@ html, body, #app {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 4px 16px;
+  padding: 2px 12px;
   background: #fff;
   border-top: 1px solid #f1f5f9;
   flex-shrink: 0;
-  min-height: 40px;
+  min-height: 36px;
 }
 
 /* ---------- el-table 默认微调（仅在 .table-wrap 内生效）---------- */
@@ -724,7 +735,82 @@ html, body, #app {
 /* ============================================
  * 响应式断点
  * 基准: 桌面 ≥1200px | 平板 ≥768px | 手机 <768px
+ * 新增目标分辨率: 1920×1080 / 1440×900 / 1366×768
  * ============================================ */
+
+/* ── 大屏桌面 (≤1920px) ── */
+@media (max-width: 1920px) {
+  .el-button {
+    height: 36px;
+    padding: 0 16px;
+  }
+}
+
+/* ── 中屏桌面 (≤1440px) ── */
+@media (max-width: 1440px) {
+  :root {
+    --layout-page-padding: 10px;
+  }
+  .page {
+    padding: 10px;
+  }
+  .header {
+    padding: 5px 11px;
+    margin-bottom: 6px;
+  }
+  .header__title {
+    font-size: 15px;
+  }
+  .header__subtitle {
+    font-size: 11px;
+  }
+  .search {
+    padding: 5px 11px;
+    margin-bottom: 6px;
+    gap: 10px;
+  }
+  .table-wrap__pagination {
+    padding: 2px 10px;
+  }
+}
+
+/* ── 小屏桌面 (≤1366px) ── */
+@media (max-width: 1366px) {
+  :root {
+    --layout-page-padding: 8px;
+  }
+  .page {
+    padding: 8px;
+  }
+  .header {
+    padding: 4px 10px;
+    margin-bottom: 6px;
+  }
+  .header__title {
+    font-size: 14px;
+  }
+  .header__subtitle {
+    display: none;
+  }
+  .search {
+    padding: 4px 10px;
+    margin-bottom: 6px;
+    gap: 8px;
+    min-height: 40px;
+  }
+  .search > :not(.el-button) {
+    min-width: 160px;
+  }
+  .table-wrap__pagination {
+    padding: 2px 8px;
+    min-height: 32px;
+  }
+  .el-button {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+}
 
 /* ── 平板 (≤1200px) ── */
 @media (max-width: 1200px) {

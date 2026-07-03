@@ -206,11 +206,18 @@ const areaPath = computed(() => {
 .trend-x-axis {
   display: flex;
   justify-content: space-between;
-  padding-top: 4px;
+  padding-top: 6px;
+  overflow: hidden;
 }
 
 .trend-x-axis span {
-  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
   color: #9ca3af;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

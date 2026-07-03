@@ -263,7 +263,7 @@ const initBarChart = () => {
         interval: 0,
         rotate: 30,
         color: '#64748b',
-        fontSize: 16
+        fontSize: 12
       },
       axisLine: {
         lineStyle: {
@@ -277,7 +277,7 @@ const initBarChart = () => {
       axisLabel: {
         formatter: '{value}%',
         color: '#64748b',
-        fontSize: 16
+        fontSize: 12
       },
       splitLine: {
         lineStyle: {
@@ -305,7 +305,7 @@ const initBarChart = () => {
           position: 'top',
           formatter: '{c}%',
           color: '#1e293b',
-          fontSize: 16,
+          fontSize: 12,
           fontWeight: 600
         }
       }
@@ -331,7 +331,7 @@ const initPieChart = () => {
       top: 'center',
       textStyle: {
         color: '#334155',
-        fontSize: 16
+        fontSize: 12
       },
       itemWidth: 14,
       itemHeight: 14,
@@ -354,7 +354,7 @@ const initPieChart = () => {
           position: 'outside',
           formatter: '{b}\n{c}%',
           color: '#334155',
-          fontSize: 16
+          fontSize: 12
         },
         labelLine: {
           show: true,
@@ -408,7 +408,7 @@ const initPyramidChart = () => {
       type: 'value',
       axisLabel: {
         color: '#64748b',
-        fontSize: 16
+        fontSize: 12
       },
       axisLine: {
         lineStyle: {
@@ -426,7 +426,7 @@ const initPyramidChart = () => {
       data: pyramidData.value.map(item => item.name).reverse(),
       axisLabel: {
         color: '#334155',
-        fontSize: 16
+        fontSize: 12
       },
       axisLine: {
         lineStyle: {
@@ -450,7 +450,7 @@ const initPyramidChart = () => {
           position: 'right',
           formatter: '{c}',
           color: '#1e293b',
-          fontSize: 16,
+          fontSize: 12,
           fontWeight: 600
         }
       }
@@ -584,9 +584,9 @@ const online24hSorted = computed(() => buildTimeWindowData(deviceActive24h.value
 
 <style scoped>
 .operation-view {
-  height: 100%;
+  height: var(--layout-content-height);
   background: transparent;
-  padding: 15px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -595,16 +595,19 @@ const online24hSorted = computed(() => buildTimeWindowData(deviceActive24h.value
 
 .stats-row {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  min-height: 84px;
+  max-height: 100px;
 }
 
 .stat-card {
   flex: 1;
+  min-width: 0;
   display: flex;
   border-radius: 10px;
   overflow: hidden;
-  /* 弱化阴影，靠色块和边框区分 */
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
@@ -620,13 +623,14 @@ const online24hSorted = computed(() => buildTimeWindowData(deviceActive24h.value
 }
 
 .stat-left svg {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 /* ---- 右侧白色内容区 ---- */
 .stat-right {
   flex: 1;
+  min-width: 0;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -636,19 +640,19 @@ const online24hSorted = computed(() => buildTimeWindowData(deviceActive24h.value
   border: 1.5px solid var(--tc);
   border-left: none;
   border-radius: 0 10px 10px 0;
-  padding: 14px 10px;
+  padding: 8px 6px;
   text-align: center;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: clamp(18px, 2.2vw, 26px);
   font-weight: 800;
   color: var(--tc);
   line-height: 1.1;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--tc);
   margin-top: 3px;
   font-weight: 500;
@@ -656,59 +660,71 @@ const online24hSorted = computed(() => buildTimeWindowData(deviceActive24h.value
 
 .stat-aux {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 12px;
+  top: 4px;
+  right: 6px;
+  font-size: 11px;
   color: #94a3b8;
   font-weight: 500;
 }
 
 .charts-row {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex: 1.2;
+  min-height: 0;
 }
 
 .chart-panel {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 .panel-header {
-  padding: 14px 18px;
+  padding: 10px 14px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .panel-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .panel-body {
+  flex: 1;
+  min-height: 0;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pie-echarts-container {
   width: 100%;
-  height: 320px;
+  height: 100%;
+  min-height: 160px;
 }
 
 .echarts-container {
   width: 100%;
-  height: 320px;
+  height: 100%;
+  min-height: 160px;
 }
 
 .table-row {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 16px;
+  gap: 12px;
 }
 
 .table-panel {
@@ -719,7 +735,7 @@ const online24hSorted = computed(() => buildTimeWindowData(deviceActive24h.value
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 .table-panel .panel-body {

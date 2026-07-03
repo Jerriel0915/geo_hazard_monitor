@@ -784,9 +784,9 @@ const handleResize = () => {
 
 <style scoped>
 .alarm-stats-view {
-  height: 100%;
+  height: var(--layout-content-height);
   background: transparent;
-  padding: 15px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -796,19 +796,22 @@ const handleResize = () => {
 /* 找到 .stats-header 样式，修改成这样 */
 .stats-header {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
   flex-shrink: 0;
+  min-height: 68px;
+  max-height: 88px;
 }
 
 /* 让所有卡片按比例分配宽度 */
 .stat-card {
-  flex: 1;  /* 所有卡片默认占1份 */
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
-  padding: 10px 14px;
+  padding: 6px 10px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -816,25 +819,28 @@ const handleResize = () => {
 }
 
 .stat-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 212, 255, 0.1);
   border-radius: 8px;
+  flex-shrink: 0;
 }
 
 .stat-content {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: #1e293b;
   transition: all 0.3s ease;
+  line-height: 1.2;
 }
 
 .stat-value.highlight {
@@ -842,7 +848,7 @@ const handleResize = () => {
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 12px;
   color: #64748b;
   margin-top: 2px;
 }
@@ -868,7 +874,7 @@ const handleResize = () => {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .left-panels {
@@ -881,19 +887,19 @@ const handleResize = () => {
 
 .charts-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
   min-height: 0;
 }
 
-/* 新增：第一行图表加高30px */
+/* 第一行图表占比较高 */
 .charts-row:first-child {
-  flex: 1.2;
+  flex: 1.15;
   min-height: 0;
 }
 
 .charts-row:last-child {
-  flex: 0.8;
+  flex: 0.85;
   min-height: 0;
 }
 
@@ -909,52 +915,38 @@ const handleResize = () => {
   min-height: 0;
 }
 
-/* 新增：左侧图表宽度减少60px */
-.chart-panel:first-child {
-  flex: 0 0 calc(50% - 30px);
-}
-
-.chart-panel:last-child {
-  flex: 0 0 calc(50% + 30px);
-}
-
 .panel-header {
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
 
 .panel-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .panel-subtitle {
-  font-size: 14px;
+  font-size: 12px;
   color: #64748b;
   margin-left: 8px;
 }
 
 .panel-body {
   flex: 1;
-  padding: 12px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 0;
 }
 
-.alarm-level .panel-body {
-  padding-top: 12px;
-}
-
 .echarts-container {
   width: 100%;
   height: 100%;
 }
-
 
 .echarts-container-lg {
   height: 100%;
@@ -966,7 +958,7 @@ const handleResize = () => {
 
 /* 右侧告警列表 */
 .right-panel {
-  width: 400px;
+  width: clamp(280px, 24vw, 360px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -989,20 +981,20 @@ const handleResize = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
 
 .list-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .refresh-time {
-  font-size: 14px;
+  font-size: 12px;
   color: #64748b;
 }
 
@@ -1015,7 +1007,7 @@ const handleResize = () => {
 
 .alarm-item {
   display: flex;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid #f1f5f9;
   transition: background 0.2s ease;
 }

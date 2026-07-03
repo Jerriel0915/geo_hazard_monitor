@@ -1359,7 +1359,7 @@ onUnmounted(() => {
 
 .dashboard-container {
   width: 100%;
-  height: 100%;
+  height: var(--layout-content-height);
   position: relative;
   overflow: hidden;
   margin: 0;
@@ -1646,7 +1646,7 @@ onUnmounted(() => {
 /* 隐患点视图样式 */
 .hazard-view-header {
   position: absolute;
-  top: 20px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
@@ -1655,7 +1655,7 @@ onUnmounted(() => {
   gap: 16px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }

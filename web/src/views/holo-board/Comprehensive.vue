@@ -1007,17 +1007,22 @@ const hazardPoints = ref<HazardPoint[]>([])
 
 
 const trendYLabels = ['100', '80', '60', '40', '20', '0']
+const MAX_TREND_ITEMS = 5
 
 const trendXLabels = computed(() =>
-  deviceOnlineRate.value?.byType?.map(t => t.monitorTypeName) ?? [])
+  (deviceOnlineRate.value?.byType ?? [])
+    .slice(0, MAX_TREND_ITEMS)
+    .map(t => {
+      const name = t.monitorTypeName ?? ''
+      return name.length > 4 ? name.slice(0, 4) + '…' : name
+    }))
 
 const trendDataPoints = computed(() => {
-  const types = deviceOnlineRate.value?.byType ?? []
+  const types = (deviceOnlineRate.value?.byType ?? []).slice(0, MAX_TREND_ITEMS)
   if (!types.length) return []
-  // dynamic spacing: max ~7 items fit, fewer items get wider spacing
-  const maxItems = Math.min(Math.max(types.length, 3), 8)
+  const maxItems = Math.min(Math.max(types.length, 3), MAX_TREND_ITEMS)
   const spacing = 280 / maxItems
-  return types.slice(0, 8).map((t, i) => ({
+  return types.map((t, i) => ({
     x: i * spacing + spacing / 2,
     y: Math.max(0, Math.min(100, 100 - (t.onlineRate ?? 0)))
   }))
@@ -1042,22 +1047,22 @@ const trendAreaPath = computed(() => {
 .comprehensive-view {
   display: flex;
   width: 100%;
-  height: 100%;
+  height: var(--layout-content-height);
   overflow: hidden;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
   position: relative;
 }
 
 .left-panel, .right-panel {
-  width: clamp(260px, 22vw, 340px);
-  min-width: 260px;
-  padding: 16px;
+  width: clamp(240px, 20vw, 300px);
+  min-width: 240px;
+  padding: 12px;
   overflow-y: auto;
   background: rgba(255, 255, 255, 0.6);
   box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .right-panel {
@@ -1079,7 +1084,7 @@ const trendAreaPath = computed(() => {
   flex-direction: column;
   background: rgba(255, 255, 255, 0.7);
   border-radius: 12px;
-  margin: clamp(8px, 1.5vw, 16px);
+  margin: clamp(6px, 1vw, 12px);
   overflow: hidden;
   box-shadow: none;
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -1089,8 +1094,8 @@ const trendAreaPath = computed(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 10px 16px 4px;
+  gap: 10px;
+  padding: 8px 12px 4px;
   overflow: hidden;
   min-height: 0;
 }
@@ -1136,7 +1141,7 @@ const trendAreaPath = computed(() => {
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   margin-bottom: 0;
   box-shadow: none;
   flex-shrink: 0;
@@ -1150,7 +1155,7 @@ const trendAreaPath = computed(() => {
   border: 1px solid rgba(24, 144, 255, 0.08);
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  padding: 16px 18px;
+  padding: 12px;
   margin-bottom: 0;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -1172,11 +1177,11 @@ const trendAreaPath = computed(() => {
 }
 
 .health-section .section-header {
-  padding: 8px 14px 10px;
+  padding: 6px 10px 8px;
   background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.03) 100%);
   border-radius: 8px 8px 0 0;
   border-bottom: 1px solid rgba(24, 144, 255, 0.12);
-  margin: -16px -18px 16px;
+  margin: -12px -12px 12px;
 }
 
 .section-title {
@@ -1338,20 +1343,21 @@ const trendAreaPath = computed(() => {
   transition: width 0.5s ease;
 }
 
-.resource-cards {
 /* ========== 统计卡片 — 与运营视图统一风格 ========== */
 .stats-row {
   display: flex;
-  gap: 12px;
-  padding: 14px 20px;
+  gap: 10px;
+  padding: 10px 14px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  flex-wrap: wrap;
+  flex-shrink: 0;
+  min-height: 72px;
+  max-height: 96px;
 }
 
 .stat-card {
-  flex: 1 1 140px;
-  min-width: 130px;
+  flex: 1;
+  min-width: 0;
   display: flex;
   border-radius: 10px;
   overflow: hidden;
@@ -1375,6 +1381,7 @@ const trendAreaPath = computed(() => {
 
 .stat-right {
   flex: 1;
+  min-width: 0;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1384,7 +1391,7 @@ const trendAreaPath = computed(() => {
   border: 1.5px solid var(--tc);
   border-left: none;
   border-radius: 0 10px 10px 0;
-  padding: 8px 6px;
+  padding: 6px 4px;
   text-align: center;
 }
 
@@ -1404,19 +1411,21 @@ const trendAreaPath = computed(() => {
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--tc);
   margin-top: 2px;
   font-weight: 500;
 }
 
 .stat-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: #94a3b8;
   margin-top: 1px;
   font-weight: 400;
 }
 
+.alarm-summary {
+  margin-bottom: 10px;
 }
 
 .alarm-summary-text {
@@ -1438,21 +1447,26 @@ const trendAreaPath = computed(() => {
 
 .alarm-level-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 8px;
   margin-bottom: 10px;
 }
 
 .level-stat {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
 }
 
 .level-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .level-dot.red {
@@ -1476,14 +1490,20 @@ const trendAreaPath = computed(() => {
 }
 
 .level-name {
-  font-size: 13px;
+  font-size: 12px;
   color: #4b5563;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .level-count {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
+  flex-shrink: 0;
 }
 
 .alarm-list-section {
@@ -1615,13 +1635,10 @@ const trendAreaPath = computed(() => {
   color: #1890ff;
 }
 
-/* 隐患点标记样式 */
-</style>
-
 /* 双图表行 */
 .double-chart-row {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex: 1;
   min-height: 0;
 }
@@ -1631,6 +1648,7 @@ const trendAreaPath = computed(() => {
   min-width: 0;
 }
 
+/* 隐患点标记样式 */
 .hpv2-device + .hpv2-device { border-top: 1px solid rgba(0, 0, 0, 0.05); }
 
 .hpv2-dn { font-size: 11px; color: #4b5563; }
