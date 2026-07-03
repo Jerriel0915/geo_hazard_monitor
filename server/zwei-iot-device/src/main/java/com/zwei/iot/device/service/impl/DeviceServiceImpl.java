@@ -277,7 +277,7 @@ public class DeviceServiceImpl implements IDeviceService {
             throw new ServiceException("复制失败，设备编号已存在");
         }
 
-        validateSnUnique(request.getSn(), null);
+        validateSnUnique(request.getSn(), id);
 
         Device copy = Device.builder()
                 .code(request.getCode())
