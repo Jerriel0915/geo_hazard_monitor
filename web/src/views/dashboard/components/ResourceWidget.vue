@@ -54,8 +54,8 @@
 </template>
 
 <script setup lang="ts">
-import {nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
-import {Box, Location, Setting} from '@element-plus/icons-vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { Box, Location, Setting } from '@element-plus/icons-vue'
 import echarts from '@/utils/echarts'
 
 const props = defineProps<{
@@ -97,12 +97,12 @@ const renderChart = () => {
     },
     legend: {
       orient: 'horizontal',
-      bottom: 0,
+      bottom: 8,
       left: 'center',
       icon: 'circle',
       itemWidth: 8,
       itemHeight: 8,
-      itemGap: 14,
+      itemGap: 12,
       textStyle: { fontSize: 11, color: '#4e5969', lineHeight: 16 },
       formatter: (name: string) => {
         const item = props.resourceStats.deviceTypes.find(t => t.name === name)
@@ -113,8 +113,8 @@ const renderChart = () => {
     series: [{
       type: 'pie',
       roseType: 'area',
-      radius: ['15%', '72%'],
-      center: ['50%', '45%'],
+      radius: ['10%', '42%'],                   // 【修改】内半径12%→10%，外半径38%→42%，饼图放大
+      center: ['50%', '35%'],                   // 【修改】中心从38%→35%，整体上移，上边距更小
       itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
       label: { show: false },
       emphasis: {
@@ -127,7 +127,7 @@ const renderChart = () => {
 
 watch(() => props.resourceStats.deviceTypes, () => {
   nextTick(renderChart)
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 onMounted(() => {
   resizeObserver = new ResizeObserver(() => {
@@ -330,7 +330,7 @@ const handleResize = () => {
 
 .device-type-section {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
-  padding-top: 12px;
+  padding-top: 8px;                        /* 【修改】从12px→8px，上边距收紧 */
   flex: 1;
   min-height: 0;
   display: flex;
@@ -341,7 +341,7 @@ const handleResize = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 4px;                      /* 【修改】从10px→4px，标题与饼图间距缩小 */
   flex-shrink: 0;
 }
 
@@ -360,6 +360,6 @@ const handleResize = () => {
 .rose-chart {
   width: 100%;
   flex: 1;
-  min-height: 170px;
+  min-height: 230px;
 }
 </style>
