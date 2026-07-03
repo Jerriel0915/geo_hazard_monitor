@@ -2,7 +2,7 @@
   <el-dialog
     v-model="dialogVisible"
     :title="dialogTitle"
-    width="900px"
+    width="1000px"
     :close-on-click-modal="false"
     destroy-on-close
   >
@@ -43,10 +43,9 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="排序号" prop="sortOrder">
-            <el-input-number
+            <el-input
               v-model="formData.sortOrder"
-              :min="0"
-              :max="2147483647"
+              placeholder="请输入排序号"
               :disabled="isView"
               style="width: 100%"
             />
@@ -74,9 +73,6 @@
       <div>
         <div class="param-toolbar" v-if="!isView">
           <el-button type="primary" size="small" @click="handleAddModelAttr">
-            <span class="btn-icon">+</span> 添加监测内容
-          </el-button>
-          <el-button type="primary" size="small" @click="handleAddModelAttr" class="param-toolbar__right-btn">
             <span class="btn-icon">+</span> 添加字段
           </el-button>
         </div>
@@ -128,7 +124,7 @@
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column label="字段类型" width="110" align="center">
+          <el-table-column label="字段类型" width="100" align="center">
             <template #default="{ row }">
               <template v-if="isView">
                 <el-tag v-if="row.fieldType === 'computed'" type="warning" size="small">计算属性</el-tag>
@@ -176,7 +172,7 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="排序号" width="70" align="center">
+          <el-table-column label="排序号" width="64" align="center">
             <template #default="{ row }">
               <template v-if="isView">{{ row.sortOrder ?? '-' }}</template>
               <el-input-number
@@ -189,7 +185,7 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="140" fixed="right" align="center" v-if="!isView">
+          <el-table-column label="操作" width="110" fixed="right" align="center" v-if="!isView">
             <template #default="{ row, $index }">
               <div class="op-cell">
                 <el-button
