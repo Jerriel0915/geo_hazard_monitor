@@ -164,25 +164,12 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-// 获取默认时间范围：最近7天
-const getDefaultTimeRange = (): [string, string] => {
-  const end = new Date()
-  const start = new Date()
-  start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-  const format = (d: Date) => {
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day} 00:00:00`
-  }
-  const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')} 23:59:59`
-  return [format(start), endStr]
-}
+// ========== 修改点 1：删除 getDefaultTimeRange 函数，不再需要 ==========
 
-// 查询参数
+// 查询参数：alarmTimeRange 初始化为空数组
 const queryParams = reactive({
   hazardPointName: '',
-  alarmTimeRange: [] as string[],
+  alarmTimeRange: [] as string[],   // 修改：初始为空
   alarmLevel: [] as number[],
   alarmType: [] as string[],
   status: [] as number[],
@@ -207,6 +194,7 @@ async function loadList() {
     alarmTypes: queryParams.alarmType.length > 0 ? queryParams.alarmType : undefined,
     statusList: queryParams.status.length > 0 ? queryParams.status : undefined,
   }
+  // 只有选择了时间范围才传递，否则不传（后端可能返回全部）
   if (queryParams.alarmTimeRange?.length === 2) {
     params.triggerTimeBegin = queryParams.alarmTimeRange[0]
     params.triggerTimeEnd = queryParams.alarmTimeRange[1]
@@ -265,7 +253,7 @@ const getStatusText = (status: number | string) => {
 const handleQuery = () => { pagination.currentPage = 1; loadList() }
 const handleReset = () => {
   queryParams.hazardPointName = ''
-  queryParams.alarmTimeRange = []
+  queryParams.alarmTimeRange = []   // 修改：重置为空数组
   queryParams.alarmLevel = []
   queryParams.alarmType = []
   queryParams.status = []
