@@ -245,7 +245,7 @@ export function useDeviceCrud() {
             id: undefined,
             code: suggestedCode,
             name: suggestedName,
-            sn: '',
+            sn: row.sn || '',
             deviceType: row.deviceType ?? 0,
             networkType: row.networkType ?? 0,
             protocolType: row.protocolType || 'MQTT',
@@ -265,11 +265,13 @@ export function useDeviceCrud() {
         const code = formData.code?.trim()
         const sn = formData.sn?.trim()
         const excludeId = formData.id
-        if (code && tableData.value.find((d) => d.id !== excludeId && d.code === code)) {
+        // 复制模式下同时排除源设备，允许 SN 保持一致
+        const sourceId = isCopyMode.value ? currentRow.value?.id : undefined
+        if (code && tableData.value.find((d) => d.id !== excludeId && d.id !== sourceId && d.code === code)) {
             ElMessage.warning(`设备编号 ${code} 已被占用`);
             return false
         }
-        if (sn && tableData.value.find((d) => d.id !== excludeId && d.sn === sn)) {
+        if (sn && tableData.value.find((d) => d.id !== excludeId && d.id !== sourceId && d.sn === sn)) {
             ElMessage.warning(`设备 SN ${sn} 已被占用`);
             return false
         }
