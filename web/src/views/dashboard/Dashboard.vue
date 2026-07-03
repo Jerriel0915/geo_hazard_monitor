@@ -116,7 +116,7 @@
 import { getBoundDevices, getHazardPointDetail, getHazardPointGroups, getHazardPointPage } from '@/api/hazardPoint'
 import { getDashboardFull } from '@/api/monitor'
 import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
-import { getPendingAlarms, type AlarmRecordItem } from '@/api/alarm'
+import { getAlarmLevelStats, getAlarmOverview, getPendingAlarms, type AlarmRecordItem } from '@/api/alarm'
 import { getFocusArea } from '@/api/system'
 import { buildTiandituUrl } from '@/composables/useLeafletMap'
 import { deserialize, type BoundaryCoords } from '@/lib/boundaryCoords'
@@ -913,17 +913,12 @@ const exitHazardView = () => {
   fitToFocusArea()
 }
 
-const updateHazardAlarms = (hazardId: number) => {
-  // TODO: 从API获取当前隐患点的告警数据
-  alarmStats.value.pendingCount = 0
-  alarmStats.value.historyCount = 0
-  alarmStats.value.levelStats = [
-    {key: 'critical', name: '严重', count: 0, icon: '/img/alarm/level1.png'},
-    {key: 'major', name: '重要', count: 0, icon: '/img/alarm/level2.png'},
-    {key: 'minor', name: '一般', count: 0, icon: '/img/alarm/level3.png'},
-    {key: 'info', name: '提示', count: 0, icon: '/img/alarm/level4.png'}
-  ]
-  alarmStats.value.recentAlarms = []
+/**
+ * Hazard-view alarm overview is handled by HazardAlarmWidget (self-contained).
+ * AlarmWidget is hidden in hazard view; preserve global stats for when user returns.
+ */
+const updateHazardAlarms = (_hazardId: number) => {
+  // no-op: HazardAlarmWidget manages its own data independently
 }
 
 const resetAlarmStats = () => {
@@ -1180,9 +1175,11 @@ const loadMonitorTypes = async () => {
 // 加载仪表盘全局统计（Health + Resource + Alarm）
 const loadDashboardData = async () => {
   try {
-    const [fullRes, alarmRes] = await Promise.all([
+    const [fullRes, alarmRes, overviewRes, levelStatsRes] = await Promise.all([
       getDashboardFull(),
-      getPendingAlarms({ pageNum: 1, pageSize: 50 })
+      getPendingAlarms({ pageNum: 1, pageSize: 50 }),
+      getAlarmOverview(),
+      getAlarmLevelStats()
     ])
 
     // ---- HealthWidget ----
@@ -1231,25 +1228,37 @@ const loadDashboardData = async () => {
     }
 
     // ---- AlarmWidget (system-wide) ----
+
+    // pending/history overview counts from dedicated API
+    const overviewData: any = overviewRes
+    if (overviewData?.code === 200 && overviewData.data) {
+      alarmStats.value.pendingCount = overviewData.data.pendingCount ?? 0
+      alarmStats.value.historyCount = overviewData.data.historyCount ?? 0
+    }
+
+    // level distribution from dedicated API
+    const levelStatsData: any = levelStatsRes
+    if (levelStatsData?.code === 200 && levelStatsData.data) {
+      const levelKeyMap: Record<number, string> = { 1: 'critical', 2: 'major', 3: 'minor', 4: 'info' }
+      const newLevelStats = [
+        { key: 'critical', name: '严重', count: 0, icon: '/img/alarm/level1.png' },
+        { key: 'major', name: '重要', count: 0, icon: '/img/alarm/level2.png' },
+        { key: 'minor', name: '一般', count: 0, icon: '/img/alarm/level3.png' },
+        { key: 'info', name: '提示', count: 0, icon: '/img/alarm/level4.png' }
+      ]
+      for (const [level, count] of Object.entries(levelStatsData.data)) {
+        const key = levelKeyMap[Number(level)]
+        const item = newLevelStats.find(s => s.key === key)
+        if (item) item.count = count as number
+      }
+      alarmStats.value.levelStats = newLevelStats
+    }
+
+    // recent alarm events from pending list
     const alarmData: any = alarmRes
     if (alarmData?.code === 200 && alarmData.data?.rows) {
       const alarms: AlarmRecordItem[] = alarmData.data.rows
-      const pending = alarms.filter(a => a.status === 1 || a.status === 2)
       const levelMap: Record<string, string> = { '1': 'critical', '2': 'major', '3': 'minor', '4': 'info' }
-      const levelCounts: Record<string, number> = { critical: 0, major: 0, minor: 0, info: 0 }
-      alarms.forEach((a: AlarmRecordItem) => {
-        const key = levelMap[String(a.alarmLevel)] || 'info'
-        levelCounts[key]++
-      })
-
-      alarmStats.value.pendingCount = pending.length
-      alarmStats.value.historyCount = alarms.length
-      alarmStats.value.levelStats = [
-        { key: 'critical', name: '严重', count: levelCounts.critical, icon: '/img/alarm/level1.png' },
-        { key: 'major', name: '重要', count: levelCounts.major, icon: '/img/alarm/level2.png' },
-        { key: 'minor', name: '一般', count: levelCounts.minor, icon: '/img/alarm/level3.png' },
-        { key: 'info', name: '提示', count: levelCounts.info, icon: '/img/alarm/level4.png' }
-      ]
       alarmStats.value.recentAlarms = alarms.slice(0, 10).map((a: AlarmRecordItem) => ({
         id: a.id,
         level: levelMap[String(a.alarmLevel)] || 'info',

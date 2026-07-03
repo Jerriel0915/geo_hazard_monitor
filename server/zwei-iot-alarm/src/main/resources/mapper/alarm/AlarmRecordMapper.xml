@@ -243,14 +243,13 @@
     <!-- ==================== 统计查询 ==================== -->
 
     <select id="countPendingByLevel" resultType="java.util.Map">
-        SELECT td.alarm_level                       AS alarmLevel,
+        SELECT ar.alarm_level                       AS alarmLevel,
                ar.alarm_level_text                  AS alarmLevelText,
                COUNT(*)                             AS cnt
-        FROM alarm_record_trigger_detail td
-        INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
+        FROM alarm_record ar
         WHERE ar.status IN (1, 2)
-        GROUP BY td.alarm_level
-        ORDER BY td.alarm_level
+        GROUP BY ar.alarm_level, ar.alarm_level_text
+        ORDER BY ar.alarm_level
     </select>
 
     <select id="countPendingByHazardPointIds" resultType="java.util.Map">

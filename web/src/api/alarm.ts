@@ -382,7 +382,7 @@ export const getAlarmNotifications = (id: number) =>
 
 /** 待处理告警等级统计: { 1: count, 2: count, 3: count, 4: count } */
 export const getAlarmLevelStats = () =>
-    request.get<Record<number, number>>('/alarm/records/level-stats')
+    request.get<AjaxResult<Record<number, number>>>('/alarm/records/level-stats')
 
 /** 告警趋势数据 (近N个月+2个月预测) */
 export interface AlarmTrendVO {
@@ -412,7 +412,7 @@ export interface AlarmOverviewVO {
 }
 
 export const getAlarmOverview = () =>
-    request.get<AlarmOverviewVO>('/alarm/records/overview')
+    request.get<AjaxResult<AlarmOverviewVO>>('/alarm/records/overview')
 
 /** 告警来源分布 (按监测类型统计待处理告警) */
 export interface AlarmSourceStatVO {
