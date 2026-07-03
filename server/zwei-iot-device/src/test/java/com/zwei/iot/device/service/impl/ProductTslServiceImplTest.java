@@ -42,7 +42,7 @@ class ProductTslServiceImplTest {
     void setUp() {
         tslBuilder = new TslBuilder();
         service = new ProductTslServiceImpl(
-                productMapper, deviceMapper, attributeMapper, tslBuilder);
+                productMapper, deviceMapper, attributeMapper, tslBuilder, objectMapper);
     }
 
     @Test
