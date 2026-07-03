@@ -888,14 +888,13 @@ public class IotdbTimeSeriesService {
                                    String dataType,
                                    String encoding) {
         String measurementPath = pathResolver.buildMeasurementPath(deviceId, sensorCode, attrCode);
-        if (createdMeasurements.containsKey(measurementPath)) {
-            return;
-        }
-        jdbcClient.executeSilent("CREATE TIMESERIES " + measurementPath
-                + " WITH DATATYPE=" + dataType
-                + ", ENCODING=" + encoding
-                + ", COMPRESSOR=SNAPPY");
-        createdMeasurements.putIfAbsent(measurementPath, Boolean.TRUE);
+        createdMeasurements.computeIfAbsent(measurementPath, key -> {
+            jdbcClient.executeSilent("CREATE TIMESERIES " + key
+                    + " WITH DATATYPE=" + dataType
+                    + ", ENCODING=" + encoding
+                    + ", COMPRESSOR=SNAPPY");
+            return Boolean.TRUE;
+        });
     }
 
     /**

@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.io.Serial;
+import java.util.List;
 
 /**
  * 设备表 device
@@ -151,7 +152,7 @@ public class Device extends BaseEntity {
     /**
      * 传感器列表（查询详情时返回）
      */
-    private Object sensors;
+    private List<DeviceSensor> sensors;
 
     /**
      * 关联的隐患点ID（业务规则：1设备≤1隐患点，Service层富化）

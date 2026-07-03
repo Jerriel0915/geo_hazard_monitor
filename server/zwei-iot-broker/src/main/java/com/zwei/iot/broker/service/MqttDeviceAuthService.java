@@ -152,7 +152,11 @@ public class MqttDeviceAuthService {
             failureGuard.recordFailure(normalizedUsername);
             return false;
         }
-        if (!Objects.equals(normalizedPassword, normalize(device.getAuthPassword()))) {
+        if (!java.security.MessageDigest.isEqual(
+                normalizedPassword != null ? normalizedPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8) : new byte[0],
+                normalize(device.getAuthPassword()) != null
+                        ? normalize(device.getAuthPassword()).getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                        : new byte[0])) {
             logFailure(device, normalizedUsername, normalizedClientId, clientIp, "PASSWORD_NOT_MATCH");
             failureGuard.recordFailure(normalizedUsername);
             return false;

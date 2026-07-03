@@ -46,11 +46,7 @@
                d.icon AS icon,
                d.icon_path AS iconPath,
                dos.status AS onlineStatus,
-               (
-                   SELECT COUNT(*)
-                   FROM device_hazard_point dhp2
-                   WHERE dhp2.device_id = d.id
-               ) AS bindCount
+               0 AS bindCount
         FROM device d
         LEFT JOIN device_online_status dos ON dos.device_id = d.id
         WHERE d.del_flag = 0
