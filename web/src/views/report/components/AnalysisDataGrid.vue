@@ -104,12 +104,12 @@ import {showRequestErrorMessage} from '@/utils/errorHandler'
 import echarts from '@/utils/echarts'
 import {
   type DeviceOption,
-  getChartData,
   getDeviceOptions,
   getHazardPointOptions,
   type GridChartItem,
   type HazardPointOption,
 } from '@/api/report'
+import { getChartData } from '@/api/monitorData'
 import type { SensorItem } from '@/api/sensor'
 import { getDeviceSensors } from '@/api/sensor'
 
@@ -268,13 +268,25 @@ const loadGridCellChart = async (idx: number) => {
   }
 
   try {
-    const data = await getChartData({
+    if (!cell.hazardPointId) {
+      ElMessage.warning('该设备未绑定隐患点，无法查询数据')
+      return
+    }
+    const params = {
+      hazardPointId: cell.hazardPointId,
       deviceId: cell.deviceId,
+      sensorId: cell.sensorId || undefined,
       attrCode: cell.attrCode,
       startTime,
       endTime,
-    })
-    if (!data) return
+    }
+    console.log(`[DataGrid] 请求 chart:`, JSON.stringify(params))
+    const result = await getChartData(params)
+    console.log(`[DataGrid] 返回:`, result)
+    if (!result || result.length === 0) return
+    // /monitor-data/chart 返回 ChartData[]，取第一个
+    const data = result[0]
+    if (!data.labels || data.labels.length === 0) return
 
     const existing = gridChartInstances.get(idx)
     if (existing) {
@@ -295,11 +307,11 @@ const loadGridCellChart = async (idx: number) => {
         nameLocation: 'end',
         nameGap: 2,
         nameTextStyle: { fontSize: 10, color: '#909399' },
-        data: data.times,
+        data: data.labels,
         axisLabel: {
           fontSize: 9,
           rotate: 30,
-          interval: Math.max(1, Math.floor((data.times || []).length / 6)),
+          interval: Math.max(1, Math.floor((data.labels || []).length / 6)),
           formatter: (val: string) => {
             const t = val.replace('T', ' ')
             const parts = t.split(/[\s-:]/)

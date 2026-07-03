@@ -363,15 +363,17 @@ const generateCorrelationChart = async () => {
     const allSeriesData: { sensor: SensorSeriesItem; chartData: { times: string[]; values: number[] } }[] = []
     for (const sensor of selectedSensors.value) {
       try {
-        const result = await getChartData({
+        const params = {
           hazardPointId: sensor.hazardPointId,
           deviceId: sensor.deviceId,
           attrCode: sensor.attrCode,
           startTime,
           endTime,
-        })
+        }
+        console.log('[Correlation] 请求 chart:', JSON.stringify(params))
+        const result = await getChartData(params)
+        console.log('[Correlation] 返回:', result)
         if (result && result.length > 0) {
-          // /monitor-data/chart 返回 ChartData[]，转换为 {times, values} 格式
           for (const series of result) {
             allSeriesData.push({
               sensor,
@@ -380,7 +382,7 @@ const generateCorrelationChart = async () => {
           }
         }
       } catch (e) {
-        // 单个传感器查询失败不影响其他传感器
+        console.error('[Correlation] 请求异常:', e)
       }
     }
 
