@@ -27,6 +27,7 @@
             </template>
             <span v-else>-</span>
           </el-descriptions-item>
+          <el-descriptions-item label="MQTT账户名">{{ mqttUsername || '-' }}</el-descriptions-item>
           <el-descriptions-item label="安装位置">
             {{ formatCoord(currentRow?.longitude, currentRow?.latitude) }}
             <el-button v-if="currentRow?.longitude != null" size="small" text type="primary" @click="emit('viewOnMap', currentRow)">
@@ -155,6 +156,7 @@ import { ref, watch } from 'vue'
 import request from '@/utils/request'
 import { getSensorIconPath } from '@/utils/deviceIcon'
 import { type DeviceItem } from '../composables/useDeviceCrud'
+import { getDeviceAuthAccount } from '@/api/device'
 import MonitorDataExplorer from '@/components/MonitorDataExplorer.vue'
 
 interface Props {
@@ -173,6 +175,7 @@ const emit = defineEmits<Emits>()
 const dialogVisible = ref(false)
 const activeTab = ref('info')
 const pwdVisible = ref(false)
+const mqttUsername = ref<string>('')
 const sensorList = ref<any[]>([])
 const onlineLogs = ref<any[]>([])
 const maintenanceLogs = ref<any[]>([])
@@ -187,6 +190,7 @@ watch(() => props.visible, (val) => {
     currentRow.value = props.device
     loadSensorList(props.device.id!)
     loadOpsLogs(props.device.id!)
+    loadAuthAccount(props.device.id!)
     activeTab.value = 'info'
     pwdVisible.value = false
   }
@@ -213,6 +217,16 @@ const loadSensorList = async (deviceId: number) => {
     sensorList.value = []
   } finally {
     sensorLoading.value = false
+  }
+}
+
+// 加载 MQTT 账户名
+const loadAuthAccount = async (deviceId: number) => {
+  try {
+    const account = await getDeviceAuthAccount(deviceId)
+    mqttUsername.value = account?.username || ''
+  } catch {
+    mqttUsername.value = ''
   }
 }
 
