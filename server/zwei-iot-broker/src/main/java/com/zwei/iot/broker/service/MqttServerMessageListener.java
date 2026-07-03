@@ -92,7 +92,7 @@ public class MqttServerMessageListener {
                 clientId, username, topic, message, receiveTime));
         // ingest() 异步提交到线程池，不阻塞 MQTT IO 线程；
         // Groovy 脚本执行、异常报文发布均在工作线程中完成
-        monitorIngestFacade.ingest(topic, message, deviceId);
+        monitorIngestFacade.ingest(topic, message, deviceId, clientId, username);
     }
 
     /** 发布异常报文事件，供 log 模块异步持久化 */
