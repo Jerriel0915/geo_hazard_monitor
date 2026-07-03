@@ -1,6 +1,7 @@
 package com.zwei.iot.timeseries.controller;
 
 import com.zwei.common.core.domain.AjaxResult;
+import com.zwei.common.exception.ServiceException;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.device.service.IDeviceSensorService;
 import com.zwei.iot.timeseries.domain.*;
@@ -96,9 +97,14 @@ public class MonitorDataSensorController {
                                 @RequestParam(required = false) Double minValue,
                                 @RequestParam(required = false) Double maxValue,
                                 @RequestBody List<ExpressionSpec> expressions) {
+        TimeWindowSpec.WindowGranularity windowGranularity;
+        try {
+            windowGranularity = TimeWindowSpec.WindowGranularity.valueOf(granularity.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ServiceException("无效的聚合粒度: " + granularity + "，可选值: RAW, HOUR, DAY");
+        }
         TimeWindowSpec window = new TimeWindowSpec(
-                toMillis(startTime), toMillis(endTime),
-                TimeWindowSpec.WindowGranularity.valueOf(granularity.toUpperCase()));
+                toMillis(startTime), toMillis(endTime), windowGranularity);
         SensorAggregationVO vo = aggregationService.aggregateAllAttrs(
                 deviceId, sensorCode, window, expressions, minValue, maxValue);
         return AjaxResult.success("成功", vo);

@@ -57,9 +57,8 @@ public class MqttConnectStatusListener implements IMqttConnectStatusListener {
     public void online(ChannelContext context, String clientId, String username) {
         try {
             mqttDeviceAuthService.handleClientOnline(context, clientId, username);
-            // 从已认证会话中获取 deviceId 发布上线事件
-            eventPublisher.publishEvent(new DeviceOnlineEvent(
-                    resolveDeviceId(context), clientId, resolveClientIp(context)));
+            // DeviceOnlineEvent 已在 MqttDeviceAuthService.authenticate() 中发布，
+            // 此处不再重复发布以避免 device_online_event_log 产生重复记录
             log.info("MqttClientOnline clientId:{}, username:{}", clientId, username);
         } catch (Exception e) {
             log.error("处理设备上线事件失败。clientId={}, username={}", clientId, username, e);
@@ -80,9 +79,14 @@ public class MqttConnectStatusListener implements IMqttConnectStatusListener {
             // 从会话注册中心直接获取 deviceId，避免依赖 context.getUserId()
             // （服务端主动断连时 context 可能为 null 或 userId 未正确设置）
             Long deviceId = mqttDeviceAuthService.handleClientOffline(context, clientId, username, reason);
+            if (deviceId == null || deviceId <= 0) {
+                log.warn("无法解析 deviceId，跳过离线事件发布。clientId={}, username={}, reason={}",
+                        clientId, username, reason);
+                return;
+            }
             String clientIp = resolveClientIp(context);
             eventPublisher.publishEvent(new DeviceOfflineEvent(
-                    deviceId != null ? deviceId : 0L, clientId, clientIp, reason));
+                    deviceId, clientId, clientIp, reason));
             log.info("MqttClientOffline clientId:{}, username:{}, deviceId:{}, reason:{}",
                     clientId, username, deviceId, reason);
         } catch (Exception e) {

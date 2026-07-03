@@ -540,7 +540,8 @@ public class IotdbTimeSeriesService {
             }
             return 0;
         } catch (SQLException e) {
-            log.warn("统计 IoTDB 数据条数失败: deviceId={}, sensorCode={}, attrCode={}", deviceId, sensorCode, attrCode, e);
+            log.error("统计 IoTDB 数据条数失败，分页 total 可能不准确: deviceId={}, sensorCode={}, attrCode={}",
+                    deviceId, sensorCode, attrCode, e);
             return 0;
         }
     }

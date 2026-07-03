@@ -65,7 +65,7 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      * 新增监测内容
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),
@@ -92,7 +92,7 @@ public class MonitorContentServiceImpl implements IMonitorContentService {
      * 修改监测内容
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Caching(evict = {
             @CacheEvict(value = "monitorContent", key = "#monitorContent.id"),
             @CacheEvict(value = "monitorContentList", allEntries = true),

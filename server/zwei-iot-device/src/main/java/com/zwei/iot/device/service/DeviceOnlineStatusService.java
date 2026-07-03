@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,6 +38,7 @@ public class DeviceOnlineStatusService {
      * 处理设备上线事件。
      */
     @EventListener
+    @Transactional(rollbackFor = Exception.class)
     public void onDeviceOnline(DeviceOnlineEvent event) {
         String now = LocalDateTime.now().format(DT_FMT);
         DeviceOnlineStatus status = new DeviceOnlineStatus();
@@ -52,6 +54,7 @@ public class DeviceOnlineStatusService {
      * 处理设备离线事件。
      */
     @EventListener
+    @Transactional(rollbackFor = Exception.class)
     public void onDeviceOffline(DeviceOfflineEvent event) {
         String now = LocalDateTime.now().format(DT_FMT);
         mapper.upsertOffline(event.getDeviceId(), now, event.getReason());
