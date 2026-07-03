@@ -210,7 +210,7 @@ public class HazardPointServiceImpl implements IHazardPointService {
     public List<Map<String, Object>> getMapOverview() {
         // 查询所有活跃隐患点 (status=1 监测中, delFlag=0)
         HazardPoint filter = new HazardPoint();
-        filter.setStatus(1);
+        filter.setStatus(HazardPoint.STATUS_MONITORING);
         List<HazardPoint> hps = hazardPointMapper.selectHazardPointList(filter);
 
         // 批量查询告警状态

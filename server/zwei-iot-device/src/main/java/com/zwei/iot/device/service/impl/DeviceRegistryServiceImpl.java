@@ -81,7 +81,7 @@ public class DeviceRegistryServiceImpl implements IDeviceRegistryService {
     private final IProductTslService productTslService;
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
-    @Value("${zwei.iot.device-registry.register-codes:ABCDEF123456}")
+    @Value("${zwei.iot.device-registry.register-codes:}")
     private String configuredRegisterCodes;
 
     @Autowired

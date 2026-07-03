@@ -101,7 +101,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             update_time = sysdate()
         </set>
-        where id = #{id}
+        where id = #{id} and del_flag = 0
     </update>
 
     <delete id="deleteHazardPointGroupById" parameterType="Long">

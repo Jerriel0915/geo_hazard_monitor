@@ -22,6 +22,9 @@ public class HazardPoint extends BaseEntity
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /** 隐患点状态: 监测中 */
+    public static final int STATUS_MONITORING = 1;
+
     /** 主键ID */
     private Long id;
 
@@ -95,11 +98,11 @@ public class HazardPoint extends BaseEntity
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         HazardPoint that = (HazardPoint) o;
-        return Objects.equals(getId(), that.getId()) && Objects.equals(getCode(), that.getCode()) && Objects.equals(getName(), that.getName()) && Objects.equals(getGroupId(), that.getGroupId()) && Objects.equals(getGroupName(), that.getGroupName()) && Objects.equals(getLongitude(), that.getLongitude()) && Objects.equals(getLatitude(), that.getLatitude()) && Objects.equals(getDescription(), that.getDescription()) && Objects.equals(getStatus(), that.getStatus()) && Objects.equals(getStatusName(), that.getStatusName()) && Objects.equals(getDeviceCount(), that.getDeviceCount()) && Objects.equals(getDelFlag(), that.getDelFlag());
+        return Objects.equals(getId(), that.getId());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), getCode(), getName(), getGroupId(), getGroupName(), getLongitude(), getLatitude(), getDescription(), getStatus(), getStatusName(), getDeviceCount(), getDelFlag());
+        return Objects.hash(getId());
     }
 }
