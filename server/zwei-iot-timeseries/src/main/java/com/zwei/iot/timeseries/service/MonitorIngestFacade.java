@@ -74,10 +74,10 @@ public class MonitorIngestFacade {
      * @param message  raw message bytes
      * @param deviceId authenticated device primary key
      */
-    public void ingest(String topic, byte[] message, Long deviceId) {
+    public void ingest(String topic, byte[] message, Long deviceId, String clientId, String username) {
         ingestExecutor.submit(() -> {
             try {
-                doIngest(topic, message, deviceId);
+                doIngest(topic, message, deviceId, clientId, username);
             } catch (Exception e) {
                 log.error("异步 ingest 任务异常退出: topic={}, deviceId={}", topic, deviceId, e);
             }
@@ -85,7 +85,7 @@ public class MonitorIngestFacade {
     }
 
     /** 同步执行体——在 ingestExecutor 线程池中运行 */
-    void doIngest(String topic, byte[] message, Long deviceId) {
+    void doIngest(String topic, byte[] message, Long deviceId, String clientId, String username) {
         try {
             // 1. Parse topic
             MonitorTopic parsedTopic = topicParser.parse(topic);
@@ -124,10 +124,10 @@ public class MonitorIngestFacade {
             log.debug("Monitor message enqueued, topic={}, properties={}",
                     topic, parsedMessage.properties().size());
         } catch (MessageRejectException e) {
-            publishReject(deviceId, topic, message, e.getRejectStage(), e.getMessage(), null);
+            publishReject(clientId, username, deviceId, topic, message, e.getRejectStage(), e.getMessage(), null);
         } catch (Exception e) {
             log.error("监测消息处理失败 topic={}, deviceId={}", topic, deviceId, e);
-            publishReject(deviceId, topic, message, "UNKNOWN", e.getMessage(), getStackTrace(e));
+            publishReject(clientId, username, deviceId, topic, message, "UNKNOWN", e.getMessage(), getStackTrace(e));
         }
     }
 
@@ -145,11 +145,11 @@ public class MonitorIngestFacade {
     }
 
     /** 发布异常报文事件 */
-    private void publishReject(Long deviceId, String topic, byte[] message,
+    private void publishReject(String clientId, String username, Long deviceId, String topic, byte[] message,
                                String rejectStage, String rejectReason, String errorStack) {
         try {
             eventPublisher.publishEvent(new MqttMessageRejectEvent(
-                    null, null, deviceId, topic, message, System.currentTimeMillis(),
+                    clientId, username, deviceId, topic, message, System.currentTimeMillis(),
                     rejectStage, rejectReason, errorStack));
         } catch (Exception ex) {
             log.warn("发布异常报文事件失败。topic={}, stage={}", topic, rejectStage, ex);

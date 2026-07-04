@@ -295,6 +295,7 @@ const alarmStats = ref<{
 
 const togglePanel = () => {
   isPanelCollapsed.value = !isPanelCollapsed.value
+  setTimeout(() => mapInstance?.invalidateSize(), 350)
 }
 
 const resetMapView = () => {
@@ -695,6 +696,7 @@ const handleResize = () => {
 
 const toggleRightPanel = () => {
   isRightPanelCollapsed.value = !isRightPanelCollapsed.value
+  setTimeout(() => mapInstance?.invalidateSize(), 350)
 }
 
 // 工具按钮切换函数 (moved to BottomToolbar component)
@@ -771,8 +773,8 @@ const filterMarkers = (keySet: Set<string>) => {
     const data = hazardPointDataMap.get(pointId)
     if (!data) return
 
-    const groupOk = hasGroups && activeGroups.has(data.groupId)
-    const statusOk = hasStatuses && activeStatuses.has(data.status)
+    const groupOk = !hasGroups || activeGroups.has(data.groupId)
+    const statusOk = !hasStatuses || activeStatuses.has(data.status)
     const visible = groupOk && statusOk
 
     const el = marker.getElement()

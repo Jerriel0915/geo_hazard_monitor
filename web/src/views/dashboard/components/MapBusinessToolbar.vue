@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import L from 'leaflet'
 import { Aim, Hide, Operation, PieChart, Search, Setting, View } from '@element-plus/icons-vue'
 import type { ElTree } from 'element-plus'
@@ -105,6 +105,7 @@ const showSearchPanel = ref(false)
 const showLayerPanel = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const treeData = computed(() => [
   {
@@ -136,23 +137,31 @@ const defaultCheckedKeys = computed(() => {
 
 const toggleSearchPanel = () => {
   showSearchPanel.value = !showSearchPanel.value
-  showLayerPanel.value = false
+  if (showSearchPanel.value) showLayerPanel.value = false
 }
 
 const toggleLayerPanel = () => {
   showLayerPanel.value = !showLayerPanel.value
+  if (showLayerPanel.value) showSearchPanel.value = false
+}
+
+const closeAllPanels = () => {
   showSearchPanel.value = false
+  showLayerPanel.value = false
 }
 
 const handleSearch = () => {
-  if (!searchQuery.value.trim()) {
-    searchResults.value = []
-    return
-  }
-  const query = searchQuery.value.toLowerCase()
-  searchResults.value = props.hazardPoints.filter(point =>
-    point.name.toLowerCase().includes(query) || point.code.toLowerCase().includes(query)
-  )
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    if (!searchQuery.value.trim()) {
+      searchResults.value = []
+      return
+    }
+    const query = searchQuery.value.toLowerCase()
+    searchResults.value = props.hazardPoints.filter(point =>
+      point.name.toLowerCase().includes(query) || point.code.toLowerCase().includes(query)
+    )
+  }, 300)
 }
 
 const onSelectSearchResult = (point: any) => {
@@ -167,6 +176,35 @@ const onTreeCheck = () => {
   const keys = (treeRef.value?.getCheckedKeys(true) || []) as string[]
   emit('toggleLayers', keys)
 }
+
+// Sync tree checked state when groups load asynchronously
+watch(() => props.groups, () => {
+  if (treeRef.value) {
+    nextTick(() => {
+      const keys = ['showLabels']
+      props.groups.forEach(g => keys.push(`group_${g.id}`))
+      keys.push('showMonitoring')
+      treeRef.value!.setCheckedKeys(keys, true)
+    })
+  }
+}, { deep: true })
+
+// Click outside to close panels
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (!target.closest('.tool-button-wrapper') && !target.closest('.tool-panel')) {
+    closeAllPanels()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>

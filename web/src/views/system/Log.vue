@@ -498,12 +498,10 @@ const handleTabChange = (tabName: string | number) => {
   refreshActiveTab()
 }
 
-// auto start/stop SSE when switching to/from realtime tab
+// keep SSE alive in background — start once, buffer keeps accumulating
 watch(activeTab, (tab) => {
   if (tab === 'realtime') {
     stream.start()
-  } else {
-    stream.stop()
   }
 })
 

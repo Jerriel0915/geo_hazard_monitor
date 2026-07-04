@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted, type Component } from 'vue'
+import { ref, watch, onMounted, onUnmounted, type Component } from 'vue'
 import L from 'leaflet'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import 'leaflet-draw'
@@ -287,7 +287,20 @@ watch(() => props.mapInstance, (map) => {
   }
 }, { immediate: true })
 
+// Click outside to close draw panel
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (!target.closest('.draw-panel') && !target.closest('.tool-button-wrapper')) {
+    showPanel.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
 onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
   deactivateTool()
   if (drawLayer && props.mapInstance) {
     props.mapInstance.removeLayer(drawLayer)
