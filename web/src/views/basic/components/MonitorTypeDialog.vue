@@ -758,7 +758,7 @@ const handleSubmit = async () => {
 .param-toolbar {
   margin-bottom: 10px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 

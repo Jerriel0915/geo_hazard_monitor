@@ -17,6 +17,8 @@
           <el-descriptions-item label="接入协议">{{ currentRow?.protocolType || '-' }}</el-descriptions-item>
           <el-descriptions-item label="注册来源">{{ currentRow?.registerSource || '-' }}</el-descriptions-item>
           <el-descriptions-item label="关联隐患点">{{ currentRow?.boundHazardPointName || '-' }}</el-descriptions-item>
+          <!-- MQTT账户名 移到接入密码上面 -->
+          <el-descriptions-item label="MQTT账户名">{{ mqttUsername || '-' }}</el-descriptions-item>
           <el-descriptions-item label="接入密码">
             <template v-if="currentRow?.authPassword">
               <span class="pwd-masked">{{ pwdVisible ? currentRow.authPassword : '••••••••' }}</span>
@@ -27,7 +29,6 @@
             </template>
             <span v-else>-</span>
           </el-descriptions-item>
-          <el-descriptions-item label="MQTT账户名">{{ mqttUsername || '-' }}</el-descriptions-item>
           <el-descriptions-item label="安装位置">
             {{ formatCoord(currentRow?.longitude, currentRow?.latitude) }}
             <el-button v-if="currentRow?.longitude != null" size="small" text type="primary" @click="emit('viewOnMap', currentRow)">

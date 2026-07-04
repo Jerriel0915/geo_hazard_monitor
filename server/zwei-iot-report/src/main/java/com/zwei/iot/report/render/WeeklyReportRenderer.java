@@ -6,6 +6,7 @@ import com.zwei.iot.report.datasource.ReportContext;
 import com.zwei.iot.report.domain.ReportType;
 import org.springframework.stereotype.Component;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +31,14 @@ public class WeeklyReportRenderer implements ReportRenderer {
                 String status = d.onlineStatus() == null ? "未注册"
                     : (d.onlineStatus() == 1 ? "<span style=\"color:#67c23a;\">在线</span>"
                                               : "<span style=\"color:#f56c6c;\">离线</span>");
+                String lastReport = d.lastReportAt() == null ? "-"
+                    : new SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss").format(d.lastReportAt());
                 sb.append(ReportHtmlBuilder.row(
                     d.code(), d.name(),
                     d.deviceType() == null ? "-" : String.valueOf(d.deviceType()),
                     String.valueOf(d.sensorCount()),
                     status,
-                    d.lastReportAt() == null ? "-" : d.lastReportAt().toString()
+                    lastReport
                 ));
             }
         }

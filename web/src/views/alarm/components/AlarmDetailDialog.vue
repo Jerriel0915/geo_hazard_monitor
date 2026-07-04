@@ -127,7 +127,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetAlarmRecords">重置</el-button>
                 </div>
-                <el-table :data="pagedAlarmRecords" border stripe size="small" :max-height="340" empty-text="暂无告警记录">
+                <el-table :data="pagedAlarmRecords" border stripe size="small" empty-text="暂无告警记录">
                   <el-table-column prop="triggerTime" label="告警时间" width="180" />
                   <el-table-column prop="alarmLevel" label="告警等级" width="100">
                     <template #default="{ row }">
@@ -158,7 +158,7 @@
                                   start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD HH:mm:ss" size="small" class="tab-sch-date" />
                   <el-button size="small" @click="resetNotifyRecords">重置</el-button>
                 </div>
-                <el-table :data="pagedNotifyRecords" border stripe size="small" :max-height="340" empty-text="暂无通知记录">
+                <el-table :data="pagedNotifyRecords" border stripe size="small" empty-text="暂无通知记录">
                   <el-table-column prop="createTime" label="通知时间" width="180" />
                   <el-table-column prop="channel" label="渠道" width="90">
                     <template #default="{ row }">
@@ -187,7 +187,7 @@
 
               <!-- 处置记录 (API: getActionLogs 过滤 FEEDBACK/DISPOSE_*) -->
               <div v-show="activeTab === 'disposal'" class="tab-content">
-                <el-table :data="pagedDisposalRecords" border stripe size="small" :max-height="340" empty-text="暂无处置记录">
+                <el-table :data="pagedDisposalRecords" border stripe size="small" empty-text="暂无处置记录">
                   <el-table-column prop="createTime" label="处置时间" width="180" />
                   <el-table-column prop="operator" label="处置人员" width="120" />
                   <el-table-column prop="description" label="描述" min-width="220" show-overflow-tooltip />
@@ -882,8 +882,21 @@ const handleClose = () => { emit('update:modelValue', false) }
 </script>
 
 <style scoped>
-.feedback-container { max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow-y: auto; }
-.main-content { display: flex; gap: 12px; flex: 1; min-height: 0; overflow: hidden; }
+/* ====== 根容器：固定高度适配视口，禁止滚动条 ====== */
+:deep(.el-dialog__body) {
+  overflow: hidden !important;
+  padding: 12px 20px 16px;
+}
+
+.feedback-container {
+  height: calc(100vh - 170px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.main-content {
+  display: flex; gap: 12px; flex: 1; min-height: 0; overflow: hidden;
+}
 
 /* ====== 左侧生命周期（按等级加载流程图）====== */
 .left-section {
@@ -895,11 +908,13 @@ const handleClose = () => { emit('update:modelValue', false) }
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .section-header {
   display: flex; align-items: center; gap: 4px;
   margin-bottom: 8px; padding-bottom: 6px;
   border-bottom: 1px solid #e9ecef;
+  flex-shrink: 0;
 }
 .icon-wrapper {
   width: 20px; height: 20px;
@@ -913,7 +928,7 @@ const handleClose = () => { emit('update:modelValue', false) }
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: auto;
+  overflow: hidden;
 }
 .lifecycle-img {
   width: 100%;
@@ -929,7 +944,7 @@ const handleClose = () => { emit('update:modelValue', false) }
 }
 
 /* ====== 右侧 ====== */
-.right-section { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+.right-section { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ====== 头部卡片 - 一行显示 ====== */
 .event-header {
@@ -971,6 +986,7 @@ const handleClose = () => { emit('update:modelValue', false) }
   gap: 10px;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* ====== 数据区域 ====== */
@@ -980,6 +996,7 @@ const handleClose = () => { emit('update:modelValue', false) }
   background: #fff; border-radius: 8px; border: 1px solid #e9ecef;
   padding: 10px 12px;
   display: flex; flex-direction: column;
+  overflow: hidden;
 }
 
 /* 合并容器：左侧基本资料 + 告警描述，右侧 H5 二维码 */
@@ -1085,6 +1102,16 @@ const handleClose = () => { emit('update:modelValue', false) }
   flex-shrink: 0;
 }
 
+/* 禁止表格 body 产生滚动条（分页已控制行数） */
+:deep(.el-table__body-wrapper) {
+  overflow: hidden !important;
+}
+
+/* 图表容器禁止滚动条 */
+.chart-container {
+  overflow: hidden;
+}
+
 /* 表头恢复正常样式（不加粗、字号 12px），覆盖全局 .table-wrap 内的偏粗表头 */
 :deep(.el-table th.el-table__cell) {
   background: #fafafa !important;
@@ -1126,8 +1153,8 @@ const handleClose = () => { emit('update:modelValue', false) }
 .timeline-container {
   flex: 1;
   padding: 12px 14px;
-  overflow-y: auto;
-  min-height: 60px;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .timeline { position: relative; padding-left: 16px; }
