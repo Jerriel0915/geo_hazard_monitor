@@ -154,6 +154,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { getSensorIconPath } from '@/utils/deviceIcon'
 import { type DeviceItem } from '../composables/useDeviceCrud'
@@ -262,8 +263,13 @@ const formatCoord = (lng?: number | null, lat?: number | null) => {
   return `${lng.toFixed(6)}, ${lat.toFixed(6)}`
 }
 
-const copyPwd = (pwd: string) => {
-  navigator.clipboard.writeText(pwd)
+const copyPwd = async (pwd: string) => {
+  try {
+    await navigator.clipboard.writeText(pwd)
+    ElMessage.success('密码已复制')
+  } catch {
+    ElMessage.warning('复制失败，请手动复制')
+  }
 }
 </script>
 
