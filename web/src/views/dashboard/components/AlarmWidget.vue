@@ -29,7 +29,7 @@
         <span class="list-count">{{ alarmStats.recentAlarms.length }}条</span>
       </div>
       <div v-if="alarmStats.recentAlarms.length" class="alarm-list">
-        <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
+        <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item" @click="emit('alarm-click', alarm)">
           <div class="alarm-level-dot" :class="alarm.level"></div>
           <div class="alarm-content">
             <div class="alarm-title">{{ alarm.title }}</div>
@@ -58,6 +58,8 @@ interface RecentAlarm {
   title: string
   source: string
   time: string
+  sourceType?: 'alarm' | 'offline'
+  sourceId?: number
 }
 
 interface AlarmStats {
@@ -69,6 +71,10 @@ interface AlarmStats {
 
 defineProps<{
   alarmStats: AlarmStats
+}>()
+
+const emit = defineEmits<{
+  'alarm-click': [alarm: RecentAlarm]
 }>()
 </script>
 

@@ -56,7 +56,7 @@
         <div v-else class="panel-content">
           <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
           <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
-          <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" />
+          <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" @alarm-click="handleAlarmClick" />
           <DeviceStatusWidget v-if="isWidgetOnLeft('deviceStatus')" :stats="deviceStatusStats" :trend-data="deviceOnlineTrend" />
         </div>
       </div>
@@ -117,6 +117,7 @@ import { getBoundDevices, getHazardPointDetail, getHazardPointGroups, getHazardP
 import { getDashboardFull } from '@/api/monitor'
 import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
 import { getAlarmLevelStats, getAlarmOverview, getPendingAlarms, type AlarmRecordItem } from '@/api/alarm'
+import { getAlarmNotificationPage } from '@/api/alarmNotification'
 import { getFocusArea } from '@/api/system'
 import { buildTiandituUrl } from '@/composables/useLeafletMap'
 import { deserialize, type BoundaryCoords } from '@/lib/boundaryCoords'
@@ -126,6 +127,7 @@ import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
 import AlarmWidget from './components/AlarmWidget.vue'
 import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import DeviceStatusWidget from './components/DeviceStatusWidget.vue'
@@ -137,6 +139,8 @@ import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
 import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import ResourceWidget from './components/ResourceWidget.vue'
 import { LAYER_OPTIONS as layerOptions } from './composables/useDashboardMap'
+
+const router = useRouter()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -1269,8 +1273,39 @@ const loadDashboardData = async () => {
         time: a.lastTriggerTime
       }))
     }
+    // 实时告警事件：接入通知中心事件数据
+    fetchRecentAlarmNotifications()
   } catch (e) {
     console.error('加载仪表盘统计失败:', e)
+  }
+}
+
+/** 从通知中心获取最新未读事件，接入"实时告警事件"列表 */
+async function fetchRecentAlarmNotifications() {
+  try {
+    const res = await getAlarmNotificationPage(1, 10, 'unread')
+    const items = res.data ?? []
+    if (items.length === 0) return
+    alarmStats.value.recentAlarms = items.map(item => ({
+      id: item.id,
+      level: item.sourceType === 'offline' ? 'info' : 'critical',
+      title: item.title ?? '',
+      source: item.sourceType === 'offline' ? '设备离线' : '告警通知',
+      time: item.createTime ?? '',
+      sourceType: item.sourceType,
+      sourceId: item.sourceId
+    }))
+  } catch {
+    // 通知中心接口失败时保留已有数据
+  }
+}
+
+/** 点击告警事件：跳转到对应详情页 */
+function handleAlarmClick(alarm: { sourceType?: string; sourceId?: number }) {
+  if (alarm.sourceType === 'offline') {
+    router.push({ path: '/basic/device', query: alarm.sourceId ? { deviceId: String(alarm.sourceId) } : {} })
+  } else {
+    router.push({ path: '/alarm/realtime', query: alarm.sourceId ? { alarmId: String(alarm.sourceId) } : {} })
   }
 }
 
