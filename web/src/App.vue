@@ -61,10 +61,13 @@ function injectDialogFullscreenBtn(header: HTMLElement) {
   btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>'
   btn.addEventListener('click', (e) => {
     e.stopPropagation()
-    const overlay = header.closest('.el-overlay-dialog') as HTMLElement
-    if (!overlay) return
-    overlay.classList.toggle('dialog-fullscreen')
-    btn.title = overlay.classList.contains('dialog-fullscreen') ? '还原' : '最大化'
+    const dialog = header.closest('.el-dialog') as HTMLElement
+    if (!dialog) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    } else {
+      dialog.requestFullscreen().catch(() => {})
+    }
   })
   header.appendChild(btn)
 }
@@ -144,25 +147,21 @@ onUnmounted(() => {
 
 .dialog-fs-btn:hover { border-color: #1890ff; color: #1890ff; background: #ecf5ff; }
 
-/* 全局：el-dialog 全屏状态 */
-.dialog-fullscreen .el-overlay-dialog { display: flex !important; align-items: stretch !important; }
-
-.dialog-fullscreen .el-dialog {
-  width: 100vw !important; height: 100vh !important;
-  max-width: 100vw !important; margin: 0 !important;
-  border-radius: 0 !important; display: flex; flex-direction: column;
+/* 全局：el-dialog 全屏（原生 fullscreen API） */
+.el-dialog:fullscreen {
+  display: flex; flex-direction: column; background: #fff;
 }
 
-.dialog-fullscreen .el-dialog__header {
+.el-dialog:fullscreen .el-dialog__header {
   flex-shrink: 0; padding: 12px 20px;
   border-bottom: 1px solid #e5e7eb;
 }
 
-.dialog-fullscreen .el-dialog__body {
+.el-dialog:fullscreen .el-dialog__body {
   flex: 1 1 0; overflow: auto; padding: 16px 20px; min-height: 0;
 }
 
-.dialog-fullscreen .el-dialog__footer {
+.el-dialog:fullscreen .el-dialog__footer {
   flex-shrink: 0; padding: 12px 20px;
   border-top: 1px solid #e5e7eb;
 }

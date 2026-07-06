@@ -1,5 +1,5 @@
 <template>
-  <div class="device-data-panel" :class="{ 'panel-fullscreen': isFullscreen }" :style="panelStyle">
+  <div ref="panelRef" class="device-data-panel" :style="{ left: leftOffset + 'px', right: rightOffset + 'px' }">
     <div class="panel-inner">
       <div class="panel-header">
         <div class="panel-title">
@@ -8,7 +8,7 @@
           <span class="title-code">{{ device?.code || '' }}</span>
         </div>
         <div class="header-actions">
-          <button class="action-btn" @click="isFullscreen = !isFullscreen" :title="isFullscreen ? '退出全屏' : '全屏查看'">
+          <button class="action-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏查看'">
             <el-icon :size="14"><FullScreen /></el-icon>
           </button>
           <button class="close-btn" @click="$emit('close')">
@@ -37,11 +37,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import MonitorDataExplorer from '@/components/MonitorDataExplorer.vue'
 import { Close, DataAnalysis, FullScreen } from '@element-plus/icons-vue'
 
-const props = defineProps<{
+defineProps<{
   device: any
   hazardPointId?: number
   hazardPointName?: string
@@ -51,12 +51,23 @@ const props = defineProps<{
 
 defineEmits<{ (e: 'close'): void }>()
 
+const panelRef = ref<HTMLElement>()
 const isFullscreen = ref(false)
-const panelStyle = computed(() =>
-  isFullscreen.value
-    ? {} as any
-    : { left: props.leftOffset + 'px', right: props.rightOffset + 'px' }
-)
+
+function toggleFullscreen() {
+  if (isFullscreen.value) {
+    document.exitFullscreen().catch(() => {})
+  } else {
+    panelRef.value?.requestFullscreen().catch(() => {})
+  }
+}
+
+function onFsChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
+onMounted(() => document.addEventListener('fullscreenchange', onFsChange))
+onUnmounted(() => document.removeEventListener('fullscreenchange', onFsChange))
 </script>
 
 <style scoped>
@@ -132,13 +143,9 @@ const panelStyle = computed(() =>
 
 .close-btn:hover { background: #f0f1f3; color: #1d2129; border-color: #c9cdd4; }
 
-.panel-fullscreen {
-  position: fixed !important; inset: 0 !important; z-index: 9999 !important;
-}
-
-.panel-fullscreen .panel-inner {
-  height: 100vh; max-height: 100vh; border-radius: 0;
-}
+/* 全屏时面板撑满 */
+.device-data-panel:fullscreen { background: #fff; }
+.device-data-panel:fullscreen .panel-inner { height: 100vh; max-height: 100vh; border-radius: 0; }
 
 .panel-body {
   display: flex;
