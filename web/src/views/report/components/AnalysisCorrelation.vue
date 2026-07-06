@@ -4,6 +4,7 @@
     <div class="mode-header">
       <el-button text @click="emit('back')">&larr; 返回</el-button>
       <span class="mode-label">关联分析</span>
+      <el-button size="small" @click="exportCsv" style="margin-left:8px">导出CSV</el-button>
     </div>
     <div class="correlation-layout">
       <!-- Left Panel -->
@@ -556,6 +557,26 @@ const exportChartImage = () => {
   a.href = url
   a.download = `关联分析_${new Date().toISOString().slice(0, 10)}.png`
   a.click()
+}
+
+function exportCsv() {
+  if (!correlationChartInstance.value || !selectedSensors.value.length) { ElMessage.warning('无数据可导出'); return }
+  const opt = correlationChartInstance.value.getOption() as any
+  const xData: string[] = (opt.xAxis?.[0]?.data || opt.xAxis?.data || []) as string[]
+  const series: any[] = opt.series || []
+  if (!xData.length || !series.length) { ElMessage.warning('无数据可导出'); return }
+  const rows: string[][] = [['时间', ...series.map((s: any) => s.name ?? '')]]
+  for (let i = 0; i < xData.length; i++) {
+    rows.push([xData[i], ...series.map((s: any) => String(s.data?.[i] ?? ''))])
+  }
+  const csv = '\uFEFF' + rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `关联分析_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+  ElMessage.success('导出成功')
 }
 
 // Resize handler

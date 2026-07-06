@@ -111,8 +111,7 @@
       <el-button @click="reset">重置</el-button>
 
       <template v-if="showImportExport">
-        <el-button @click="onImport">导入数据</el-button>
-        <el-button @click="onExport">导出数据</el-button>
+        <el-button @click="onExport">导出CSV</el-button>
       </template>
 
       <!-- 图表/表格切换 -->

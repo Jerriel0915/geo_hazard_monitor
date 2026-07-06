@@ -140,6 +140,7 @@
             :hazard-point-name="currentRow?.name"
             :show-device="false"
             :initial-device-id="currentRow?.id"
+            :show-import-export="true"
             fill-container
           />
         </div>

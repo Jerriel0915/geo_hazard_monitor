@@ -24,6 +24,7 @@
           :hazard-point-name="hazardPointName"
           :show-device="false"
           :initial-device-id="device.id"
+          :show-import-export="true"
           fill-container
         />
         <div v-else class="empty-state">

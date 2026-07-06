@@ -189,7 +189,7 @@
             <span class="list-title">实时告警事件</span>
           </div>
           <div class="alarm-list" :style="{ maxHeight: '200px', overflowY: 'auto' }">
-            <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
+            <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item" @click="handleAlarmClick(alarm)">
               <div class="alarm-level-dot" :class="alarm.level"></div>
               <div class="alarm-content">
                 <div class="alarm-title">{{ alarm.title }}</div>
@@ -205,6 +205,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
+import { useRouter } from 'vue-router'
 import { TrendCharts, Warning } from '@element-plus/icons-vue'
 import echarts from '@/utils/echarts'
 import L from 'leaflet'
@@ -217,6 +218,7 @@ import {
   type SensorDistributionVO
 } from '@/api/monitor'
 import { getPendingAlarms, getHistoryAlarms, getAlarmLevelStats, getAlarmOverview, getAlarmTrend, type AlarmTrendVO } from '@/api/alarm'
+import { getAlarmNotificationPage } from '@/api/alarmNotification'
 import { getMonitorRates, getMapOverview, type HazardPointMapVO, type HazardPointMonitorRate } from '@/api/hazardPoint'
 
 import {TIANDITU_KEY, loadTiandituKey} from '@/composables/useLeafletMap'
@@ -241,6 +243,8 @@ interface HazardPoint {
   deviceCount: number
   devices: DeviceInfo[]
 }
+
+const router = useRouter()
 
 const showAlgorithmDesc = ref(false)
 const healthTriggerRef = ref<HTMLElement | null>(null)
@@ -544,6 +548,32 @@ const zoomOut = () => {
   if (map) map.zoomOut()
 }
 
+/** 从通知中心获取最新未读事件 */
+async function fetchRecentNotifications() {
+  try {
+    const res = await getAlarmNotificationPage(1, 5, 'unread')
+    const items = res.data ?? []
+    if (items.length === 0) return
+    alarmStats.value.recentAlarms = items.map(item => ({
+      id: item.id,
+      title: item.title ?? '',
+      source: item.sourceType === 'offline' ? '设备离线' : '告警通知',
+      time: item.createTime?.substring(11, 16) ?? '',
+      level: item.sourceType === 'offline' ? 'blue' : 'red',
+      sourceType: item.sourceType,
+      sourceId: item.sourceId
+    }))
+  } catch { /* 保留待处理告警数据 */ }
+}
+
+function handleAlarmClick(alarm: { sourceType?: string; sourceId?: number }) {
+  if (alarm.sourceType === 'offline') {
+    router.push({ path: '/basic/device', query: alarm.sourceId ? { deviceId: String(alarm.sourceId) } : {} })
+  } else {
+    router.push({ path: '/alarm/realtime', query: alarm.sourceId ? { alarmId: String(alarm.sourceId) } : {} })
+  }
+}
+
 onMounted(async () => {
   try {
     const full = await getDashboardFull(60)
@@ -598,8 +628,12 @@ onMounted(async () => {
       title: item.alarmMessage || item.hazardPointName || '告警事件',
       source: item.deviceName || item.sensorName || '',
       time: item.lastTriggerTime ? item.lastTriggerTime.substring(11, 16) : '',
-      level: levelMap[item.alarmLevel]?.key ?? 'blue'
+      level: levelMap[item.alarmLevel]?.key ?? 'blue',
+      sourceType: 'alarm' as const,
+      sourceId: item.id as number
     }))
+    // 叠加通知中心未读事件
+    fetchRecentNotifications()
   } catch { /* keep defaults */ }
 
   // 获取告警等级统计（独立接口，所有待处理告警准确计数）
@@ -1000,7 +1034,7 @@ const alarmStats = ref({
     {name: '黄色告警', key: 'yellow', count: 0},
     {name: '蓝色提示', key: 'blue', count: 0}
   ] as { name: string; key: string; count: number }[],
-  recentAlarms: [] as { id: number; title: string; source: string; time: string; level: string }[]
+  recentAlarms: [] as { id: number; title: string; source: string; time: string; level: string; sourceType?: string; sourceId?: number }[]
 })
 
 const hazardPoints = ref<HazardPoint[]>([])
