@@ -79,17 +79,20 @@ public interface SysNoticeReadMapper
      * 按 notice_id DESC 排序。
      *
      * @param status 公告状态: '0'=当前公告 '1'=历史公告
+     * @param readFilter 已读筛选: 'unread'=仅未读 'all'=全部(默认)
      */
     List<SysNotice> selectNoticePageWithReadStatus(@Param("userId") Long userId,
                                                    @Param("offset") int offset,
                                                    @Param("limit") int limit,
-                                                   @Param("status") String status);
+                                                   @Param("status") String status,
+                                                   @Param("readFilter") String readFilter);
 
     /**
-     * 公告总数（按 status 过滤，用于分页 total）。
+     * 公告总数（按 status + readFilter 过滤，用于分页 total）。
      */
     int selectNoticeCountWithReadStatus(@Param("userId") Long userId,
-                                        @Param("status") String status);
+                                        @Param("status") String status,
+                                        @Param("readFilter") String readFilter);
 
     /**
      * 标记当前用户所有未读的当前公告(status=0)为已读。

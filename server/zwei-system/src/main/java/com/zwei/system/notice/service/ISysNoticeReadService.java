@@ -64,20 +64,22 @@ public interface ISysNoticeReadService
     /**
      * 分页查询当前用户可见的公告列表（带 isRead 标记）。
      *
-     * @param userId   当前用户 ID
-     * @param pageNum  页码，从 1 开始
-     * @param pageSize 每页条数
-     * @param status   公告状态: '0'=当前公告 '1'=历史公告
+     * @param userId     当前用户 ID
+     * @param pageNum    页码，从 1 开始
+     * @param pageSize   每页条数
+     * @param status     公告状态: '0'=当前公告 '1'=历史公告
+     * @param readFilter 已读筛选: 'unread'=仅未读 'all'=全部
      * @return 公告列表
      */
-    List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize, String status);
+    List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize, String status, String readFilter);
 
     /**
      * 当前用户可见公告总数（用于分页 total）。
      *
-     * @param status 公告状态过滤
+     * @param status     公告状态过滤
+     * @param readFilter 已读筛选: 'unread'=仅未读 'all'=全部
      */
-    int selectNoticeCount(String status);
+    int selectNoticeCount(String status, String readFilter);
 
     /**
      * 标记当前用户所有未读的当前公告(status=0)为已读。

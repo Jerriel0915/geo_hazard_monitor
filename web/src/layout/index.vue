@@ -554,7 +554,9 @@ function toEventMessage(n: AlarmNotificationItem): NotifyMessage {
 
 async function fetchNoticeMessages() {
   try {
-    const res = await getTopNotices(noticePage.current, noticePage.size, noticeStatusFilter.value)
+    // 当前公告仅显示未读；历史公告显示全部（含已读/未读）
+    const readFilter = noticeStatusFilter.value === '0' ? 'unread' : 'all'
+    const res = await getTopNotices(noticePage.current, noticePage.size, noticeStatusFilter.value, readFilter)
     // 后端响应：{code,msg,data: SysNotice[], total, unreadCount, timestamp}
     noticeMessages.value = (res.data ?? []).map(toNoticeMessage)
     noticePage.total = res.total ?? 0

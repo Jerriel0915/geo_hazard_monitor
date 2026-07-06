@@ -83,18 +83,18 @@ public class SysNoticeReadServiceImpl implements ISysNoticeReadService
     }
 
     @Override
-    public List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize, String status)
+    public List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize, String status, String readFilter)
     {
         int safePage = Math.max(1, pageNum);
         int safeSize = Math.max(1, Math.min(pageSize, 50));
         int offset = (safePage - 1) * safeSize;
-        return noticeReadMapper.selectNoticePageWithReadStatus(userId, offset, safeSize, status);
+        return noticeReadMapper.selectNoticePageWithReadStatus(userId, offset, safeSize, status, readFilter);
     }
 
     @Override
-    public int selectNoticeCount(String status)
+    public int selectNoticeCount(String status, String readFilter)
     {
-        return noticeReadMapper.selectNoticeCountWithReadStatus(null, status);
+        return noticeReadMapper.selectNoticeCountWithReadStatus(null, status, readFilter);
     }
 
     /**

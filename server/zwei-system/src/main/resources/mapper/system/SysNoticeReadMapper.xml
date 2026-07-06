@@ -85,7 +85,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by r.read_time desc
     </select>
 
-    <!-- 分页查询带已读状态的公告列表（status 参数控制当前/历史） -->
+    <!-- 分页查询带已读状态的公告列表（status 参数控制当前/历史，readFilter 控制已读筛选） -->
     <select id="selectNoticePageWithReadStatus" resultType="SysNotice">
         select
             n.notice_id    as noticeId,
@@ -99,14 +99,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         left join sys_notice_read r
             on r.notice_id = n.notice_id and r.user_id = #{userId}
         where n.status = #{status}
+        <if test="readFilter == 'unread'">
+            and r.notice_id is null
+        </if>
         order by n.notice_id desc
         limit #{offset}, #{limit}
     </select>
 
-    <!-- 公告总数（按 status 过滤；参数保留为未来扩展预留） -->
+    <!-- 公告总数（按 status + readFilter 过滤） -->
     <select id="selectNoticeCountWithReadStatus" resultType="int">
         select count(*) from sys_notice n
+        <if test="readFilter == 'unread'">
+            left join sys_notice_read r on r.notice_id = n.notice_id and r.user_id = #{userId}
+        </if>
         where n.status = #{status}
+        <if test="readFilter == 'unread'">
+            and r.notice_id is null
+        </if>
     </select>
 
     <!-- 标记当前用户所有未读的当前公告为已读（status='0'）。

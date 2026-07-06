@@ -42,8 +42,8 @@ export interface ReadUser {
 // ===================== API 函数 =====================
 
 /** 获取首页顶部公告（分页，含已读状态与未读数）。返回 { data, total, unreadCount, timestamp } */
-export function getTopNotices(pageNum = 1, pageSize = 10, status = '0'): Promise<TopNoticeResponse> {
-  return request.get('/system/notice/listTop', { params: { pageNum, pageSize, status } })
+export function getTopNotices(pageNum = 1, pageSize = 10, status = '0', readFilter = 'all'): Promise<TopNoticeResponse> {
+  return request.get('/system/notice/listTop', { params: { pageNum, pageSize, status, readFilter } })
 }
 
 /** 分页查询通知列表（管理后台）。后端返回 TableDataInfo，rows/total 在顶层 */

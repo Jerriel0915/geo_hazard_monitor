@@ -90,20 +90,22 @@ public class SysNoticeController extends BaseController
      * 首页顶部公告（通知中心面板用），支持分页。
      * 返回结构：{ code, msg, data: SysNotice[], total, unreadCount, timestamp }
      *
-     * @param status 公告状态: '0'=当前公告(默认) '1'=历史公告
+     * @param status     公告状态: '0'=当前公告(默认) '1'=历史公告
+     * @param readFilter 已读筛选: 'unread'=仅未读 'all'=全部(默认)
      */
     @GetMapping("/listTop")
     @ResponseBody
     public AjaxResult listTop(@RequestParam(defaultValue = "1") int pageNum,
                               @RequestParam(defaultValue = "10") int pageSize,
-                              @RequestParam(defaultValue = "0") String status)
+                              @RequestParam(defaultValue = "0") String status,
+                              @RequestParam(defaultValue = "all") String readFilter)
     {
         Long userId = getUserId();
         int safePage = Math.max(1, pageNum);
         int safeSize = Math.max(1, Math.min(pageSize, 50));
 
-        List<SysNotice> list = noticeReadService.selectNoticePage(userId, safePage, safeSize, status);
-        int total = noticeReadService.selectNoticeCount(status);
+        List<SysNotice> list = noticeReadService.selectNoticePage(userId, safePage, safeSize, status, readFilter);
+        int total = noticeReadService.selectNoticeCount(status, readFilter);
         int unreadCount = noticeReadService.selectUnreadCount(userId);
 
         AjaxResult ajax = AjaxResult.success(list);
