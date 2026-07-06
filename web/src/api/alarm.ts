@@ -384,6 +384,10 @@ export const getAlarmNotifications = (id: number) =>
 export const getAlarmLevelStats = () =>
     request.get<AjaxResult<Record<number, number>>>('/alarm/records/level-stats')
 
+/** 触发次数等级统计（alarm_record_trigger_detail，全部触发）: { 1: count, 2: count, 3: count, 4: count } */
+export const getAlarmTriggerLevelStats = () =>
+    request.get<AjaxResult<Record<number, number>>>('/alarm/records/trigger-level-stats')
+
 /** 告警趋势数据 (近N个月+2个月预测) */
 export interface AlarmTrendVO {
     months: string[]
@@ -425,6 +429,10 @@ export interface AlarmSourceStatVO {
 
 export const getAlarmSourceStats = () =>
     request.get<AjaxResult<AlarmSourceStatVO[]>>('/alarm/records/source-stats')
+
+/** 触发次数来源分布（alarm_record_trigger_detail，全部触发） */
+export const getAlarmTriggerSourceStats = () =>
+    request.get<AjaxResult<AlarmSourceStatVO[]>>('/alarm/records/trigger-source-stats')
 
 /** 高风险隐患点 Top N */
 export interface HighRiskHazardPointVO {

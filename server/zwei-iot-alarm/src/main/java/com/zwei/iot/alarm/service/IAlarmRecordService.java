@@ -54,11 +54,17 @@ public interface IAlarmRecordService {
     /** 按等级统计待处理告警数量 (所有待处理告警，非分页) */
     Map<Integer, Integer> getPendingLevelStats();
 
+    /** 按等级统计触发次数（alarm_record_trigger_detail，全部触发） */
+    Map<Integer, Integer> getTriggerLevelStats();
+
     /** 按月+等级统计告警趋势 (近N个月)，含2个月预测 */
     Map<String, Object> getMonthlyTrend(int months);
 
     /** 按监测类型统计待处理告警数量（含百分比） */
     List<Map<String, Object>> getSourceStats();
+
+    /** 按监测类型统计触发次数（alarm_record_trigger_detail，全部触发，含百分比） */
+    List<Map<String, Object>> getTriggerSourceStats();
 
     /** 告警总览统计（待处理/历史/总计/近三月），单次查询 */
     Map<String, Object> getOverview();

@@ -110,6 +110,13 @@ public class AlarmRecordController extends BaseController {
         return success(alarmRecordService.getPendingLevelStats());
     }
 
+    /** 触发次数等级统计（alarm_record_trigger_detail，全部触发，不限状态） */
+    @GetMapping("/trigger-level-stats")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult triggerLevelStats() {
+        return success(alarmRecordService.getTriggerLevelStats());
+    }
+
     /** 告警趋势统计 (近N个月+2个月预测) */
     @GetMapping("/trend")
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
@@ -129,6 +136,13 @@ public class AlarmRecordController extends BaseController {
     @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
     public AjaxResult sourceStats() {
         return success(alarmRecordService.getSourceStats());
+    }
+
+    /** 触发次数来源分布（alarm_record_trigger_detail，全部触发，不限状态） */
+    @GetMapping("/trigger-source-stats")
+    @PreAuthorize("@ss.hasPermi('iot:alarm-record:list')")
+    public AjaxResult triggerSourceStats() {
+        return success(alarmRecordService.getTriggerSourceStats());
     }
 
     /** 高风险隐患点 Top N (按待处理告警触发次数降序) */
