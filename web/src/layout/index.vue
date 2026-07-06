@@ -322,7 +322,7 @@
           </div>
         </template>
       </div>
-      <div class="message-panel-footer" v-if="currentTabHasMessages">
+      <div class="message-panel-footer">
         <!-- 筛选切换 -->
         <span class="footer-filters">
           <template v-if="notifyTab === 'event'">
@@ -349,8 +349,8 @@
                 @click="goNextPage">›</span>
         </span>
         <span class="pager-placeholder" v-else></span>
-        <!-- 全部标为已读：仅在未读模式下显示 -->
-        <el-button v-if="isCurrentFilter"
+        <!-- 全部标为已读：仅当前页有未读时显示 -->
+        <el-button v-if="isCurrentFilter && currentTabHasMessages"
                    size="small" @click="markAllAsRead">全部标为已读</el-button>
         <span v-else class="pager-placeholder"></span>
       </div>
