@@ -61,20 +61,24 @@
     <insert id="insertNotification" parameterType="com.zwei.iot.alarm.domain.AlarmNotification"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO alarm_notification (alarm_id, dispatch_rule_id, recipient_id, recipient_name,
-                                        recipient_phone, channel, title, content, status, create_time)
+                                        recipient_phone, channel, title, content, status, create_time,
+                                        source_type, source_id)
         VALUES (#{alarmId}, #{dispatchRuleId}, #{recipientId}, #{recipientName},
-                #{recipientPhone}, #{channel}, #{title}, #{content}, #{status}, #{createTime})
+                #{recipientPhone}, #{channel}, #{title}, #{content}, #{status}, #{createTime},
+                #{sourceType}, #{sourceId})
     </insert>
 
     <insert id="batchInsert" parameterType="list">
         INSERT INTO alarm_notification (
         alarm_id, dispatch_rule_id, recipient_id, recipient_name,
-        recipient_phone, channel, title, content, status, create_time
+        recipient_phone, channel, title, content, status, create_time,
+        source_type, source_id
         ) VALUES
         <foreach collection="list" item="item" separator=",">
             (#{item.alarmId}, #{item.dispatchRuleId}, #{item.recipientId}, #{item.recipientName},
             #{item.recipientPhone}, #{item.channel}, #{item.title}, #{item.content},
-            #{item.status}, #{item.createTime})
+            #{item.status}, #{item.createTime},
+            #{item.sourceType}, #{item.sourceId})
         </foreach>
     </insert>
 

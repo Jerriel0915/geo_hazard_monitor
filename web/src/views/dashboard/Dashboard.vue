@@ -1348,7 +1348,7 @@ async function fetchRecentAlarmNotifications() {
     const res = await getAlarmNotificationPage(1, 10, 'unread')
     const items = res.data ?? []
     if (items.length === 0) return
-    alarmStats.value.recentAlarms = items.map(item => ({
+    const notifItems = items.map(item => ({
       id: item.id,
       level: item.sourceType === 'offline' ? 'info' : 'critical',
       title: item.title ?? '',
@@ -1357,6 +1357,7 @@ async function fetchRecentAlarmNotifications() {
       sourceType: item.sourceType,
       sourceId: item.sourceId
     }))
+    alarmStats.value.recentAlarms = [...notifItems, ...alarmStats.value.recentAlarms]
   } catch {
     // 通知中心接口失败时保留已有数据
   }

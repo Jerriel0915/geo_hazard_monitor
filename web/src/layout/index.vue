@@ -692,7 +692,8 @@ function startAlarmSSE() {
   // SYSTEM 通知定向推送（按接收人路由）
   alarmEventSource.addEventListener('alarm-notify', (event) => {
     try {
-      const data = JSON.parse(event.data)
+      const payload = JSON.parse(event.data)
+      const data = payload.data ?? payload
       ElNotification({
         title: data.title ?? '告警通知',
         message: data.content ?? '',
