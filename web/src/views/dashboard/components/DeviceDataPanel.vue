@@ -1,5 +1,5 @@
 <template>
-  <div class="device-data-panel" :style="{ left: leftOffset + 'px', right: rightOffset + 'px' }">
+  <div class="device-data-panel" :class="{ 'panel-fullscreen': isFullscreen }" :style="panelStyle">
     <div class="panel-inner">
       <div class="panel-header">
         <div class="panel-title">
@@ -8,6 +8,9 @@
           <span class="title-code">{{ device?.code || '' }}</span>
         </div>
         <div class="header-actions">
+          <button class="action-btn" @click="isFullscreen = !isFullscreen" :title="isFullscreen ? '退出全屏' : '全屏查看'">
+            <el-icon :size="14"><FullScreen /></el-icon>
+          </button>
           <button class="close-btn" @click="$emit('close')">
             <el-icon :size="14"><Close/></el-icon>
           </button>
@@ -33,8 +36,9 @@
 </template>
 
 <script setup lang="ts">
-import MonitorDataExplorer from '@/components/MonitorDataExplorer.vue';
-import { Close, DataAnalysis } from '@element-plus/icons-vue';
+import { ref, computed } from 'vue'
+import MonitorDataExplorer from '@/components/MonitorDataExplorer.vue'
+import { Close, DataAnalysis, FullScreen } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   device: any
@@ -44,9 +48,14 @@ const props = defineProps<{
   rightOffset: number
 }>()
 
-const emit = defineEmits<{
-  (e: 'close'): void
-}>()
+defineEmits<{ (e: 'close'): void }>()
+
+const isFullscreen = ref(false)
+const panelStyle = computed(() =>
+  isFullscreen.value
+    ? {} as any
+    : { left: props.leftOffset + 'px', right: props.rightOffset + 'px' }
+)
 </script>
 
 <style scoped>
@@ -102,24 +111,32 @@ const emit = defineEmits<{
   border-radius: 4px;
 }
 
-.close-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid #e5e6eb;
-  border-radius: 6px;
-  color: #6b7785;
-  cursor: pointer;
-  transition: all 0.2s;
+.header-actions { display: flex; gap: 6px; }
+
+.action-btn {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid #e5e6eb; border-radius: 6px;
+  color: #6b7785; cursor: pointer; transition: all 0.2s;
 }
 
-.close-btn:hover {
-  background: #f0f1f3;
-  color: #1d2129;
-  border-color: #c9cdd4;
+.action-btn:hover { background: #e6f7ff; color: #1890ff; border-color: #91d5ff; }
+
+.close-btn {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid #e5e6eb; border-radius: 6px;
+  color: #6b7785; cursor: pointer; transition: all 0.2s;
+}
+
+.close-btn:hover { background: #f0f1f3; color: #1d2129; border-color: #c9cdd4; }
+
+.panel-fullscreen {
+  position: fixed !important; inset: 0 !important; z-index: 9999 !important;
+}
+
+.panel-fullscreen .panel-inner {
+  height: 100vh; max-height: 100vh; border-radius: 0;
 }
 
 .panel-body {

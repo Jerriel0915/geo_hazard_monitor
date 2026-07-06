@@ -140,6 +140,7 @@
     </div>
     <div v-else-if="dataPointWarning" class="mde-warning">
       数据点较多（{{ totalDataPoints }} 点），建议缩小时间范围或启用降采样以提升性能
+      <span class="mde-warning-close" @click="dataPointWarning = false">×</span>
     </div>
 
     <!-- 图表视图 -->
@@ -168,11 +169,11 @@
         :height="fillContainer ? '100%' : undefined"
         :max-height="fillContainer ? undefined : 400"
       >
-        <el-table-column prop="dataTime" label="时间" min-width="170" align="center" sortable />
-        <el-table-column prop="deviceName" label="设备" width="140" align="center" sortable />
-        <el-table-column prop="sensorName" label="传感器" width="120" align="center" sortable />
-        <el-table-column prop="attrName" label="指标" width="100" align="center" sortable />
-        <el-table-column prop="value" label="监测数值(mm)" width="140" align="center" sortable>
+        <el-table-column prop="dataTime" label="时间" min-width="140" align="center" sortable />
+        <el-table-column prop="deviceName" label="设备" width="120" align="center" sortable />
+        <el-table-column prop="sensorName" label="传感器" width="100" align="center" sortable />
+        <el-table-column prop="attrName" label="指标" width="90" align="center" sortable />
+        <el-table-column prop="value" label="监测数值" min-width="120" align="center" sortable>
           <template #default="{ row }">
             {{ row.value }}{{ row.unit ? ' ' + row.unit : '' }}
           </template>
@@ -269,7 +270,8 @@ const chartOptions = computed(() => buildChartOptions(chartSeries.value))
 const totalDataPoints = computed(() =>
   chartSeries.value.reduce((sum, s) => sum + s.labels.length, 0)
 )
-const dataPointWarning = computed(() => totalDataPoints.value > 2000)
+const dataPointWarning = ref(false)
+const dataPointTimedOut = ref(false)
 
 const onDeviceChange = async (deviceId: string | number) => {
   await selectDevice(deviceId)
@@ -282,7 +284,20 @@ const onSensorChange = (ids: number[]) => {
 }
 
 const onImport = () => ElMessage.info('导入功能开发中')
-const onExport = () => ElMessage.info('导出功能开发中')
+const onExport = () => {
+  if (tableData.value.length === 0) { ElMessage.warning('无数据可导出'); return }
+  const header = ['时间', '设备', '传感器', '指标', '数值', '单位']
+  const rows = tableData.value.map(r => [
+    r.dataTime, r.deviceName, r.sensorName, r.attrName,
+    r.value != null ? String(r.value) : '', r.unit || '',
+  ])
+  const csv = [header, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `监测数据_${new Date().toISOString().slice(0, 10)}.csv`; a.click()
+  URL.revokeObjectURL(url); ElMessage.success('导出成功')
+}
 
 // 自动查询标记
 const autoQueried = ref(false)
@@ -326,10 +341,15 @@ watch(devices, async (list) => {
 mode.value = props.initialMode
 
 watch([chartSeries, tableData], () => {
-  emit('data-loaded', {
-    series: chartSeries.value,
-    list: tableData.value,
-  })
+  emit('data-loaded', { series: chartSeries.value, list: tableData.value })
+})
+
+// 数据点过多警告：3 秒后自动消失
+let warnTimer: ReturnType<typeof setTimeout> | null = null
+watch(totalDataPoints, (n) => {
+  if (warnTimer) clearTimeout(warnTimer)
+  if (n > 2000) { dataPointWarning.value = true; warnTimer = setTimeout(() => { dataPointWarning.value = false }, 3000) }
+  else dataPointWarning.value = false
 })
 </script>
 
@@ -364,7 +384,14 @@ watch([chartSeries, tableData], () => {
   color: #92400e;
   border-radius: 6px;
   font-size: 12px;
+  display: flex; align-items: center; gap: 8px;
 }
+
+.mde-warning-close {
+  margin-left: auto; cursor: pointer; font-size: 16px; color: #92400e; opacity: 0.5;
+}
+
+.mde-warning-close:hover { opacity: 1; }
 
 .mde-info {
   padding: 6px 12px;
