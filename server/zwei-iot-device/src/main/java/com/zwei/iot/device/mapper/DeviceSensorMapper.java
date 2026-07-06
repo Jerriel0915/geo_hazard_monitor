@@ -138,4 +138,10 @@ public interface DeviceSensorMapper {
 
     /** 统计有在线设备的传感器数（device_online_status.status=1） */
     int countByDeviceOnline();
+
+    /** 按监测类型统计在线传感器数（JOIN device_online_status 真实值） */
+    List<java.util.Map<String, Object>> countOnlineByMonitorType();
+
+    /** 按监测类型统计活跃传感器数（时间窗口内 last_report_time） */
+    List<java.util.Map<String, Object>> countActiveByMonitorType(@Param("windowMinutes") int windowMinutes);
 }

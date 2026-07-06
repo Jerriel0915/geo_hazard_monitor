@@ -233,6 +233,32 @@
           AND last_report_time >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE)
     </select>
 
+    <select id="countOnlineByMonitorType" resultType="java.util.Map">
+        SELECT ds.monitor_type_id     AS monitorTypeId,
+               mt.name                AS monitorTypeName,
+               COALESCE(mt.sort_order, 999) AS sortOrder,
+               COUNT(*)               AS total,
+               COUNT(CASE WHEN dos.status = 1 THEN 1 END) AS online
+        FROM device_sensor ds
+        INNER JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
+        INNER JOIN device d ON ds.device_id = d.id AND d.del_flag = 0
+        LEFT JOIN device_online_status dos ON d.id = dos.device_id
+        WHERE ds.del_flag = 0 AND ds.status = 1
+        GROUP BY ds.monitor_type_id, mt.name, mt.sort_order
+    </select>
+
+    <select id="countActiveByMonitorType" resultType="java.util.Map">
+        SELECT ds.monitor_type_id     AS monitorTypeId,
+               mt.name                AS monitorTypeName,
+               COALESCE(mt.sort_order, 999) AS sortOrder,
+               COUNT(*)               AS total,
+               COUNT(CASE WHEN ds.last_report_time >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE) THEN 1 END) AS active
+        FROM device_sensor ds
+        INNER JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
+        WHERE ds.del_flag = 0 AND ds.status = 1
+        GROUP BY ds.monitor_type_id, mt.name, mt.sort_order
+    </select>
+
     <select id="countByDeviceOnline" resultType="int">
         SELECT COUNT(DISTINCT ds.id)
         FROM device_sensor ds

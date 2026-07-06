@@ -57,7 +57,7 @@
           <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
           <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
           <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" @alarm-click="handleAlarmClick" />
-          <DeviceStatusWidget v-if="isWidgetOnLeft('deviceStatus')" :stats="deviceStatusStats" :trend-data="deviceOnlineTrend" />
+          <DeviceStatusWidget v-if="isWidgetOnLeft('deviceStatus')" :stats="deviceStatusStats" :trend-data="deviceOnlineTrend" :trend-labels="deviceOnlineTrendLabels" />
         </div>
       </div>
     </div>
@@ -189,6 +189,7 @@ const deviceStatusStats = ref({
   typeStats: [] as { name: string; online: number; total: number }[]
 })
 const deviceOnlineTrend = ref<number[]>([])
+const deviceOnlineTrendLabels = ref<string[]>([])
 
 const isRightPanelCollapsed = ref(false)
 
@@ -1285,6 +1286,13 @@ const loadDashboardData = async () => {
           total: t.total
         })) ?? []
       }
+      // 历史在线趋势：按监测类型的在线率作为数据点
+      const types = (dor.byType ?? []).slice(0, 7)
+      deviceOnlineTrend.value = types.map(t => t.onlineRate ?? 0)
+      deviceOnlineTrendLabels.value = types.map(t => {
+        const n = t.monitorTypeName ?? ''
+        return n.length > 4 ? n.slice(0, 4) + '…' : n
+      })
     }
 
     // ---- AlarmWidget (system-wide) ----
