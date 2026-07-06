@@ -242,6 +242,13 @@
                                                                                                        x2="6" y2="18"/><line
             x1="6" y1="6" x2="18" y2="18"/></svg></span>
       </div>
+      <!-- 公告状态筛选栏：仅在公告 Tab 激活时显示 -->
+      <div v-if="notifyTab === 'notice'" class="status-filter-bar">
+        <span :class="['filter-option', { active: noticeStatusFilter === '0' }]"
+              @click="setNoticeFilter('0')">当前公告</span>
+        <span :class="['filter-option', { active: noticeStatusFilter === '1' }]"
+              @click="setNoticeFilter('1')">历史公告</span>
+      </div>
       <div class="message-list">
         <!-- 事件 Tab -->
         <template v-if="notifyTab === 'event'">
@@ -302,7 +309,11 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            <span>暂无公告</span>
+            <span v-if="noticeStatusFilter === '0'">暂无公告</span>
+            <template v-else>
+              <span>暂无历史公告</span>
+              <span class="empty-sub-text">公告关闭后会出现在这里</span>
+            </template>
           </div>
         </template>
       </div>
@@ -317,7 +328,9 @@
                 @click="goNextPage">›</span>
         </span>
         <span class="pager-placeholder" v-else></span>
-        <el-button size="small" @click="markAllAsRead">全部标为已读</el-button>
+        <el-button v-if="notifyTab === 'event' || noticeStatusFilter === '0'"
+                   size="small" @click="markAllAsRead">全部标为已读</el-button>
+        <span v-else class="pager-placeholder"></span>
       </div>
     </div>
     <div class="message-mask" v-if="messagePanelVisible" @click="messagePanelVisible = false"></div>
@@ -453,6 +466,8 @@ const noticeMessages = ref<NotifyMessage[]>([])
 const eventMessages = ref<NotifyMessage[]>([])
 const noticeUnreadCount = ref(0)
 const eventUnreadCount = ref(0)
+/** 公告状态筛选: '0'=当前公告 '1'=历史公告 */
+const noticeStatusFilter = ref<'0' | '1'>('0')
 /** 分页状态：事件/公告各持一份，SSE 推送后回第 1 页 */
 const eventPage = reactive({ current: 1, size: 10, total: 0 })
 const noticePage = reactive({ current: 1, size: 10, total: 0 })
@@ -510,12 +525,20 @@ function toEventMessage(n: AlarmNotificationItem): NotifyMessage {
 
 async function fetchNoticeMessages() {
   try {
-    const res = await getTopNotices(noticePage.current, noticePage.size)
+    const res = await getTopNotices(noticePage.current, noticePage.size, noticeStatusFilter.value)
     // 后端响应：{code,msg,data: SysNotice[], total, unreadCount, timestamp}
     noticeMessages.value = (res.data ?? []).map(toNoticeMessage)
     noticePage.total = res.total ?? 0
     noticeUnreadCount.value = res.unreadCount ?? 0
   } catch { /* keep previous data */ }
+}
+
+/** 切换公告状态筛选（当前/历史） */
+function setNoticeFilter(status: '0' | '1') {
+  if (noticeStatusFilter.value === status) return
+  noticeStatusFilter.value = status
+  noticePage.current = 1
+  fetchNoticeMessages()
 }
 
 async function fetchEventMessages() {
@@ -559,15 +582,8 @@ function startNoticeSSE() {
   noticeEventSource.addEventListener('notice', (event) => {
     try {
       const data = JSON.parse(event.data)
-      const msg: NotifyMessage = {
-        id: data.noticeId,
-        title: data.title,
-        content: data.content ?? '',
-        time: data.createTime ?? '',
-        read: false,
-        type: data.type === '1' ? 'system' : 'other'
-      }
-      // 新消息到达 → 回到第 1 页并重新拉取（包含未读数与列表）
+      // 新公告到达 → 切回"当前"模式 + 第 1 页
+      noticeStatusFilter.value = '0'
       noticePage.current = 1
       fetchNoticeMessages()
     } catch { /* ignore malformed event */ }
@@ -1668,6 +1684,42 @@ const goToDashboard = () => {
   width: 48px;
   height: 48px;
   margin-bottom: 12px;
+}
+
+.empty-sub-text {
+  font-size: 12px;
+  color: #bbb;
+  margin-top: 4px;
+}
+
+/* 公告状态筛选栏 */
+.status-filter-bar {
+  display: flex;
+  gap: 24px;
+  padding: 4px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+  font-size: 13px;
+}
+
+.filter-option {
+  position: relative;
+  padding-bottom: 4px;
+  color: #999;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.filter-option:hover {
+  color: #666;
+}
+
+.filter-option.active {
+  color: #1890ff;
+  font-weight: 500;
+  border-bottom-color: #1890ff;
 }
 
 .message-panel-footer {

@@ -67,12 +67,15 @@ public interface ISysNoticeReadService
      * @param userId   当前用户 ID
      * @param pageNum  页码，从 1 开始
      * @param pageSize 每页条数
+     * @param status   公告状态: '0'=当前公告 '1'=历史公告
      * @return 公告列表
      */
-    List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize);
+    List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize, String status);
 
     /**
      * 当前用户可见公告总数（用于分页 total）。
+     *
+     * @param status 公告状态过滤
      */
-    int selectNoticeCount();
+    int selectNoticeCount(String status);
 }

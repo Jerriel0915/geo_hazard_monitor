@@ -76,16 +76,18 @@ public interface SysNoticeReadMapper
 
     /**
      * 分页查询当前用户的公告列表（带已读状态）。
-     * 公告状态为"正常"（status='0'），按 notice_id DESC 排序。
+     * 按 notice_id DESC 排序。
+     *
+     * @param status 公告状态: '0'=当前公告 '1'=历史公告
      */
     List<SysNotice> selectNoticePageWithReadStatus(@Param("userId") Long userId,
                                                    @Param("offset") int offset,
-                                                   @Param("limit") int limit);
+                                                   @Param("limit") int limit,
+                                                   @Param("status") String status);
 
     /**
-     * 正常状态公告总数（用于分页 total）。
-     * <p>当前 SQL 不按 userId 过滤——正常公告对所有用户可见；
-     * 保留 userId 参数为将来按角色/部门过滤预留。</p>
+     * 公告总数（按 status 过滤，用于分页 total）。
      */
-    int selectNoticeCountWithReadStatus(@Param("userId") Long userId);
+    int selectNoticeCountWithReadStatus(@Param("userId") Long userId,
+                                        @Param("status") String status);
 }
