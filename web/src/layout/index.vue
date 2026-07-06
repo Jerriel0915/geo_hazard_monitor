@@ -389,7 +389,8 @@
 </template>
 
 <script setup lang="ts">
-import {getTopNotices, getNoticeById, markRead as markNoticeRead, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
+import {getTopNotices, getNoticeById, markRead as markNoticeRead, markAllNoticeRead, type SysNotice} from '@/api/notice'
+import DOMPurify from 'dompurify'
 import {
   getAlarmNotificationPage,
   getAlarmNotificationUnreadCount,
@@ -558,7 +559,9 @@ async function fetchNoticeMessages() {
     noticeMessages.value = (res.data ?? []).map(toNoticeMessage)
     noticePage.total = res.total ?? 0
     noticeUnreadCount.value = res.unreadCount ?? 0
-  } catch { /* keep previous data */ }
+  } catch { /* keep previous data */
+    console.error('获取公告列表失败')
+  }
 }
 
 /** 切换公告状态筛选（当前/历史） */
@@ -578,7 +581,9 @@ async function fetchEventMessages() {
     eventMessages.value = (pageRes.data ?? []).map(toEventMessage)
     eventPage.total = pageRes.total ?? 0
     eventUnreadCount.value = unreadRes.data?.unreadCount ?? 0
-  } catch { /* keep previous data */ }
+  } catch { /* keep previous data */
+    console.error('获取事件列表失败')
+  }
 }
 
 /** 切换事件已读筛选（当前/历史） */
@@ -594,7 +599,6 @@ async function markSingleEventRead(msg: NotifyMessage) {
   if (msg.read) return
   try {
     await markAlarmNotificationRead(msg.id)
-    msg.read = true
     eventUnreadCount.value = Math.max(0, eventUnreadCount.value - 1)
     if (eventReadFilter.value === 'unread') {
       eventMessages.value = eventMessages.value.filter(m => m.id !== msg.id)
@@ -603,7 +607,9 @@ async function markSingleEventRead(msg: NotifyMessage) {
         fetchEventMessages()
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    console.error('标记事件已读失败', msg.id)
+  }
 }
 
 /** 单条标记公告已读（不打开详情） */
@@ -611,9 +617,18 @@ async function markSingleNoticeRead(msg: NotifyMessage) {
   if (msg.read) return
   try {
     await markNoticeRead(msg.id)
-    msg.read = true
+    const idx = noticeMessages.value.findIndex(m => m.id === msg.id)
+    if (idx !== -1) {
+      noticeMessages.value = [
+        ...noticeMessages.value.slice(0, idx),
+        { ...msg, read: true },
+        ...noticeMessages.value.slice(idx + 1)
+      ]
+    }
     noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
-  } catch { /* ignore */ }
+  } catch {
+    ElMessage.warning('操作失败，请重试')
+  }
 }
 
 /** 重新加载当前 Tab（翻页或外部触发） */
@@ -1001,28 +1016,29 @@ const noticeDetailLoading = ref(false)
 const noticeDetail = ref<Partial<SysNotice>>({})
 
 /**
- * XSS 净化 — 移除常见攻击向量。
- * 覆盖：script/iframe/object/embed/svg/style/meta/link 标签、事件处理器属性、javascript: URI。
- * 注：完整净化应使用 DOMPurify，当前用于管理员后台公告（半可信输入）。
+ * XSS 净化 — 使用 DOMPurify 白名单模式。
  */
 function sanitizeNoticeHtml(html: string): string {
-  let s = html ?? ''
-  // 完整标签（含内容）
-  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*>.*?<\/\1>/gis, '')
-  // 自闭合/空标签
-  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*\/?>/gi, '')
-  // 事件处理器属性 on*= (onclick, onerror, onload...)
-  s = s.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-  // javascript: URI 在 href/src/action 属性中
-  s = s.replace(/(?:href|src|action)\s*=\s*(?:"[^"]*javascript:[^"]*"|'[^']*javascript:[^']*')/gi, '')
-  return s
+  return DOMPurify.sanitize(html ?? '', {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li',
+      'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div', 'hr'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'width', 'height', 'class', 'style']
+  })
 }
 
 const handleNoticeClick = async (msg: NotifyMessage) => {
-  // 乐观更新已读状态（详情页加载后异步持久化到后端）
   const wasUnread = !msg.read
+  // 乐观更新：先置为已读
   if (wasUnread) {
-    msg.read = true
+    const idx = noticeMessages.value.findIndex(m => m.id === msg.id)
+    if (idx !== -1) {
+      noticeMessages.value = [
+        ...noticeMessages.value.slice(0, idx),
+        { ...msg, read: true },
+        ...noticeMessages.value.slice(idx + 1)
+      ]
+    }
     noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
   }
   messagePanelVisible.value = false
@@ -1032,9 +1048,20 @@ const handleNoticeClick = async (msg: NotifyMessage) => {
   try {
     const res = await getNoticeById(msg.id)
     noticeDetail.value = res.data ?? {}
-    // 异步标记已读（非阻塞，失败时乐观更新仍保留以避免 UI 抖动）
+    // 持久化已读状态，失败时回滚乐观更新
     if (wasUnread) {
-      markNoticeRead(msg.id).catch(() => { /* ignore: 乐观更新已生效 */ })
+      markNoticeRead(msg.id).catch(() => {
+        // 回滚：恢复未读状态
+        const idx = noticeMessages.value.findIndex(m => m.id === msg.id)
+        if (idx !== -1) {
+          noticeMessages.value = [
+            ...noticeMessages.value.slice(0, idx),
+            { ...msg, read: false },
+            ...noticeMessages.value.slice(idx + 1)
+          ]
+        }
+        noticeUnreadCount.value = noticeUnreadCount.value + 1
+      })
     }
   } catch {
     ElNotification({ title: '提示', message: '公告加载失败', type: 'warning', duration: 3000 })
@@ -1050,7 +1077,9 @@ const handleEventClick = async (msg: NotifyMessage) => {
       eventUnreadCount.value = Math.max(0, eventUnreadCount.value - 1)
       // 已读后从列表移除（与后端 selectUserRecent 过滤一致）
       eventMessages.value = eventMessages.value.filter(m => m.id !== msg.id)
-    } catch { /* ignore */ }
+    } catch {
+      console.error('标记事件已读失败', msg.id)
+    }
   }
   if (msg.sourceType === 'offline') {
     router.push({path: '/basic/device', query: msg.sourceId ? {deviceId: String(msg.sourceId)} : {}})
@@ -1067,15 +1096,17 @@ const markAllAsRead = async () => {
       await markAllAlarmNotificationsRead()
       eventPage.current = 1
       fetchEventMessages()
-    } catch { /* ignore */ }
+    } catch {
+      ElMessage.warning('操作失败，请重试')
+    }
   } else {
-    const unreadIds = noticeMessages.value.filter(m => !m.read).map(m => m.id)
-    if (unreadIds.length === 0) return
     try {
-      await markAllNoticeRead(unreadIds.join(','))
+      await markAllNoticeRead()
       noticePage.current = 1
       fetchNoticeMessages()
-    } catch { /* ignore */ }
+    } catch {
+      ElMessage.warning('操作失败，请重试')
+    }
   }
 }
 

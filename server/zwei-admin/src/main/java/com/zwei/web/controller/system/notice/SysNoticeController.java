@@ -47,6 +47,7 @@ public class SysNoticeController extends BaseController
     /**
      * 根据通知公告编号获取详细信息
      */
+    @PreAuthorize("@ss.hasPermi('system:notice:list')")
     @GetMapping(value = "/{noticeId}")
     public AjaxResult getInfo(@PathVariable Long noticeId)
     {
@@ -134,6 +135,18 @@ public class SysNoticeController extends BaseController
         Long userId = getUserId();
         Long[] noticeIds = Convert.toLongArray(ids);
         noticeReadService.markReadBatch(userId, noticeIds);
+        return success();
+    }
+
+    /**
+     * 标记当前用户所有未读公告为已读（无需参数，服务端 INSERT...SELECT 完成）。
+     */
+    @PostMapping("/markAllRead")
+    @ResponseBody
+    public AjaxResult markAllRead()
+    {
+        Long userId = getUserId();
+        noticeReadService.markAllReadForUser(userId);
         return success();
     }
 

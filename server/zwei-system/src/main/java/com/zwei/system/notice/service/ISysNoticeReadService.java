@@ -78,4 +78,12 @@ public interface ISysNoticeReadService
      * @param status 公告状态过滤
      */
     int selectNoticeCount(String status);
+
+    /**
+     * 标记当前用户所有未读的当前公告(status=0)为已读。
+     * 单次 SQL (INSERT...SELECT)，不依赖客户端 ID 传递。
+     *
+     * @param userId 当前用户ID
+     */
+    void markAllReadForUser(Long userId);
 }

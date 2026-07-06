@@ -96,4 +96,13 @@ public class SysNoticeReadServiceImpl implements ISysNoticeReadService
     {
         return noticeReadMapper.selectNoticeCountWithReadStatus(null, status);
     }
+
+    /**
+     * 标记当前用户所有未读的当前公告(status=0)为已读。
+     */
+    @Override
+    public void markAllReadForUser(Long userId)
+    {
+        noticeReadMapper.insertAllUnreadForUser(userId);
+    }
 }

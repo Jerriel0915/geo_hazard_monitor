@@ -76,9 +76,14 @@ export function markRead(noticeId: number): Promise<AjaxResult> {
   return request.post('/system/notice/markRead', null, { params: { noticeId } })
 }
 
-/** 批量标记已读 */
+/** 批量标记已读（指定ID） */
 export function markReadAll(ids: string): Promise<AjaxResult> {
   return request.post('/system/notice/markReadAll', null, { params: { ids } })
+}
+
+/** 一键已读：标记当前用户所有未读公告(status=0)为已读（无需参数，服务端全量） */
+export function markAllNoticeRead(): Promise<AjaxResult> {
+  return request.post('/system/notice/markAllRead')
 }
 
 /** 已读用户列表。后端返回 TableDataInfo，rows/total 在顶层 */

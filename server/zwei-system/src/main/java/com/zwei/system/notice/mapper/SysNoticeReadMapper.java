@@ -90,4 +90,13 @@ public interface SysNoticeReadMapper
      */
     int selectNoticeCountWithReadStatus(@Param("userId") Long userId,
                                         @Param("status") String status);
+
+    /**
+     * 标记当前用户所有未读的当前公告(status=0)为已读。
+     * INSERT...SELECT 单次 SQL，避免客户端收集 ID 再批量插入。
+     *
+     * @param userId 当前用户ID
+     * @return 插入行数
+     */
+    int insertAllUnreadForUser(@Param("userId") Long userId);
 }

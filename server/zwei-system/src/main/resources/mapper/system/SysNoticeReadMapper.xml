@@ -109,4 +109,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where n.status = #{status}
     </select>
 
+    <!-- 标记当前用户所有未读的当前公告为已读（status='0'）。
+         INSERT...SELECT 避免客户端收集 ID，单次 SQL 完成。 -->
+    <insert id="insertAllUnreadForUser">
+        insert ignore into sys_notice_read (notice_id, user_id, read_time)
+        select n.notice_id, #{userId}, sysdate()
+        from sys_notice n
+        where n.status = '0'
+          and not exists (
+            select 1 from sys_notice_read r
+            where r.notice_id = n.notice_id and r.user_id = #{userId}
+          )
+    </insert>
+
 </mapper>
