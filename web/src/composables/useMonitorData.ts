@@ -78,8 +78,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   // ── 筛选状态 ──
   const filter = reactive({
     deviceId: '' as string | number,
-    sensorId: '' as string | number,
-    attrCode: '',
+    sensorIds: [] as number[],
+    attrCodes: [] as string[],
     valueType: 'current',
     timeRange: null as [string, string] | null,
   })
@@ -148,8 +148,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     abortController?.abort()
     abortController = new AbortController()
 
-    filter.sensorId = ''
-    filter.attrCode = ''
+    filter.sensorIds = []
+    filter.attrCodes = []
     sensors.value = []
     attrs.value = []
 
@@ -162,11 +162,11 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         if (s.id != null) sensorMap.set(s.id, s)
       }
       sensors.value = list
-      // 默认选中第一个传感器（并联动选中其第一个指标）
+      // 默认选中第一个传感器
       const firstSensor = sensors.value[0]
       if (firstSensor?.id != null) {
-        filter.sensorId = firstSensor.id
-        selectSensor(firstSensor.id)
+        filter.sensorIds = [firstSensor.id]
+        collectAttrs(filter.sensorIds)
       }
     } catch (error) {
       if ((error as { name?: string; code?: string })?.name !== 'AbortError' && (error as { code?: string })?.code !== 'ERR_CANCELED') {
@@ -175,20 +175,26 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     }
   }
 
-  // ── 选择传感器 → 提取指标 ──
-  const selectSensor = (sensorId: number | string) => {
-    if (!sensorId) {
-      filter.attrCode = ''
-      attrs.value = []
-      return
+  // ── 合并多个传感器的指标列表（去重）──
+  const collectAttrs = (sensorIds: number[]) => {
+    const seen = new Set<string>()
+    const merged: AttrItem[] = []
+    for (const sid of sensorIds) {
+      const sensor = sensorMap.get(sid)
+      if (!sensor?.attrList) continue
+      for (const a of sensor.attrList) {
+        if (seen.has(a.attrCode)) continue
+        seen.add(a.attrCode)
+        merged.push({
+          code: a.attrCode,
+          label: `${a.attrName || a.attrCode}${a.unit ? ` (${a.unit})` : ''}`,
+        })
+      }
     }
-    const sensor = sensorMap.get(Number(sensorId))
-    attrs.value = (sensor?.attrList || []).map((a: SensorAttrItem) => ({
-      code: a.attrCode,
-      label: `${a.attrName || a.attrCode}${a.unit ? ` (${a.unit})` : ''}`,
-    }))
-    // 默认选中第一个指标
-    filter.attrCode = attrs.value[0]?.code ?? ''
+    attrs.value = merged
+    // 保留已选指标中仍有效的，否则默认全部选中
+    const valid = filter.attrCodes.filter(c => seen.has(c))
+    filter.attrCodes = valid.length > 0 ? valid : merged.map(a => a.code)
   }
 
   // ── 默认时间范围（最近 7 天，按自然日对齐：起始 00:00:00，结束 23:59:59）──
@@ -214,10 +220,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       const deviceId = filter.deviceId ? Number(filter.deviceId) : initDeviceId!
       if (!deviceId) return
 
-      // 从 sensorMap 中查找 sensorCode
-      const sensorId = filter.sensorId ? Number(filter.sensorId) : 0
-      const sensor = sensorMap.get(sensorId)
-      if (!sensor) {
+      const sensorIds = filter.sensorIds.length > 0 ? filter.sensorIds : []
+      if (sensorIds.length === 0) {
         ElMessage.warning('请先选择传感器')
         return
       }
@@ -233,57 +237,69 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
 
       loading.value = true
       try {
+        const seriesList: ChartData[] = []
+        const flatRows: Array<{ attrCode: string; sensorId: number; sensorName: string; row: Record<string, unknown> }> = []
+
+        // 遍历每个选中的传感器
+        for (const sid of sensorIds) {
+          const sensor = sensorMap.get(sid)
+          if (!sensor) continue
+
           const dataMap: Record<string, any[]> = await (getSensorRange({
-          deviceId,
-          sensorCode: sensor.sensorCode,
-          attrCode: filter.attrCode || undefined,
-          startTime,
-          endTime,
+            deviceId,
+            sensorCode: sensor.sensorCode,
+            startTime,
+            endTime,
           }) as any)
 
-        // ── 图表数据：按 attrCode 展开序列 ──
-        // 后端 ORDER BY TIME DESC（倒序），图表需正序（时间从左到右递增），所以反转
-        const seriesList: ChartData[] = []
-        const flatRows: Array<{ attrCode: string; row: Record<string, unknown> }> = []
-        for (const [attrCode, rows] of Object.entries(dataMap)) {
+          // 筛选用户选中的指标
+          const targetCodes = filter.attrCodes.length > 0 ? filter.attrCodes : Object.keys(dataMap)
+
+          for (const attrCode of targetCodes) {
+            const rows = dataMap[attrCode]
+            if (!rows?.length) continue
             const sortedRows = [...rows].reverse()
-          // 图表序列
-          const labels: string[] = []
-          const values: number[] = []
-          let max = Number.NEGATIVE_INFINITY
-          let min = Number.POSITIVE_INFINITY
-          let sum = 0
+            const labels: string[] = []
+            const values: number[] = []
+            let max = Number.NEGATIVE_INFINITY
+            let min = Number.POSITIVE_INFINITY
+            let sum = 0
             for (const r of sortedRows) {
-            labels.push(formatChartLabel(r.dataTime ?? r.time))
-            values.push(r.value)
-            if (r.value != null) {
-              max = Math.max(max, r.value)
-              min = Math.min(min, r.value)
-              sum += r.value
+              labels.push(formatChartLabel(r.dataTime ?? r.time))
+              const v = r.value != null ? Number(r.value) : Number.NaN
+              values.push(v)
+              if (!Number.isNaN(v)) {
+                max = Math.max(max, v)
+                min = Math.min(min, v)
+                sum += v
+              }
+            }
+            const attrDef = sensor.attrList?.find((a) => a.attrCode === attrCode)
+            const attrDisplayName = attrDef?.attrName || attrCode
+            const seriesLabel = `${sensor.sensorName || sensor.sensorCode} - ${attrDisplayName}`
+            seriesList.push({
+              seriesName: seriesLabel,
+              deviceName: '',
+              sensorName: sensor.sensorName || sensor.sensorCode,
+              labels,
+              values,
+              unit: attrDef?.unit || '',
+              attrName: attrDisplayName,
+              maxValue: values.length ? max : null,
+              minValue: values.length ? min : null,
+              avgValue: values.length ? sum / values.length : null,
+            })
+            // 表格行
+            for (const r of sortedRows) {
+              flatRows.push({ attrCode, sensorId: sensor.id ?? 0, sensorName: sensor.sensorName, row: r })
             }
           }
-          const attrDef = sensor.attrList?.find((a) => a.attrCode === attrCode)
-          const attrDisplayName = attrDef?.attrName || attrCode
-          seriesList.push({
-            seriesName: attrDisplayName,
-            deviceName: '',
-            sensorName: sensor.sensorName || sensor.sensorCode,
-            labels,
-            values,
-            unit: attrDef?.unit || '',
-            attrName: attrDisplayName,
-            maxValue: values.length ? max : null,
-            minValue: values.length ? min : null,
-            avgValue: values.length ? sum / values.length : null,
-          })
-          // 表格行
-          for (const r of sortedRows) flatRows.push({ attrCode, row: r })
         }
         chartSeries.value = seriesList
 
-        // ── 表格数据：扁平化所有 attrCode ──
-        tableData.value = flatRows.map(({ attrCode: code, row: r }) => {
-          const attrDef = sensor.attrList?.find((a) => a.attrCode === code)
+        tableData.value = flatRows.map(({ attrCode: code, sensorId, sensorName, row: r }) => {
+          const sensor = sensorMap.get(sensorId)
+          const attrDef = sensor?.attrList?.find((a) => a.attrCode === code)
           const attrDisplayName = attrDef?.attrName || code
           return {
             hazardPointId: 0,
@@ -291,8 +307,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
             dataTime: formatChartLabel((r as Record<string, unknown>).dataTime ?? (r as Record<string, unknown>).time),
             deviceId,
             deviceName: '',
-            sensorId: sensor.id ?? 0,
-            sensorName: sensor.sensorName,
+            sensorId,
+            sensorName,
             attrCode: code,
             attrName: attrDisplayName,
             value: (r as Record<string, unknown>).value,
@@ -335,8 +351,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     const commonParams = {
       hazardPointId: hpId,
       deviceId: filter.deviceId ? Number(filter.deviceId) : undefined,
-      sensorId: filter.sensorId ? Number(filter.sensorId) : undefined,
-      attrCode: filter.attrCode || undefined,
+      sensorId: filter.sensorIds.length === 1 ? filter.sensorIds[0] : undefined,
+      attrCode: filter.attrCodes.length === 1 ? filter.attrCodes[0] : undefined,
       valueType: filter.valueType || undefined,
       startTime,
       endTime,
@@ -344,14 +360,47 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
 
     loading.value = true
     try {
-      // 并发请求图表与表格数据，切换模式无需重新加载
-      const [series, pageRes] = await Promise.all([
-        getChartData({ ...commonParams, granularity } as any),
-        getMonitorDataPage({ ...commonParams, pageNum: tablePageNum.value, pageSize: tablePageSize.value }),
-      ])
-      chartSeries.value = series || []
-      tableData.value = (pageRes as any).rows || []
-      tableTotal.value = (pageRes as any).total ?? tableData.value.length
+      const sensorIds = filter.sensorIds.length > 0 ? filter.sensorIds : []
+      const attrCodes = filter.attrCodes.length > 0 ? filter.attrCodes : []
+
+      // 多选时逐传感器+指标并发查询，合并结果
+      if (sensorIds.length > 1 || attrCodes.length > 1) {
+        const seriesList: ChartData[] = []
+        const promises = sensorIds.flatMap(sid =>
+          (attrCodes.length > 0 ? attrCodes : ['']).map(ac =>
+            getChartData({ ...commonParams, sensorId: sid, attrCode: ac || undefined, granularity } as any)
+              .then(data => {
+                if (Array.isArray(data)) {
+                  for (const s of data) {
+                    const sensor = sensorMap.get(sid)
+                    seriesList.push({ ...s, seriesName: sensor ? `${sensor.sensorName} - ${s.attrName || s.seriesName}` : s.seriesName })
+                  }
+                }
+              })
+          )
+        )
+        await Promise.all(promises)
+        chartSeries.value = seriesList
+
+        // 多选时表格取第一个传感器+指标的分页数据
+        const pageRes = await getMonitorDataPage({
+          ...commonParams,
+          sensorId: sensorIds[0],
+          attrCode: attrCodes[0] || undefined,
+          pageNum: tablePageNum.value,
+          pageSize: tablePageSize.value,
+        })
+        tableData.value = (pageRes as any).rows || []
+        tableTotal.value = (pageRes as any).total ?? tableData.value.length
+      } else {
+        const [series, pageRes] = await Promise.all([
+          getChartData({ ...commonParams, granularity } as any),
+          getMonitorDataPage({ ...commonParams, pageNum: tablePageNum.value, pageSize: tablePageSize.value }),
+        ])
+        chartSeries.value = series || []
+        tableData.value = (pageRes as any).rows || []
+        tableTotal.value = (pageRes as any).total ?? tableData.value.length
+      }
       ElMessage.success(`加载 ${tableData.value.length} 条数据`)
     } catch (error) {
       showRequestErrorMessage(error, '获取监测数据失败')
@@ -390,8 +439,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       const res = await getMonitorDataPage({
         hazardPointId: hpId,
         deviceId: filter.deviceId ? Number(filter.deviceId) : undefined,
-        sensorId: filter.sensorId ? Number(filter.sensorId) : undefined,
-        attrCode: filter.attrCode || undefined,
+        sensorId: filter.sensorIds.length === 1 ? filter.sensorIds[0] : undefined,
+        attrCode: filter.attrCodes.length === 1 ? filter.attrCodes[0] : undefined,
         valueType: filter.valueType || undefined,
         startTime,
         endTime,
@@ -406,6 +455,12 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     } finally {
       loading.value = false
     }
+  }
+
+  // ── 选择传感器变化时合并指标 ──
+  const onSensorIdsChange = (ids: number[]) => {
+    filter.sensorIds = ids
+    collectAttrs(ids)
   }
 
   // ── 高级方法 ──
@@ -434,8 +489,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
   // ── 重置 ──
   const reset = () => {
     filter.deviceId = ''
-    filter.sensorId = ''
-    filter.attrCode = ''
+    filter.sensorIds = []
+    filter.attrCodes = []
     filter.valueType = 'current'
     filter.timeRange = null
     sensors.value = []
@@ -495,7 +550,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         data: xCategories.map(formatXLabel),
         name: '时间',
         nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#374151' },
-        axisLabel: { rotate: 30, fontSize: 11, color: '#6b7280', hideOverlap: true },
+        axisLabel: { rotate: 30, fontSize: 11, color: '#6b7280', hideOverlap: true, interval: 'auto' },
         axisLine: { lineStyle: { color: '#d9d9d9' } },
       },
       yAxis: {
@@ -574,7 +629,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
     filter,
     // 方法
     selectDevice,
-    selectSensor,
+    onSensorIdsChange,
     query,
     queryPage,
     reset,

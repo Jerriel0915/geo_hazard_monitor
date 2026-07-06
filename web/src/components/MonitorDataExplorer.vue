@@ -21,10 +21,14 @@
 
       <el-select
         v-if="showSensor"
-        v-model="filter.sensorId"
+        v-model="filter.sensorIds"
         placeholder="选择传感器"
+        multiple
+        collapse-tags
+        collapse-tags-tooltip
+        :max-collapse-tags="1"
         clearable
-        style="width: 140px"
+        style="width: 180px"
         @change="onSensorChange"
       >
         <el-option
@@ -37,10 +41,14 @@
 
       <el-select
         v-if="showAttr"
-        v-model="filter.attrCode"
+        v-model="filter.attrCodes"
         placeholder="选择指标"
+        multiple
+        collapse-tags
+        collapse-tags-tooltip
+        :max-collapse-tags="2"
         clearable
-        style="width: 160px"
+        style="width: 200px"
       >
         <el-option
           v-for="a in attrs"
@@ -246,7 +254,7 @@ const {
   tableTotal,
   filter,
   selectDevice,
-  selectSensor,
+  onSensorIdsChange: handleSensorIdsChange,
   query,
   queryPage,
   reset,
@@ -268,9 +276,9 @@ const onDeviceChange = async (deviceId: string | number) => {
   if (deviceId) emit('device-change', Number(deviceId))
 }
 
-const onSensorChange = (sensorId: string | number) => {
-  selectSensor(sensorId)
-  if (sensorId) emit('sensor-change', Number(sensorId))
+const onSensorChange = (ids: number[]) => {
+  handleSensorIdsChange(ids)
+  if (ids.length > 0) emit('sensor-change', ids[0])
 }
 
 const onImport = () => ElMessage.info('导入功能开发中')
