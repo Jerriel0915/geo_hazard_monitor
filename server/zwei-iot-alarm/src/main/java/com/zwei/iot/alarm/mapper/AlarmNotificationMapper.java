@@ -47,16 +47,18 @@ public interface AlarmNotificationMapper {
                           @Param("channel") String channel);
 
     /**
-     * 分页查询当前用户未读事件通知（SYSTEM 渠道，source_type IN alarm/offline）。
+     * 分页查询当前用户事件通知（SYSTEM 渠道，source_type IN threshold/comprehensive/offline）。
+     *
+     * @param readStatus 'unread'=当前事件 'read'=历史事件
      */
     List<AlarmNotification> selectUserUnreadPage(@Param("userId") Long userId,
                                                   @Param("offset") int offset,
-                                                  @Param("limit") int limit);
+                                                  @Param("limit") int limit,
+                                                  @Param("readStatus") String readStatus);
 
     /**
-     * 当前用户未读事件通知总数（用于分页 total）。
-     * 与 selectUnreadCount 过滤条件一致（source_type IN threshold/comprehensive/offline），
-     * 确保 total 与列表条数匹配。
+     * 当前用户事件通知总数（用于分页 total）。
      */
-    int selectUserUnreadTotal(@Param("userId") Long userId);
+    int selectUserUnreadTotal(@Param("userId") Long userId,
+                              @Param("readStatus") String readStatus);
 }

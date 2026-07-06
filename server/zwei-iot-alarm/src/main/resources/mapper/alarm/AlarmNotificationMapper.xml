@@ -130,7 +130,8 @@
         WHERE recipient_id = #{userId}
           AND channel = 'SYSTEM'
           AND source_type IN ('threshold', 'comprehensive', 'offline')
-          AND read_time IS NULL
+          <if test="readStatus == 'unread'">AND read_time IS NULL</if>
+          <if test="readStatus == 'read'">AND read_time IS NOT NULL</if>
         ORDER BY create_time DESC
         LIMIT #{offset}, #{limit}
     </select>
@@ -141,7 +142,8 @@
         WHERE recipient_id = #{userId}
           AND channel = 'SYSTEM'
           AND source_type IN ('threshold', 'comprehensive', 'offline')
-          AND read_time IS NULL
+          <if test="readStatus == 'unread'">AND read_time IS NULL</if>
+          <if test="readStatus == 'read'">AND read_time IS NOT NULL</if>
     </select>
 
 </mapper>

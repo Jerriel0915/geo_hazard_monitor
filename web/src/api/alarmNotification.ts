@@ -73,12 +73,15 @@ export function markAllAlarmNotificationsRead(): Promise<AjaxResult> {
 }
 
 /**
- * 分页查询当前用户未读事件通知（替代 getRecentAlarmNotifications）。
+ * 分页查询当前用户事件通知。
  * 返回 { data, total }。
+ *
+ * @param readStatus 'unread'=当前事件(默认) 'read'=历史事件
  */
 export function getAlarmNotificationPage(
   pageNum = 1,
-  pageSize = 10
+  pageSize = 10,
+  readStatus: 'unread' | 'read' = 'unread'
 ): Promise<AlarmNotificationPageResponse> {
-  return request.get('/alarm/notifications/recent', { params: { pageNum, pageSize } })
+  return request.get('/alarm/notifications/recent', { params: { pageNum, pageSize, readStatus } })
 }
