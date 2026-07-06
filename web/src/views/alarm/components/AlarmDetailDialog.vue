@@ -5,7 +5,8 @@
       @update:model-value="emit('update:modelValue', $event)"
       @opened="handleDialogOpened"
       :title="dialogTitle"
-      width="80%"
+      width="92%"
+      top="3vh"
       :close-on-click-modal="false"
       destroy-on-close
   >
@@ -69,7 +70,7 @@
           <div class="event-body">
             <!-- 数据区域 - 页签 -->
             <div class="data-section">
-              <!-- 基本资料 + 告警描述 + H5 二维码 (合并容器) -->
+              <!-- 基本资料 + 告警描述 -->
               <div class="info-summary">
                 <div class="info-summary-main">
                   <div class="info-row">
@@ -91,18 +92,13 @@
                     </div>
                   </div>
                   <div class="desc-row">
-                    <span class="detail-label">告警描述</span>
+                    <div class="desc-row-header">
+                      <span class="detail-label">告警描述</span>
+                      <el-button size="small" type="primary" plain @click="qrDialogVisible = true">
+                        <el-icon><Share /></el-icon>&nbsp;H5 处置
+                      </el-button>
+                    </div>
                     <p>{{ data.alarmMessage || '-' }}</p>
-                  </div>
-                </div>
-                <div class="info-summary-side">
-                  <div class="qr-card">
-                    <div class="qr-title">H5 现场处置</div>
-                    <img v-if="h5QrcodeDataUrl" :src="h5QrcodeDataUrl" alt="H5 告警处置二维码" class="qr-img" />
-                    <div v-else class="qr-placeholder">生成中…</div>
-                    <el-button size="small" type="primary" plain @click="handleCopyH5Url">
-                      <el-icon><CopyDocument /></el-icon>&nbsp;复制链接
-                    </el-button>
                   </div>
                 </div>
               </div>
@@ -270,6 +266,17 @@
 
     <FeedBack v-model:visible="feedbackVisible" @submit="handleFeedbackSubmit" />
     <Notify v-model:visible="notifyVisible" @submit="handleNotifySubmit" />
+
+    <!-- H5 处置二维码弹窗 -->
+    <el-dialog v-model="qrDialogVisible" title="H5 现场处置" width="320px" :close-on-click-modal="true" append-to-body destroy-on-close>
+      <div class="qr-dialog-body">
+        <img v-if="h5QrcodeDataUrl" :src="h5QrcodeDataUrl" alt="H5 处置二维码" class="qr-dialog-img" />
+        <div v-else class="qr-dialog-placeholder">生成中…</div>
+        <el-button size="small" type="primary" plain @click="handleCopyH5Url" style="margin-top: 12px;">
+          <el-icon><CopyDocument /></el-icon>&nbsp;复制链接
+        </el-button>
+      </div>
+    </el-dialog>
   </el-dialog>
 </template>
 
@@ -281,7 +288,7 @@ import echarts from '@/utils/echarts'
 import request from '@/utils/request'
 import {
   Bell, ChatDotRound, CircleClose, Clock, Close,
-  CopyDocument, MapLocation, Monitor, Warning, WarnTriangleFilled,
+  CopyDocument, MapLocation, Monitor, Share, Warning, WarnTriangleFilled,
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import QRCode from 'qrcode'
@@ -329,6 +336,7 @@ const activeTab = ref('monitor')
 const chartRef = ref<HTMLDivElement | null>(null)
 const feedbackVisible = ref(false)
 const notifyVisible = ref(false)
+const qrDialogVisible = ref(false)
 let chartInstance: echarts.ECharts | null = null
 
 const detail = ref<AlarmRecordItem | null>(null)
@@ -882,28 +890,34 @@ const handleClose = () => { emit('update:modelValue', false) }
 </script>
 
 <style scoped>
-/* ====== 根容器：固定高度适配视口，禁止滚动条 ====== */
+/* ====== 根容器：用 !important 确保覆盖全局，逐步收敛高度消除滚动条 ====== */
+:deep(.el-dialog) {
+  overflow: hidden !important;
+}
 :deep(.el-dialog__body) {
   overflow: hidden !important;
-  padding: 12px 20px 16px;
+  padding: 6px 20px 6px !important;
+}
+:deep(.el-dialog__footer) {
+  display: none !important;
 }
 
 .feedback-container {
-  height: calc(100vh - 170px);
+  height: calc(100vh - 255px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 .main-content {
-  display: flex; gap: 12px; flex: 1; min-height: 0; overflow: hidden;
+  display: flex; gap: 8px; flex: 1; min-height: 0; overflow: hidden;
 }
 
 /* ====== 左侧生命周期（按等级加载流程图）====== */
 .left-section {
-  width: 340px;
+  width: 240px;
   background: #f8f9fa;
   border-radius: 8px;
-  padding: 10px 8px;
+  padding: 8px 8px;
   border: 1px solid #e9ecef;
   flex-shrink: 0;
   display: flex;
@@ -912,16 +926,16 @@ const handleClose = () => { emit('update:modelValue', false) }
 }
 .section-header {
   display: flex; align-items: center; gap: 4px;
-  margin-bottom: 8px; padding-bottom: 6px;
+  margin-bottom: 6px; padding-bottom: 4px;
   border-bottom: 1px solid #e9ecef;
   flex-shrink: 0;
 }
 .icon-wrapper {
-  width: 20px; height: 20px;
+  width: 18px; height: 18px;
   display: flex; align-items: center; justify-content: center;
   background: #e8f4fd; border-radius: 4px; color: #409eff;
 }
-.section-title { font-size: var(--el-font-size-base); font-weight: 600; color: #333; }
+.section-title { font-size: 13px; font-weight: 600; color: #333; }
 .lifecycle-img-wrap {
   flex: 1;
   min-height: 0;
@@ -944,37 +958,38 @@ const handleClose = () => { emit('update:modelValue', false) }
 }
 
 /* ====== 右侧 ====== */
-.right-section { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; overflow: hidden; }
+.right-section { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* ====== 头部卡片 - 一行显示 ====== */
 .event-header {
   display: flex; align-items: center; gap: 0;
   background: #fff; border-radius: 8px; border: 1px solid #e9ecef;
-  padding: 10px 14px;
+  padding: 6px 10px;
+  flex-shrink: 0;
 }
 .hd-item {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 6px;
   flex: 1; min-width: 0;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 .hd-item + .hd-item { border-left: 1px solid #f0f0f0; }
 .hd-icon {
-  width: 34px; height: 34px; border-radius: 8px;
+  width: 28px; height: 28px; border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  font-size: var(--el-font-size-large); flex-shrink: 0;
+  font-size: var(--el-font-size-base); flex-shrink: 0;
 }
 .hd-icon.hazard { background: #e8f5e9; color: #28a745; }
 .hd-icon.device { background: #e3f2fd; color: #1976d2; }
 .hd-icon.level { background: #fff3e0; color: #ff9800; }
 .hd-icon.time { background: #f3e8ff; color: #6f42c1; }
 .hd-icon.count { background: #fef0f0; color: #dc3545; }
-.hd-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.hd-label { font-size: var(--el-font-size-extra-small); color: #909399; }
-.hd-val { font-size: 15px; font-weight: 600; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hd-text { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.hd-label { font-size: 11px; color: #909399; }
+.hd-val { font-size: 13px; font-weight: 600; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hd-val.lv { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: var(--el-font-size-small); width: fit-content; }
 
 .hd-count {
-  font-size: var(--el-font-size-extra-large); font-weight: 700; color: #f56c6c;
+  font-size: var(--el-font-size-large); font-weight: 700; color: #f56c6c;
   cursor: pointer; transition: transform .15s;
 }
 .hd-count:hover { transform: scale(1.15); }
@@ -983,7 +998,7 @@ const handleClose = () => { emit('update:modelValue', false) }
 /* ====== 中部：数据区 + 时间线（左右） ====== */
 .event-body {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -994,16 +1009,16 @@ const handleClose = () => { emit('update:modelValue', false) }
   flex: 1;
   min-width: 0;
   background: #fff; border-radius: 8px; border: 1px solid #e9ecef;
-  padding: 10px 12px;
+  padding: 8px 10px;
   display: flex; flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
-/* 合并容器：左侧基本资料 + 告警描述，右侧 H5 二维码 */
+/* 合并容器：基本资料 + 告警描述 */
 .info-summary {
   display: flex;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 6px;
   align-items: stretch;
 }
 .info-summary-main {
@@ -1011,72 +1026,64 @@ const handleClose = () => { emit('update:modelValue', false) }
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
-.info-summary-side {
-  flex-shrink: 0;
-  width: 150px;
-}
-.info-row { display: flex; gap: 10px; }
+.info-row { display: flex; gap: 8px; }
 .info-item {
   flex: 1;
-  background: #f8f9fa; border-radius: 6px; padding: 6px 10px;
+  background: #f8f9fa; border-radius: 6px; padding: 4px 8px;
 }
-.info-label { font-size: var(--el-font-size-extra-small); color: #909399; display: block; margin-bottom: 2px; }
-.info-value { font-size: var(--el-font-size-base); font-weight: 500; color: #303133; }
+.info-label { font-size: 11px; color: #909399; display: block; margin-bottom: 1px; }
+.info-value { font-size: var(--el-font-size-small); font-weight: 500; color: #303133; }
 .count-link { color: #409eff; cursor: pointer; text-decoration: underline; }
 .count-link:hover { color: #66b1ff; }
 
 /* 告警描述（在合并容器主体内） */
 .desc-row {
-  flex: 1;
-  background: #f8f9fa; border-radius: 6px; padding: 6px 10px;
+  background: #f8f9fa; border-radius: 6px; padding: 4px 8px;
+  max-height: 56px;
+  overflow: auto;
 }
-.desc-row .detail-label { display: block; margin-bottom: 2px; font-size: var(--el-font-size-extra-small); color: #909399; }
-.desc-row p { font-size: var(--el-font-size-base); color: #606266; line-height: 1.5; margin: 0; }
+.desc-row-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.desc-row-header .detail-label { margin-bottom: 0; }
+.desc-row .detail-label { display: block; margin-bottom: 1px; font-size: 11px; color: #909399; }
+.desc-row p { font-size: var(--el-font-size-small); color: #606266; line-height: 1.4; margin: 0; }
 
-/* H5 二维码卡片 */
-.qr-card {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  padding: 8px;
+/* H5 处置二维码弹窗 */
+.qr-dialog-body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  height: 100%;
-  box-sizing: border-box;
+  padding: 8px 0;
 }
-.qr-title {
-  font-size: var(--el-font-size-small);
-  color: #606266;
-  font-weight: 600;
-}
-.qr-img {
-  width: 130px;
-  height: 130px;
+.qr-dialog-img {
+  width: 200px;
+  height: 200px;
   display: block;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
 }
-.qr-placeholder {
-  width: 130px;
-  height: 130px;
+.qr-dialog-placeholder {
+  width: 200px;
+  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #909399;
-  font-size: var(--el-font-size-small);
-  background: #fff;
+  font-size: var(--el-font-size-base);
+  background: #fafafa;
   border: 1px dashed #dcdfe6;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .data-tabs {
-  display: flex; gap: 16px; margin-bottom: 8px;
-  padding-bottom: 6px; border-bottom: 1px solid #f0f0f0;
+  display: flex; gap: 12px; margin-bottom: 4px;
+  padding-bottom: 4px; border-bottom: 1px solid #f0f0f0;
 }
 .data-tabs .tab {
-  font-size: var(--el-font-size-base); color: #606266; padding: 3px 0;
+  font-size: var(--el-font-size-base); color: #606266; padding: 1px 0;
   cursor: pointer; border-bottom: 2px solid transparent;
   transition: all .2s;
 }
@@ -1127,7 +1134,7 @@ const handleClose = () => { emit('update:modelValue', false) }
 
 /* ====== 右侧时间线（参考原查看弹窗样式）====== */
 .timeline-panel {
-  width: 200px;
+  width: 180px;
   flex-shrink: 0;
   background: #fff;
   border-radius: 8px;
@@ -1139,21 +1146,21 @@ const handleClose = () => { emit('update:modelValue', false) }
 }
 
 .timeline-header {
-  padding: 12px 14px 8px;
+  padding: 8px 12px 6px;
   border-bottom: 1px solid #f0f0f0;
   flex-shrink: 0;
 }
 
 .timeline-title {
-  font-size: var(--el-font-size-medium);
+  font-size: var(--el-font-size-base);
   font-weight: 600;
   color: #303133;
 }
 
 .timeline-container {
   flex: 1;
-  padding: 12px 14px;
-  overflow: hidden;
+  padding: 8px 12px;
+  overflow-y: auto;
   min-height: 0;
 }
 
@@ -1225,10 +1232,10 @@ const handleClose = () => { emit('update:modelValue', false) }
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
   margin-top: auto;
-  padding-top: 10px;
+  padding-top: 6px;
   border-top: 1px solid #f1f5f9;
 }
 </style>
