@@ -135,6 +135,19 @@ public class SysNoticeController extends BaseController
     }
 
     /**
+     * 删除通知公告
+     */
+    @PreAuthorize("@ss.hasPermi('system:notice:remove')")
+    @Log(title = "通知公告", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{noticeIds}")
+    public AjaxResult remove(@PathVariable String noticeIds)
+    {
+        Long[] ids = Convert.toLongArray(noticeIds);
+        noticeReadService.deleteByNoticeIds(ids);
+        return toAjax(noticeService.deleteNoticeByIds(ids));
+    }
+
+    /**
      * 已读用户列表数据
      */
     @PreAuthorize("@ss.hasPermi('system:notice:list')")

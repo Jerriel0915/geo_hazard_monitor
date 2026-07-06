@@ -118,6 +118,7 @@
         FROM alarm_notification
         WHERE recipient_id = #{userId}
           AND channel = #{channel}
+          AND source_type IN ('threshold', 'comprehensive', 'offline')
           AND read_time IS NULL
     </select>
 
