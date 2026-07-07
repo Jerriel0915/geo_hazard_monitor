@@ -23,6 +23,8 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -43,7 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <h3>线程安全模型</h3>
  * <ul>
- *   <li>{@link #scriptClassCache} — {@link ConcurrentHashMap}，key 为 strategyId，
+ *   <li>{@link #scriptClassCache} — LRU LinkedHashMap + synchronizedMap，key 为 strategyId，
  *       同一脚本的编译 Class 被所有执行线程共享读取，编译过程通过
  *       {@code synchronized(secureClassLoader)} 串行化。</li>
  *   <li>每次执行用 {@code clazz.getDeclaredConstructor().newInstance()} 创建独立的
@@ -60,15 +62,18 @@ import java.util.concurrent.atomic.AtomicInteger;
  * </ol>
  *
  * <h3>两类编译缓存</h3>
+ * <p>均使用 {@link LinkedHashMap}(accessOrder=true) + {@link Collections#synchronizedMap}
+ * 实现 LRU 淘汰，容量分别由 {@code iot.parser.script-cache-max-size}（默认 200）
+ * 和 {@code iot.parser.computed-cache-max-size}（默认 500）控制。</p>
  * <table>
  *   <caption>缓存对比</caption>
  *   <tr><th>缓存</th><th>Key</th><th>用途</th><th>淘汰策略</th></tr>
  *   <tr><td>{@link #scriptClassCache}</td><td>{@code strategyId}</td>
  *        <td>主解析链路——每条 MQTT 消息命中一次，缓存收益极大</td>
- *        <td>策略变更时 {@link #evictCache} 精确淘汰</td></tr>
+ *        <td>LRU 自动淘汰最久未访问条目 + 策略变更时 {@link #evictCache} 精确淘汰</td></tr>
  *   <tr><td>{@link #computedClassCache}</td><td>{@code sha256(scriptCode)}</td>
  *        <td>计算属性链路——触发频率远低于主链路，脚本由 {@code ComputedScriptAssembler} 动态拼装</td>
- *        <td>{@link #evictCache} 全量清空（简化失效判断）</td></tr>
+ *        <td>LRU 自动淘汰 + {@link #evictCache} 全量清空</td></tr>
  * </table>
  *
  * @see GroovyScriptValidator
@@ -82,35 +87,48 @@ public class GroovyScriptEngine {
     /**
      * 主解析链路编译缓存：strategyId → 编译后的 Script Class。
      *
-     * <p>Key 为策略主键（不变），Value 为编译产物（不可变），天然适合无锁读。
-     * 每条消息命中时直接取 Class → newInstance → setBinding，无需重新编译。
+     * <p>LRU 淘汰 + synchronized 包裹。accessOrder=true 使得每条 MQTT 消息
+     * 的 get() 命中也会将条目移到链表尾部，保证冷脚本在容量满时被优先淘汰。
+     * 容量由 {@code iot.parser.script-cache-max-size} 控制。
      */
-    private final Map<Long, Class<? extends Script>> scriptClassCache = new ConcurrentHashMap<>();
+    private Map<Long, Class<? extends Script>> scriptClassCache;
 
     /**
      * 计算属性链路编译缓存：sha256(scriptCode) → 编译后的 Script Class。
      *
-     * <p>以脚本体哈希为 key，因为计算属性脚本无稳定策略 ID。
-     * {@link #evictCache} 时全量清空。
+     * <p>LRU 淘汰 + synchronized 包裹。容量由
+     * {@code iot.parser.computed-cache-max-size} 控制。
      */
-    private final Map<String, Class<? extends Script>> computedClassCache = new ConcurrentHashMap<>();
+    private Map<String, Class<? extends Script>> computedClassCache;
 
     /**
-     * 共享安全类加载器，整个引擎生命周期内复用同一个实例。
+     * 共享安全类加载器。
      *
      * <p>调用 {@link GroovyClassLoader#parseClass} 时必须
      * {@code synchronized(this.secureClassLoader)}——Groovy 编译链路涉及
      * 大量非线程安全的共享中间状态。
+     *
+     * <p>累积淘汰达到 {@link #DEFAULT_SCRIPT_CACHE_SIZE} 次后重建，
+     * 使旧 ClassLoader 及其加载的全部 Class 变为不可达，等待 GC 回收 Metaspace。
      */
-    private final GroovyClassLoader secureClassLoader;
+    private volatile GroovyClassLoader secureClassLoader;
 
     /** 脚本执行线程池，默认 4 线程，可通过 {@code iot.parser.groovy-pool-size} 配置 */
     private volatile ExecutorService executor;
     private final AtomicInteger threadCounter = new AtomicInteger();
 
+    /** 累积淘汰计数，达到阈值触发 ClassLoader 重建 */
+    private final AtomicInteger evictionCount = new AtomicInteger();
+
     private static final int DEFAULT_POOL_SIZE = 4;
     /** 单次脚本执行超时上限（秒），超时后 Future 被 cancel(true) 强制中断 */
     private static final int TIMEOUT_SECONDS = 30;
+    /** 主解析链路编译缓存默认容量 */
+    static final int DEFAULT_SCRIPT_CACHE_SIZE = 200;
+    /** 计算属性编译缓存默认容量 */
+    static final int DEFAULT_COMPUTED_CACHE_SIZE = 500;
+    /** 触发 ClassLoader 重建的累积淘汰次数 */
+    private static final int LOADER_REBUILD_THRESHOLD = DEFAULT_SCRIPT_CACHE_SIZE;
 
     @Resource
     private BuiltInFunctions builtInFunctions;
@@ -123,23 +141,45 @@ public class GroovyScriptEngine {
         this.secureClassLoader = new GroovyClassLoader(getClass().getClassLoader(),
                 GroovyScriptValidator.createSecureConfig());
         this.executor = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE, this::buildDaemonThread);
+        // 默认容量初始化——@PostConstruct 会按配置重建，此处保证非 Spring 上下文也能安全使用
+        this.scriptClassCache = buildLruCache(DEFAULT_SCRIPT_CACHE_SIZE);
+        this.computedClassCache = buildLruCache(DEFAULT_COMPUTED_CACHE_SIZE);
     }
 
     /**
-     * 根据配置重新初始化线程池。
+     * 按配置重建 LRU 缓存 + 线程池。
      *
-     * <p>在 Bean 初始化完成后调用，从 {@link ParserProperties} 读取线程池大小。
-     * 若与默认值不同则替换 executor。后续可通过配置中心热更新后手动触发。
+     * <p>仅在配置值与当前默认不同时重建缓存。
      */
     @PostConstruct
-    public void initPool() {
-        int size = (parserProperties != null ? parserProperties.getGroovyPoolSize() : DEFAULT_POOL_SIZE);
+    public void init() {
+        int scriptMax = parserProperties != null && parserProperties.getScriptCacheMaxSize() > 0
+                ? parserProperties.getScriptCacheMaxSize() : DEFAULT_SCRIPT_CACHE_SIZE;
+        int computedMax = parserProperties != null && parserProperties.getComputedCacheMaxSize() > 0
+                ? parserProperties.getComputedCacheMaxSize() : DEFAULT_COMPUTED_CACHE_SIZE;
+
+        // 仅当配置与默认不同时重建（默认已在构造器初始化）
+        if (scriptMax != DEFAULT_SCRIPT_CACHE_SIZE) this.scriptClassCache = buildLruCache(scriptMax);
+        if (computedMax != DEFAULT_COMPUTED_CACHE_SIZE) this.computedClassCache = buildLruCache(computedMax);
+
+        int size = parserProperties != null ? parserProperties.getGroovyPoolSize() : DEFAULT_POOL_SIZE;
         if (size <= 0) size = DEFAULT_POOL_SIZE;
         if (size != DEFAULT_POOL_SIZE) {
             ExecutorService old = this.executor;
             this.executor = Executors.newFixedThreadPool(size, this::buildDaemonThread);
             old.shutdownNow();
         }
+    }
+
+    /** 构建 access-order LRU 缓存，外层套 synchronizedMap */
+    private static <K, V> Map<K, V> buildLruCache(int maxSize) {
+        return Collections.synchronizedMap(new LinkedHashMap<>(
+                16, 0.75f, true) { // accessOrder=true
+            @Override
+            protected boolean removeEldestEntry(Map.Entry eldest) {
+                return size() > maxSize;
+            }
+        });
     }
 
     /** 创建守护线程——不阻止 JVM 正常退出 */
@@ -288,13 +328,20 @@ public class GroovyScriptEngine {
         Future<Map<String, Object>> future = executor.submit(() -> {
             try {
                 String cacheKey = sha256(scriptCode);
-                Class<? extends Script> clazz = computedClassCache.computeIfAbsent(
-                        cacheKey, k -> {
-                            synchronized (secureClassLoader) {
-                                GroovyShell shell = new GroovyShell(GroovyScriptValidator.createSecureConfig());
-                                return shell.parse(scriptCode).getClass();
-                            }
-                        });
+                Class<? extends Script> clazz;
+                synchronized (computedClassCache) {
+                    @SuppressWarnings("unchecked")
+                    Class<? extends Script> cached = computedClassCache.get(cacheKey);
+                    if (cached != null) {
+                        clazz = cached;
+                    } else {
+                        // GroovyShell 内部使用自带 GroovyClassLoader（每次新建），
+                        // 无需与主链路的 secureClassLoader 同步——各自独立编译。
+                        GroovyShell shell = new GroovyShell(GroovyScriptValidator.createSecureConfig());
+                        clazz = shell.parse(scriptCode).getClass();
+                        computedClassCache.put(cacheKey, clazz);
+                    }
+                }
                 Script script = clazz.getDeclaredConstructor().newInstance();
                 Binding binding = new Binding();
                 binding.setVariable("builtin", builtInFunctions);
@@ -365,31 +412,70 @@ public class GroovyScriptEngine {
     }
 
     /**
-     * 淘汰指定策略的脚本编译缓存。
+     * 淘汰指定策略的编译缓存 + 周期性重建 ClassLoader 释放 Metaspace。
      *
-     * <p>策略更新/删除/启停后由 Service 调用, 确保下次执行重新编译新脚本 (B1 修复)。
+     * <p>策略更新/删除/启停后由 Service 调用 (B1 修复)。
+     * 累积淘汰 {@value #LOADER_REBUILD_THRESHOLD} 次后，丢弃当前
+     * {@link GroovyClassLoader} 实例并重建——旧 loader 加载的全部 Class
+     * 变为不可达，随下次 GC 回收 Metaspace。LRU 缓存同步清空，
+     * 后续执行将从新 loader 重新编译热脚本。
      */
-    public void evictCache(Long strategyId) {
+    public synchronized void evictCache(Long strategyId) {
         if (strategyId != null) {
             scriptClassCache.remove(strategyId);
         }
         computedClassCache.clear();
+
+        if (evictionCount.incrementAndGet() >= LOADER_REBUILD_THRESHOLD) {
+            evictionCount.set(0);
+            rebuildClassLoader();
+        }
     }
 
     /**
-     * 获取或编译脚本 Class（带缓存 + 同步编译）。
+     * 丢弃当前 GroovyClassLoader 并重建，同时清空所有编译缓存。
      *
-     * <p>{@link GroovyClassLoader#parseClass} 内部非线程安全（涉及 AST 编译
-     * 链路的共享缓存），对 {@link #secureClassLoader} 加锁保证同一时刻仅一个线程编译。
-     * 读命中缓存时无需加锁——{@link ConcurrentHashMap#computeIfAbsent} 保证同一 key
-     * 只编译一次，后续线程直接取到已编译 Class。
+     * <p>先锁住当前 loader 实例（此时字段尚未被替换，锁的即为旧实例），
+     * 阻止其他线程继续在上面编译。然后替换 volatile 字段，后续线程将看到
+     * 新 loader 并在其上编译。旧 loader 变为不可达，交由 GC 回收 Metaspace。
+     */
+    private void rebuildClassLoader() {
+        synchronized (secureClassLoader) {
+            GroovyClassLoader old = this.secureClassLoader;
+            this.secureClassLoader = new GroovyClassLoader(
+                    getClass().getClassLoader(),
+                    GroovyScriptValidator.createSecureConfig());
+            scriptClassCache.clear();
+            computedClassCache.clear();
+            log.info("GroovyClassLoader rebuilt (eviction threshold reached), old loader: {}",
+                    old);
+        }
+    }
+
+    /**
+     * 获取或编译脚本 Class（LRU 缓存 + 同步编译）。
+     *
+     * <p>对 {@code scriptClassCache}（synchronizedMap）加锁以原子化
+     * get-or-compile 操作。{@link GroovyClassLoader#parseClass} 内部非线程安全，
+     * 需额外对 {@link #secureClassLoader} 加锁。
+     *
+     * <p>每次 get() 命中都会触发 LRU 访问顺序更新（accessOrder=true），
+     * 所以高频策略的 Class 会持续被移到链表尾部，不受容量淘汰影响。
      */
     private Class<? extends Script> getOrCreateScriptClass(DataParseStrategy strategy) {
-        return scriptClassCache.computeIfAbsent(strategy.getId(), id -> {
-            synchronized (secureClassLoader) {
-                return compileScript(strategy.getScriptCode());
+        synchronized (scriptClassCache) {
+            @SuppressWarnings("unchecked")
+            Class<? extends Script> cached = scriptClassCache.get(strategy.getId());
+            if (cached != null) return cached;
+
+            Class<? extends Script> clazz;
+            GroovyClassLoader loader = this.secureClassLoader; // 本地快照，防重建时 swap
+            synchronized (loader) {
+                clazz = compileScript(loader, strategy.getScriptCode());
             }
-        });
+            scriptClassCache.put(strategy.getId(), clazz);
+            return clazz;
+        }
     }
 
     /**
@@ -399,11 +485,13 @@ public class GroovyScriptEngine {
      * 正常写入的策略都经过了 {@link GroovyScriptValidator#validate} 预检，此处的
      * 校验为防御性兜底——防止绕过 validate 直接调用 execute 的场景。
      *
+     * @param loader     当前线程持有的 GroovyClassLoader 快照
+     * @param scriptCode Groovy 脚本体
      * @throws RuntimeException 如果编译产物不继承 Script
      */
     @SuppressWarnings("unchecked")
-    private Class<? extends Script> compileScript(String scriptCode) {
-        Class<?> clazz = secureClassLoader.parseClass(scriptCode);
+    private Class<? extends Script> compileScript(GroovyClassLoader loader, String scriptCode) {
+        Class<?> clazz = loader.parseClass(scriptCode);
         if (!Script.class.isAssignableFrom(clazz)) {
             throw new RuntimeException("Parsed class does not extend groovy.lang.Script: " + clazz.getName());
         }
