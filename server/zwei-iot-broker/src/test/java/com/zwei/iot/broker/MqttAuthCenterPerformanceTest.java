@@ -9,6 +9,7 @@ import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
+import com.zwei.iot.device.service.ITopicPatternService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import org.dromara.mica.mqtt.core.server.MqttServer;
 import org.junit.jupiter.api.DisplayName;
@@ -61,7 +62,8 @@ class MqttAuthCenterPerformanceTest {
                     addBean("mqttServer", mqttServer);
                 }}.getBeanProvider(MqttServer.class),
                 mqttExceptionReporter,
-                mock(ApplicationEventPublisher.class)
+                mock(ApplicationEventPublisher.class),
+                mock(ITopicPatternService.class)
         );
         MqttServerAuthHandler authHandler = new MqttServerAuthHandler(authService, mqttExceptionReporter);
 

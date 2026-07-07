@@ -4,6 +4,8 @@ import com.zwei.iot.broker.exception.MqttExceptionReporter;
 import com.zwei.iot.broker.model.MqttDeviceSession;
 import com.zwei.iot.device.domain.DeviceSensor;
 import com.zwei.iot.device.service.IDeviceSensorService;
+import com.zwei.iot.device.service.ITopicPatternService;
+import com.zwei.iot.device.service.ITopicPatternService.TopicComponents;
 import net.dreamlu.mica.net.core.ChannelContext;
 import org.dromara.mica.mqtt.codec.MqttQoS;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,11 @@ class MqttServerSubscribeValidatorTest {
     @Mock
     private MqttDeviceSessionRegistry sessionRegistry;
 
+    @Mock
+    private ITopicPatternService topicPatternService;
+
+    private final MqttExceptionReporter mqttExceptionReporter = new MqttExceptionReporter();
+
     private MqttServerSubscribeValidator validator;
 
     /**
@@ -56,7 +63,7 @@ class MqttServerSubscribeValidatorTest {
 
     @BeforeEach
     void setUp() {
-        validator = new MqttServerSubscribeValidator(deviceSensorService, new MqttExceptionReporter(), sessionRegistry);
+        validator = new MqttServerSubscribeValidator(deviceSensorService, mqttExceptionReporter, sessionRegistry, topicPatternService);
     }
 
     @Nested
@@ -146,6 +153,8 @@ class MqttServerSubscribeValidatorTest {
             String topic = "sys/v1/" + actualDeviceCode + "/sensor1/updata";
             if (expectedValid) {
                 givenSessionForDevice(actualDeviceCode);
+                when(topicPatternService.resolveTopic(topic))
+                        .thenReturn(new TopicComponents("sys", actualDeviceCode, "sensor1"));
                 when(deviceSensorService.selectSensorList(any())).thenReturn(Collections.emptyList());
             }
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -197,6 +206,8 @@ class MqttServerSubscribeValidatorTest {
             List<DeviceSensor> mockResult = resultSize > 0
                     ? List.of(DeviceSensor.builder().deviceCode(deviceCode).sensorCode(sensorCode).build())
                     : Collections.emptyList();
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", deviceCode, sensorCode));
             when(deviceSensorService.selectSensorList(any())).thenReturn(mockResult);
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -213,6 +224,8 @@ class MqttServerSubscribeValidatorTest {
         void sensorCodetFound_shouldReturnFalse() {
             String topic = "sys/v1/existDevice/existSensor/updata";
             givenSessionForDevice("existDevice");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "existDevice", "existSensor"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(Collections.emptyList());
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -226,6 +239,8 @@ class MqttServerSubscribeValidatorTest {
         void sensorFound_shouldReturnTrue() {
             String topic = "sys/v1/existDevice/existSensor/updata";
             givenSessionForDevice("existDevice");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "existDevice", "existSensor"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("existDevice").sensorCode("existSensor").build())
             );
@@ -245,6 +260,8 @@ class MqttServerSubscribeValidatorTest {
         void databaseException_shouldReturnFalse() {
             String topic = "sys/v1/device/sensor/updata";
             givenSessionForDevice("device");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "device", "sensor"));
             when(deviceSensorService.selectSensorList(any())).thenThrow(new RuntimeException("DB connection failed"));
 
             boolean result = validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -257,6 +274,8 @@ class MqttServerSubscribeValidatorTest {
         void databaseException_shouldNotContinue() {
             String topic = "sys/v1/device/sensor/updata";
             givenSessionForDevice("device");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "device", "sensor"));
             when(deviceSensorService.selectSensorList(any())).thenThrow(new RuntimeException("DB error"));
 
             validator.isValid(channelContext, "client-1", topic, MqttQoS.QOS1);
@@ -276,6 +295,8 @@ class MqttServerSubscribeValidatorTest {
         void differentQoS_shouldWork(MqttQoS qos) {
             String topic = "sys/v1/device/sensor/updata";
             givenSessionForDevice("device");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "device", "sensor"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );
@@ -295,6 +316,8 @@ class MqttServerSubscribeValidatorTest {
         void differentClientIds_shouldWork() {
             String topic = "sys/v1/device/sensor/updata";
             givenSessionForDevice("device");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "device", "sensor"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );
@@ -316,6 +339,8 @@ class MqttServerSubscribeValidatorTest {
         void fullValidTopic_shouldPassAllChecks() {
             String topic = "sys/v1/my-device-001/my-sensor-001/updata";
             givenSessionForDevice("my-device-001");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "my-device-001", "my-sensor-001"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("my-device-001").sensorCode("my-sensor-001").build())
             );
@@ -331,6 +356,8 @@ class MqttServerSubscribeValidatorTest {
         void topicWithUnderscoresAndDashes_shouldWork() {
             String topic = "sys/v1/device_with_underscore/sensor-with-dash/updata";
             givenSessionForDevice("device_with_underscore");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "device_with_underscore", "sensor-with-dash"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device_with_underscore").sensorCode("sensor-with-dash").build())
             );
@@ -345,6 +372,8 @@ class MqttServerSubscribeValidatorTest {
         void pureAlphanumericTopic_shouldWork() {
             String topic = "sys/v1/Device123/Sensor456/updata";
             givenSessionForDevice("Device123");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "Device123", "Sensor456"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("Device123").sensorCode("Sensor456").build())
             );
@@ -364,6 +393,8 @@ class MqttServerSubscribeValidatorTest {
         void nullChannelContext_shouldWork() {
             String topic = "sys/v1/device/sensor/updata";
             givenSessionForDevice("device");
+            when(topicPatternService.resolveTopic(topic))
+                    .thenReturn(new TopicComponents("sys", "device", "sensor"));
             when(deviceSensorService.selectSensorList(any())).thenReturn(
                     List.of(DeviceSensor.builder().deviceCode("device").sensorCode("sensor").build())
             );

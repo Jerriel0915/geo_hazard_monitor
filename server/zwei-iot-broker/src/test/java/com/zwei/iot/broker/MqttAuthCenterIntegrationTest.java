@@ -11,6 +11,7 @@ import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
+import com.zwei.iot.device.service.ITopicPatternService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
 import org.dromara.mica.mqtt.codec.MqttQoS;
@@ -152,7 +153,8 @@ class MqttAuthCenterIntegrationTest {
                         addBean("mqttServer", mqttServer);
                     }}.getBeanProvider(MqttServer.class),
                     mqttExceptionReporter,
-                    mock(ApplicationEventPublisher.class)
+                    mock(ApplicationEventPublisher.class),
+                    mock(ITopicPatternService.class)
             );
         }
 

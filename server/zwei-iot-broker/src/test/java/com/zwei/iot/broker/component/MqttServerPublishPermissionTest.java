@@ -6,6 +6,7 @@ import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
+import com.zwei.iot.device.service.ITopicPatternService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import org.dromara.mica.mqtt.codec.MqttQoS;
 import org.dromara.mica.mqtt.core.server.MqttServer;
@@ -62,7 +63,8 @@ class MqttServerPublishPermissionTest {
                 properties,
                 beanFactory.getBeanProvider(MqttServer.class),
                 mqttExceptionReporter,
-                mock(ApplicationEventPublisher.class)
+                mock(ApplicationEventPublisher.class),
+                mock(ITopicPatternService.class)
         );
         publishPermission = new MqttServerPublishPermission(authService, mqttExceptionReporter);
         when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(buildDevice());

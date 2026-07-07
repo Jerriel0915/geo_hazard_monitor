@@ -8,6 +8,7 @@ import com.zwei.iot.broker.service.MqttDeviceAuthService;
 import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.service.IDeviceAuthQueryService;
 import com.zwei.iot.device.service.DeviceAuthLogService;
+import com.zwei.iot.device.service.ITopicPatternService;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
 import org.dromara.mica.mqtt.core.server.MqttServer;
@@ -75,7 +76,8 @@ class MqttServerAuthHandlerTest {
                 properties,
                 mqttServerProvider,
                 mqttExceptionReporter,
-                mock(ApplicationEventPublisher.class)
+                mock(ApplicationEventPublisher.class),
+                mock(ITopicPatternService.class)
         );
         authHandler = new MqttServerAuthHandler(authService, mqttExceptionReporter);
         when(channelContext.getClientNode()).thenReturn(new Node("127.0.0.1", 1883));
