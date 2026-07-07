@@ -96,8 +96,31 @@ export function useDeviceCrud() {
 
     const copyPwd = async (pwd: string) => {
         try {
-            await navigator.clipboard.writeText(pwd)
-            ElMessage.success('密码已复制')
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(pwd)
+                ElMessage.success('密码已复制')
+                return
+            }
+        } catch {
+            // Clipboard API 失败，降级到 execCommand
+        }
+        // 降级方案：创建临时 textarea + execCommand('copy')
+        try {
+            const textarea = document.createElement('textarea')
+            textarea.value = pwd
+            textarea.style.position = 'fixed'
+            textarea.style.left = '-9999px'
+            textarea.style.top = '-9999px'
+            document.body.appendChild(textarea)
+            textarea.focus()
+            textarea.select()
+            const success = document.execCommand('copy')
+            document.body.removeChild(textarea)
+            if (success) {
+                ElMessage.success('密码已复制')
+            } else {
+                ElMessage.warning('复制失败，请手动复制')
+            }
         } catch {
             ElMessage.warning('复制失败，请手动复制')
         }

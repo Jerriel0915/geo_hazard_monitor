@@ -1,8 +1,8 @@
 package com.zwei.iot.alarm.service.notify;
 
+import com.zwei.common.core.domain.entity.SysUser;
 import com.zwei.common.event.AlarmTriggeredEvent;
 import com.zwei.common.event.DeviceOfflineEvent;
-import com.zwei.common.core.domain.entity.SysUser;
 import com.zwei.iot.alarm.channel.AlarmChannelDispatcher;
 import com.zwei.iot.alarm.dispatch.domain.AlarmDispatchRule;
 import com.zwei.iot.alarm.dispatch.service.IAlarmRecipientResolver;
@@ -18,15 +18,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 告警通知编排器 — 双事件监听 + 用户×渠道去重。
@@ -191,17 +183,48 @@ public class AlarmNotifier {
             return;
         }
 
-        // 1) 批量落库 (uk_notif_dedup 唯一键兜底)
         List<AlarmNotification> list = new ArrayList<>(notifications);
+
+        // 1) 主动去重: 查询 DB 中已存在的通知 (同一 sourceType + sourceId 组合), 筛掉重复 key
+        //    避免静默期后重触发时因 uk_notif_dedup 整批失败导致通知丢失
+        AlarmNotification first = list.get(0);
+        Long sourceId = first.getSourceId();
+        String sourceType = first.getSourceType();
+        if (sourceId != null && sourceType != null) {
+            List<AlarmNotification> existing = notificationService.selectByAlarmId(sourceId);
+            if (existing != null && !existing.isEmpty()) {
+                Set<String> existingKeys = new HashSet<>();
+                for (AlarmNotification en : existing) {
+                    if (sourceType.equals(en.getSourceType())) {
+                        existingKeys.add(en.getSourceType() + "|" + en.getSourceId()
+                                + "|" + en.getRecipientId() + "|" + en.getChannel());
+                    }
+                }
+                list = new ArrayList<>();
+                for (AlarmNotification n : notifications) {
+                    String key = n.getSourceType() + "|" + n.getSourceId()
+                            + "|" + n.getRecipientId() + "|" + n.getChannel();
+                    if (!existingKeys.contains(key)) {
+                        list.add(n);
+                    }
+                }
+                if (list.isEmpty()) {
+                    log.debug("通知全部重复已跳过 sourceId={} sourceType={}", sourceId, sourceType);
+                    return;
+                }
+            }
+        }
+
+        // 2) 批量落库 (uk_notif_dedup 唯一键兜底并发)
         try {
             notificationService.batchCreate(list);
         } catch (DuplicateKeyException e) {
-            log.warn("通知整批重复被忽略（事件已处理） sourceId={}",
+            log.warn("通知整批重复被忽略（并发冲突） sourceId={}",
                 list.isEmpty() ? null : list.get(0).getSourceId(), e);
             return;
         }
 
-        // 2) 逐条分发到渠道
+        // 3) 逐条分发到渠道
         for (AlarmNotification n : list) {
             try {
                 channelDispatcher.dispatch(n);

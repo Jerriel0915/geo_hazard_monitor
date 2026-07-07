@@ -26,10 +26,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * AlarmNotifier 单元测试 — 验证告警/离线事件的规则匹配、用户筛选、
@@ -234,6 +231,66 @@ class AlarmNotifierTest {
         notifier.onAlarmTriggered(event);
 
         // 落库冲突 → 直接 return，不分发
+        verify(channelDispatcher, never()).dispatch(any());
+    }
+
+    // ============= 主动去重 =============
+
+    @Test
+    void onAlarmTriggered_proactive_dedup_filters_existing_keys() {
+        // 场景: 静默期后重触发 — 1 条通知 DB 已存在, 另一条新建
+        // 应只插入新建的那条 (而非整批因 uk_notif_dedup 丢失)
+        AlarmTriggeredEvent event = new AlarmTriggeredEvent(
+                910L, 10L, 4, "THRESHOLD", "重触发", "超过静默期");
+
+        AlarmDispatchRule rule = buildRule(16L, "SYSTEM,SMS");
+        when(ruleMatcher.matchAlarmRules(10L, "4", "THRESHOLD")).thenReturn(List.of(rule));
+        when(recipientResolver.resolveUserIds(16L)).thenReturn(new HashSet<>(List.of(100L)));
+        when(userService.selectUserById(100L)).thenReturn(buildUser(100L, "0", "user100"));
+
+        // 模拟 SYSTEM 已存在 (首次触发时已落库), SMS 是新渠道
+        AlarmNotification existing = new AlarmNotification();
+        existing.setSourceType("threshold");
+        existing.setSourceId(910L);
+        existing.setRecipientId(100L);
+        existing.setChannel("SYSTEM");
+        when(notificationService.selectByAlarmId(910L)).thenReturn(List.of(existing));
+        when(notificationService.batchCreate(anyList())).thenReturn(1);
+
+        notifier.onAlarmTriggered(event);
+
+        // 应只插入 SMS (SYSTEM 已存在被过滤)
+        ArgumentCaptor<List<AlarmNotification>> captor =
+                ArgumentCaptor.forClass(List.class);
+        verify(notificationService, times(1)).batchCreate(captor.capture());
+        List<AlarmNotification> saved = captor.getValue();
+        assertThat(saved).hasSize(1);
+        assertThat(saved.get(0).getChannel()).isEqualTo("SMS");
+        verify(channelDispatcher, times(1)).dispatch(any());
+    }
+
+    @Test
+    void onAlarmTriggered_all_duplicates_skips_dispatch() {
+        // 场景: 事件重放 — 所有通知 DB 都已存在
+        AlarmTriggeredEvent event = new AlarmTriggeredEvent(
+                911L, 11L, 4, "THRESHOLD", "重放事件", "首次");
+
+        AlarmDispatchRule rule = buildRule(17L, "SYSTEM");
+        when(ruleMatcher.matchAlarmRules(11L, "4", "THRESHOLD")).thenReturn(List.of(rule));
+        when(recipientResolver.resolveUserIds(17L)).thenReturn(new HashSet<>(List.of(200L)));
+        when(userService.selectUserById(200L)).thenReturn(buildUser(200L, "0", "user200"));
+
+        AlarmNotification existing = new AlarmNotification();
+        existing.setSourceType("threshold");
+        existing.setSourceId(911L);
+        existing.setRecipientId(200L);
+        existing.setChannel("SYSTEM");
+        when(notificationService.selectByAlarmId(911L)).thenReturn(List.of(existing));
+
+        notifier.onAlarmTriggered(event);
+
+        // 全重复 → 不落库, 不分发
+        verify(notificationService, never()).batchCreate(anyList());
         verify(channelDispatcher, never()).dispatch(any());
     }
 
