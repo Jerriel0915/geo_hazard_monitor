@@ -27,7 +27,7 @@ import java.util.Optional;
  * <h3>消息处理流程</h3>
  * <ol>
  *   <li><b>设备定位</b>：从连接上下文中取 clientId → 查会话注册中心 → 获取已认证 deviceId（先确认认证）</li>
- *   <li><b>主题过滤</b>：已认证但主题非 sys/v1/** 或 gb/v1/** → 发布 {@link MqttMessageRejectEvent}（异常报文）</li>
+ *   <li><b>主题过滤</b>：已认证但主题不匹配任何已注册的协议前缀 → 发布 {@link MqttMessageRejectEvent}（异常报文）</li>
  *   <li><b>事件发布</b>：发布 {@link MqttMessageReceivedEvent} 供 log 模块异步记录消息日志</li>
  *   <li><b>数据接入</b>：委托 {@link MonitorIngestFacade#ingest} 完成解析+入队，失败时发布 {@link MqttMessageRejectEvent}</li>
  * </ol>

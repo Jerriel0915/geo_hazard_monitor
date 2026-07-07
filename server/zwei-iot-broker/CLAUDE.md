@@ -58,8 +58,8 @@
 
 ### 消息上行
 
-1. 设备 publish 到上行 topic (`sys/v1/...` 或 `gb/v1/...`)
-2. `MqttServerMessageListener` 接收
+1. 设备 publish 到上行 topic（格式 `{sourceType}/v1/{deviceCode}/{sensorCode}/updata`，其中 sourceType 由 `ITopicPatternService` 从解析策略动态获取）
+2. `MqttServerMessageListener` 接收 → 调 `ITopicPatternService.matches()` 校验协议前缀
 3. 发布 `MqttMessageReceivedEvent` (被 `zwei-log.MqttMessageLogService` 消费)
 4. 同时 `MqttDeviceAuthService.hasPublishPermission()` 校验 (deviceCode 一致性)
 5. 通过后入 `MonitorIngestFacade.parse()`, 解析后入 Redis Stream
@@ -132,8 +132,8 @@ A: 1) 检查 clientId/username/password 是不是 `device.auth_username` + `devi
 `device_online_event_log` 的 reason 字段；3) 查 `MqttExceptionReporter` 日志（含 clientId + reason 编码）。
 
 **Q: ACL 规则在哪里配置?**
-A: `MqttServerPublishPermission` (发布) / `MqttServerSubscribeValidator` (订阅) — 设备只能发布到
-`sys|gb/v1/{自己的deviceCode}/...`，不允许的 topic 直接拒绝。
+A: `MqttServerPublishPermission` (发布) / `MqttServerSubscribeValidator` (订阅) — 设备只能发布到自身 deviceCode 对应的主题，
+主题格式由 `ITopicPatternService`（实现于 parser 模块）动态维护，协议前缀来自系统中已启用的解析策略的 `source_type`。
 
 **Q: SSL/TLS 怎么配?**
 A: 在 `application.yml` 的 `mqtt.server.ssl.*` 配置 keystore, mica-mqtt 自动启用。
@@ -161,3 +161,4 @@ A: `MqttAuthFailureGuard` (基于 Redis) — 连续失败 N 次后封禁 M 分�
 |------------------|--------------------------------------------------------------------------------------------------------|
 | 2026-06-10 18:52 | 首次生成模块级 CLAUDE.md (架构师自动扫描)                                                                            |
 | 2026-06-10 19:08 | 增量补扫: 修正路径 `auth/` → `service/MqttDeviceAuthService.java`；新增 10 步鉴权流程、异常体系类图、核心实现类索引、Redis 封禁策略、密码格式正则 |
+| 2026-07-07 | **动态 topic 前缀**: 4 处硬编码 topic 校验 (`MqttServerMessageListener`/`MqttDeviceAuthService`/`MqttServerSubscribeValidator`/`MonitorTopicParser`) 全部替换为 `ITopicPatternService` 动态查检，协议前缀从 `DataParseStrategy.sourceType` 自动派生 |

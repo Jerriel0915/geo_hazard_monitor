@@ -25,7 +25,7 @@ Introduce a cross-module **`ITopicPatternService`** that derives the active topi
 
 ## Design Decisions
 
-- **Reload, not real-time**: prefix list is cached in-memory (AtomicReference), refreshed via `POST /api/v1/iot/parser/topic-patterns/reload`. Chosen for simplicity and zero per-message DB overhead. If real-time is needed later, add a Redis cache layer with TTL.
+- **Reload, not real-time**: prefix list is cached in-memory (AtomicReference). Refreshed automatically on strategy CRUD operations in `DataParseStrategyService`, plus a manual `POST /api/v1/iot/parser/strategy/topic-patterns/reload` endpoint for operational scenarios.
 - **Interface in device module**: follows established convention (`IDeviceSensorQueryService`, `IProductTslService` are already defined in `zwei-iot-device` and consumed by other modules).
 - **Implementation in parser module**: closest to the data source (strategies table).
 - **Pattern derived from sourceType**: since path structure is fixed, the combined regex is `^(sys|gb|hj|...)/v1/([A-Za-z0-9_-]+)/([A-Za-z0-9_-]+)/updata$`, built from the active sourceType set.
@@ -66,6 +66,7 @@ iot_data_parse_strategy (MySQL)
 | File | Module | Change |
 |------|--------|--------|
 | `DataParseController.java` | zwei-iot-parser | Add `POST /topic-patterns/reload` endpoint |
+| `DataParseStrategyService.java` | zwei-iot-parser | Auto-call `topicPatternService.reload()` after create/update/delete/toggle/copy |
 | `MqttServerMessageListener.java` | zwei-iot-broker | L86: `topicPatternService.matches(topic)` replaces hardcoded prefixes |
 | `MqttDeviceAuthService.java` | zwei-iot-broker | Inject `ITopicPatternService`, delete `SYS_TOPIC_PATTERN`/`GB_TOPIC_PATTERN`, refactor `parsePublishTarget()` |
 | `MqttServerSubscribeValidator.java` | zwei-iot-broker | Inject `ITopicPatternService`, delete `TOPIC_PREFIX`/`TOPIC_PATTERN` constants |

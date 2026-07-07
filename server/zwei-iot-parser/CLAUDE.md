@@ -225,3 +225,4 @@ A: `result.properties = xxx` 在 Groovy 中被解析为 `result.setProperty("pro
 | 2026-06-15 | 修复: 沙箱加固 (AST 级 receiver 黑名单) + @PreAuthorize 授权 + bean 名称冲突 |
 | 2026-06-15 | 修复: groovy-json 依赖 + System → builtin.currentTimeMillis() + Map.put() 替代属性赋值 |
 | 2026-06-15 | 重构: enrichProperties() 后置属性富化 — Groovy 脚本产出 value_N → Java 侧映射为真实 attrCode |
+| 2026-07-07 | **动态 topic 前缀注册**: 新增 `ITopicPatternService` 接口 + `TopicPatternServiceImpl` 实现，从 `DataParseStrategy.sourceType` 动态派生 topic 正则；`MonitorTopicParser` 委托给该服务；策略变更自动 reload |

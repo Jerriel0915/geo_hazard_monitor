@@ -22,8 +22,8 @@ import java.util.Optional;
 /**
  * MQTT 订阅权限校验器。
  *
- * <p>拦截设备侧 SUBSCRIBE 请求，仅允许设备订阅所属传感器对应的主题：
- * {@code sys/v1/{deviceCode}/{sensorCode}/updata}。
+ * <p>拦截设备侧 SUBSCRIBE 请求，仅允许设备订阅所属传感器对应的主题。
+ * 主题格式由 {@link ITopicPatternService} 动态校验，支持已注册的全部协议前缀。
  *
  * <h3>校验流程</h3>
  * <ol>
@@ -56,8 +56,8 @@ public class MqttServerSubscribeValidator implements IMqttServerSubscribeValidat
     }
 
     /**
-     * 是否可以订阅
-     * 设备只能订阅主题：sys/v1/{deviceCode}/{sensorCode}/updata
+     * 是否可以订阅。
+     * 通过 {@link ITopicPatternService#resolveTopic} 动态校验主题格式及协议前缀。
      *
      * @param context     ChannelContext
      * @param clientId    客户端 id
