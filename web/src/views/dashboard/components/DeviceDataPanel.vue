@@ -169,32 +169,46 @@ onUnmounted(() => document.removeEventListener('fullscreenchange', onFsChange))
   color: #86909c;
 }
 
-/* ===== 首页监测数据查询条件单行排列 ===== */
+/* ===== 首页监测数据查询条件 — 全部单行排列 ===== */
 :deep(.mde-filters) {
   flex-wrap: nowrap;
   gap: 6px;
   padding: 6px 10px;
 }
 
+/* 传感器多选下拉 */
 :deep(.mde-filters .el-select) {
-  width: 110px !important;
+  width: 130px !important;
 }
 
+/* 指标多选下拉稍宽 */
+:deep(.mde-filters .el-select:nth-child(3)) {
+  width: 150px !important;
+}
+
+/* 日期范围选择器 */
 :deep(.mde-filters .el-date-picker) {
-  width: 210px !important;
+  width: 220px !important;
 }
 
-:deep(.mde-filters .el-button) {
-  padding: 8px 12px;
+/* 降采样按钮宽度 */
+:deep(.mde-filters .el-popover) {
+  width: auto !important;
+}
+
+/* 查询/重置/导出按钮 */
+:deep(.mde-filters > .el-button) {
+  padding: 8px 10px;
   font-size: 13px;
   white-space: nowrap;
 }
 
+/* 图表/表格切换按钮 */
 :deep(.mde-toolbar .el-button) {
-  padding: 4px 8px;
+  padding: 4px 7px;
 }
 
 :deep(.mde-toolbar .el-button--small) {
-  padding: 5px 8px;
+  padding: 5px 7px;
 }
 </style>
