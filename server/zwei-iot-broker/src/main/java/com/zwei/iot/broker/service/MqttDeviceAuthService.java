@@ -15,6 +15,8 @@ import com.zwei.iot.device.domain.Device;
 import com.zwei.iot.device.domain.DeviceAuthLog;
 import com.zwei.iot.device.service.DeviceAuthLogService;
 import com.zwei.iot.device.service.IDeviceAuthQueryService;
+import com.zwei.iot.device.service.ITopicPatternService;
+import com.zwei.iot.device.service.ITopicPatternService.TopicComponents;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
 import net.dreamlu.mica.net.core.Node;
@@ -29,7 +31,6 @@ import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -49,14 +50,6 @@ public class MqttDeviceAuthService {
      * 设备密码固定为 8 位字母数字组合。
      */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^[A-Za-z0-9]{8}$");
-    /**
-     * 平台通用 JSON 上报主题。设备标识使用 deviceCode 与订阅主题保持一致。
-     */
-    private static final Pattern SYS_TOPIC_PATTERN = Pattern.compile("^sys/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,100})/updata$");
-    /**
-     * 国标兼容主题。当前鉴权中心只做 topic 级别准入，不解析报文体。
-     */
-    private static final Pattern GB_TOPIC_PATTERN = Pattern.compile("^gb/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,100})/updata$");
     private static final String PROTOCOL_MQTT = "MQTT";
     private static final int AUTH_STATUS_ENABLED = 1;
     private static final int AUTH_SUCCESS = 1;
@@ -70,6 +63,7 @@ public class MqttDeviceAuthService {
     private final ObjectProvider<MqttServer> mqttServerProvider;
     private final MqttExceptionReporter mqttExceptionReporter;
     private final ApplicationEventPublisher eventPublisher;
+    private final ITopicPatternService topicPatternService;
 
     @Autowired
     public MqttDeviceAuthService(IDeviceAuthQueryService deviceAuthQueryService,
@@ -79,7 +73,8 @@ public class MqttDeviceAuthService {
                                  MqttAuthCenterProperties properties,
                                  ObjectProvider<MqttServer> mqttServerProvider,
                                  MqttExceptionReporter mqttExceptionReporter,
-                                 ApplicationEventPublisher eventPublisher) {
+                                 ApplicationEventPublisher eventPublisher,
+                                 ITopicPatternService topicPatternService) {
         this.deviceAuthQueryService = deviceAuthQueryService;
         this.deviceAuthLogService = deviceAuthLogService;
         this.sessionRegistry = sessionRegistry;
@@ -88,6 +83,7 @@ public class MqttDeviceAuthService {
         this.mqttServerProvider = mqttServerProvider;
         this.mqttExceptionReporter = mqttExceptionReporter;
         this.eventPublisher = eventPublisher;
+        this.topicPatternService = topicPatternService;
     }
 
     /**
@@ -378,15 +374,11 @@ public class MqttDeviceAuthService {
      * @return 解析结果；主题不匹配时返回 {@code null}
      */
     private PublishTarget parsePublishTarget(String topic) {
-        Matcher sysMatcher = SYS_TOPIC_PATTERN.matcher(topic == null ? "" : topic);
-        if (sysMatcher.matches()) {
-            return new PublishTarget(sysMatcher.group("deviceCode"), sysMatcher.group("sensorCode"));
+        TopicComponents c = topicPatternService.resolveTopic(topic);
+        if (c == null) {
+            return null;
         }
-        Matcher gbMatcher = GB_TOPIC_PATTERN.matcher(topic == null ? "" : topic);
-        if (gbMatcher.matches()) {
-            return new PublishTarget(gbMatcher.group("deviceCode"), gbMatcher.group("sensorCode"));
-        }
-        return null;
+        return new PublishTarget(c.deviceCode(), c.sensorCode());
     }
 
     /**
