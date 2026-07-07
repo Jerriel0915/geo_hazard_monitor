@@ -49,6 +49,9 @@ class MqttAuthCenterIntegrationTest {
     @Autowired
     private IDeviceAuthQueryService deviceAuthQueryService;
 
+    @Autowired
+    private ITopicPatternService topicPatternService;
+
     private final ChannelContext channelContext = mock(ChannelContext.class);
 
     private static final String DEVICE_CODE = "DEV001";
@@ -67,6 +70,9 @@ class MqttAuthCenterIntegrationTest {
         device.setProtocolType("MQTT");
         when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(device);
         when(channelContext.getClientNode()).thenReturn(new Node("127.0.0.1", 1883));
+        // stub dynamic topic matching for valid publish
+        when(topicPatternService.resolveTopic(anyString()))
+                .thenReturn(new ITopicPatternService.TopicComponents("sys", DEVICE_CODE, "S01"));
     }
 
     @Test
@@ -136,13 +142,19 @@ class MqttAuthCenterIntegrationTest {
         }
 
         @Bean
+        ITopicPatternService topicPatternService() {
+            return mock(ITopicPatternService.class);
+        }
+
+        @Bean
         MqttDeviceAuthService mqttDeviceAuthService(IDeviceAuthQueryService deviceAuthQueryService,
                                                     DeviceAuthLogService deviceAuthLogService,
                                                     MqttDeviceSessionRegistry registry,
                                                     MqttAuthFailureGuard failureGuard,
                                                     MqttAuthCenterProperties properties,
                                                     MqttServer mqttServer,
-                                                    MqttExceptionReporter mqttExceptionReporter) {
+                                                    MqttExceptionReporter mqttExceptionReporter,
+                                                    ITopicPatternService topicPatternService) {
             return new MqttDeviceAuthService(
                     deviceAuthQueryService,
                     deviceAuthLogService,
@@ -154,7 +166,7 @@ class MqttAuthCenterIntegrationTest {
                     }}.getBeanProvider(MqttServer.class),
                     mqttExceptionReporter,
                     mock(ApplicationEventPublisher.class),
-                    mock(ITopicPatternService.class)
+                    topicPatternService
             );
         }
 

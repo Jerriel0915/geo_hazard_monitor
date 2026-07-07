@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("MqttServerPublishPermission 单元测试")
 class MqttServerPublishPermissionTest {
 
@@ -46,6 +49,9 @@ class MqttServerPublishPermissionTest {
     /**
      * 先构造一个已完成 CONNECT 鉴权的会话，为后续发布准入场景提供统一起点。
      */
+    @Mock
+    private ITopicPatternService topicPatternService;
+
     @BeforeEach
     void setUp() {
         MqttAuthCenterProperties properties = new MqttAuthCenterProperties();
@@ -64,8 +70,13 @@ class MqttServerPublishPermissionTest {
                 beanFactory.getBeanProvider(MqttServer.class),
                 mqttExceptionReporter,
                 mock(ApplicationEventPublisher.class),
-                mock(ITopicPatternService.class)
+                topicPatternService
         );
+        // stub topic pattern resolution: valid topics return components, invalid return null
+        when(topicPatternService.resolveTopic("sys/v1/" + DEVICE_CODE + "/S01/updata"))
+                .thenReturn(new ITopicPatternService.TopicComponents("sys", DEVICE_CODE, "S01"));
+        when(topicPatternService.resolveTopic("sys/v1/OTHER/S01/updata"))
+                .thenReturn(new ITopicPatternService.TopicComponents("sys", "OTHER", "S01"));
         publishPermission = new MqttServerPublishPermission(authService, mqttExceptionReporter);
         when(deviceAuthQueryService.findByAuthUsername("A7K9P2")).thenReturn(buildDevice());
         authService.authenticate(channelContext, "client-1", "client-1", "A7K9P2", "m4T9x2Q8");
