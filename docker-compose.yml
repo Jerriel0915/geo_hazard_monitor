@@ -149,7 +149,7 @@ services:
       IOTDB_USERNAME: ${IOTDB_USERNAME:-root}
       IOTDB_PASSWORD: ${IOTDB_PASSWORD:-root}
       IOTDB_DATABASE: ${IOTDB_DATABASE:-root.geo_hazard}
-      JAVA_OPTS: ${JAVA_OPTS:--Xmx512m -Xms256m -Djava.awt.headless=true -Dfork=true}
+      JAVA_OPTS: ${JAVA_OPTS:--Xmx512m -Xms256m -Djava.awt.headless=true -Dfork=true -Dnetworkaddress.cache.ttl=10 -Dnetworkaddress.cache.negative.ttl=5}
       TZ: Asia/Shanghai
     expose:
       - "8080"
@@ -175,6 +175,9 @@ services:
       retries: 3
       start_period: 60s
     stop_grace_period: 1m
+    dns:
+      - 127.0.0.11   # Docker 嵌入式 DNS（解析容器名如 mysql/redis/iotdb）
+      - 223.5.5.5    # 阿里 DNS 兜底（容器名走 127.0.0.11，外网走 223.5.5.5）
     security_opt:
       - no-new-privileges:true
     logging:
