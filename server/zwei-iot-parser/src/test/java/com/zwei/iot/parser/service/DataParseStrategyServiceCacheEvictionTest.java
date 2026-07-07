@@ -1,5 +1,6 @@
 package com.zwei.iot.parser.service;
 
+import com.zwei.iot.device.service.ITopicPatternService;
 import com.zwei.iot.parser.domain.DataParseStrategy;
 import com.zwei.iot.parser.dto.DataParseStrategyDTO;
 import com.zwei.iot.parser.engine.GroovyScriptEngine;
@@ -27,6 +28,7 @@ class DataParseStrategyServiceCacheEvictionTest {
     private DataParseStrategyVendorMapper vendorMapper;
     private DataParseStrategyDeviceMapper deviceMapper;
     private GroovyScriptEngine scriptEngine;
+    private ITopicPatternService topicPatternService;
 
     @BeforeEach
     void setUp() {
@@ -35,10 +37,12 @@ class DataParseStrategyServiceCacheEvictionTest {
         vendorMapper = mock(DataParseStrategyVendorMapper.class);
         deviceMapper = mock(DataParseStrategyDeviceMapper.class);
         scriptEngine = mock(GroovyScriptEngine.class);
+        topicPatternService = mock(ITopicPatternService.class);
         ReflectionTestUtils.setField(service, "strategyMapper", strategyMapper);
         ReflectionTestUtils.setField(service, "vendorMapper", vendorMapper);
         ReflectionTestUtils.setField(service, "strategyDeviceMapper", deviceMapper);
         ReflectionTestUtils.setField(service, "scriptEngine", scriptEngine);
+        ReflectionTestUtils.setField(service, "topicPatternService", topicPatternService);
     }
 
     @Test

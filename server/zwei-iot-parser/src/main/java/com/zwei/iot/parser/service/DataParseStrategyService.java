@@ -1,6 +1,7 @@
 package com.zwei.iot.parser.service;
 
 import com.zwei.common.exception.ServiceException;
+import com.zwei.iot.device.service.ITopicPatternService;
 import com.zwei.iot.parser.domain.DataParseStrategy;
 import com.zwei.iot.parser.domain.DataParseStrategyDevice;
 import com.zwei.iot.parser.domain.DataParseStrategyVendor;
@@ -31,6 +32,8 @@ public class DataParseStrategyService {
     private DataParseStrategyDeviceMapper strategyDeviceMapper;
     @Resource
     private GroovyScriptEngine scriptEngine;
+    @Resource
+    private ITopicPatternService topicPatternService;
 
     public List<DataParseStrategy> listByPage(DataParseStrategyQueryDTO query) {
         String keyword = null;
@@ -77,6 +80,7 @@ public class DataParseStrategyService {
         BeanUtils.copyProperties(dto, strategy);
         strategyMapper.insert(strategy);
         saveRelations(strategy.getId(), dto);
+        topicPatternService.reload();
         return strategy.getId();
     }
 
@@ -100,6 +104,7 @@ public class DataParseStrategyService {
         saveRelations(dto.getId(), dto);
         // 淘汰脚本编译缓存，确保新脚本立即生效 (B1 修复)
         scriptEngine.evictCache(dto.getId());
+        topicPatternService.reload();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -111,6 +116,7 @@ public class DataParseStrategyService {
         deleteRelations(id);
         strategyMapper.deleteById(id);
         scriptEngine.evictCache(id);
+        topicPatternService.reload();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -123,6 +129,7 @@ public class DataParseStrategyService {
         strategyMapper.updateById(strategy);
         // 启停不改变脚本内容, 但仍淘汰缓存以释放内存 (停用策略无需常驻编译类)
         scriptEngine.evictCache(id);
+        topicPatternService.reload();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -150,6 +157,7 @@ public class DataParseStrategyService {
         saveRelations(copy.getId(), dto);
         // 副本是新策略, 无旧缓存可淘汰; 但若复用了原策略编译类引用会错乱, 主动清一次
         scriptEngine.evictCache(copy.getId());
+        topicPatternService.reload();
         return copy.getId();
     }
 
