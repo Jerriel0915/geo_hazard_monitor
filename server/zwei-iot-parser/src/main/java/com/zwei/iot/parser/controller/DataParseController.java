@@ -8,6 +8,7 @@ import com.zwei.iot.parser.domain.DataParseStrategy;
 import com.zwei.iot.parser.dto.DataParseStrategyDTO;
 import com.zwei.iot.parser.dto.DataParseStrategyQueryDTO;
 import com.zwei.iot.parser.dto.DataParseTestRequest;
+import com.zwei.iot.device.service.ITopicPatternService;
 import com.zwei.iot.parser.engine.GroovyScriptEngine;
 import com.zwei.iot.parser.service.DataParseLogService;
 import com.zwei.iot.parser.service.DataParseStrategyService;
@@ -28,6 +29,8 @@ public class DataParseController extends BaseController {
     private DataParseLogService logService;
     @Resource
     private GroovyScriptEngine scriptEngine;
+    @Resource
+    private ITopicPatternService topicPatternService;
 
     @PreAuthorize("@ss.hasPermi('monitor:parser:list')")
     @GetMapping("/page")
@@ -74,6 +77,13 @@ public class DataParseController extends BaseController {
     @PostMapping("/{id}/copy")
     public AjaxResult copy(@PathVariable Long id) {
         return AjaxResult.success(strategyService.copy(id));
+    }
+
+    @PreAuthorize("@ss.hasPermi('monitor:parser:edit')")
+    @PostMapping("/topic-patterns/reload")
+    public AjaxResult reloadTopicPatterns() {
+        topicPatternService.reload();
+        return AjaxResult.success(topicPatternService.getActiveSourceTypes());
     }
 
     @PreAuthorize("@ss.hasPermi('monitor:parser:test')")
