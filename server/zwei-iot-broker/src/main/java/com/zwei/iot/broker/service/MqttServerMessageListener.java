@@ -5,6 +5,7 @@ import com.zwei.common.event.MqttMessageRejectEvent;
 import com.zwei.common.utils.StringUtils;
 import com.zwei.iot.broker.component.MqttDeviceSessionRegistry;
 import com.zwei.iot.broker.model.MqttDeviceSession;
+import com.zwei.iot.device.service.ITopicPatternService;
 import com.zwei.iot.timeseries.service.MonitorIngestFacade;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.net.core.ChannelContext;
@@ -41,14 +42,17 @@ public class MqttServerMessageListener {
     private final MonitorIngestFacade monitorIngestFacade;
     private final MqttDeviceSessionRegistry sessionRegistry;
     private final ApplicationEventPublisher eventPublisher;
+    private final ITopicPatternService topicPatternService;
 
     @Autowired
     public MqttServerMessageListener(MonitorIngestFacade monitorIngestFacade,
                                      MqttDeviceSessionRegistry sessionRegistry,
-                                     ApplicationEventPublisher eventPublisher) {
+                                     ApplicationEventPublisher eventPublisher,
+                                     ITopicPatternService topicPatternService) {
         this.monitorIngestFacade = monitorIngestFacade;
         this.sessionRegistry = sessionRegistry;
         this.eventPublisher = eventPublisher;
+        this.topicPatternService = topicPatternService;
     }
 
     /**
@@ -83,9 +87,9 @@ public class MqttServerMessageListener {
         long receiveTime = System.currentTimeMillis();
         log.debug("收到监测主题消息 clientNode={}, topic={}", sanitize(String.valueOf(clientNode)), sanitize(topic));
         // 已认证但主题不匹配监测协议 → 记录异常报文（不进入数据日志）
-        if (topic == null || (!topic.startsWith("sys/v1/") && !topic.startsWith("gb/v1/"))) {
+        if (topic == null || !topicPatternService.matches(topic)) {
             publishReject(clientId, username, deviceId, topic, message, receiveTime,
-                    "TOPIC", "主题不匹配监测协议前缀 (sys/v1/ 或 gb/v1/)", null);
+                    "TOPIC", "主题不匹配任何已注册的协议前缀", null);
             return;
         }
         eventPublisher.publishEvent(new MqttMessageReceivedEvent(
