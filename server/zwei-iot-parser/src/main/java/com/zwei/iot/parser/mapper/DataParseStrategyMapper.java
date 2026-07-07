@@ -14,6 +14,8 @@ public interface DataParseStrategyMapper {
                                               @Param("appScope") String appScope);
     List<DataParseStrategy> selectBySourceType(String sourceType);
     List<DataParseStrategy> selectEnabled();
+    /** 获取所有启用的策略的协议标识符（去重），用于构建动态 topic 匹配正则 */
+    List<String> selectDistinctSourceTypes();
     int insert(DataParseStrategy strategy);
     int updateById(DataParseStrategy strategy);
     int deleteById(Long id);

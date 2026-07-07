@@ -96,4 +96,9 @@
         <if test="id != null">AND id != #{id}</if>
         LIMIT 1
     </select>
+
+    <select id="selectDistinctSourceTypes" resultType="java.lang.String">
+        SELECT DISTINCT source_type FROM iot_data_parse_strategy
+        WHERE status = 1 AND del_flag = 0 AND source_type IS NOT NULL
+    </select>
 </mapper>
