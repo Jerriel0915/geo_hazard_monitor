@@ -8,12 +8,45 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+/**
+ * Groovy 脚本内置函数库。
+ *
+ * <h3>注入机制</h3>
+ * <p>本类的单例实例通过 Groovy {@link groovy.lang.Binding} 以 {@code builtin} 变量名注入到
+ * 每个解析脚本的执行上下文中。脚本中直接调用 {@code builtin.hexDecode(...)} /
+ * {@code builtin.readFloat(...)} 等方法，无需 import。
+ *
+ * <h3>设计约束</h3>
+ * <ul>
+ *   <li>所有方法必须无副作用——解析脚本可能并发执行，静态方法或实例方法的内部状态
+ *       必须线程安全。</li>
+ *   <li>不暴露任何 Java 标准库敏感能力（无文件 IO、无网络、无反射、无进程控制）。</li>
+ *   <li>二进制读取原语均为 <b>大端序（big-endian / network byte order）</b>，
+ *       这是国标协议及大多数工控协议的默认字节序。</li>
+ * </ul>
+ *
+ * <h3>方法分类</h3>
+ * <table>
+ *   <caption>API 概览</caption>
+ *   <tr><th>类别</th><th>方法</th><th>说明</th></tr>
+ *   <tr><td>二进制解码</td><td>{@link #hexDecode}</td><td>hex 字符串 → byte[]</td></tr>
+ *   <tr><td>二进制读取</td><td>{@link #readFloat}, {@link #readDouble}, {@link #readUInt16}, {@link #readInt16}, {@link #readUInt8}</td><td>大端序基本类型读取</td></tr>
+ *   <tr><td>二进制读取</td><td>{@link #readAscii}</td><td>定长 ASCII 字符串</td></tr>
+ *   <tr><td>时间</td><td>{@link #readBcdTimestamp}, {@link #currentTimeMillis}</td><td>BCD 时间戳 + 当前时间</td></tr>
+ *   <tr><td>工具</td><td>{@link #sha256}, {@link #toDouble}, {@link #toInt}</td><td>哈希 + 类型安全转换</td></tr>
+ * </table>
+ */
 @Component
 public class BuiltInFunctions {
 
     private static final Logger log = LoggerFactory.getLogger(BuiltInFunctions.class);
 
-    /** hex string → byte[] */
+    /**
+     * hex 字符串 → byte[]。
+     *
+     * <p>典型用法：国标协议报文通常以十六进制字符串传输，
+     * 脚本需先 hex 解码再逐字段用 read* 系列方法解析。
+     */
     public byte[] hexDecode(String hex) {
         int len = hex.length();
         byte[] data = new byte[len / 2];
@@ -72,7 +105,18 @@ public class BuiltInFunctions {
         return new String(data, offset, length, StandardCharsets.US_ASCII);
     }
 
-    /** BCD-encoded timestamp (7 bytes: YY MM DD HH MM SS) → epoch millis */
+    /**
+     * BCD 编码时间戳 (7 bytes) → epoch millis。
+     *
+     * <p>BCD (Binary-Coded Decimal) 每字节高 4 位=十位、低 4 位=个位。
+     * 7 字节布局：
+     * <pre>
+     * [year_hundreds|year_tens] [year_ones|month] [day] [hour] [minute] [second]
+     *   例: 0x20 0x26 0x06 0x18 0x14 0x30 0x00 → 2026-06-18 14:30:00
+     * </pre>
+     *
+     * <p>使用系统默认时区转换为 epoch millis。解析失败时回退到当前时间。
+     */
     public long readBcdTimestamp(byte[] data, int offset) {
         checkBounds(data, offset, 7);
         try {
@@ -90,6 +134,13 @@ public class BuiltInFunctions {
         }
     }
 
+    /**
+     * 边界检查——所有二进制读取的前置校验。
+     *
+     * <p>在真正读取字节前拦截越界访问，抛出清晰的
+     * {@link IllegalArgumentException} 而非让 Groovy 侧收到晦涩的
+     * {@link ArrayIndexOutOfBoundsException}。
+     */
     private void checkBounds(byte[] data, int offset, int length) {
         if (data == null) {
             throw new IllegalArgumentException("data array is null");
