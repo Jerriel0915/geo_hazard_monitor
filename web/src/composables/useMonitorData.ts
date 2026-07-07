@@ -524,6 +524,8 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       color: CHART_COLORS,
       tooltip: {
         trigger: 'axis' as const,
+        confine: true,
+        textStyle: { fontSize: 11 },
         valueFormatter: (value: unknown) => {
           if (value == null) return ''
           const n = Number(Number(value).toFixed(2))
@@ -531,26 +533,29 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         },
       },
       legend: {
-        top: 0,
+        bottom: 2,
         left: 'center',
-        textStyle: { fontSize: 13, fontWeight: 500 },
-        itemWidth: 12,
-        itemHeight: 12,
-        itemGap: 16,
+        padding: [8, 0, 0, 0],
+        textStyle: { fontSize: 10, fontWeight: 500 },
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 10,
       },
       grid: {
         borderColor: '#e7e7e7',
-        top: 50,
+        top: 12,
         right: 20,
-        bottom: 60,
+        bottom: 90,
         left: 20,
       },
       xAxis: {
         type: 'category' as const,
         data: xCategories.map(formatXLabel),
         name: '时间',
+        nameLocation: 'center',
+        nameGap: 25,
         nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#374151' },
-        axisLabel: { rotate: 30, fontSize: 11, color: '#6b7280', hideOverlap: true, interval: 'auto' },
+        axisLabel: { rotate: 35, fontSize: 10, color: '#6b7280', hideOverlap: true, interval: 'auto', width: 60, overflow: 'truncate' },
         axisLine: { lineStyle: { color: '#d9d9d9' } },
       },
       yAxis: {
@@ -558,7 +563,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         name: hasUnit ? `数值 (${unit})` : '数值',
         nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#374151' },
         axisLabel: {
-          fontSize: 11,
+          fontSize: 10,
           color: '#6b7280',
           formatter: (val: number) => (val != null ? Number(val.toFixed(2)).toString() : ''),
         },
@@ -566,7 +571,7 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
       },
       dataZoom: [
         { type: 'inside', xAxisIndex: 0 },
-        { type: 'slider', xAxisIndex: 0, bottom: 10, height: 20 },
+        { type: 'slider', xAxisIndex: 0, bottom: 20, height: 18 },
       ],
       toolbox: {
         feature: {
@@ -576,29 +581,35 @@ export function useMonitorData(opts: UseMonitorDataOptions) {
         },
         right: 10,
       },
-      series: seriesData.map((s) => ({
-        name: s.seriesName,
-        type: 'line' as const,
-        data: xCategories.map((cat) => {
-          const idx = s.labels.indexOf(cat)
-          return idx !== -1 ? s.values[idx] : null
-        }),
-        smooth: true,
-        symbol: 'none' as const,
-        sampling: 'lttb' as const,
-        large: true as const,
-        largeThreshold: 2000,
-        progressive: 400,
-        areaStyle: {
-          color: {
-            type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(59,130,246,0.2)' },
-              { offset: 1, color: 'rgba(59,130,246,0.01)' },
-            ],
+      series: seriesData.map((s, i) => {
+        const seriesColor = CHART_COLORS[i % CHART_COLORS.length]
+        const r = parseInt(seriesColor.slice(1, 3), 16)
+        const g = parseInt(seriesColor.slice(3, 5), 16)
+        const b = parseInt(seriesColor.slice(5, 7), 16)
+        return {
+          name: s.seriesName,
+          type: 'line' as const,
+          data: xCategories.map((cat) => {
+            const idx = s.labels.indexOf(cat)
+            return idx !== -1 ? s.values[idx] : null
+          }),
+          smooth: true,
+          symbol: 'none' as const,
+          sampling: 'lttb' as const,
+          large: true as const,
+          largeThreshold: 2000,
+          progressive: 400,
+          areaStyle: {
+            color: {
+              type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: `rgba(${r},${g},${b},0.2)` },
+                { offset: 1, color: `rgba(${r},${g},${b},0.01)` },
+              ],
+            },
           },
-        },
-      })),
+        }
+      }),
     }
   }
 
