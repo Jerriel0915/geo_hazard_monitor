@@ -21,6 +21,7 @@
           :hazard-point-name="hazardPointName"
           :show-device="false"
           :initial-device-id="device.id"
+          time-type="daterange"
           fill-container
         />
         <div v-else class="empty-state">
@@ -142,5 +143,34 @@ const emit = defineEmits<{
 .empty-text {
   font-size: 13px;
   color: #86909c;
+}
+
+/* ===== 首页监测数据查询条件单行排列 ===== */
+:deep(.mde-filters) {
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 6px 10px;
+}
+
+:deep(.mde-filters .el-select) {
+  width: 110px !important;
+}
+
+:deep(.mde-filters .el-date-picker) {
+  width: 210px !important;
+}
+
+:deep(.mde-filters .el-button) {
+  padding: 8px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+:deep(.mde-toolbar .el-button) {
+  padding: 4px 8px;
+}
+
+:deep(.mde-toolbar .el-button--small) {
+  padding: 5px 8px;
 }
 </style>

@@ -264,11 +264,22 @@ const formatCoord = (lng?: number | null, lat?: number | null) => {
 }
 
 const copyPwd = async (pwd: string) => {
+  if (!navigator.clipboard) {
+    ElMessage.warning('当前浏览器不支持剪贴板功能，请手动复制')
+    return
+  }
+
   try {
     await navigator.clipboard.writeText(pwd)
     ElMessage.success('密码已复制')
-  } catch {
-    ElMessage.warning('复制失败，请手动复制')
+  } catch (err: any) {
+    if (err instanceof DOMException && err.name === 'NotAllowedError') {
+      ElMessage.warning('浏览器剪贴板权限不足，请在浏览器设置中允许剪贴板访问权限')
+    } else if (!window.isSecureContext) {
+      ElMessage.warning('当前页面未使用HTTPS，无法自动复制，请手动复制')
+    } else {
+      ElMessage.warning('复制失败，请手动复制')
+    }
   }
 }
 </script>

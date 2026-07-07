@@ -64,13 +64,13 @@
 
       <el-date-picker
         v-model="filter.timeRange"
-        type="datetimerange"
+        :type="timeType"
         range-separator="至"
         start-placeholder="开始时间"
         end-placeholder="结束时间"
-        format="YYYY-MM-DD HH:mm:ss"
-        value-format="YYYY-MM-DD HH:mm:ss"
-        style="width: 360px"
+        :format="timeType === 'daterange' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm:ss'"
+        :value-format="timeType === 'daterange' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm:ss'"
+        :style="{ width: timeType === 'daterange' ? '240px' : '360px' }"
       />
 
       <el-popover placement="bottom" :width="220" trigger="click">
@@ -212,6 +212,8 @@ const props = withDefaults(defineProps<{
    * 默认 false：保留 400px 固定高度，兼容 el-dialog/标签页 等无确定高度的滚动容器。
    */
   fillContainer?: boolean
+  /** 时间选择器类型：daterange（到日）/ datetimerange（到秒） */
+  timeType?: 'daterange' | 'datetimerange' | 'monthrange' | 'yearrange'
 }>(), {
   showDevice: true,
   showSensor: true,
@@ -222,6 +224,7 @@ const props = withDefaults(defineProps<{
   enableTrend: false,
   initialMode: 'chart',
   fillContainer: false,
+  timeType: 'datetimerange',
 })
 
 const emit = defineEmits<{
