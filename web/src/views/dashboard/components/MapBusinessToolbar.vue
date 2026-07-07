@@ -89,6 +89,8 @@ const props = defineProps<{
   layoutDialogVisible: boolean
   rightPanelCollapsed: boolean
   groups: { id: number; name: string }[]
+  hazardPointStatuses: { key: string; label: string }[]
+  deviceStatuses: { key: string; label: string }[]
 }>()
 
 const emit = defineEmits<{
@@ -114,24 +116,25 @@ const treeData = computed(() => [
     ]
   },
   {
-    id: 'hazard-groups', label: '隐患点分组', children: props.groups.map(g => ({ id: `group_${g.id}`, label: g.name }))
+    id: 'hazard-status', label: '隐患点状态', children: props.hazardPointStatuses.map(hs => ({ id: `hstatus_${hs.key}`, label: hs.label }))
   },
   {
-    id: 'hazard-status', label: '隐患点状态', children: [
-      { id: 'showMonitoring', label: '监测中' },
-      { id: 'showStopped', label: '停测' },
-      { id: 'showCompleted', label: '完结' },
-    ]
+    id: 'device-status', label: '设备状态', children: props.deviceStatuses.map(ds => ({ id: `dstatus_${ds.key}`, label: ds.label }))
   }
 ])
 
-const expandedKeys = ['tile-layers', 'hazard-groups', 'hazard-status']
+const expandedKeys = ['tile-layers', 'hazard-status', 'device-status']
 
 const defaultCheckedKeys = computed(() => {
   const keys = ['showLabels']
-  // All groups checked by default
-  props.groups.forEach(g => keys.push(`group_${g.id}`))
-  keys.push('showMonitoring')
+  // 隐患点：默认仅勾选"监测中"
+  props.hazardPointStatuses
+    .filter(hs => hs.key !== 'stopped' && hs.key !== 'completed')
+    .forEach(hs => keys.push(`hstatus_${hs.key}`))
+  // 设备：默认取消"停用"
+  props.deviceStatuses
+    .filter(ds => ds.key !== 'stopped')
+    .forEach(ds => keys.push(`dstatus_${ds.key}`))
   return keys
 })
 
@@ -177,13 +180,17 @@ const onTreeCheck = () => {
   emit('toggleLayers', keys)
 }
 
-// Sync tree checked state when groups load asynchronously
-watch(() => props.groups, () => {
+// Sync tree checked state when data loads asynchronously
+watch([() => props.hazardPointStatuses, () => props.deviceStatuses], () => {
   if (treeRef.value) {
     nextTick(() => {
       const keys = ['showLabels']
-      props.groups.forEach(g => keys.push(`group_${g.id}`))
-      keys.push('showMonitoring')
+      props.hazardPointStatuses
+        .filter(hs => hs.key !== 'stopped' && hs.key !== 'completed')
+        .forEach(hs => keys.push(`hstatus_${hs.key}`))
+      props.deviceStatuses
+        .filter(ds => ds.key !== 'stopped')
+        .forEach(ds => keys.push(`dstatus_${ds.key}`))
       treeRef.value!.setCheckedKeys(keys, true)
     })
   }

@@ -70,6 +70,16 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     }
 
     @Override
+    public List<Map<String, Object>> countOnlineDevicesByMonitorType() {
+        return deviceMapper.countOnlineByMonitorType();
+    }
+
+    @Override
+    public List<Map<String, Object>> countActiveDevicesByMonitorType(int windowMinutes) {
+        return deviceMapper.countActiveByMonitorType(windowMinutes);
+    }
+
+    @Override
     public int countAllSensors() {
         return deviceSensorMapper.countAll();
     }
@@ -82,6 +92,16 @@ public class DeviceStatServiceImpl implements IDeviceStatService {
     @Override
     public List<Map<String, Object>> countSensorsByMonitorType() {
         return deviceSensorMapper.countByMonitorType();
+    }
+
+    @Override
+    public List<Map<String, Object>> countOnlineSensorsByMonitorType() {
+        return deviceSensorMapper.countOnlineByMonitorType();
+    }
+
+    @Override
+    public List<Map<String, Object>> countActiveSensorsByMonitorType(int windowMinutes) {
+        return deviceSensorMapper.countActiveByMonitorType(windowMinutes);
     }
 
     @Override

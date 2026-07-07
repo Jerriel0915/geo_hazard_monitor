@@ -83,17 +83,26 @@ public class SysNoticeReadServiceImpl implements ISysNoticeReadService
     }
 
     @Override
-    public List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize)
+    public List<SysNotice> selectNoticePage(Long userId, int pageNum, int pageSize, String status, String readFilter)
     {
         int safePage = Math.max(1, pageNum);
         int safeSize = Math.max(1, Math.min(pageSize, 50));
         int offset = (safePage - 1) * safeSize;
-        return noticeReadMapper.selectNoticePageWithReadStatus(userId, offset, safeSize);
+        return noticeReadMapper.selectNoticePageWithReadStatus(userId, offset, safeSize, status, readFilter);
     }
 
     @Override
-    public int selectNoticeCount()
+    public int selectNoticeCount(String status, String readFilter)
     {
-        return noticeReadMapper.selectNoticeCountWithReadStatus(null);
+        return noticeReadMapper.selectNoticeCountWithReadStatus(null, status, readFilter);
+    }
+
+    /**
+     * 标记当前用户所有未读的当前公告(status=0)为已读。
+     */
+    @Override
+    public void markAllReadForUser(Long userId)
+    {
+        noticeReadMapper.insertAllUnreadForUser(userId);
     }
 }

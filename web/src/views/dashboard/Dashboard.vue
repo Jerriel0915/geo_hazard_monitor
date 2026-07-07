@@ -56,8 +56,8 @@
         <div v-else class="panel-content">
           <HealthWidget v-if="isWidgetOnLeft('systemHealth')" :health-stats="healthStats" />
           <ResourceWidget v-if="isWidgetOnLeft('assetInfo')" :resource-stats="resourceStats" />
-          <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" />
-          <DeviceStatusWidget v-if="isWidgetOnLeft('deviceStatus')" :stats="deviceStatusStats" :trend-data="deviceOnlineTrend" />
+          <AlarmWidget v-if="isWidgetOnLeft('alarmStatus')" :alarm-stats="alarmStats" @alarm-click="handleAlarmClick" />
+          <DeviceStatusWidget v-if="isWidgetOnLeft('deviceStatus')" :stats="deviceStatusStats" :trend-data="deviceOnlineTrend" :trend-labels="deviceOnlineTrendLabels" />
         </div>
       </div>
     </div>
@@ -72,6 +72,8 @@
       :layout-dialog-visible="showLayoutDialog"
       :right-panel-collapsed="isRightPanelCollapsed || !hasRightContent"
       :groups="hazardPointGroups"
+      :hazard-point-statuses="hazardPointStatusOptions"
+      :device-statuses="deviceStatusOptions"
       @select-hazard-point="enterHazardView"
       @toggle-layers="handleLayerToggle"
       @open-layout-config="showLayoutDialog = true"
@@ -117,6 +119,7 @@ import { getBoundDevices, getHazardPointDetail, getHazardPointGroups, getHazardP
 import { getDashboardFull } from '@/api/monitor'
 import { getMonitorTypeList, type MonitorTypeItem } from '@/api/monitorType'
 import { getAlarmLevelStats, getAlarmOverview, getPendingAlarms, type AlarmRecordItem } from '@/api/alarm'
+import { getAlarmNotificationPage } from '@/api/alarmNotification'
 import { getFocusArea } from '@/api/system'
 import { buildTiandituUrl } from '@/composables/useLeafletMap'
 import { deserialize, type BoundaryCoords } from '@/lib/boundaryCoords'
@@ -126,6 +129,7 @@ import 'cn-fontsource-ding-talk-jin-bu-ti-regular/font.css'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
 import AlarmWidget from './components/AlarmWidget.vue'
 import DeviceDataPanel from './components/DeviceDataPanel.vue'
 import DeviceStatusWidget from './components/DeviceStatusWidget.vue'
@@ -137,6 +141,8 @@ import MapAuxiliaryBar from './components/MapAuxiliaryBar.vue'
 import MapBusinessToolbar from './components/MapBusinessToolbar.vue'
 import ResourceWidget from './components/ResourceWidget.vue'
 import { LAYER_OPTIONS as layerOptions } from './composables/useDashboardMap'
+
+const router = useRouter()
 
 const mapContainer = ref<HTMLDivElement | null>(null)
 let mapInstance: L.Map | null = null
@@ -183,6 +189,7 @@ const deviceStatusStats = ref({
   typeStats: [] as { name: string; online: number; total: number }[]
 })
 const deviceOnlineTrend = ref<number[]>([])
+const deviceOnlineTrendLabels = ref<string[]>([])
 
 const isRightPanelCollapsed = ref(false)
 
@@ -244,6 +251,19 @@ const devicePanelRightOffset = computed(() => {
 })
 const showSensorChart = ref(false)
 const sensorChartData = ref<number[]>([])
+
+// 图层控制面板选项
+const hazardPointStatusOptions = [
+  { key: 'monitoring', label: '监测中' },
+  { key: 'stopped', label: '停测' },
+  { key: 'completed', label: '完结' },
+]
+const deviceStatusOptions = [
+  { key: 'normal', label: '正常' },
+  { key: 'offline', label: '离线' },
+  { key: 'repair', label: '维修' },
+  { key: 'stopped', label: '停用' },
+]
 
 // 蒙层显示状态
 const showMaskLayer = ref(true)
@@ -344,7 +364,7 @@ const fitToFocusArea = () => {
   mapInstance.setView([30.67, 104.06], 12)
 }
 
-/** 将地图视角聚焦到隐患点：有边界范围则 fitBounds，否则以点为中心放大到21级 */
+/** 将地图视角聚焦到隐患点：有边界范围则 fitBounds，否则按 500m 半径包围盒填充屏幕 */
 const focusOnHazardPoint = (point: any) => {
   if (!mapInstance) return
   const bc = point.boundaryCoords
@@ -353,14 +373,16 @@ const focusOnHazardPoint = (point: any) => {
       const obj = typeof bc === 'string' ? JSON.parse(bc) : bc
       if (obj.polygon && obj.polygon.length > 0) {
         const polygon = L.polygon(obj.polygon as any)
-        mapInstance.fitBounds(polygon.getBounds(), {padding: [30, 30], animate: false, maxZoom: 21})
+        mapInstance.fitBounds(polygon.getBounds(), {padding: [30, 30], animate: false, maxZoom: 20})
         return
       }
     } catch {
-      // 解析失败，fallback 到 setView
+      // 解析失败，fallback 到包围盒估算
     }
   }
-  mapInstance.setView([point.latitude, point.longitude], 21)
+  // 无边界坐标：以隐患点为中心，构建 500m 半径包围盒，尽量占满屏幕
+  const center = L.latLng(point.latitude, point.longitude)
+  mapInstance.fitBounds(center.toBounds(500), {padding: [30, 30], animate: false, maxZoom: 20})
 }
 
 const addFocusBoundary = () => {
@@ -752,34 +774,44 @@ const handleLayerToggle = (activeKeys: string[]) => {
 }
 
 const filterMarkers = (keySet: Set<string>) => {
-  // 提取活跃分组 ID
-  const activeGroups = new Set<number>()
+  // 提取活跃隐患点状态
+  const activeHstatuses = new Set<string>()
+  // 提取活跃设备状态
+  const activeDstatuses = new Set<string>()
   for (const key of keySet) {
-    if (key.startsWith('group_')) {
-      activeGroups.add(Number(key.slice(6)))
-    }
+    if (key.startsWith('hstatus_')) activeHstatuses.add(key.slice(8))
+    if (key.startsWith('dstatus_')) activeDstatuses.add(key.slice(8))
   }
 
-  // 提取活跃状态
-  const activeStatuses = new Set<string>()
-  if (keySet.has('showMonitoring')) activeStatuses.add('MONITORING')
-  if (keySet.has('showStopped')) activeStatuses.add('PAUSED')
-  if (keySet.has('showCompleted')) activeStatuses.add('COMPLETED')
-
-  const hasGroups = activeGroups.size > 0
-  const hasStatuses = activeStatuses.size > 0
-
+  // sortedKeys=空 → 用户取消全部勾选 → hide all；有值 → 仅显示匹配
+  const hpStatusMap: Record<string, string> = {
+    monitoring: 'MONITORING',
+    stopped: 'PAUSED',
+    completed: 'COMPLETED',
+  }
   hazardMarkerMap.forEach((marker, pointId) => {
     const data = hazardPointDataMap.get(pointId)
     if (!data) return
-
-    const groupOk = !hasGroups || activeGroups.has(data.groupId)
-    const statusOk = !hasStatuses || activeStatuses.has(data.status)
-    const visible = groupOk && statusOk
-
+    const hpStatus = data.status
+    const hstatusOk = activeHstatuses.size > 0
+      ? [...activeHstatuses].some(key => hpStatusMap[key] === hpStatus)
+      : false
     const el = marker.getElement()
-    if (el) el.style.display = visible ? '' : 'none'
+    if (el) el.style.display = hstatusOk ? '' : 'none'
   })
+
+  // 设备标记按设备状态过滤（全部取消 → 全部隐藏）
+  if (hazardMarkerLayer) {
+    hazardMarkerLayer.eachLayer((layer: any) => {
+      const dev = (layer as any)._device
+      if (!dev) return
+      const dstatusOk = activeDstatuses.size > 0
+        ? activeDstatuses.has(dev.dstatusKey)
+        : false
+      const el = layer.getElement?.()
+      if (el) el.style.display = dstatusOk ? '' : 'none'
+    })
+  }
 }
 
 const refreshHazardMarkers = () => {
@@ -965,6 +997,7 @@ const addDeviceMarkers = async (hazardId: number) => {
         name: item.deviceName || '未知设备',
         type: (item.sensors?.[0]?.name || 'DEVICE').toUpperCase(),
         typeName: item.sensors?.[0]?.name || '设备',
+        monitorTypeId: item.sensors?.[0]?.monitorTypeId ?? 0,
         icon: item.icon,
         iconPath: item.iconPath,
         status: item.deviceStatus ?? null,
@@ -983,7 +1016,15 @@ const addDeviceMarkers = async (hazardId: number) => {
         })
         const marker = L.marker([device.latitude, device.longitude], {icon})
             .addTo(hazardMarkerLayer!)
-            .bindPopup(`<div class="hpv2-card">
+        // 存储过滤元数据：monitorTypeId + 设备状态 key
+        const dstatusKey = device.status === 2 ? 'repair'
+          : device.status === 3 ? 'stopped'
+          : device.onlineStatus === 0 ? 'offline'
+          : 'normal'
+        ;(marker as any)._device = { monitorTypeId: device.monitorTypeId, dstatusKey }
+        // hover 展示弹窗
+        marker.on('mouseover', () => {
+          marker.bindPopup(`<div class="hpv2-card">
             <div class="hpv2-header"><span class="hpv2-title">${device.name}</span></div>
             <div class="hpv2-dash"></div>
             <div class="hpv2-body">
@@ -999,7 +1040,19 @@ const addDeviceMarkers = async (hazardId: number) => {
                 <div class="hpv2-cell full"><span class="hpv2-label">状态</span><span class="hpv2-val">${getStatusText(device.status)}</span></div>
               </div>
             </div>
-          </div>`)
+          </div>`).openPopup()
+        })
+        marker.on('mouseout', () => {
+          marker.unbindPopup()
+        })
+        // 点击图钉：切换下方数据面板（再次点击同一设备则关闭）
+        marker.on('click', () => {
+          if (selectedDevice.value?.id === device.id) {
+            selectedDevice.value = null
+          } else {
+            selectedDevice.value = device as typeof deviceList.value[0]
+          }
+        })
       })
     }
   } catch (error) {
@@ -1082,7 +1135,8 @@ const addLayer = (layerId: string) => {
   }
 
   baseLayer = L.tileLayer(buildTiandituUrl(layer.baseUrl, layer.baseLayer), {
-    maxZoom: 18,
+    maxZoom: 20,
+    maxNativeZoom: 18,
     minZoom: 1
   }).addTo(mapInstance)
 
@@ -1102,7 +1156,8 @@ const addLabelOverlay = () => {
   }
 
   labelLayer = L.tileLayer(buildTiandituUrl(layer.labelUrl, layer.labelLayer), {
-    maxZoom: 18,
+    maxZoom: 20,
+    maxNativeZoom: 18,
     minZoom: 1
   }).addTo(mapInstance)
 }
@@ -1156,8 +1211,12 @@ const loadHazardPointGroups = async () => {
       // 同步默认图层选中状态（与 MapBusinessToolbar 的 defaultCheckedKeys 一致）
       if (activeLayerKeys.value.length === 0) {
         const keys = ['showLabels']
-        response.data.forEach((g: any) => keys.push(`group_${g.id}`))
-        keys.push('showMonitoring')
+        hazardPointStatusOptions
+          .filter(hs => hs.key !== 'stopped' && hs.key !== 'completed')
+          .forEach(hs => keys.push(`hstatus_${hs.key}`))
+        deviceStatusOptions
+          .filter(ds => ds.key !== 'stopped')
+          .forEach(ds => keys.push(`dstatus_${ds.key}`))
         activeLayerKeys.value = keys
       }
     }
@@ -1227,6 +1286,13 @@ const loadDashboardData = async () => {
           total: t.total
         })) ?? []
       }
+      // 历史在线趋势：按监测类型的在线率作为数据点
+      const types = (dor.byType ?? []).slice(0, 7)
+      deviceOnlineTrend.value = types.map(t => t.onlineRate ?? 0)
+      deviceOnlineTrendLabels.value = types.map(t => {
+        const n = t.monitorTypeName ?? ''
+        return n.length > 4 ? n.slice(0, 4) + '…' : n
+      })
     }
 
     // ---- AlarmWidget (system-wide) ----
@@ -1269,8 +1335,40 @@ const loadDashboardData = async () => {
         time: a.lastTriggerTime
       }))
     }
+    // 实时告警事件：接入通知中心事件数据
+    fetchRecentAlarmNotifications()
   } catch (e) {
     console.error('加载仪表盘统计失败:', e)
+  }
+}
+
+/** 从通知中心获取最新未读事件，接入"实时告警事件"列表 */
+async function fetchRecentAlarmNotifications() {
+  try {
+    const res = await getAlarmNotificationPage(1, 10, 'unread')
+    const items = res.data ?? []
+    if (items.length === 0) return
+    const notifItems = items.map(item => ({
+      id: item.id,
+      level: item.sourceType === 'offline' ? 'info' : 'critical',
+      title: item.title ?? '',
+      source: item.sourceType === 'offline' ? '设备离线' : '告警通知',
+      time: item.createTime ?? '',
+      sourceType: item.sourceType,
+      sourceId: item.sourceId
+    }))
+    alarmStats.value.recentAlarms = [...notifItems, ...alarmStats.value.recentAlarms]
+  } catch {
+    // 通知中心接口失败时保留已有数据
+  }
+}
+
+/** 点击告警事件：跳转到对应详情页 */
+function handleAlarmClick(alarm: { sourceType?: string; sourceId?: number }) {
+  if (alarm.sourceType === 'offline') {
+    router.push({ path: '/basic/device', query: alarm.sourceId ? { deviceId: String(alarm.sourceId) } : {} })
+  } else {
+    router.push({ path: '/alarm/realtime', query: alarm.sourceId ? { alarmId: String(alarm.sourceId) } : {} })
   }
 }
 
@@ -1303,7 +1401,7 @@ const loadFocusArea = async () => {
             if (t === 'LineString') return {color: borderColor, weight: borderWeight, dashArray: dash}
             return {color: borderColor, weight: showMaskLayer.value ? 2 : 0}
           }
-        }).addTo(mapInstance).bindPopup('系统关注区域')
+        }).addTo(mapInstance)
         addMaskLayer()
         fitToFocusArea()
       }

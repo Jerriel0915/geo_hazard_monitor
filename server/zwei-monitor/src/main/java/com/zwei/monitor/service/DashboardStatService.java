@@ -106,8 +106,25 @@ public class DashboardStatService {
         vo.setOnline(online);
         vo.setOffline(total - online);
         vo.setOnlineRate(total > 0 ? Math.round(online * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceStatService.countDevicesByMonitorType(), total, online));
+        vo.setByType(buildOnlineTypeStats(deviceStatService.countOnlineDevicesByMonitorType()));
         return vo;
+    }
+
+    /** 使用真实在线数构建按监测类型分组的统计 */
+    private List<RateByTypeVO.TypeStat> buildOnlineTypeStats(List<Map<String, Object>> typeRows) {
+        return typeRows.stream().map(row -> {
+            RateByTypeVO.TypeStat ts = new RateByTypeVO.TypeStat();
+            ts.setMonitorTypeId(((Number) row.get("monitorTypeId")).longValue());
+            ts.setMonitorTypeName((String) row.get("monitorTypeName"));
+            ts.setSortOrder(((Number) row.getOrDefault("sortOrder", 999)).intValue());
+            int cnt = ((Number) row.get("total")).intValue();
+            int typeOnline = ((Number) row.get("online")).intValue();
+            ts.setTotal(cnt);
+            ts.setOnline(typeOnline);
+            ts.setOffline(cnt - typeOnline);
+            ts.setOnlineRate(cnt > 0 ? Math.round(typeOnline * 10000.0 / cnt) / 100.0 : 0);
+            return ts;
+        }).collect(Collectors.toList());
     }
 
     // ==================== 2.3 设备活跃率（基于 device_online_status.last_report_at 时间窗口） ====================
@@ -115,7 +132,6 @@ public class DashboardStatService {
     public RateByTypeVO getDeviceActiveRate(int windowMinutes) {
         int total = deviceStatService.countAllDevices();
         int active = deviceStatService.countActiveDevicesInWindow(windowMinutes);
-        List<Map<String, Object>> typeRows = deviceStatService.countDevicesByMonitorType();
 
         RateByTypeVO vo = new RateByTypeVO();
         vo.setWindowMinutes(windowMinutes);
@@ -123,7 +139,7 @@ public class DashboardStatService {
         vo.setOnline(active);
         vo.setOffline(total - active);
         vo.setOnlineRate(total > 0 ? Math.round(active * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(typeRows, total, active));
+        vo.setByType(buildActiveTypeStats(deviceStatService.countActiveDevicesByMonitorType(windowMinutes)));
         return vo;
     }
 
@@ -138,7 +154,7 @@ public class DashboardStatService {
         vo.setOnline(online);
         vo.setOffline(total - online);
         vo.setOnlineRate(total > 0 ? Math.round(online * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total, online));
+        vo.setByType(buildOnlineTypeStats(deviceStatService.countOnlineSensorsByMonitorType()));
         return vo;
     }
 
@@ -154,7 +170,7 @@ public class DashboardStatService {
         vo.setOnline(active);
         vo.setOffline(total - active);
         vo.setOnlineRate(total > 0 ? Math.round(active * 10000.0 / total) / 100.0 : 0);
-        vo.setByType(buildTypeStats(deviceStatService.countSensorsByMonitorType(), total, active));
+        vo.setByType(buildActiveTypeStats(deviceStatService.countActiveSensorsByMonitorType(windowMinutes)));
         return vo;
     }
 
@@ -245,25 +261,19 @@ public class DashboardStatService {
         return result;
     }
 
-    /**
-     * 构建按监测类型分组的统计列表。
-     * <p>
-     * 由于目前没有按类型单独统计在线/活跃数的查询，
-     * 按总体比率等比例分摊到各类型，避免对所有类型显示 100% 的假数据。
-     */
-    private List<RateByTypeVO.TypeStat> buildTypeStats(List<Map<String, Object>> typeRows, int total, int online) {
-        double ratio = total > 0 ? (double) online / total : 0;
+    /** 使用真实活跃数构建按监测类型分组的统计 */
+    private List<RateByTypeVO.TypeStat> buildActiveTypeStats(List<Map<String, Object>> typeRows) {
         return typeRows.stream().map(row -> {
             RateByTypeVO.TypeStat ts = new RateByTypeVO.TypeStat();
             ts.setMonitorTypeId(((Number) row.get("monitorTypeId")).longValue());
             ts.setMonitorTypeName((String) row.get("monitorTypeName"));
             ts.setSortOrder(((Number) row.getOrDefault("sortOrder", 999)).intValue());
-            int cnt = ((Number) row.get("cnt")).intValue();
-            int typeOnline = (int) Math.round(cnt * ratio);
+            int cnt = ((Number) row.get("total")).intValue();
+            int typeActive = ((Number) row.get("active")).intValue();
             ts.setTotal(cnt);
-            ts.setOnline(typeOnline);
-            ts.setOffline(cnt - typeOnline);
-            ts.setOnlineRate(cnt > 0 ? Math.round(typeOnline * 10000.0 / cnt) / 100.0 : 0);
+            ts.setOnline(typeActive);
+            ts.setOffline(cnt - typeActive);
+            ts.setOnlineRate(cnt > 0 ? Math.round(typeActive * 10000.0 / cnt) / 100.0 : 0);
             return ts;
         }).collect(Collectors.toList());
     }

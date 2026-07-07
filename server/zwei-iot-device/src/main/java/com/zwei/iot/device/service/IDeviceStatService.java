@@ -20,6 +20,12 @@ public interface IDeviceStatService {
 
     List<Map<String, Object>> countDevicesByMonitorType();
 
+    /** 按监测类型统计在线设备数（JOIN device_online_status 真实值） */
+    List<Map<String, Object>> countOnlineDevicesByMonitorType();
+
+    /** 按监测类型统计活跃设备数（时间窗口内 last_report_at） */
+    List<Map<String, Object>> countActiveDevicesByMonitorType(int windowMinutes);
+
     // ==================== 传感器统计 ====================
 
     int countAllSensors();
@@ -27,6 +33,12 @@ public interface IDeviceStatService {
     List<Map<String, Object>> countSensorsByStatus();
 
     List<Map<String, Object>> countSensorsByMonitorType();
+
+    /** 按监测类型统计在线传感器数 */
+    List<Map<String, Object>> countOnlineSensorsByMonitorType();
+
+    /** 按监测类型统计活跃传感器数（时间窗口内 last_report_time） */
+    List<Map<String, Object>> countActiveSensorsByMonitorType(int windowMinutes);
 
     // ==================== 隐患点统计 ====================
 

@@ -315,6 +315,29 @@
         ORDER BY mt.sort_order
     </select>
 
+    <!-- 按等级统计触发次数（alarm_record_trigger_detail，全部触发，不限状态） -->
+    <select id="countTriggerByLevel" resultType="java.util.Map">
+        SELECT td.alarm_level                       AS alarmLevel,
+               COUNT(*)                             AS count
+        FROM alarm_record_trigger_detail td
+        GROUP BY td.alarm_level
+        ORDER BY td.alarm_level
+    </select>
+
+    <!-- 按监测类型统计触发次数（alarm_record_trigger_detail JOIN，全部触发，不限状态） -->
+    <select id="countTriggerByMonitorType" resultType="java.util.Map">
+        SELECT COALESCE(mt.id, 0)                         AS monitorTypeId,
+               COALESCE(mt.name, '未知')                   AS monitorTypeName,
+               COALESCE(mt.sort_order, 999)               AS sortOrder,
+               COUNT(*)                                   AS count
+        FROM alarm_record_trigger_detail td
+        INNER JOIN alarm_record ar ON td.alarm_record_id = ar.id
+        LEFT JOIN device_sensor ds ON ar.sensor_id = ds.id AND ds.del_flag = 0
+        LEFT JOIN monitor_type mt ON ds.monitor_type_id = mt.id AND mt.del_flag = 0
+        GROUP BY mt.id, mt.name, mt.sort_order
+        ORDER BY mt.sort_order
+    </select>
+
     <select id="selectByHazardPointAndTime" resultMap="AlarmRecordResult">
         <include refid="selectRecordVo"/>
         WHERE hazard_point_id = #{hazardPointId}

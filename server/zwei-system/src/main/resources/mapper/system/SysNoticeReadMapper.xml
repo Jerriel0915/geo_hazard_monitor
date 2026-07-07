@@ -85,7 +85,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by r.read_time desc
     </select>
 
-    <!-- 分页查询带已读状态的公告列表 -->
+    <!-- 分页查询带已读状态的公告列表（status 参数控制当前/历史，readFilter 控制已读筛选） -->
     <select id="selectNoticePageWithReadStatus" resultType="SysNotice">
         select
             n.notice_id    as noticeId,
@@ -98,15 +98,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from sys_notice n
         left join sys_notice_read r
             on r.notice_id = n.notice_id and r.user_id = #{userId}
-        where n.status = '0'
+        where n.status = #{status}
+        <if test="readFilter == 'unread'">
+            and r.notice_id is null
+        </if>
         order by n.notice_id desc
         limit #{offset}, #{limit}
     </select>
 
-    <!-- 正常状态公告总数（当前不按 userId 过滤；参数保留为未来扩展预留） -->
+    <!-- 公告总数（按 status + readFilter 过滤） -->
     <select id="selectNoticeCountWithReadStatus" resultType="int">
         select count(*) from sys_notice n
-        where n.status = '0'
+        <if test="readFilter == 'unread'">
+            left join sys_notice_read r on r.notice_id = n.notice_id and r.user_id = #{userId}
+        </if>
+        where n.status = #{status}
+        <if test="readFilter == 'unread'">
+            and r.notice_id is null
+        </if>
     </select>
+
+    <!-- 标记当前用户所有未读的当前公告为已读（status='0'）。
+         INSERT...SELECT 避免客户端收集 ID，单次 SQL 完成。 -->
+    <insert id="insertAllUnreadForUser">
+        insert ignore into sys_notice_read (notice_id, user_id, read_time)
+        select n.notice_id, #{userId}, sysdate()
+        from sys_notice n
+        where n.status = '0'
+          and not exists (
+            select 1 from sys_notice_read r
+            where r.notice_id = n.notice_id and r.user_id = #{userId}
+          )
+    </insert>
 
 </mapper>

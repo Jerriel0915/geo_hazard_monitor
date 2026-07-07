@@ -87,15 +87,15 @@ public class AlarmNotificationServiceImpl implements IAlarmNotificationService {
     }
 
     @Override
-    public List<AlarmNotification> selectUserUnreadPage(Long userId, int pageNum, int pageSize) {
+    public List<AlarmNotification> selectUserUnreadPage(Long userId, int pageNum, int pageSize, String readStatus) {
         int safePage = Math.max(1, pageNum);
         int safeSize = Math.max(1, Math.min(pageSize, 50));
         int offset = (safePage - 1) * safeSize;
-        return notificationMapper.selectUserUnreadPage(userId, offset, safeSize);
+        return notificationMapper.selectUserUnreadPage(userId, offset, safeSize, readStatus);
     }
 
     @Override
-    public int selectUserUnreadTotal(Long userId) {
-        return notificationMapper.selectUserUnreadTotal(userId);
+    public int selectUserUnreadTotal(Long userId, String readStatus) {
+        return notificationMapper.selectUserUnreadTotal(userId, readStatus);
     }
 }

@@ -70,6 +70,12 @@ public interface AlarmRecordMapper {
     /** 按监测类型统计待处理告警数量（JOIN trigger_detail → alarm_record → device_sensor → monitor_type） */
     List<Map<String, Object>> countPendingByMonitorType();
 
+    /** 按等级统计触发次数（alarm_record_trigger_detail，全部触发，不限状态） */
+    List<Map<String, Object>> countTriggerByLevel();
+
+    /** 按监测类型统计触发次数（alarm_record_trigger_detail JOIN，全部触发，不限状态） */
+    List<Map<String, Object>> countTriggerByMonitorType();
+
     /** 按隐患点统计待处理告警触发次数（JOIN trigger_detail → alarm_record），按次数降序 */
     List<Map<String, Object>> countTriggerByHazardPoint(@Param("limit") int limit);
 

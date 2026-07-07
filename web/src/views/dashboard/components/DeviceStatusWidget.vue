@@ -44,7 +44,7 @@
     <div class="online-trend">
       <div class="trend-header">
         <span class="trend-title">历史在线趋势</span>
-        <span v-if="trendData.length >= 2" class="trend-subtitle">最近{{ trendData.length }}天</span>
+        <span v-if="trendData.length >= 2" class="trend-subtitle">按监测类型</span>
       </div>
       <template v-if="trendData.length >= 2">
         <div class="trend-chart">
@@ -130,10 +130,12 @@ const trendXLabels = computed(() => {
 const trendDataPoints = computed(() => {
   const data = props.trendData
   if (data.length < 2) return []
-  const step = 280 / (data.length - 1)
+  const padding = 14
+  const width = 280 - padding * 2
+  const step = data.length > 1 ? width / (data.length - 1) : 0
   return data.map((value, index) => ({
-    x: index * step,
-    y: 100 - value
+    x: padding + index * step,
+    y: Math.max(0, Math.min(100, 100 - (value ?? 0)))
   }))
 })
 
@@ -384,7 +386,7 @@ const trendAreaPath = computed(() => {
 
 .trend-x-axis {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   padding-top: 4px;
 }
 

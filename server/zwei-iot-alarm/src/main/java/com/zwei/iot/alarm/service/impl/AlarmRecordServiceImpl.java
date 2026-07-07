@@ -279,6 +279,21 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
     }
 
     @Override
+    public Map<Integer, Integer> getTriggerLevelStats() {
+        List<Map<String, Object>> rows = alarmRecordMapper.countTriggerByLevel();
+        Map<Integer, Integer> result = new HashMap<>();
+        for (int i = 1; i <= 4; i++) {
+            result.put(i, 0);
+        }
+        for (Map<String, Object> row : rows) {
+            Integer level = ((Number) row.get("alarmLevel")).intValue();
+            Integer count = ((Number) row.get("count")).intValue();
+            result.put(level, count);
+        }
+        return result;
+    }
+
+    @Override
     public Map<String, Object> getMonthlyTrend(int months) {
         List<Map<String, Object>> rows = alarmRecordMapper.selectMonthlyLevelCounts(months);
 
@@ -415,6 +430,18 @@ public class AlarmRecordServiceImpl implements IAlarmRecordService {
     @Override
     public List<Map<String, Object>> getSourceStats() {
         List<Map<String, Object>> rows = alarmRecordMapper.countPendingByMonitorType();
+        int total = rows.stream().mapToInt(r -> ((Number) r.get("count")).intValue()).sum();
+        for (Map<String, Object> row : rows) {
+            int cnt = ((Number) row.get("count")).intValue();
+            double rate = total > 0 ? Math.round(cnt * 1000.0 / total) / 10.0 : 0;
+            row.put("rate", rate);
+        }
+        return rows;
+    }
+
+    @Override
+    public List<Map<String, Object>> getTriggerSourceStats() {
+        List<Map<String, Object>> rows = alarmRecordMapper.countTriggerByMonitorType();
         int total = rows.stream().mapToInt(r -> ((Number) r.get("count")).intValue()).sum();
         for (Map<String, Object> row : rows) {
             int cnt = ((Number) row.get("count")).intValue();

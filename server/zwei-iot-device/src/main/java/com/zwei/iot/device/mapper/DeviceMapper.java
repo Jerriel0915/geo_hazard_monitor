@@ -126,6 +126,12 @@ public interface DeviceMapper {
 
     List<java.util.Map<String, Object>> countByMonitorType();
 
+    /** 按监测类型统计在线设备数（JOIN device_online_status 获取真实在线数） */
+    List<java.util.Map<String, Object>> countOnlineByMonitorType();
+
+    /** 按监测类型统计活跃设备数（时间窗口内 last_report_at） */
+    List<java.util.Map<String, Object>> countActiveByMonitorType(@Param("windowMinutes") int windowMinutes);
+
     /** 资料完整设备数（名称+GPS+监测类型齐全） */
     int countComplete();
 

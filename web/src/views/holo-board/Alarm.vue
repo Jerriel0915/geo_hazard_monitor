@@ -126,7 +126,7 @@
             <span class="list-title">实时告警事件</span>
           </div>
           <div class="alarm-list">
-            <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item">
+            <div v-for="alarm in alarmStats.recentAlarms" :key="alarm.id" class="alarm-item" @click="handleAlarmClick(alarm)">
               <div class="alarm-level-dot" :class="alarm.level"></div>
               <div class="alarm-content">
                 <div class="alarm-title">{{ alarm.title }}</div>
@@ -149,9 +149,13 @@
 
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
 import echarts from '@/utils/echarts'
-import {getPendingAlarms, getAlarmOverview, getAlarmLevelStats, getAlarmTrend, getAlarmSourceStats, getHighRiskHazardPoints, type AlarmTrendVO} from '@/api/alarm'
+import {getPendingAlarms, getAlarmOverview, getAlarmTriggerLevelStats, getAlarmTrend, getAlarmTriggerSourceStats, getHighRiskHazardPoints, type AlarmTrendVO} from '@/api/alarm'
+import {getAlarmNotificationPage} from '@/api/alarmNotification'
 import {getDashboardFull} from '@/api/monitor'
+
+const router = useRouter()
 
 const alarmStats = ref({
   recentThreeMonthsAlarms: 0,
@@ -159,7 +163,7 @@ const alarmStats = ref({
   hazardPointCount: 0,
   deviceCount: 0,
   levelStats: [] as { name: string; key: string; count: number; rate: number }[],
-  recentAlarms: [] as { id: number; title: string; source: string; time: string; level: string; priority?: number }[]
+  recentAlarms: [] as { id: number; title: string; source: string; time: string; level: string; priority?: number; sourceType?: string; sourceId?: number }[]
 })
 
 const nextRefreshTime = ref('')
@@ -197,14 +201,41 @@ const hazardData = ref<{ name: string; count: number; level: string }[]>([])
 
 const sourceDistribution = ref<{ name: string; count: number; rate: number }[]>([])
 
+/** 从通知中心获取最新未读事件 */
+async function fetchRecentNotifications() {
+  try {
+    const res = await getAlarmNotificationPage(1, 5, 'unread')
+    const items = res.data ?? []
+    if (items.length === 0) return
+    alarmStats.value.recentAlarms = items.map(item => ({
+      id: item.id,
+      title: item.title ?? '',
+      source: item.sourceType === 'offline' ? '设备离线' : '告警通知',
+      time: item.createTime?.substring(11, 16) ?? '',
+      level: item.sourceType === 'offline' ? 'level4' : 'level1',
+      sourceType: item.sourceType,
+      sourceId: item.sourceId
+    }))
+  } catch { /* 保留待处理告警数据 */ }
+}
+
+/** 点击告警事件跳转 */
+function handleAlarmClick(alarm: { sourceType?: string; sourceId?: number }) {
+  if (alarm.sourceType === 'offline') {
+    router.push({ path: '/basic/device', query: alarm.sourceId ? { deviceId: String(alarm.sourceId) } : {} })
+  } else {
+    router.push({ path: '/alarm/realtime', query: alarm.sourceId ? { alarmId: String(alarm.sourceId) } : {} })
+  }
+}
+
 const loadAlarmData = async () => {
   try {
     const [pendingRes, overviewRes, levelStatsRes, trendRes, sourceRes, hazardRes, fullRes] = await Promise.all([
       getPendingAlarms({ pageNum: 1, pageSize: 100 }),
       getAlarmOverview(),
-      getAlarmLevelStats(),
+      getAlarmTriggerLevelStats(),
       getAlarmTrend(12),
-      getAlarmSourceStats(),
+      getAlarmTriggerSourceStats(),
       getHighRiskHazardPoints(10),
       getDashboardFull(60)
     ])
@@ -221,8 +252,13 @@ const loadAlarmData = async () => {
       title: item.alarmMessage || item.hazardPointName || '告警事件',
       source: item.deviceName || item.sensorName || '',
       time: item.lastTriggerTime ? item.lastTriggerTime.substring(11, 16) : '',
-      level: levelMap[item.alarmLevel]?.key ?? 'level4'
+      level: levelMap[item.alarmLevel]?.key ?? 'level4',
+      sourceType: 'alarm' as const,
+      sourceId: item.id as number
     }))
+
+    // 叠加通知中心未读事件（如有则替换最近5条，与通知中心数据保持一致）
+    fetchRecentNotifications()
 
     // 告警次数统计 — 来自 /alarm/records/overview（单次查询，精准计数）
     const ovData = (overviewRes as any)?.data ?? overviewRes ?? {}

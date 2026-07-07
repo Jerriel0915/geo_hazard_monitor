@@ -4,6 +4,7 @@
     <div class="mode-header">
       <el-button text @click="emit('back')">&larr; 返回</el-button>
       <span class="mode-label">数据宫格</span>
+      <el-button size="small" @click="exportCsv" style="margin-left:8px">导出CSV</el-button>
       <el-button-group class="grid-layout-switcher">
         <el-button
           v-for="opt in layoutOptions"
@@ -260,11 +261,36 @@ const onDrop = (e: DragEvent, targetIdx: number) => {
   if (srcInst) { srcInst.dispose(); gridChartInstances.delete(sourceIdx) }
   if (tgtInst) { tgtInst.dispose(); gridChartInstances.delete(targetIdx) }
 
-  // Re-render both cells
   nextTick(() => {
     if (gridCells.value[sourceIdx].sensorSeriesId) loadGridCellChart(sourceIdx)
     if (gridCells.value[targetIdx].sensorSeriesId) loadGridCellChart(targetIdx)
   })
+}
+
+function exportCsv() {
+  const rows: string[][] = [['时间', '宫格', '数值']]
+  let hasData = false
+  for (const [idx, inst] of gridChartInstances) {
+    const cell = gridCells.value[idx]
+    if (!cell.title) continue
+    const opt = inst.getOption() as any
+    const xData: string[] = (opt.xAxis?.[0]?.data || opt.xAxis?.data || []) as string[]
+    const series: any[] = opt.series || []
+    if (!xData.length || !series.length) continue
+    hasData = true
+    for (let i = 0; i < xData.length; i++) {
+      rows.push([xData[i], cell.title, series.map((s: any) => String(s.data?.[i] ?? '')).join('; ')])
+    }
+  }
+  if (!hasData) { ElMessage.warning('无数据可导出'); return }
+  const csv = '\uFEFF' + rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `数据宫格_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+  ElMessage.success('导出成功')
 }
 
 const onDragEnd = () => {

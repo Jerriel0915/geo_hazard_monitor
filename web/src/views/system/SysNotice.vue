@@ -41,12 +41,15 @@
           </el-table-column>
           <el-table-column prop="createBy" label="创建人" width="100" />
           <el-table-column prop="createTime" label="创建时间" min-width="160" />
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
               <div class="op-cell">
                 <el-button type="primary" text size="small" @click="handleView(row)">查看</el-button>
                 <el-button type="primary" text size="small" @click="handleEdit(row)">修改</el-button>
                 <el-button type="primary" text size="small" @click="handleReadUsers(row)">已读</el-button>
+                <el-button type="warning" text size="small" @click="handleToggleStatus(row)">
+                  {{ row.status === '0' ? '关闭' : '恢复' }}
+                </el-button>
                 <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
               </div>
             </template>
@@ -104,7 +107,7 @@
           <span>创建人：{{ viewData.createBy }}</span>
           <span>创建时间：{{ viewData.createTime }}</span>
         </div>
-        <div class="notice-content" v-html="viewData.noticeContent" />
+        <div class="notice-content" v-html="sanitizeHtml(viewData.noticeContent ?? '')" />
       </div>
     </el-dialog>
 
@@ -128,6 +131,16 @@
 import { ref, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { getNoticeList, getNoticeById, createNotice, updateNotice, deleteNotices, getReadUsers, type SysNotice, type ReadUser } from '@/api/notice'
+import DOMPurify from 'dompurify'
+
+function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li',
+      'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div', 'hr'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'width', 'height', 'class', 'style']
+  })
+}
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -202,6 +215,17 @@ async function handleDelete(row: SysNotice) {
     await ElMessageBox.confirm('确认删除该公告？', '提示', { type: 'warning' })
     await deleteNotices([row.noticeId])
     ElMessage.success('删除成功')
+    handleQuery()
+  } catch { /* cancelled */ }
+}
+
+async function handleToggleStatus(row: SysNotice) {
+  const targetStatus = row.status === '0' ? '1' : '0'
+  const actionLabel = targetStatus === '1' ? '关闭' : '恢复'
+  try {
+    await ElMessageBox.confirm(`确认${actionLabel}该公告？`, '提示', { type: 'warning' })
+    await updateNotice({ ...row, status: targetStatus })
+    ElMessage.success(`${actionLabel}成功`)
     handleQuery()
   } catch { /* cancelled */ }
 }

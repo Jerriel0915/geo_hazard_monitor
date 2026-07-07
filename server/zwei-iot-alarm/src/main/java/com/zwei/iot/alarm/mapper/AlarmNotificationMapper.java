@@ -41,22 +41,24 @@ public interface AlarmNotificationMapper {
                                              @org.apache.ibatis.annotations.Param("limit") int limit);
 
     /**
-     * 统计指定用户+渠道的未读通知数
+     * 统计指定用户+渠道的未读通知数（source_type IN threshold/comprehensive/offline）。
      */
     int selectUnreadCount(@Param("userId") Long userId,
                           @Param("channel") String channel);
 
     /**
-     * 分页查询当前用户未读事件通知（SYSTEM 渠道，source_type IN alarm/offline）。
+     * 分页查询当前用户事件通知（SYSTEM 渠道，source_type IN threshold/comprehensive/offline）。
+     *
+     * @param readStatus 'unread'=当前事件 'read'=历史事件
      */
     List<AlarmNotification> selectUserUnreadPage(@Param("userId") Long userId,
                                                   @Param("offset") int offset,
-                                                  @Param("limit") int limit);
+                                                  @Param("limit") int limit,
+                                                  @Param("readStatus") String readStatus);
 
     /**
-     * 当前用户未读事件通知总数（用于分页 total）。
-     * 与现有 selectUnreadCount(userId, "SYSTEM") 相比多了 source_type 过滤，
-     * 保持与 selectUserUnreadPage 的过滤条件完全一致，确保 total 与列表条数匹配。
+     * 当前用户事件通知总数（用于分页 total）。
      */
-    int selectUserUnreadTotal(@Param("userId") Long userId);
+    int selectUserUnreadTotal(@Param("userId") Long userId,
+                              @Param("readStatus") String readStatus);
 }

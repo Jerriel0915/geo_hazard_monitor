@@ -251,6 +251,7 @@
             :class="['message-item', { unread: !msg.read }]"
             @click="handleEventClick(msg)"
           >
+            <span v-if="!msg.read" class="unread-dot"></span>
             <div class="message-icon-wrapper">
               <svg v-if="msg.sourceType !== 'offline'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f56c6c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -266,12 +267,19 @@
               <div class="message-desc">{{ msg.content }}</div>
               <div class="message-time">{{ msg.time }}</div>
             </div>
+            <span v-if="!msg.read" class="mark-read-btn" @click.stop="markSingleEventRead(msg)" title="标记已读">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
           </div>
           <div v-if="eventMessages.length === 0" class="empty-message">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            <span>暂无事件通知</span>
+            <span v-if="eventReadFilter === 'unread'">暂无事件通知</span>
+            <template v-else>
+              <span>暂无历史事件</span>
+              <span class="empty-sub-text">已读事件会出现在这里</span>
+            </template>
           </div>
         </template>
         <!-- 公告 Tab -->
@@ -282,6 +290,7 @@
             :class="['message-item', { unread: !msg.read }]"
             @click="handleNoticeClick(msg)"
           >
+            <span v-if="!msg.read" class="unread-dot"></span>
             <div class="message-icon-wrapper">
               <svg v-if="msg.type === 'system'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1890ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"/>
@@ -297,16 +306,39 @@
               <div class="message-desc">{{ msg.content }}</div>
               <div class="message-time">{{ msg.time }}</div>
             </div>
+            <span v-if="!msg.read" class="mark-read-btn" @click.stop="markSingleNoticeRead(msg)" title="标记已读">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
           </div>
           <div v-if="noticeMessages.length === 0" class="empty-message">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d9d9d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            <span>暂无公告</span>
+            <span v-if="noticeStatusFilter === '0'">暂无公告</span>
+            <template v-else>
+              <span>暂无历史公告</span>
+              <span class="empty-sub-text">公告关闭后会出现在这里</span>
+            </template>
           </div>
         </template>
       </div>
-      <div class="message-panel-footer" v-if="currentTabHasMessages">
+      <div class="message-panel-footer">
+        <!-- 筛选切换 -->
+        <span class="footer-filters">
+          <template v-if="notifyTab === 'event'">
+            <span :class="['filter-option', { active: eventReadFilter === 'unread' }]"
+                  @click="setEventFilter('unread')">当前事件</span>
+            <span :class="['filter-option', { active: eventReadFilter === 'read' }]"
+                  @click="setEventFilter('read')">历史事件</span>
+          </template>
+          <template v-else>
+            <span :class="['filter-option', { active: noticeStatusFilter === '0' }]"
+                  @click="setNoticeFilter('0')">当前公告</span>
+            <span :class="['filter-option', { active: noticeStatusFilter === '1' }]"
+                  @click="setNoticeFilter('1')">历史公告</span>
+          </template>
+        </span>
+        <!-- 分页器 -->
         <span class="pager" v-if="currentTabTotalPages > 1">
           <span class="pager-btn"
                 :class="{ disabled: currentPageRef.current <= 1 }"
@@ -317,7 +349,10 @@
                 @click="goNextPage">›</span>
         </span>
         <span class="pager-placeholder" v-else></span>
-        <el-button size="small" @click="markAllAsRead">全部标为已读</el-button>
+        <!-- 全部标为已读：仅当前页有未读时显示 -->
+        <el-button v-if="isCurrentFilter && currentTabHasMessages"
+                   size="small" @click="markAllAsRead">全部标为已读</el-button>
+        <span v-else class="pager-placeholder"></span>
       </div>
     </div>
     <div class="message-mask" v-if="messagePanelVisible" @click="messagePanelVisible = false"></div>
@@ -354,7 +389,8 @@
 </template>
 
 <script setup lang="ts">
-import {getTopNotices, getNoticeById, markRead as markNoticeRead, markReadAll as markAllNoticeRead, type SysNotice} from '@/api/notice'
+import {getTopNotices, getNoticeById, markRead as markNoticeRead, markAllNoticeRead, type SysNotice} from '@/api/notice'
+import DOMPurify from 'dompurify'
 import {
   getAlarmNotificationPage,
   getAlarmNotificationUnreadCount,
@@ -453,6 +489,14 @@ const noticeMessages = ref<NotifyMessage[]>([])
 const eventMessages = ref<NotifyMessage[]>([])
 const noticeUnreadCount = ref(0)
 const eventUnreadCount = ref(0)
+/** 事件已读筛选: 'unread'=当前事件 'read'=历史事件 */
+const eventReadFilter = ref<'unread' | 'read'>('unread')
+/** 公告状态筛选: '0'=当前公告 '1'=历史公告 */
+const noticeStatusFilter = ref<'0' | '1'>('0')
+/** 当前是否在"当前/未读"模式（控制"全部标为已读"按钮显示） */
+const isCurrentFilter = computed(() =>
+  notifyTab.value === 'event' ? eventReadFilter.value === 'unread' : noticeStatusFilter.value === '0'
+)
 /** 分页状态：事件/公告各持一份，SSE 推送后回第 1 页 */
 const eventPage = reactive({ current: 1, size: 10, total: 0 })
 const noticePage = reactive({ current: 1, size: 10, total: 0 })
@@ -510,24 +554,83 @@ function toEventMessage(n: AlarmNotificationItem): NotifyMessage {
 
 async function fetchNoticeMessages() {
   try {
-    const res = await getTopNotices(noticePage.current, noticePage.size)
+    // 当前公告仅显示未读；历史公告显示全部（含已读/未读）
+    const readFilter = noticeStatusFilter.value === '0' ? 'unread' : 'all'
+    const res = await getTopNotices(noticePage.current, noticePage.size, noticeStatusFilter.value, readFilter)
     // 后端响应：{code,msg,data: SysNotice[], total, unreadCount, timestamp}
     noticeMessages.value = (res.data ?? []).map(toNoticeMessage)
     noticePage.total = res.total ?? 0
     noticeUnreadCount.value = res.unreadCount ?? 0
-  } catch { /* keep previous data */ }
+  } catch { /* keep previous data */
+    console.error('获取公告列表失败')
+  }
+}
+
+/** 切换公告状态筛选（当前/历史） */
+function setNoticeFilter(status: '0' | '1') {
+  if (noticeStatusFilter.value === status) return
+  noticeStatusFilter.value = status
+  noticePage.current = 1
+  fetchNoticeMessages()
 }
 
 async function fetchEventMessages() {
   try {
     const [pageRes, unreadRes] = await Promise.all([
-      getAlarmNotificationPage(eventPage.current, eventPage.size),
+      getAlarmNotificationPage(eventPage.current, eventPage.size, eventReadFilter.value),
       getAlarmNotificationUnreadCount()
     ])
     eventMessages.value = (pageRes.data ?? []).map(toEventMessage)
     eventPage.total = pageRes.total ?? 0
     eventUnreadCount.value = unreadRes.data?.unreadCount ?? 0
-  } catch { /* keep previous data */ }
+  } catch { /* keep previous data */
+    console.error('获取事件列表失败')
+  }
+}
+
+/** 切换事件已读筛选（当前/历史） */
+function setEventFilter(filter: 'unread' | 'read') {
+  if (eventReadFilter.value === filter) return
+  eventReadFilter.value = filter
+  eventPage.current = 1
+  fetchEventMessages()
+}
+
+/** 单条标记事件已读（不触发导航） */
+async function markSingleEventRead(msg: NotifyMessage) {
+  if (msg.read) return
+  try {
+    await markAlarmNotificationRead(msg.id)
+    eventUnreadCount.value = Math.max(0, eventUnreadCount.value - 1)
+    if (eventReadFilter.value === 'unread') {
+      eventMessages.value = eventMessages.value.filter(m => m.id !== msg.id)
+      if (eventMessages.value.length === 0 && eventPage.current > 1) {
+        eventPage.current--
+        fetchEventMessages()
+      }
+    }
+  } catch {
+    console.error('标记事件已读失败', msg.id)
+  }
+}
+
+/** 单条标记公告已读（不打开详情） */
+async function markSingleNoticeRead(msg: NotifyMessage) {
+  if (msg.read) return
+  try {
+    await markNoticeRead(msg.id)
+    const idx = noticeMessages.value.findIndex(m => m.id === msg.id)
+    if (idx !== -1) {
+      noticeMessages.value = [
+        ...noticeMessages.value.slice(0, idx),
+        { ...msg, read: true },
+        ...noticeMessages.value.slice(idx + 1)
+      ]
+    }
+    noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
+  } catch {
+    ElMessage.warning('操作失败，请重试')
+  }
 }
 
 /** 重新加载当前 Tab（翻页或外部触发） */
@@ -559,15 +662,8 @@ function startNoticeSSE() {
   noticeEventSource.addEventListener('notice', (event) => {
     try {
       const data = JSON.parse(event.data)
-      const msg: NotifyMessage = {
-        id: data.noticeId,
-        title: data.title,
-        content: data.content ?? '',
-        time: data.createTime ?? '',
-        read: false,
-        type: data.type === '1' ? 'system' : 'other'
-      }
-      // 新消息到达 → 回到第 1 页并重新拉取（包含未读数与列表）
+      // 新公告到达 → 切回"当前"模式 + 第 1 页
+      noticeStatusFilter.value = '0'
       noticePage.current = 1
       fetchNoticeMessages()
     } catch { /* ignore malformed event */ }
@@ -596,13 +692,15 @@ function startAlarmSSE() {
   // SYSTEM 通知定向推送（按接收人路由）
   alarmEventSource.addEventListener('alarm-notify', (event) => {
     try {
-      const data = JSON.parse(event.data)
+      const payload = JSON.parse(event.data)
+      const data = payload.data ?? payload
       ElNotification({
         title: data.title ?? '告警通知',
         message: data.content ?? '',
         type: 'warning',
         duration: 5000
       })
+      eventReadFilter.value = 'unread'
       eventPage.current = 1
       fetchEventMessages()
     } catch { /* ignore */ }
@@ -617,6 +715,7 @@ function startAlarmSSE() {
         type: 'error',
         duration: 5000
       })
+      eventReadFilter.value = 'unread'
       eventPage.current = 1
       fetchEventMessages()
     } catch { /* ignore */ }
@@ -920,28 +1019,29 @@ const noticeDetailLoading = ref(false)
 const noticeDetail = ref<Partial<SysNotice>>({})
 
 /**
- * XSS 净化 — 移除常见攻击向量。
- * 覆盖：script/iframe/object/embed/svg/style/meta/link 标签、事件处理器属性、javascript: URI。
- * 注：完整净化应使用 DOMPurify，当前用于管理员后台公告（半可信输入）。
+ * XSS 净化 — 使用 DOMPurify 白名单模式。
  */
 function sanitizeNoticeHtml(html: string): string {
-  let s = html ?? ''
-  // 完整标签（含内容）
-  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*>.*?<\/\1>/gis, '')
-  // 自闭合/空标签
-  s = s.replace(/<(script|iframe|object|embed|svg|style|meta|link)\b[^>]*\/?>/gi, '')
-  // 事件处理器属性 on*= (onclick, onerror, onload...)
-  s = s.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-  // javascript: URI 在 href/src/action 属性中
-  s = s.replace(/(?:href|src|action)\s*=\s*(?:"[^"]*javascript:[^"]*"|'[^']*javascript:[^']*')/gi, '')
-  return s
+  return DOMPurify.sanitize(html ?? '', {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li',
+      'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div', 'hr'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'width', 'height', 'class', 'style']
+  })
 }
 
 const handleNoticeClick = async (msg: NotifyMessage) => {
-  // 乐观更新已读状态（详情页加载后异步持久化到后端）
   const wasUnread = !msg.read
+  // 乐观更新：先置为已读
   if (wasUnread) {
-    msg.read = true
+    const idx = noticeMessages.value.findIndex(m => m.id === msg.id)
+    if (idx !== -1) {
+      noticeMessages.value = [
+        ...noticeMessages.value.slice(0, idx),
+        { ...msg, read: true },
+        ...noticeMessages.value.slice(idx + 1)
+      ]
+    }
     noticeUnreadCount.value = Math.max(0, noticeUnreadCount.value - 1)
   }
   messagePanelVisible.value = false
@@ -951,9 +1051,20 @@ const handleNoticeClick = async (msg: NotifyMessage) => {
   try {
     const res = await getNoticeById(msg.id)
     noticeDetail.value = res.data ?? {}
-    // 异步标记已读（非阻塞，失败时乐观更新仍保留以避免 UI 抖动）
+    // 持久化已读状态，失败时回滚乐观更新
     if (wasUnread) {
-      markNoticeRead(msg.id).catch(() => { /* ignore: 乐观更新已生效 */ })
+      markNoticeRead(msg.id).catch(() => {
+        // 回滚：恢复未读状态
+        const idx = noticeMessages.value.findIndex(m => m.id === msg.id)
+        if (idx !== -1) {
+          noticeMessages.value = [
+            ...noticeMessages.value.slice(0, idx),
+            { ...msg, read: false },
+            ...noticeMessages.value.slice(idx + 1)
+          ]
+        }
+        noticeUnreadCount.value = noticeUnreadCount.value + 1
+      })
     }
   } catch {
     ElNotification({ title: '提示', message: '公告加载失败', type: 'warning', duration: 3000 })
@@ -969,7 +1080,9 @@ const handleEventClick = async (msg: NotifyMessage) => {
       eventUnreadCount.value = Math.max(0, eventUnreadCount.value - 1)
       // 已读后从列表移除（与后端 selectUserRecent 过滤一致）
       eventMessages.value = eventMessages.value.filter(m => m.id !== msg.id)
-    } catch { /* ignore */ }
+    } catch {
+      console.error('标记事件已读失败', msg.id)
+    }
   }
   if (msg.sourceType === 'offline') {
     router.push({path: '/basic/device', query: msg.sourceId ? {deviceId: String(msg.sourceId)} : {}})
@@ -984,22 +1097,19 @@ const markAllAsRead = async () => {
   if (notifyTab.value === 'event') {
     try {
       await markAllAlarmNotificationsRead()
-      // 全部已读 → 列表清空（后端查询也会过滤已读项）
-      eventMessages.value = []
-      eventUnreadCount.value = 0
       eventPage.current = 1
-      eventPage.total = 0
-    } catch { /* ignore */ }
+      fetchEventMessages()
+    } catch {
+      ElMessage.warning('操作失败，请重试')
+    }
   } else {
-    const unreadIds = noticeMessages.value.filter(m => !m.read).map(m => m.id)
-    if (unreadIds.length === 0) return
     try {
-      await markAllNoticeRead(unreadIds.join(','))
-      noticeMessages.value.forEach(m => { m.read = true })
-      noticeUnreadCount.value = 0
+      await markAllNoticeRead()
       noticePage.current = 1
-      noticePage.total = 0
-    } catch { /* ignore */ }
+      fetchNoticeMessages()
+    } catch {
+      ElMessage.warning('操作失败，请重试')
+    }
   }
 }
 
@@ -1515,8 +1625,8 @@ const goToDashboard = () => {
 .message-panel {
   position: fixed;
   top: 64px;
-  right: -400px;
-  width: 380px;
+  right: -500px;
+  width: 480px;
   max-height: calc(100vh - 64px);
   background: white;
   border-radius: 8px 0 0 8px;
@@ -1598,7 +1708,8 @@ const goToDashboard = () => {
 
 .message-item {
   display: flex;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
   padding: 12px;
   margin-bottom: 8px;
   background: #fafafa;
@@ -1606,6 +1717,7 @@ const goToDashboard = () => {
   cursor: pointer;
   transition: all 0.2s ease;
   border-left: 3px solid transparent;
+  position: relative;
 }
 
 .message-item:hover {
@@ -1616,6 +1728,41 @@ const goToDashboard = () => {
 .message-item.unread {
   background: #fff7e6;
   border-left-color: #faad14;
+}
+
+/* 未读圆点 */
+.unread-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #faad14;
+  margin-top: 6px;
+}
+
+/* 单条标记已读按钮 */
+.mark-read-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #999;
+  opacity: 0.4;
+  transition: all 0.2s ease;
+  margin-top: 2px;
+}
+
+.message-item:hover .mark-read-btn {
+  opacity: 1;
+}
+
+.mark-read-btn:hover {
+  color: #1890ff;
+  background: rgba(24, 144, 255, 0.12);
 }
 
 .message-item .message-icon-wrapper svg {
@@ -1668,6 +1815,39 @@ const goToDashboard = () => {
   width: 48px;
   height: 48px;
   margin-bottom: 12px;
+}
+
+.empty-sub-text {
+  font-size: 12px;
+  color: #bbb;
+  margin-top: 4px;
+}
+
+/* 底部筛选切换 */
+.footer-filters {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.footer-filters .filter-option {
+  position: relative;
+  padding-bottom: 2px;
+  color: #999;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.footer-filters .filter-option:hover {
+  color: #666;
+}
+
+.footer-filters .filter-option.active {
+  color: #1890ff;
+  font-weight: 500;
+  border-bottom-color: #1890ff;
 }
 
 .message-panel-footer {

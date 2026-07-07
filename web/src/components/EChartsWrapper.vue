@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
 
 .echarts-wrapper__fullscreen-btn {
   position: absolute;
-  top: 6px;
+  top: 38px;
   right: 8px;
   z-index: 10;
   display: flex;

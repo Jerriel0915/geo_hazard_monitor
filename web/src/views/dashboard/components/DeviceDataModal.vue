@@ -28,6 +28,7 @@
           :hazard-point-name="hazardPointName"
           :show-device="false"
           :initial-device-id="device.id"
+          :show-import-export="true"
         />
         <div v-else class="empty-state">无法加载监测数据</div>
       </div>

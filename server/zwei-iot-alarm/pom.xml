@@ -37,6 +37,11 @@
             <groupId>com.zwei</groupId>
             <artifactId>zwei-iot-hazard</artifactId>
         </dependency>
+        <!-- 框架核心（TokenService / Security 工具） -->
+        <dependency>
+            <groupId>com.zwei</groupId>
+            <artifactId>zwei-framework</artifactId>
+        </dependency>
         <!-- RBAC 服务（角色/部门/用户查询，用于通知接收人选项） -->
         <dependency>
             <groupId>com.zwei</groupId>

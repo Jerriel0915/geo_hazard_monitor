@@ -171,6 +171,7 @@
           :hazard-point-id="Number(currentRow.id)"
           :hazard-point-name="currentRow.name"
           :initial-device-id="boundDevices[0]?.deviceId ? Number(boundDevices[0].deviceId) : undefined"
+          :show-import-export="true"
           @device-change="(id: number) => emit('deviceChange', String(id))"
           @sensor-change="(id: number) => emit('sensorChange', String(id))"
         />

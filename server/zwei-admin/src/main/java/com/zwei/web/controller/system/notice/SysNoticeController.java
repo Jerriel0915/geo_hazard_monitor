@@ -47,6 +47,7 @@ public class SysNoticeController extends BaseController
     /**
      * 根据通知公告编号获取详细信息
      */
+    @PreAuthorize("@ss.hasPermi('system:notice:list')")
     @GetMapping(value = "/{noticeId}")
     public AjaxResult getInfo(@PathVariable Long noticeId)
     {
@@ -88,18 +89,23 @@ public class SysNoticeController extends BaseController
     /**
      * 首页顶部公告（通知中心面板用），支持分页。
      * 返回结构：{ code, msg, data: SysNotice[], total, unreadCount, timestamp }
+     *
+     * @param status     公告状态: '0'=当前公告(默认) '1'=历史公告
+     * @param readFilter 已读筛选: 'unread'=仅未读 'all'=全部(默认)
      */
     @GetMapping("/listTop")
     @ResponseBody
     public AjaxResult listTop(@RequestParam(defaultValue = "1") int pageNum,
-                              @RequestParam(defaultValue = "10") int pageSize)
+                              @RequestParam(defaultValue = "10") int pageSize,
+                              @RequestParam(defaultValue = "0") String status,
+                              @RequestParam(defaultValue = "all") String readFilter)
     {
         Long userId = getUserId();
         int safePage = Math.max(1, pageNum);
         int safeSize = Math.max(1, Math.min(pageSize, 50));
 
-        List<SysNotice> list = noticeReadService.selectNoticePage(userId, safePage, safeSize);
-        int total = noticeReadService.selectNoticeCount();
+        List<SysNotice> list = noticeReadService.selectNoticePage(userId, safePage, safeSize, status, readFilter);
+        int total = noticeReadService.selectNoticeCount(status, readFilter);
         int unreadCount = noticeReadService.selectUnreadCount(userId);
 
         AjaxResult ajax = AjaxResult.success(list);
@@ -132,6 +138,31 @@ public class SysNoticeController extends BaseController
         Long[] noticeIds = Convert.toLongArray(ids);
         noticeReadService.markReadBatch(userId, noticeIds);
         return success();
+    }
+
+    /**
+     * 标记当前用户所有未读公告为已读（无需参数，服务端 INSERT...SELECT 完成）。
+     */
+    @PostMapping("/markAllRead")
+    @ResponseBody
+    public AjaxResult markAllRead()
+    {
+        Long userId = getUserId();
+        noticeReadService.markAllReadForUser(userId);
+        return success();
+    }
+
+    /**
+     * 删除通知公告
+     */
+    @PreAuthorize("@ss.hasPermi('system:notice:remove')")
+    @Log(title = "通知公告", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{noticeIds}")
+    public AjaxResult remove(@PathVariable String noticeIds)
+    {
+        Long[] ids = Convert.toLongArray(noticeIds);
+        noticeReadService.deleteByNoticeIds(ids);
+        return toAjax(noticeService.deleteNoticeByIds(ids));
     }
 
     /**

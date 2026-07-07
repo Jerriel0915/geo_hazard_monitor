@@ -53,7 +53,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit 1
     </select>
     
-    <insert id="insertNotice" parameterType="SysNotice">
+    <insert id="insertNotice" parameterType="SysNotice" useGeneratedKeys="true" keyProperty="noticeId">
         insert into sys_notice (
 			<if test="noticeTitle != null and noticeTitle != '' ">notice_title, </if>
 			<if test="noticeType != null and noticeType != '' ">notice_type, </if>
