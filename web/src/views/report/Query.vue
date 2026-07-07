@@ -86,10 +86,12 @@
     </div>
 
     <div class="table-wrap">
-      
+
       <div class="table-wrap__scroll">
         <el-table
             :data="tableData"
+            :span-method="tableSpanMethod"
+            :cell-class-name="tableCellClassName"
             border
             stripe
             v-loading="loading"
@@ -99,11 +101,10 @@
           <el-table-column prop="dataTime" label="时间" width="170" align="center" />
           <el-table-column prop="deviceName" label="设备名称" width="180" align="center" />
           <el-table-column prop="sensorName" label="传感器" width="180" align="center" />
-          <el-table-column label="监测数据" min-width="300" align="center">
+          <el-table-column prop="attrName" label="监测指标" width="130" align="center" />
+          <el-table-column label="监测值" min-width="140" align="center">
             <template #default="{ row }">
-              <span class="monitor-data-item">
-                {{ row.dataList.map((d: any) => `${d.attrName}: ${d.value} ${d.unit}`).join('; ') }}
-              </span>
+              {{ row.value != null ? row.value : '-' }}{{ row.unit ? ' ' + row.unit : '' }}
             </template>
           </el-table-column>
         </el-table>
@@ -180,13 +181,15 @@ const total = ref(0)
 
 // 选项数据
 const groupOptions = ref<GroupOption[]>([])
-const deviceOptions = ref<DeviceOption[]>([])
+const allDevices = ref<DeviceItem[]>([])            // 全量设备（用于客户端级联过滤）
 const deviceAttrsMap = ref<Map<number, DeviceAttr[]>>(new Map())
 
 // 所有隐患点的完整映射（ID → 名称/分组/分组ID），一次性全量加载，不受分组过滤和分页限制影响
 const allHazardPointMap = ref<Map<number, { name: string; groupName: string; groupId: number }>>(new Map())
 
-// 下拉选项：根据选中分组自动过滤（computed 响应式，无需手动 reload）
+// ── 级联下拉选项（全部 computed，响应式自动过滤）──
+
+// 隐患点：根据选中分组过滤
 const hazardPointOptions = computed<HazardPointOption[]>(() => {
   const result: HazardPointOption[] = []
   allHazardPointMap.value.forEach((info, id) => {
@@ -195,6 +198,26 @@ const hazardPointOptions = computed<HazardPointOption[]>(() => {
     }
   })
   return result
+})
+
+// 设备：根据 分组/隐患点 级联过滤
+const deviceOptions = computed<DeviceOption[]>(() => {
+  let list = allDevices.value
+
+  if (selectedHazardPointId.value) {
+    // 选中具体隐患点 → 只显示已绑定的设备
+    list = list.filter(d => d.boundHazardPointId === (selectedHazardPointId.value as number))
+  } else if (selectedGroupId.value) {
+    // 只选中分组 → 显示该分组下所有隐患点的设备
+    const groupHpIds = new Set<number>()
+    allHazardPointMap.value.forEach((info, id) => {
+      if (info.groupId === (selectedGroupId.value as number)) groupHpIds.add(id)
+    })
+    list = list.filter(d => d.boundHazardPointId != null && groupHpIds.has(d.boundHazardPointId))
+  }
+  // 都没选 → 显示全部设备
+
+  return list.map(d => ({ id: d.id!, name: d.name }))
 })
 
 // 选中的筛选条件 - 默认最近7天
@@ -242,23 +265,14 @@ const loadAllHazardPoints = async () => {
   }
 }
 
-// 加载设备选项
-const loadDeviceOptions = async () => {
+// 加载全量设备（用于客户端级联过滤，仅首次加载）
+const loadAllDevices = async () => {
   try {
-    const params: any = { pageNum: 1, pageSize: 1000 }
-    if (selectedHazardPointId.value) {
-      params.boundHazardPointId = selectedHazardPointId.value
-    }
-    const res = await getDevicePage(params)
-    const rows = res.rows || []
-
-    deviceOptions.value = rows.map((item: DeviceItem) => ({
-      id: item.id!,
-      name: item.name
-    }))
+    const res = await getDevicePage({ pageNum: 1, pageSize: 10000 })
+    allDevices.value = res.rows || []
   } catch (error) {
-    console.error('加载设备选项失败:', error)
-    deviceOptions.value = []
+    console.error('加载设备列表失败:', error)
+    allDevices.value = []
   }
 }
 
@@ -296,35 +310,86 @@ const onDeviceChange = async () => {
   }
 }
 
-// 转换监测数据为表格行（将同一时间点的多条属性聚合）
-const transformMonitorData = (rows: MonitorDataPageItem[]) => {
-  const grouped: Record<string, any> = {}
+// 合并的列（从左到右，越靠左越"父级"）
+const SPAN_COLS = ['groupName', 'hazardPointName', 'dataTime', 'deviceName', 'sensorName']
 
-  rows.forEach(item => {
-    const key = `${item.dataTime}_${item.deviceId}_${item.sensorId}`
-    if (!grouped[key]) {
+// 转换 API 行为表格行：按时间降序排列，填充分组名
+const buildFlatTableData = (rows: MonitorDataPageItem[]) => {
+  return rows
+    .map(item => {
       const hpInfo = allHazardPointMap.value.get(item.hazardPointId)
-      grouped[key] = {
-        dataTime: item.dataTime,
-        groupId: hpInfo?.groupId,
+      return {
         groupName: hpInfo?.groupName || '',
+        groupId: hpInfo?.groupId,
         hazardPointName: item.hazardPointName || hpInfo?.name || '',
-        deviceId: item.deviceId,
+        dataTime: item.dataTime,
         deviceName: item.deviceName,
-        sensorId: item.sensorId,
         sensorName: item.sensorName,
-        dataList: []
+        attrName: item.attrName,
+        value: item.value,
+        unit: item.unit,
       }
-    }
-    grouped[key].dataList.push({
-      attrCode: item.attrCode,
-      attrName: item.attrName,
-      value: item.value,
-      unit: item.unit
     })
-  })
+    .sort((a, b) => {
+      if (a.dataTime !== b.dataTime) return b.dataTime.localeCompare(a.dataTime)
+      if (a.groupName !== b.groupName) return a.groupName.localeCompare(b.groupName)
+      if (a.hazardPointName !== b.hazardPointName) return a.hazardPointName.localeCompare(b.hazardPointName)
+      if (a.deviceName !== b.deviceName) return a.deviceName.localeCompare(b.deviceName)
+      if (a.sensorName !== b.sensorName) return a.sensorName.localeCompare(b.sensorName)
+      return (a.attrName || '').localeCompare(b.attrName || '')
+    })
+}
 
-  return Object.values(grouped)
+// span-method：即时计算，不预存 _rowspan
+const tableSpanMethod = ({ row, column, rowIndex }: any) => {
+  const prop = column.property as string
+  const colIdx = SPAN_COLS.indexOf(prop)
+  if (colIdx === -1) return { rowspan: 1, colspan: 1 }
+
+  const data = tableData.value
+
+  // 如果上一行所有父级列（含当前列）值都相同，则本行被合并到上一行
+  if (rowIndex > 0) {
+    const prev = data[rowIndex - 1]
+    let same = true
+    for (let c = 0; c <= colIdx; c++) {
+      if (prev[SPAN_COLS[c]] !== row[SPAN_COLS[c]]) { same = false; break }
+    }
+    if (same) return { rowspan: 0, colspan: 0 }
+  }
+
+  // 本行是新分组的起点，向后数连续行数
+  let span = 1
+  for (let i = rowIndex + 1; i < data.length; i++) {
+    let same = true
+    for (let c = 0; c <= colIdx; c++) {
+      if (data[i][SPAN_COLS[c]] !== row[SPAN_COLS[c]]) { same = false; break }
+    }
+    if (same) span++
+    else break
+  }
+
+  return { rowspan: span, colspan: 1 }
+}
+
+// cell-class-name：合并组首行加底部粗线，组内续行弱化上边框
+const tableCellClassName = ({ row, column, rowIndex }: any) => {
+  const prop = column.property as string
+  const colIdx = SPAN_COLS.indexOf(prop)
+  if (colIdx === -1) return ''
+
+  const data = tableData.value
+
+  // 判断本行是否是该列的新分组起点（与上一行任何父级列不同即为新分组）
+  if (rowIndex === 0) return 'cell-group-start'
+
+  const prev = data[rowIndex - 1]
+  for (let c = 0; c <= colIdx; c++) {
+    if (prev[SPAN_COLS[c]] !== row[SPAN_COLS[c]]) return 'cell-group-start'
+  }
+
+  // 续行
+  return 'cell-group-next'
 }
 
 // 查询监测数据
@@ -365,7 +430,7 @@ const handleQuery = async () => {
     const attrCodes = selectedAttrCodes.value.length > 0 ? selectedAttrCodes.value : ['']
 
     const allRows: MonitorDataPageItem[] = []
-    let mergedTotal = 0
+    let serverTotal = 0
 
     // 对每个隐患点+属性组合分别查询并合并
     const hpIdsToQuery = hazardPointIds.length > 0 ? hazardPointIds : [undefined]
@@ -374,24 +439,22 @@ const handleQuery = async () => {
       if (hpId !== undefined) {
         params.hazardPointId = hpId
       }
-      // 同一隐患点的多属性共享时间戳 → Math.max；不同隐患点之间独立 → 累加
-      let hpTotal = 0
       for (const attrCode of attrCodes) {
         const res = await getMonitorDataPage({ ...params, attrCode: attrCode || undefined })
         allRows.push(...(res.rows || []))
-        hpTotal = Math.max(hpTotal, res.total || 0)
+        serverTotal += (res.total || 0)
       }
-      mergedTotal += hpTotal
     }
 
-    const transformedData = transformMonitorData(allRows)
-    // 客户端二次过滤：确保只保留选中分组的行
+    const flatData = buildFlatTableData(allRows)
+    // 客户端二次过滤：按选中分组过滤
     if (selectedGroupId.value) {
-      tableData.value = transformedData.filter(row => row.groupId === (selectedGroupId.value as number))
+      tableData.value = flatData.filter(row => row.groupId === (selectedGroupId.value as number))
     } else {
-      tableData.value = transformedData
+      tableData.value = flatData
     }
-    total.value = mergedTotal
+    // 分页总数：多属性/多隐患点查询时累计各次 API 返回的 total
+    total.value = serverTotal
   } catch (error) {
     showRequestErrorMessage(error, '查询失败')
   } finally {
@@ -399,24 +462,28 @@ const handleQuery = async () => {
   }
 }
 
-// 分组变更：仅过滤隐患点下拉（computed 自动处理），清除下游已失效的选择
-const onGroupChange = async () => {
+// 分组变更：隐患点/设备下拉 computed 自动过滤，清除下游已失效的选择
+const onGroupChange = () => {
   const prevHpId = selectedHazardPointId.value
   const prevDeviceId = selectedDeviceId.value
 
   if (!selectedGroupId.value) {
-    // 分组已清除 → 重置下游
+    // 分组已清除 → 重置下游（设备选项 computed 自动恢复全量）
     selectedHazardPointId.value = ''
     selectedDeviceId.value = ''
     selectedAttrCodes.value = []
-    deviceOptions.value = []
     deviceAttrsMap.value.clear()
     return
   }
 
   // 检查当前隐患点是否仍在过滤后的选项中
   if (prevHpId && hazardPointOptions.value.some(hp => hp.id === prevHpId)) {
-    // 隐患点仍有效，保持不变
+    // 隐患点仍有效，但设备列表可能因级联变化 → 检查当前设备是否仍有效
+    if (prevDeviceId && !deviceOptions.value.some(d => d.id === prevDeviceId)) {
+      selectedDeviceId.value = ''
+      selectedAttrCodes.value = []
+      deviceAttrsMap.value.clear()
+    }
     return
   }
 
@@ -424,23 +491,19 @@ const onGroupChange = async () => {
   selectedHazardPointId.value = ''
   selectedDeviceId.value = ''
   selectedAttrCodes.value = []
-  deviceOptions.value = []
   deviceAttrsMap.value.clear()
 }
 
-// 隐患点变更：仅加载设备列表，清除下游已失效的选择（不自动查询）
+// 隐患点变更：设备选项 computed 自动过滤，清除下游已失效的选择（不自动查询）
 const onHazardPointChange = async () => {
   const prevDeviceId = selectedDeviceId.value
   selectedDeviceId.value = ''
   selectedAttrCodes.value = []
-  deviceOptions.value = []
   deviceAttrsMap.value.clear()
 
   if (!selectedHazardPointId.value) {
     return
   }
-
-  await loadDeviceOptions()
 
   // 如果之前选的设备仍在新列表中，恢复选择
   if (prevDeviceId && deviceOptions.value.some(d => d.id === prevDeviceId)) {
@@ -460,50 +523,53 @@ const handleReset = () => {
   currentPage.value = 1
   tableData.value = []
   total.value = 0
-  deviceOptions.value = []
   deviceAttrsMap.value.clear()
-  loadDeviceOptions()
 }
 
 const EXPORT_MAX = 20000
 
 const handleExportCsv = async () => {
-  if (total.value === 0) {
+  if (tableData.value.length === 0) {
     ElMessage.warning('没有数据可导出')
     return
   }
-  if (total.value > EXPORT_MAX) {
-    ElMessage.warning(`数据量过大（${total.value} 条，上限 ${EXPORT_MAX} 条），请缩小查询范围后重试`)
-    return
-  }
 
-  // 拉取全部数据（分页循环，多选属性时分别请求合并）
   const allRows: MonitorDataPageItem[] = []
-  const fetchPageSize = 500
-  const totalPages = Math.ceil(total.value / fetchPageSize)
+  const fetchPageSize = 1000
   const attrCodes = selectedAttrCodes.value.length > 0 ? selectedAttrCodes.value : ['']
   loading.value = true
+
   try {
-    for (let p = 1; p <= totalPages; p++) {
+    // 循环拉取直到数据耗尽或达到上限
+    let page = 1
+    let hasMore = true
+    while (hasMore && allRows.length < EXPORT_MAX) {
+      let maxPageRows = 0
       for (const attrCode of attrCodes) {
-      const params: any = {
-        pageNum: p,
+        const params: any = {
+          pageNum: page,
           pageSize: fetchPageSize,
-          attrCode: attrCode || undefined
+          attrCode: attrCode || undefined,
+        }
+        if (selectedHazardPointId.value) params.hazardPointId = selectedHazardPointId.value
+        if (selectedDeviceId.value) params.deviceId = selectedDeviceId.value
+        if (timeRange.value) {
+          params.startTime = timeRange.value[0]
+          params.endTime = timeRange.value[1]
+        }
+
+        const res = await getMonitorDataPage(params)
+        const rows = res.rows || []
+        allRows.push(...rows)
+        maxPageRows = Math.max(maxPageRows, rows.length)
       }
-      if (selectedHazardPointId.value) {
-        params.hazardPointId = selectedHazardPointId.value
+
+      // 所有 attrCode 查询都不足一页 → 数据已耗尽
+      if (maxPageRows < fetchPageSize) {
+        hasMore = false
+      } else {
+        page++
       }
-      if (selectedDeviceId.value) {
-        params.deviceId = selectedDeviceId.value
-      }
-      if (timeRange.value) {
-        params.startTime = timeRange.value[0]
-        params.endTime = timeRange.value[1]
-      }
-      const res = await getMonitorDataPage(params)
-      allRows.push(...(res.rows || []))
-    }
     }
   } catch (error) {
     showRequestErrorMessage(error, '导出数据拉取失败')
@@ -512,16 +578,22 @@ const handleExportCsv = async () => {
   }
   loading.value = false
 
-  const exportRows = transformMonitorData(allRows)
+  if (allRows.length === 0) {
+    ElMessage.warning('没有数据可导出')
+    return
+  }
 
-  // 构建CSV数据（与查询表格一致：隐患分组 | 隐患点 | 时间 | 设备名称 | 传感器 | 监测数据）
-  const headers = ['隐患分组', '隐患点', '时间', '设备名称', '传感器', '监测数据']
-  const rows = exportRows.map(row => {
-    const monitorDataStr = row.dataList.map((item: any) =>
-      `${item.attrName}: ${item.value}${item.unit}`
-    ).join('; ')
-    return [row.groupName, row.hazardPointName, row.dataTime, row.deviceName, row.sensorName, monitorDataStr]
-  })
+  if (allRows.length >= EXPORT_MAX) {
+    ElMessage.warning(`数据量已达导出上限（${EXPORT_MAX} 条），结果已截断`)
+  }
+
+  const exportRows = buildFlatTableData(allRows.slice(0, EXPORT_MAX))
+
+  // CSV：隐患分组 | 隐患点 | 时间 | 设备名称 | 传感器 | 监测指标 | 监测值
+  const headers = ['隐患分组', '隐患点', '时间', '设备名称', '传感器', '监测指标', '监测值']
+  const rows = exportRows.map(row =>
+    [row.groupName, row.hazardPointName, row.dataTime, row.deviceName, row.sensorName, row.attrName, `${row.value != null ? row.value : '-'}${row.unit ? ' ' + row.unit : ''}`]
+  )
 
   const csv = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -531,12 +603,13 @@ const handleExportCsv = async () => {
   a.download = `监测数据查询_${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
+  ElMessage.success(`已导出 ${rows.length} 条数据`)
 }
 
 onMounted(() => {
   loadGroupOptions()
   loadAllHazardPoints()
-  loadDeviceOptions()
+  loadAllDevices()
 })
 </script>
 
@@ -567,6 +640,22 @@ onMounted(() => {
 
 :deep(.el-table__body-wrapper) {
   overflow-x: auto;
+}
+
+/* 合并单元格分组底部加粗分隔 */
+:deep(.cell-group-start) {
+  border-bottom: 3px solid #303133 !important;
+}
+
+/* 表格全局边框加粗 */
+:deep(.el-table td) {
+  border-right: 2px solid #dcdfe6 !important;
+  border-bottom: 2px solid #dcdfe6 !important;
+}
+
+:deep(.el-table th) {
+  border-right: 2px solid #dcdfe6 !important;
+  border-bottom: 2px solid #dcdfe6 !important;
 }
 
 /* 监测数据属性分割线 */
