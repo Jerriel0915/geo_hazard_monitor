@@ -59,8 +59,16 @@ FROM eclipse-temurin:17-jre
 
 # 安装必要工具（用于健康检查）
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Arthas 诊断工具（非侵入式）
+# 启动方式：docker exec -it <container> java -jar /opt/arthas/arthas-boot.jar
+ENV ARTHAS_VERSION=3.7.1
+RUN curl -sL "https://github.com/alibaba/arthas/releases/download/arthas-bin-${ARTHAS_VERSION}/arthas-bin.zip" \
+         -o /tmp/arthas.zip \
+    && unzip /tmp/arthas.zip -d /opt/arthas \
+    && rm /tmp/arthas.zip
 
 WORKDIR /app
 
