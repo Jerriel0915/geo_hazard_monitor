@@ -1,27 +1,33 @@
 package com.zwei.iot.parser.support;
 
+import com.zwei.iot.device.service.ITopicPatternService;
+import com.zwei.iot.device.service.ITopicPatternService.TopicComponents;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * MQTT 监测主题解析器。
  *
  * <p>从监测数据上报主题中提取三要素：协议类型、设备编码、传感器编号。
+ * 通过 {@link ITopicPatternService} 动态匹配已注册的协议前缀。
  *
  * <h3>支持的 MQTT 主题格式</h3>
  * <pre>
- * sys/v1/{deviceCode}/{sensorCode}/updata   → 通用 JSON 格式
- * gb/v1/{deviceCode}/{sensorCode}/updata    → 国标字节流格式
+ * {sourceType}/v1/{deviceCode}/{sensorCode}/updata
  * </pre>
+ * <p>其中 {@code sourceType} 来自系统中已启用的解析策略的 {@code source_type} 字段。
  *
  * <p>解析失败时返回 null，由上游 {@link com.zwei.iot.timeseries.service.MonitorIngestFacade} 统一处理。
  */
 @Component
 public class MonitorTopicParser {
-    private static final Pattern TOPIC_PATTERN =
-            Pattern.compile("^(sys|gb)/v1/(?<deviceCode>[A-Za-z0-9_-]{1,64})/(?<sensorCode>[A-Za-z0-9_-]{1,100})/updata$");
+
+    private final ITopicPatternService topicPatternService;
+
+    @Autowired
+    public MonitorTopicParser(ITopicPatternService topicPatternService) {
+        this.topicPatternService = topicPatternService;
+    }
 
     /**
      * 解析监测数据主题。
@@ -30,14 +36,10 @@ public class MonitorTopicParser {
      * @return 成功时返回主题对象，失败时返回 {@code null}
      */
     public MonitorTopic parse(String topic) {
-        Matcher matcher = TOPIC_PATTERN.matcher(topic == null ? "" : topic);
-        if (!matcher.matches()) {
+        TopicComponents c = topicPatternService.resolveTopic(topic);
+        if (c == null) {
             return null;
         }
-        return new MonitorTopic(
-                matcher.group(1),
-                matcher.group("deviceCode"),
-                matcher.group("sensorCode")
-        );
+        return new MonitorTopic(c.sourceType(), c.deviceCode(), c.sensorCode());
     }
 }
